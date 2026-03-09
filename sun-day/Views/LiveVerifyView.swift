@@ -12,90 +12,114 @@ struct LiveVerifyView: View {
     @State private var lastDistance: Float? = nil
 
     var body: some View {
-        VStack {
-            Text("Live Video Verify")
-                .font(.headline)
+        ZStack {
+            SunBackdrop()
 
-            ZStack {
-                CameraPreview(session: coordinator.session)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding()
-                    .onAppear {
-                        coordinator.onStateChange = { result in
-                            detected = result.isDetected
-                            lastDistance = result.featureDistance
-                            if let distance = result.featureDistance {
-                                message = String(format: "Bottle distance: %.3f", distance)
-                            }
-                        }
-                        coordinator.configure(trainingPayloads: appState.trainingFeatureData())
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SunPill(title: "Hands-free proof", systemImage: "video.badge.checkmark", tint: AppPalette.coral)
+
+                        Text("Live video verify")
+                            .font(.system(size: 32, weight: .bold, design: .serif))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text(message)
+                            .font(.callout)
+                            .foregroundStyle(AppPalette.softInk)
                     }
-                .onDisappear {
-                    coordinator.stop()
-                }
-                .onChange(of: detected) { _, newValue in
-                    if newValue && !didAutoMark {
-                        didAutoMark = true
-                        appState.markAppliedToday(
-                            method: .video,
-                            barcode: appState.settings.expectedBarcode,
-                            featureDistance: lastDistance.map { Double($0) },
-                            barcodeConfidence: nil
-                        )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .sunCard()
+
+                    ZStack {
+                        CameraPreview(session: coordinator.session)
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .frame(height: 420)
+                            .onAppear {
+                                coordinator.onStateChange = { result in
+                                    detected = result.isDetected
+                                    lastDistance = result.featureDistance
+                                    if let distance = result.featureDistance {
+                                        message = String(format: "Bottle distance: %.3f", distance)
+                                    }
+                                }
+                                coordinator.configure(trainingPayloads: appState.trainingFeatureData())
+                            }
+                            .onDisappear {
+                                coordinator.stop()
+                            }
+                            .onChange(of: detected) { _, newValue in
+                                if newValue && !didAutoMark {
+                                    didAutoMark = true
+                                    appState.markAppliedToday(
+                                        method: .video,
+                                        barcode: appState.settings.expectedBarcode,
+                                        featureDistance: lastDistance.map { Double($0) },
+                                        barcodeConfidence: nil
+                                    )
+                                    router.goHome()
+                                    dismiss()
+                                }
+                                if !newValue {
+                                    didAutoMark = false
+                                }
+                            }
+
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.white.opacity(0.55), lineWidth: 1)
+
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [10, 8]))
+                            .foregroundStyle((detected ? AppPalette.success : AppPalette.sun).opacity(0.85))
+                            .frame(width: 230, height: 260)
+
+                        if detected {
+                            VStack {
+                                Text("Bottle detected")
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(AppPalette.success, in: Capsule())
+                                    .foregroundStyle(.white)
+                                    .font(.headline)
+                                Spacer()
+                            }
+                            .padding()
+                        }
+
+                        if coordinator.permissionDenied {
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .fill(Color.black.opacity(0.58))
+                            Text("Camera access denied")
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .sunCard(padding: 12)
+
+                    if detected {
+                        Button("Mark Applied") {
+                            appState.markAppliedToday(
+                                method: .video,
+                                barcode: appState.settings.expectedBarcode,
+                                featureDistance: lastDistance.map { Double($0) },
+                                barcodeConfidence: nil
+                            )
+                            router.goHome()
+                            dismiss()
+                        }
+                        .buttonStyle(SunPrimaryButtonStyle())
+                    }
+
+                    Button("Back") {
                         router.goHome()
                         dismiss()
                     }
-                    if !newValue {
-                        didAutoMark = false
-                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
                 }
-
-                if detected {
-                    VStack {
-                        Text("Bottle detected ✅")
-                            .padding(8)
-                            .background(.green)
-                            .clipShape(Capsule())
-                            .foregroundStyle(.white)
-                            .font(.headline)
-                        Spacer()
-                    }
-                    .padding()
-                }
-
-                if coordinator.permissionDenied {
-                    Color.black.opacity(0.6)
-                    Text("Camera access denied")
-                        .foregroundStyle(.white)
-                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 28)
             }
-
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding()
-
-            if detected {
-                Button("Mark Applied") {
-                    appState.markAppliedToday(
-                        method: .video,
-                        barcode: appState.settings.expectedBarcode,
-                        featureDistance: lastDistance.map { Double($0) },
-                        barcodeConfidence: nil
-                    )
-                    router.goHome()
-                    dismiss()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-
-            Button("Back") {
-                router.goHome()
-                dismiss()
-            }
-            .buttonStyle(.bordered)
-                .padding(.top, 6)
         }
-        .navigationTitle("Live Verify")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

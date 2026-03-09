@@ -13,17 +13,17 @@
 				<key>testDayStatusAppliesToFutureTodayAndPast</key>
 				<dict>
 					<key>mrnet</key>
-					<real>0.00081598758697509766</real>
+					<real>0.00078701972961425781</real>
 				</dict>
 				<key>testPhraseShuffleBagDoesNotRepeatUntilExhaustion</key>
 				<dict>
 					<key>mrnet</key>
-					<real>0.0022369623184204102</real>
+					<real>0.001871943473815918</real>
 				</dict>
 				<key>testStreakIsContiguousFromMostRecentAppliedDay</key>
 				<dict>
 					<key>mrnet</key>
-					<real>0.00051605701446533203</real>
+					<real>0.00044000148773193359</real>
 				</dict>
 			</dict>
 		</dict>
@@ -41,13 +41,10 @@
 					<key>mrnet</key>
 					<real>25.430631041526794</real>
 				</dict>
-			</dict>
-			<key>sun_dayUITestsLaunchTests</key>
-			<dict>
-				<key>testLaunch</key>
+				<key>testOnboardingAppearsOnLaunch</key>
 				<dict>
 					<key>mrnet</key>
-					<real>4.4909299612045288</real>
+					<real>4.5304189920425415</real>
 				</dict>
 			</dict>
 		</dict>
