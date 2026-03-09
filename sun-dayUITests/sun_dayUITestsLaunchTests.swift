@@ -20,6 +20,7 @@ final class sun_dayUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("UITEST_MODE")
         app.launch()
 
         // Insert steps here to perform after app launch but before taking a screenshot,

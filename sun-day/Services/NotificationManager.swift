@@ -16,9 +16,26 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private let routeKey = "targetRoute"
     private let homeRoute = "home"
     private let weeklyRoute = "weekly"
+    private let isUITesting = ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
 
     private var routeHandler: (AppRoute) -> Void = { _ in }
     private var configured = false
+    private var backgroundTaskRegistered = false
+
+    func registerBackgroundTaskIfNeeded() {
+        guard !backgroundTaskRegistered, !isUITesting else { return }
+        backgroundTaskRegistered = true
+
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: nil) { task in
+            guard let refresh = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            Task {
+                await self.handleWeeklyReportTask(refresh)
+            }
+        }
+    }
 
     func configure() async -> Bool {
         if !configured {
@@ -30,17 +47,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
             center.setNotificationCategories([category])
             center.delegate = self
-
-            BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: nil) { task in
-                guard let refresh = task as? BGAppRefreshTask else {
-                    task.setTaskCompleted(success: false)
-                    return
-                }
-                Task {
-                    await self.handleWeeklyReportTask(refresh)
-                }
-            }
         }
+
+        registerBackgroundTaskIfNeeded()
 
         let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
         return granted
@@ -51,6 +60,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func scheduleReminders(using state: AppState) async {
+        registerBackgroundTaskIfNeeded()
+
         await clearPendingRequests(prefix: "sunscreen.daily.")
         await clearPendingRequests(prefix: "sunscreen.weekly.fallback.")
         await clearPendingRequests(prefix: "sunscreen.weekly.primary.")
@@ -115,6 +126,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func scheduleWeeklyBackgroundTask(using state: AppState) {
+        guard backgroundTaskRegistered else { return }
+
         let request = BGAppRefreshTaskRequest(identifier: bgTaskID)
         request.earliestBeginDate = nextDate(weekday: state.settings.weeklyWeekday, hour: state.settings.weeklyHour, minute: 0)
 

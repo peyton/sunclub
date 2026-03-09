@@ -34,10 +34,5 @@ struct RootView: View {
                 }
             }
         }
-        .onAppear {
-            Task {
-                await NotificationManager.shared.scheduleReminders(using: appState)
-            }
-        }
     }
 }

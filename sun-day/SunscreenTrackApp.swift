@@ -8,14 +8,16 @@ struct SunscreenTrackApp: App {
     @State private var appState: AppState
     @State private var router = AppRouter()
     private let container: ModelContainer
+    private let isUITesting = ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
 
     init() {
+        let isUITesting = ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
         let schema = Schema([
             DailyRecord.self,
             TrainingAsset.self,
             Settings.self
         ])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isUITesting)
         guard let container = try? ModelContainer(for: schema, configurations: [configuration]) else {
             fatalError("Failed to create ModelContainer")
         }
@@ -36,6 +38,7 @@ struct SunscreenTrackApp: App {
                     NotificationManager.shared.setRouteHandler { route in
                         router.open(route)
                     }
+                    guard !isUITesting else { return }
                     Task {
                         await NotificationManager.shared.configure()
                         await NotificationManager.shared.scheduleReminders(using: appState)
@@ -45,9 +48,11 @@ struct SunscreenTrackApp: App {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = NotificationManager.shared
+        NotificationManager.shared.registerBackgroundTaskIfNeeded()
         return true
     }
 }

@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>27C59A23-B5FD-4804-9558-83926C6583F9</key>
+		<key>00E70368-D09D-4DFD-8FA1-86945BED8862</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,143 +15,17 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>27C59A23-B5FD-4804-9558-83926C6583F9.xcactivitylog</string>
+			<string>00E70368-D09D-4DFD-8FA1-86945BED8862.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>S</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
 				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>sun-day project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>sun-day</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Testing project sun-day with scheme sun-day</string>
-			<key>timeStartedRecording</key>
-			<real>794725704.30412197</real>
-			<key>timeStoppedRecording</key>
-			<real>794725706.18089902</real>
-			<key>title</key>
-			<string>Testing project sun-day with scheme sun-day</string>
-			<key>uniqueIdentifier</key>
-			<string>27C59A23-B5FD-4804-9558-83926C6583F9</string>
-		</dict>
-		<key>65D1A661-14A6-4280-87F2-17D8798F883E</key>
-		<dict>
-			<key>className</key>
-			<string>IDECommandLineBuildLog</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
-			<key>fileName</key>
-			<string>65D1A661-14A6-4280-87F2-17D8798F883E.xcactivitylog</string>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>S</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>sun-day project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>sun-day</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Testing project sun-day with scheme sun-day</string>
-			<key>timeStartedRecording</key>
-			<real>794725975.04413795</real>
-			<key>timeStoppedRecording</key>
-			<real>794725977.83693099</real>
-			<key>title</key>
-			<string>Testing project sun-day with scheme sun-day</string>
-			<key>uniqueIdentifier</key>
-			<string>65D1A661-14A6-4280-87F2-17D8798F883E</string>
-		</dict>
-		<key>8AC5CE39-DE98-440A-A670-5F48FBBAA085</key>
-		<dict>
-			<key>className</key>
-			<string>IDECommandLineBuildLog</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
-			<key>fileName</key>
-			<string>8AC5CE39-DE98-440A-A670-5F48FBBAA085.xcactivitylog</string>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>S</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>sun-day project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>sun-day</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Testing project sun-day with scheme sun-day</string>
-			<key>timeStartedRecording</key>
-			<real>794725790.80171299</real>
-			<key>timeStoppedRecording</key>
-			<real>794725798.195472</real>
-			<key>title</key>
-			<string>Testing project sun-day with scheme sun-day</string>
-			<key>uniqueIdentifier</key>
-			<string>8AC5CE39-DE98-440A-A670-5F48FBBAA085</string>
-		</dict>
-		<key>E332F135-8364-4ED2-9FC1-EBCA374FB359</key>
-		<dict>
-			<key>className</key>
-			<string>IDECommandLineBuildLog</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
-			<key>fileName</key>
-			<string>E332F135-8364-4ED2-9FC1-EBCA374FB359.xcactivitylog</string>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>E</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>12</integer>
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
@@ -166,15 +40,15 @@
 			<key>signature</key>
 			<string>Testing project sun-day with scheme sun-day</string>
 			<key>timeStartedRecording</key>
-			<real>794725684.31421101</real>
+			<real>794727117.42434502</real>
 			<key>timeStoppedRecording</key>
-			<real>794725686.70448506</real>
+			<real>794727121.97012806</real>
 			<key>title</key>
 			<string>Testing project sun-day with scheme sun-day</string>
 			<key>uniqueIdentifier</key>
-			<string>E332F135-8364-4ED2-9FC1-EBCA374FB359</string>
+			<string>00E70368-D09D-4DFD-8FA1-86945BED8862</string>
 		</dict>
-		<key>EFD4A72F-F6F4-4FD9-B614-96D74DF49261</key>
+		<key>392B7F58-6583-44EC-93AC-1FF903A47A25</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -183,21 +57,21 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>EFD4A72F-F6F4-4FD9-B614-96D74DF49261.xcactivitylog</string>
+			<string>392B7F58-6583-44EC-93AC-1FF903A47A25.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>E</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
-				<integer>4</integer>
+				<integer>0</integer>
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
-				<integer>8</integer>
+				<integer>1</integer>
 			</dict>
 			<key>schemeIdentifier-containerName</key>
 			<string>sun-day project</string>
@@ -208,15 +82,15 @@
 			<key>signature</key>
 			<string>Testing project sun-day with scheme sun-day</string>
 			<key>timeStartedRecording</key>
-			<real>794725642.75863898</real>
+			<real>794727277.34557796</real>
 			<key>timeStoppedRecording</key>
-			<real>794725643.75341702</real>
+			<real>794727281.89343297</real>
 			<key>title</key>
 			<string>Testing project sun-day with scheme sun-day</string>
 			<key>uniqueIdentifier</key>
-			<string>EFD4A72F-F6F4-4FD9-B614-96D74DF49261</string>
+			<string>392B7F58-6583-44EC-93AC-1FF903A47A25</string>
 		</dict>
-		<key>FCAE0C0A-34AE-4D43-B113-F4AF4C11E69F</key>
+		<key>9C063B1E-63D8-4E1D-BADE-AC4943CCDF20</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -225,7 +99,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>FCAE0C0A-34AE-4D43-B113-F4AF4C11E69F.xcactivitylog</string>
+			<string>9C063B1E-63D8-4E1D-BADE-AC4943CCDF20.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -250,13 +124,97 @@
 			<key>signature</key>
 			<string>Testing project sun-day with scheme sun-day</string>
 			<key>timeStartedRecording</key>
-			<real>794725870.45317698</real>
+			<real>794726749.63717496</real>
 			<key>timeStoppedRecording</key>
-			<real>794725873.02561295</real>
+			<real>794726751.02400804</real>
 			<key>title</key>
 			<string>Testing project sun-day with scheme sun-day</string>
 			<key>uniqueIdentifier</key>
-			<string>FCAE0C0A-34AE-4D43-B113-F4AF4C11E69F</string>
+			<string>9C063B1E-63D8-4E1D-BADE-AC4943CCDF20</string>
+		</dict>
+		<key>E4B8C50B-FC77-4CD9-9356-1B156BE3C94F</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>E4B8C50B-FC77-4CD9-9356-1B156BE3C94F.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Testing project sun-day with scheme sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794726998.00876796</real>
+			<key>timeStoppedRecording</key>
+			<real>794727001.51321101</real>
+			<key>title</key>
+			<string>Testing project sun-day with scheme sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>E4B8C50B-FC77-4CD9-9356-1B156BE3C94F</string>
+		</dict>
+		<key>E5EE65D1-6014-495D-921B-1DB4B88F50F7</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>E5EE65D1-6014-495D-921B-1DB4B88F50F7.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Testing project sun-day with scheme sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794727343.92909598</real>
+			<key>timeStoppedRecording</key>
+			<real>794727344.86433804</real>
+			<key>title</key>
+			<string>Testing project sun-day with scheme sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>E5EE65D1-6014-495D-921B-1DB4B88F50F7</string>
 		</dict>
 	</dict>
 </dict>
