@@ -1,0 +1,23 @@
+{
+  "/Users/peyton/Projects/sun-day/sun-day/Services/Permissions.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.dia",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.swiftdeps"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/PhraseBank.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.dia",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.swiftdeps"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/PhraseRotation.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.dia",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.swiftdeps"
+  }
+}

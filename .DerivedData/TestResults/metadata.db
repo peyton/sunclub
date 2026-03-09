@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>FormatVersion</key>
+	<integer>1</integer>
+	<key>Store</key>
+	<dict>
+		<key>sun-dayTests</key>
+		<dict>
+			<key>SunscreenTrackTests</key>
+			<dict>
+				<key>testDayStatusAppliesToFutureTodayAndPast</key>
+				<dict>
+					<key>mrnet</key>
+					<real>0.00078797340393066406</real>
+				</dict>
+				<key>testPhraseShuffleBagDoesNotRepeatUntilExhaustion</key>
+				<dict>
+					<key>mrnet</key>
+					<real>0.0010939836502075195</real>
+				</dict>
+				<key>testStreakIsContiguousFromMostRecentAppliedDay</key>
+				<dict>
+					<key>mrnet</key>
+					<real>0.0005359649658203125</real>
+				</dict>
+			</dict>
+		</dict>
+		<key>sun-dayUITests</key>
+		<dict>
+			<key>sun_dayUITests</key>
+			<dict>
+				<key>testExample</key>
+				<dict>
+					<key>mrnet</key>
+					<real>3.6959398984909058</real>
+				</dict>
+				<key>testLaunchPerformance</key>
+				<dict>
+					<key>mrnet</key>
+					<real>36.567416071891785</real>
+				</dict>
+			</dict>
+			<key>sun_dayUITestsLaunchTests</key>
+			<dict>
+				<key>testLaunch</key>
+				<dict>
+					<key>mrnet</key>
+					<real>4.732017993927002</real>
+				</dict>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

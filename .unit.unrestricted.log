@@ -1,0 +1,81 @@
+Command line invocation:
+    /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/usr/bin/xcodebuild -project sun-day.xcodeproj -scheme sun-day -destination "platform=iOS Simulator,id=D14F0BB4-8D24-46F6-9208-9B1B46F23FB5" -derivedDataPath .DerivedData "-only-testing:sun-dayTests/SunscreenTrackTests" test
+
+2026-03-08 22:11:10.419 xcodebuild[89657:6614138] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (3 targets)
+    Target 'sun-dayTests' in project 'sun-day'
+        ➜ Explicit dependency on target 'sun-day' in project 'sun-day'
+    Target 'sun-dayUITests' in project 'sun-day'
+        ➜ Explicit dependency on target 'sun-day' in project 'sun-day'
+    Target 'sun-day' in project 'sun-day' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/peyton/Projects/sun-day/sun-day/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 5fb7e7b4a63a7c2d3a845170c36b0d22
+Build description path: /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/XCBuildData/5fb7e7b4a63a7c2d3a845170c36b0d22.xcbuilddata
+ClangStatCache /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /Users/peyton/Projects/sun-day/.DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C57-8d935a9d00548f484ce9b88c17a2ead6.sdkstatcache
+    cd /Users/peyton/Projects/sun-day/sun-day.xcodeproj
+    /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /Users/peyton/Projects/sun-day/.DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C57-8d935a9d00548f484ce9b88c17a2ead6.sdkstatcache
+
+ProcessInfoPlistFile /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/Info.plist /Users/peyton/Projects/sun-day/sun-day/Info.plist (in target 'sun-day' from project 'sun-day')
+    cd /Users/peyton/Projects/sun-day
+    builtin-infoPlistUtility /Users/peyton/Projects/sun-day/sun-day/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/assetcatalog_generated_info.plist -o /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/Info.plist
+
+CopySwiftLibs /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app (in target 'sun-day' from project 'sun-day')
+    cd /Users/peyton/Projects/sun-day
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/SunscreenTrack.debug.dylib --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/Frameworks --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/SystemExtensions --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+CopySwiftLibs /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest (in target 'sun-dayTests' from project 'sun-day')
+    cd /Users/peyton/Projects/sun-day
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/sun-dayTests --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/Frameworks --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/PlugIns --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/SystemExtensions --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ProcessInfoPlistFile /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/Info.plist /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayTests.build/empty-sun-dayTests.plist (in target 'sun-dayTests' from project 'sun-day')
+    cd /Users/peyton/Projects/sun-day
+    builtin-infoPlistUtility /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayTests.build/empty-sun-dayTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -o /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/SunscreenTrack.app/PlugIns/sun-dayTests.xctest/Info.plist
+
+ProcessInfoPlistFile /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/Info.plist /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayUITests.build/empty-sun-dayUITests.plist (in target 'sun-dayUITests' from project 'sun-day')
+    cd /Users/peyton/Projects/sun-day
+    builtin-infoPlistUtility /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayUITests.build/empty-sun-dayUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayUITests.build/ProductTypeInfoPlistAdditions.plist -o /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/Info.plist
+
+CopySwiftLibs /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest (in target 'sun-dayUITests' from project 'sun-day')
+    cd /Users/peyton/Projects/sun-day
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/sun-dayUITests --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/Frameworks --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/PlugIns --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/SystemExtensions --scan-folder /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/peyton/Projects/sun-day/.DerivedData/Build/Products/Debug-iphonesimulator/sun-dayUITests-Runner.app/PlugIns/sun-dayUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode-26.3.0-Release.Candidate.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-dayUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+2026-03-08 22:11:51.641 xcodebuild[89657:6614138] [MT] IDETestOperationsObserverDebug: 38.613 elapsed -- Testing started completed.
+2026-03-08 22:11:51.641 xcodebuild[89657:6614138] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-03-08 22:11:51.641 xcodebuild[89657:6614138] [MT] IDETestOperationsObserverDebug: 38.613 sec, +38.613 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/peyton/Projects/sun-day/.DerivedData/Logs/Test/Test-sun-day-2026.03.08_22-11-10--0700.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
+Test suite 'SunscreenTrackTests' started on 'Clone 1 of iPhone 17 - SunscreenTrack (91270)'
+Test case 'SunscreenTrackTests.testDayStatusAppliesToFutureTodayAndPast()' passed on 'Clone 1 of iPhone 17 - SunscreenTrack (91270)' (0.001 seconds)
+Test case 'SunscreenTrackTests.testPhraseShuffleBagDoesNotRepeatUntilExhaustion()' passed on 'Clone 1 of iPhone 17 - SunscreenTrack (91270)' (0.001 seconds)
+Test case 'SunscreenTrackTests.testStreakIsContiguousFromMostRecentAppliedDay()' passed on 'Clone 1 of iPhone 17 - SunscreenTrack (91270)' (0.000 seconds)

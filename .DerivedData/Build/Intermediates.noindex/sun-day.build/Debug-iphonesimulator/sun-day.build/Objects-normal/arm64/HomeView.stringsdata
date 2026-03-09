@@ -1,0 +1,48 @@
+{
+  "source": "/Users/peyton/Projects/sun-day/sun-day/Views/HomeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "SunscreenTrack",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 16
+        }
+      },
+      {
+        "comment": "",
+        "key": "Daily sunscreen tracker for this device",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 19
+        }
+      },
+      {
+        "comment": "",
+        "key": "Today's action",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "",
+        "key": "Calendar",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "Weekly Report",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 40
+        }
+      }
+    ]
+  },
+  "version": 1
+}

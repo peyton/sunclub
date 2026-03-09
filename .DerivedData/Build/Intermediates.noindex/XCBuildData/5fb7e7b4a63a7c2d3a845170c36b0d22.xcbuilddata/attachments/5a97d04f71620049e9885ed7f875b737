@@ -1,0 +1,299 @@
+{
+  "" : {
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/sun-day-primary.dia",
+    "emit-module-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/sun-day-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/sun-day-primary-emit-module.dia",
+    "pch" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/sun-day-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/sun-day-primary.swiftdeps"
+  },
+  "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Models/DailyRecord.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/DailyRecord~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Models/Settings.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Settings~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Models/TrainingAsset.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingAsset~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Models/VerificationMethod.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VerificationMethod~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/AppState.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppState~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/BarcodeScannerCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScannerCoordinator~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/CalendarAnalytics.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarAnalytics~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/CameraPreview.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CameraPreview~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/NotificationManager.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/NotificationManager~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/Permissions.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/Permissions~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/PhraseBank.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseBank~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/PhraseRotation.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/PhraseRotation~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/SelfieCaptureCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureCoordinator~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/TrainingCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingCoordinator~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/VideoVerificationCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VideoVerificationCoordinator~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/VisionFeaturePrintService.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/VisionFeaturePrintService~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Shared/AppDataContainer.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppDataContainer~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Shared/AppRoute.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Shared/RootView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/SunscreenTrackApp.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SunscreenTrackApp~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/BarcodeScanView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/BarcodeScanView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/CalendarGridView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/CalendarGridView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/HomeView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/HomeView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/LiveVerifyView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/LiveVerifyView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/OnboardingView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/OnboardingView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/SelfieCaptureView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/SelfieCaptureView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/TrainingView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/TrainingView~partial.swiftmodule"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Views/WeeklyReportView.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/WeeklyReportView~partial.swiftmodule"
+  }
+}

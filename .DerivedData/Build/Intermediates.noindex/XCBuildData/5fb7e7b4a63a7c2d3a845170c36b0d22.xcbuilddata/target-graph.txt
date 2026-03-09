@@ -1,0 +1,6 @@
+Target dependency graph (3 targets)
+Target 'sun-dayTests' in project 'sun-day'
+➜ Explicit dependency on target 'sun-day' in project 'sun-day'
+Target 'sun-dayUITests' in project 'sun-day'
+➜ Explicit dependency on target 'sun-day' in project 'sun-day'
+Target 'sun-day' in project 'sun-day' (no dependencies)

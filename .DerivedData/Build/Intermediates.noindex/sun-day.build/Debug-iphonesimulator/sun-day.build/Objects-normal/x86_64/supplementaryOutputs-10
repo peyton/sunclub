@@ -1,0 +1,23 @@
+{
+  "/Users/peyton/Projects/sun-day/sun-day/Services/SelfieCaptureCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/SelfieCaptureCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/SelfieCaptureCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/SelfieCaptureCoordinator.dia",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/SelfieCaptureCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/SelfieCaptureCoordinator.swiftdeps"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/TrainingCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/TrainingCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/TrainingCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/TrainingCoordinator.dia",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/TrainingCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/TrainingCoordinator.swiftdeps"
+  },
+  "/Users/peyton/Projects/sun-day/sun-day/Services/VideoVerificationCoordinator.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/VideoVerificationCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/VideoVerificationCoordinator.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/VideoVerificationCoordinator.dia",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/VideoVerificationCoordinator.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/x86_64/VideoVerificationCoordinator.swiftdeps"
+  }
+}
