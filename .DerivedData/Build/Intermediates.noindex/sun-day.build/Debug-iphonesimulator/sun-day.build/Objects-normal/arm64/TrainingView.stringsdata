@@ -4,58 +4,50 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Train Bottle Recognition",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 14
-        }
-      },
-      {
-        "comment": "",
-        "key": "Captured %lld / %lld",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 51
-        }
-      },
-      {
-        "comment": "",
         "key": "Done",
         "location": {
-          "startingColumn": 20,
-          "startingLine": 69
+          "startingColumn": 24,
+          "startingLine": 102
         }
       },
       {
         "comment": "",
         "key": "Capturing",
         "location": {
-          "startingColumn": 34,
-          "startingLine": 44
+          "startingColumn": 38,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "Train bottle recognition",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 21
         }
       },
       {
         "comment": "",
         "key": "Camera access denied",
         "location": {
-          "startingColumn": 38,
-          "startingLine": 36
+          "startingColumn": 34,
+          "startingLine": 55
         }
       },
       {
         "comment": "",
         "key": "Capture",
         "location": {
-          "startingColumn": 24,
-          "startingLine": 56
+          "startingColumn": 28,
+          "startingLine": 89
         }
       },
       {
         "comment": "",
         "key": "Reset",
         "location": {
-          "startingColumn": 24,
-          "startingLine": 61
+          "startingColumn": 28,
+          "startingLine": 94
         }
       }
     ]

@@ -6,40 +6,40 @@
         "comment": "",
         "key": "SunscreenTrack",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 16
+          "startingColumn": 22,
+          "startingLine": 86
         }
       },
       {
         "comment": "",
-        "key": "Daily sunscreen tracker for this device",
+        "key": "Three ways to prove today's SPF happened, zero ways for the cloud to snoop.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Today's status",
         "location": {
           "startingColumn": 26,
-          "startingLine": 19
+          "startingLine": 121
         }
       },
       {
         "comment": "",
-        "key": "Today's action",
+        "key": "Choose your proof",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open",
         "location": {
           "startingColumn": 26,
-          "startingLine": 26
-        }
-      },
-      {
-        "comment": "",
-        "key": "Calendar",
-        "location": {
-          "startingColumn": 32,
-          "startingLine": 36
-        }
-      },
-      {
-        "comment": "",
-        "key": "Weekly Report",
-        "location": {
-          "startingColumn": 32,
-          "startingLine": 40
+          "startingLine": 294
         }
       }
     ]

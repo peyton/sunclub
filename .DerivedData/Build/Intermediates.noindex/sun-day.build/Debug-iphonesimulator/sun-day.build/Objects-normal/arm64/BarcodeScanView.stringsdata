@@ -4,50 +4,50 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Barcode Scan",
+        "key": "Use this barcode",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 66
-        }
-      },
-      {
-        "comment": "",
-        "key": "Aim the barcode at the camera until it is detected.",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 47
-        }
-      },
-      {
-        "comment": "",
-        "key": "Scan expected bottle barcode",
-        "location": {
-          "startingColumn": 35,
-          "startingLine": 18
-        }
-      },
-      {
-        "comment": "",
-        "key": "Scan barcode",
-        "location": {
-          "startingColumn": 68,
-          "startingLine": 18
+          "startingColumn": 41,
+          "startingLine": 77
         }
       },
       {
         "comment": "",
         "key": "Done",
         "location": {
-          "startingColumn": 20,
-          "startingLine": 54
+          "startingColumn": 62,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Aim the UPC or EAN code inside the frame and let the camera do the boring part.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scan your bottle barcode",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scan barcode",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 28
         }
       },
       {
         "comment": "",
         "key": "Camera access denied",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 34
+          "startingColumn": 30,
+          "startingLine": 61
         }
       }
     ]

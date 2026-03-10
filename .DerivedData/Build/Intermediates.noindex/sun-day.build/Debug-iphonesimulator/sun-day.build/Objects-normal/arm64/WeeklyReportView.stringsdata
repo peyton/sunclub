@@ -4,74 +4,82 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Weekly Report",
+        "key": "Spin a new pep talk",
         "location": {
-          "startingColumn": 18,
-          "startingLine": 10
-        }
-      },
-      {
-        "comment": "",
-        "key": "Last 7 days: %@",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 15
-        }
-      },
-      {
-        "comment": "",
-        "key": "Applied: %lld/%lld",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 18
-        }
-      },
-      {
-        "comment": "",
-        "key": "Missed: %lld",
-        "location": {
-          "startingColumn": 18,
+          "startingColumn": 28,
           "startingLine": 19
         }
       },
       {
         "comment": "",
-        "key": "Current streak: %lld",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 20
-        }
-      },
-      {
-        "comment": "",
-        "key": "No misses this week!",
-        "location": {
-          "startingColumn": 22,
-          "startingLine": 32
-        }
-      },
-      {
-        "comment": "",
-        "key": "Regenerate encouragement",
-        "location": {
-          "startingColumn": 20,
-          "startingLine": 44
-        }
-      },
-      {
-        "comment": "",
-        "key": "Missed days:",
+        "key": "%lld/%lld",
         "location": {
           "startingColumn": 26,
-          "startingLine": 24
+          "startingLine": 61
         }
       },
       {
         "comment": "",
-        "key": "• %@",
+        "key": "days",
         "location": {
-          "startingColumn": 30,
-          "startingLine": 27
+          "startingColumn": 26,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Weekly report",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clean sheet. Extremely suspicious in a good way.",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "A few misses, but the trend is still salvageable.",
+        "location": {
+          "startingColumn": 103,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "Missed days",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "No misses this week. The bottle would like a modest round of applause.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "This week's encouragement",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rotated locally from your weekly phrase bag.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 140
         }
       }
     ]

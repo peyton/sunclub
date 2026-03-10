@@ -4,50 +4,42 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Live Verify",
-        "location": {
-          "startingColumn": 26,
-          "startingLine": 99
-        }
-      },
-      {
-        "comment": "",
-        "key": "Live Video Verify",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 16
-        }
-      },
-      {
-        "comment": "",
         "key": "Mark Applied",
         "location": {
-          "startingColumn": 24,
-          "startingLine": 79
+          "startingColumn": 32,
+          "startingLine": 99
         }
       },
       {
         "comment": "",
         "key": "Back",
         "location": {
-          "startingColumn": 20,
-          "startingLine": 92
+          "startingColumn": 28,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "",
+        "key": "Live video verify",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 23
         }
       },
       {
         "comment": "",
         "key": "Camera access denied",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 68
+          "startingColumn": 34,
+          "startingLine": 92
         }
       },
       {
         "comment": "",
-        "key": "Bottle detected ✅",
+        "key": "Bottle detected",
         "location": {
-          "startingColumn": 30,
-          "startingLine": 55
+          "startingColumn": 38,
+          "startingLine": 78
         }
       }
     ]
