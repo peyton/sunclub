@@ -7,7 +7,7 @@
         "key": "Train bottle recognition",
         "location": {
           "startingColumn": 20,
-          "startingLine": 101
+          "startingLine": 88
         }
       },
       {
@@ -15,7 +15,7 @@
         "key": "Enable notifications",
         "location": {
           "startingColumn": 20,
-          "startingLine": 106
+          "startingLine": 93
         }
       },
       {
@@ -23,7 +23,7 @@
         "key": "Continue to App",
         "location": {
           "startingColumn": 20,
-          "startingLine": 114
+          "startingLine": 101
         }
       },
       {
@@ -31,23 +31,7 @@
         "key": "Scan sunscreen barcode",
         "location": {
           "startingColumn": 27,
-          "startingLine": 89
-        }
-      },
-      {
-        "comment": "",
-        "key": "Welcome to SunscreenTrack",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 129
-        }
-      },
-      {
-        "comment": "",
-        "key": "This setup is short: lock in your bottle, optionally teach the app what it looks like, then let local reminders do their job.",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 133
+          "startingLine": 76
         }
       }
     ]

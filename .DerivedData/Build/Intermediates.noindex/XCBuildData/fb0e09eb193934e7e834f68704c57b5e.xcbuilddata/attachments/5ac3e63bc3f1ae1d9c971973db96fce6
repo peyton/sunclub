@@ -196,6 +196,16 @@
     "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute.swiftdeps",
     "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppRoute~partial.swiftmodule"
   },
+  "/Users/peyton/Projects/sun-day/sun-day/Shared/AppTheme.swift" : {
+    "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.swiftconstvalues",
+    "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.d",
+    "diagnostics" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.dia",
+    "index-unit-output-path" : "/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.o",
+    "llvm-bc" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.bc",
+    "object" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.o",
+    "swift-dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme.swiftdeps",
+    "swiftmodule" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/AppTheme~partial.swiftmodule"
+  },
   "/Users/peyton/Projects/sun-day/sun-day/Shared/RootView.swift" : {
     "const-values" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.swiftconstvalues",
     "dependencies" : "/Users/peyton/Projects/sun-day/.DerivedData/Build/Intermediates.noindex/sun-day.build/Debug-iphonesimulator/sun-day.build/Objects-normal/arm64/RootView.d",

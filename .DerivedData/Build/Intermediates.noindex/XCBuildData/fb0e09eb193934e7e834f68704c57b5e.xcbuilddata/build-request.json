@@ -2,15 +2,9 @@
   "buildCommand" : {
     "command" : "build",
     "skipDependencies" : false,
-    "style" : "buildAndRun"
+    "style" : "buildOnly"
   },
   "configuredTargets" : [
-    {
-      "guid" : "77b4dfcf0934840ba0ee17a8216ecd4a29803184c00240ce9419cd3b7cb465e7"
-    },
-    {
-      "guid" : "77b4dfcf0934840ba0ee17a8216ecd4a1c7ceadff92e9e9603a26845b53f02db"
-    },
     {
       "guid" : "77b4dfcf0934840ba0ee17a8216ecd4acf72d73fb591886a5d79eeca9f8948fb"
     }
@@ -51,6 +45,7 @@
       },
       "synthesized" : {
         "table" : {
+          "ACTION" : "build",
           "ASSETCATALOG_FILTER_FOR_DEVICE_MODEL" : "iPhone18,3",
           "ASSETCATALOG_FILTER_FOR_DEVICE_OS_VERSION" : "26.2",
           "ASSETCATALOG_FILTER_FOR_THINNING_DEVICE_CONFIGURATION" : "iPhone18,3",
@@ -68,7 +63,7 @@
       }
     }
   },
-  "schemeCommand" : "test",
+  "schemeCommand" : "launch",
   "showNonLoggedProgress" : true,
   "useDryRun" : false,
   "useImplicitDependencies" : true,
