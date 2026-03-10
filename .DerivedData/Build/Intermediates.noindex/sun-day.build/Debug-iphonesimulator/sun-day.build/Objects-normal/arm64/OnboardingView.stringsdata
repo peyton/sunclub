@@ -4,66 +4,50 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Notifications permission not granted. You can still use the app, but reminders will be suppressed.",
+        "key": "Train bottle recognition",
         "location": {
-          "startingColumn": 30,
-          "startingLine": 96
-        }
-      },
-      {
-        "comment": "",
-        "key": "Train bottle recognition (recommended)",
-        "location": {
-          "startingColumn": 28,
-          "startingLine": 73
+          "startingColumn": 20,
+          "startingLine": 101
         }
       },
       {
         "comment": "",
         "key": "Enable notifications",
         "location": {
-          "startingColumn": 28,
-          "startingLine": 78
+          "startingColumn": 20,
+          "startingLine": 106
         }
       },
       {
         "comment": "",
         "key": "Continue to App",
         "location": {
-          "startingColumn": 28,
-          "startingLine": 86
+          "startingColumn": 20,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scan sunscreen barcode",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 89
         }
       },
       {
         "comment": "",
         "key": "Welcome to SunscreenTrack",
         "location": {
-          "startingColumn": 34,
-          "startingLine": 19
+          "startingColumn": 18,
+          "startingLine": 129
         }
       },
       {
         "comment": "",
-        "key": "Camera plus local notifications, no photo library, no cloud, no mystery server with sunscreen opinions.",
+        "key": "This setup is short: lock in your bottle, optionally teach the app what it looks like, then let local reminders do their job.",
         "location": {
-          "startingColumn": 34,
-          "startingLine": 23
-        }
-      },
-      {
-        "comment": "",
-        "key": "Scan sunscreen barcode to set your bottle",
-        "location": {
-          "startingColumn": 35,
-          "startingLine": 59
-        }
-      },
-      {
-        "comment": "",
-        "key": "Expected barcode: %@",
-        "location": {
-          "startingColumn": 34,
-          "startingLine": 65
+          "startingColumn": 18,
+          "startingLine": 133
         }
       }
     ]

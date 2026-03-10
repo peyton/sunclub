@@ -4,50 +4,42 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Done",
+        "key": "Capture frame",
         "location": {
           "startingColumn": 24,
-          "startingLine": 102
+          "startingLine": 24
         }
       },
       {
         "comment": "",
-        "key": "Capturing",
+        "key": "Reset training",
         "location": {
-          "startingColumn": 38,
-          "startingLine": 62
+          "startingColumn": 28,
+          "startingLine": 30
         }
       },
       {
         "comment": "",
-        "key": "Train bottle recognition",
+        "key": "Done",
         "location": {
-          "startingColumn": 30,
-          "startingLine": 21
+          "startingColumn": 28,
+          "startingLine": 37
         }
       },
       {
         "comment": "",
         "key": "Camera access denied",
         "location": {
-          "startingColumn": 34,
-          "startingLine": 55
+          "startingColumn": 22,
+          "startingLine": 92
         }
       },
       {
         "comment": "",
-        "key": "Capture",
+        "key": "Saving feature print",
         "location": {
-          "startingColumn": 28,
-          "startingLine": 89
-        }
-      },
-      {
-        "comment": "",
-        "key": "Reset",
-        "location": {
-          "startingColumn": 28,
-          "startingLine": 94
+          "startingColumn": 26,
+          "startingLine": 101
         }
       }
     ]

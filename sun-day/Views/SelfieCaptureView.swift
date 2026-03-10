@@ -6,103 +6,107 @@ struct SelfieCaptureView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var coordinator = SelfieCaptureCoordinator()
-    @State private var statusMessage: String = "Use front camera and include your sunscreen bottle."
+    @State private var statusMessage: String = "Use the front camera and keep both your face and the bottle visible."
     @State private var lastResult: SelfieCaptureResult?
 
     var body: some View {
-        ZStack {
-            SunBackdrop()
+        SunScreen {
+            SunSectionHeader(
+                eyebrow: "Selfie proof",
+                title: "Front camera verification",
+                detail: "The app checks for your expected barcode when possible and falls back to the bottle feature match."
+            )
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        SunPill(title: "Front camera proof", systemImage: "person.crop.square", tint: AppPalette.sea)
+            cameraCard
 
-                        Text("Selfie verification")
-                            .font(.system(size: 32, weight: .bold, design: .serif))
-                            .foregroundStyle(AppPalette.ink)
+            if let result = lastResult {
+                SunStatusCard(
+                    title: result.verified ? "Verification passed" : "Verification failed",
+                    detail: resultMessage(for: result),
+                    tint: result.verified ? AppPalette.success : AppPalette.danger,
+                    symbol: result.verified ? "checkmark.seal.fill" : "xmark.circle.fill"
+                )
+            } else {
+                SunStatusCard(
+                    title: "Frame both face and bottle",
+                    detail: statusMessage,
+                    tint: AppPalette.sea,
+                    symbol: "person.crop.square"
+                )
+            }
 
-                        Text(statusMessage)
-                            .font(.callout)
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .sunCard()
-
-                    ZStack {
-                        CameraPreview(session: coordinator.session)
-                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                            .frame(height: 420)
-                            .onAppear {
-                                coordinator.onResult = handleResult
-                                coordinator.configure(expectedBarcode: appState.settings.expectedBarcode, trainingPayloads: appState.trainingFeatureData())
-                            }
-                            .onDisappear { coordinator.stop() }
-
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color.white.opacity(0.55), lineWidth: 1)
-
-                        Circle()
-                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [10, 7]))
-                            .foregroundStyle(AppPalette.sun.opacity(0.75))
-                            .frame(width: 220, height: 220)
-
-                        if coordinator.permissionDenied {
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(Color.black.opacity(0.58))
-                            Text("Camera access denied")
-                                .foregroundStyle(.white)
-                        }
-
-                        VStack {
-                            Spacer()
-                            if coordinator.isProcessing {
-                                ProgressView("Analyzing...")
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .background(Color.white.opacity(0.86), in: Capsule())
-                            }
-                            Spacer()
-                        }
-                    }
-                    .sunCard(padding: 12)
-
-                    if let result = lastResult {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(result.verified ? "Verification passed" : "Verification failed")
-                                .font(.headline)
-                                .foregroundStyle(result.verified ? AppPalette.success : AppPalette.danger)
-
-                            if let distance = result.featureDistance {
-                                detailLine(title: "Feature distance", value: String(format: "%.3f", distance))
-                            }
-                            if result.barcodeMatched {
-                                detailLine(title: "Barcode", value: "Expected code found")
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .sunCard()
-                    }
-
-                    Button {
-                        coordinator.capture()
-                    } label: {
-                        Label("Capture Selfie", systemImage: "camera.circle.fill")
-                    }
-                    .buttonStyle(SunPrimaryButtonStyle())
-
-                    Button("Back") {
-                        router.goHome()
-                        dismiss()
-                    }
-                    .buttonStyle(SunSecondaryButtonStyle())
+            VStack(spacing: 12) {
+                Button {
+                    coordinator.capture()
+                } label: {
+                    Label("Capture Selfie", systemImage: "camera.circle.fill")
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 28)
+                .buttonStyle(SunPrimaryButtonStyle())
+
+                Button("Back to home") {
+                    router.goHome()
+                    dismiss()
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var cameraCard: some View {
+        ZStack {
+            CameraPreview(session: coordinator.session)
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .frame(height: 440)
+                .onAppear {
+                    coordinator.onResult = handleResult
+                    coordinator.configure(expectedBarcode: appState.settings.expectedBarcode, trainingPayloads: appState.trainingFeatureData())
+                }
+                .onDisappear {
+                    coordinator.stop()
+                }
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(Color.white.opacity(0.58), lineWidth: 1)
+
+            VStack {
+                HStack {
+                    SunCameraOverlayLabel(title: "Front camera", tint: AppPalette.sea)
+                    Spacer(minLength: 0)
+                    SunCameraOverlayLabel(title: "Bottle visible", tint: AppPalette.sun)
+                }
+
+                Spacer()
+            }
+            .padding(18)
+
+            Circle()
+                .stroke(style: StrokeStyle(lineWidth: 2.5, dash: [10, 8]))
+                .foregroundStyle(AppPalette.sun.opacity(0.86))
+                .frame(width: 220, height: 220)
+
+            if coordinator.permissionDenied {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.black.opacity(0.58))
+                Text("Camera access denied")
+                    .foregroundStyle(.white)
+            }
+
+            VStack {
+                Spacer()
+
+                if coordinator.isProcessing {
+                    Text("Analyzing frame")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.40), in: Capsule())
+                        .padding(.bottom, 18)
+                }
+            }
+        }
+        .sunCard(padding: 12)
     }
 
     private func handleResult(_ result: SelfieCaptureResult) {
@@ -119,22 +123,22 @@ struct SelfieCaptureView: View {
             router.goHome()
             dismiss()
         } else {
-            statusMessage = "No barcode match and feature match not confident. Try another angle with bottle visible."
+            statusMessage = "No barcode match and feature match not confident. Try another angle with the bottle fully visible."
         }
     }
 
-    private func detailLine(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.caption)
-                .fontWeight(.bold)
-                .textCase(.uppercase)
-                .tracking(1.1)
-                .foregroundStyle(AppPalette.softInk)
-            Spacer()
-            Text(value)
-                .font(.subheadline)
-                .foregroundStyle(AppPalette.ink)
+    private func resultMessage(for result: SelfieCaptureResult) -> String {
+        if result.verified {
+            if let distance = result.featureDistance {
+                return String(format: "Bottle recognized with feature distance %.3f.", distance)
+            }
+            return "The verification checks passed and the day was recorded."
         }
+
+        if let distance = result.featureDistance {
+            return String(format: "The bottle match was too weak at %.3f. Try again with less glare.", distance)
+        }
+
+        return "The bottle or expected barcode could not be confirmed in this frame."
     }
 }

@@ -6,125 +6,135 @@ struct TrainingView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var coordinator = TrainingCoordinator()
-    @State private var message = "Move around your bottle and capture 15 photos."
+    @State private var message = "Move around the bottle and capture about 15 photos from different angles."
     @State private var targetCount = 15
 
     var body: some View {
-        ZStack {
-            SunBackdrop()
+        SunScreen {
+            SunSectionHeader(
+                eyebrow: "Recognition training",
+                title: "Teach the app your bottle",
+                detail: "More angles means more stable selfie and live video checks. This stays entirely on-device."
+            )
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SunPill(title: "Optional but recommended", systemImage: "camera.macro", tint: AppPalette.sea)
+            cameraCard
+            progressCard
 
-                        Text("Train bottle recognition")
-                            .font(.system(size: 34, weight: .bold, design: .serif))
-                            .foregroundStyle(AppPalette.ink)
-
-                        Text(message)
-                            .font(.callout)
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .sunCard()
-
-                    ZStack {
-                        CameraPreview(session: coordinator.session)
-                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                            .frame(height: 420)
-                            .onAppear {
-                                coordinator.onResult = onCapture
-                                coordinator.onError = { message = $0 }
-                                coordinator.configure()
-                            }
-                            .onDisappear { coordinator.stop() }
-
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color.white.opacity(0.55), lineWidth: 1)
-
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [10, 8]))
-                            .foregroundStyle(AppPalette.sun.opacity(0.7))
-                            .frame(width: 220, height: 260)
-
-                        if coordinator.permissionDenied {
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(Color.black.opacity(0.58))
-
-                            Text("Camera access denied")
-                                .foregroundStyle(.white)
-                                .font(.headline)
-                        }
-                    }
-
-                    if coordinator.isProcessing {
-                        ProgressView("Capturing")
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.86), in: Capsule())
-                    }
-
-                    HStack {
-                        Spacer()
-                        SunPill(title: "Move around the bottle", systemImage: "arrow.trianglehead.2.clockwise", tint: AppPalette.sun)
-                    }
-                    .padding(18)
+            VStack(spacing: 12) {
+                Button("Capture frame") {
+                    coordinator.captureFrame(targetCount: targetCount)
                 }
-                .sunCard(padding: 12)
-
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        MetricTile(value: "\(coordinator.capturedCount)", title: "captured", tint: AppPalette.sun)
-                        MetricTile(value: "\(max(targetCount - coordinator.capturedCount, 0))", title: "remaining", tint: AppPalette.sea)
-                    }
-
-                    ProgressView(value: Double(coordinator.capturedCount), total: Double(targetCount))
-                        .tint(AppPalette.coral)
-                        .scaleEffect(x: 1, y: 1.5, anchor: .center)
-                }
-                .sunCard()
+                .buttonStyle(SunPrimaryButtonStyle())
 
                 HStack(spacing: 12) {
-                    Button("Capture") {
-                        coordinator.captureFrame(targetCount: targetCount)
-                    }
-                    .buttonStyle(SunPrimaryButtonStyle())
-
-                    Button("Reset") {
+                    Button("Reset training") {
                         appState.clearTrainingData()
                         coordinator.reset()
-                        message = "Cleared and ready."
+                        message = "Training cleared. Start fresh."
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+
+                    Button("Done") {
+                        if appState.trainingAssets.count == 0 {
+                            if coordinator.capturedCount > 0 {
+                                message = "Capture a few more angles for reliability."
+                            } else {
+                                message = "Capture at least one frame first."
+                            }
+                        }
+                        router.goHome()
+                        dismiss()
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
                 }
-
-                Button("Done") {
-                    if appState.trainingAssets.count == 0 {
-                        if coordinator.capturedCount > 0 {
-                            message = "Keep capturing a bit more for reliability."
-                        } else {
-                            message = "Capture at least one photo first."
-                        }
-                    }
-                    router.goHome()
-                    dismiss()
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 28)
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var cameraCard: some View {
+        ZStack {
+            CameraPreview(session: coordinator.session)
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .frame(height: 430)
+                .onAppear {
+                    coordinator.onResult = onCapture
+                    coordinator.onError = { message = $0 }
+                    coordinator.configure()
+                }
+                .onDisappear {
+                    coordinator.stop()
+                }
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(Color.white.opacity(0.58), lineWidth: 1)
+
+            VStack {
+                HStack {
+                    SunCameraOverlayLabel(title: "Training mode", tint: AppPalette.sea)
+                    Spacer(minLength: 0)
+                    SunCameraOverlayLabel(title: "Move around bottle", tint: AppPalette.sun)
+                }
+
+                Spacer()
+            }
+            .padding(18)
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(style: StrokeStyle(lineWidth: 2.5, dash: [10, 8]))
+                .foregroundStyle(AppPalette.sun.opacity(0.86))
+                .frame(width: 230, height: 270)
+
+            if coordinator.permissionDenied {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.black.opacity(0.58))
+
+                Text("Camera access denied")
+                    .foregroundStyle(.white)
+                    .font(.headline)
+            }
+
+            VStack {
+                Spacer()
+
+                if coordinator.isProcessing {
+                    Text("Saving feature print")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.40), in: Capsule())
+                        .padding(.bottom, 18)
+                }
+            }
+        }
+        .sunCard(padding: 12)
+    }
+
+    private var progressCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                MetricTile(value: "\(coordinator.capturedCount)", title: "captured", tint: AppPalette.sun)
+                MetricTile(value: "\(max(targetCount - coordinator.capturedCount, 0))", title: "remaining", tint: AppPalette.sea)
+            }
+
+            ProgressView(value: Double(coordinator.capturedCount), total: Double(targetCount))
+                .tint(AppPalette.coral)
+                .scaleEffect(x: 1, y: 1.5, anchor: .center)
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .sunCard()
     }
 
     private func onCapture(_ result: TrainingCaptureResult) {
         appState.addTrainingFeature(result.featurePrintData, width: result.width, height: result.height)
         if coordinator.capturedCount >= targetCount {
-            message = "Training complete. You can return home."
+            message = "Training complete. You can head back home."
         } else {
-            message = "Good capture. Keep going around the bottle."
+            message = "Good capture. Keep orbiting the bottle."
         }
     }
 }

@@ -5,22 +5,14 @@ struct CalendarGridView: View {
     @State private var monthAnchor = Date()
     @State private var selectedDay: IdentifiedDate?
 
-    private let columns = Array(repeating: GridItem(.flexible()), count: 7)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 7)
 
     var body: some View {
-        ZStack {
-            SunBackdrop()
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    header
-                    monthCard
-                    legendCard
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 28)
-            }
+        SunScreen {
+            headerCard
+            monthStats
+            calendarCard
+            legendCard
         }
         .navigationTitle("Calendar")
         .navigationBarTitleDisplayMode(.inline)
@@ -30,66 +22,51 @@ struct CalendarGridView: View {
         }
     }
 
-    private var weekHeader: [String] {
-        var symbols = Calendar.current.shortWeekdaySymbols
-        let first = Calendar.current.firstWeekday - 1
-        if first > 0 {
-            symbols = Array(symbols[first...] + symbols[..<first])
-        }
-        return symbols
-    }
-
-    private var header: some View {
+    private var headerCard: some View {
         HStack {
-            Button(action: goToPreviousMonth) {
-                Image(systemName: "chevron.left")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.72), in: Circle())
-            }
-            .buttonStyle(.plain)
+            monthButton(systemImage: "chevron.left", action: goToPreviousMonth)
 
             Spacer()
 
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Text(monthAnchor.formatted(.dateTime.month(.wide).year()))
-                    .font(.system(size: 30, weight: .bold, design: .serif))
+                    .font(.system(size: 34, weight: .bold, design: .serif))
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Filled circle = protected. Open circle = still pending.")
+                Text("Every mark is based on a local start-of-day boundary.")
                     .font(.footnote)
                     .foregroundStyle(AppPalette.softInk)
             }
 
             Spacer()
 
-            Button(action: goToNextMonth) {
-                Image(systemName: "chevron.right")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.72), in: Circle())
-            }
-            .buttonStyle(.plain)
+            monthButton(systemImage: "chevron.right", action: goToNextMonth)
         }
         .sunCard()
     }
 
-    private var monthCard: some View {
+    private var monthStats: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            MetricTile(value: "\(appliedCount)", title: "applied", tint: AppPalette.success)
+            MetricTile(value: "\(pendingCount)", title: "pending", tint: AppPalette.warning)
+            MetricTile(value: "\(missedCount)", title: "missed", tint: AppPalette.danger)
+        }
+    }
+
+    private var calendarCard: some View {
         VStack(spacing: 16) {
             HStack {
                 ForEach(weekHeader, id: \.self) { weekday in
                     Text(weekday.uppercased())
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .tracking(1.1)
+                        .tracking(1.2)
                         .foregroundStyle(AppPalette.softInk)
                         .frame(maxWidth: .infinity)
                 }
             }
 
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 10) {
                 ForEach(appState.monthGrid(for: monthAnchor), id: \.self) { day in
                     Button {
                         selectedDay = IdentifiedDate(date: day)
@@ -105,9 +82,11 @@ struct CalendarGridView: View {
 
     private var legendCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Legend")
-                .font(.headline)
-                .foregroundStyle(AppPalette.ink)
+            SunSectionHeader(
+                eyebrow: "Legend",
+                title: "How the month reads",
+                detail: "Filled circle means verified, open circle means today is still waiting, X marks a miss, future dates stay blank."
+            )
 
             HStack(spacing: 10) {
                 LegendChip(title: "Applied", tint: AppPalette.success) {
@@ -128,12 +107,60 @@ struct CalendarGridView: View {
                         .foregroundStyle(AppPalette.danger)
                 }
             }
-
-            Text("Future days stay blank. Taps open a day card with method and timing details when available.")
-                .font(.footnote)
-                .foregroundStyle(AppPalette.softInk)
         }
         .sunCard()
+    }
+
+    private var weekHeader: [String] {
+        var symbols = Calendar.current.shortWeekdaySymbols
+        let first = Calendar.current.firstWeekday - 1
+        if first > 0 {
+            symbols = Array(symbols[first...]) + Array(symbols[..<first])
+        }
+        return symbols
+    }
+
+    private var currentMonthDays: [Date] {
+        appState.monthGrid(for: monthAnchor).filter { appState.isCurrentMonth($0, month: monthAnchor) }
+    }
+
+    private var appliedCount: Int {
+        currentMonthDays.filter(isApplied).count
+    }
+
+    private var pendingCount: Int {
+        currentMonthDays.filter(isPending).count
+    }
+
+    private var missedCount: Int {
+        currentMonthDays.filter(isMissed).count
+    }
+
+    private func isApplied(_ date: Date) -> Bool {
+        switch appState.dayStatus(for: date) {
+        case .applied:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func isPending(_ date: Date) -> Bool {
+        switch appState.dayStatus(for: date) {
+        case .todayPending:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func isMissed(_ date: Date) -> Bool {
+        switch appState.dayStatus(for: date) {
+        case .missed:
+            return true
+        default:
+            return false
+        }
     }
 
     @ViewBuilder
@@ -141,46 +168,63 @@ struct CalendarGridView: View {
         let status = appState.dayStatus(for: day)
         let isCurrentMonth = appState.isCurrentMonth(day, month: monthAnchor)
         let isToday = Calendar.current.isDateInToday(day)
-        let opacity = isCurrentMonth ? 1.0 : 0.35
 
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.day()))
-                .font(.headline)
-                .foregroundStyle(AppPalette.ink.opacity(opacity))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppPalette.ink.opacity(isCurrentMonth ? 1 : 0.35))
 
-            Group {
-                switch status {
-                case .applied:
-                    Circle()
-                        .fill(AppPalette.success)
-                        .frame(width: 20, height: 20)
-                        .shadow(color: AppPalette.success.opacity(0.22), radius: 8, x: 0, y: 4)
-                case .todayPending:
-                    Circle()
-                        .stroke(AppPalette.warning, lineWidth: 2.5)
-                        .frame(width: 20, height: 20)
-                case .missed:
-                    Image(systemName: "xmark")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(AppPalette.danger)
-                case .future:
-                    Color.clear
-                        .frame(width: 20, height: 20)
-                }
+            Spacer(minLength: 0)
+
+            HStack {
+                statusMarker(for: status)
+                Spacer(minLength: 0)
             }
-            .frame(height: 20)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 72)
+        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(isCurrentMonth ? 0.72 : 0.36))
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(isCurrentMonth ? 0.74 : 0.38))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(isToday ? AppPalette.sun.opacity(0.9) : Color.white.opacity(0.5), lineWidth: isToday ? 2 : 1)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(isToday ? AppPalette.sun.opacity(0.9) : Color.white.opacity(0.52), lineWidth: isToday ? 2 : 1)
         }
         .shadow(color: Color.black.opacity(isCurrentMonth ? 0.05 : 0.02), radius: 8, x: 0, y: 4)
+    }
+
+    @ViewBuilder
+    private func statusMarker(for status: DayStatus) -> some View {
+        switch status {
+        case .applied:
+            Circle()
+                .fill(AppPalette.success)
+                .frame(width: 20, height: 20)
+        case .todayPending:
+            Circle()
+                .stroke(AppPalette.warning, lineWidth: 2.5)
+                .frame(width: 20, height: 20)
+        case .missed:
+            Image(systemName: "xmark")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AppPalette.danger)
+                .frame(width: 20, height: 20)
+        case .future:
+            Color.clear
+                .frame(width: 20, height: 20)
+        }
+    }
+
+    private func monthButton(systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AppPalette.ink)
+                .frame(width: 44, height: 44)
+                .background(Color.white.opacity(0.74), in: Circle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func goToPreviousMonth() {
@@ -198,56 +242,73 @@ struct DayDetailView: View {
     let date: Date
 
     var body: some View {
-        ZStack {
-            SunBackdrop()
+        SunScreen {
+            SunSectionHeader(
+                eyebrow: "Day detail",
+                title: date.formatted(.dateTime.weekday(.wide).day().month().year()),
+                detail: "Method, time, and any stored verification details for this date."
+            )
 
-            VStack(spacing: 18) {
-                Text(date.formatted(.dateTime.weekday(.wide).day().month().year()))
-                    .font(.system(size: 30, weight: .bold, design: .serif))
-                    .foregroundStyle(AppPalette.ink)
+            detailCard
 
-                VStack(spacing: 10) {
-                    let status = appState.dayStatus(for: date)
-                    switch status {
-                    case .applied:
-                        Text("Sunscreen applied")
-                            .font(.headline)
-                            .foregroundStyle(AppPalette.success)
-                        if let record = appState.record(for: date) {
-                            detailRow(label: "Method", value: record.method.displayName)
-                            if let code = record.barcode {
-                                detailRow(label: "Barcode", value: code)
-                            }
-                            if let distance = record.featureDistance {
-                                detailRow(label: "Feature distance", value: String(format: "%.3f", distance))
-                            }
-                            detailRow(
-                                label: "Time",
-                                value: record.verifiedAt.formatted(date: .omitted, time: .shortened)
-                            )
-                        }
-                    case .todayPending:
-                        Text("Not yet applied today.")
-                            .foregroundStyle(AppPalette.warning)
-                    case .missed:
-                        Text("No successful verification this day.")
-                            .foregroundStyle(AppPalette.danger)
-                    case .future:
-                        Text("This is a future date.")
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .sunCard()
-
-                Button("Done") {
-                    dismiss()
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
+            Button("Done") {
+                dismiss()
             }
-            .padding(24)
+            .buttonStyle(SunPrimaryButtonStyle())
         }
         .presentationDetents([.medium])
+    }
+
+    private var detailCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            let status = appState.dayStatus(for: date)
+
+            switch status {
+            case .applied:
+                SunStatusCard(
+                    title: "Sunscreen applied",
+                    detail: "This day has a successful verification record.",
+                    tint: AppPalette.success,
+                    symbol: "checkmark.seal.fill"
+                )
+
+                if let record = appState.record(for: date) {
+                    detailRow(label: "Method", value: record.method.displayName)
+
+                    if let code = record.barcode {
+                        detailRow(label: "Barcode", value: code)
+                    }
+
+                    if let distance = record.featureDistance {
+                        detailRow(label: "Feature distance", value: String(format: "%.3f", distance))
+                    }
+
+                    detailRow(label: "Time", value: record.verifiedAt.formatted(date: .omitted, time: .shortened))
+                }
+            case .todayPending:
+                SunStatusCard(
+                    title: "Still pending",
+                    detail: "Today is open. Any successful proof will fill the circle.",
+                    tint: AppPalette.warning,
+                    symbol: "clock.fill"
+                )
+            case .missed:
+                SunStatusCard(
+                    title: "Missed day",
+                    detail: "No successful verification exists for this day.",
+                    tint: AppPalette.danger,
+                    symbol: "xmark.circle.fill"
+                )
+            case .future:
+                SunStatusCard(
+                    title: "Future date",
+                    detail: "Nothing gets logged here until the date is real.",
+                    tint: AppPalette.sea,
+                    symbol: "sparkles"
+                )
+            }
+        }
+        .sunCard()
     }
 
     private func detailRow(label: String, value: String) -> some View {
@@ -256,13 +317,13 @@ struct DayDetailView: View {
                 .font(.caption)
                 .fontWeight(.bold)
                 .textCase(.uppercase)
-                .tracking(1.1)
+                .tracking(1.2)
                 .foregroundStyle(AppPalette.softInk)
 
             Spacer()
 
             Text(value)
-                .font(.body)
+                .font(.subheadline)
                 .foregroundStyle(AppPalette.ink)
         }
     }

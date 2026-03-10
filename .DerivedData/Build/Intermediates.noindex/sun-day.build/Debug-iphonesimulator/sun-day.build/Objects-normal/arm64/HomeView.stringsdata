@@ -4,42 +4,26 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "SunscreenTrack",
-        "location": {
-          "startingColumn": 22,
-          "startingLine": 86
-        }
-      },
-      {
-        "comment": "",
-        "key": "Three ways to prove today's SPF happened, zero ways for the cloud to snoop.",
-        "location": {
-          "startingColumn": 22,
-          "startingLine": 90
-        }
-      },
-      {
-        "comment": "",
         "key": "Today's status",
         "location": {
           "startingColumn": 26,
-          "startingLine": 121
+          "startingLine": 110
         }
       },
       {
         "comment": "",
-        "key": "Choose your proof",
+        "key": "SunscreenTrack",
         "location": {
           "startingColumn": 18,
-          "startingLine": 165
+          "startingLine": 273
         }
       },
       {
         "comment": "",
-        "key": "Open",
+        "key": "The daily SPF receipt desk. Scan it, selfie it, or hold it up to the camera and make the habit official.",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 294
+          "startingColumn": 18,
+          "startingLine": 277
         }
       }
     ]

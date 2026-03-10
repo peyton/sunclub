@@ -4,58 +4,34 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Back",
+        "key": "Back to home",
         "location": {
-          "startingColumn": 28,
-          "startingLine": 94
-        }
-      },
-      {
-        "comment": "",
-        "key": "Selfie verification",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 21
-        }
-      },
-      {
-        "comment": "",
-        "key": "Camera access denied",
-        "location": {
-          "startingColumn": 34,
-          "startingLine": 53
-        }
-      },
-      {
-        "comment": "",
-        "key": "Analyzing...",
-        "location": {
-          "startingColumn": 46,
-          "startingLine": 60
-        }
-      },
-      {
-        "comment": "",
-        "key": "Verification passed",
-        "location": {
-          "startingColumn": 52,
-          "startingLine": 72
-        }
-      },
-      {
-        "comment": "",
-        "key": "Verification failed",
-        "location": {
-          "startingColumn": 76,
-          "startingLine": 72
+          "startingColumn": 24,
+          "startingLine": 46
         }
       },
       {
         "comment": "",
         "key": "Capture Selfie",
         "location": {
-          "startingColumn": 31,
-          "startingLine": 90
+          "startingColumn": 27,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Camera access denied",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Analyzing frame",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 99
         }
       }
     ]

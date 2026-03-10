@@ -4,50 +4,42 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Use this barcode",
+        "key": "Save bottle and continue",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back to setup",
         "location": {
           "startingColumn": 41,
-          "startingLine": 77
+          "startingLine": 45
         }
       },
       {
         "comment": "",
-        "key": "Done",
+        "key": "Back to home",
         "location": {
-          "startingColumn": 62,
-          "startingLine": 77
-        }
-      },
-      {
-        "comment": "",
-        "key": "Aim the UPC or EAN code inside the frame and let the camera do the boring part.",
-        "location": {
-          "startingColumn": 26,
-          "startingLine": 32
-        }
-      },
-      {
-        "comment": "",
-        "key": "Scan your bottle barcode",
-        "location": {
-          "startingColumn": 43,
-          "startingLine": 28
-        }
-      },
-      {
-        "comment": "",
-        "key": "Scan barcode",
-        "location": {
-          "startingColumn": 72,
-          "startingLine": 28
+          "startingColumn": 59,
+          "startingLine": 45
         }
       },
       {
         "comment": "",
         "key": "Camera access denied",
         "location": {
-          "startingColumn": 30,
-          "startingLine": 61
+          "startingColumn": 22,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hold steady until the code locks in",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 90
         }
       }
     ]

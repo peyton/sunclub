@@ -6,26 +6,19 @@ struct WeeklyReportView: View {
     @State private var encouragement = ""
 
     var body: some View {
-        ZStack {
-            SunBackdrop()
+        SunScreen {
+            heroCard
+            metricsGrid
+            missesCard
+            encouragementCard
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    heroCard
-                    metricsRow
-                    missedDaysCard
-                    encouragementCard
-
-                    Button("Spin a new pep talk") {
-                        encouragement = appState.nextWeeklyPhrase()
-                    }
-                    .buttonStyle(SunSecondaryButtonStyle())
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 28)
+            Button("Generate another pep talk") {
+                encouragement = appState.nextWeeklyPhrase()
             }
+            .buttonStyle(SunSecondaryButtonStyle())
         }
+        .navigationTitle("Weekly Report")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             report = appState.last7DaysReport()
             encouragement = appState.nextWeeklyPhrase()
@@ -42,83 +35,56 @@ struct WeeklyReportView: View {
     }
 
     private var heroCard: some View {
-        HStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .stroke(Color.white.opacity(0.5), lineWidth: 18)
-                Circle()
-                    .trim(from: 0, to: completionRatio)
-                    .stroke(
-                        AngularGradient(
-                            colors: [AppPalette.sun, AppPalette.coral, AppPalette.sea],
-                            center: .center
-                        ),
-                        style: StrokeStyle(lineWidth: 18, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-
-                VStack(spacing: 4) {
-                    Text("\(report.appliedCount)/\(report.totalDays)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppPalette.ink)
-                    Text("days")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(AppPalette.softInk)
-                }
+        ViewThatFits {
+            HStack(spacing: 18) {
+                progressRing
+                reportCopy
             }
-            .frame(width: 140, height: 140)
 
-            VStack(alignment: .leading, spacing: 10) {
-                SunPill(title: "Last 7 days", systemImage: "chart.bar.fill", tint: AppPalette.sun)
-
-                Text("Weekly report")
-                    .font(.system(size: 34, weight: .bold, design: .serif))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text(periodLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(AppPalette.softInk)
-
-                Text(report.missedDays.isEmpty ? "Clean sheet. Extremely suspicious in a good way." : "A few misses, but the trend is still salvageable.")
-                    .font(.callout)
-                    .foregroundStyle(AppPalette.softInk)
+            VStack(alignment: .leading, spacing: 18) {
+                progressRing
+                reportCopy
             }
         }
         .sunCard()
     }
 
-    private var metricsRow: some View {
-        HStack(spacing: 12) {
+    private var metricsGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             MetricTile(value: "\(report.appliedCount)", title: "applied", tint: AppPalette.success)
             MetricTile(value: "\(report.missedDays.count)", title: "missed", tint: AppPalette.danger)
             MetricTile(value: "\(report.streak)", title: "streak", tint: AppPalette.coral)
         }
     }
 
-    private var missedDaysCard: some View {
+    private var missesCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Missed days")
-                .font(.headline)
-                .foregroundStyle(AppPalette.ink)
+            SunSectionHeader(
+                eyebrow: "Missed days",
+                title: report.missedDays.isEmpty ? "Clean sheet" : "Spots to recover",
+                detail: report.missedDays.isEmpty ? "This week stayed free of misses." : "These are the weekdays that fell through without a successful verification."
+            )
 
             if report.missedDays.isEmpty {
-                Text("No misses this week. The bottle would like a modest round of applause.")
-                    .font(.callout)
-                    .foregroundStyle(AppPalette.success)
+                SunStatusCard(
+                    title: "No misses this week",
+                    detail: "A suspiciously competent performance, in the best way.",
+                    tint: AppPalette.success,
+                    symbol: "checkmark.circle.fill"
+                )
             } else {
-                FlowLayout(spacing: 10, items: report.missedDays) { day in
-                    Text(day)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(AppPalette.ink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(AppPalette.danger.opacity(0.12), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(AppPalette.danger.opacity(0.2), lineWidth: 1)
-                        }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 10)], spacing: 10) {
+                    ForEach(report.missedDays, id: \.self) { day in
+                        Text(day)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppPalette.ink)
+                            .frame(maxWidth: .infinity, minHeight: 42)
+                            .background(AppPalette.danger.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(AppPalette.danger.opacity(0.18), lineWidth: 1)
+                            }
+                    }
                 }
             }
         }
@@ -126,56 +92,76 @@ struct WeeklyReportView: View {
     }
 
     private var encouragementCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("This week's encouragement")
-                .font(.headline)
-                .foregroundStyle(AppPalette.ink)
+        VStack(alignment: .leading, spacing: 14) {
+            SunSectionHeader(
+                eyebrow: "Encouragement",
+                title: "This week's local pep talk",
+                detail: "Rotated from your weekly phrase bag so the app doesn't sound like a malfunctioning sticker."
+            )
 
-            Text(encouragement.isEmpty ? "No pep talk loaded." : encouragement)
-                .font(.title3)
-                .fontWeight(.medium)
+            Text(encouragement)
+                .font(.title3.weight(.medium))
                 .foregroundStyle(AppPalette.ink)
                 .multilineTextAlignment(.leading)
-
-            Text("Rotated locally from your weekly phrase bag.")
-                .font(.footnote)
-                .foregroundStyle(AppPalette.softInk)
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    LinearGradient(
+                        colors: [AppPalette.sun.opacity(0.16), AppPalette.coral.opacity(0.12)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                )
         }
         .sunCard()
     }
-}
 
-private struct FlowLayout<Data: RandomAccessCollection, Content: View>: View where Data.Element: Hashable {
-    let spacing: CGFloat
-    let items: Data
-    let content: (Data.Element) -> Content
+    private var progressRing: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.52), lineWidth: 16)
 
-    init(spacing: CGFloat, items: Data, @ViewBuilder content: @escaping (Data.Element) -> Content) {
-        self.spacing = spacing
-        self.items = items
-        self.content = content
-    }
+            Circle()
+                .trim(from: 0, to: completionRatio)
+                .stroke(
+                    AngularGradient(
+                        colors: [AppPalette.sun, AppPalette.coral, AppPalette.sea],
+                        center: .center
+                    ),
+                    style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            let rows = Array(items).chunked(into: 3)
-            ForEach(rows.indices, id: \.self) { rowIndex in
-                HStack(spacing: spacing) {
-                    ForEach(rows[rowIndex], id: \.self) { item in
-                        content(item)
-                    }
-                    Spacer(minLength: 0)
-                }
+            VStack(spacing: 4) {
+                Text("\(report.appliedCount)/\(report.totalDays)")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text("days")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(AppPalette.softInk)
             }
         }
+        .frame(width: 138, height: 138)
     }
-}
 
-private extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        guard size > 0 else { return [self] }
-        return stride(from: 0, to: count, by: size).map {
-            Array(self[$0 ..< Swift.min($0 + size, count)])
+    private var reportCopy: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SunPill(title: "Last 7 days", systemImage: "chart.bar.fill", tint: AppPalette.sun)
+
+            Text("Weekly report")
+                .font(.system(size: 34, weight: .bold, design: .serif))
+                .foregroundStyle(AppPalette.ink)
+
+            Text(periodLabel)
+                .font(.subheadline)
+                .foregroundStyle(AppPalette.softInk)
+
+            Text(report.missedDays.isEmpty ? "No misses. The bottle would like a tiny ovation." : "You missed a few, but the trend line is still redeemable.")
+                .font(.callout)
+                .foregroundStyle(AppPalette.softInk)
         }
     }
 }

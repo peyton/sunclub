@@ -14,82 +14,98 @@ struct BarcodeScanView: View {
     }
 
     var body: some View {
-        ZStack {
-            SunBackdrop()
+        SunScreen {
+            SunSectionHeader(
+                eyebrow: onboardingMode ? "Bottle setup" : "Daily proof",
+                title: onboardingMode ? "Scan your bottle barcode" : "Scan barcode",
+                detail: "Aim the UPC or EAN inside the guide. The app will grab it as soon as the camera sees a clean match."
+            )
 
-            VStack(spacing: 18) {
-                VStack(alignment: .leading, spacing: 10) {
-                    SunPill(
-                        title: onboardingMode ? "Set your bottle" : "Daily barcode proof",
-                        systemImage: "barcode.viewfinder",
-                        tint: AppPalette.sun
-                    )
+            cameraCard
 
-                    Text(onboardingMode ? "Scan your bottle barcode" : "Scan barcode")
-                        .font(.system(size: 32, weight: .bold, design: .serif))
-                        .foregroundStyle(AppPalette.ink)
+            if let message = bannerMessage {
+                SunStatusCard(
+                    title: feedbackTitle(for: message),
+                    detail: message,
+                    tint: feedbackTint(for: message),
+                    symbol: feedbackSymbol(for: message)
+                )
+            }
 
-                    Text("Aim the UPC or EAN code inside the frame and let the camera do the boring part.")
-                        .font(.callout)
-                        .foregroundStyle(AppPalette.softInk)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .sunCard()
-
-                ZStack {
-                    CameraPreview(session: coordinator.session)
-                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .onAppear {
-                            coordinator.onBarcode = handleBarcode
-                            coordinator.startIfNeeded()
-                        }
-                        .onDisappear {
-                            coordinator.stop()
-                        }
-
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
-
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [10, 7]))
-                        .foregroundStyle(AppPalette.sun.opacity(0.82))
-                        .frame(width: 250, height: 120)
-
-                    if coordinator.permissionDenied {
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(Color.black.opacity(0.58))
-                        Text("Camera access denied")
-                            .foregroundStyle(.white)
-                            .font(.headline)
+            VStack(spacing: 12) {
+                if onboardingMode, appState.settings.expectedBarcode != nil {
+                    Button("Save bottle and continue") {
+                        appState.completeOnboarding()
+                        router.goHome()
+                        dismiss()
                     }
-                }
-                .frame(height: 380)
-                .sunCard(padding: 12)
-
-                if let message = bannerMessage {
-                    Text(message)
-                        .font(.headline)
-                        .foregroundStyle(AppPalette.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .sunCard(padding: 16)
+                    .buttonStyle(SunPrimaryButtonStyle())
                 }
 
-                Button(onboardingMode ? "Use this barcode" : "Done") {
-                    if onboardingMode {
-                        if appState.settings.expectedBarcode != nil {
-                            appState.completeOnboarding()
-                        }
-                    }
+                Button(onboardingMode ? "Back to setup" : "Back to home") {
                     router.goHome()
                     dismiss()
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
+                .buttonStyle(SunSecondaryButtonStyle())
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 28)
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var cameraCard: some View {
+        ZStack {
+            CameraPreview(session: coordinator.session)
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .frame(height: 430)
+                .onAppear {
+                    coordinator.onBarcode = handleBarcode
+                    coordinator.startIfNeeded()
+                }
+                .onDisappear {
+                    coordinator.stop()
+                }
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(Color.white.opacity(0.58), lineWidth: 1)
+
+            VStack {
+                HStack {
+                    SunCameraOverlayLabel(title: "Rear camera", tint: AppPalette.sea)
+                    Spacer(minLength: 0)
+                    SunCameraOverlayLabel(title: "UPC / EAN", tint: AppPalette.sun)
+                }
+
+                Spacer()
+            }
+            .padding(18)
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(style: StrokeStyle(lineWidth: 2.5, dash: [10, 8]))
+                .foregroundStyle(AppPalette.sun.opacity(0.86))
+                .frame(width: 250, height: 120)
+
+            VStack {
+                Spacer()
+
+                Text("Hold steady until the code locks in")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.38), in: Capsule())
+                    .padding(.bottom, 22)
+            }
+
+            if coordinator.permissionDenied {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.black.opacity(0.58))
+
+                Text("Camera access denied")
+                    .foregroundStyle(.white)
+                    .font(.headline)
+            }
+        }
+        .sunCard(padding: 12)
     }
 
     private func handleBarcode(_ code: String) {
@@ -111,5 +127,26 @@ struct BarcodeScanView: View {
         } else {
             bannerMessage = "Set an expected barcode first from onboarding."
         }
+    }
+
+    private func feedbackTitle(for message: String) -> String {
+        if message.contains("Verified") || message.contains("captured") {
+            return "Barcode accepted"
+        }
+        return "Barcode issue"
+    }
+
+    private func feedbackTint(for message: String) -> Color {
+        if message.contains("Verified") || message.contains("captured") {
+            return AppPalette.success
+        }
+        return AppPalette.danger
+    }
+
+    private func feedbackSymbol(for message: String) -> String {
+        if message.contains("Verified") || message.contains("captured") {
+            return "checkmark.seal.fill"
+        }
+        return "xmark.circle.fill"
     }
 }

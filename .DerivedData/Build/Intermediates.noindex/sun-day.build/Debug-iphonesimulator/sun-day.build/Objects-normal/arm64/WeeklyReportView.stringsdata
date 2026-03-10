@@ -4,82 +4,58 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Spin a new pep talk",
+        "key": "Weekly Report",
         "location": {
-          "startingColumn": 28,
-          "startingLine": 19
+          "startingColumn": 26,
+          "startingLine": 20
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate another pep talk",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 15
         }
       },
       {
         "comment": "",
         "key": "%lld/%lld",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 61
+          "startingColumn": 22,
+          "startingLine": 137
         }
       },
       {
         "comment": "",
         "key": "days",
         "location": {
-          "startingColumn": 26,
-          "startingLine": 64
+          "startingColumn": 22,
+          "startingLine": 141
         }
       },
       {
         "comment": "",
         "key": "Weekly report",
         "location": {
-          "startingColumn": 22,
-          "startingLine": 75
-        }
-      },
-      {
-        "comment": "",
-        "key": "Clean sheet. Extremely suspicious in a good way.",
-        "location": {
-          "startingColumn": 50,
-          "startingLine": 83
-        }
-      },
-      {
-        "comment": "",
-        "key": "A few misses, but the trend is still salvageable.",
-        "location": {
-          "startingColumn": 103,
-          "startingLine": 83
-        }
-      },
-      {
-        "comment": "",
-        "key": "Missed days",
-        "location": {
           "startingColumn": 18,
-          "startingLine": 101
+          "startingLine": 154
         }
       },
       {
         "comment": "",
-        "key": "No misses this week. The bottle would like a modest round of applause.",
+        "key": "No misses. The bottle would like a tiny ovation.",
         "location": {
-          "startingColumn": 22,
-          "startingLine": 106
+          "startingColumn": 46,
+          "startingLine": 162
         }
       },
       {
         "comment": "",
-        "key": "This week's encouragement",
+        "key": "You missed a few, but the trend line is still redeemable.",
         "location": {
-          "startingColumn": 18,
-          "startingLine": 130
-        }
-      },
-      {
-        "comment": "",
-        "key": "Rotated locally from your weekly phrase bag.",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 140
+          "startingColumn": 99,
+          "startingLine": 162
         }
       }
     ]

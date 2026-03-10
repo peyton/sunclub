@@ -7,71 +7,23 @@
         "key": "Calendar",
         "location": {
           "startingColumn": 26,
-          "startingLine": 25
+          "startingLine": 17
         }
       },
       {
         "comment": "",
-        "key": "Filled circle = protected. Open circle = still pending.",
+        "key": "Every mark is based on a local start-of-day boundary.",
         "location": {
           "startingColumn": 22,
-          "startingLine": 60
-        }
-      },
-      {
-        "comment": "",
-        "key": "Legend",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 108
-        }
-      },
-      {
-        "comment": "",
-        "key": "Future days stay blank. Taps open a day card with method and timing details when available.",
-        "location": {
-          "startingColumn": 18,
-          "startingLine": 132
+          "startingLine": 36
         }
       },
       {
         "comment": "",
         "key": "Done",
         "location": {
-          "startingColumn": 24,
-          "startingLine": 243
-        }
-      },
-      {
-        "comment": "",
-        "key": "Sunscreen applied",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 213
-        }
-      },
-      {
-        "comment": "",
-        "key": "Not yet applied today.",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 230
-        }
-      },
-      {
-        "comment": "",
-        "key": "No successful verification this day.",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 233
-        }
-      },
-      {
-        "comment": "",
-        "key": "This is a future date.",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 236
+          "startingColumn": 20,
+          "startingLine": 254
         }
       }
     ]
