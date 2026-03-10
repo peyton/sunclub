@@ -1,0 +1,10 @@
+{
+  "train_count": 21,
+  "enrollment_count": 3,
+  "val_count": 63,
+  "test_count": 90,
+  "val_positive": 9,
+  "val_negative": 54,
+  "test_positive": 18,
+  "test_negative": 72
+}
