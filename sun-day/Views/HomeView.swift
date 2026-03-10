@@ -17,8 +17,8 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SunSectionHeader(
                     eyebrow: "Daily actions",
-                    title: "Choose your proof",
-                    detail: "All three routes land in the same daily record. Pick the one that matches your current level of sunscreen bureaucracy."
+                    title: "Verify today",
+                    detail: "Choose one way to record today's sunscreen."
                 )
 
                 actionCard(
@@ -32,7 +32,7 @@ struct HomeView: View {
 
                 actionCard(
                     title: "Take Selfie",
-                    detail: "Front camera proof with your bottle visible in frame.",
+                    detail: "Use the front camera with your bottle visible in the frame.",
                     systemImage: "person.crop.square",
                     colors: [AppPalette.sea, AppPalette.mint]
                 ) {
@@ -40,8 +40,8 @@ struct HomeView: View {
                 }
 
                 actionCard(
-                    title: "Live Video Verify",
-                    detail: "Hold still for a moment and let the bottle model do the rest.",
+                    title: "Live Video",
+                    detail: "Hold the bottle in view and let the app verify it from the camera feed.",
                     systemImage: "video.badge.checkmark",
                     colors: [AppPalette.coral, AppPalette.sun]
                 ) {
@@ -52,8 +52,8 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SunSectionHeader(
                     eyebrow: "History",
-                    title: "Check the bigger pattern",
-                    detail: "Calendar marks misses, weekly report keeps the tone mildly unhinged."
+                    title: "Review your history",
+                    detail: "Open the calendar or weekly report to review recent activity."
                 )
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
@@ -67,7 +67,7 @@ struct HomeView: View {
 
                     quickLinkCard(
                         title: "Weekly report",
-                        detail: "Seven-day stats and a local pep talk.",
+                        detail: "See your last seven days and current streak.",
                         systemImage: "chart.bar.xaxis"
                     ) {
                         router.open(.weeklyReport)
@@ -133,9 +133,9 @@ struct HomeView: View {
             }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                MetricTile(value: "\(appState.currentStreak)", title: "current streak", tint: statusTint)
+                MetricTile(value: "\(appState.currentStreak)", title: "streak", tint: statusTint)
                 MetricTile(value: appState.settings.expectedBarcode == nil ? "Unset" : "Locked", title: "bottle", tint: AppPalette.sea)
-                MetricTile(value: "\(appState.trainingAssets.count)", title: "training views", tint: AppPalette.sun)
+                MetricTile(value: "\(appState.trainingAssets.count)", title: "training photos", tint: AppPalette.sun)
             }
         }
         .sunCard()
@@ -149,11 +149,11 @@ struct HomeView: View {
     private var statusTitle: String {
         switch todayStatus {
         case .applied:
-            return "Shielded for today"
+            return "Verified today"
         case .todayPending:
-            return "Proof still pending"
+            return "Not verified yet"
         case .missed:
-            return "Missed day on record"
+            return "Missed day"
         case .future:
             return "Future date"
         }
@@ -162,11 +162,11 @@ struct HomeView: View {
     private var statusDetail: String {
         switch todayStatus {
         case .applied:
-            return "You have a verified sunscreen application logged for today."
+            return "Today's sunscreen check is complete."
         case .todayPending:
-            return "Pick a proof method below and lock the day in before the sun starts freelancing."
+            return "Choose a verification method below to record sunscreen for today."
         case .missed:
-            return "The calendar already marked the miss. Today is your rebound arc."
+            return "A previous day was missed. You can still verify today."
         case .future:
             return "Nothing to do here yet."
         }
@@ -274,7 +274,11 @@ struct HomeView: View {
                 .font(.system(size: 38, weight: .bold, design: .serif))
                 .foregroundStyle(AppPalette.ink)
 
-            Text("The daily SPF receipt desk. Scan it, selfie it, or hold it up to the camera and make the habit official.")
+            Text("Sun Dae")
+                .font(.system(size: 38, weight: .bold, design: .serif))
+                .foregroundStyle(AppPalette.ink)
+
+            Text("Verify sunscreen each day by scanning the barcode, taking a selfie, or using live video.")
                 .font(.callout)
                 .foregroundStyle(AppPalette.softInk)
         }

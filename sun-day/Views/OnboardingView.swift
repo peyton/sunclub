@@ -14,8 +14,8 @@ struct OnboardingView: View {
 
             if showCameraPermissionMessage {
                 SunStatusCard(
-                    title: "Notifications stayed off",
-                    detail: "The app still works, but morning and weekly reminders will stay quiet until you enable them.",
+                    title: "Notifications are off",
+                    detail: "The app still works, but you will not receive daily or weekly reminders until notifications are enabled.",
                     tint: AppPalette.warning,
                     symbol: "bell.slash.fill"
                 )
@@ -38,28 +38,28 @@ struct OnboardingView: View {
     private var setupSteps: some View {
         VStack(alignment: .leading, spacing: 14) {
             SunSectionHeader(
-                eyebrow: "Setup flow",
-                title: "Three quick moves",
-                detail: "No accounts, no photo library, no analytics. Just local camera proof and a calendar that keeps score."
+                eyebrow: "Set up",
+                title: "Three quick steps",
+                detail: "Use the camera to verify sunscreen each day. Everything stays on this device."
             )
 
             SunInfoRow(
                 title: "Step 1: Scan your bottle",
-                detail: appState.settings.expectedBarcode == nil ? "Capture the expected UPC or EAN once so daily scans know what counts." : "Expected bottle barcode saved. You can rescan later if you switch products.",
+                detail: appState.settings.expectedBarcode == nil ? "Scan the UPC or EAN on your bottle once to set the barcode for daily checks." : "Your bottle barcode is saved. You can scan again later if you change products.",
                 systemImage: "barcode.viewfinder",
                 tint: appState.settings.expectedBarcode == nil ? AppPalette.sun : AppPalette.success
             )
 
             SunInfoRow(
                 title: "Step 2: Train bottle recognition",
-                detail: "Optional, but it makes selfie and live video verification much more reliable.",
+                detail: "Optional. Capture a few views of the bottle to improve selfie and live video verification.",
                 systemImage: "camera.macro",
                 tint: AppPalette.sea
             )
 
             SunInfoRow(
                 title: "Step 3: Turn on reminders",
-                detail: "Morning nudges and weekly reports stay on-device and never leave the phone.",
+                detail: "Morning reminders and weekly reports are sent as local notifications.",
                 systemImage: "bell.badge.fill",
                 tint: AppPalette.coral
             )
@@ -73,7 +73,7 @@ struct OnboardingView: View {
                 Button {
                     showScanSheet = true
                 } label: {
-                    Label("Scan sunscreen barcode", systemImage: "barcode.viewfinder")
+                    Label("Scan bottle barcode", systemImage: "barcode.viewfinder")
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
             } else if let barcode = appState.settings.expectedBarcode {
@@ -98,7 +98,7 @@ struct OnboardingView: View {
             }
             .buttonStyle(SunSecondaryButtonStyle())
 
-            Button("Continue to App") {
+            Button("Open Sun Dae") {
                 appState.completeOnboarding()
                 Task {
                     await NotificationManager.shared.scheduleReminders(using: appState)
@@ -111,7 +111,7 @@ struct OnboardingView: View {
 
     private var onboardingCopy: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SunPill(title: "Private setup", systemImage: "lock.shield.fill", tint: AppPalette.sea)
+            SunPill(title: "On-device setup", systemImage: "lock.shield.fill", tint: AppPalette.sea)
         }
     }
 

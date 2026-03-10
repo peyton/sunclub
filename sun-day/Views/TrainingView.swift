@@ -12,16 +12,16 @@ struct TrainingView: View {
     var body: some View {
         SunScreen {
             SunSectionHeader(
-                eyebrow: "Recognition training",
-                title: "Teach the app your bottle",
-                detail: "More angles means more stable selfie and live video checks. This stays entirely on-device."
+                eyebrow: "Bottle training",
+                title: "Train bottle recognition",
+                detail: "Capture several views of your bottle to improve selfie and live video verification. Everything stays on this device."
             )
 
             cameraCard
             progressCard
 
             VStack(spacing: 12) {
-                Button("Capture frame") {
+                Button("Capture photo") {
                     coordinator.captureFrame(targetCount: targetCount)
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
@@ -37,9 +37,9 @@ struct TrainingView: View {
                     Button("Done") {
                         if appState.trainingAssets.count == 0 {
                             if coordinator.capturedCount > 0 {
-                                message = "Capture a few more angles for reliability."
+                                message = "Capture a few more views for better recognition."
                             } else {
-                                message = "Capture at least one frame first."
+                                message = "Capture at least one photo first."
                             }
                         }
                         router.goHome()
@@ -71,9 +71,9 @@ struct TrainingView: View {
 
             VStack {
                 HStack {
-                    SunCameraOverlayLabel(title: "Training mode", tint: AppPalette.sea)
+                    SunCameraOverlayLabel(title: "Training", tint: AppPalette.sea)
                     Spacer(minLength: 0)
-                    SunCameraOverlayLabel(title: "Move around bottle", tint: AppPalette.sun)
+                    SunCameraOverlayLabel(title: "Move around the bottle", tint: AppPalette.sun)
                 }
 
                 Spacer()
@@ -98,7 +98,7 @@ struct TrainingView: View {
                 Spacer()
 
                 if coordinator.isProcessing {
-                    Text("Saving feature print")
+                    Text("Saving training data")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
@@ -132,9 +132,9 @@ struct TrainingView: View {
     private func onCapture(_ result: TrainingCaptureResult) {
         appState.addTrainingFeature(result.featurePrintData, width: result.width, height: result.height)
         if coordinator.capturedCount >= targetCount {
-            message = "Training complete. You can head back home."
+            message = "Training complete. You can return to the home screen."
         } else {
-            message = "Good capture. Keep orbiting the bottle."
+            message = "Photo saved. Keep moving around the bottle."
         }
     }
 }

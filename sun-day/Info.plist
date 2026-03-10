@@ -7,9 +7,9 @@
 		<string>com.peyton.sun-day.weekly-report</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>SunscreenTrack</string>
+	<string>Sun Dae</string>
 	<key>NSCameraUsageDescription</key>
-	<string>We need camera access to scan and verify your sunscreen bottle.</string>
+	<string>Camera access is used to scan your sunscreen barcode and verify your bottle.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

@@ -14,15 +14,15 @@ struct LiveVerifyView: View {
     var body: some View {
         SunScreen {
             SunSectionHeader(
-                eyebrow: "Live proof",
-                title: "Hands-free bottle verify",
-                detail: "Keep the bottle inside the guide. As soon as the model holds a confident lock, the day can be marked automatically."
+                eyebrow: "Live video",
+                title: "Verify with live video",
+                detail: "Keep the bottle inside the guide. When the match stays stable, today's sunscreen can be recorded automatically."
             )
 
             cameraCard
 
             SunStatusCard(
-                title: detected ? "Bottle lock acquired" : "Waiting for a confident lock",
+                title: detected ? "Bottle detected" : "Looking for your bottle",
                 detail: detected ? detectionDetail : message,
                 tint: detected ? AppPalette.success : AppPalette.warning,
                 symbol: detected ? "checkmark.seal.fill" : "clock.fill"
@@ -94,7 +94,7 @@ struct LiveVerifyView: View {
                 HStack {
                     SunCameraOverlayLabel(title: "Live model", tint: AppPalette.coral)
                     Spacer(minLength: 0)
-                    SunCameraOverlayLabel(title: detected ? "Locked" : "Searching", tint: detected ? AppPalette.success : AppPalette.warning)
+                    SunCameraOverlayLabel(title: detected ? "Detected" : "Searching", tint: detected ? AppPalette.success : AppPalette.warning)
                 }
 
                 Spacer()
@@ -120,6 +120,17 @@ struct LiveVerifyView: View {
                 }
             }
 
+            if detected {
+                VStack {
+                    Spacer()
+
+                    Text("Bottle detected")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(AppPalette.success.opacity(0.94), in: Capsule())
+                        .padding(.bottom, 20)
             if coordinator.permissionDenied {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(Color.black.opacity(0.58))
@@ -132,8 +143,8 @@ struct LiveVerifyView: View {
 
     private var detectionDetail: String {
         if let distance = lastDistance {
-            return String(format: "Feature distance %.3f. Manual confirm is ready if you want it.", distance)
+            return String(format: "Current match distance: %.3f. You can confirm now.", distance)
         }
-        return "The model has a stable bottle lock."
+        return "The bottle match is stable."
     }
 }

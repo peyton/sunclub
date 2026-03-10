@@ -12,9 +12,9 @@ struct SelfieCaptureView: View {
     var body: some View {
         SunScreen {
             SunSectionHeader(
-                eyebrow: "Selfie proof",
-                title: "Front camera verification",
-                detail: "The app checks for your expected barcode when possible and falls back to the bottle feature match."
+                eyebrow: "Selfie verification",
+                title: "Use the front camera",
+                detail: "Keep your face and the bottle in view. The app checks for the expected barcode when possible and also compares the bottle to your saved training images."
             )
 
             cameraCard
@@ -28,7 +28,7 @@ struct SelfieCaptureView: View {
                 )
             } else {
                 SunStatusCard(
-                    title: "Frame both face and bottle",
+                    title: "Frame your face and bottle",
                     detail: statusMessage,
                     tint: AppPalette.sea,
                     symbol: "person.crop.square"
@@ -96,7 +96,7 @@ struct SelfieCaptureView: View {
                 Spacer()
 
                 if coordinator.isProcessing {
-                    Text("Analyzing frame")
+                    Text("Analyzing photo")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
@@ -123,7 +123,7 @@ struct SelfieCaptureView: View {
             router.goHome()
             dismiss()
         } else {
-            statusMessage = "No barcode match and feature match not confident. Try another angle with the bottle fully visible."
+            statusMessage = "The bottle could not be verified. Try again with the bottle fully visible."
         }
     }
 
@@ -132,13 +132,13 @@ struct SelfieCaptureView: View {
             if let distance = result.featureDistance {
                 return String(format: "Bottle recognized with feature distance %.3f.", distance)
             }
-            return "The verification checks passed and the day was recorded."
+            return "The verification checks passed and today was recorded."
         }
 
         if let distance = result.featureDistance {
             return String(format: "The bottle match was too weak at %.3f. Try again with less glare.", distance)
         }
 
-        return "The bottle or expected barcode could not be confirmed in this frame."
+        return "The bottle or expected barcode could not be confirmed in this photo."
     }
 }

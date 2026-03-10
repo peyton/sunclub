@@ -12,7 +12,7 @@ struct WeeklyReportView: View {
             missesCard
             encouragementCard
 
-            Button("Generate another pep talk") {
+            Button("Show another message") {
                 encouragement = appState.nextWeeklyPhrase()
             }
             .buttonStyle(SunSecondaryButtonStyle())
@@ -62,13 +62,13 @@ struct WeeklyReportView: View {
             SunSectionHeader(
                 eyebrow: "Missed days",
                 title: report.missedDays.isEmpty ? "Clean sheet" : "Spots to recover",
-                detail: report.missedDays.isEmpty ? "This week stayed free of misses." : "These are the weekdays that fell through without a successful verification."
+                detail: report.missedDays.isEmpty ? "No missed days this week." : "These are the days with no successful verification."
             )
 
             if report.missedDays.isEmpty {
                 SunStatusCard(
                     title: "No misses this week",
-                    detail: "A suspiciously competent performance, in the best way.",
+                    detail: "You verified sunscreen every day this week.",
                     tint: AppPalette.success,
                     symbol: "checkmark.circle.fill"
                 )
@@ -94,9 +94,9 @@ struct WeeklyReportView: View {
     private var encouragementCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             SunSectionHeader(
-                eyebrow: "Encouragement",
-                title: "This week's local pep talk",
-                detail: "Rotated from your weekly phrase bag so the app doesn't sound like a malfunctioning sticker."
+                eyebrow: "Message",
+                title: "This week's note",
+                detail: "This message rotates from the weekly phrase set and is stored on-device."
             )
 
             Text(encouragement)
@@ -159,7 +159,7 @@ struct WeeklyReportView: View {
                 .font(.subheadline)
                 .foregroundStyle(AppPalette.softInk)
 
-            Text(report.missedDays.isEmpty ? "No misses. The bottle would like a tiny ovation." : "You missed a few, but the trend line is still redeemable.")
+            Text(report.missedDays.isEmpty ? "You verified sunscreen every day this week." : "Here is your sunscreen summary for the last seven days.")
                 .font(.callout)
                 .foregroundStyle(AppPalette.softInk)
         }

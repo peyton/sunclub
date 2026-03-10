@@ -104,8 +104,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func scheduleWeeklyFallback(using state: AppState) {
         let content = UNMutableNotificationContent()
-        content.title = "Sunscreen weekly check-in"
-        content.body = "Open SunscreenTrack for your fresh 7-day report and a ridiculous pep talk."
+        content.title = "Weekly sunscreen report"
+        content.body = "Open Sun Dae to view your latest 7-day report."
         content.categoryIdentifier = dailyCategoryID
         content.userInfo = [routeKey: weeklyRoute, "type": "weekly_fallback"]
 
@@ -169,7 +169,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             try context.save()
 
             let content = UNMutableNotificationContent()
-            content.title = "Sunscreen weekly report"
+            content.title = "Weekly sunscreen report"
             content.body = "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
                 + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
                 + phrase.0

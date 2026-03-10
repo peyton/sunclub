@@ -33,7 +33,7 @@ struct CalendarGridView: View {
                     .font(.system(size: 34, weight: .bold, design: .serif))
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Every mark is based on a local start-of-day boundary.")
+                Text("Days are tracked using your local date and time zone.")
                     .font(.footnote)
                     .foregroundStyle(AppPalette.softInk)
             }
@@ -246,7 +246,7 @@ struct DayDetailView: View {
             SunSectionHeader(
                 eyebrow: "Day detail",
                 title: date.formatted(.dateTime.weekday(.wide).day().month().year()),
-                detail: "Method, time, and any stored verification details for this date."
+                detail: "Method, time, and any saved verification details for this date."
             )
 
             detailCard
@@ -267,7 +267,7 @@ struct DayDetailView: View {
             case .applied:
                 SunStatusCard(
                     title: "Sunscreen applied",
-                    detail: "This day has a successful verification record.",
+                    detail: "This day has a successful sunscreen verification.",
                     tint: AppPalette.success,
                     symbol: "checkmark.seal.fill"
                 )
@@ -288,7 +288,7 @@ struct DayDetailView: View {
             case .todayPending:
                 SunStatusCard(
                     title: "Still pending",
-                    detail: "Today is open. Any successful proof will fill the circle.",
+                    detail: "Today is open. A successful verification will fill the circle.",
                     tint: AppPalette.warning,
                     symbol: "clock.fill"
                 )
@@ -302,7 +302,7 @@ struct DayDetailView: View {
             case .future:
                 SunStatusCard(
                     title: "Future date",
-                    detail: "Nothing gets logged here until the date is real.",
+                    detail: "Nothing is shown here until that date arrives.",
                     tint: AppPalette.sea,
                     symbol: "sparkles"
                 )

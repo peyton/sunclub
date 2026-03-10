@@ -16,7 +16,7 @@ struct BarcodeScanView: View {
     var body: some View {
         SunScreen {
             SunSectionHeader(
-                eyebrow: onboardingMode ? "Bottle setup" : "Daily proof",
+                eyebrow: onboardingMode ? "Bottle setup" : "Daily check",
                 title: onboardingMode ? "Scan your bottle barcode" : "Scan barcode",
                 detail: "Aim the UPC or EAN inside the guide. The app will grab it as soon as the camera sees a clean match."
             )
@@ -96,6 +96,16 @@ struct BarcodeScanView: View {
                     .padding(.bottom, 22)
             }
 
+            VStack {
+                Spacer()
+
+                Text("Hold steady until the barcode is scanned")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.38), in: Capsule())
+                    .padding(.bottom, 22)
             if coordinator.permissionDenied {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(Color.black.opacity(0.58))

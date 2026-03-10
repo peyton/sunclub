@@ -18,6 +18,6 @@ final class sun_dayUITests: XCTestCase {
         app.launchArguments.append("UITEST_MODE")
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Welcome to SunscreenTrack"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Three quick steps"].waitForExistence(timeout: 5))
     }
 }
