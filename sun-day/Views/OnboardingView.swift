@@ -27,25 +27,12 @@ struct OnboardingView: View {
     }
 
     private var heroCard: some View {
-        ViewThatFits {
-            HStack(alignment: .top, spacing: 16) {
-                onboardingCopy
-
-                Spacer(minLength: 0)
-
-                onboardingBadge
-            }
-
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    onboardingBadge
-                    Spacer(minLength: 0)
-                }
-
-                onboardingCopy
-            }
+        HStack(alignment: .center, spacing: 14) {
+            onboardingBadge
+            onboardingCopy
+            Spacer(minLength: 0)
         }
-        .sunCard()
+        .sunCard(padding: 16)
     }
 
     private var setupSteps: some View {
@@ -125,14 +112,6 @@ struct OnboardingView: View {
     private var onboardingCopy: some View {
         VStack(alignment: .leading, spacing: 12) {
             SunPill(title: "Private setup", systemImage: "lock.shield.fill", tint: AppPalette.sea)
-
-            Text("Welcome to SunscreenTrack")
-                .font(.system(size: 34, weight: .bold, design: .serif))
-                .foregroundStyle(AppPalette.ink)
-
-            Text("This setup is short: lock in your bottle, optionally teach the app what it looks like, then let local reminders do their job.")
-                .font(.callout)
-                .foregroundStyle(AppPalette.softInk)
         }
     }
 
@@ -146,10 +125,10 @@ struct OnboardingView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 88, height: 88)
+                .frame(width: 72, height: 72)
 
             Image(systemName: "sun.max.fill")
-                .font(.system(size: 30, weight: .bold))
+                .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(.white)
         }
     }
