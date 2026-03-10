@@ -16,7 +16,6 @@ final class SelfieCaptureCoordinator: NSObject, ObservableObject, AVCapturePhoto
     private let photoOutput = AVCapturePhotoOutput()
     private var expectedBarcode: String?
     private var trainingPayloads: [Data] = []
-    private let featureMatchThreshold = 18.5
 
     @Published var isProcessing = false
     @Published var permissionDenied = false
@@ -90,10 +89,10 @@ final class SelfieCaptureCoordinator: NSObject, ObservableObject, AVCapturePhoto
         isProcessing = true
 
         Task {
-            let featureDistance = await extractFeatureDistance(from: data)
+            let featureMatch = await extractFeatureMatch(from: data)
             let barcodes = await VisionFeaturePrintService.shared.detectBarcodes(in: data)
             let matchedBarcode = expectedBarcode.flatMap { expected in barcodes.first(where: { $0 == expected }) }
-            let featureMatched = featureDistance.map { $0 <= featureMatchThreshold } ?? false
+            let featureMatched = featureMatch?.isMatch ?? false
 
             let verified: Bool
             if !trainingPayloads.isEmpty {
@@ -108,7 +107,7 @@ final class SelfieCaptureCoordinator: NSObject, ObservableObject, AVCapturePhoto
                     SelfieCaptureResult(
                         verified: verified,
                         barcodeMatched: matchedBarcode != nil,
-                        featureDistance: featureDistance,
+                        featureDistance: featureMatch?.bestDistance.map(Double.init),
                         barcode: matchedBarcode,
                         imageData: data
                     )
@@ -117,13 +116,16 @@ final class SelfieCaptureCoordinator: NSObject, ObservableObject, AVCapturePhoto
         }
     }
 
-    private func extractFeatureDistance(from data: Data) async -> Double? {
+    private func extractFeatureMatch(from data: Data) async -> FeaturePrintMatchResult? {
         guard !trainingPayloads.isEmpty else { return nil }
 
         do {
             let observation = try await VisionFeaturePrintService.shared.featurePrint(from: data)
-            let best = await VisionFeaturePrintService.shared.bestDistance(for: observation, to: trainingPayloads)
-            return best.map { Double($0) }
+            return FeaturePrintMatcher.shared.evaluate(
+                sample: observation,
+                storedPayloads: trainingPayloads,
+                configuration: .selfie
+            )
         } catch {
             return nil
         }

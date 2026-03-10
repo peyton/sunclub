@@ -46,6 +46,27 @@ The app requires:
 - Camera permission (for barcode, selfie, and training capture)
 - Notification permission (for reminders and weekly reports)
 
+## Independent recognition benchmark
+
+The repo includes a standalone Vision feature-print benchmark that does not depend on launching the iOS app.
+
+Run it from Terminal:
+
+```sh
+cd /Users/peyton/Projects/sun-day
+./Benchmarks/benchmark.sh --strict
+```
+
+Benchmark inputs:
+
+- raw product photos are pulled into `Benchmarks/Datasets/raw`
+- generated train/test variants are written to `Benchmarks/Datasets/generated`
+- the benchmark compares the legacy min-distance rule against the app's current selfie and video consensus matchers
+
+Assumption:
+
+- because the production app is trained from user-captured camera photos, the benchmark starts from public packshots and applies deterministic view/lighting/background augmentations to create a repeatable offline test set
+
 ## Privacy note
 
 - Barcode and object recognition happen entirely on-device.
@@ -59,4 +80,3 @@ The app requires:
 - Default weekly report reminder: **Sunday 18:00** local time.
 - Video verification threshold uses a fixed distance threshold and consecutive-frame debounce (2+ seconds equivalent).
 - `SunscreenTrack` module name is set in the project so unit tests import `@testable import SunscreenTrack`.
-

@@ -15,7 +15,6 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
     private var consecutiveDetections = 0
     private let sampleEvery = 5
     private let requiredConsecutive = 12
-    private let distanceThreshold: Float = 18.5
 
     @Published var isDetected = false
     @Published var featureDistance: Float?
@@ -105,11 +104,15 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
                 return
             }
 
-            let best = await VisionFeaturePrintService.shared.bestDistance(for: observation, to: trainingPayloads)
-            let detected = (best ?? .infinity) <= distanceThreshold
+            let match = FeaturePrintMatcher.shared.evaluate(
+                sample: observation,
+                storedPayloads: trainingPayloads,
+                configuration: .video
+            )
+            let detected = match.isMatch
 
             await MainActor.run {
-                featureDistance = best
+                featureDistance = match.bestDistance
                 consecutiveDetections = detected ? (consecutiveDetections + 1) : 0
                 isDetected = consecutiveDetections >= requiredConsecutive
                 processingFrame = false

@@ -61,22 +61,23 @@ final class VisionFeaturePrintService {
         try? NSKeyedUnarchiver.unarchivedObject(ofClass: VNFeaturePrintObservation.self, from: data)
     }
 
-    func bestDistance(for sample: VNFeaturePrintObservation, to storedPayloads: [Data]) async -> Float? {
-        var best: Float?
+    func distances(for sample: VNFeaturePrintObservation, to storedPayloads: [Data]) -> [Float] {
+        var distances: [Float] = []
 
         for payload in storedPayloads {
             guard let stored = deserialize(payload) else { continue }
             do {
-                let distance = try distance(between: sample, and: stored)
-                if best == nil || distance < best! {
-                    best = distance
-                }
+                distances.append(try distance(between: sample, and: stored))
             } catch {
                 continue
             }
         }
 
-        return best
+        return distances
+    }
+
+    func bestDistance(for sample: VNFeaturePrintObservation, to storedPayloads: [Data]) async -> Float? {
+        distances(for: sample, to: storedPayloads).min()
     }
 
     func detectBarcodes(in data: Data) async -> [String] {
