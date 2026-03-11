@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct OnboardingView: View {
     @Environment(AppState.self) private var appState
@@ -9,25 +8,27 @@ struct OnboardingView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let viewportWidth = currentWindowWidth
-            let columnWidth = min(max(viewportWidth - 40, 0), 352)
-            let horizontalOffset = -max(proxy.size.width - viewportWidth, 0) / 2
+            let columnWidth = min(max(proxy.size.width - 40, 0), 352)
 
             ZStack {
                 SunBackdrop()
 
                 ViewThatFits(in: .vertical) {
                     VStack(spacing: 0) {
-                        onboardingContent(columnWidth: columnWidth, viewportWidth: viewportWidth)
+                        onboardingContent(columnWidth: columnWidth)
                         Spacer(minLength: 0)
                     }
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
 
                     ScrollView(showsIndicators: false) {
-                        onboardingContent(columnWidth: columnWidth, viewportWidth: viewportWidth)
+                        onboardingContent(columnWidth: columnWidth)
                     }
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                    .clipped()
                 }
-                .offset(x: horizontalOffset)
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
         }
         .sheet(isPresented: $showScanSheet) {
             BarcodeScanView(onboardingMode: true)
@@ -38,7 +39,7 @@ struct OnboardingView: View {
     }
 
     @ViewBuilder
-    private func onboardingContent(columnWidth: CGFloat, viewportWidth: CGFloat) -> some View {
+    private func onboardingContent(columnWidth: CGFloat) -> some View {
         VStack(spacing: 16) {
             heroCard
             setupSteps
@@ -56,7 +57,7 @@ struct OnboardingView: View {
         .frame(width: columnWidth, alignment: .top)
         .padding(.top, 12)
         .padding(.bottom, 28)
-        .frame(width: viewportWidth, alignment: .center)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var heroCard: some View {
@@ -189,11 +190,4 @@ struct OnboardingView: View {
         }
     }
 
-    private var currentWindowWidth: CGFloat {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)?
-            .bounds.width ?? UIScreen.main.bounds.width
-    }
 }
