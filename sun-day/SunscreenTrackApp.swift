@@ -40,7 +40,8 @@ struct SunscreenTrackApp: App {
                     }
                     guard !isUITesting else { return }
                     Task {
-                        await NotificationManager.shared.configure()
+                        guard appState.settings.hasCompletedOnboarding else { return }
+                        _ = await NotificationManager.shared.configure()
                         await NotificationManager.shared.scheduleReminders(using: appState)
                     }
                 }

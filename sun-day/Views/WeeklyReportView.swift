@@ -12,12 +12,12 @@ struct WeeklyReportView: View {
             missesCard
             encouragementCard
 
-            Button("Show another message") {
+            Button("Show another note") {
                 encouragement = appState.nextWeeklyPhrase()
             }
             .buttonStyle(SunSecondaryButtonStyle())
         }
-        .navigationTitle("Weekly Report")
+        .navigationTitle("Club Report")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             report = appState.last7DaysReport()
@@ -51,7 +51,7 @@ struct WeeklyReportView: View {
 
     private var metricsGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            MetricTile(value: "\(report.appliedCount)", title: "applied", tint: AppPalette.success)
+            MetricTile(value: "\(report.appliedCount)", title: "check-ins", tint: AppPalette.success)
             MetricTile(value: "\(report.missedDays.count)", title: "missed", tint: AppPalette.danger)
             MetricTile(value: "\(report.streak)", title: "streak", tint: AppPalette.coral)
         }
@@ -60,8 +60,8 @@ struct WeeklyReportView: View {
     private var missesCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             SunSectionHeader(
-                eyebrow: "Missed days",
-                title: report.missedDays.isEmpty ? "Clean sheet" : "Spots to recover",
+                eyebrow: "Routine",
+                title: report.missedDays.isEmpty ? "Routine locked in" : "Days to recover",
                 detail: report.missedDays.isEmpty ? "No missed days this week." : "These are the days with no successful verification."
             )
 
@@ -94,9 +94,9 @@ struct WeeklyReportView: View {
     private var encouragementCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             SunSectionHeader(
-                eyebrow: "Message",
-                title: "This week's note",
-                detail: "This message rotates from the weekly phrase set and is stored on-device."
+                eyebrow: "Club note",
+                title: "This week's message",
+                detail: "This message rotates from the weekly phrase set and stays on-device."
             )
 
             Text(encouragement)
@@ -149,17 +149,17 @@ struct WeeklyReportView: View {
 
     private var reportCopy: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SunPill(title: "Last 7 days", systemImage: "chart.bar.fill", tint: AppPalette.sun)
+            SunPill(title: "Club report", systemImage: "chart.bar.fill", tint: AppPalette.sun)
 
-            Text("Weekly report")
-                .font(.system(size: 34, weight: .bold, design: .serif))
+            Text("Club report")
+                .font(.system(size: 36, weight: .heavy, design: .rounded))
                 .foregroundStyle(AppPalette.ink)
 
             Text(periodLabel)
                 .font(.subheadline)
                 .foregroundStyle(AppPalette.softInk)
 
-            Text(report.missedDays.isEmpty ? "You verified sunscreen every day this week." : "Here is your sunscreen summary for the last seven days.")
+            Text(report.missedDays.isEmpty ? "Strong week. Keep it going." : "Reset today and keep the routine moving.")
                 .font(.callout)
                 .foregroundStyle(AppPalette.softInk)
         }

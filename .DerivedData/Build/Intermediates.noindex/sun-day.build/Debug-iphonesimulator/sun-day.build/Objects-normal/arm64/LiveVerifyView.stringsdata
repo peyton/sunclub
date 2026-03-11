@@ -4,7 +4,7 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Mark Applied",
+        "key": "Record check-in",
         "location": {
           "startingColumn": 24,
           "startingLine": 32
@@ -23,12 +23,12 @@
         "key": "Camera access denied",
         "location": {
           "startingColumn": 22,
-          "startingLine": 126
+          "startingLine": 127
         }
       },
       {
         "comment": "",
-        "key": "Detection stable",
+        "key": "Bottle detected",
         "location": {
           "startingColumn": 26,
           "startingLine": 113

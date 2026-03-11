@@ -6,15 +6,15 @@ struct SelfieCaptureView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var coordinator = SelfieCaptureCoordinator()
-    @State private var statusMessage: String = "Use the front camera and keep both your face and the bottle visible."
+    @State private var statusMessage: String = "Use the front camera and keep both your face and bottle visible."
     @State private var lastResult: SelfieCaptureResult?
 
     var body: some View {
         SunScreen {
             SunSectionHeader(
-                eyebrow: "Selfie verification",
-                title: "Use the front camera",
-                detail: "Keep your face and the bottle in view. The app checks for the expected barcode when possible and also compares the bottle to your saved training images."
+                eyebrow: "Selfie check-in",
+                title: "Check in with a selfie",
+                detail: "Keep your face and bottle in view. The app checks the expected barcode when possible and also compares the bottle to your saved training images."
             )
 
             cameraCard
@@ -39,7 +39,7 @@ struct SelfieCaptureView: View {
                 Button {
                     coordinator.capture()
                 } label: {
-                    Label("Capture Selfie", systemImage: "camera.circle.fill")
+                    Label("Take Selfie", systemImage: "camera.circle.fill")
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
 
@@ -119,7 +119,7 @@ struct SelfieCaptureView: View {
                 featureDistance: result.featureDistance,
                 barcodeConfidence: nil
             )
-            statusMessage = "Marked as applied for today."
+            statusMessage = "Today's sunscreen is recorded."
             router.goHome()
             dismiss()
         } else {
@@ -130,9 +130,9 @@ struct SelfieCaptureView: View {
     private func resultMessage(for result: SelfieCaptureResult) -> String {
         if result.verified {
             if let distance = result.featureDistance {
-                return String(format: "Bottle recognized with feature distance %.3f.", distance)
+                return String(format: "Bottle matched with feature distance %.3f.", distance)
             }
-            return "The verification checks passed and today was recorded."
+            return "The check passed and today was recorded."
         }
 
         if let distance = result.featureDistance {

@@ -4,7 +4,7 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Save bottle and continue",
+        "key": "Save bottle",
         "location": {
           "startingColumn": 28,
           "startingLine": 37
@@ -36,7 +36,7 @@
       },
       {
         "comment": "",
-        "key": "Hold steady until the code locks in",
+        "key": "Hold steady until the barcode is scanned",
         "location": {
           "startingColumn": 22,
           "startingLine": 90

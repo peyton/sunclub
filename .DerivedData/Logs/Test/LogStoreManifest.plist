@@ -6,10 +6,10 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>A3DFC1EA-7BA1-4B4E-81EC-0938F86436B1</key>
+		<key>0516DB79-8168-47DD-A7D8-69526087D241</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>10294BFA-5B29-4E02-9D8E-27F3335923CA</string>
+			<string>904C26EA-9B22-4F63-846A-574E7E63DCAF</string>
 			<key>auxiliaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
@@ -30,7 +30,7 @@
 			<key>domainType</key>
 			<string>com.apple.dt.unit.cocoaUnitTest</string>
 			<key>fileName</key>
-			<string>Test-sun-day-2026.03.08_22-40-12--0700.xcresult</string>
+			<string>Test-sun-day-2026.03.10_18-04-41--0700.xcresult</string>
 			<key>hasAuxiliaryLog</key>
 			<true/>
 			<key>hasCoverageData</key>
@@ -40,15 +40,15 @@
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>S</string>
+				<string>T</string>
 				<key>totalCodeCoverage</key>
-				<real>0.16154754873006497</real>
+				<real>0.16614535418583257</real>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
 				<integer>0</integer>
 				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
+				<integer>1</integer>
 				<key>totalNumberOfWarnings</key>
 				<integer>0</integer>
 			</dict>
@@ -61,13 +61,328 @@
 			<key>signature</key>
 			<string>Test sun-day</string>
 			<key>timeStartedRecording</key>
-			<real>794727612.34557498</real>
+			<real>794883881.14828396</real>
 			<key>timeStoppedRecording</key>
-			<real>794727663.14725196</real>
+			<real>794883902.93968999</real>
 			<key>title</key>
 			<string>Test sun-day</string>
 			<key>uniqueIdentifier</key>
-			<string>A3DFC1EA-7BA1-4B4E-81EC-0938F86436B1</string>
+			<string>0516DB79-8168-47DD-A7D8-69526087D241</string>
+		</dict>
+		<key>4AF9C02D-0B80-45DC-892A-06823A862E4A</key>
+		<dict>
+			<key>auxiliaryLogUniqueIdentifier</key>
+			<string>D9EE9E76-2F98-4D22-B1B8-D16400C61693</string>
+			<key>auxiliaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>className</key>
+			<string>IDESchemeActionsInvocationRecord</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>com.apple.dt.unit.cocoaUnitTest</string>
+			<key>fileName</key>
+			<string>Test-sun-day-2026.03.10_18-00-15--0700.xcresult</string>
+			<key>hasAuxiliaryLog</key>
+			<true/>
+			<key>hasCoverageData</key>
+			<true/>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>T</string>
+				<key>totalCodeCoverage</key>
+				<real>0.16355916558980985</real>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>1</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Test sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794883615.78466797</real>
+			<key>timeStoppedRecording</key>
+			<real>794883640.50283098</real>
+			<key>title</key>
+			<string>Test sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>4AF9C02D-0B80-45DC-892A-06823A862E4A</string>
+		</dict>
+		<key>AF46AA12-F51A-4AB1-9A4E-9275E5D39693</key>
+		<dict>
+			<key>auxiliaryLogUniqueIdentifier</key>
+			<string>D9B29215-8715-444E-A40F-522D1D64876A</string>
+			<key>auxiliaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>className</key>
+			<string>IDESchemeActionsInvocationRecord</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>com.apple.dt.unit.cocoaUnitTest</string>
+			<key>fileName</key>
+			<string>Test-sun-day-2026.03.10_18-06-31--0700.xcresult</string>
+			<key>hasAuxiliaryLog</key>
+			<true/>
+			<key>hasCoverageData</key>
+			<true/>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>T</string>
+				<key>totalCodeCoverage</key>
+				<real>0.16645208754828031</real>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>1</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Test sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794883991.518785</real>
+			<key>timeStoppedRecording</key>
+			<real>794884012.26456797</real>
+			<key>title</key>
+			<string>Test sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>AF46AA12-F51A-4AB1-9A4E-9275E5D39693</string>
+		</dict>
+		<key>BE7CF25E-F4BA-4985-8297-CE72476EE70C</key>
+		<dict>
+			<key>auxiliaryLogUniqueIdentifier</key>
+			<string>34AAA4EA-5B66-42A9-9F57-8DFF3786A86D</string>
+			<key>auxiliaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>className</key>
+			<string>IDESchemeActionsInvocationRecord</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>com.apple.dt.unit.cocoaUnitTest</string>
+			<key>fileName</key>
+			<string>Test-sun-day-2026.03.10_18-07-28--0700.xcresult</string>
+			<key>hasAuxiliaryLog</key>
+			<true/>
+			<key>hasCoverageData</key>
+			<true/>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>T</string>
+				<key>totalCodeCoverage</key>
+				<real>0.16645208754828031</real>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>1</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Test sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794884048.49260294</real>
+			<key>timeStoppedRecording</key>
+			<real>794884071.23510802</real>
+			<key>title</key>
+			<string>Test sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>BE7CF25E-F4BA-4985-8297-CE72476EE70C</string>
+		</dict>
+		<key>C2E255A3-CDCE-4109-AF72-F2AA48C554FF</key>
+		<dict>
+			<key>auxiliaryLogUniqueIdentifier</key>
+			<string>E301E16C-652C-43D3-8663-9477A6D58BF0</string>
+			<key>auxiliaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>className</key>
+			<string>IDESchemeActionsInvocationRecord</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>com.apple.dt.unit.cocoaUnitTest</string>
+			<key>fileName</key>
+			<string>Test-sun-day-2026.03.10_18-02-31--0700.xcresult</string>
+			<key>hasAuxiliaryLog</key>
+			<true/>
+			<key>hasCoverageData</key>
+			<true/>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>T</string>
+				<key>totalCodeCoverage</key>
+				<real>0.16583839499355787</real>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>1</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Test sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794883751.36954606</real>
+			<key>timeStoppedRecording</key>
+			<real>794883773.45113099</real>
+			<key>title</key>
+			<string>Test sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>C2E255A3-CDCE-4109-AF72-F2AA48C554FF</string>
+		</dict>
+		<key>F8EC03AD-273E-44F3-8B09-13716C3E86D5</key>
+		<dict>
+			<key>auxiliaryLogUniqueIdentifier</key>
+			<string>B7438F7A-A640-468B-AB2F-39AB6B33E163</string>
+			<key>auxiliaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>className</key>
+			<string>IDESchemeActionsInvocationRecord</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>com.apple.dt.unit.cocoaUnitTest</string>
+			<key>fileName</key>
+			<string>Test-sun-day-2026.03.10_18-09-43--0700.xcresult</string>
+			<key>hasAuxiliaryLog</key>
+			<true/>
+			<key>hasCoverageData</key>
+			<true/>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>T</string>
+				<key>totalCodeCoverage</key>
+				<real>0.1638655462184874</real>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>1</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>sun-day project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>sun-day</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Test sun-day</string>
+			<key>timeStartedRecording</key>
+			<real>794884183.75222003</real>
+			<key>timeStoppedRecording</key>
+			<real>794884204.80131495</real>
+			<key>title</key>
+			<string>Test sun-day</string>
+			<key>uniqueIdentifier</key>
+			<string>F8EC03AD-273E-44F3-8B09-13716C3E86D5</string>
 		</dict>
 	</dict>
 </dict>

@@ -46,6 +46,11 @@
 					<key>mrnet</key>
 					<real>4.5304189920425415</real>
 				</dict>
+				<key>testOnboardingControlsStayWithinWindowBounds</key>
+				<dict>
+					<key>mrnet</key>
+					<real>8.8590600490570068</real>
+				</dict>
 			</dict>
 		</dict>
 	</dict>

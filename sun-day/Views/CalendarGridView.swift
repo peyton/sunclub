@@ -33,7 +33,7 @@ struct CalendarGridView: View {
                     .font(.system(size: 34, weight: .bold, design: .serif))
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Days are tracked using your local date and time zone.")
+                Text("See your routine one day at a time.")
                     .font(.footnote)
                     .foregroundStyle(AppPalette.softInk)
             }

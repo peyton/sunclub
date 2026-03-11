@@ -4,34 +4,58 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Train bottle recognition",
+        "key": "SUN CLUB",
         "location": {
-          "startingColumn": 20,
-          "startingLine": 88
+          "startingColumn": 22,
+          "startingLine": 75
         }
       },
       {
         "comment": "",
-        "key": "Enable notifications",
+        "key": "Start your routine",
         "location": {
-          "startingColumn": 20,
-          "startingLine": 93
+          "startingColumn": 22,
+          "startingLine": 80
         }
       },
       {
         "comment": "",
-        "key": "Continue to App",
+        "key": "Lock in your bottle, build the habit, and stay ready for the next bottle.",
         "location": {
-          "startingColumn": 20,
-          "startingLine": 101
+          "startingColumn": 22,
+          "startingLine": 84
         }
       },
       {
         "comment": "",
-        "key": "Scan sunscreen barcode",
+        "key": "Join Sun Club",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scan bottle barcode",
         "location": {
           "startingColumn": 27,
-          "startingLine": 76
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "Train bottle",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notifications",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 144
         }
       }
     ]

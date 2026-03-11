@@ -12,7 +12,7 @@
       },
       {
         "comment": "",
-        "key": "Capture Selfie",
+        "key": "Take Selfie",
         "location": {
           "startingColumn": 27,
           "startingLine": 42
@@ -28,7 +28,7 @@
       },
       {
         "comment": "",
-        "key": "Analyzing frame",
+        "key": "Analyzing photo",
         "location": {
           "startingColumn": 26,
           "startingLine": 99

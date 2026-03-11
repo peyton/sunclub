@@ -4,7 +4,7 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Capture frame",
+        "key": "Capture photo",
         "location": {
           "startingColumn": 24,
           "startingLine": 24
@@ -36,7 +36,7 @@
       },
       {
         "comment": "",
-        "key": "Saving feature print",
+        "key": "Saving training data",
         "location": {
           "startingColumn": 26,
           "startingLine": 101

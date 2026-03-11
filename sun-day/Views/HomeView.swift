@@ -16,14 +16,14 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 SunSectionHeader(
-                    eyebrow: "Daily actions",
-                    title: "Verify today",
-                    detail: "Choose one way to record today's sunscreen."
+                    eyebrow: "Today's check-in",
+                    title: "Choose today's check-in",
+                    detail: "Pick the check-in that fits your day and record today's sunscreen."
                 )
 
                 actionCard(
                     title: "Scan Barcode",
-                    detail: "Fastest when the bottle is already in your hand.",
+                    detail: "Fastest when your bottle is already in hand.",
                     systemImage: "barcode.viewfinder",
                     colors: [AppPalette.sun, AppPalette.coral]
                 ) {
@@ -41,7 +41,7 @@ struct HomeView: View {
 
                 actionCard(
                     title: "Live Video",
-                    detail: "Hold the bottle in view and let the app verify it from the camera feed.",
+                    detail: "Hold the bottle in view and let the camera confirm it.",
                     systemImage: "video.badge.checkmark",
                     colors: [AppPalette.coral, AppPalette.sun]
                 ) {
@@ -51,15 +51,15 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 SunSectionHeader(
-                    eyebrow: "History",
-                    title: "Review your history",
-                    detail: "Open the calendar or weekly report to review recent activity."
+                    eyebrow: "Progress",
+                    title: "Track the routine",
+                    detail: "Review your month, your streak, and the last seven days."
                 )
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                     quickLinkCard(
                         title: "Calendar",
-                        detail: "Review every day in the month grid.",
+                        detail: "See every check-in across the month.",
                         systemImage: "calendar"
                     ) {
                         router.open(.calendar)
@@ -67,7 +67,7 @@ struct HomeView: View {
 
                     quickLinkCard(
                         title: "Weekly report",
-                        detail: "See your last seven days and current streak.",
+                        detail: "See your last seven days, missed days, and streak.",
                         systemImage: "chart.bar.xaxis"
                     ) {
                         router.open(.weeklyReport)
@@ -135,7 +135,7 @@ struct HomeView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 MetricTile(value: "\(appState.currentStreak)", title: "streak", tint: statusTint)
                 MetricTile(value: appState.settings.expectedBarcode == nil ? "Unset" : "Locked", title: "bottle", tint: AppPalette.sea)
-                MetricTile(value: "\(appState.trainingAssets.count)", title: "training photos", tint: AppPalette.sun)
+                MetricTile(value: "\(appState.trainingAssets.count)", title: "training", tint: AppPalette.sun)
             }
         }
         .sunCard()
@@ -143,17 +143,17 @@ struct HomeView: View {
 
     private var streakLabel: String {
         let streak = appState.currentStreak
-        return streak > 0 ? "\(streak) day streak" : "Fresh day"
+        return streak > 0 ? "\(streak) day streak" : "Start today"
     }
 
     private var statusTitle: String {
         switch todayStatus {
         case .applied:
-            return "Verified today"
+            return "Checked in today"
         case .todayPending:
-            return "Not verified yet"
+            return "Ready for today's check-in"
         case .missed:
-            return "Missed day"
+            return "Get back on routine"
         case .future:
             return "Future date"
         }
@@ -162,11 +162,11 @@ struct HomeView: View {
     private var statusDetail: String {
         switch todayStatus {
         case .applied:
-            return "Today's sunscreen check is complete."
+            return "Today's sunscreen is logged."
         case .todayPending:
-            return "Choose a verification method below to record sunscreen for today."
+            return "Choose a check-in below to keep the routine going."
         case .missed:
-            return "A previous day was missed. You can still verify today."
+            return "A previous day was missed. Today's check-in can restart the streak."
         case .future:
             return "Nothing to do here yet."
         }
@@ -266,19 +266,15 @@ struct HomeView: View {
     private var heroCopy: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                SunPill(title: "On-device only", systemImage: "lock.shield.fill", tint: AppPalette.sea)
+                SunPill(title: "Daily SPF club", systemImage: "sun.max.fill", tint: AppPalette.sun)
                 SunPill(title: streakLabel, systemImage: "flame.fill", tint: AppPalette.coral)
             }
 
-            Text("SunscreenTrack")
-                .font(.system(size: 38, weight: .bold, design: .serif))
+            Text("Sun Club")
+                .font(.system(size: 42, weight: .heavy, design: .rounded))
                 .foregroundStyle(AppPalette.ink)
 
-            Text("Sun Dae")
-                .font(.system(size: 38, weight: .bold, design: .serif))
-                .foregroundStyle(AppPalette.ink)
-
-            Text("Verify sunscreen each day by scanning the barcode, taking a selfie, or using live video.")
+            Text("Find your bottle. Keep the routine. Stay ready for the next bottle.")
                 .font(.callout)
                 .foregroundStyle(AppPalette.softInk)
         }

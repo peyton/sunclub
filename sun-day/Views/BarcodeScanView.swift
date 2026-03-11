@@ -16,9 +16,9 @@ struct BarcodeScanView: View {
     var body: some View {
         SunScreen {
             SunSectionHeader(
-                eyebrow: onboardingMode ? "Bottle setup" : "Daily check",
-                title: onboardingMode ? "Scan your bottle barcode" : "Scan barcode",
-                detail: "Aim the UPC or EAN inside the guide. The app will grab it as soon as the camera sees a clean match."
+                eyebrow: onboardingMode ? "Bottle setup" : "Today's check-in",
+                title: onboardingMode ? "Scan your bottle barcode" : "Scan your barcode",
+                detail: "Point the camera at the UPC or EAN on your bottle and hold steady."
             )
 
             cameraCard
@@ -34,7 +34,7 @@ struct BarcodeScanView: View {
 
             VStack(spacing: 12) {
                 if onboardingMode, appState.settings.expectedBarcode != nil {
-                    Button("Save bottle and continue") {
+                    Button("Save bottle") {
                         appState.completeOnboarding()
                         router.goHome()
                         dismiss()
@@ -87,7 +87,7 @@ struct BarcodeScanView: View {
             VStack {
                 Spacer()
 
-                Text("Hold steady until the code locks in")
+                Text("Hold steady until the barcode is scanned")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
@@ -96,16 +96,6 @@ struct BarcodeScanView: View {
                     .padding(.bottom, 22)
             }
 
-            VStack {
-                Spacer()
-
-                Text("Hold steady until the barcode is scanned")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.38), in: Capsule())
-                    .padding(.bottom, 22)
             if coordinator.permissionDenied {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(Color.black.opacity(0.58))
@@ -121,40 +111,40 @@ struct BarcodeScanView: View {
     private func handleBarcode(_ code: String) {
         if onboardingMode {
             appState.setExpectedBarcode(code)
-            bannerMessage = "Barcode captured: \(code)"
+            bannerMessage = "Bottle barcode saved: \(code)"
             return
         }
 
         if let expected = appState.settings.expectedBarcode {
             if code == expected {
                 appState.markAppliedToday(method: .barcode, barcode: code, featureDistance: nil, barcodeConfidence: nil)
-                bannerMessage = "Verified and marked for today."
+                bannerMessage = "Today's sunscreen is recorded."
                 router.goHome()
                 dismiss()
             } else {
-                bannerMessage = "This barcode does not match your expected bottle."
+                bannerMessage = "This barcode does not match your saved bottle."
             }
         } else {
-            bannerMessage = "Set an expected barcode first from onboarding."
+            bannerMessage = "Set your bottle barcode during setup first."
         }
     }
 
     private func feedbackTitle(for message: String) -> String {
-        if message.contains("Verified") || message.contains("captured") {
+        if message.contains("recorded") || message.contains("saved") {
             return "Barcode accepted"
         }
         return "Barcode issue"
     }
 
     private func feedbackTint(for message: String) -> Color {
-        if message.contains("Verified") || message.contains("captured") {
+        if message.contains("recorded") || message.contains("saved") {
             return AppPalette.success
         }
         return AppPalette.danger
     }
 
     private func feedbackSymbol(for message: String) -> String {
-        if message.contains("Verified") || message.contains("captured") {
+        if message.contains("recorded") || message.contains("saved") {
             return "checkmark.seal.fill"
         }
         return "xmark.circle.fill"

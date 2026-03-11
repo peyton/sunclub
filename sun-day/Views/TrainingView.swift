@@ -6,15 +6,15 @@ struct TrainingView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var coordinator = TrainingCoordinator()
-    @State private var message = "Move around the bottle and capture about 15 photos from different angles."
+    @State private var message = "Move around the bottle and capture about 15 photos."
     @State private var targetCount = 15
 
     var body: some View {
         SunScreen {
             SunSectionHeader(
                 eyebrow: "Bottle training",
-                title: "Train bottle recognition",
-                detail: "Capture several views of your bottle to improve selfie and live video verification. Everything stays on this device."
+                title: "Train your bottle",
+                detail: "Capture several views of your bottle so daily check-ins feel faster and more reliable."
             )
 
             cameraCard
@@ -37,7 +37,7 @@ struct TrainingView: View {
                     Button("Done") {
                         if appState.trainingAssets.count == 0 {
                             if coordinator.capturedCount > 0 {
-                                message = "Capture a few more views for better recognition."
+                                message = "Capture a few more views to strengthen matching."
                             } else {
                                 message = "Capture at least one photo first."
                             }
@@ -132,7 +132,7 @@ struct TrainingView: View {
     private func onCapture(_ result: TrainingCaptureResult) {
         appState.addTrainingFeature(result.featurePrintData, width: result.width, height: result.height)
         if coordinator.capturedCount >= targetCount {
-            message = "Training complete. You can return to the home screen."
+            message = "Training complete. Your bottle is ready for check-ins."
         } else {
             message = "Photo saved. Keep moving around the bottle."
         }

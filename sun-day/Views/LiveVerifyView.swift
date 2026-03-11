@@ -15,8 +15,8 @@ struct LiveVerifyView: View {
         SunScreen {
             SunSectionHeader(
                 eyebrow: "Live video",
-                title: "Verify with live video",
-                detail: "Keep the bottle inside the guide. When the match stays stable, today's sunscreen can be recorded automatically."
+                title: "Live video check-in",
+                detail: "Keep the bottle inside the guide. When the match stays stable, today's check-in can be recorded automatically."
             )
 
             cameraCard
@@ -29,7 +29,7 @@ struct LiveVerifyView: View {
             )
 
             VStack(spacing: 12) {
-                Button("Mark Applied") {
+                Button("Record check-in") {
                     appState.markAppliedToday(
                         method: .video,
                         barcode: appState.settings.expectedBarcode,
@@ -92,7 +92,7 @@ struct LiveVerifyView: View {
 
             VStack {
                 HStack {
-                    SunCameraOverlayLabel(title: "Live model", tint: AppPalette.coral)
+                    SunCameraOverlayLabel(title: "Live match", tint: AppPalette.coral)
                     Spacer(minLength: 0)
                     SunCameraOverlayLabel(title: detected ? "Detected" : "Searching", tint: detected ? AppPalette.success : AppPalette.warning)
                 }
@@ -110,7 +110,7 @@ struct LiveVerifyView: View {
                 VStack {
                     Spacer()
 
-                    Text("Detection stable")
+                    Text("Bottle detected")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
@@ -120,20 +120,10 @@ struct LiveVerifyView: View {
                 }
             }
 
-            if detected {
-                VStack {
-                    Spacer()
-
-                    Text("Bottle detected")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(AppPalette.success.opacity(0.94), in: Capsule())
-                        .padding(.bottom, 20)
             if coordinator.permissionDenied {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(Color.black.opacity(0.58))
+
                 Text("Camera access denied")
                     .foregroundStyle(.white)
             }

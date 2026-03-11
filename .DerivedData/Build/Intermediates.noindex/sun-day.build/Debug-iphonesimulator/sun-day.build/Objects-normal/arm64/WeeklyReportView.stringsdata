@@ -4,7 +4,7 @@
     "Localizable": [
       {
         "comment": "",
-        "key": "Weekly Report",
+        "key": "Club Report",
         "location": {
           "startingColumn": 26,
           "startingLine": 20
@@ -12,7 +12,7 @@
       },
       {
         "comment": "",
-        "key": "Generate another pep talk",
+        "key": "Show another note",
         "location": {
           "startingColumn": 20,
           "startingLine": 15
@@ -36,7 +36,7 @@
       },
       {
         "comment": "",
-        "key": "Weekly report",
+        "key": "Club report",
         "location": {
           "startingColumn": 18,
           "startingLine": 154
@@ -44,7 +44,7 @@
       },
       {
         "comment": "",
-        "key": "No misses. The bottle would like a tiny ovation.",
+        "key": "Strong week. Keep it going.",
         "location": {
           "startingColumn": 46,
           "startingLine": 162
@@ -52,9 +52,9 @@
       },
       {
         "comment": "",
-        "key": "You missed a few, but the trend line is still redeemable.",
+        "key": "Reset today and keep the routine moving.",
         "location": {
-          "startingColumn": 99,
+          "startingColumn": 78,
           "startingLine": 162
         }
       }
