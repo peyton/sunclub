@@ -12,8 +12,8 @@ final class AppState {
     private let calendar = Calendar.current
 
     init(context: ModelContext) {
-        self.modelContext = context
-        self.settings = Self.loadOrCreateSettings(from: context)
+        modelContext = context
+        settings = Self.loadOrCreateSettings(from: context)
         refresh()
     }
 
@@ -46,6 +46,25 @@ final class AppState {
         try? modelContext.save()
     }
 
+    private func saveAndRescheduleReminders() {
+        save()
+        Task {
+            await NotificationManager.shared.scheduleReminders(using: self)
+        }
+    }
+
+    private func nextPhrase(catalog: [String], state: KeyPath<Settings, Data?>, setState: (Data) -> Void) -> String {
+        let next = PhraseRotation.nextPhrase(from: settings[keyPath: state], catalog: catalog)
+        setState(next.1)
+        save()
+        return next.0
+    }
+
+    private func refreshAndSave() {
+        refresh()
+        save()
+    }
+
     // MARK: - Onboarding and settings
     func completeOnboarding() {
         settings.hasCompletedOnboarding = true
@@ -60,61 +79,52 @@ final class AppState {
     func updateDailyReminder(hour: Int, minute: Int) {
         settings.reminderHour = hour
         settings.reminderMinute = minute
-        save()
-        Task {
-            await NotificationManager.shared.scheduleReminders(using: self)
-        }
+        saveAndRescheduleReminders()
     }
 
     func updateWeeklyReminder(hour: Int, weekday: Int) {
         settings.weeklyHour = hour
         settings.weeklyWeekday = max(1, min(7, weekday))
-        save()
-        Task {
-            await NotificationManager.shared.scheduleReminders(using: self)
-        }
+        saveAndRescheduleReminders()
     }
 
     // MARK: - Phrase bag rotation
     func nextDailyPhrase() -> String {
-        let next = PhraseRotation.nextPhrase(from: settings.dailyPhraseState, catalog: PhraseBank.dailyPhrases)
-        settings.dailyPhraseState = next.1
-        save()
-        return next.0
+        nextPhrase(catalog: PhraseBank.dailyPhrases, state: \.dailyPhraseState) {
+            settings.dailyPhraseState = $0
+        }
     }
 
     func nextWeeklyPhrase() -> String {
-        let next = PhraseRotation.nextPhrase(from: settings.weeklyPhraseState, catalog: PhraseBank.weeklyPhrases)
-        settings.weeklyPhraseState = next.1
-        save()
-        return next.0
+        nextPhrase(catalog: PhraseBank.weeklyPhrases, state: \.weeklyPhraseState) {
+            settings.weeklyPhraseState = $0
+        }
     }
 
     // MARK: - Verification records
     func markAppliedToday(method: VerificationMethod, barcode: String?, featureDistance: Double?, barcodeConfidence: Double?) {
-        let today = calendar.startOfDay(for: Date())
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
         if let existing = record(for: today) {
-            existing.verifiedAt = Date()
+            existing.verifiedAt = now
             existing.method = method
             existing.barcode = barcode
             existing.featureDistance = featureDistance
             existing.barcodeDistance = barcodeConfidence
-            refresh()
-            save()
+            refreshAndSave()
             return
         }
 
         let record = DailyRecord(
             startOfDay: today,
-            verifiedAt: Date(),
+            verifiedAt: now,
             method: method,
             barcode: barcode,
             featureDistance: featureDistance,
             barcodeDistance: barcodeConfidence
         )
         modelContext.insert(record)
-        refresh()
-        save()
+        refreshAndSave()
     }
 
     func record(for day: Date) -> DailyRecord? {
@@ -126,14 +136,12 @@ final class AppState {
     func addTrainingFeature(_ data: Data, width: Int, height: Int) {
         let asset = TrainingAsset(featurePrintData: data, imageWidth: width, imageHeight: height)
         modelContext.insert(asset)
-        refresh()
-        save()
+        refreshAndSave()
     }
 
     func clearTrainingData() {
         trainingAssets.forEach(modelContext.delete)
-        refresh()
-        save()
+        refreshAndSave()
     }
 
     func hasTrainingData() -> Bool { !trainingAssets.isEmpty }
