@@ -19,6 +19,10 @@ struct WeeklyReport: Equatable {
 }
 
 enum CalendarAnalytics {
+    private static func normalizedDays(_ dates: [Date], calendar: Calendar) -> Set<Date> {
+        Set(dates.map { calendar.startOfDay(for: $0) })
+    }
+
     static func monthGridDays(for month: Date, calendar: Calendar = Calendar.current) -> [Date] {
         guard let start = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) else { return [] }
         let firstWeekday = calendar.component(.weekday, from: start)
@@ -54,7 +58,7 @@ enum CalendarAnalytics {
     }
 
     static func currentStreak(records: [Date], now: Date, calendar: Calendar = Calendar.current) -> Int {
-        let byDay = Set(records.map { calendar.startOfDay(for: $0) })
+        let byDay = normalizedDays(records, calendar: calendar)
         let today = calendar.startOfDay(for: now)
 
         var cursor = byDay.contains(today) ? today : calendar.date(byAdding: .day, value: -1, to: today) ?? today
@@ -71,14 +75,7 @@ enum CalendarAnalytics {
     static func weeklyReport(records: [Date], now: Date, calendar: Calendar = Calendar.current) -> WeeklyReport {
         let today = calendar.startOfDay(for: now)
         let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-        var seen = Set<Date>()
-
-        for record in records {
-            let day = calendar.startOfDay(for: record)
-            if (start...today).contains(day) {
-                seen.insert(day)
-            }
-        }
+        let seen = Set(normalizedDays(records, calendar: calendar).filter { (start...today).contains($0) })
 
         var missed: [String] = []
         var dayCursor = start
@@ -89,8 +86,7 @@ enum CalendarAnalytics {
             dayCursor = calendar.date(byAdding: .day, value: 1, to: dayCursor) ?? dayCursor
         }
 
-        let allRecords = records.map { calendar.startOfDay(for: $0) }
-        let streak = currentStreak(records: allRecords, now: now, calendar: calendar)
+        let streak = currentStreak(records: records, now: now, calendar: calendar)
 
         return WeeklyReport(
             startDate: start,
