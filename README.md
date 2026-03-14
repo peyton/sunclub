@@ -1,8 +1,8 @@
-# SunscreenTrack
+# Sunclub
 
 ## Overview
 
-SunscreenTrack is an offline, camera-first iOS app built with **Swift 6**, **SwiftUI**, and **SwiftData** that helps you track sunscreen application each day.
+Sunclub is an offline, camera-first iOS app built with **Swift 6**, **SwiftUI**, and **SwiftData** that helps you track sunscreen application each day.
 
 Core flow:
 
@@ -27,17 +27,17 @@ Core flow:
 
 ## Project structure
 
-- `sun-day/SunscreenTrackApp.swift` — App entrypoint and dependency bootstrapping.
-- `sun-day/Shared` — app routing and root shell (`AppRoute`, `AppStateContainer`, `RootView`).
-- `sun-day/Models` — SwiftData models.
-- `sun-day/Services` — camera coordinators, Vision feature-print service, notifications, calendar analytics, permissions, phrase rotation.
-- `sun-day/Views` — onboarding, home, barcode, selfie, live video verify, training, calendar, weekly report views.
-- `sun-dayTests` — unit tests for day status, streak, and phrase rotation.
-- `sun-dayUITests` — default boilerplate UI test target.
+- `app/Sunclub/SunclubApp.swift` — App entrypoint and dependency bootstrapping.
+- `app/Sunclub/Shared` — app routing and root shell (`AppRoute`, `AppStateContainer`, `RootView`).
+- `app/Sunclub/Models` — SwiftData models.
+- `app/Sunclub/Services` — camera coordinators, Vision feature-print service, notifications, calendar analytics, permissions, phrase rotation.
+- `app/Sunclub/Views` — onboarding, home, barcode, selfie, live video verify, training, calendar, weekly report views.
+- `app/SunclubTests` — unit tests for day status, streak, and phrase rotation.
+- `app/SunclubUITests` — default boilerplate UI test target.
 
 ## Build/run
 
-1. Open `sun-day.xcodeproj` in Xcode.
+1. Open `app/Sunclub.xcodeproj` in Xcode.
 2. Select a simulator or device running iOS 18.0+.
 3. Build and run.
 
@@ -53,7 +53,7 @@ The repo includes a standalone Vision feature-print benchmark that does not depe
 Run it from Terminal:
 
 ```sh
-cd /Users/peyton/Projects/sun-day
+cd /Users/peyton/Projects/sunclub
 ./Benchmarks/benchmark.sh --strict
 ```
 
@@ -79,4 +79,4 @@ Assumption:
 - Default daily reminder: **08:00** local time.
 - Default weekly report reminder: **Sunday 18:00** local time.
 - Video verification threshold uses a fixed distance threshold and consecutive-frame debounce (2+ seconds equivalent).
-- `SunscreenTrack` module name is set in the project so unit tests import `@testable import SunscreenTrack`.
+- `Sunclub` module name is set in the project so unit tests import `@testable import Sunclub`.

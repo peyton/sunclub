@@ -1,8 +1,8 @@
 import Foundation
 import XCTest
-@testable import SunscreenTrack
+@testable import Sunclub
 
-final class SunscreenTrackTests: XCTestCase {
+final class SunclubTests: XCTestCase {
     @MainActor
     func testDayStatusAppliesToFutureTodayAndPast() throws {
         let calendar = Calendar.current

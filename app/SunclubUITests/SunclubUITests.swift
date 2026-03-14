@@ -1,13 +1,13 @@
 //
-//  sun_dayUITests.swift
-//  sun-dayUITests
+//  SunclubUITests.swift
+//  SunclubUITests
 //
 //  Created by Peyton Randolph on 2/23/26.
 //
 
 import XCTest
 
-final class sun_dayUITests: XCTestCase {
+final class SunclubUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
@@ -33,7 +33,7 @@ final class sun_dayUITests: XCTestCase {
         let scanButton = app.buttons["Scan bottle barcode"]
         let trainButton = app.buttons["Train bottle"]
         let notificationsButton = app.buttons["Notifications"]
-        let joinButton = app.buttons["Join Sun Club"]
+        let joinButton = app.buttons["Join Sunclub"]
 
         XCTAssertTrue(scanButton.waitForExistence(timeout: 5))
         XCTAssertTrue(trainButton.waitForExistence(timeout: 5))

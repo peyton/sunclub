@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct SunscreenTrackApp: App {
+struct SunclubApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState: AppState
     @State private var router = AppRouter()

@@ -90,7 +90,7 @@ struct OnboardingView: View {
 
             SunInfoRow(
                 title: "Step 1: Lock in your bottle",
-                detail: appState.settings.expectedBarcode == nil ? "Scan the UPC or EAN on your bottle once so Sun Club knows what to look for." : "Your bottle barcode is saved. You can scan again later if you switch products.",
+                detail: appState.settings.expectedBarcode == nil ? "Scan the UPC or EAN on your bottle once so Sunclub knows what to look for." : "Your bottle barcode is saved. You can scan again later if you switch products.",
                 systemImage: "barcode.viewfinder",
                 tint: appState.settings.expectedBarcode == nil ? AppPalette.sun : AppPalette.success
             )
@@ -153,7 +153,7 @@ struct OnboardingView: View {
             }
             .frame(width: columnWidth)
 
-            Button("Join Sun Club") {
+            Button("Join Sunclub") {
                 appState.completeOnboarding()
                 Task {
                     await NotificationManager.shared.scheduleReminders(using: appState)

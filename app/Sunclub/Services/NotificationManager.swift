@@ -9,7 +9,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private let center = UNUserNotificationCenter.current()
     private let calendar = Calendar.current
-    private let bgTaskID = "com.peyton.sun-day.weekly-report"
+    private let bgTaskID = "com.peyton.sunclub.weekly-report"
     private let dailyCategoryID = "SUNSCREEN_DAILY"
     private let actionScanID = "SCAN_BARCODE_ACTION"
     private let actionSelfieID = "TAKE_SELFIE_ACTION"
@@ -79,7 +79,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             let phrase = state.nextDailyPhrase()
 
             let content = UNMutableNotificationContent()
-            content.title = "Sun Club check-in"
+            content.title = "Sunclub check-in"
             content.body = phrase
             content.sound = .default
             content.categoryIdentifier = dailyCategoryID
@@ -104,8 +104,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func scheduleWeeklyFallback(using state: AppState) {
         let content = UNMutableNotificationContent()
-        content.title = "Sun Club weekly report"
-        content.body = "Open Sun Club to view your latest 7-day report."
+        content.title = "Sunclub weekly report"
+        content.body = "Open Sunclub to view your latest 7-day report."
         content.categoryIdentifier = dailyCategoryID
         content.userInfo = [routeKey: weeklyRoute, "type": "weekly_fallback"]
 
@@ -169,7 +169,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             try context.save()
 
             let content = UNMutableNotificationContent()
-            content.title = "Sun Club weekly report"
+            content.title = "Sunclub weekly report"
             content.body = "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
                 + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
                 + phrase.0
