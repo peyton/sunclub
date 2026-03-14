@@ -2,7 +2,7 @@ import Foundation
 
 enum PhraseBank {
     static let dailyPhrases: [String] = [
-        "Sun Club check-in: bottle ready, routine ready.",
+        "Sunclub check-in: bottle ready, routine ready.",
         "Start today protected and keep the streak moving.",
         "Find your bottle, log your check-in, get on with the day.",
         "Good routines start early. Sunscreen counts.",
@@ -42,7 +42,7 @@ enum PhraseBank {
         "Daily check-ins make good sunscreen easier to keep.",
         "Keep your bottle in rotation.",
         "Today's protection starts with one small step.",
-        "Sun Club check-in: stay ready for this bottle and the next.",
+        "Sunclub check-in: stay ready for this bottle and the next.",
         "Strong routine, low drama, one bottle at a time.",
         "Every check-in makes the habit easier to keep."
     ]

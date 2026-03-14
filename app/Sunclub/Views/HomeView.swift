@@ -270,7 +270,7 @@ struct HomeView: View {
                 SunPill(title: streakLabel, systemImage: "flame.fill", tint: AppPalette.coral)
             }
 
-            Text("Sun Club")
+            Text("Sunclub")
                 .font(.system(size: 42, weight: .heavy, design: .rounded))
                 .foregroundStyle(AppPalette.ink)
 
