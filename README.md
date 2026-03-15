@@ -1,82 +1,65 @@
 # Sunclub
 
-## Overview
+Sunclub is an offline iOS app for daily sunscreen verification. The current app follows a 9-screen flow based on the latest mockups while keeping the real on-device barcode scan, bottle-model training, live verification, streak tracking, weekly summary, and reminder scheduling behavior.
 
-Sunclub is an offline, camera-first iOS app built with **Swift 6**, **SwiftUI**, and **SwiftData** that helps you track sunscreen application each day.
+## Flow
 
-Core flow:
+1. `Welcome`
+   - Intro screen with the Sunclub mark and `Get Started`.
+2. `Scan Barcode`
+   - Uses the rear camera and `BarcodeScannerCoordinator`.
+   - The first valid barcode is saved as the expected bottle barcode.
+3. `Train Photos`
+   - Uses the rear camera and `TrainingCoordinator`.
+   - Captures exactly 5 photos to build the on-device bottle model.
+4. `Enable Notifications`
+   - Requests local notification permission.
+   - Onboarding completes whether permission is allowed or denied.
+5. `Home Dashboard`
+   - Shows the greeting, current streak card, `Verify Now`, and a gear button for Settings.
+6. `Verify - Camera`
+   - Uses `VideoVerificationCoordinator`.
+   - Automatically verifies when the trained bottle model is recognized for the required duration.
+7. `Verify Success`
+   - Confirms the verification and shows the updated streak.
+8. `Weekly Summary`
+   - Shows the real `appliedCount / 7` result for the past week.
+9. `Settings`
+   - `Notification Time` updates the daily reminder time.
+   - `Retrain Bottle Model` clears the saved training features and reopens the training flow.
+   - `Manage Subscription` hands off to Apple subscription management when available.
 
-- Set your bottle’s expected barcode during onboarding.
-- Capture training photos from the camera only and train the on-device object model.
-- Verify daily via barcode scan, selfie, or live video feature-print matching.
-- Receive local notifications in the morning and a weekly on-device summary.
+## What Still Works
 
-## How it works
+- Barcode capture stays on-device and persists the expected bottle barcode in SwiftData.
+- Bottle training still stores local feature-print data in `TrainingAsset`.
+- Daily verification still uses the live camera matcher and records a `DailyRecord`.
+- Streaks and weekly summaries still come from local `CalendarAnalytics`.
+- Reminder scheduling still uses `UNUserNotificationCenter` and the existing weekly background refresh path.
+- All data remains local. There are no accounts, uploads, or analytics SDKs.
 
-- **No network, no accounts, no analytics**
-  - All processing and storage is local.
-  - Vision and AVKit/AVFoundation are used only on-device.
-- **Camera-only input**
-  - No photo library APIs or selectors are used.
-  - The app requests only camera permission (`NSCameraUsageDescription`).
-- **Local notifications only**
-  - Daily reminders and weekly reports are scheduled locally with `UNUserNotificationCenter`.
-  - Weekly report scheduling uses `BGAppRefreshTask` for best-effort primary report delivery.
-- **SwiftData storage**
-  - `DailyRecord`, `TrainingAsset`, and `Settings` are stored in local SwiftData models.
+## Project Structure
 
-## Project structure
+- `app/Sunclub/Shared`
+  - app routing, root navigation, and the mockup-driven screen shell/theme
+- `app/Sunclub/Views`
+  - the 9-screen product flow
+- `app/Sunclub/Services`
+  - barcode scan, training capture, live verification, notifications, and analytics
+- `app/Sunclub/Models`
+  - `Settings`, `DailyRecord`, and `TrainingAsset`
+- `app/SunclubTests`
+  - analytics, reminder persistence, retraining, and verification-success state tests
+- `app/SunclubUITests`
+  - flow tests that use UITEST-only demo actions instead of real camera/notification permissions
 
-- `app/Sunclub/SunclubApp.swift` — App entrypoint and dependency bootstrapping.
-- `app/Sunclub/Shared` — app routing and root shell (`AppRoute`, `AppStateContainer`, `RootView`).
-- `app/Sunclub/Models` — SwiftData models.
-- `app/Sunclub/Services` — camera coordinators, Vision feature-print service, notifications, calendar analytics, permissions, phrase rotation.
-- `app/Sunclub/Views` — onboarding, home, barcode, selfie, live video verify, training, calendar, weekly report views.
-- `app/SunclubTests` — unit tests for day status, streak, and phrase rotation.
-- `app/SunclubUITests` — default boilerplate UI test target.
+## Build and Run
 
-## Build/run
+1. Open [`/Users/peyton/.codex/worktrees/0845/sunclub/app/Sunclub.xcodeproj`](/Users/peyton/.codex/worktrees/0845/sunclub/app/Sunclub.xcodeproj) in Xcode.
+2. Select an iPhone simulator or device running iOS 18.0+.
+3. Build and run the `Sunclub` scheme.
 
-1. Open `app/Sunclub.xcodeproj` in Xcode.
-2. Select a simulator or device running iOS 18.0+.
-3. Build and run.
+## Notes
 
-The app requires:
-
-- Camera permission (for barcode, selfie, and training capture)
-- Notification permission (for reminders and weekly reports)
-
-## Independent recognition benchmark
-
-The repo includes a standalone Vision feature-print benchmark that does not depend on launching the iOS app.
-
-Run it from Terminal:
-
-```sh
-cd /Users/peyton/Projects/sunclub
-./Benchmarks/benchmark.sh --strict
-```
-
-Benchmark inputs:
-
-- raw product photos are pulled into `Benchmarks/Datasets/raw`
-- generated train/test variants are written to `Benchmarks/Datasets/generated`
-- the benchmark compares the legacy min-distance rule against the app's current selfie and video consensus matchers
-
-Assumption:
-
-- because the production app is trained from user-captured camera photos, the benchmark starts from public packshots and applies deterministic view/lighting/background augmentations to create a repeatable offline test set
-
-## Privacy note
-
-- Barcode and object recognition happen entirely on-device.
-- Feature prints are serialized locally and stored with SwiftData only.
-- No images are sent to servers or cloud storage.
-- No third-party SDKs are used.
-
-## Assumptions documented in code
-
-- Default daily reminder: **08:00** local time.
-- Default weekly report reminder: **Sunday 18:00** local time.
-- Video verification threshold uses a fixed distance threshold and consecutive-frame debounce (2+ seconds equivalent).
-- `Sunclub` module name is set in the project so unit tests import `@testable import Sunclub`.
+- `Manage Subscription` is a system handoff, not an in-app billing screen.
+- UITests use `UITEST_MODE` and bypass real camera and notification permissions so the new flow can be exercised end to end in automation.

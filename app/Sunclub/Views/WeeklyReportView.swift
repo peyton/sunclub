@@ -2,166 +2,72 @@ import SwiftUI
 
 struct WeeklyReportView: View {
     @Environment(AppState.self) private var appState
-    @State private var report: WeeklyReport = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
-    @State private var encouragement = ""
+    @Environment(AppRouter.self) private var router
+    @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
 
     var body: some View {
-        SunScreen {
-            heroCard
-            metricsGrid
-            missesCard
-            encouragementCard
+        SunLightScreen {
+            VStack(alignment: .leading, spacing: 28) {
+                SunLightHeader(title: "Weekly Summary", showsBack: true) {
+                    router.goHome()
+                }
 
-            Button("Show another note") {
-                encouragement = appState.nextWeeklyPhrase()
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(report.appliedSummaryText)
+                        .font(.system(size: 54, weight: .light))
+                        .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
+                        .accessibilityIdentifier("weekly.summaryValue")
+
+                    Text("Days Applied This Week")
+                        .font(.system(size: 17))
+                        .foregroundStyle(AppPalette.ink)
+                }
+
+                weeklyChart
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                Spacer(minLength: 320)
             }
-            .buttonStyle(SunSecondaryButtonStyle())
         }
-        .navigationTitle("Club Report")
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             report = appState.last7DaysReport()
-            encouragement = appState.nextWeeklyPhrase()
         }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var completionRatio: Double {
-        guard report.totalDays > 0 else { return 0 }
-        return Double(report.appliedCount) / Double(report.totalDays)
-    }
-
-    private var periodLabel: String {
-        "\(report.startDate.formatted(.dateTime.month(.abbreviated).day())) - \(report.endDate.formatted(.dateTime.month(.abbreviated).day()))"
-    }
-
-    private var heroCard: some View {
-        ViewThatFits {
-            HStack(spacing: 18) {
-                progressRing
-                reportCopy
-            }
-
-            VStack(alignment: .leading, spacing: 18) {
-                progressRing
-                reportCopy
-            }
-        }
-        .sunCard()
-    }
-
-    private var metricsGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            MetricTile(value: "\(report.appliedCount)", title: "check-ins", tint: AppPalette.success)
-            MetricTile(value: "\(report.missedDays.count)", title: "missed", tint: AppPalette.danger)
-            MetricTile(value: "\(report.streak)", title: "streak", tint: AppPalette.coral)
-        }
-    }
-
-    private var missesCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SunSectionHeader(
-                eyebrow: "Routine",
-                title: report.missedDays.isEmpty ? "Routine locked in" : "Days to recover",
-                detail: report.missedDays.isEmpty ? "No missed days this week." : "These are the days with no successful verification."
-            )
-
-            if report.missedDays.isEmpty {
-                SunStatusCard(
-                    title: "No misses this week",
-                    detail: "You verified sunscreen every day this week.",
-                    tint: AppPalette.success,
-                    symbol: "checkmark.circle.fill"
-                )
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 10)], spacing: 10) {
-                    ForEach(report.missedDays, id: \.self) { day in
-                        Text(day)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppPalette.ink)
-                            .frame(maxWidth: .infinity, minHeight: 42)
-                            .background(AppPalette.danger.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(AppPalette.danger.opacity(0.18), lineWidth: 1)
-                            }
+    private var weeklyChart: some View {
+        VStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(AppPalette.muted)
+                .frame(width: 100, height: 100)
+                .overlay {
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(18), spacing: 6), count: 3), spacing: 6) {
+                        ForEach(Array(weekProgress.enumerated()), id: \.offset) { _, applied in
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(applied ? AppPalette.sun : Color.white.opacity(0.9))
+                                .frame(width: 18, height: 18)
+                        }
                     }
                 }
-            }
-        }
-        .sunCard()
-    }
 
-    private var encouragementCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SunSectionHeader(
-                eyebrow: "Club note",
-                title: "This week's message",
-                detail: "This message rotates from the weekly phrase set and stays on-device."
-            )
-
-            Text(encouragement)
-                .font(.title3.weight(.medium))
-                .foregroundStyle(AppPalette.ink)
-                .multilineTextAlignment(.leading)
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    LinearGradient(
-                        colors: [AppPalette.sun.opacity(0.16), AppPalette.coral.opacity(0.12)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-                )
-        }
-        .sunCard()
-    }
-
-    private var progressRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.52), lineWidth: 16)
-
-            Circle()
-                .trim(from: 0, to: completionRatio)
-                .stroke(
-                    AngularGradient(
-                        colors: [AppPalette.sun, AppPalette.coral, AppPalette.sea],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 16, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-
-            VStack(spacing: 4) {
-                Text("\(report.appliedCount)/\(report.totalDays)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text("days")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(AppPalette.softInk)
-            }
-        }
-        .frame(width: 138, height: 138)
-    }
-
-    private var reportCopy: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SunPill(title: "Club report", systemImage: "chart.bar.fill", tint: AppPalette.sun)
-
-            Text("Club report")
-                .font(.system(size: 36, weight: .heavy, design: .rounded))
-                .foregroundStyle(AppPalette.ink)
-
-            Text(periodLabel)
-                .font(.subheadline)
+            Text(report.missedDays.isEmpty ? "Perfect week" : "Missed: \(report.missedDays.joined(separator: ", "))")
+                .font(.system(size: 14))
                 .foregroundStyle(AppPalette.softInk)
+                .multilineTextAlignment(.center)
+        }
+    }
 
-            Text(report.missedDays.isEmpty ? "Strong week. Keep it going." : "Reset today and keep the routine moving.")
-                .font(.callout)
-                .foregroundStyle(AppPalette.softInk)
+    private var weekProgress: [Bool] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: report.endDate)
+        let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
+        let records = Set(appState.recordStartsForTesting())
+
+        return (0..<7).compactMap { offset in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: start) else {
+                return nil
+            }
+            return records.contains(calendar.startOfDay(for: day))
         }
     }
 }

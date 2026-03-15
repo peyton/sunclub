@@ -11,8 +11,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private let calendar = Calendar.current
     private let bgTaskID = "com.peyton.sunclub.weekly-report"
     private let dailyCategoryID = "SUNSCREEN_DAILY"
-    private let actionScanID = "SCAN_BARCODE_ACTION"
-    private let actionSelfieID = "TAKE_SELFIE_ACTION"
+    private let actionVerifyID = "VERIFY_NOW_ACTION"
     private let routeKey = "targetRoute"
     private let homeRoute = "home"
     private let weeklyRoute = "weekly"
@@ -41,9 +40,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         if !configured {
             configured = true
 
-            let actionScan = UNNotificationAction(identifier: actionScanID, title: "Scan Barcode", options: [.foreground])
-            let actionSelfie = UNNotificationAction(identifier: actionSelfieID, title: "Take Selfie", options: [.foreground])
-            let category = UNNotificationCategory(identifier: dailyCategoryID, actions: [actionScan, actionSelfie], intentIdentifiers: [])
+            let actionVerify = UNNotificationAction(identifier: actionVerifyID, title: "Verify Now", options: [.foreground])
+            let category = UNNotificationCategory(identifier: dailyCategoryID, actions: [actionVerify], intentIdentifiers: [])
 
             center.setNotificationCategories([category])
             center.delegate = self
@@ -238,13 +236,11 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         defer { completionHandler() }
 
         switch response.actionIdentifier {
-        case actionScanID:
-            routeHandler(.barcodeScan)
-        case actionSelfieID:
-            routeHandler(.selfie)
+        case actionVerifyID:
+            routeHandler(.verifyCamera)
         default:
             if targetRoute == weeklyRoute {
-                routeHandler(.weeklyReport)
+                routeHandler(.weeklySummary)
             } else {
                 routeHandler(.home)
             }

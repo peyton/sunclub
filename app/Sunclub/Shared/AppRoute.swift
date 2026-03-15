@@ -2,13 +2,15 @@ import Foundation
 import Observation
 
 enum AppRoute: String, Hashable, Codable, Identifiable {
+    case welcome
+    case scanBarcode
+    case trainPhotos
+    case enableNotifications
     case home
-    case barcodeScan
-    case selfie
-    case videoVerify
-    case training
-    case calendar
-    case weeklyReport
+    case verifyCamera
+    case verifySuccess
+    case weeklySummary
+    case settings
 
     var id: String { rawValue }
 }
@@ -18,7 +20,7 @@ final class AppRouter {
     var path: [AppRoute] = []
 
     func open(_ route: AppRoute) {
-        if route == .home {
+        if route == .home || route == .welcome {
             path.removeAll()
         } else {
             path = [route]
@@ -26,6 +28,10 @@ final class AppRouter {
     }
 
     func goHome() {
+        path.removeAll()
+    }
+
+    func goToWelcome() {
         path.removeAll()
     }
 }

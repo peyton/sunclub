@@ -16,6 +16,7 @@ struct WeeklyReport: Equatable {
     let streak: Int
 
     var missedCount: Int { max(totalDays - appliedCount, 0) }
+    var appliedSummaryText: String { "\(appliedCount) / \(totalDays)" }
 }
 
 enum CalendarAnalytics {

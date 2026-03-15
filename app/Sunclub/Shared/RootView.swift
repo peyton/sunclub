@@ -7,33 +7,45 @@ struct RootView: View {
     var body: some View {
         @Bindable var router = router
 
-        Group {
-            if appState.settings.hasCompletedOnboarding {
-                NavigationStack(path: $router.path) {
-                    HomeView()
-                        .navigationDestination(for: AppRoute.self) { route in
-                            switch route {
-                            case .home:
-                                HomeView()
-                            case .barcodeScan:
-                                BarcodeScanView(onboardingMode: false)
-                            case .selfie:
-                                SelfieCaptureView()
-                            case .videoVerify:
-                                LiveVerifyView()
-                            case .training:
-                                TrainingView()
-                            case .calendar:
-                                CalendarGridView()
-                            case .weeklyReport:
-                                WeeklyReportView()
-                            }
-                        }
+        NavigationStack(path: $router.path) {
+            rootScreen
+                .navigationDestination(for: AppRoute.self) { route in
+                    destination(for: route)
                 }
-            } else {
-                OnboardingView()
-            }
         }
-        .tint(AppPalette.coral)
+        .tint(AppPalette.sun)
+    }
+
+    @ViewBuilder
+    private var rootScreen: some View {
+        if appState.settings.hasCompletedOnboarding {
+            HomeView()
+        } else {
+            WelcomeView()
+        }
+    }
+
+    @ViewBuilder
+    private func destination(for route: AppRoute) -> some View {
+        switch route {
+        case .welcome:
+            WelcomeView()
+        case .scanBarcode:
+            BarcodeScanView()
+        case .trainPhotos:
+            TrainingView()
+        case .enableNotifications:
+            EnableNotificationsView()
+        case .home:
+            HomeView()
+        case .verifyCamera:
+            LiveVerifyView()
+        case .verifySuccess:
+            VerificationSuccessView()
+        case .weeklySummary:
+            WeeklyReportView()
+        case .settings:
+            SettingsView()
+        }
     }
 }

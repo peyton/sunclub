@@ -3,138 +3,101 @@ import SwiftUI
 struct TrainingView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.dismiss) private var dismiss
 
     @StateObject private var coordinator = TrainingCoordinator()
-    @State private var message = "Move around the bottle and capture about 15 photos."
-    @State private var targetCount = 15
+    @State private var hasAdvanced = false
+
+    private let targetCount = 5
+
+    private var capturedCount: Int {
+        min(appState.trainingAssets.count, targetCount)
+    }
+
+    private var isRetraining: Bool {
+        appState.settings.hasCompletedOnboarding
+    }
 
     var body: some View {
-        SunScreen {
-            SunSectionHeader(
-                eyebrow: "Bottle training",
-                title: "Train your bottle",
-                detail: "Capture several views of your bottle so daily check-ins feel faster and more reliable."
-            )
-
-            cameraCard
-            progressCard
-
-            VStack(spacing: 12) {
-                Button("Capture photo") {
-                    coordinator.captureFrame(targetCount: targetCount)
+        SunDarkScreen {
+            VStack(spacing: 26) {
+                if !isRetraining {
+                    SunStepHeader(step: 2, total: 3)
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
 
-                HStack(spacing: 12) {
-                    Button("Reset training") {
-                        appState.clearTrainingData()
-                        coordinator.reset()
-                        message = "Training cleared. Start fresh."
-                    }
-                    .buttonStyle(SunSecondaryButtonStyle())
+                cameraCard
 
-                    Button("Done") {
-                        if appState.trainingAssets.count == 0 {
-                            if coordinator.capturedCount > 0 {
-                                message = "Capture a few more views to strengthen matching."
-                            } else {
-                                message = "Capture at least one photo first."
-                            }
-                        }
-                        router.goHome()
-                        dismiss()
-                    }
-                    .buttonStyle(SunSecondaryButtonStyle())
+                VStack(spacing: 12) {
+                    Text("Train Your Bottle")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white)
+                        .accessibilityIdentifier("training.title")
+
+                    Text("\(capturedCount) / \(targetCount) photos captured")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.55))
                 }
+                .frame(maxWidth: .infinity)
+            }
+        } footer: {
+            Button("Capture Photo") {
+                capturePhoto()
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("training.capturePhoto")
+        }
+        .onAppear {
+            coordinator.onResult = onCapture
+            coordinator.onError = { _ in }
+            if !appState.isUITesting {
+                coordinator.configure(initialCount: capturedCount)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear {
+            coordinator.stop()
+        }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private var cameraCard: some View {
         ZStack {
-            CameraPreview(session: coordinator.session)
-                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .frame(height: 430)
-                .onAppear {
-                    coordinator.onResult = onCapture
-                    coordinator.onError = { message = $0 }
-                    coordinator.configure()
-                }
-                .onDisappear {
-                    coordinator.stop()
-                }
-
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(Color.white.opacity(0.58), lineWidth: 1)
-
-            VStack {
-                HStack {
-                    SunCameraOverlayLabel(title: "Training", tint: AppPalette.sea)
-                    Spacer(minLength: 0)
-                    SunCameraOverlayLabel(title: "Move around the bottle", tint: AppPalette.sun)
-                }
-
-                Spacer()
-            }
-            .padding(18)
-
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(style: StrokeStyle(lineWidth: 2.5, dash: [10, 8]))
-                .foregroundStyle(AppPalette.sun.opacity(0.86))
-                .frame(width: 230, height: 270)
+            SunCameraFrame(session: coordinator.session)
 
             if coordinator.permissionDenied {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.black.opacity(0.58))
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.black.opacity(0.45))
 
                 Text("Camera access denied")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(.white)
-                    .font(.headline)
-            }
-
-            VStack {
-                Spacer()
-
-                if coordinator.isProcessing {
-                    Text("Saving training data")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.black.opacity(0.40), in: Capsule())
-                        .padding(.bottom, 18)
-                }
             }
         }
-        .sunCard(padding: 12)
     }
 
-    private var progressCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                MetricTile(value: "\(coordinator.capturedCount)", title: "captured", tint: AppPalette.sun)
-                MetricTile(value: "\(max(targetCount - coordinator.capturedCount, 0))", title: "remaining", tint: AppPalette.sea)
-            }
-
-            ProgressView(value: Double(coordinator.capturedCount), total: Double(targetCount))
-                .tint(AppPalette.coral)
-                .scaleEffect(x: 1, y: 1.5, anchor: .center)
-
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(AppPalette.softInk)
+    private func capturePhoto() {
+        if appState.isUITesting {
+            let payload = Data("uitest-\(UUID().uuidString)".utf8)
+            appState.addTrainingFeature(payload, width: 1, height: 1)
+            coordinator.recordSyntheticCapture()
+            advanceIfNeeded()
+            return
         }
-        .sunCard()
+
+        coordinator.captureFrame(targetCount: targetCount)
     }
 
     private func onCapture(_ result: TrainingCaptureResult) {
         appState.addTrainingFeature(result.featurePrintData, width: result.width, height: result.height)
-        if coordinator.capturedCount >= targetCount {
-            message = "Training complete. Your bottle is ready for check-ins."
+        advanceIfNeeded()
+    }
+
+    private func advanceIfNeeded() {
+        guard !hasAdvanced, capturedCount >= targetCount else { return }
+        hasAdvanced = true
+
+        if isRetraining {
+            router.open(.settings)
         } else {
-            message = "Photo saved. Keep moving around the bottle."
+            router.open(.enableNotifications)
         }
     }
 }
