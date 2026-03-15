@@ -294,6 +294,7 @@ struct SunCameraFrame: View {
     var body: some View {
         ZStack {
             CameraPreview(session: session)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)

@@ -23,7 +23,8 @@ final class BarcodeScannerCoordinator: NSObject, ObservableObject, AVCaptureMeta
             }
 
             await MainActor.run { permissionDenied = false }
-            await MainActor.run {
+            queue.async { [weak self] in
+                guard let self else { return }
                 if !started {
                     configure()
                     started = true
@@ -36,8 +37,11 @@ final class BarcodeScannerCoordinator: NSObject, ObservableObject, AVCaptureMeta
     }
 
     func stop() {
-        if session.isRunning {
-            session.stopRunning()
+        queue.async { [weak self] in
+            guard let self else { return }
+            if session.isRunning {
+                session.stopRunning()
+            }
         }
     }
 
