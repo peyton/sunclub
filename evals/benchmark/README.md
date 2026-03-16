@@ -13,14 +13,14 @@ Run it:
 
 ```sh
 cd /Users/peyton/Projects/sun-day
-./Benchmarks/benchmark.sh --strict
+./evals/benchmark/benchmark.sh --strict
 ```
 
 Artifacts:
 
-- raw source images: `Benchmarks/Datasets/raw`
-- generated benchmark images: `Benchmarks/Datasets/generated`
-- manifest: `Benchmarks/dataset_manifest.json`
+- raw source images: `evals/benchmark/Datasets/raw`
+- generated benchmark images: `evals/benchmark/Datasets/generated`
+- manifest: `evals/benchmark/dataset_manifest.json`
 
 Notes:
 

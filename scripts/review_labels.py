@@ -26,8 +26,8 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, default=ROOT / "manifests" / "test_manifest.jsonl")
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--seed", type=int, default=9)
-    parser.add_argument("--out-image", type=Path, default=ROOT / "benchmarks" / "manual_review_contact_sheet.jpg")
-    parser.add_argument("--out-samples", type=Path, default=ROOT / "benchmarks" / "manual_review_sample.jsonl")
+    parser.add_argument("--out-image", type=Path, default=ROOT / "evals/benchmark" / "manual_review_contact_sheet.jpg")
+    parser.add_argument("--out-samples", type=Path, default=ROOT / "evals/benchmark" / "manual_review_sample.jsonl")
     args = parser.parse_args()
 
     rows = read_jsonl(args.manifest)

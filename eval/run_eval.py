@@ -17,7 +17,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from metrics import calibration_bins, confusion_counts, pr_curve_auc, roc_curve_auc, threshold_sweep
 from report import plot_confusion_matrix, plot_pr_curves, plot_reliability_curve, write_final_report
 
-BENCHMARK_DIR = ROOT / "benchmarks"
+BENCHMARK_DIR = ROOT / "evals/benchmark"
 MANIFESTS_DIR = ROOT / "manifests"
 VAL_MANIFEST = MANIFESTS_DIR / "val_manifest.jsonl"
 TEST_MANIFEST = MANIFESTS_DIR / "test_manifest.jsonl"
