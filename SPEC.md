@@ -4,7 +4,7 @@
 
 Sunclub verifies a user's sunscreen bottle using Apple Vision's `VNFeaturePrintObservation`. During onboarding the user captures 5 photos of their bottle. At verification time, each camera frame is compared against those 5 stored feature prints using `FeaturePrintMatcher`.
 
-The current benchmark (in `Benchmarks/` and `eval/`) evaluates matching accuracy against a fixed enrollment set sourced from OpenBeautyFacts product images. This works for measuring general feature-print quality but doesn't reflect the real usage pattern: a specific user's 5 handheld photos of *their* bottle are the enrollment set, not catalog images.
+The current benchmark (in `evals/benchmark/` and `eval/`) evaluates matching accuracy against a fixed enrollment set sourced from OpenBeautyFacts product images. This works for measuring general feature-print quality but doesn't reflect the real usage pattern: a specific user's 5 handheld photos of *their* bottle are the enrollment set, not catalog images.
 
 This spec covers two things:
 
@@ -146,7 +146,7 @@ Extend the existing `eval/report.py` to produce:
 - Worst-case enrollment set highlighted with failure analysis.
 - Distance distribution histograms: matched positives vs. cross-bottle positives vs. negatives.
 
-Output to `Benchmarks/fewshot_report.md`.
+Output to `evals/benchmark/fewshot_report.md`.
 
 ---
 

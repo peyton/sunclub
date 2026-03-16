@@ -32,7 +32,7 @@ Key outputs:
 - `manifests/val_manifest.jsonl`
 - `manifests/test_manifest.jsonl`
 - `manifests/benchmark_manifest.jsonl`
-- `benchmarks/confusion_matrix.png`
-- `benchmarks/pr_curve.png`
-- `benchmarks/reliability_curve.png`
-- `benchmarks/final_report.md`
+- `evals/benchmark/confusion_matrix.png`
+- `evals/benchmark/pr_curve.png`
+- `evals/benchmark/reliability_curve.png`
+- `evals/benchmark/final_report.md`
