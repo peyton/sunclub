@@ -89,6 +89,11 @@ final class AppState {
         save()
     }
 
+    func clearExpectedBarcode() {
+        settings.expectedBarcode = nil
+        save()
+    }
+
     func updateDailyReminder(hour: Int, minute: Int) {
         settings.reminderHour = hour
         settings.reminderMinute = minute

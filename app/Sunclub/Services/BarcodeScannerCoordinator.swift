@@ -3,15 +3,15 @@ import Combine
 import Foundation
 
 final class BarcodeScannerCoordinator: NSObject, ObservableObject, AVCaptureMetadataOutputObjectsDelegate {
-    let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "sunscreen.scanner.queue")
-    private let metadataOutput = AVCaptureMetadataOutput()
+    nonisolated(unsafe) let session = AVCaptureSession()
+    nonisolated(unsafe) private let queue = DispatchQueue(label: "sunscreen.scanner.queue")
+    nonisolated(unsafe) private let metadataOutput = AVCaptureMetadataOutput()
 
     var onBarcode: ((String) -> Void)?
     @Published var lastScannedCode: String?
     @Published var permissionDenied = false
-    private var started = false
-    private var isProcessingCode = false
+    nonisolated(unsafe) private var started = false
+    nonisolated(unsafe) private var isProcessingCode = false
 
     func startIfNeeded() {
         Task { [weak self] in
@@ -45,7 +45,7 @@ final class BarcodeScannerCoordinator: NSObject, ObservableObject, AVCaptureMeta
         }
     }
 
-    private func configure() {
+    nonisolated(unsafe) private func configure() {
         session.beginConfiguration()
         session.sessionPreset = .high
 
@@ -71,7 +71,7 @@ final class BarcodeScannerCoordinator: NSObject, ObservableObject, AVCaptureMeta
         session.commitConfiguration()
     }
 
-    func metadataOutput(
+    nonisolated func metadataOutput(
         _ output: AVCaptureMetadataOutput,
         didOutput metadataObjects: [AVMetadataObject],
         from connection: AVCaptureConnection

@@ -6,6 +6,12 @@ struct BarcodeScanView: View {
 
     @StateObject private var coordinator = BarcodeScannerCoordinator()
     @State private var hasAdvanced = false
+    @State private var detectedBarcode: String?
+
+    private var canContinue: Bool {
+        guard let detectedBarcode else { return false }
+        return !detectedBarcode.isEmpty
+    }
 
     var body: some View {
         SunDarkScreen {
@@ -26,9 +32,18 @@ struct BarcodeScanView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                Button("Skip") {
+                    advanceToTraining(using: nil)
+                }
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.66))
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("scan.skip")
+
                 if appState.isUITesting {
                     Button("Scan Demo Barcode") {
-                        handleBarcode("UITEST-DEMO-BARCODE")
+                        recordBarcode("UITEST-DEMO-BARCODE")
                     }
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.sun)
@@ -36,9 +51,17 @@ struct BarcodeScanView: View {
                     .accessibilityIdentifier("scan.demoBarcode")
                 }
             }
+        } footer: {
+            Button("Continue") {
+                advanceToTraining(using: detectedBarcode)
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .disabled(!canContinue)
+            .opacity(canContinue ? 1 : 0.42)
+            .accessibilityIdentifier("scan.continue")
         }
         .onAppear {
-            coordinator.onBarcode = handleBarcode
+            coordinator.onBarcode = recordBarcode
             if !appState.isUITesting {
                 coordinator.startIfNeeded()
             }
@@ -64,10 +87,21 @@ struct BarcodeScanView: View {
         }
     }
 
-    private func handleBarcode(_ code: String) {
+    private func recordBarcode(_ code: String) {
+        guard !hasAdvanced else { return }
+        detectedBarcode = code
+    }
+
+    private func advanceToTraining(using code: String?) {
         guard !hasAdvanced else { return }
         hasAdvanced = true
-        appState.setExpectedBarcode(code)
+
+        if let code, !code.isEmpty {
+            appState.setExpectedBarcode(code)
+        } else {
+            appState.clearExpectedBarcode()
+        }
+
         router.open(.trainPhotos)
     }
 }

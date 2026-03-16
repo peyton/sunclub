@@ -8,7 +8,7 @@ struct FeaturePrintMatchConfiguration {
     let consensusTopK: Int
     let consensusThreshold: Float
 
-    static let selfie = FeaturePrintMatchConfiguration(
+    nonisolated(unsafe) static let selfie = FeaturePrintMatchConfiguration(
         directHitThreshold: 0.56,
         supportThreshold: 0.60,
         requiredSupportCount: 2,
@@ -16,7 +16,7 @@ struct FeaturePrintMatchConfiguration {
         consensusThreshold: 0.59
     )
 
-    static let video = FeaturePrintMatchConfiguration(
+    nonisolated(unsafe) static let video = FeaturePrintMatchConfiguration(
         directHitThreshold: 0.58,
         supportThreshold: 0.62,
         requiredSupportCount: 2,
@@ -34,9 +34,9 @@ struct FeaturePrintMatchResult {
 }
 
 final class FeaturePrintMatcher {
-    static let shared = FeaturePrintMatcher()
+    nonisolated(unsafe) static let shared = FeaturePrintMatcher()
 
-    func evaluate(
+    nonisolated func evaluate(
         sample: VNFeaturePrintObservation,
         storedPayloads: [Data],
         configuration: FeaturePrintMatchConfiguration
