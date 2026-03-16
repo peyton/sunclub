@@ -15,7 +15,8 @@ struct SunclubApp: App {
         let schema = Schema([
             DailyRecord.self,
             TrainingAsset.self,
-            Settings.self
+            Settings.self,
+            TrackedProduct.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isUITesting)
         guard let container = try? ModelContainer(for: schema, configurations: [configuration]) else {

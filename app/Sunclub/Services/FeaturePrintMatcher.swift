@@ -1,14 +1,14 @@
 import Foundation
 import Vision
 
-struct FeaturePrintMatchConfiguration {
+struct FeaturePrintMatchConfiguration: Sendable {
     let directHitThreshold: Float
     let supportThreshold: Float
     let requiredSupportCount: Int
     let consensusTopK: Int
     let consensusThreshold: Float
 
-    nonisolated(unsafe) static let selfie = FeaturePrintMatchConfiguration(
+    nonisolated static let selfie = FeaturePrintMatchConfiguration(
         directHitThreshold: 0.56,
         supportThreshold: 0.60,
         requiredSupportCount: 2,
@@ -16,7 +16,7 @@ struct FeaturePrintMatchConfiguration {
         consensusThreshold: 0.59
     )
 
-    nonisolated(unsafe) static let video = FeaturePrintMatchConfiguration(
+    nonisolated static let video = FeaturePrintMatchConfiguration(
         directHitThreshold: 0.58,
         supportThreshold: 0.62,
         requiredSupportCount: 2,
@@ -33,10 +33,8 @@ struct FeaturePrintMatchResult {
     let comparedCount: Int
 }
 
-final class FeaturePrintMatcher {
-    nonisolated(unsafe) static let shared = FeaturePrintMatcher()
-
-    nonisolated func evaluate(
+enum FeaturePrintMatcher {
+    nonisolated static func evaluate(
         sample: VNFeaturePrintObservation,
         storedPayloads: [Data],
         configuration: FeaturePrintMatchConfiguration

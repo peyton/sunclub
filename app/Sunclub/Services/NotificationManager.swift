@@ -71,13 +71,14 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func scheduleDailyReminders(using state: AppState) {
         let dayStart = calendar.startOfDay(for: Date())
+        let productName = state.activeProduct?.name
 
         for offset in 0..<60 {
             guard let day = calendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
             let phrase = state.nextDailyPhrase()
 
             let content = UNMutableNotificationContent()
-            content.title = "Sunclub check-in"
+            content.title = productName.map { "Sunclub check-in for \($0)" } ?? "Sunclub check-in"
             content.body = phrase
             content.sound = .default
             content.categoryIdentifier = dailyCategoryID
@@ -161,13 +162,15 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             let settings = try fetchSettings(context: context)
             let records = try fetchRecords(context: context)
             let report = CalendarAnalytics.weeklyReport(records: records, now: Date(), calendar: calendar)
+            let products = try fetchProducts(context: context)
+            let activeProductName = products.first(where: { $0.id == settings.activeProductID })?.name
 
             let phrase = PhraseRotation.nextPhrase(from: settings.weeklyPhraseState, catalog: PhraseBank.weeklyPhrases)
             settings.weeklyPhraseState = phrase.1
             try context.save()
 
             let content = UNMutableNotificationContent()
-            content.title = "Sunclub weekly report"
+            content.title = activeProductName.map { "\($0) weekly report" } ?? "Sunclub weekly report"
             content.body = "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
                 + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
                 + phrase.0
@@ -206,7 +209,15 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func fetchRecords(context: ModelContext) throws -> [Date] {
         let descriptor = FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .reverse)])
-        return try context.fetch(descriptor).map { $0.startOfDay }
+        let activeProductID = try fetchSettings(context: context).activeProductID
+        return try context.fetch(descriptor)
+            .filter { $0.productID == activeProductID }
+            .map { $0.startOfDay }
+    }
+
+    private func fetchProducts(context: ModelContext) throws -> [TrackedProduct] {
+        let descriptor = FetchDescriptor<TrackedProduct>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        return try context.fetch(descriptor)
     }
 
     private func clearPendingRequests(prefix: String) async {

@@ -56,6 +56,8 @@ final class SunclubTests: XCTestCase {
     @MainActor
     func testVerificationSuccessPresentationUsesUpdatedStreak() throws {
         let state = try makeAppState()
+        _ = state.createProduct(name: "Daily SPF", barcode: "12345")
+        state.addTrainingFeature(Data("train".utf8), width: 1, height: 1)
 
         state.recordVerificationSuccess(
             method: .video,
@@ -66,7 +68,7 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.currentStreak, 1)
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
-        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "Your streak is now 1 day")
+        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "Daily SPF is now on a 1-day streak")
     }
 
     @MainActor
@@ -96,21 +98,46 @@ final class SunclubTests: XCTestCase {
     @MainActor
     func testRetrainingClearsAndRebuildsTrainingAssets() throws {
         let state = try makeAppState()
+        _ = state.createProduct(name: "Primary", barcode: nil)
 
         state.addTrainingFeature(Data("one".utf8), width: 1, height: 1)
         state.addTrainingFeature(Data("two".utf8), width: 1, height: 1)
-        XCTAssertEqual(state.trainingAssets.count, 2)
+        XCTAssertEqual(state.activeTrainingAssets.count, 2)
 
-        state.clearTrainingData()
-        XCTAssertEqual(state.trainingAssets.count, 0)
+        state.clearTrainingDataForActiveProduct()
+        XCTAssertEqual(state.activeTrainingAssets.count, 0)
 
         state.addTrainingFeature(Data("three".utf8), width: 1, height: 1)
-        XCTAssertEqual(state.trainingAssets.count, 1)
+        XCTAssertEqual(state.activeTrainingAssets.count, 1)
+    }
+
+    @MainActor
+    func testProductsScopeTrainingAndRecords() throws {
+        let state = try makeAppState()
+        let productA = state.createProduct(name: "Face SPF", barcode: "111")
+        state.addTrainingFeature(Data("face".utf8), width: 1, height: 1)
+        state.recordVerificationSuccess(
+            method: .video,
+            barcode: "111",
+            featureDistance: 0.2,
+            barcodeConfidence: nil
+        )
+
+        let productB = state.createProduct(name: "Body SPF", barcode: "222")
+        state.addTrainingFeature(Data("body".utf8), width: 1, height: 1)
+
+        XCTAssertEqual(state.activeProduct?.id, productB.id)
+        XCTAssertEqual(state.activeTrainingAssets.count, 1)
+        XCTAssertEqual(state.currentStreak, 0)
+
+        state.setActiveProduct(productA)
+        XCTAssertEqual(state.activeTrainingAssets.count, 1)
+        XCTAssertEqual(state.currentStreak, 1)
     }
 
     @MainActor
     private func makeAppState() throws -> AppState {
-        let schema = Schema([DailyRecord.self, TrainingAsset.self, Settings.self])
+        let schema = Schema([DailyRecord.self, TrainingAsset.self, Settings.self, TrackedProduct.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return AppState(context: ModelContext(container))

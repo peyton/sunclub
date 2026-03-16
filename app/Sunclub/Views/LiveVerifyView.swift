@@ -8,6 +8,7 @@ struct LiveVerifyView: View {
     @State private var statusMessage = "Hold your bottle in view while Sunclub verifies it."
     @State private var lastDistance: Float?
     @State private var hasAdvanced = false
+    @State private var appearedAt = Date()
 
     var body: some View {
         SunDarkScreen {
@@ -24,6 +25,7 @@ struct LiveVerifyView: View {
             }
         }
         .onAppear {
+            appearedAt = Date()
             coordinator.onStateChange = { result in
                 lastDistance = result.featureDistance
                 if result.isDetected {
@@ -41,6 +43,11 @@ struct LiveVerifyView: View {
                         completeVerification(distance: 0.118)
                     }
                 }
+                return
+            }
+
+            if appState.activeProduct == nil {
+                statusMessage = "Add a sunscreen bottle before verifying."
                 return
             }
 
@@ -72,6 +79,12 @@ struct LiveVerifyView: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("verify.title")
+
+            if let product = appState.activeProduct {
+                Text(product.name)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.white.opacity(0.72))
+            }
         }
     }
 
@@ -95,9 +108,10 @@ struct LiveVerifyView: View {
         hasAdvanced = true
         appState.recordVerificationSuccess(
             method: .video,
-            barcode: appState.settings.expectedBarcode,
+            barcode: appState.activeProduct?.barcode,
             featureDistance: distance.map(Double.init),
-            barcodeConfidence: nil
+            barcodeConfidence: nil,
+            verificationDuration: Date().timeIntervalSince(appearedAt)
         )
         router.open(.verifySuccess)
     }

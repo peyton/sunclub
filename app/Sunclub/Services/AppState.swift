@@ -4,9 +4,10 @@ import Observation
 
 struct VerificationSuccessPresentation: Equatable {
     let streak: Int
+    let productName: String
 
     var detail: String {
-        "Your streak is now \(streak) \(streak == 1 ? "day" : "days")"
+        "\(productName) is now on a \(streak)-day streak"
     }
 }
 
@@ -16,24 +17,31 @@ final class AppState {
     let modelContext: ModelContext
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
+    private let productStore: ProductStore
+    private let verificationStore: VerificationStore
+    private let trainingStore: TrainingStore
+    private(set) var products: [TrackedProduct] = []
     private(set) var records: [DailyRecord] = []
     private(set) var trainingAssets: [TrainingAsset] = []
     private let calendar = Calendar.current
 
     init(context: ModelContext) {
         modelContext = context
+        productStore = ProductStore(context: context)
+        verificationStore = VerificationStore(context: context)
+        trainingStore = TrainingStore(context: context)
         settings = Self.loadOrCreateSettings(from: context)
         refresh()
     }
 
     func refresh() {
         do {
-            let recordDescriptor = FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .reverse)])
-            records = try modelContext.fetch(recordDescriptor)
-
-            let assetDescriptor = FetchDescriptor<TrainingAsset>(sortBy: [SortDescriptor(\.capturedAt, order: .reverse)])
-            trainingAssets = try modelContext.fetch(assetDescriptor)
+            products = try productStore.fetchProducts()
+            records = try verificationStore.fetchRecords()
+            trainingAssets = try trainingStore.fetchAssets()
+            ensureValidActiveProduct()
         } catch {
+            products = []
             records = []
             trainingAssets = []
         }
@@ -74,8 +82,41 @@ final class AppState {
         save()
     }
 
+    private func ensureValidActiveProduct() {
+        guard !products.isEmpty else {
+            settings.activeProductID = nil
+            return
+        }
+
+        if let activeProductID = settings.activeProductID,
+           products.contains(where: { $0.id == activeProductID }) {
+            return
+        }
+
+        settings.activeProductID = products.first?.id
+    }
+
     var isUITesting: Bool {
         ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
+    }
+
+    var activeProduct: TrackedProduct? {
+        guard let activeProductID = settings.activeProductID else { return nil }
+        return products.first { $0.id == activeProductID }
+    }
+
+    var hasMultipleProducts: Bool {
+        products.count > 1
+    }
+
+    var activeTrainingAssets: [TrainingAsset] {
+        guard let productID = activeProduct?.id else { return [] }
+        return trainingAssets.filter { $0.productID == productID }
+    }
+
+    private var activeProductRecords: [DailyRecord] {
+        guard let productID = activeProduct?.id else { return [] }
+        return records.filter { $0.productID == productID }
     }
 
     // MARK: - Onboarding and settings
@@ -84,14 +125,44 @@ final class AppState {
         save()
     }
 
-    func setExpectedBarcode(_ value: String) {
-        settings.expectedBarcode = value
+    @discardableResult
+    func createProduct(name: String? = nil, barcode: String? = nil) -> TrackedProduct {
+        let product = productStore.createProduct(
+            name: name ?? defaultProductName(for: barcode),
+            barcode: barcode
+        )
+        settings.activeProductID = product.id
+        refreshAndSave()
+        return product
+    }
+
+    func startNewProduct() {
+        _ = createProduct(barcode: nil)
+    }
+
+    func setActiveProduct(_ product: TrackedProduct) {
+        settings.activeProductID = product.id
         save()
     }
 
-    func clearExpectedBarcode() {
-        settings.expectedBarcode = nil
-        save()
+    func updateActiveProductBarcode(_ value: String?) {
+        guard let product = activeProduct else {
+            _ = createProduct(barcode: value)
+            return
+        }
+
+        product.barcode = value
+        product.updatedAt = Date()
+        refreshAndSave()
+    }
+
+    func renameActiveProduct(_ name: String) {
+        guard let product = activeProduct else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        product.name = trimmed
+        product.updatedAt = Date()
+        refreshAndSave()
     }
 
     func updateDailyReminder(hour: Int, minute: Int) {
@@ -125,64 +196,93 @@ final class AppState {
     }
 
     // MARK: - Verification records
-    func markAppliedToday(method: VerificationMethod, barcode: String?, featureDistance: Double?, barcodeConfidence: Double?) {
+    func markAppliedToday(
+        method: VerificationMethod,
+        barcode: String?,
+        featureDistance: Double?,
+        barcodeConfidence: Double?,
+        verificationDuration: Double? = nil
+    ) {
+        guard let product = activeProduct else { return }
         let now = Date()
         let today = calendar.startOfDay(for: now)
-        if let existing = record(for: today) {
+        if let existing = record(for: today, productID: product.id) {
             existing.verifiedAt = now
             existing.method = method
             existing.barcode = barcode
             existing.featureDistance = featureDistance
             existing.barcodeDistance = barcodeConfidence
+            existing.verificationDuration = verificationDuration
             refreshAndSave()
             return
         }
 
         let record = DailyRecord(
+            productID: product.id,
             startOfDay: today,
             verifiedAt: now,
             method: method,
             barcode: barcode,
             featureDistance: featureDistance,
-            barcodeDistance: barcodeConfidence
+            barcodeDistance: barcodeConfidence,
+            verificationDuration: verificationDuration
         )
         modelContext.insert(record)
         refreshAndSave()
     }
 
-    func recordVerificationSuccess(method: VerificationMethod, barcode: String?, featureDistance: Double?, barcodeConfidence: Double?) {
-        markAppliedToday(method: method, barcode: barcode, featureDistance: featureDistance, barcodeConfidence: barcodeConfidence)
-        verificationSuccessPresentation = VerificationSuccessPresentation(streak: currentStreak)
+    func recordVerificationSuccess(
+        method: VerificationMethod,
+        barcode: String?,
+        featureDistance: Double?,
+        barcodeConfidence: Double?,
+        verificationDuration: Double? = nil
+    ) {
+        markAppliedToday(
+            method: method,
+            barcode: barcode,
+            featureDistance: featureDistance,
+            barcodeConfidence: barcodeConfidence,
+            verificationDuration: verificationDuration
+        )
+        verificationSuccessPresentation = VerificationSuccessPresentation(
+            streak: currentStreak,
+            productName: activeProduct?.name ?? "This product"
+        )
     }
 
     func clearVerificationSuccessPresentation() {
         verificationSuccessPresentation = nil
     }
 
-    func record(for day: Date) -> DailyRecord? {
+    func record(for day: Date, productID: UUID? = nil) -> DailyRecord? {
         let target = calendar.startOfDay(for: day)
-        return records.first { calendar.isDate($0.startOfDay, inSameDayAs: target) }
+        return records.first {
+            calendar.isDate($0.startOfDay, inSameDayAs: target) && $0.productID == productID
+        }
     }
 
     // MARK: - Training assets
     func addTrainingFeature(_ data: Data, width: Int, height: Int) {
-        let asset = TrainingAsset(featurePrintData: data, imageWidth: width, imageHeight: height)
+        guard let productID = activeProduct?.id else { return }
+        let asset = TrainingAsset(productID: productID, featurePrintData: data, imageWidth: width, imageHeight: height)
         modelContext.insert(asset)
         refreshAndSave()
     }
 
-    func clearTrainingData() {
-        trainingAssets.forEach(modelContext.delete)
+    func clearTrainingDataForActiveProduct() {
+        guard let productID = activeProduct?.id else { return }
+        trainingAssets.filter { $0.productID == productID }.forEach(modelContext.delete)
         refreshAndSave()
     }
 
-    func hasTrainingData() -> Bool { !trainingAssets.isEmpty }
+    func hasTrainingData() -> Bool { !activeTrainingAssets.isEmpty }
 
-    func trainingFeatureData() -> [Data] { trainingAssets.map(\.featurePrintData) }
+    func trainingFeatureData() -> [Data] { activeTrainingAssets.map(\.featurePrintData) }
 
     // MARK: - Calendar logic
     func dayStatus(for date: Date, now: Date = Date()) -> DayStatus {
-        let set = Set(records.map { calendar.startOfDay(for: $0.startOfDay) })
+        let set = Set(activeProductRecords.map { calendar.startOfDay(for: $0.startOfDay) })
         return CalendarAnalytics.status(for: date, with: set, now: now, calendar: calendar)
     }
 
@@ -195,15 +295,22 @@ final class AppState {
     }
 
     var currentStreak: Int {
-        CalendarAnalytics.currentStreak(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
+        CalendarAnalytics.currentStreak(records: activeProductRecords.map { $0.startOfDay }, now: Date(), calendar: calendar)
     }
 
     func last7DaysReport() -> WeeklyReport {
-        CalendarAnalytics.weeklyReport(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
+        CalendarAnalytics.weeklyReport(records: activeProductRecords.map { $0.startOfDay }, now: Date(), calendar: calendar)
     }
 
     // MARK: - Testing helpers
     func recordStartsForTesting() -> [Date] {
-        records.map { calendar.startOfDay(for: $0.startOfDay) }
+        activeProductRecords.map { calendar.startOfDay(for: $0.startOfDay) }
+    }
+
+    private func defaultProductName(for barcode: String?) -> String {
+        if let barcode, !barcode.isEmpty {
+            return "Sunscreen \(String(barcode.suffix(4)))"
+        }
+        return "Sunscreen \(products.count + 1)"
     }
 }

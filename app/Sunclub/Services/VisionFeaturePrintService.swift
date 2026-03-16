@@ -9,7 +9,7 @@ enum VisionFeaturePrintError: Error {
 }
 
 final class VisionFeaturePrintService {
-    nonisolated(unsafe) static let shared = VisionFeaturePrintService()
+    nonisolated static let shared = VisionFeaturePrintService()
 
     nonisolated func featurePrint(from sampleBuffer: CMSampleBuffer) async throws -> VNFeaturePrintObservation {
         try featurePrintSync(from: sampleBuffer)
@@ -46,7 +46,7 @@ final class VisionFeaturePrintService {
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         try handler.perform([request])
 
-        guard let observation = request.results?.compactMap({ $0 as? VNFeaturePrintObservation }).first else {
+        guard let observation = request.results?.first else {
             throw VisionFeaturePrintError.noFeaturePrint
         }
         return observation
@@ -57,7 +57,7 @@ final class VisionFeaturePrintService {
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         try handler.perform([request])
 
-        guard let observation = request.results?.compactMap({ $0 as? VNFeaturePrintObservation }).first else {
+        guard let observation = request.results?.first else {
             throw VisionFeaturePrintError.noFeaturePrint
         }
         return observation
@@ -111,7 +111,6 @@ final class VisionFeaturePrintService {
         }
 
         return request.results?
-            .compactMap { $0 as? VNBarcodeObservation }
-            .compactMap { $0.payloadStringValue } ?? []
+            .compactMap(\.payloadStringValue) ?? []
     }
 }
