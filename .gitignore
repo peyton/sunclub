@@ -1,4 +1,20 @@
 .venv-eval/
 __pycache__/
+.pytest_cache/
 data/raw/
 data/processed/cache/
+
+# Local logs
+*.log
+
+# Local Codex state
+.codex/environments/
+
+# Xcode local/build artifacts
+.DerivedData/
+*.xcactivitylog
+*.xcuserstate
+app/Sunclub.xcodeproj/xcuserdata/
+
+# macOS
+.DS_Store
