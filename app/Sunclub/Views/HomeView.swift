@@ -5,297 +5,99 @@ struct HomeView: View {
     @Environment(AppRouter.self) private var router
     @State private var now = Date()
 
-    private var todayStatus: DayStatus {
-        appState.dayStatus(for: Date(), now: now)
-    }
-
     var body: some View {
-        SunScreen {
-            heroCard
-            todayCard
+        SunLightScreen {
+            VStack(spacing: 26) {
+                header
 
-            VStack(alignment: .leading, spacing: 14) {
-                SunSectionHeader(
-                    eyebrow: "Today's check-in",
-                    title: "Choose today's check-in",
-                    detail: "Pick the check-in that fits your day and record today's sunscreen."
-                )
-
-                actionCard(
-                    title: "Scan Barcode",
-                    detail: "Fastest when your bottle is already in hand.",
-                    systemImage: "barcode.viewfinder",
-                    colors: [AppPalette.sun, AppPalette.coral]
-                ) {
-                    router.open(.barcodeScan)
+                Button {
+                    router.open(.weeklySummary)
+                } label: {
+                    streakCard
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.streakCard")
 
-                actionCard(
-                    title: "Take Selfie",
-                    detail: "Use the front camera with your bottle visible in the frame.",
-                    systemImage: "person.crop.square",
-                    colors: [AppPalette.sea, AppPalette.mint]
-                ) {
-                    router.open(.selfie)
-                }
-
-                actionCard(
-                    title: "Live Video",
-                    detail: "Hold the bottle in view and let the camera confirm it.",
-                    systemImage: "video.badge.checkmark",
-                    colors: [AppPalette.coral, AppPalette.sun]
-                ) {
-                    router.open(.videoVerify)
-                }
+                Spacer(minLength: 340)
             }
-
-            VStack(alignment: .leading, spacing: 14) {
-                SunSectionHeader(
-                    eyebrow: "Progress",
-                    title: "Track the routine",
-                    detail: "Review your month, your streak, and the last seven days."
-                )
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                    quickLinkCard(
-                        title: "Calendar",
-                        detail: "See every check-in across the month.",
-                        systemImage: "calendar"
-                    ) {
-                        router.open(.calendar)
-                    }
-
-                    quickLinkCard(
-                        title: "Weekly report",
-                        detail: "See your last seven days, missed days, and streak.",
-                        systemImage: "chart.bar.xaxis"
-                    ) {
-                        router.open(.weeklyReport)
-                    }
-                }
+        } footer: {
+            Button("Verify Now") {
+                router.open(.verifyCamera)
             }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("home.verifyNow")
         }
-        .navigationBarBackButtonHidden(true)
         .onAppear {
             now = Date()
+            appState.clearVerificationSuccessPresentation()
         }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var heroCard: some View {
-        ViewThatFits {
-            HStack(alignment: .top, spacing: 16) {
-                heroCopy
-
-                Spacer(minLength: 0)
-
-                heroBadge
-            }
-
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    heroBadge
-                    Spacer(minLength: 0)
-                }
-
-                heroCopy
-            }
-        }
-        .sunCard()
-    }
-
-    private var todayCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Today's status")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .textCase(.uppercase)
-                        .tracking(1.2)
-                        .foregroundStyle(AppPalette.softInk)
-
-                    Text(statusTitle)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(statusDetail)
-                        .font(.callout)
-                        .foregroundStyle(AppPalette.softInk)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: statusSymbol)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 54, height: 54)
-                    .background(statusTint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                MetricTile(value: "\(appState.currentStreak)", title: "streak", tint: statusTint)
-                MetricTile(value: appState.settings.expectedBarcode == nil ? "Unset" : "Locked", title: "bottle", tint: AppPalette.sea)
-                MetricTile(value: "\(appState.trainingAssets.count)", title: "training", tint: AppPalette.sun)
-            }
-        }
-        .sunCard()
-    }
-
-    private var streakLabel: String {
-        let streak = appState.currentStreak
-        return streak > 0 ? "\(streak) day streak" : "Start today"
-    }
-
-    private var statusTitle: String {
-        switch todayStatus {
-        case .applied:
-            return "Checked in today"
-        case .todayPending:
-            return "Ready for today's check-in"
-        case .missed:
-            return "Get back on routine"
-        case .future:
-            return "Future date"
-        }
-    }
-
-    private var statusDetail: String {
-        switch todayStatus {
-        case .applied:
-            return "Today's sunscreen is logged."
-        case .todayPending:
-            return "Choose a check-in below to keep the routine going."
-        case .missed:
-            return "A previous day was missed. Today's check-in can restart the streak."
-        case .future:
-            return "Nothing to do here yet."
-        }
-    }
-
-    private var statusTint: Color {
-        switch todayStatus {
-        case .applied:
-            return AppPalette.success
-        case .todayPending:
-            return AppPalette.warning
-        case .missed:
-            return AppPalette.danger
-        case .future:
-            return AppPalette.sea
-        }
-    }
-
-    private var statusSymbol: String {
-        switch todayStatus {
-        case .applied:
-            return "checkmark.seal.fill"
-        case .todayPending:
-            return "clock.fill"
-        case .missed:
-            return "exclamationmark.triangle.fill"
-        case .future:
-            return "sparkles"
-        }
-    }
-
-    private func actionCard(title: String, detail: String, systemImage: String, colors: [Color], action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.18))
-                        .frame(width: 56, height: 56)
-
-                    Image(systemName: systemImage)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-
-                    Text(detail)
-                        .font(.footnote)
-                        .foregroundStyle(Color.white.opacity(0.84))
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "arrow.right")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-            }
-            .frame(maxWidth: .infinity, minHeight: 108, alignment: .leading)
-            .padding(18)
-            .background(
-                LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: 30, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
-            }
-            .shadow(color: (colors.last ?? AppPalette.coral).opacity(0.20), radius: 18, x: 0, y: 10)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func quickLinkCard(title: String, detail: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(AppPalette.coral)
-
-                Text(title)
-                    .font(.headline)
+    private var header: some View {
+        HStack(alignment: .center) {
+            HStack(spacing: 8) {
+                Text(greeting)
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
-                Text(detail)
-                    .font(.footnote)
-                    .foregroundStyle(AppPalette.softInk)
+                Image(systemName: greetingSymbol)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(AppPalette.ink)
             }
-            .frame(maxWidth: .infinity, minHeight: 138, alignment: .topLeading)
-            .sunCard()
+
+            Spacer(minLength: 0)
+
+            Button {
+                router.open(.settings)
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(AppPalette.ink)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.settingsButton")
         }
-        .buttonStyle(.plain)
     }
 
-    private var heroCopy: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                SunPill(title: "Daily SPF club", systemImage: "sun.max.fill", tint: AppPalette.sun)
-                SunPill(title: streakLabel, systemImage: "flame.fill", tint: AppPalette.coral)
-            }
+    private var streakCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(appState.currentStreak)")
+                .font(.system(size: 60, weight: .bold))
+                .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
 
-            Text("Sunclub")
-                .font(.system(size: 42, weight: .heavy, design: .rounded))
+            Text("Day Streak")
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
+        }
+        .frame(maxWidth: .infinity, minHeight: 158, alignment: .topLeading)
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color(red: 1.000, green: 0.947, blue: 0.760))
+        )
+    }
 
-            Text("Find your bottle. Keep the routine. Stay ready for the next bottle.")
-                .font(.callout)
-                .foregroundStyle(AppPalette.softInk)
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: now)
+        switch hour {
+        case 5..<12:
+            return "Good morning"
+        case 12..<17:
+            return "Good afternoon"
+        default:
+            return "Good evening"
         }
     }
 
-    private var heroBadge: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [AppPalette.sun, AppPalette.coral],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 94, height: 94)
-
-            Image(systemName: "sun.max.fill")
-                .font(.system(size: 34, weight: .bold))
-                .foregroundStyle(.white)
+    private var greetingSymbol: String {
+        let hour = Calendar.current.component(.hour, from: now)
+        switch hour {
+        case 5..<17:
+            return "sun.max"
+        default:
+            return "moon.stars"
         }
-        .shadow(color: AppPalette.coral.opacity(0.22), radius: 18, x: 0, y: 10)
     }
 }

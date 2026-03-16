@@ -5,26 +5,26 @@ struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
     var gravity: AVLayerVideoGravity = .resizeAspectFill
 
-    func makeUIView(context: Context) -> UIView {
-        let container = UIView()
-        let preview = AVCaptureVideoPreviewLayer(session: session)
-        preview.videoGravity = gravity
-        preview.frame = container.bounds
-        preview.backgroundColor = UIColor.black.cgColor
-        container.layer.addSublayer(preview)
-        context.coordinator.previewLayer = preview
-        return container
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.backgroundColor = .black
+        view.previewLayer.session = session
+        view.previewLayer.videoGravity = gravity
+        return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.previewLayer?.frame = uiView.bounds
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.previewLayer.session = session
+        uiView.previewLayer.videoGravity = gravity
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
+    final class PreviewView: UIView {
+        override class var layerClass: AnyClass {
+            AVCaptureVideoPreviewLayer.self
+        }
 
-    final class Coordinator {
-        var previewLayer: AVCaptureVideoPreviewLayer?
+        var previewLayer: AVCaptureVideoPreviewLayer {
+            layer as! AVCaptureVideoPreviewLayer
+        }
     }
 }

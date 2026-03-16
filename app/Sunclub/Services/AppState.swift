@@ -2,11 +2,20 @@ import Foundation
 import SwiftData
 import Observation
 
+struct VerificationSuccessPresentation: Equatable {
+    let streak: Int
+
+    var detail: String {
+        "Your streak is now \(streak) \(streak == 1 ? "day" : "days")"
+    }
+}
+
 @MainActor
 @Observable
 final class AppState {
     let modelContext: ModelContext
     var settings: Settings
+    var verificationSuccessPresentation: VerificationSuccessPresentation?
     private(set) var records: [DailyRecord] = []
     private(set) var trainingAssets: [TrainingAsset] = []
     private let calendar = Calendar.current
@@ -65,6 +74,10 @@ final class AppState {
         save()
     }
 
+    var isUITesting: Bool {
+        ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
+    }
+
     // MARK: - Onboarding and settings
     func completeOnboarding() {
         settings.hasCompletedOnboarding = true
@@ -73,6 +86,11 @@ final class AppState {
 
     func setExpectedBarcode(_ value: String) {
         settings.expectedBarcode = value
+        save()
+    }
+
+    func clearExpectedBarcode() {
+        settings.expectedBarcode = nil
         save()
     }
 
@@ -86,6 +104,11 @@ final class AppState {
         settings.weeklyHour = hour
         settings.weeklyWeekday = max(1, min(7, weekday))
         saveAndRescheduleReminders()
+    }
+
+    var reminderDate: Date {
+        let today = calendar.startOfDay(for: Date())
+        return calendar.date(bySettingHour: settings.reminderHour, minute: settings.reminderMinute, second: 0, of: today) ?? today
     }
 
     // MARK: - Phrase bag rotation
@@ -125,6 +148,15 @@ final class AppState {
         )
         modelContext.insert(record)
         refreshAndSave()
+    }
+
+    func recordVerificationSuccess(method: VerificationMethod, barcode: String?, featureDistance: Double?, barcodeConfidence: Double?) {
+        markAppliedToday(method: method, barcode: barcode, featureDistance: featureDistance, barcodeConfidence: barcodeConfidence)
+        verificationSuccessPresentation = VerificationSuccessPresentation(streak: currentStreak)
+    }
+
+    func clearVerificationSuccessPresentation() {
+        verificationSuccessPresentation = nil
     }
 
     func record(for day: Date) -> DailyRecord? {

@@ -19,10 +19,11 @@ final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptu
     @Published var permissionDenied = false
     @Published var isProcessing = false
 
-    func configure() {
+    func configure(initialCount: Int = 0) {
         Task {
             let status = await CameraPermission.request()
             await MainActor.run {
+                capturedCount = initialCount
                 permissionDenied = status != .granted
                 guard status == .granted else { return }
                 if session.inputs.isEmpty { configureSession() }
@@ -49,6 +50,10 @@ final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptu
 
     func reset() {
         capturedCount = 0
+    }
+
+    func recordSyntheticCapture() {
+        capturedCount += 1
     }
 
     private func configureSession() {

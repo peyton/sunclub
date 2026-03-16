@@ -3,138 +3,102 @@ import SwiftUI
 struct LiveVerifyView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.dismiss) private var dismiss
 
     @StateObject private var coordinator = VideoVerificationCoordinator()
-    @State private var detected = false
-    @State private var didAutoMark = false
-    @State private var message = "Hold the bottle in frame for about two seconds."
-    @State private var lastDistance: Float? = nil
+    @State private var statusMessage = "Hold your bottle in view while Sunclub verifies it."
+    @State private var lastDistance: Float?
+    @State private var hasAdvanced = false
 
     var body: some View {
-        SunScreen {
-            SunSectionHeader(
-                eyebrow: "Live video",
-                title: "Live video check-in",
-                detail: "Keep the bottle inside the guide. When the match stays stable, today's check-in can be recorded automatically."
-            )
+        SunDarkScreen {
+            VStack(alignment: .leading, spacing: 24) {
+                header
 
-            cameraCard
+                cameraCard
 
-            SunStatusCard(
-                title: detected ? "Bottle detected" : "Looking for your bottle",
-                detail: detected ? detectionDetail : message,
-                tint: detected ? AppPalette.success : AppPalette.warning,
-                symbol: detected ? "checkmark.seal.fill" : "clock.fill"
-            )
-
-            VStack(spacing: 12) {
-                Button("Record check-in") {
-                    appState.markAppliedToday(
-                        method: .video,
-                        barcode: appState.settings.expectedBarcode,
-                        featureDistance: lastDistance.map { Double($0) },
-                        barcodeConfidence: nil
-                    )
-                    router.goHome()
-                    dismiss()
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .disabled(!detected)
-
-                Button("Back to home") {
-                    router.goHome()
-                    dismiss()
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
+                Text(statusMessage)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.white.opacity(0.66))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("verify.status")
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            coordinator.onStateChange = { result in
+                lastDistance = result.featureDistance
+                if result.isDetected {
+                    completeVerification(distance: result.featureDistance)
+                } else if let distance = result.featureDistance {
+                    statusMessage = String(format: "Matching bottle model… %.3f", distance)
+                }
+            }
+
+            if appState.isUITesting {
+                statusMessage = "Matching bottle model…"
+                Task {
+                    try? await Task.sleep(nanoseconds: 400_000_000)
+                    await MainActor.run {
+                        completeVerification(distance: 0.118)
+                    }
+                }
+                return
+            }
+
+            if appState.trainingFeatureData().isEmpty {
+                statusMessage = "Train your bottle model in Settings before verifying."
+                return
+            }
+
+            coordinator.configure(trainingPayloads: appState.trainingFeatureData())
+        }
+        .onDisappear {
+            coordinator.stop()
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Button {
+                router.goHome()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.72))
+            }
+            .buttonStyle(.plain)
+
+            Text("Verify Sunscreen")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.white)
+                .accessibilityIdentifier("verify.title")
+        }
     }
 
     private var cameraCard: some View {
         ZStack {
-            CameraPreview(session: coordinator.session)
-                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .frame(height: 440)
-                .onAppear {
-                    coordinator.onStateChange = { result in
-                        detected = result.isDetected
-                        lastDistance = result.featureDistance
-                        if let distance = result.featureDistance {
-                            message = String(format: "Current bottle distance %.3f.", distance)
-                        }
-                    }
-                    coordinator.configure(trainingPayloads: appState.trainingFeatureData())
-                }
-                .onDisappear {
-                    coordinator.stop()
-                }
-                .onChange(of: detected) { _, newValue in
-                    if newValue && !didAutoMark {
-                        didAutoMark = true
-                        appState.markAppliedToday(
-                            method: .video,
-                            barcode: appState.settings.expectedBarcode,
-                            featureDistance: lastDistance.map { Double($0) },
-                            barcodeConfidence: nil
-                        )
-                        router.goHome()
-                        dismiss()
-                    }
-                    if !newValue {
-                        didAutoMark = false
-                    }
-                }
-
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(Color.white.opacity(0.58), lineWidth: 1)
-
-            VStack {
-                HStack {
-                    SunCameraOverlayLabel(title: "Live match", tint: AppPalette.coral)
-                    Spacer(minLength: 0)
-                    SunCameraOverlayLabel(title: detected ? "Detected" : "Searching", tint: detected ? AppPalette.success : AppPalette.warning)
-                }
-
-                Spacer()
-            }
-            .padding(18)
-
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(style: StrokeStyle(lineWidth: 2.5, dash: [10, 8]))
-                .foregroundStyle((detected ? AppPalette.success : AppPalette.sun).opacity(0.88))
-                .frame(width: 240, height: 270)
-
-            if detected {
-                VStack {
-                    Spacer()
-
-                    Text("Bottle detected")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(AppPalette.success.opacity(0.94), in: Capsule())
-                        .padding(.bottom, 20)
-                }
-            }
+            SunCameraFrame(session: coordinator.session)
 
             if coordinator.permissionDenied {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.black.opacity(0.58))
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.black.opacity(0.45))
 
                 Text("Camera access denied")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(.white)
             }
         }
-        .sunCard(padding: 12)
     }
 
-    private var detectionDetail: String {
-        if let distance = lastDistance {
-            return String(format: "Current match distance: %.3f. You can confirm now.", distance)
-        }
-        return "The bottle match is stable."
+    private func completeVerification(distance: Float?) {
+        guard !hasAdvanced else { return }
+        hasAdvanced = true
+        appState.recordVerificationSuccess(
+            method: .video,
+            barcode: appState.settings.expectedBarcode,
+            featureDistance: distance.map(Double.init),
+            barcodeConfidence: nil
+        )
+        router.open(.verifySuccess)
     }
 }

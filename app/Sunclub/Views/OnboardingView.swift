@@ -1,193 +1,96 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    @Environment(AppState.self) private var appState
-    @State private var showScanSheet = false
-    @State private var showTrainingSheet = false
-    @State private var showCameraPermissionMessage = false
+    var body: some View {
+        WelcomeView()
+    }
+}
+
+struct WelcomeView: View {
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
-        GeometryReader { proxy in
-            let columnWidth = min(max(proxy.size.width - 40, 0), 352)
+        SunLightScreen {
+            VStack(spacing: 24) {
+                Spacer(minLength: 80)
 
-            ZStack {
-                SunBackdrop()
+                SunLogoMark(size: 120)
+                    .frame(maxWidth: .infinity)
 
-                ViewThatFits(in: .vertical) {
-                    VStack(spacing: 0) {
-                        onboardingContent(columnWidth: columnWidth)
-                        Spacer(minLength: 0)
+                VStack(spacing: 10) {
+                    Text("Sunclub")
+                        .font(.system(size: 38, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text("Your daily sunscreen companion")
+                        .font(.system(size: 17))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+                .frame(maxWidth: .infinity)
+
+                Spacer(minLength: 320)
+            }
+            .frame(maxWidth: .infinity)
+        } footer: {
+            Button("Get Started") {
+                router.open(.scanBarcode)
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("welcome.getStarted")
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+struct EnableNotificationsView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        SunLightScreen {
+            VStack(spacing: 26) {
+                SunStepHeader(step: 3, total: 3, tint: AppPalette.softInk)
+
+                Spacer(minLength: 120)
+
+                Circle()
+                    .fill(AppPalette.warmGlow)
+                    .frame(width: 120, height: 120)
+                    .overlay {
+                        Text("🔔")
+                            .font(.system(size: 48))
                     }
-                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                    .frame(maxWidth: .infinity)
 
-                    ScrollView(showsIndicators: false) {
-                        onboardingContent(columnWidth: columnWidth)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                    .clipped()
+                VStack(spacing: 14) {
+                    Text("Stay on Track")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text("Get daily reminders to apply sunscreen")
+                        .font(.system(size: 17))
+                        .foregroundStyle(AppPalette.softInk)
+                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity)
+
+                Spacer(minLength: 260)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-            .clipped()
-        }
-        .sheet(isPresented: $showScanSheet) {
-            BarcodeScanView(onboardingMode: true)
-        }
-        .sheet(isPresented: $showTrainingSheet) {
-            TrainingView()
-        }
-    }
-
-    @ViewBuilder
-    private func onboardingContent(columnWidth: CGFloat) -> some View {
-        VStack(spacing: 16) {
-            heroCard
-            setupSteps
-            actionButtons(columnWidth: columnWidth)
-
-            if showCameraPermissionMessage {
-                SunStatusCard(
-                    title: "Notifications are off",
-                    detail: "The app still works, but daily check-ins and weekly reports stay quiet until notifications are enabled.",
-                    tint: AppPalette.warning,
-                    symbol: "bell.slash.fill"
-                )
-            }
-        }
-        .frame(width: columnWidth, alignment: .top)
-        .padding(.top, 12)
-        .padding(.bottom, 28)
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private var heroCard: some View {
-        HStack(alignment: .center, spacing: 14) {
-            onboardingBadge
-            onboardingCopy
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .sunCard(padding: 12)
-    }
-
-    private var setupSteps: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("SUN CLUB")
-                    .font(.caption2.weight(.bold))
-                    .tracking(1.5)
-                    .foregroundStyle(AppPalette.softInk)
-
-                Text("Start your routine")
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text("Lock in your bottle, build the habit, and stay ready for the next bottle.")
-                    .font(.subheadline)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            SunInfoRow(
-                title: "Step 1: Lock in your bottle",
-                detail: appState.settings.expectedBarcode == nil ? "Scan the UPC or EAN on your bottle once so Sunclub knows what to look for." : "Your bottle barcode is saved. You can scan again later if you switch products.",
-                systemImage: "barcode.viewfinder",
-                tint: appState.settings.expectedBarcode == nil ? AppPalette.sun : AppPalette.success
-            )
-
-            SunInfoRow(
-                title: "Step 2: Train your match",
-                detail: "Optional. Capture a few views to make selfie and live video check-ins more reliable.",
-                systemImage: "camera.macro",
-                tint: AppPalette.sea
-            )
-
-            SunInfoRow(
-                title: "Step 3: Turn on check-ins",
-                detail: "Daily reminders and weekly reports are sent as local notifications.",
-                systemImage: "bell.badge.fill",
-                tint: AppPalette.coral
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .sunCard()
-    }
-
-    private func actionButtons(columnWidth: CGFloat) -> some View {
-        let secondaryWidth = max((columnWidth - 12) / 2, 0)
-
-        return VStack(spacing: 12) {
-            if appState.settings.expectedBarcode == nil {
-                Button {
-                    showScanSheet = true
-                } label: {
-                    Label("Scan bottle barcode", systemImage: "barcode.viewfinder")
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .frame(width: columnWidth)
-            } else if let barcode = appState.settings.expectedBarcode {
-                SunStatusCard(
-                    title: "Bottle locked",
-                    detail: "Expected barcode: \(barcode)",
-                    tint: AppPalette.success,
-                    symbol: "checkmark.seal.fill"
-                )
-                .frame(width: columnWidth)
-            }
-
-            HStack(spacing: 12) {
-                Button("Train bottle") {
-                    showTrainingSheet = true
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .frame(width: secondaryWidth)
-
-                Button("Notifications") {
-                    Task {
-                        let granted = await NotificationManager.shared.configure()
-                        showCameraPermissionMessage = !granted
-                    }
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .frame(width: secondaryWidth)
-            }
-            .frame(width: columnWidth)
-
-            Button("Join Sunclub") {
-                appState.completeOnboarding()
+            .frame(maxWidth: .infinity)
+        } footer: {
+            Button("Enable Notifications") {
                 Task {
-                    await NotificationManager.shared.scheduleReminders(using: appState)
+                    if !appState.isUITesting {
+                        _ = await NotificationManager.shared.configure()
+                        await NotificationManager.shared.scheduleReminders(using: appState)
+                    }
+                    appState.completeOnboarding()
+                    router.goHome()
                 }
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .disabled(appState.settings.expectedBarcode == nil)
-            .frame(width: columnWidth)
+            .accessibilityIdentifier("onboarding.enableNotifications")
         }
-        .frame(width: columnWidth)
+        .toolbar(.hidden, for: .navigationBar)
     }
-
-    private var onboardingCopy: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SunPill(title: "Club setup", systemImage: "sun.max.fill", tint: AppPalette.sea)
-        }
-    }
-
-    private var onboardingBadge: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [AppPalette.sun, AppPalette.coral],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 60, height: 60)
-
-            Image(systemName: "sun.max.fill")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(.white)
-        }
-    }
-
 }

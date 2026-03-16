@@ -1,10 +1,3 @@
-//
-//  SunclubUITests.swift
-//  SunclubUITests
-//
-//  Created by Peyton Randolph on 2/23/26.
-//
-
 import XCTest
 
 final class SunclubUITests: XCTestCase {
@@ -13,43 +6,71 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testOnboardingAppearsOnLaunch() throws {
+    func testLaunchShowsWelcome() throws {
         let app = XCUIApplication()
         app.launchArguments.append("UITEST_MODE")
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Start your routine"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
     }
 
     @MainActor
-    func testOnboardingControlsStayWithinWindowBounds() throws {
+    func testOnboardingAdvancesToHome() throws {
+        let app = launchAndCompleteOnboarding()
+
+        XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+    }
+
+    @MainActor
+    func testHomeRoutesToWeeklySummaryAndSettings() throws {
+        let app = launchAndCompleteOnboarding()
+
+        app.buttons["home.streakCard"].tap()
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+
+        app.launch()
+        _ = completeOnboarding(in: app)
+
+        app.buttons["home.settingsButton"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testVerifyFlowShowsSuccessAndReturnsHome() throws {
+        let app = launchAndCompleteOnboarding()
+
+        app.buttons["home.verifyNow"].tap()
+        XCTAssertTrue(app.staticTexts["Verified!"].waitForExistence(timeout: 5))
+
+        app.buttons["success.done"].tap()
+        XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func launchAndCompleteOnboarding() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("UITEST_MODE")
         app.launch()
+        return completeOnboarding(in: app)
+    }
 
-        let window = app.windows.element(boundBy: 0)
-        XCTAssertTrue(window.waitForExistence(timeout: 5))
+    @discardableResult
+    @MainActor
+    private func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
+        app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["scan.demoBarcode"].waitForExistence(timeout: 5))
+        app.buttons["scan.demoBarcode"].tap()
 
-        let scanButton = app.buttons["Scan bottle barcode"]
-        let trainButton = app.buttons["Train bottle"]
-        let notificationsButton = app.buttons["Notifications"]
-        let joinButton = app.buttons["Join Sunclub"]
-
-        XCTAssertTrue(scanButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(trainButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(notificationsButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(joinButton.waitForExistence(timeout: 5))
-
-        print("window=\(window.frame) scan=\(scanButton.frame) train=\(trainButton.frame) notifications=\(notificationsButton.frame) join=\(joinButton.frame)")
-
-        let inset: CGFloat = 8
-
-        for element in [scanButton, trainButton, notificationsButton, joinButton] {
-            XCTAssertGreaterThanOrEqual(element.frame.minX, window.frame.minX + inset)
-            XCTAssertLessThanOrEqual(element.frame.maxX, window.frame.maxX - inset)
+        XCTAssertTrue(app.buttons["training.capturePhoto"].waitForExistence(timeout: 5))
+        for _ in 0..<5 {
+            app.buttons["training.capturePhoto"].tap()
         }
 
-        XCTAssertEqual(scanButton.frame.midX, window.frame.midX, accuracy: 4)
-        XCTAssertEqual(joinButton.frame.midX, window.frame.midX, accuracy: 4)
+        XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.enableNotifications"].tap()
+
+        XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
+        return app
     }
 }

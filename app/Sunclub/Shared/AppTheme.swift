@@ -1,321 +1,332 @@
+import AVFoundation
 import SwiftUI
 
 enum AppPalette {
-    static let cream = Color(red: 0.992, green: 0.972, blue: 0.925)
-    static let shell = Color(red: 0.968, green: 0.893, blue: 0.766)
-    static let sand = Color(red: 0.930, green: 0.790, blue: 0.604)
-    static let sun = Color(red: 0.961, green: 0.645, blue: 0.180)
-    static let coral = Color(red: 0.862, green: 0.333, blue: 0.208)
-    static let sea = Color(red: 0.121, green: 0.471, blue: 0.498)
-    static let mint = Color(red: 0.239, green: 0.612, blue: 0.498)
-    static let ink = Color(red: 0.102, green: 0.133, blue: 0.176)
-    static let softInk = Color(red: 0.303, green: 0.347, blue: 0.382)
-    static let success = Color(red: 0.192, green: 0.580, blue: 0.408)
-    static let warning = Color(red: 0.878, green: 0.553, blue: 0.180)
-    static let danger = Color(red: 0.757, green: 0.271, blue: 0.227)
+    static let cream = Color(red: 0.982, green: 0.965, blue: 0.939)
+    static let warmGlow = Color(red: 1.000, green: 0.930, blue: 0.760)
+    static let sun = Color(red: 0.980, green: 0.643, blue: 0.012)
+    static let darkCanvas = Color(red: 0.114, green: 0.098, blue: 0.086)
+    static let darkSurface = Color(red: 0.171, green: 0.150, blue: 0.129)
+    static let ink = Color(red: 0.129, green: 0.114, blue: 0.102)
+    static let softInk = Color(red: 0.514, green: 0.459, blue: 0.427)
+    static let success = Color(red: 0.151, green: 0.772, blue: 0.353)
+    static let muted = Color(red: 0.832, green: 0.832, blue: 0.842)
+    static let white = Color.white
 }
 
 struct SunBackdrop: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [
-                    AppPalette.cream,
-                    AppPalette.shell,
-                    Color(red: 0.914, green: 0.949, blue: 0.933)
-                ],
+                colors: [AppPalette.cream, Color.white, AppPalette.cream],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             Circle()
-                .fill(AppPalette.sun.opacity(0.20))
-                .frame(width: 300, height: 300)
-                .blur(radius: 24)
-                .offset(x: -150, y: -300)
+                .fill(AppPalette.warmGlow.opacity(0.65))
+                .frame(width: 360, height: 360)
+                .blur(radius: 55)
+                .offset(x: -110, y: -280)
 
             Circle()
-                .fill(AppPalette.sea.opacity(0.16))
-                .frame(width: 360, height: 360)
-                .blur(radius: 46)
-                .offset(x: 180, y: -120)
-
-            Circle()
-                .fill(AppPalette.coral.opacity(0.13))
-                .frame(width: 360, height: 360)
-                .blur(radius: 58)
-                .offset(x: 150, y: 380)
-
-            Capsule()
-                .fill(Color.white.opacity(0.24))
-                .frame(width: 520, height: 132)
-                .rotationEffect(.degrees(-18))
-                .offset(x: 160, y: 250)
-                .blur(radius: 3)
-
-            Capsule()
-                .fill(AppPalette.ink.opacity(0.05))
-                .frame(width: 420, height: 78)
-                .rotationEffect(.degrees(24))
-                .offset(x: -180, y: 210)
-
-            VStack(spacing: 24) {
-                ForEach(0..<7, id: \.self) { index in
-                    Capsule()
-                        .fill(Color.white.opacity(index.isMultiple(of: 2) ? 0.09 : 0.04))
-                        .frame(width: 520, height: 10)
-                        .rotationEffect(.degrees(-14))
-                        .offset(x: index.isMultiple(of: 2) ? 110 : 150, y: CGFloat(index * 40) - 180)
-                }
-            }
+                .fill(AppPalette.sun.opacity(0.12))
+                .frame(width: 420, height: 420)
+                .blur(radius: 90)
+                .offset(x: 120, y: 420)
         }
         .ignoresSafeArea()
     }
 }
 
-struct SunScreen<Content: View>: View {
-    let content: () -> Content
+struct SunDarkBackdrop: View {
+    var body: some View {
+        ZStack {
+            AppPalette.darkCanvas
 
-    init(@ViewBuilder content: @escaping () -> Content) {
-        self.content = content
+            Circle()
+                .fill(Color.white.opacity(0.035))
+                .frame(width: 260, height: 260)
+                .blur(radius: 40)
+                .offset(x: -120, y: -260)
+
+            Circle()
+                .fill(AppPalette.sun.opacity(0.06))
+                .frame(width: 300, height: 300)
+                .blur(radius: 50)
+                .offset(x: 130, y: 340)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+struct SunLightScreen<Content: View, Footer: View>: View {
+    let content: Content
+    let footer: Footer
+
+    init(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.content = content()
+        self.footer = footer()
     }
 
     var body: some View {
         GeometryReader { proxy in
-            let contentWidth = min(max(proxy.size.width - 64, 0), 760)
-
             ZStack {
                 SunBackdrop()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        content()
+                VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 28) {
+                            content
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
+                        .padding(.bottom, 18)
+                        .frame(minHeight: proxy.size.height - 120, alignment: .top)
                     }
-                    .frame(width: contentWidth, alignment: .top)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
-                    .frame(width: proxy.size.width, alignment: .center)
+
+                    footer
+                        .padding(.horizontal, 24)
+                        .padding(.top, 6)
+                        .padding(.bottom, 24)
                 }
-                .clipped()
             }
         }
     }
 }
 
-private struct SunCardModifier: ViewModifier {
-    let padding: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.80))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.24),
-                                        AppPalette.shell.opacity(0.08),
-                                        AppPalette.sun.opacity(0.05)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
-            }
-            .shadow(color: AppPalette.ink.opacity(0.10), radius: 22, x: 0, y: 14)
+extension SunLightScreen where Footer == EmptyView {
+    init(@ViewBuilder content: () -> Content) {
+        self.init(content: content) { EmptyView() }
     }
 }
 
-extension View {
-    func sunCard(padding: CGFloat = 20) -> some View {
-        modifier(SunCardModifier(padding: padding))
+struct SunDarkScreen<Content: View, Footer: View>: View {
+    let content: Content
+    let footer: Footer
+
+    init(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.content = content()
+        self.footer = footer()
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                SunDarkBackdrop()
+
+                VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 26) {
+                            content
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 28)
+                        .padding(.bottom, 18)
+                        .frame(minHeight: proxy.size.height - 120, alignment: .top)
+                    }
+
+                    footer
+                        .padding(.horizontal, 24)
+                        .padding(.top, 6)
+                        .padding(.bottom, 24)
+                }
+            }
+        }
+    }
+}
+
+extension SunDarkScreen where Footer == EmptyView {
+    init(@ViewBuilder content: () -> Content) {
+        self.init(content: content) { EmptyView() }
+    }
+}
+
+struct SunScreen<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        SunLightScreen {
+            content
+        }
     }
 }
 
 struct SunPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        SunPrimaryButton(configuration: configuration)
-    }
-
-    private struct SunPrimaryButton: View {
-        let configuration: SunPrimaryButtonStyle.Configuration
-        @Environment(\.isEnabled) private var isEnabled
-
-        var body: some View {
-            configuration.label
-                .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, minHeight: 58)
-                .background(
-                    LinearGradient(
-                        colors: [AppPalette.coral, AppPalette.sun],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
-                .shadow(color: AppPalette.coral.opacity(0.28), radius: 18, x: 0, y: 12)
-                .scaleEffect(configuration.isPressed ? 0.985 : 1)
-                .opacity(isEnabled ? (configuration.isPressed ? 0.96 : 1) : 0.50)
-                .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
-        }
+        configuration.label
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppPalette.sun)
+            )
+            .opacity(configuration.isPressed ? 0.90 : 1)
+            .scaleEffect(configuration.isPressed ? 0.992 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 
 struct SunSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        SunSecondaryButton(configuration: configuration)
-    }
-
-    private struct SunSecondaryButton: View {
-        let configuration: SunSecondaryButtonStyle.Configuration
-        @Environment(\.isEnabled) private var isEnabled
-
-        var body: some View {
-            configuration.label
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(AppPalette.ink)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, minHeight: 58)
-                .background(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.82), AppPalette.shell.opacity(0.34)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.72), lineWidth: 1)
-                }
-                .shadow(color: AppPalette.ink.opacity(0.06), radius: 12, x: 0, y: 8)
-                .scaleEffect(configuration.isPressed ? 0.985 : 1)
-                .opacity(isEnabled ? 1 : 0.52)
-                .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
-        }
-    }
-}
-
-struct SunPill: View {
-    let title: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        Label(title.uppercased(), systemImage: systemImage)
-            .font(.caption2.weight(.bold))
-            .tracking(0.9)
+        configuration.label
+            .font(.system(size: 16, weight: .medium))
             .foregroundStyle(AppPalette.ink)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(tint.opacity(0.12), in: Capsule())
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+            )
             .overlay {
-                Capsule()
-                    .stroke(tint.opacity(0.28), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
             }
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .scaleEffect(configuration.isPressed ? 0.992 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 
-struct MetricTile: View {
-    let value: String
-    let title: String
-    let tint: Color
+struct SunStepHeader: View {
+    let step: Int
+    let total: Int
+    var tint: Color = Color.white.opacity(0.62)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(value)
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
-                .foregroundStyle(AppPalette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            Text(title.uppercased())
-                .font(.caption2.weight(.bold))
-                .tracking(1.2)
-                .foregroundStyle(AppPalette.softInk)
-        }
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
-        .padding(16)
-        .background(
-            LinearGradient(
-                colors: [tint.opacity(0.16), Color.white.opacity(0.54)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(tint.opacity(0.22), lineWidth: 1)
-        }
+        Text("Step \(step) of \(total)")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .accessibilityIdentifier("step.header")
     }
 }
 
-struct SunSectionHeader: View {
-    let eyebrow: String
+struct SunLightHeader: View {
     let title: String
-    let detail: String
+    let showsBack: Bool
+    let trailingSystemImage: String?
+    let onBack: (() -> Void)?
+    let onTrailingTap: (() -> Void)?
+
+    init(
+        title: String,
+        showsBack: Bool = false,
+        onBack: (() -> Void)? = nil,
+        trailingSystemImage: String? = nil,
+        onTrailingTap: (() -> Void)? = nil
+    ) {
+        self.title = title
+        self.showsBack = showsBack
+        self.onBack = onBack
+        self.trailingSystemImage = trailingSystemImage
+        self.onTrailingTap = onTrailingTap
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(eyebrow.uppercased())
-                .font(.caption2.weight(.bold))
-                .tracking(1.5)
-                .foregroundStyle(AppPalette.softInk)
+        HStack {
+            if showsBack {
+                Button(action: { onBack?() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Color.clear.frame(width: 32, height: 32)
+            }
+
+            Spacer(minLength: 0)
 
             Text(title)
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
-            Text(detail)
-                .font(.callout)
-                .foregroundStyle(AppPalette.softInk)
+            Spacer(minLength: 0)
+
+            if let trailingSystemImage {
+                Button(action: { onTrailingTap?() }) {
+                    Image(systemName: trailingSystemImage)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Color.clear.frame(width: 32, height: 32)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-struct SunInfoRow: View {
-    let title: String
-    let detail: String
-    let systemImage: String
-    let tint: Color
+struct SunLogoMark: View {
+    let size: CGFloat
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(tint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        Circle()
+            .fill(AppPalette.sun)
+            .frame(width: size, height: size)
+    }
+}
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(AppPalette.ink)
+struct SunCameraFrame: View {
+    let session: AVCaptureSession
+    let square: Bool
 
-                Text(detail)
-                    .font(.footnote)
-                    .foregroundStyle(AppPalette.softInk)
-            }
+    init(session: AVCaptureSession, square: Bool = false) {
+        self.session = session
+        self.square = square
+    }
+
+    var body: some View {
+        ZStack {
+            CameraPreview(session: session)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                }
+
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(square ? 0.9 : 0.0), lineWidth: square ? 3 : 0)
+                .padding(square ? 48 : 0)
         }
+        .frame(height: square ? 300 : 320)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(AppPalette.darkSurface)
+        )
+    }
+}
+
+struct SunSettingsRow: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -326,27 +337,29 @@ struct SunStatusCard: View {
     let symbol: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
-                .font(.headline.weight(.bold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 42, height: 42)
-                .background(tint, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .frame(width: 36, height: 36)
+                .background(tint, in: Circle())
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline.weight(.semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(detail)
-                    .font(.footnote)
+                    .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .sunCard(padding: 16)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.82))
+        )
     }
 }
 
@@ -355,12 +368,11 @@ struct SunCameraOverlayLabel: View {
     let tint: Color
 
     var body: some View {
-        Text(title.uppercased())
-            .font(.caption2.weight(.bold))
-            .tracking(1.0)
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(tint.opacity(0.94), in: Capsule())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(tint.opacity(0.92), in: Capsule())
     }
 }
