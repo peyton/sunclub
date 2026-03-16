@@ -6,10 +6,6 @@
 	<array>
 		<string>com.peyton.sunclub.weekly-report</string>
 	</array>
-	<key>CFBundleDisplayName</key>
-	<string>Sunclub</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Camera access is used to scan your sunscreen barcode and verify your bottle.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
