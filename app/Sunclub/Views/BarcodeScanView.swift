@@ -8,6 +8,10 @@ struct BarcodeScanView: View {
     @State private var hasAdvanced = false
     @State private var detectedBarcode: String?
 
+    private var isOnboarding: Bool {
+        !appState.settings.hasCompletedOnboarding
+    }
+
     private var canContinue: Bool {
         guard let detectedBarcode else { return false }
         return !detectedBarcode.isEmpty
@@ -16,9 +20,16 @@ struct BarcodeScanView: View {
     var body: some View {
         SunDarkScreen {
             VStack(spacing: 26) {
-                SunStepHeader(step: 1, total: 3)
+                if isOnboarding {
+                    SunStepHeader(step: 1, total: 3)
+                }
 
                 cameraCard
+
+                if let product = appState.activeProduct {
+                    SunCameraOverlayLabel(title: product.name, tint: AppPalette.sun)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Scan Your Sunscreen")
@@ -96,10 +107,10 @@ struct BarcodeScanView: View {
         guard !hasAdvanced else { return }
         hasAdvanced = true
 
-        if let code, !code.isEmpty {
-            appState.setExpectedBarcode(code)
+        if appState.activeProduct == nil {
+            _ = appState.createProduct(barcode: code)
         } else {
-            appState.clearExpectedBarcode()
+            appState.updateActiveProductBarcode(code)
         }
 
         router.open(.trainPhotos)

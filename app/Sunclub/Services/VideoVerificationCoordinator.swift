@@ -77,7 +77,9 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
             videoOutput.alwaysDiscardsLateVideoFrames = true
             session.addOutput(videoOutput)
             if let conn = videoOutput.connection(with: .video) {
-                conn.videoOrientation = .portrait
+                if conn.isVideoRotationAngleSupported(90) {
+                    conn.videoRotationAngle = 90
+                }
             }
         }
         session.commitConfiguration()
@@ -114,10 +116,10 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
             return
         }
 
-        let match = FeaturePrintMatcher.shared.evaluate(
+        let match = FeaturePrintMatcher.evaluate(
             sample: observation,
             storedPayloads: trainingPayloads,
-            configuration: .video
+            configuration: FeaturePrintMatchConfiguration.video
         )
         let detected = match.isMatch
 

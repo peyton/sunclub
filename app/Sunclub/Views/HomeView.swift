@@ -10,6 +10,8 @@ struct HomeView: View {
             VStack(spacing: 26) {
                 header
 
+                activeProductCard
+
                 Button {
                     router.open(.weeklySummary)
                 } label: {
@@ -25,6 +27,8 @@ struct HomeView: View {
                 router.open(.verifyCamera)
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .disabled(appState.activeProduct == nil || !appState.hasTrainingData())
+            .opacity(appState.activeProduct == nil || !appState.hasTrainingData() ? 0.42 : 1)
             .accessibilityIdentifier("home.verifyNow")
         }
         .onAppear {
@@ -70,12 +74,41 @@ struct HomeView: View {
             Text("Day Streak")
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
+
+            if let product = appState.activeProduct {
+                Text(product.name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 158, alignment: .topLeading)
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color(red: 1.000, green: 0.947, blue: 0.760))
+        )
+    }
+
+    private var activeProductCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Current Product")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            Text(appState.activeProduct?.name ?? "No sunscreen selected")
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+                .accessibilityIdentifier("home.activeProductName")
+
+            Text(productDetail)
+                .font(.system(size: 15))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(22)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.72))
         )
     }
 
@@ -99,5 +132,17 @@ struct HomeView: View {
         default:
             return "moon.stars"
         }
+    }
+
+    private var productDetail: String {
+        guard let product = appState.activeProduct else {
+            return "Add and train a sunscreen bottle in Settings to start verifying."
+        }
+
+        if appState.hasTrainingData() {
+            return "Ready to verify. \(appState.activeTrainingAssets.count) training photos saved for \(product.name)."
+        }
+
+        return "\(product.name) needs training photos before verification."
     }
 }

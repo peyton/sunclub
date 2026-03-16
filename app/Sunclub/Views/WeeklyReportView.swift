@@ -21,6 +21,13 @@ struct WeeklyReportView: View {
                     Text("Days Applied This Week")
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.ink)
+
+                    if let product = appState.activeProduct {
+                        Text(product.name)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                            .accessibilityIdentifier("weekly.productName")
+                    }
                 }
 
                 weeklyChart

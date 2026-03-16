@@ -20,6 +20,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.staticTexts.matching(identifier: "home.activeProductName").firstMatch.waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -29,11 +30,11 @@ final class SunclubUITests: XCTestCase {
         app.buttons["home.streakCard"].tap()
         XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
 
-        app.launch()
-        _ = completeOnboarding(in: app)
+        app.terminate()
+        let relaunchedApp = launchAndCompleteOnboarding()
 
-        app.buttons["home.settingsButton"].tap()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        relaunchedApp.buttons["home.settingsButton"].tap()
+        XCTAssertTrue(relaunchedApp.staticTexts["Settings"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -45,6 +46,26 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["success.done"].tap()
         XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSettingsCanAddAndSwitchProducts() throws {
+        let app = launchAndCompleteOnboarding()
+
+        app.buttons["home.settingsButton"].tap()
+        XCTAssertTrue(app.buttons["settings.addProduct"].waitForExistence(timeout: 5))
+        app.buttons["settings.addProduct"].tap()
+
+        XCTAssertTrue(app.buttons["scan.skip"].waitForExistence(timeout: 5))
+        app.buttons["scan.skip"].tap()
+
+        XCTAssertTrue(app.buttons["training.capturePhoto"].waitForExistence(timeout: 5))
+        for _ in 0..<5 {
+            app.buttons["training.capturePhoto"].tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.switchProduct"].exists)
     }
 
     @MainActor
@@ -61,6 +82,7 @@ final class SunclubUITests: XCTestCase {
         app.buttons["welcome.getStarted"].tap()
         XCTAssertTrue(app.buttons["scan.demoBarcode"].waitForExistence(timeout: 5))
         app.buttons["scan.demoBarcode"].tap()
+        app.buttons["scan.continue"].tap()
 
         XCTAssertTrue(app.buttons["training.capturePhoto"].waitForExistence(timeout: 5))
         for _ in 0..<5 {

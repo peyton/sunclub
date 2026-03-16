@@ -74,7 +74,7 @@ final class SelfieCaptureCoordinator: NSObject, ObservableObject, AVCapturePhoto
         didFinishProcessingPhoto photo: AVCapturePhoto,
         error: Error?
     ) {
-        if let error {
+        if error != nil {
             onResult?(.init(verified: false, barcodeMatched: false, featureDistance: nil, barcode: nil, imageData: nil))
             isProcessing = false
             return
@@ -121,10 +121,10 @@ final class SelfieCaptureCoordinator: NSObject, ObservableObject, AVCapturePhoto
 
         do {
             let observation = try await VisionFeaturePrintService.shared.featurePrint(from: data)
-            return FeaturePrintMatcher.shared.evaluate(
+            return FeaturePrintMatcher.evaluate(
                 sample: observation,
                 storedPayloads: trainingPayloads,
-                configuration: .selfie
+                configuration: FeaturePrintMatchConfiguration.selfie
             )
         } catch {
             return nil

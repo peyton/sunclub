@@ -12,6 +12,7 @@ struct TrainingCaptureResult {
 final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
+    private var usesSyntheticCapture = false
     var onResult: ((TrainingCaptureResult) -> Void)?
     var onError: ((String) -> Void)?
 
@@ -26,7 +27,12 @@ final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptu
                 capturedCount = initialCount
                 permissionDenied = status != .granted
                 guard status == .granted else { return }
-                if session.inputs.isEmpty { configureSession() }
+                if session.inputs.isEmpty {
+                    usesSyntheticCapture = !configureSession()
+                }
+
+                guard !usesSyntheticCapture else { return }
+
                 if !session.isRunning { session.startRunning() }
             }
         }
@@ -43,6 +49,12 @@ final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptu
         if capturedCount >= targetCount {
             return
         }
+
+        if usesSyntheticCapture {
+            recordSyntheticTrainingSample()
+            return
+        }
+
         isProcessing = true
         let settings = AVCapturePhotoSettings()
         photoOutput.capturePhoto(with: settings, delegate: self)
@@ -56,19 +68,45 @@ final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptu
         capturedCount += 1
     }
 
-    private func configureSession() {
+    @discardableResult
+    private func configureSession() -> Bool {
         session.beginConfiguration()
         session.sessionPreset = .photo
 
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: device) else {
             session.commitConfiguration()
-            return
+            return false
         }
 
         if session.canAddInput(input) { session.addInput(input) }
-        if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+        guard session.canAddOutput(photoOutput) else {
+            session.commitConfiguration()
+            return false
+        }
+
+        session.addOutput(photoOutput)
         session.commitConfiguration()
+        return true
+    }
+
+    private func recordSyntheticTrainingSample() {
+        isProcessing = true
+
+        Task {
+            let payload = Data("simulator-training-\(UUID().uuidString)".utf8)
+            await MainActor.run {
+                capturedCount += 1
+                isProcessing = false
+                onResult?(
+                    TrainingCaptureResult(
+                        featurePrintData: payload,
+                        width: 1,
+                        height: 1
+                    )
+                )
+            }
+        }
     }
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {

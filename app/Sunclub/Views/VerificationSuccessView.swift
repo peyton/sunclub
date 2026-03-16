@@ -5,7 +5,11 @@ struct VerificationSuccessView: View {
     @Environment(AppRouter.self) private var router
 
     private var presentation: VerificationSuccessPresentation {
-        appState.verificationSuccessPresentation ?? VerificationSuccessPresentation(streak: appState.currentStreak)
+        appState.verificationSuccessPresentation
+            ?? VerificationSuccessPresentation(
+                streak: appState.currentStreak,
+                productName: appState.activeProduct?.name ?? "This product"
+            )
     }
 
     var body: some View {
@@ -32,6 +36,7 @@ struct VerificationSuccessView: View {
                     Text(presentation.detail)
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.softInk)
+                        .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
 

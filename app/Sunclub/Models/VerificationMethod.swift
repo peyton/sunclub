@@ -31,4 +31,15 @@ extension VerificationMethod {
             return "Live Verify"
         }
     }
+
+    var symbolName: String {
+        switch self {
+        case .barcode:
+            return "barcode.viewfinder"
+        case .selfie:
+            return "person.crop.square"
+        case .video:
+            return "camera.viewfinder"
+        }
+    }
 }

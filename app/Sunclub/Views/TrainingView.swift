@@ -10,7 +10,7 @@ struct TrainingView: View {
     private let targetCount = 5
 
     private var capturedCount: Int {
-        min(appState.trainingAssets.count, targetCount)
+        min(appState.activeTrainingAssets.count, targetCount)
     }
 
     private var isRetraining: Bool {
@@ -35,6 +35,13 @@ struct TrainingView: View {
                     Text("\(capturedCount) / \(targetCount) photos captured")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.55))
+
+                    if let product = appState.activeProduct {
+                        Text(product.name)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(AppPalette.sun)
+                            .accessibilityIdentifier("training.productName")
+                    }
                 }
                 .frame(maxWidth: .infinity)
             }
