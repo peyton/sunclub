@@ -17,20 +17,33 @@ final class AppState {
     let modelContext: ModelContext
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
+    private let subscriptionManager: SubscriptionManager
     private let productStore: ProductStore
     private let verificationStore: VerificationStore
     private let trainingStore: TrainingStore
     private(set) var products: [TrackedProduct] = []
     private(set) var records: [DailyRecord] = []
     private(set) var trainingAssets: [TrainingAsset] = []
+    private(set) var subscriptionStatus: SubscriptionStatus = .unknown
+    private(set) var subscriptionProducts: [SubscriptionProduct] = []
+    private(set) var subscriptionEntitlement: SubscriptionEntitlement?
+    private(set) var isSubscriptionLoading = false
+    private(set) var isSubscriptionProcessing = false
+    private(set) var subscriptionErrorDescription: String?
     private let calendar = Calendar.current
 
     init(context: ModelContext) {
         modelContext = context
+        subscriptionManager = SubscriptionManager(productIDs: Self.subscriptionProductIDs())
         productStore = ProductStore(context: context)
         verificationStore = VerificationStore(context: context)
         trainingStore = TrainingStore(context: context)
         settings = Self.loadOrCreateSettings(from: context)
+
+        subscriptionManager.onSnapshotChange = { [weak self] snapshot in
+            self?.applySubscriptionSnapshot(snapshot)
+        }
+        subscriptionManager.start()
         refresh()
     }
 
@@ -195,6 +208,25 @@ final class AppState {
         }
     }
 
+    // MARK: - Subscription state
+    var hasActiveSubscription: Bool {
+        subscriptionStatus == .active
+    }
+
+    func refreshSubscriptions() {
+        Task {
+            await subscriptionManager.refresh()
+        }
+    }
+
+    func purchaseSubscription(productID: String) async throws -> SubscriptionPurchaseOutcome {
+        try await subscriptionManager.purchase(productID: productID)
+    }
+
+    func restoreSubscriptions() async throws {
+        try await subscriptionManager.restorePurchases()
+    }
+
     // MARK: - Verification records
     func markAppliedToday(
         method: VerificationMethod,
@@ -312,5 +344,25 @@ final class AppState {
             return "Sunscreen \(String(barcode.suffix(4)))"
         }
         return "Sunscreen \(products.count + 1)"
+    }
+
+    private static func subscriptionProductIDs() -> [String] {
+        guard let configuredIDs = Bundle.main.object(forInfoDictionaryKey: "SunclubSubscriptionProductIDs") as? [String] else {
+            return [
+                "com.peyton.sunclub.subscription.monthly",
+                "com.peyton.sunclub.subscription.annual"
+            ]
+        }
+
+        return configuredIDs.filter { !$0.isEmpty }
+    }
+
+    private func applySubscriptionSnapshot(_ snapshot: SubscriptionSnapshot) {
+        subscriptionStatus = snapshot.status
+        subscriptionProducts = snapshot.products
+        subscriptionEntitlement = snapshot.entitlement
+        isSubscriptionLoading = snapshot.isLoadingProducts
+        isSubscriptionProcessing = snapshot.isProcessingPurchase
+        subscriptionErrorDescription = snapshot.lastErrorDescription
     }
 }
