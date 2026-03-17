@@ -3,6 +3,10 @@ import Combine
 import Foundation
 import UIKit
 
+enum EnrollmentQuality {
+    case insufficient, poor, marginal, good
+}
+
 struct TrainingCaptureResult {
     let featurePrintData: Data
     let width: Int
@@ -62,6 +66,33 @@ final class TrainingCoordinator: NSObject, ObservableObject, AVCapturePhotoCaptu
 
     func reset() {
         capturedCount = 0
+    }
+
+    func validateEnrollmentQuality(payloads: [Data]) -> EnrollmentQuality {
+        let prints = payloads.compactMap {
+            VisionFeaturePrintService.shared.deserialize($0)
+        }
+        guard prints.count >= 5 else { return .insufficient }
+
+        var distances: [Float] = []
+        for i in 0..<prints.count {
+            for j in (i + 1)..<prints.count {
+                var d: Float = 0
+                try? prints[i].computeDistance(&d, to: prints[j])
+                distances.append(d)
+            }
+        }
+
+        let mean = distances.reduce(0, +) / Float(distances.count)
+        let maxDist = distances.max() ?? 0
+
+        if mean > 0.65 || maxDist > 0.80 {
+            return .poor
+        } else if mean > 0.50 {
+            return .marginal
+        } else {
+            return .good
+        }
     }
 
     func recordSyntheticCapture() {
