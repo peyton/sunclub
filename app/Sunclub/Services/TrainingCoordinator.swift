@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import Foundation
 import UIKit
+import Vision
 
 enum EnrollmentQuality {
     case insufficient, poor, marginal, good

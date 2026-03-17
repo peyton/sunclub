@@ -33,7 +33,7 @@ struct FeaturePrintMatchResult {
     let comparedCount: Int
 
     /// 0–1 confidence score derived from the margin between distances and thresholds.
-    var confidence: Float {
+    nonisolated var confidence: Float {
         guard let best = bestDistance, let consensus = consensusDistance else { return 0 }
         let cfg = FeaturePrintMatchConfiguration.video
         let margin = max(

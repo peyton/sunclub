@@ -242,7 +242,7 @@ final class SubscriptionManager {
             displayName: product.displayName,
             description: product.description,
             displayPrice: product.displayPrice,
-            periodLabel: product.subscription.map(periodDescription),
+            periodLabel: product.subscription.flatMap(periodDescription),
             isFamilyShareable: product.isFamilyShareable
         )
     }
