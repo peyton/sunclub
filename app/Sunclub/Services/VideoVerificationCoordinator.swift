@@ -5,6 +5,7 @@ import Foundation
 struct VideoVerificationResult {
     let isDetected: Bool
     let featureDistance: Float?
+    let confidence: Float
 }
 
 final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -95,7 +96,7 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
             Task { @MainActor in
                 isDetected = false
                 featureDistance = nil
-                onStateChange?(.init(isDetected: false, featureDistance: nil))
+                onStateChange?(.init(isDetected: false, featureDistance: nil, confidence: 0))
             }
             return
         }
@@ -111,7 +112,7 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
             isDetected = false
             featureDistance = nil
             DispatchQueue.main.async { [weak self] in
-                self?.onStateChange?(.init(isDetected: false, featureDistance: nil))
+                self?.onStateChange?(.init(isDetected: false, featureDistance: nil, confidence: 0))
             }
             return
         }
@@ -128,7 +129,7 @@ final class VideoVerificationCoordinator: NSObject, ObservableObject, AVCaptureV
         isDetected = consecutiveDetections >= requiredConsecutive
         processingFrame = false
 
-        let result = VideoVerificationResult(isDetected: isDetected, featureDistance: featureDistance)
+        let result = VideoVerificationResult(isDetected: isDetected, featureDistance: featureDistance, confidence: match.confidence)
         DispatchQueue.main.async { [weak self] in
             self?.onStateChange?(result)
         }

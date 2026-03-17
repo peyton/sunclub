@@ -6,6 +6,8 @@ struct TrainingView: View {
 
     @StateObject private var coordinator = TrainingCoordinator()
     @State private var hasAdvanced = false
+    @State private var showMarginalAlert = false
+    @State private var showPoorAlert = false
 
     private let targetCount = 5
 
@@ -63,6 +65,23 @@ struct TrainingView: View {
             coordinator.stop()
         }
         .toolbar(.hidden, for: .navigationBar)
+        .alert("Photos Look a Bit Different", isPresented: $showMarginalAlert) {
+            Button("Retake Photos") {
+                resetCapture()
+            }
+            Button("Continue Anyway") {
+                proceedAfterTraining()
+            }
+        } message: {
+            Text("Your photos look a bit different from each other — try keeping the bottle centered and well-lit.")
+        }
+        .alert("Let\u{2019}s Try Again", isPresented: $showPoorAlert) {
+            Button("Retake Photos") {
+                resetCapture()
+            }
+        } message: {
+            Text("We couldn\u{2019}t get a consistent read on your bottle — let\u{2019}s try again.")
+        }
     }
 
     private var cameraCard: some View {
@@ -99,12 +118,34 @@ struct TrainingView: View {
 
     private func advanceIfNeeded() {
         guard !hasAdvanced, capturedCount >= targetCount else { return }
-        hasAdvanced = true
 
+        let quality = coordinator.validateEnrollmentQuality(
+            payloads: appState.trainingFeatureData()
+        )
+
+        switch quality {
+        case .good:
+            hasAdvanced = true
+            proceedAfterTraining()
+        case .marginal:
+            showMarginalAlert = true
+        case .poor, .insufficient:
+            showPoorAlert = true
+        }
+    }
+
+    private func proceedAfterTraining() {
+        hasAdvanced = true
         if isRetraining {
             router.open(.settings)
         } else {
             router.open(.enableNotifications)
         }
+    }
+
+    private func resetCapture() {
+        hasAdvanced = false
+        appState.clearTrainingDataForActiveProduct()
+        coordinator.reset()
     }
 }
