@@ -134,3 +134,143 @@ def write_final_report(summary: dict, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+
+def plot_enrollment_confusion_matrix(
+    enrollment_id: str,
+    tp: int,
+    tn_cross: int,
+    tn_neg: int,
+    fp_cross: int,
+    fp_neg: int,
+    fn: int,
+    output_path: Path,
+) -> None:
+    """Per-enrollment 3-class confusion matrix: matched, cross-bottle, negative."""
+    fig, ax = plt.subplots(figsize=(5, 3.5))
+    categories = ["Matched", "Cross-bottle", "Negative"]
+    accepted = [tp, fp_cross, fp_neg]
+    rejected = [fn, tn_cross, tn_neg]
+    matrix = [accepted, rejected]
+    row_labels = ["Accepted", "Rejected"]
+
+    ax.set_xlim(-0.5, len(categories) - 0.5)
+    ax.set_ylim(-0.5, len(row_labels) - 0.5)
+    ax.set_xticks(range(len(categories)))
+    ax.set_xticklabels(categories)
+    ax.set_yticks(range(len(row_labels)))
+    ax.set_yticklabels(row_labels)
+    ax.invert_yaxis()
+
+    colors = [["#4caf50", "#ef5350", "#ef5350"], ["#ef5350", "#4caf50", "#4caf50"]]
+    for row in range(len(row_labels)):
+        for col in range(len(categories)):
+            ax.add_patch(plt.Rectangle((col - 0.5, row - 0.5), 1, 1, color=colors[row][col], alpha=0.35))
+            ax.text(col, row, str(matrix[row][col]), ha="center", va="center", color="black", fontsize=14)
+
+    ax.set_title(f"Enrollment {enrollment_id}")
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=180)
+    plt.close(fig)
+
+
+def plot_distance_distributions(
+    matched_distances: list[float],
+    cross_bottle_distances: list[float],
+    negative_distances: list[float],
+    output_path: Path,
+) -> None:
+    """Histogram of distance distributions for matched, cross-bottle, and negative pairs."""
+    fig, ax = plt.subplots(figsize=(6, 4))
+    bins = 40
+    if matched_distances:
+        ax.hist(matched_distances, bins=bins, alpha=0.5, label="Matched", color="#1f77b4")
+    if cross_bottle_distances:
+        ax.hist(cross_bottle_distances, bins=bins, alpha=0.5, label="Cross-bottle", color="#ff7f0e")
+    if negative_distances:
+        ax.hist(negative_distances, bins=bins, alpha=0.5, label="Negative", color="#2ca02c")
+    ax.set_xlabel("Distance")
+    ax.set_ylabel("Count")
+    ax.set_title("Distance distributions by category")
+    ax.legend()
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=180)
+    plt.close(fig)
+
+
+def write_fewshot_report(enrollment_results: list[dict], output_path: Path) -> None:
+    """Write per-enrollment few-shot benchmark report to markdown."""
+    lines = [
+        "# Few-Shot Benchmark Report",
+        "",
+    ]
+
+    # Per-enrollment sections
+    for result in enrollment_results:
+        eid = result["id"]
+        lines.extend(
+            [
+                f"## Enrollment: {eid}",
+                "",
+                f"- Composite score: {result['composite_score']:.3f}",
+                f"- Matched recall: {result['matched_recall']:.3f}",
+                f"- Cross-bottle precision: {result['cross_bottle_precision']:.3f}",
+                f"- Negative precision: {result['negative_precision']:.3f}",
+                f"- Confusion matrix: `enrollment_{eid}_confusion.png`",
+                "",
+            ]
+        )
+
+    # Summary table
+    lines.extend(
+        [
+            "## Composite Score Summary",
+            "",
+            "| Enrollment | Composite | Matched Recall | Cross-bottle Prec | Negative Prec |",
+            "|------------|-----------|----------------|-------------------|---------------|",
+        ]
+    )
+
+    worst_idx = 0
+    worst_score = float("inf")
+    for i, result in enumerate(enrollment_results):
+        if result["composite_score"] < worst_score:
+            worst_score = result["composite_score"]
+            worst_idx = i
+        lines.append(
+            f"| {result['id']} | {result['composite_score']:.3f} | {result['matched_recall']:.3f} "
+            f"| {result['cross_bottle_precision']:.3f} | {result['negative_precision']:.3f} |"
+        )
+
+    # Overall composite score (minimum across enrollments)
+    overall_composite = min(r["composite_score"] for r in enrollment_results) if enrollment_results else 0.0
+    lines.extend(
+        [
+            "",
+            f"**Overall composite score (worst-case): {overall_composite:.3f}**",
+            "",
+        ]
+    )
+
+    # Worst-case failure analysis
+    if enrollment_results:
+        worst = enrollment_results[worst_idx]
+        lines.extend(
+            [
+                "## Worst-Case Enrollment: Failure Analysis",
+                "",
+                f"**Enrollment `{worst['id']}` scored {worst['composite_score']:.3f}**",
+                "",
+                f"- Matched: {worst['matched_accepted']}/{worst['matched_count']} accepted (recall {worst['matched_recall']:.3f})",
+                f"- Cross-bottle: {worst['cross_bottle_accepted']}/{worst['cross_bottle_count']} incorrectly accepted "
+                f"(precision {worst['cross_bottle_precision']:.3f})",
+                f"- Negative: {worst['negative_accepted']}/{worst['negative_count']} incorrectly accepted "
+                f"(precision {worst['negative_precision']:.3f})",
+                "",
+            ]
+        )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
