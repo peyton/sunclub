@@ -6,6 +6,11 @@
 	<array>
 		<string>com.peyton.sunclub.weekly-report</string>
 	</array>
+	<key>SunclubSubscriptionProductIDs</key>
+	<array>
+		<string>com.peyton.sunclub.subscription.monthly</string>
+		<string>com.peyton.sunclub.subscription.annual</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

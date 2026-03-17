@@ -1,0 +1,81 @@
+{
+  "identifier" : "F3387785-28E8-4BA1-9192-D203464F550A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "sunclub-pro-group",
+      "localizations" : [
+        {
+          "description" : "Auto-renewable premium access for Sunclub.",
+          "displayName" : "Sunclub Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Sunclub Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "sunclub-monthly-plan",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Monthly premium subscription for Sunclub.",
+              "displayName" : "Sunclub Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.peyton.sunclub.subscription.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Sunclub Monthly",
+          "subscriptionGroupID" : "sunclub-pro-group",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "sunclub-annual-plan",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Annual premium subscription for Sunclub.",
+              "displayName" : "Sunclub Pro Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.peyton.sunclub.subscription.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Sunclub Annual",
+          "subscriptionGroupID" : "sunclub-pro-group",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}
