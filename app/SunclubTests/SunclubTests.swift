@@ -127,11 +127,43 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(SunscreenResponseParser.parse("There might be sunscreen"), .no)
     }
 
+    func testFastVLMServiceResolveModelDirectoryPrefersFrameworkBundle() throws {
+        let sandbox = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: sandbox) }
+
+        let frameworkRoot = sandbox.appendingPathComponent("FastVLM.framework", isDirectory: true)
+        let appRoot = sandbox.appendingPathComponent("Sunclub.app", isDirectory: true)
+        let frameworkConfig = frameworkRoot.appendingPathComponent("FastVLM/model/config.json")
+        let appConfig = appRoot.appendingPathComponent("config.json")
+
+        try writeConfigFile(at: frameworkConfig)
+        try writeConfigFile(at: appConfig)
+
+        XCTAssertEqual(
+            FastVLMService.resolveModelDirectory(searchRoots: [frameworkRoot, appRoot]),
+            frameworkConfig.deletingLastPathComponent()
+        )
+    }
+
     @MainActor
     private func makeAppState() throws -> AppState {
         let schema = Schema([DailyRecord.self, Settings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return AppState(context: ModelContext(container))
+    }
+
+    private func makeTemporaryDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    private func writeConfigFile(at url: URL) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("{}".utf8).write(to: url)
     }
 }

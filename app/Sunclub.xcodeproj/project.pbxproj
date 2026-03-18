@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		24897D7C8494351FBEFDAA36 /* FastVLM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9C413ED52F6A7D4B003C2190 /* FastVLM.framework */; };
 		9C413EDD2F6A7D4B003C2190 /* FastVLM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9C413ED52F6A7D4B003C2190 /* FastVLM.framework */; };
 		9C413EDE2F6A7D4B003C2190 /* FastVLM.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9C413ED52F6A7D4B003C2190 /* FastVLM.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		9C413EF12F6A7E75003C2190 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EF02F6A7E75003C2190 /* MLXNN */; };
@@ -25,6 +26,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3136CF2D2B3473AAE7A43E85 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9C56E19E2F4CFA900069962F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9C413ED42F6A7D4B003C2190;
+			remoteInfo = FastVLM;
+		};
 		9C413EDB2F6A7D4B003C2190 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9C56E19E2F4CFA900069962F /* Project object */;
@@ -63,10 +71,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		41E1BB6C55660EA792737F6D /* FastVLMTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FastVLMTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C413ED52F6A7D4B003C2190 /* FastVLM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = FastVLM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C56E1A62F4CFA900069962F /* Sunclub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sunclub.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C56E1B72F4CFA910069962F /* SunclubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SunclubTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C56E1C12F4CFA910069962F /* SunclubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SunclubUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E305D6CB9AB5BB7D944BE492 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -132,17 +142,36 @@
 		};
 		9C56E1BA2F4CFA910069962F /* SunclubTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = SunclubTests;
 			sourceTree = "<group>";
 		};
 		9C56E1C42F4CFA910069962F /* SunclubUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = SunclubUITests;
+			sourceTree = "<group>";
+		};
+		F20B4FA312AC8DA44B05B58B /* FastVLMTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = FastVLMTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		00F3B2F84255335C80A27E6E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24897D7C8494351FBEFDAA36 /* FastVLM.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9C413ED22F6A7D4B003C2190 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -188,9 +217,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3C45FBCB8FBC7FA1FA258D64 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				E305D6CB9AB5BB7D944BE492 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		9C413EEF2F6A7E75003C2190 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				3C45FBCB8FBC7FA1FA258D64 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -200,6 +238,7 @@
 			children = (
 				9C56E1A82F4CFA900069962F /* Sunclub */,
 				9C56E1BA2F4CFA910069962F /* SunclubTests */,
+				F20B4FA312AC8DA44B05B58B /* FastVLMTests */,
 				9C56E1C42F4CFA910069962F /* SunclubUITests */,
 				9C413EEF2F6A7E75003C2190 /* Frameworks */,
 				9C56E1A72F4CFA900069962F /* Products */,
@@ -213,6 +252,7 @@
 				9C56E1B72F4CFA910069962F /* SunclubTests.xctest */,
 				9C56E1C12F4CFA910069962F /* SunclubUITests.xctest */,
 				9C413ED52F6A7D4B003C2190 /* FastVLM.framework */,
+				41E1BB6C55660EA792737F6D /* FastVLMTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -230,6 +270,27 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		73E53E20296C07F003D106EE /* FastVLMTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A755A259FAFC251EC76B8DDA /* Build configuration list for PBXNativeTarget "FastVLMTests" */;
+			buildPhases = (
+				7A7A861DCC56DDF7053E2646 /* Sources */,
+				00F3B2F84255335C80A27E6E /* Frameworks */,
+				E0827BB042194D2656AE0CDC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00C1AB378573C565287682BB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F20B4FA312AC8DA44B05B58B /* FastVLMTests */,
+			);
+			name = FastVLMTests;
+			productName = FastVLMTests;
+			productReference = 41E1BB6C55660EA792737F6D /* FastVLMTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		9C413ED42F6A7D4B003C2190 /* FastVLM */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9C413EDF2F6A7D4B003C2190 /* Build configuration list for PBXNativeTarget "FastVLM" */;
@@ -304,8 +365,6 @@
 				9C56E1BA2F4CFA910069962F /* SunclubTests */,
 			);
 			name = SunclubTests;
-			packageProductDependencies = (
-			);
 			productName = SunclubTests;
 			productReference = 9C56E1B72F4CFA910069962F /* SunclubTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -327,8 +386,6 @@
 				9C56E1C42F4CFA910069962F /* SunclubUITests */,
 			);
 			name = SunclubUITests;
-			packageProductDependencies = (
-			);
 			productName = SunclubUITests;
 			productReference = 9C56E1C12F4CFA910069962F /* SunclubUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -343,6 +400,10 @@
 				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					73E53E20296C07F003D106EE = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 9C413ED42F6A7D4B003C2190;
+					};
 					9C413ED42F6A7D4B003C2190 = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -382,6 +443,7 @@
 				9C56E1B62F4CFA910069962F /* SunclubTests */,
 				9C56E1C02F4CFA910069962F /* SunclubUITests */,
 				9C413ED42F6A7D4B003C2190 /* FastVLM */,
+				73E53E20296C07F003D106EE /* FastVLMTests */,
 			);
 		};
 /* End PBXProject section */
@@ -415,9 +477,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E0827BB042194D2656AE0CDC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7A7A861DCC56DDF7053E2646 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9C413ED12F6A7D4B003C2190 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -449,6 +525,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		00C1AB378573C565287682BB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = FastVLM;
+			target = 9C413ED42F6A7D4B003C2190 /* FastVLM */;
+			targetProxy = 3136CF2D2B3473AAE7A43E85 /* PBXContainerItemProxy */;
+		};
 		9C413EDC2F6A7D4B003C2190 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9C413ED42F6A7D4B003C2190 /* FastVLM */;
@@ -467,6 +549,29 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		5D6878627A28EDF8EF533E71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3VDQ4656LX;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclub.FastVLMTests;
+				PRODUCT_NAME = FastVLMTests;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FastVLM;
+			};
+			name = Debug;
+		};
 		9C413EE02F6A7D4B003C2190 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -886,6 +991,30 @@
 			};
 			name = Release;
 		};
+		F031CBD3B66F79AFE3BF45E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3VDQ4656LX;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclub.FastVLMTests;
+				PRODUCT_NAME = FastVLMTests;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FastVLM;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -930,6 +1059,15 @@
 			buildConfigurations = (
 				9C56E1D32F4CFA910069962F /* Debug */,
 				9C56E1D42F4CFA910069962F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A755A259FAFC251EC76B8DDA /* Build configuration list for PBXNativeTarget "FastVLMTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F031CBD3B66F79AFE3BF45E7 /* Release */,
+				5D6878627A28EDF8EF533E71 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

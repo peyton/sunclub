@@ -147,18 +147,11 @@ actor FastVLMService {
         }
     }
 
-    private static func modelDirectory() -> URL? {
-        let bundle = Bundle.main
-        let candidates = [
-            bundle.url(forResource: "model", withExtension: nil, subdirectory: "FastVLM"),
-            bundle.resourceURL?.appendingPathComponent("FastVLM/model"),
-            bundle.resourceURL
-        ]
+    static func resolveModelDirectory(searchRoots: [URL]) -> URL? {
+        FastVLM.resolveModelDirectory(searchRoots: searchRoots)
+    }
 
-        let fileManager = FileManager.default
-        return candidates.first { candidate in
-            guard let candidate else { return false }
-            return fileManager.fileExists(atPath: candidate.appendingPathComponent("config.json").path)
-        } ?? nil
+    private static func modelDirectory() -> URL? {
+        FastVLM.resolveModelDirectory()
     }
 }

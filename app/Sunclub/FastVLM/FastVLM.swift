@@ -475,21 +475,37 @@ private class FastVLMMultiModalProjector: Module, UnaryLayer {
 /// This is typically created by ``VLMModelFactory``.
 public class FastVLM: Module, VLMModel, KVCacheDimensionProvider {
 
-    static public var modelConfiguration: ModelConfiguration {
-        let bundle = Bundle.main
-        let candidates = [
-            bundle.url(forResource: "config", withExtension: "json", subdirectory: "FastVLM/model"),
-            bundle.resourceURL?.appendingPathComponent("FastVLM/model/config.json"),
-            bundle.url(forResource: "config", withExtension: "json"),
-            bundle.resourceURL?.appendingPathComponent("config.json"),
-        ]
-        guard let configurationURL = candidates.compactMap({ $0 }).first(where: { url in
-            return FileManager.default.fileExists(atPath: url.path)
+    public static func resolveModelDirectory(searching bundles: [Bundle] = [Bundle(for: FastVLM.self), .main]) -> URL? {
+        resolveModelDirectory(searchRoots: bundles.compactMap(\.resourceURL))
+    }
+
+    public static func resolveModelDirectory(searchRoots: [URL]) -> URL? {
+        let fileManager = FileManager.default
+        let candidates = searchRoots.flatMap(Self.configurationFileCandidates(in:))
+
+        guard let configurationURL = candidates.first(where: { candidate in
+            fileManager.fileExists(atPath: candidate.path)
         }) else {
-            fatalError("FastVLM model configuration is missing from the app bundle.")
+            return nil
         }
-        let url = configurationURL.resolvingSymlinksInPath().deletingLastPathComponent()
-        return ModelConfiguration(directory: url)
+
+        return configurationURL.resolvingSymlinksInPath().deletingLastPathComponent()
+    }
+
+    private static func configurationFileCandidates(in root: URL) -> [URL] {
+        [
+            root.appendingPathComponent("FastVLM/model/config.json"),
+            root.appendingPathComponent("model/config.json"),
+            root.appendingPathComponent("config.json")
+        ]
+    }
+
+    static public var modelConfiguration: ModelConfiguration {
+        guard let modelDirectory = resolveModelDirectory() else {
+            fatalError("FastVLM model configuration is missing from the embedded FastVLM resources.")
+        }
+
+        return ModelConfiguration(directory: modelDirectory)
     }
 
     static public func register(modelFactory: VLMModelFactory) {
