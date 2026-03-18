@@ -127,6 +127,13 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(SunscreenResponseParser.parse("There might be sunscreen"), .no)
     }
 
+
+    @MainActor
+    func testSunscreenResponseParserSanitizesUnexpectedOutputIntoStableTokens() {
+        XCTAssertEqual(SunscreenResponseParser.sanitized(" yes!!! \n"), "YES")
+        XCTAssertEqual(SunscreenResponseParser.sanitized("no, sunscreen not found"), "NO SUNSCREEN NOT FOUND")
+    }
+
     @MainActor
     private func makeAppState() throws -> AppState {
         let schema = Schema([DailyRecord.self, Settings.self])
