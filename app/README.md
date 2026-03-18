@@ -59,17 +59,19 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
 
 ## Fastlane
 
-Run Fastlane from [`/Users/peyton/Projects/sunclub/app`](/Users/peyton/Projects/sunclub/app):
+Tooling is pinned at the repo root in [`/Users/peyton/Projects/sunclub/mise.toml`](/Users/peyton/Projects/sunclub/mise.toml).
 
-- `bundle install`
-- `bundle exec fastlane prepareModelLane`
-- `bundle exec fastlane testsLane`
-- `bundle exec fastlane buildLane`
+1. From the repo root, run `mise install`.
+2. Run Fastlane from [`/Users/peyton/Projects/sunclub/app`](/Users/peyton/Projects/sunclub/app):
+
+- `mise exec -- fastlane prepareModelLane`
+- `mise exec -- fastlane testsLane`
+- `mise exec -- fastlane buildLane`
 
 Release automation is also defined:
 
-- `bundle exec fastlane betaLane`
-- `bundle exec fastlane releaseLane`
+- `mise exec -- fastlane betaLane`
+- `mise exec -- fastlane releaseLane`
 
 `prepareModelLane` downloads the FastVLM `0.5B` model into `Sunclub/FastVLMModel/model` if it is missing. `betaLane` and `releaseLane` expect App Store Connect API key environment variables before upload:
 

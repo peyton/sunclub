@@ -1,7 +1,6 @@
 # Sunclub
 
-iOS sunscreen verification app. Swift 6, iOS 18+, SwiftUI + SwiftData + Vision.
- All ML inference on-device.
+iOS sunscreen tracking app with AI validation.
 
 ## Build & Run
 
@@ -23,11 +22,11 @@ Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No SPM resolve or
 ## Project Layout
 
 ```
-app/          Xcode project — Swift source, tests, UI tests
+app/          iOS Apps, Swift source, iOS tests, UI tests
 evals/        Benchmark suite and eval harness
-scripts/      Build/analysis scripts
-tests/        Python eval tests
-docs/         Specs, design docs, investigation notes
+scripts/      All project-level scripts.
+tests/        Other tests and test runners
+docs/         One place for all documentation on the app, evals, scripts, and tests.
 ```
 
 ## Architecture Conventions
@@ -42,6 +41,7 @@ docs/         Specs, design docs, investigation notes
 ## Documentation Rules
 
 - **All specs, design docs, and investigation notes go in `docs/`** as Markdown files.
+- All documentation about tools goes in `docs/` as Markdown files.
 - Keep docs terse — spec fields, not prose
 - DO NOT reference Linear ticket IDs (e.g. `PER-44`) in doc filenames or headers
 - Existing specs: `SPEC.md` (benchmark), `app/SPEC.md` (product), `docs/subscription-screen-spec.md`
@@ -58,19 +58,6 @@ docs/         Specs, design docs, investigation notes
 - 4-space indent, no external linter
 - Custom errors: enum conforming to `LocalizedError`
 - UI tests use `UITEST_MODE` launch arg to bypass camera/notifications
-
-## Key Thresholds
-
-Do not change without running the benchmark (`evals/benchmark/benchmark.sh --strict`).
-
-| Config | directHit | consensus | support |
-|--------|-----------|-----------|---------|
-| `video` | 0.58 | 0.60 | 0.62 |
-| `selfie` | 0.56 | 0.59 | 0.60 |
-
-- Consecutive frame requirement: 12
-- Frame sampling: every 5th frame
-- Training photos: exactly 5
 
 ## Things to Avoid
 
