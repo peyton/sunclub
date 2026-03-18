@@ -63,6 +63,14 @@ Capture App Store screenshots from the UI test flow
 
 Create an unsigned archive for local validation
 
+### ios launch
+
+```sh
+[bundle exec] fastlane ios launch
+```
+
+Build the debug app for the simulator, install it, and launch it
+
 ### ios beta
 
 ```sh

@@ -80,53 +80,59 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9C413EE82F6A7D5A003C2190 /* Exceptions for "Sunclub" folder in "FastVLM" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				FastVLM/FastVLM.h,
-				FastVLM/FastVLM.swift,
-				FastVLM/MediaProcessingExtensions.swift,
-				FastVLM/model/added_tokens.json,
-				FastVLM/model/config.json,
-				FastVLM/model/fastvithd.mlpackage,
-				FastVLM/model/merges.txt,
-				FastVLM/model/model.safetensors,
-				FastVLM/model/model.safetensors.index.json,
-				FastVLM/model/preprocessor_config.json,
-				FastVLM/model/processor_config.json,
-				FastVLM/model/special_tokens_map.json,
-				FastVLM/model/tokenizer_config.json,
-				FastVLM/model/tokenizer.json,
-				FastVLM/model/vocab.json,
-			);
-			publicHeaders = (
-				FastVLM/FastVLM.h,
-			);
-			target = 9C413ED42F6A7D4B003C2190 /* FastVLM */;
-		};
 		9C56E1C92F4CFA910069962F /* Exceptions for "Sunclub" folder in "Sunclub" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				FastVLM/.gitignore,
-				FastVLM/FastVLM.swift,
-				FastVLM/MediaProcessingExtensions.swift,
-				FastVLM/model/added_tokens.json,
-				FastVLM/model/config.json,
-				FastVLM/model/fastvithd.mlpackage,
-				FastVLM/model/merges.txt,
-				FastVLM/model/model.safetensors,
-				FastVLM/model/model.safetensors.index.json,
-				FastVLM/model/preprocessor_config.json,
-				FastVLM/model/processor_config.json,
-				FastVLM/model/special_tokens_map.json,
-				FastVLM/model/tokenizer_config.json,
-				FastVLM/model/tokenizer.json,
-				FastVLM/model/vocab.json,
-				FastVLM/README.md,
 				Info.plist,
 				StoreKit/README.md,
 			);
 			target = 9C56E1A52F4CFA900069962F /* Sunclub */;
+		};
+		9CB1114B2F6B50F300FAF508 /* Exceptions for "FastVLM" folder in "Sunclub" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				.gitignore,
+				FastVLM.swift,
+				MediaProcessingExtensions.swift,
+				model/added_tokens.json,
+				model/config.json,
+				model/fastvithd.mlpackage,
+				model/merges.txt,
+				model/model.safetensors,
+				model/model.safetensors.index.json,
+				model/preprocessor_config.json,
+				model/processor_config.json,
+				model/special_tokens_map.json,
+				model/tokenizer_config.json,
+				model/tokenizer.json,
+				model/vocab.json,
+				README.md,
+			);
+			target = 9C56E1A52F4CFA900069962F /* Sunclub */;
+		};
+		9CB1114C2F6B50F300FAF508 /* Exceptions for "FastVLM" folder in "FastVLM" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				FastVLM.h,
+				FastVLM.swift,
+				MediaProcessingExtensions.swift,
+				model/added_tokens.json,
+				model/config.json,
+				model/fastvithd.mlpackage,
+				model/merges.txt,
+				model/model.safetensors,
+				model/model.safetensors.index.json,
+				model/preprocessor_config.json,
+				model/processor_config.json,
+				model/special_tokens_map.json,
+				model/tokenizer_config.json,
+				model/tokenizer.json,
+				model/vocab.json,
+			);
+			publicHeaders = (
+				FastVLM.h,
+			);
+			target = 9C413ED42F6A7D4B003C2190 /* FastVLM */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -135,29 +141,31 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				9C56E1C92F4CFA910069962F /* Exceptions for "Sunclub" folder in "Sunclub" target */,
-				9C413EE82F6A7D5A003C2190 /* Exceptions for "Sunclub" folder in "FastVLM" target */,
 			);
 			path = Sunclub;
 			sourceTree = "<group>";
 		};
 		9C56E1BA2F4CFA910069962F /* SunclubTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = SunclubTests;
 			sourceTree = "<group>";
 		};
 		9C56E1C42F4CFA910069962F /* SunclubUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = SunclubUITests;
+			sourceTree = "<group>";
+		};
+		9CB1113B2F6B50F300FAF508 /* FastVLM */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9CB1114B2F6B50F300FAF508 /* Exceptions for "FastVLM" folder in "Sunclub" target */,
+				9CB1114C2F6B50F300FAF508 /* Exceptions for "FastVLM" folder in "FastVLM" target */,
+			);
+			path = FastVLM;
 			sourceTree = "<group>";
 		};
 		F20B4FA312AC8DA44B05B58B /* FastVLMTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = FastVLMTests;
 			sourceTree = "<group>";
 		};
@@ -236,6 +244,7 @@
 		9C56E19D2F4CFA900069962F = {
 			isa = PBXGroup;
 			children = (
+				9CB1113B2F6B50F300FAF508 /* FastVLM */,
 				9C56E1A82F4CFA900069962F /* Sunclub */,
 				9C56E1BA2F4CFA910069962F /* SunclubTests */,
 				F20B4FA312AC8DA44B05B58B /* FastVLMTests */,
@@ -333,6 +342,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				9C56E1A82F4CFA900069962F /* Sunclub */,
+				9CB1113B2F6B50F300FAF508 /* FastVLM */,
 			);
 			name = Sunclub;
 			packageProductDependencies = (
@@ -835,7 +845,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -894,7 +904,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -913,7 +923,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclubTests;
 				PRODUCT_NAME = SunclubTests;
@@ -935,7 +945,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclubTests;
 				PRODUCT_NAME = SunclubTests;

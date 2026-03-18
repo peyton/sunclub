@@ -1,4 +1,5 @@
 require "fileutils"
+require "json"
 require "shellwords"
 
 default_platform(:ios)
@@ -22,13 +23,18 @@ MODEL_DOWNLOAD_SCRIPT = File.expand_path("../scripts/get_pretrained_mlx_model.sh
 BUILD_ROOT = File.join(APP_ROOT, "build", "fastlane")
 DERIVED_DATA_PATH = File.join(BUILD_ROOT, "derived-data")
 BUILDLOG_PATH = File.join(BUILD_ROOT, "logs")
+RUN_DERIVED_DATA_PATH = File.join(BUILD_ROOT, "run-derived-data")
 TEST_OUTPUT_PATH = File.join(APP_ROOT, "fastlane", "test_output")
 SCREENSHOTS_PATH = File.join(APP_ROOT, "fastlane", "screenshots")
 ARCHIVE_PATH = File.join(BUILD_ROOT, "Sunclub.xcarchive")
 BETA_OUTPUT_PATH = File.join(BUILD_ROOT, "beta")
 RELEASE_OUTPUT_PATH = File.join(BUILD_ROOT, "release")
+RUN_APP_PATH = File.join(RUN_DERIVED_DATA_PATH, "Build", "Products", "Debug-iphonesimulator", "#{SCHEME}.app")
 SCREENSHOT_TESTS = ["SunclubUITests/SunclubScreenshots"]
 TEST_XCARGS = "-parallel-testing-enabled NO -maximum-parallel-testing-workers 1"
+IOS_DEVICE_DESTINATION = "generic/platform=iOS"
+IOS_DEVICE_SDK = "iphoneos"
+IOS_SIMULATOR_SDK = "iphonesimulator"
 
 platform :ios do
   before_all do
@@ -128,11 +134,37 @@ platform :ios do
       archive_path: ARCHIVE_PATH,
       derived_data_path: DERIVED_DATA_PATH,
       buildlog_path: BUILDLOG_PATH,
+      destination: IOS_DEVICE_DESTINATION,
+      sdk: IOS_DEVICE_SDK,
       skip_codesigning: true,
       skip_package_ipa: true,
       skip_package_pkg: true,
       silent: false
     )
+  end
+
+  desc "Build the debug app for the simulator, install it, and launch it"
+  lane :launch do
+    prepare_model
+
+    simulator_udid = simulator_udid(device_name: DEFAULT_SIMULATOR)
+
+    sh(
+      "xcodebuild -project #{PROJECT_PATH.shellescape} " \
+      "-scheme #{SCHEME.shellescape} " \
+      "-configuration Debug " \
+      "-sdk #{IOS_SIMULATOR_SDK.shellescape} " \
+      "-destination #{simulator_destination(device_name: DEFAULT_SIMULATOR).shellescape} " \
+      "-derivedDataPath #{RUN_DERIVED_DATA_PATH.shellescape} " \
+      "build"
+    )
+
+    UI.user_error!("Built app not found at #{RUN_APP_PATH}") unless File.exist?(RUN_APP_PATH)
+
+    ensure_simulator_booted(udid: simulator_udid)
+    sh("open -a Simulator --args -CurrentDeviceUDID #{simulator_udid.shellescape}", log: false)
+    sh("xcrun simctl install #{simulator_udid.shellescape} #{RUN_APP_PATH.shellescape}")
+    sh("xcrun simctl launch #{simulator_udid.shellescape} #{APP_IDENTIFIER.shellescape}")
   end
 
   desc "Run tests, build a signed ipa, and upload it to TestFlight"
@@ -141,7 +173,7 @@ platform :ios do
     tests
     prepare_model
 
-    groups = comma_separated_values(options[:groups] || ENV["TESTFLIGHT_GROUPS"])
+    groups = comma_separated_values(value: options[:groups] || ENV["TESTFLIGHT_GROUPS"])
     distribute_external = if options.key?(:distribute_external)
                             options[:distribute_external]
                           else
@@ -222,6 +254,8 @@ platform :ios do
       output_name: options[:output_name],
       derived_data_path: DERIVED_DATA_PATH,
       buildlog_path: BUILDLOG_PATH,
+      destination: IOS_DEVICE_DESTINATION,
+      sdk: IOS_DEVICE_SDK,
       export_method: "app-store",
       include_symbols: true,
       include_bitcode: false,
@@ -234,12 +268,12 @@ platform :ios do
     issuer_id = ENV["APP_STORE_CONNECT_API_ISSUER_ID"] || ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
     key_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"] || ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"]
     key_content = ENV["APP_STORE_CONNECT_API_KEY_CONTENT"] || ENV["APP_STORE_CONNECT_API_KEY_KEY"]
-    is_key_content_base64 = boolean_env("APP_STORE_CONNECT_API_KEY_BASE64") ||
-                            boolean_env("APP_STORE_CONNECT_API_KEY_IS_KEY_CONTENT_BASE64")
+    is_key_content_base64 = boolean_env(key: "APP_STORE_CONNECT_API_KEY_BASE64") ||
+                            boolean_env(key: "APP_STORE_CONNECT_API_KEY_IS_KEY_CONTENT_BASE64")
 
-    UI.user_error!("Missing App Store Connect API key id") if blank_value(key_id)
-    UI.user_error!("Missing App Store Connect API issuer id") if blank_value(issuer_id)
-    UI.user_error!("Provide APP_STORE_CONNECT_API_KEY_PATH or APP_STORE_CONNECT_API_KEY_CONTENT") if blank_value(key_path) && blank_value(key_content)
+    UI.user_error!("Missing App Store Connect API key id") if blank_value(value: key_id)
+    UI.user_error!("Missing App Store Connect API issuer id") if blank_value(value: issuer_id)
+    UI.user_error!("Provide APP_STORE_CONNECT_API_KEY_PATH or APP_STORE_CONNECT_API_KEY_CONTENT") if blank_value(value: key_path) && blank_value(value: key_content)
 
     api_key_options = {
       key_id: key_id,
@@ -248,7 +282,7 @@ platform :ios do
       in_house: false
     }
 
-    if blank_value(key_path)
+    if blank_value(value: key_path)
       api_key_options[:key_content] = key_content
       api_key_options[:is_key_content_base64] = is_key_content_base64
     else
@@ -262,15 +296,52 @@ platform :ios do
     Dir.exist?(SCREENSHOTS_PATH) && Dir.glob(File.join(SCREENSHOTS_PATH, "**", "*.{png,jpg,jpeg}")).any?
   end
 
-  private_lane :comma_separated_values do |value|
-    value.to_s.split(",").map(&:strip).reject(&:empty?)
+  private_lane :comma_separated_values do |options|
+    options.fetch(:value).to_s.split(",").map(&:strip).reject(&:empty?)
   end
 
-  private_lane :blank_value do |value|
+  private_lane :blank_value do |options|
+    value = options[:value]
     value.nil? || value.to_s.strip.empty?
   end
 
-  private_lane :boolean_env do |key|
-    %w[1 true yes].include?(ENV[key].to_s.strip.downcase)
+  private_lane :boolean_env do |options|
+    %w[1 true yes].include?(ENV[options.fetch(:key)].to_s.strip.downcase)
+  end
+
+  private_lane :ensure_simulator_booted do |options|
+    udid = options.fetch(:udid)
+    sh("xcrun simctl boot #{udid.shellescape} || true", log: false)
+    sh("xcrun simctl bootstatus #{udid.shellescape} -b")
+  end
+
+  private_lane :simulator_destination do |options|
+    device_name = options.fetch(:device_name)
+    "platform=iOS Simulator,name=#{device_name}"
+  end
+
+  private_lane :simulator_udid do |options|
+    device_name = options.fetch(:device_name)
+    devices = JSON.parse(sh("xcrun simctl list devices available -j", log: false)).fetch("devices", {})
+    matches = devices.flat_map do |runtime, runtime_devices|
+      runtime_devices.filter_map do |device|
+        next unless device["isAvailable"] && device["name"] == device_name
+
+        {
+          runtime: runtime,
+          udid: device["udid"]
+        }
+      end
+    end
+
+    UI.user_error!("Could not find an available simulator named #{device_name}") if matches.empty?
+
+    matches.max_by { |entry| runtime_sort_key(runtime_identifier: entry[:runtime]) }.fetch(:udid)
+  end
+
+  private_lane :runtime_sort_key do |options|
+    runtime_identifier = options.fetch(:runtime_identifier)
+    version = runtime_identifier.to_s.split("iOS-").last.to_s.tr("-", ".")
+    version.empty? ? Gem::Version.new("0") : Gem::Version.new(version)
   end
 end

@@ -12,3 +12,6 @@ Common setup from the repo root:
 
 - `mise install`
 - `just download-model`
+- `just build`
+- `just run`
+- `just test`

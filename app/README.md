@@ -53,9 +53,10 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
 
 1. From the repo root, run `mise install`.
 2. Run `just download-model`.
-3. Open [`/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj`](/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj) in Xcode.
-4. Select an iPhone simulator or device running iOS 18.2+.
-5. Build and run the `Sunclub` scheme.
+3. Run `just run` to build the debug app, install it on the default simulator, and launch it.
+4. If you prefer Xcode, open [`/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj`](/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj).
+5. Select an iPhone simulator or device running iOS 18.6+.
+6. Build and run the `Sunclub` scheme.
 
 ## Fastlane
 
@@ -63,7 +64,16 @@ Tooling is pinned at the repo root in [`/Users/peyton/Projects/sunclub/mise.toml
 
 1. From the repo root, run `mise install`.
 2. Optionally pre-seed the model with `just download-model`.
-3. Run Fastlane from [`/Users/peyton/Projects/sunclub/app`](/Users/peyton/Projects/sunclub/app):
+3. Use the repo-root `just` wrappers:
+
+- `just build`
+- `just run`
+- `just test`
+- `just test-unit`
+- `just test-ui`
+- `just ci`
+
+4. Or run Fastlane directly from [`/Users/peyton/Projects/sunclub/app`](/Users/peyton/Projects/sunclub/app):
 
 - `mise exec -- fastlane prepare_model`
 - `mise exec -- fastlane unit_tests`
@@ -71,6 +81,7 @@ Tooling is pinned at the repo root in [`/Users/peyton/Projects/sunclub/mise.toml
 - `mise exec -- fastlane tests`
 - `mise exec -- fastlane screenshots`
 - `mise exec -- fastlane build`
+- `mise exec -- fastlane launch`
 
 Release automation is also defined:
 
