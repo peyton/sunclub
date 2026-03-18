@@ -21,7 +21,7 @@ enum FastVLMServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelMissing:
-            return "FastVLM model files are missing. Run just download-model from the repo root, or run bash scripts/get_pretrained_mlx_model.sh --model 0.5b --dest app/Sunclub/FastVLMModel/model, then rebuild."
+            return "FastVLM model files are missing. Run `just download-model` from the repo root, then rebuild."
         case .generationFailed(let message):
             return message
         }
@@ -150,8 +150,8 @@ actor FastVLMService {
     private static func modelDirectory() -> URL? {
         let bundle = Bundle.main
         let candidates = [
-            bundle.url(forResource: "model", withExtension: nil, subdirectory: "FastVLMModel"),
-            bundle.resourceURL?.appendingPathComponent("FastVLMModel/model"),
+            bundle.url(forResource: "model", withExtension: nil, subdirectory: "FastVLM"),
+            bundle.resourceURL?.appendingPathComponent("FastVLM/model"),
             bundle.resourceURL
         ]
 

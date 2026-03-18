@@ -9,7 +9,7 @@ just download-model
 Direct script invocation is also available:
 
 ```sh
-bash scripts/get_pretrained_mlx_model.sh --model 0.5b --dest app/Sunclub/FastVLMModel/model
+bash scripts/get_pretrained_mlx_model.sh --model 0.5b --dest app/Sunclub/FastVLM/model
 ```
 
 The downloaded model is intentionally not committed.
