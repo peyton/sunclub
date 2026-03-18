@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FA5700010000000000000001 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000001 /* MLX */; };
+		FA5700010000000000000002 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000002 /* MLXLMCommon */; };
+		FA5700010000000000000003 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000003 /* MLXVLM */; };
+		FA5700010000000000000004 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000004 /* MLXNN */; };
+		FA5700010000000000000005 /* MLXFast in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000005 /* MLXFast */; };
+		FA5700010000000000000006 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000006 /* Transformers */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		9C56E1B82F4CFA910069962F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -33,7 +42,10 @@
 		9C56E1C92F4CFA910069962F /* Exceptions for "Sunclub" folder in "Sunclub" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				FastVLMModel/.gitignore,
+				FastVLMModel/README.md,
 				Info.plist,
+				StoreKit/README.md,
 			);
 			target = 9C56E1A52F4CFA900069962F /* Sunclub */;
 		};
@@ -65,6 +77,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA5700010000000000000005 /* MLXFast in Frameworks */,
+				FA5700010000000000000002 /* MLXLMCommon in Frameworks */,
+				FA5700010000000000000001 /* MLX in Frameworks */,
+				FA5700010000000000000004 /* MLXNN in Frameworks */,
+				FA5700010000000000000006 /* Transformers in Frameworks */,
+				FA5700010000000000000003 /* MLXVLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +143,12 @@
 			);
 			name = Sunclub;
 			packageProductDependencies = (
+				FA5700030000000000000001 /* MLX */,
+				FA5700030000000000000002 /* MLXLMCommon */,
+				FA5700030000000000000003 /* MLXVLM */,
+				FA5700030000000000000004 /* MLXNN */,
+				FA5700030000000000000005 /* MLXFast */,
+				FA5700030000000000000006 /* Transformers */,
 			);
 			productName = Sunclub;
 			productReference = 9C56E1A62F4CFA900069962F /* Sunclub.app */;
@@ -208,6 +232,11 @@
 			);
 			mainGroup = 9C56E19D2F4CFA900069962F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FA5700020000000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */,
+				FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */,
+				FA5700020000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9C56E1A72F4CFA900069962F /* Products */;
 			projectDirPath = "";
@@ -296,12 +325,13 @@
 				INFOPLIST_FILE = Sunclub/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Sunclub;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is used to scan your sunscreen barcode and verify your bottle.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is used to detect your sunscreen and log daily sunscreen application.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -315,7 +345,6 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -337,12 +366,13 @@
 				INFOPLIST_FILE = Sunclub/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Sunclub;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is used to scan your sunscreen barcode and verify your bottle.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is used to detect your sunscreen and log daily sunscreen application.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -356,7 +386,6 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -417,7 +446,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -476,7 +505,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -495,7 +524,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclubTests;
 				PRODUCT_NAME = SunclubTests;
@@ -517,7 +546,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclubTests;
 				PRODUCT_NAME = SunclubTests;
@@ -538,6 +567,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclubUITests;
 				PRODUCT_NAME = SunclubUITests;
@@ -558,6 +588,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclubUITests;
 				PRODUCT_NAME = SunclubUITests;
@@ -611,6 +642,66 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FA5700020000000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift-examples";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.21.2;
+			};
+		};
+		FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.21.2;
+			};
+		};
+		FA5700020000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.18;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FA5700030000000000000001 /* MLX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLX;
+		};
+		FA5700030000000000000002 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
+			productName = MLXLMCommon;
+		};
+		FA5700030000000000000003 /* MLXVLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
+			productName = MLXVLM;
+		};
+		FA5700030000000000000004 /* MLXNN */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXNN;
+		};
+		FA5700030000000000000005 /* MLXFast */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXFast;
+		};
+		FA5700030000000000000006 /* Transformers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Transformers;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9C56E19E2F4CFA900069962F /* Project object */;
 }

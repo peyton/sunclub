@@ -10,7 +10,7 @@ struct HomeView: View {
             VStack(spacing: 26) {
                 header
 
-                activeProductCard
+                todayCard
 
                 Button {
                     router.open(.weeklySummary)
@@ -27,8 +27,6 @@ struct HomeView: View {
                 router.open(.verifyCamera)
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .disabled(appState.activeProduct == nil || !appState.hasTrainingData())
-            .opacity(appState.activeProduct == nil || !appState.hasTrainingData() ? 0.42 : 1)
             .accessibilityIdentifier("home.verifyNow")
         }
         .onAppear {
@@ -65,6 +63,29 @@ struct HomeView: View {
         }
     }
 
+    private var todayCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Today")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            Text(todayTitle)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+                .accessibilityIdentifier("home.todayStatus")
+
+            Text(todayDetail)
+                .font(.system(size: 15))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(22)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+    }
+
     private var streakCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(appState.currentStreak)")
@@ -75,40 +96,15 @@ struct HomeView: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
 
-            if let product = appState.activeProduct {
-                Text(product.name)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(AppPalette.softInk)
-            }
+            Text("Tap to see your last 7 days.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, minHeight: 158, alignment: .topLeading)
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color(red: 1.000, green: 0.947, blue: 0.760))
-        )
-    }
-
-    private var activeProductCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Current Product")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            Text(appState.activeProduct?.name ?? "No sunscreen selected")
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-                .accessibilityIdentifier("home.activeProductName")
-
-            Text(productDetail)
-                .font(.system(size: 15))
-                .foregroundStyle(AppPalette.softInk)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.72))
         )
     }
 
@@ -134,15 +130,25 @@ struct HomeView: View {
         }
     }
 
-    private var productDetail: String {
-        guard let product = appState.activeProduct else {
-            return "Add and train a sunscreen bottle in Settings to start verifying."
+    private var todayTitle: String {
+        if appState.record(for: Date()) != nil {
+            return "Already logged today"
         }
 
-        if appState.hasTrainingData() {
-            return "Ready to verify. \(appState.activeTrainingAssets.count) training photos saved for \(product.name)."
+        return "Ready for today's check-in"
+    }
+
+    private var todayDetail: String {
+        if appState.record(for: Date()) != nil {
+            return "You can scan again any time. Sunclub will keep just one record for today."
         }
 
-        return "\(product.name) needs training photos before verification."
+        return "Open the camera, point it at your sunscreen bottle, and Sunclub will log today when FastVLM sees it."
+    }
+}
+
+#Preview {
+    SunclubPreviewHost {
+        HomeView()
     }
 }

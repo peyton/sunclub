@@ -1,65 +1,85 @@
 # Sunclub
 
-Sunclub is an offline iOS app for daily sunscreen verification. The current app follows a 9-screen flow based on the latest mockups while keeping the real on-device barcode scan, bottle-model training, live verification, streak tracking, weekly summary, and reminder scheduling behavior.
+Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app now uses an on-device FastVLM model to detect whether the live camera sees sunscreen and logs the day when the model answers `YES`.
 
 ## Flow
 
 1. `Welcome`
    - Intro screen with the Sunclub mark and `Get Started`.
-2. `Scan Barcode`
-   - Uses the rear camera and `BarcodeScannerCoordinator`.
-   - The first valid barcode is saved as the expected bottle barcode.
-3. `Train Photos`
-   - Uses the rear camera and `TrainingCoordinator`.
-   - Captures exactly 5 photos to build the on-device bottle model.
-4. `Enable Notifications`
+2. `Enable Notifications`
    - Requests local notification permission.
    - Onboarding completes whether permission is allowed or denied.
-5. `Home Dashboard`
+3. `Home Dashboard`
    - Shows the greeting, current streak card, `Verify Now`, and a gear button for Settings.
-6. `Verify - Camera`
-   - Uses `VideoVerificationCoordinator`.
-   - Automatically verifies when the trained bottle model is recognized for the required duration.
-7. `Verify Success`
+4. `Verify - Camera`
+   - Uses the rear camera and `SunscreenDetectionCoordinator`.
+   - Sends frames to `FastVLMService` with the fixed sunscreen prompt.
+   - Logs the day after two consecutive `YES` answers.
+5. `Verify Success`
    - Confirms the verification and shows the updated streak.
-8. `Weekly Summary`
+6. `Weekly Summary`
    - Shows the real `appliedCount / 7` result for the past week.
-9. `Settings`
+7. `Settings`
    - `Notification Time` updates the daily reminder time.
-   - `Retrain Bottle Model` clears the saved training features and reopens the training flow.
    - `Manage Subscription` hands off to Apple subscription management when available.
 
 ## What Still Works
 
-- Barcode capture stays on-device and persists the expected bottle barcode in SwiftData.
-- Bottle training still stores local feature-print data in `TrainingAsset`.
-- Daily verification still uses the live camera matcher and records a `DailyRecord`.
-- Streaks and weekly summaries still come from local `CalendarAnalytics`.
+- Daily verification stays fully on-device and records a `DailyRecord`.
 - Reminder scheduling still uses `UNUserNotificationCenter` and the existing weekly background refresh path.
+- Streaks and weekly summaries still come from local `CalendarAnalytics`.
 - All data remains local. There are no accounts, uploads, or analytics SDKs.
 
 ## Project Structure
 
 - `app/Sunclub/Shared`
-  - app routing, root navigation, and the mockup-driven screen shell/theme
+  - app routing, previews, root navigation, and app-wide UI shell/theme
 - `app/Sunclub/Views`
-  - the 9-screen product flow
+  - onboarding, home, camera verification, summary, and settings flow
 - `app/Sunclub/Services`
-  - barcode scan, training capture, live verification, notifications, and analytics
+  - FastVLM inference, camera capture, notifications, subscriptions, and analytics
 - `app/Sunclub/Models`
-  - `Settings`, `DailyRecord`, and `TrainingAsset`
+  - `Settings`, `DailyRecord`, and `VerificationMethod`
+- `app/Sunclub/FastVLMRuntime`
+  - vendored FastVLM runtime files from Apple’s sample app
+- `app/Sunclub/FastVLMModel`
+  - local model folder populated by `app/get_pretrained_mlx_model.sh`
 - `app/SunclubTests`
-  - analytics, reminder persistence, retraining, and verification-success state tests
+  - analytics, parser, reminder persistence, and verification-success state tests
 - `app/SunclubUITests`
-  - flow tests that use UITEST-only demo actions instead of real camera/notification permissions
+  - flow tests that use `UITEST_MODE` and canned camera/model behavior instead of real camera/notification permissions
 
 ## Build and Run
 
-1. Open [`/Users/peyton/.codex/worktrees/0845/sunclub/app/Sunclub.xcodeproj`](/Users/peyton/.codex/worktrees/0845/sunclub/app/Sunclub.xcodeproj) in Xcode.
-2. Select an iPhone simulator or device running iOS 18.0+.
-3. Build and run the `Sunclub` scheme.
+1. Run `chmod +x app/get_pretrained_mlx_model.sh`.
+2. Run `app/get_pretrained_mlx_model.sh --model 0.5b --dest app/Sunclub/FastVLMModel/model`.
+3. Open [`/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj`](/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj) in Xcode.
+4. Select an iPhone simulator or device running iOS 18.2+.
+5. Build and run the `Sunclub` scheme.
+
+## Fastlane
+
+Run Fastlane from [`/Users/peyton/Projects/sunclub/app`](/Users/peyton/Projects/sunclub/app):
+
+- `bundle install`
+- `bundle exec fastlane prepareModelLane`
+- `bundle exec fastlane testsLane`
+- `bundle exec fastlane buildLane`
+
+Release automation is also defined:
+
+- `bundle exec fastlane betaLane`
+- `bundle exec fastlane releaseLane`
+
+`prepareModelLane` downloads the FastVLM `0.5B` model into `app/Sunclub/FastVLMModel/model` if it is missing. `betaLane` and `releaseLane` expect App Store Connect API key environment variables before upload:
+
+- `APP_STORE_CONNECT_API_KEY_ID`
+- `APP_STORE_CONNECT_API_ISSUER_ID`
+- `APP_STORE_CONNECT_API_KEY_PATH` or `APP_STORE_CONNECT_API_KEY_CONTENT`
 
 ## Notes
 
+- FastVLM runs entirely on-device. No camera frames leave the device.
+- Daily reminders and the `Verify Now` action route directly to the camera verification screen.
 - `Manage Subscription` is a system handoff, not an in-app billing screen.
-- UITests use `UITEST_MODE` and bypass real camera and notification permissions so the new flow can be exercised end to end in automation.
+- UITests use `UITEST_MODE` and bypass real camera/model and notification permissions so the flow can be exercised end to end in automation.

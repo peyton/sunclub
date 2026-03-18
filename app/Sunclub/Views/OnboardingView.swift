@@ -33,7 +33,7 @@ struct WelcomeView: View {
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Get Started") {
-                router.open(.scanBarcode)
+                router.open(.enableNotifications)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
@@ -49,7 +49,7 @@ struct EnableNotificationsView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 26) {
-                SunStepHeader(step: 3, total: 3, tint: AppPalette.softInk)
+                SunStepHeader(step: 1, total: 1, tint: AppPalette.softInk)
 
                 Spacer(minLength: 120)
 
@@ -67,7 +67,7 @@ struct EnableNotificationsView: View {
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
-                    Text("Get daily reminders to apply sunscreen")
+                    Text("Get daily reminders that take you straight to the camera check-in.")
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
@@ -92,5 +92,23 @@ struct EnableNotificationsView: View {
             .accessibilityIdentifier("onboarding.enableNotifications")
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+#Preview {
+    SunclubPreviewHost(scenario: .onboarding) {
+        OnboardingView()
+    }
+}
+
+#Preview("Welcome") {
+    SunclubPreviewHost(scenario: .onboarding) {
+        WelcomeView()
+    }
+}
+
+#Preview("Enable Notifications") {
+    SunclubPreviewHost(scenario: .onboarding) {
+        EnableNotificationsView()
     }
 }

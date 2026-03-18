@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="fastlane.lanes">
+    
+    
+    
+      
+      <testcase classname="fastlane.lanes" name="0: set -euo pipefail
+mkdir -p &apos;build/fastlane&apos;
+xcodebuild archive   -project &apos;Sunclub.xcodeproj&apos;   -scheme &apos;Sunclub&apos;   -destination &apos;generic/platform=iOS&apos;   -archivePath &apos;build/fastlane/Sunclub.xcarchive&apos;   CODE_SIGNING_ALLOWED=NO   CODE_SIGNING_REQUIRED=NO" time="84.890331">
+        
+      </testcase>
+    
+  </testsuite>
+</testsuites>

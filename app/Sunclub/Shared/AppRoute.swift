@@ -3,8 +3,6 @@ import Observation
 
 enum AppRoute: String, Hashable, Codable, Identifiable {
     case welcome
-    case scanBarcode
-    case trainPhotos
     case enableNotifications
     case home
     case verifyCamera

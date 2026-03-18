@@ -5,7 +5,6 @@ import SwiftData
 final class Settings {
     @Attribute(.unique) var id: UUID
     var hasCompletedOnboarding: Bool
-    var activeProductID: UUID?
     var reminderHour: Int
     var reminderMinute: Int
     var weeklyHour: Int
@@ -16,7 +15,6 @@ final class Settings {
     init() {
         self.id = UUID()
         self.hasCompletedOnboarding = false
-        self.activeProductID = nil
         self.reminderHour = 8
         self.reminderMinute = 0
         self.weeklyHour = 18

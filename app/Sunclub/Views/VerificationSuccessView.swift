@@ -6,10 +6,7 @@ struct VerificationSuccessView: View {
 
     private var presentation: VerificationSuccessPresentation {
         appState.verificationSuccessPresentation
-            ?? VerificationSuccessPresentation(
-                streak: appState.currentStreak,
-                productName: appState.activeProduct?.name ?? "This product"
-            )
+            ?? VerificationSuccessPresentation(streak: appState.currentStreak)
     }
 
     var body: some View {
@@ -28,7 +25,7 @@ struct VerificationSuccessView: View {
                     .frame(maxWidth: .infinity)
 
                 VStack(spacing: 10) {
-                    Text("Verified!")
+                    Text("Logged")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("success.title")
@@ -52,5 +49,11 @@ struct VerificationSuccessView: View {
             .accessibilityIdentifier("success.done")
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+#Preview {
+    SunclubPreviewHost(scenario: .verificationSuccess) {
+        VerificationSuccessView()
     }
 }

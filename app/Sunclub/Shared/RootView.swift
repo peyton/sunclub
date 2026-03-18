@@ -30,10 +30,6 @@ struct RootView: View {
         switch route {
         case .welcome:
             WelcomeView()
-        case .scanBarcode:
-            BarcodeScanView()
-        case .trainPhotos:
-            TrainingView()
         case .enableNotifications:
             EnableNotificationsView()
         case .home:

@@ -7,8 +7,6 @@ struct SettingsView: View {
 
     @State private var showTimePicker = false
     @State private var reminderTime = Date()
-    @State private var showProductPicker = false
-    @State private var productNameDraft = ""
     @State private var showSubscriptionFallback = false
 
     var body: some View {
@@ -18,26 +16,14 @@ struct SettingsView: View {
                     router.goHome()
                 }
 
-                VStack(alignment: .leading, spacing: 18) {
-                    currentProductSection
+                reminderSection
 
+                VStack(alignment: .leading, spacing: 18) {
                     SunSettingsRow(title: "Notification Time") {
                         reminderTime = appState.reminderDate
                         showTimePicker = true
                     }
                     .accessibilityIdentifier("settings.notificationTime")
-
-                    SunSettingsRow(title: "Retrain Active Product") {
-                        appState.clearTrainingDataForActiveProduct()
-                        router.open(.trainPhotos)
-                    }
-                    .accessibilityIdentifier("settings.retrain")
-
-                    SunSettingsRow(title: "Add Another Product") {
-                        appState.startNewProduct()
-                        router.open(.scanBarcode)
-                    }
-                    .accessibilityIdentifier("settings.addProduct")
 
                     SunSettingsRow(title: "Manage Subscription") {
                         openManageSubscriptions()
@@ -51,12 +37,6 @@ struct SettingsView: View {
         .sheet(isPresented: $showTimePicker) {
             timePickerSheet
         }
-        .sheet(isPresented: $showProductPicker) {
-            productPickerSheet
-        }
-        .onAppear {
-            productNameDraft = appState.activeProduct?.name ?? ""
-        }
         .alert("Manage Subscription Unavailable", isPresented: $showSubscriptionFallback) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -65,47 +45,25 @@ struct SettingsView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var currentProductSection: some View {
+    private var reminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Active Product")
+            Text("Daily Reminder")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            Text(appState.activeProduct?.name ?? "No active product")
+            Text(reminderSummary)
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
-                .accessibilityIdentifier("settings.activeProductName")
+                .accessibilityIdentifier("settings.reminderSummary")
 
-            if let barcode = appState.activeProduct?.barcode, !barcode.isEmpty {
-                Text("Barcode: \(barcode)")
-                    .font(.system(size: 14))
-                    .foregroundStyle(AppPalette.softInk)
-            }
-
-            TextField("Product Name", text: $productNameDraft)
-                .textInputAutocapitalization(.words)
-                .padding(.horizontal, 14)
-                .frame(height: 50)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.78))
-                )
-                .accessibilityIdentifier("settings.productNameField")
-
-            Button("Save Product Name") {
-                appState.renameActiveProduct(productNameDraft)
-            }
-            .buttonStyle(SunSecondaryButtonStyle())
-            .accessibilityIdentifier("settings.saveProductName")
-
-            if appState.hasMultipleProducts {
-                Button("Switch Product") {
-                    showProductPicker = true
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityIdentifier("settings.switchProduct")
-            }
+            Text("Daily reminders open the sunscreen camera flow directly.")
+                .font(.system(size: 15))
+                .foregroundStyle(AppPalette.softInk)
         }
+    }
+
+    private var reminderSummary: String {
+        appState.reminderDate.formatted(date: .omitted, time: .shortened)
     }
 
     private var timePickerSheet: some View {
@@ -140,48 +98,6 @@ struct SettingsView: View {
         .presentationDetents([.medium])
     }
 
-    private var productPickerSheet: some View {
-        NavigationStack {
-            List(appState.products) { product in
-                Button {
-                    appState.setActiveProduct(product)
-                    productNameDraft = product.name
-                    showProductPicker = false
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(product.name)
-                                .foregroundStyle(AppPalette.ink)
-
-                            if let barcode = product.barcode, !barcode.isEmpty {
-                                Text(barcode)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(AppPalette.softInk)
-                            }
-                        }
-
-                        Spacer()
-
-                        if product.id == appState.activeProduct?.id {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(AppPalette.sun)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .navigationTitle("Switch Product")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        showProductPicker = false
-                    }
-                }
-            }
-        }
-    }
-
     private func openManageSubscriptions() {
         guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else {
             showSubscriptionFallback = true
@@ -193,5 +109,11 @@ struct SettingsView: View {
                 showSubscriptionFallback = true
             }
         }
+    }
+}
+
+#Preview {
+    SunclubPreviewHost {
+        SettingsView()
     }
 }

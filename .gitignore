@@ -9,6 +9,7 @@ data/processed/cache/
 
 # Local Codex state
 .codex/environments/
+.codex/config.toml
 
 # Xcode local/build artifacts
 .DerivedData/

@@ -56,19 +56,24 @@ final class SunclubTests: XCTestCase {
     @MainActor
     func testVerificationSuccessPresentationUsesUpdatedStreak() throws {
         let state = try makeAppState()
-        _ = state.createProduct(name: "Daily SPF", barcode: "12345")
-        state.addTrainingFeature(Data("train".utf8), width: 1, height: 1)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
 
-        state.recordVerificationSuccess(
-            method: .video,
-            barcode: "12345",
-            featureDistance: 0.12,
-            barcodeConfidence: nil
+        let yesterdayRecord = DailyRecord(
+            startOfDay: yesterday,
+            verifiedAt: calendar.date(byAdding: .hour, value: 8, to: yesterday) ?? yesterday,
+            method: .camera,
+            verificationDuration: 1.0
         )
+        state.modelContext.insert(yesterdayRecord)
+        state.refresh()
 
-        XCTAssertEqual(state.currentStreak, 1)
-        XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
-        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "Daily SPF is now on a 1-day streak")
+        state.recordVerificationSuccess(method: .camera, verificationDuration: 0.8)
+
+        XCTAssertEqual(state.currentStreak, 2)
+        XCTAssertEqual(state.verificationSuccessPresentation?.streak, 2)
+        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "You're on a 2-day streak.")
     }
 
     @MainActor
@@ -96,48 +101,35 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testRetrainingClearsAndRebuildsTrainingAssets() throws {
+    func testMarkAppliedTodayUpdatesExistingRecordInsteadOfDuplicating() throws {
         let state = try makeAppState()
-        _ = state.createProduct(name: "Primary", barcode: nil)
 
-        state.addTrainingFeature(Data("one".utf8), width: 1, height: 1)
-        state.addTrainingFeature(Data("two".utf8), width: 1, height: 1)
-        XCTAssertEqual(state.activeTrainingAssets.count, 2)
+        state.markAppliedToday(method: .camera, verificationDuration: 1.2)
+        XCTAssertEqual(state.records.count, 1)
 
-        state.clearTrainingDataForActiveProduct()
-        XCTAssertEqual(state.activeTrainingAssets.count, 0)
-
-        state.addTrainingFeature(Data("three".utf8), width: 1, height: 1)
-        XCTAssertEqual(state.activeTrainingAssets.count, 1)
+        state.markAppliedToday(method: .camera, verificationDuration: 2.4)
+        XCTAssertEqual(state.records.count, 1)
+        XCTAssertEqual(state.records.first?.verificationDuration, 2.4)
     }
 
     @MainActor
-    func testProductsScopeTrainingAndRecords() throws {
-        let state = try makeAppState()
-        let productA = state.createProduct(name: "Face SPF", barcode: "111")
-        state.addTrainingFeature(Data("face".utf8), width: 1, height: 1)
-        state.recordVerificationSuccess(
-            method: .video,
-            barcode: "111",
-            featureDistance: 0.2,
-            barcodeConfidence: nil
-        )
+    func testSunscreenResponseParserRecognizesYesAndNo() {
+        XCTAssertEqual(SunscreenResponseParser.parse("YES"), .yes)
+        XCTAssertEqual(SunscreenResponseParser.parse(" yes.\n"), .yes)
+        XCTAssertEqual(SunscreenResponseParser.parse("NO"), .no)
+        XCTAssertEqual(SunscreenResponseParser.parse(" no... "), .no)
+    }
 
-        let productB = state.createProduct(name: "Body SPF", barcode: "222")
-        state.addTrainingFeature(Data("body".utf8), width: 1, height: 1)
-
-        XCTAssertEqual(state.activeProduct?.id, productB.id)
-        XCTAssertEqual(state.activeTrainingAssets.count, 1)
-        XCTAssertEqual(state.currentStreak, 0)
-
-        state.setActiveProduct(productA)
-        XCTAssertEqual(state.activeTrainingAssets.count, 1)
-        XCTAssertEqual(state.currentStreak, 1)
+    @MainActor
+    func testSunscreenResponseParserFallsBackToNoForUnexpectedOutput() {
+        XCTAssertEqual(SunscreenResponseParser.parse("maybe"), .no)
+        XCTAssertEqual(SunscreenResponseParser.parse(""), .no)
+        XCTAssertEqual(SunscreenResponseParser.parse("There might be sunscreen"), .no)
     }
 
     @MainActor
     private func makeAppState() throws -> AppState {
-        let schema = Schema([DailyRecord.self, TrainingAsset.self, Settings.self, TrackedProduct.self])
+        let schema = Schema([DailyRecord.self, Settings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return AppState(context: ModelContext(container))

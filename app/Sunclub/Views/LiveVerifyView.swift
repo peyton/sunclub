@@ -4,13 +4,12 @@ struct LiveVerifyView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
 
-    @StateObject private var coordinator = VideoVerificationCoordinator()
-    @State private var statusMessage = "Hold your bottle in view while Sunclub verifies it."
-    @State private var lastDistance: Float?
-    @State private var confidenceSamples: [Float] = []
-    @State private var smoothedConfidence: Float = 0
+    @StateObject private var coordinator = SunscreenDetectionCoordinator()
+    @State private var latestResult = SunscreenDetectionResult.idle
+    @State private var statusMessage = "Hold your sunscreen bottle in view while Sunclub scans."
     @State private var hasAdvanced = false
     @State private var appearedAt = Date()
+    private let shouldHoldUITestVerifyScreen = ProcessInfo.processInfo.arguments.contains("UITEST_HOLD_VERIFY_SCREEN")
 
     var body: some View {
         SunDarkScreen {
@@ -19,7 +18,7 @@ struct LiveVerifyView: View {
 
                 cameraCard
 
-                confidenceCard
+                statusCard
 
                 Text(statusMessage)
                     .font(.system(size: 16))
@@ -30,46 +29,54 @@ struct LiveVerifyView: View {
         }
         .onAppear {
             appearedAt = Date()
-            confidenceSamples = []
-            smoothedConfidence = 0
+            hasAdvanced = false
+
+            if PreviewRuntime.isRunning {
+                latestResult = SunscreenDetectionResult(
+                    isDetected: false,
+                    isLoadingModel: false,
+                    parsedAnswer: .yes,
+                    rawOutput: "YES",
+                    consecutiveYesCount: 1,
+                    timeToFirstTokenMs: 182,
+                    latencyMs: 448,
+                    errorDescription: nil
+                )
+                statusMessage = "Previewing a FastVLM YES response."
+                return
+            }
+
             coordinator.onStateChange = { result in
-                lastDistance = result.featureDistance
-                updateConfidence(result.confidence)
+                latestResult = result
+                updateStatus(using: result)
                 if result.isDetected {
-                    completeVerification(distance: result.featureDistance)
-                } else if let distance = result.featureDistance, smoothedConfidence > 0 {
-                    statusMessage = String(
-                        format: "Confidence %d%% · distance %.3f",
-                        confidencePercent,
-                        distance
-                    )
-                } else {
-                    statusMessage = "Hold your bottle steady and centered."
+                    completeVerification()
                 }
             }
 
             if appState.isUITesting {
-                statusMessage = "Matching bottle model…"
+                latestResult = SunscreenDetectionResult(
+                    isDetected: false,
+                    isLoadingModel: false,
+                    parsedAnswer: .yes,
+                    rawOutput: "YES",
+                    consecutiveYesCount: 1,
+                    timeToFirstTokenMs: 90,
+                    latencyMs: 150,
+                    errorDescription: nil
+                )
+                statusMessage = "Checking for sunscreen…"
+                guard !shouldHoldUITestVerifyScreen else { return }
                 Task {
                     try? await Task.sleep(nanoseconds: 400_000_000)
                     await MainActor.run {
-                        completeVerification(distance: 0.118)
+                        completeVerification()
                     }
                 }
                 return
             }
 
-            if appState.activeProduct == nil {
-                statusMessage = "Add a sunscreen bottle before verifying."
-                return
-            }
-
-            if appState.trainingFeatureData().isEmpty {
-                statusMessage = "Train your bottle model in Settings before verifying."
-                return
-            }
-
-            coordinator.configure(trainingPayloads: appState.trainingFeatureData())
+            coordinator.configure()
         }
         .onDisappear {
             coordinator.stop()
@@ -92,12 +99,6 @@ struct LiveVerifyView: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(.white)
                 .accessibilityIdentifier("verify.title")
-
-            if let product = appState.activeProduct {
-                Text(product.name)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.white.opacity(0.72))
-            }
         }
     }
 
@@ -116,35 +117,28 @@ struct LiveVerifyView: View {
         }
     }
 
-    private var confidenceCard: some View {
+    private var statusCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Match Confidence")
+                Text("FastVLM")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.white.opacity(0.88))
 
                 Spacer(minLength: 0)
 
-                Text("\(confidencePercent)%")
+                Text(answerLabel)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(confidenceColor)
-                    .accessibilityIdentifier("verify.confidence")
+                    .foregroundStyle(answerColor)
+                    .accessibilityIdentifier("verify.answer")
             }
 
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.14))
-
-                    Capsule(style: .continuous)
-                        .fill(confidenceColor)
-                        .frame(width: proxy.size.width * CGFloat(smoothedConfidence))
-                        .animation(.easeOut(duration: 0.16), value: smoothedConfidence)
-                }
+            if let timingSummary {
+                Text(timingSummary)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.72))
             }
-            .frame(height: 12)
 
-            Text(confidenceHint)
+            Text(rawOutputSummary)
                 .font(.system(size: 13))
                 .foregroundStyle(Color.white.opacity(0.62))
         }
@@ -155,56 +149,107 @@ struct LiveVerifyView: View {
         )
     }
 
-    private var confidencePercent: Int {
-        Int((smoothedConfidence * 100).rounded())
+    private var answerLabel: String {
+        if latestResult.isLoadingModel {
+            return "LOADING"
+        }
+
+        if let parsedAnswer = latestResult.parsedAnswer {
+            return parsedAnswer.rawValue
+        }
+
+        if latestResult.errorDescription != nil {
+            return "ERROR"
+        }
+
+        return "READY"
     }
 
-    private var confidenceColor: Color {
-        switch smoothedConfidence {
-        case 0.75...:
-            return AppPalette.success
-        case 0.45...:
-            return AppPalette.sun
-        default:
+    private var answerColor: Color {
+        if latestResult.errorDescription != nil {
             return Color(red: 0.960, green: 0.500, blue: 0.360)
         }
+
+        if latestResult.isLoadingModel {
+            return AppPalette.sun
+        }
+
+        switch latestResult.parsedAnswer {
+        case .yes:
+            return AppPalette.success
+        case .no:
+            return Color.white.opacity(0.82)
+        case nil:
+            return Color.white.opacity(0.72)
+        }
     }
 
-    private var confidenceHint: String {
+    private var timingSummary: String? {
+        guard let ttft = latestResult.timeToFirstTokenMs,
+              let latency = latestResult.latencyMs else {
+            return nil
+        }
+
+        return "TTFT \(ttft) ms · Total \(latency) ms"
+    }
+
+    private var rawOutputSummary: String {
+        if let errorDescription = latestResult.errorDescription {
+            return errorDescription
+        }
+
+        if latestResult.rawOutput.isEmpty {
+            return "Prompt: Is there sunscreen or a sunscreen bottle in this image? Answer ONLY with YES or NO."
+        }
+
+        if latestResult.parsedAnswer == .yes && !latestResult.isDetected {
+            return "Confirming response \(latestResult.consecutiveYesCount) / 2"
+        }
+
+        return "Model output: \(latestResult.rawOutput)"
+    }
+
+    private func updateStatus(using result: SunscreenDetectionResult) {
         if coordinator.permissionDenied {
-            return "Camera access is required for live verification."
-        }
-
-        if let distance = lastDistance, smoothedConfidence > 0 {
-            return String(format: "Current feature distance: %.3f", distance)
-        }
-
-        return "Confidence rises as the current frame matches your trained bottle model."
-    }
-
-    private func updateConfidence(_ confidence: Float) {
-        let clamped = min(max(confidence, 0), 1)
-        confidenceSamples.append(clamped)
-        if confidenceSamples.count > 5 {
-            confidenceSamples.removeFirst(confidenceSamples.count - 5)
-        }
-        guard !confidenceSamples.isEmpty else {
-            smoothedConfidence = 0
+            statusMessage = "Camera access is required for sunscreen verification."
             return
         }
-        smoothedConfidence = confidenceSamples.reduce(0, +) / Float(confidenceSamples.count)
+
+        if let errorDescription = result.errorDescription {
+            statusMessage = errorDescription
+            return
+        }
+
+        if result.isLoadingModel {
+            statusMessage = "Loading the FastVLM model…"
+            return
+        }
+
+        switch result.parsedAnswer {
+        case .yes where result.isDetected:
+            statusMessage = "Sunscreen detected."
+        case .yes:
+            statusMessage = "Sunscreen detected. Confirming one more frame…"
+        case .no:
+            statusMessage = "No sunscreen detected yet. Keep the bottle centered in view."
+        case nil:
+            statusMessage = "Hold your sunscreen bottle in view while Sunclub scans."
+        }
     }
 
-    private func completeVerification(distance: Float?) {
+    private func completeVerification() {
         guard !hasAdvanced else { return }
         hasAdvanced = true
         appState.recordVerificationSuccess(
-            method: .video,
-            barcode: appState.activeProduct?.barcode,
-            featureDistance: distance.map(Double.init),
-            barcodeConfidence: nil,
+            method: .camera,
             verificationDuration: Date().timeIntervalSince(appearedAt)
         )
         router.open(.verifySuccess)
+    }
+}
+
+#Preview {
+    SunclubPreviewHost {
+        LiveVerifyView()
     }
 }
