@@ -20,7 +20,7 @@ enum FastVLMServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelMissing:
-            return "FastVLM model files are missing. Run app/get_pretrained_mlx_model.sh --model 0.5b --dest app/Sunclub/FastVLMModel/model and rebuild."
+            return "FastVLM model files are missing. Run just download-model from the repo root, or run bash scripts/get_pretrained_mlx_model.sh --model 0.5b --dest app/Sunclub/FastVLMModel/model, then rebuild."
         case .generationFailed(let message):
             return message
         }

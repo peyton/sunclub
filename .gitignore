@@ -16,6 +16,7 @@ data/processed/cache/
 *.xcactivitylog
 *.xcuserstate
 app/Sunclub.xcodeproj/xcuserdata/
+app/build/
 
 # macOS
 .DS_Store

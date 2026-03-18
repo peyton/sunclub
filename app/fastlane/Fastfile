@@ -1,11 +1,276 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
+require "fileutils"
+require "shellwords"
 
 default_platform(:ios)
 
+APP_ROOT = File.expand_path("..", __dir__)
+PROJECT_PATH = File.join(APP_ROOT, "Sunclub.xcodeproj")
+SCHEME = "Sunclub"
+APP_IDENTIFIER = "app.peyton.sunclub"
+DEFAULT_SIMULATOR = ENV.fetch("SUNCLUB_SIMULATOR", "iPhone 17 Pro")
+SCREENSHOT_DEVICES = ENV.fetch("SUNCLUB_SCREENSHOT_DEVICES", DEFAULT_SIMULATOR)
+                     .split(",")
+                     .map(&:strip)
+                     .reject(&:empty?)
+SCREENSHOT_LANGUAGES = ENV.fetch("SUNCLUB_SCREENSHOT_LANGUAGES", "en-US")
+                       .split(",")
+                       .map(&:strip)
+                       .reject(&:empty?)
+MODEL_DESTINATION = File.join(APP_ROOT, "Sunclub", "FastVLMModel", "model")
+MODEL_MARKER = File.join(MODEL_DESTINATION, "config.json")
+MODEL_DOWNLOAD_SCRIPT = File.expand_path("../scripts/get_pretrained_mlx_model.sh", APP_ROOT)
+BUILD_ROOT = File.join(APP_ROOT, "build", "fastlane")
+DERIVED_DATA_PATH = File.join(BUILD_ROOT, "derived-data")
+BUILDLOG_PATH = File.join(BUILD_ROOT, "logs")
+TEST_OUTPUT_PATH = File.join(APP_ROOT, "fastlane", "test_output")
+SCREENSHOTS_PATH = File.join(APP_ROOT, "fastlane", "screenshots")
+ARCHIVE_PATH = File.join(BUILD_ROOT, "Sunclub.xcarchive")
+BETA_OUTPUT_PATH = File.join(BUILD_ROOT, "beta")
+RELEASE_OUTPUT_PATH = File.join(BUILD_ROOT, "release")
+SCREENSHOT_TESTS = ["SunclubUITests/SunclubScreenshots"]
+TEST_XCARGS = "-parallel-testing-enabled NO -maximum-parallel-testing-workers 1"
+
 platform :ios do
-  desc "Description of what the lane does"
-  lane :custom_lane do
-    # add actions here: https://docs.fastlane.tools/actions
+  before_all do
+    setup_ci if ENV["CI"]
+    FileUtils.mkdir_p(BUILD_ROOT)
+    FileUtils.mkdir_p(BUILDLOG_PATH)
+  end
+
+  desc "Ensure the FastVLM 0.5B model is present for local runs"
+  lane :prepare_model do
+    next if File.exist?(MODEL_MARKER)
+
+    UI.user_error!("Missing model download script at #{MODEL_DOWNLOAD_SCRIPT}") unless File.exist?(MODEL_DOWNLOAD_SCRIPT)
+
+    sh("chmod +x #{MODEL_DOWNLOAD_SCRIPT.shellescape}")
+    sh("#{MODEL_DOWNLOAD_SCRIPT.shellescape} --model 0.5b --dest #{MODEL_DESTINATION.shellescape}")
+  end
+
+  desc "Run Sunclub unit tests"
+  lane :unit_tests do
+    prepare_model
+    scan(
+      project: PROJECT_PATH,
+      scheme: SCHEME,
+      devices: [DEFAULT_SIMULATOR],
+      only_testing: ["SunclubTests"],
+      derived_data_path: DERIVED_DATA_PATH,
+      buildlog_path: BUILDLOG_PATH,
+      output_directory: File.join(TEST_OUTPUT_PATH, "unit"),
+      output_types: "junit",
+      result_bundle: true,
+      configuration: "Debug",
+      xcargs: TEST_XCARGS
+    )
+  end
+
+  desc "Run Sunclub UI tests"
+  lane :ui_tests do
+    prepare_model
+    scan(
+      project: PROJECT_PATH,
+      scheme: SCHEME,
+      devices: [DEFAULT_SIMULATOR],
+      only_testing: ["SunclubUITests/SunclubUITests"],
+      derived_data_path: DERIVED_DATA_PATH,
+      buildlog_path: BUILDLOG_PATH,
+      output_directory: File.join(TEST_OUTPUT_PATH, "ui"),
+      output_types: "junit",
+      result_bundle: true,
+      configuration: "Debug",
+      xcargs: TEST_XCARGS
+    )
+  end
+
+  desc "Run all automated tests"
+  lane :tests do
+    unit_tests
+    ui_tests
+  end
+
+  desc "Capture App Store screenshots from the UI test flow"
+  lane :screenshots do
+    prepare_model
+    capture_ios_screenshots(
+      project: PROJECT_PATH,
+      scheme: SCHEME,
+      devices: SCREENSHOT_DEVICES,
+      languages: SCREENSHOT_LANGUAGES,
+      only_testing: SCREENSHOT_TESTS,
+      output_directory: SCREENSHOTS_PATH,
+      buildlog_path: BUILDLOG_PATH,
+      derived_data_path: DERIVED_DATA_PATH,
+      clear_previous_screenshots: true,
+      override_status_bar: true,
+      erase_simulator: true,
+      reinstall_app: true,
+      localize_simulator: true,
+      skip_open_summary: true,
+      skip_helper_version_check: true,
+      stop_after_first_error: true,
+      number_of_retries: 1,
+      result_bundle: true,
+      output_simulator_logs: true,
+      xcargs: TEST_XCARGS
+    )
+  end
+
+  desc "Create an unsigned archive for local validation"
+  lane :build do
+    prepare_model
+    build_app(
+      project: PROJECT_PATH,
+      scheme: SCHEME,
+      clean: true,
+      configuration: "Release",
+      build_path: BUILD_ROOT,
+      archive_path: ARCHIVE_PATH,
+      derived_data_path: DERIVED_DATA_PATH,
+      buildlog_path: BUILDLOG_PATH,
+      skip_codesigning: true,
+      skip_package_ipa: true,
+      skip_package_pkg: true,
+      silent: false
+    )
+  end
+
+  desc "Run tests, build a signed ipa, and upload it to TestFlight"
+  lane :beta do |options|
+    options ||= {}
+    tests
+    prepare_model
+
+    groups = comma_separated_values(options[:groups] || ENV["TESTFLIGHT_GROUPS"])
+    distribute_external = if options.key?(:distribute_external)
+                            options[:distribute_external]
+                          else
+                            !groups.empty?
+                          end
+
+    upload_options = {
+      api_key: app_store_api_key,
+      ipa: signed_ipa(
+        output_directory: BETA_OUTPUT_PATH,
+        output_name: "Sunclub-beta.ipa"
+      ),
+      changelog: options[:changelog] || ENV["TESTFLIGHT_CHANGELOG"],
+      skip_waiting_for_build_processing: true,
+      distribute_external: distribute_external
+    }
+    upload_options[:groups] = groups unless groups.empty?
+    if distribute_external
+      upload_options[:notify_external_testers] = options.key?(:notify_external_testers) ? options[:notify_external_testers] : true
+    end
+
+    upload_to_testflight(**upload_options)
+  end
+
+  desc "Run tests, build a signed ipa, and upload it to App Store Connect"
+  lane :release do |options|
+    options ||= {}
+    tests
+    prepare_model
+
+    ipa_path = signed_ipa(
+      output_directory: RELEASE_OUTPUT_PATH,
+      output_name: "Sunclub-release.ipa"
+    )
+
+    upload_to_app_store(
+      api_key: app_store_api_key,
+      ipa: ipa_path,
+      force: true,
+      skip_metadata: true,
+      skip_screenshots: !screenshots_available,
+      screenshots_path: SCREENSHOTS_PATH,
+      overwrite_screenshots: screenshots_available,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false,
+      submit_for_review: options[:submit_for_review] || false,
+      automatic_release: options[:automatic_release] || false,
+      phased_release: options[:phased_release] || false
+    )
+  end
+
+  desc "Upload the current release build and submit it for App Store review"
+  lane :submit_release do |options|
+    options ||= {}
+    release(
+      submit_for_review: true,
+      automatic_release: options[:automatic_release] || false,
+      phased_release: options[:phased_release] || false
+    )
+  end
+
+  desc "CI-friendly lane for local validation"
+  lane :ci do
+    tests
+    build
+  end
+
+  private_lane :signed_ipa do |options|
+    FileUtils.mkdir_p(options[:output_directory])
+
+    build_app(
+      project: PROJECT_PATH,
+      scheme: SCHEME,
+      clean: true,
+      configuration: "Release",
+      build_path: BUILD_ROOT,
+      output_directory: options[:output_directory],
+      output_name: options[:output_name],
+      derived_data_path: DERIVED_DATA_PATH,
+      buildlog_path: BUILDLOG_PATH,
+      export_method: "app-store",
+      include_symbols: true,
+      include_bitcode: false,
+      silent: false
+    )
+  end
+
+  private_lane :app_store_api_key do
+    key_id = ENV["APP_STORE_CONNECT_API_KEY_ID"] || ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"]
+    issuer_id = ENV["APP_STORE_CONNECT_API_ISSUER_ID"] || ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
+    key_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"] || ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"]
+    key_content = ENV["APP_STORE_CONNECT_API_KEY_CONTENT"] || ENV["APP_STORE_CONNECT_API_KEY_KEY"]
+    is_key_content_base64 = boolean_env("APP_STORE_CONNECT_API_KEY_BASE64") ||
+                            boolean_env("APP_STORE_CONNECT_API_KEY_IS_KEY_CONTENT_BASE64")
+
+    UI.user_error!("Missing App Store Connect API key id") if blank_value(key_id)
+    UI.user_error!("Missing App Store Connect API issuer id") if blank_value(issuer_id)
+    UI.user_error!("Provide APP_STORE_CONNECT_API_KEY_PATH or APP_STORE_CONNECT_API_KEY_CONTENT") if blank_value(key_path) && blank_value(key_content)
+
+    api_key_options = {
+      key_id: key_id,
+      issuer_id: issuer_id,
+      duration: 1200,
+      in_house: false
+    }
+
+    if blank_value(key_path)
+      api_key_options[:key_content] = key_content
+      api_key_options[:is_key_content_base64] = is_key_content_base64
+    else
+      api_key_options[:key_filepath] = File.expand_path(key_path)
+    end
+
+    app_store_connect_api_key(**api_key_options)
+  end
+
+  private_lane :screenshots_available do
+    Dir.exist?(SCREENSHOTS_PATH) && Dir.glob(File.join(SCREENSHOTS_PATH, "**", "*.{png,jpg,jpeg}")).any?
+  end
+
+  private_lane :comma_separated_values do |value|
+    value.to_s.split(",").map(&:strip).reject(&:empty?)
+  end
+
+  private_lane :blank_value do |value|
+    value.nil? || value.to_s.strip.empty?
+  end
+
+  private_lane :boolean_env do |key|
+    %w[1 true yes].include?(ENV[key].to_s.strip.downcase)
   end
 end

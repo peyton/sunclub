@@ -1,6 +1,9 @@
 [tools]
-"gem:fastlane" = "2.232.2"
 ruby = "4.0"
+swift = "6.2"
+
+"gem:fastlane" = "2.232.2"
+"spm:cpisciotta/xcbeautify" = "3.1.4"
 
 [settings]
 lockfile = true
