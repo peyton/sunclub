@@ -1,0 +1,9 @@
+[tools]
+"gem:fastlane" = "2.232.2"
+ruby = "4.0"
+
+[settings]
+lockfile = true
+[settings.ruby]
+compile = false
+github_attestations = true
