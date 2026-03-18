@@ -43,10 +43,12 @@ struct SunclubApp: App {
                         return
                     }
                     Task {
-                        await FastVLMService.shared.prewarmIfPossible()
                         guard appState.settings.hasCompletedOnboarding else { return }
                         _ = await NotificationManager.shared.configure()
                         await NotificationManager.shared.scheduleReminders(using: appState)
+                    }
+                    Task.detached(priority: .utility) {
+                        await FastVLMService.shared.prewarmIfPossible()
                     }
                 }
         }

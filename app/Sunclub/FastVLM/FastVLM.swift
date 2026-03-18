@@ -1,7 +1,11 @@
 //
-// For licensing see accompanying LICENSE file.
-// Copyright (C) 2025 Apple Inc. All Rights Reserved.
+//  FastVLM.swift
+//  FastVLM
 //
+//  Created by Peyton Randolph on 3/17/26.
+//
+
+import Foundation
 
 import CoreImage
 import CoreML
@@ -474,8 +478,10 @@ public class FastVLM: Module, VLMModel, KVCacheDimensionProvider {
     static public var modelConfiguration: ModelConfiguration {
         let bundle = Bundle.main
         let candidates = [
-            bundle.url(forResource: "config", withExtension: "json", subdirectory: "FastVLMModel/model"),
-            bundle.resourceURL?.appendingPathComponent("FastVLMModel/model/config.json"),
+            bundle.url(forResource: "config", withExtension: "json", subdirectory: "FastVLM/model"),
+            bundle.resourceURL?.appendingPathComponent("FastVLM/model/config.json"),
+            bundle.url(forResource: "config", withExtension: "json"),
+            bundle.resourceURL?.appendingPathComponent("config.json"),
         ]
         guard let configurationURL = candidates.compactMap({ $0 }).first(where: { url in
             return FileManager.default.fileExists(atPath: url.path)

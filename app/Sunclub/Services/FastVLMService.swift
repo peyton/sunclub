@@ -3,6 +3,7 @@ import Foundation
 import MLX
 import MLXLMCommon
 import MLXVLM
+import FastVLM
 
 extension CVPixelBuffer: @unchecked @retroactive Sendable {}
 
@@ -71,7 +72,10 @@ actor FastVLMService {
         switch loadState {
         case .idle:
             let task = Task {
+                #if !targetEnvironment(simulator)
+                // MLX GPU cache configuration is valid on-device, but it can abort on iOS Simulator.
                 MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
+                #endif
 
                 guard let modelDirectory = Self.modelDirectory() else {
                     throw FastVLMServiceError.modelMissing
@@ -147,7 +151,8 @@ actor FastVLMService {
         let bundle = Bundle.main
         let candidates = [
             bundle.url(forResource: "model", withExtension: nil, subdirectory: "FastVLMModel"),
-            bundle.resourceURL?.appendingPathComponent("FastVLMModel/model")
+            bundle.resourceURL?.appendingPathComponent("FastVLMModel/model"),
+            bundle.resourceURL
         ]
 
         let fileManager = FileManager.default

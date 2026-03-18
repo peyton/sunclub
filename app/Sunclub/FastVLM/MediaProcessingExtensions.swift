@@ -1,7 +1,10 @@
 //
-// For licensing see accompanying LICENSE file.
-// Copyright (C) 2025 Apple Inc. All Rights Reserved.
+//  MediaProcessingExtensions.swift
+//  Sunclub
 //
+//  Created by Peyton Randolph on 3/17/26.
+//
+
 
 import Accelerate
 import CoreImage

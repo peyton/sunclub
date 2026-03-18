@@ -7,15 +7,31 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9C413EDD2F6A7D4B003C2190 /* FastVLM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9C413ED52F6A7D4B003C2190 /* FastVLM.framework */; };
+		9C413EDE2F6A7D4B003C2190 /* FastVLM.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9C413ED52F6A7D4B003C2190 /* FastVLM.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		9C413EF12F6A7E75003C2190 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EF02F6A7E75003C2190 /* MLXNN */; };
+		9C413EF32F6A7E7C003C2190 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EF22F6A7E7C003C2190 /* MLXLMCommon */; };
+		9C413EF52F6A7E84003C2190 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EF42F6A7E84003C2190 /* Transformers */; };
+		9C413EF72F6A7E8A003C2190 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EF62F6A7E8A003C2190 /* MLXVLM */; };
+		9C413EFB2F6A7EA1003C2190 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EFA2F6A7EA1003C2190 /* MLX */; };
+		9C413EFD2F6A7EAA003C2190 /* MLXFast in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413EFC2F6A7EAA003C2190 /* MLXFast */; };
+		9C413F392F6A8058003C2190 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = 9C413F382F6A8058003C2190 /* MLXRandom */; };
+		9C413F482F6A8503003C2190 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000002 /* MLXLMCommon */; };
+		9C413F492F6A8503003C2190 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000004 /* MLXNN */; };
+		9C413F4A2F6A8503003C2190 /* MLXFast in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000005 /* MLXFast */; };
+		9C413F4B2F6A8503003C2190 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000006 /* Transformers */; };
 		FA5700010000000000000001 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000001 /* MLX */; };
-		FA5700010000000000000002 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000002 /* MLXLMCommon */; };
 		FA5700010000000000000003 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000003 /* MLXVLM */; };
-		FA5700010000000000000004 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000004 /* MLXNN */; };
-		FA5700010000000000000005 /* MLXFast in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000005 /* MLXFast */; };
-		FA5700010000000000000006 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = FA5700030000000000000006 /* Transformers */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		9C413EDB2F6A7D4B003C2190 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9C56E19E2F4CFA900069962F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9C413ED42F6A7D4B003C2190;
+			remoteInfo = FastVLM;
+		};
 		9C56E1B82F4CFA910069962F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9C56E19E2F4CFA900069962F /* Project object */;
@@ -32,18 +48,71 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		9C413EE22F6A7D4B003C2190 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				9C413EDE2F6A7D4B003C2190 /* FastVLM.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		9C413ED52F6A7D4B003C2190 /* FastVLM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = FastVLM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C56E1A62F4CFA900069962F /* Sunclub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sunclub.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C56E1B72F4CFA910069962F /* SunclubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SunclubTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C56E1C12F4CFA910069962F /* SunclubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SunclubUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9C413EE82F6A7D5A003C2190 /* Exceptions for "Sunclub" folder in "FastVLM" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				FastVLM/FastVLM.h,
+				FastVLM/FastVLM.swift,
+				FastVLM/MediaProcessingExtensions.swift,
+				FastVLM/model/added_tokens.json,
+				FastVLM/model/config.json,
+				FastVLM/model/fastvithd.mlpackage,
+				FastVLM/model/merges.txt,
+				FastVLM/model/model.safetensors,
+				FastVLM/model/model.safetensors.index.json,
+				FastVLM/model/preprocessor_config.json,
+				FastVLM/model/processor_config.json,
+				FastVLM/model/special_tokens_map.json,
+				FastVLM/model/tokenizer_config.json,
+				FastVLM/model/tokenizer.json,
+				FastVLM/model/vocab.json,
+			);
+			publicHeaders = (
+				FastVLM/FastVLM.h,
+			);
+			target = 9C413ED42F6A7D4B003C2190 /* FastVLM */;
+		};
 		9C56E1C92F4CFA910069962F /* Exceptions for "Sunclub" folder in "Sunclub" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				FastVLMModel/.gitignore,
-				FastVLMModel/README.md,
+				FastVLM/.gitignore,
+				FastVLM/FastVLM.swift,
+				FastVLM/MediaProcessingExtensions.swift,
+				FastVLM/model/added_tokens.json,
+				FastVLM/model/config.json,
+				FastVLM/model/fastvithd.mlpackage,
+				FastVLM/model/merges.txt,
+				FastVLM/model/model.safetensors,
+				FastVLM/model/model.safetensors.index.json,
+				FastVLM/model/preprocessor_config.json,
+				FastVLM/model/processor_config.json,
+				FastVLM/model/special_tokens_map.json,
+				FastVLM/model/tokenizer_config.json,
+				FastVLM/model/tokenizer.json,
+				FastVLM/model/vocab.json,
+				FastVLM/README.md,
 				Info.plist,
 				StoreKit/README.md,
 			);
@@ -56,6 +125,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				9C56E1C92F4CFA910069962F /* Exceptions for "Sunclub" folder in "Sunclub" target */,
+				9C413EE82F6A7D5A003C2190 /* Exceptions for "Sunclub" folder in "FastVLM" target */,
 			);
 			path = Sunclub;
 			sourceTree = "<group>";
@@ -73,15 +143,30 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		9C413ED22F6A7D4B003C2190 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9C413EFD2F6A7EAA003C2190 /* MLXFast in Frameworks */,
+				9C413EFB2F6A7EA1003C2190 /* MLX in Frameworks */,
+				9C413EF52F6A7E84003C2190 /* Transformers in Frameworks */,
+				9C413EF32F6A7E7C003C2190 /* MLXLMCommon in Frameworks */,
+				9C413EF72F6A7E8A003C2190 /* MLXVLM in Frameworks */,
+				9C413EF12F6A7E75003C2190 /* MLXNN in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9C56E1A32F4CFA900069962F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FA5700010000000000000005 /* MLXFast in Frameworks */,
-				FA5700010000000000000002 /* MLXLMCommon in Frameworks */,
+				9C413F4B2F6A8503003C2190 /* Transformers in Frameworks */,
+				9C413F4A2F6A8503003C2190 /* MLXFast in Frameworks */,
+				9C413F492F6A8503003C2190 /* MLXNN in Frameworks */,
+				9C413F482F6A8503003C2190 /* MLXLMCommon in Frameworks */,
+				9C413EDD2F6A7D4B003C2190 /* FastVLM.framework in Frameworks */,
+				9C413F392F6A8058003C2190 /* MLXRandom in Frameworks */,
 				FA5700010000000000000001 /* MLX in Frameworks */,
-				FA5700010000000000000004 /* MLXNN in Frameworks */,
-				FA5700010000000000000006 /* Transformers in Frameworks */,
 				FA5700010000000000000003 /* MLXVLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -103,12 +188,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		9C413EEF2F6A7E75003C2190 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		9C56E19D2F4CFA900069962F = {
 			isa = PBXGroup;
 			children = (
 				9C56E1A82F4CFA900069962F /* Sunclub */,
 				9C56E1BA2F4CFA910069962F /* SunclubTests */,
 				9C56E1C42F4CFA910069962F /* SunclubUITests */,
+				9C413EEF2F6A7E75003C2190 /* Frameworks */,
 				9C56E1A72F4CFA900069962F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -119,13 +212,50 @@
 				9C56E1A62F4CFA900069962F /* Sunclub.app */,
 				9C56E1B72F4CFA910069962F /* SunclubTests.xctest */,
 				9C56E1C12F4CFA910069962F /* SunclubUITests.xctest */,
+				9C413ED52F6A7D4B003C2190 /* FastVLM.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
+/* Begin PBXHeadersBuildPhase section */
+		9C413ED02F6A7D4B003C2190 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
 /* Begin PBXNativeTarget section */
+		9C413ED42F6A7D4B003C2190 /* FastVLM */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9C413EDF2F6A7D4B003C2190 /* Build configuration list for PBXNativeTarget "FastVLM" */;
+			buildPhases = (
+				9C413ED02F6A7D4B003C2190 /* Headers */,
+				9C413ED12F6A7D4B003C2190 /* Sources */,
+				9C413ED22F6A7D4B003C2190 /* Frameworks */,
+				9C413ED32F6A7D4B003C2190 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FastVLM;
+			packageProductDependencies = (
+				9C413EF02F6A7E75003C2190 /* MLXNN */,
+				9C413EF22F6A7E7C003C2190 /* MLXLMCommon */,
+				9C413EF42F6A7E84003C2190 /* Transformers */,
+				9C413EF62F6A7E8A003C2190 /* MLXVLM */,
+				9C413EFA2F6A7EA1003C2190 /* MLX */,
+				9C413EFC2F6A7EAA003C2190 /* MLXFast */,
+			);
+			productName = FastVLM;
+			productReference = 9C413ED52F6A7D4B003C2190 /* FastVLM.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 		9C56E1A52F4CFA900069962F /* Sunclub */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9C56E1CA2F4CFA910069962F /* Build configuration list for PBXNativeTarget "Sunclub" */;
@@ -133,10 +263,12 @@
 				9C56E1A22F4CFA900069962F /* Sources */,
 				9C56E1A32F4CFA900069962F /* Frameworks */,
 				9C56E1A42F4CFA900069962F /* Resources */,
+				9C413EE22F6A7D4B003C2190 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				9C413EDC2F6A7D4B003C2190 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9C56E1A82F4CFA900069962F /* Sunclub */,
@@ -149,6 +281,7 @@
 				FA5700030000000000000004 /* MLXNN */,
 				FA5700030000000000000005 /* MLXFast */,
 				FA5700030000000000000006 /* Transformers */,
+				9C413F382F6A8058003C2190 /* MLXRandom */,
 			);
 			productName = Sunclub;
 			productReference = 9C56E1A62F4CFA900069962F /* Sunclub.app */;
@@ -210,6 +343,9 @@
 				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					9C413ED42F6A7D4B003C2190 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					9C56E1A52F4CFA900069962F = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -245,11 +381,19 @@
 				9C56E1A52F4CFA900069962F /* Sunclub */,
 				9C56E1B62F4CFA910069962F /* SunclubTests */,
 				9C56E1C02F4CFA910069962F /* SunclubUITests */,
+				9C413ED42F6A7D4B003C2190 /* FastVLM */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		9C413ED32F6A7D4B003C2190 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9C56E1A42F4CFA900069962F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -274,6 +418,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9C413ED12F6A7D4B003C2190 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9C56E1A22F4CFA900069962F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -298,6 +449,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		9C413EDC2F6A7D4B003C2190 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9C413ED42F6A7D4B003C2190 /* FastVLM */;
+			targetProxy = 9C413EDB2F6A7D4B003C2190 /* PBXContainerItemProxy */;
+		};
 		9C56E1B92F4CFA910069962F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9C56E1A52F4CFA900069962F /* Sunclub */;
@@ -311,6 +467,100 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		9C413EE02F6A7D4B003C2190 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3VDQ4656LX;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclub.FastVLM;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+				XROS_DEPLOYMENT_TARGET = 2.6;
+			};
+			name = Debug;
+		};
+		9C413EE12F6A7D4B003C2190 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3VDQ4656LX;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclub.FastVLM;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+				XROS_DEPLOYMENT_TARGET = 2.6;
+			};
+			name = Release;
+		};
 		9C56E1CB2F4CFA910069962F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -320,7 +570,20 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Sunclub/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Sunclub;
@@ -331,16 +594,19 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclub;
 				PRODUCT_NAME = Sunclub;
+				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -348,7 +614,8 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 2.6;
 			};
 			name = Debug;
 		};
@@ -361,7 +628,20 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3VDQ4656LX;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Sunclub/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Sunclub;
@@ -372,16 +652,19 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.peyton.sunclub;
 				PRODUCT_NAME = Sunclub;
+				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -389,7 +672,8 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 2.6;
 			};
 			name = Release;
 		};
@@ -605,6 +889,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		9C413EDF2F6A7D4B003C2190 /* Build configuration list for PBXNativeTarget "FastVLM" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9C413EE02F6A7D4B003C2190 /* Debug */,
+				9C413EE12F6A7D4B003C2190 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9C56E1A12F4CFA900069962F /* Build configuration list for PBXProject "Sunclub" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -671,6 +964,41 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		9C413EF02F6A7E75003C2190 /* MLXNN */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXNN;
+		};
+		9C413EF22F6A7E7C003C2190 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
+			productName = MLXLMCommon;
+		};
+		9C413EF42F6A7E84003C2190 /* Transformers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000003 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Transformers;
+		};
+		9C413EF62F6A7E8A003C2190 /* MLXVLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
+			productName = MLXVLM;
+		};
+		9C413EFA2F6A7EA1003C2190 /* MLX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLX;
+		};
+		9C413EFC2F6A7EAA003C2190 /* MLXFast */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXFast;
+		};
+		9C413F382F6A8058003C2190 /* MLXRandom */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXRandom;
+		};
 		FA5700030000000000000001 /* MLX */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FA5700020000000000000002 /* XCRemoteSwiftPackageReference "mlx-swift" */;
