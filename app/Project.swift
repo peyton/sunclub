@@ -28,8 +28,28 @@ let fastVLMDependencies: [TargetDependency] = [
     .external(name: "Transformers"),
 ]
 
+let copyFastVITPackageScript = TargetScript.post(
+    script: """
+    set -euo pipefail
+
+    source_path="${SRCROOT}/FastVLM/model/fastvithd.mlpackage"
+    destination_path="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/fastvithd.mlpackage"
+
+    rm -rf "${destination_path}"
+    mkdir -p "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+    ditto "${source_path}" "${destination_path}"
+    """,
+    name: "Copy fastvithd.mlpackage",
+    inputPaths: ["$(SRCROOT)/FastVLM/model/fastvithd.mlpackage"],
+    outputPaths: ["$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/fastvithd.mlpackage"],
+    basedOnDependencyAnalysis: false
+)
+
 let project = Project(
     name: "Sunclub",
+    options: .options(
+        automaticSchemesOptions: .disabled
+    ),
     targets: [
         .target(
             name: "Sunclub",
@@ -38,11 +58,11 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: "Sunclub/Info.plist",
+            sources: ["Sunclub/**/*.swift"],
             resources: [
                 "Sunclub/Assets.xcassets",
                 "Sunclub/StoreKit/SunclubSubscriptions.storekit",
             ],
-            buildableFolders: ["Sunclub"],
             entitlements: "Sunclub/Sunclub.entitlements",
             dependencies: [
                 .target(name: "FastVLM"),
@@ -55,7 +75,7 @@ let project = Project(
             product: .unitTests,
             bundleId: "app.peyton.sunclubTests",
             deploymentTargets: defaultDeploymentTarget,
-            buildableFolders: ["SunclubTests"],
+            sources: ["SunclubTests/**/*.swift"],
             dependencies: [
                 .target(name: "Sunclub"),
             ],
@@ -67,7 +87,7 @@ let project = Project(
             product: .uiTests,
             bundleId: "app.peyton.sunclubUITests",
             deploymentTargets: defaultDeploymentTarget,
-            buildableFolders: ["SunclubUITests"],
+            sources: ["SunclubUITests/**/*.swift"],
             dependencies: [
                 .target(name: "Sunclub"),
             ],
@@ -79,6 +99,7 @@ let project = Project(
             product: .framework,
             bundleId: "app.peyton.sunclub.FastVLM",
             deploymentTargets: defaultDeploymentTarget,
+            sources: ["FastVLM/**/*.swift"],
             resources: [
                 .glob(
                     pattern: "FastVLM/model/**/*.json",
@@ -87,8 +108,10 @@ let project = Project(
                 "FastVLM/model/**/*.txt",
                 "FastVLM/model/**/*.safetensors",
             ],
-            buildableFolders: ["FastVLM"],
             headers: .headers(public: ["FastVLM/FastVLM.h"]),
+            scripts: [
+                copyFastVITPackageScript,
+            ],
             dependencies: fastVLMDependencies,
             settings: frameworkSettings
         ),
@@ -98,7 +121,7 @@ let project = Project(
             product: .unitTests,
             bundleId: "app.peyton.sunclub.FastVLMTests",
             deploymentTargets: defaultDeploymentTarget,
-            buildableFolders: ["FastVLMTests"],
+            sources: ["FastVLMTests/**/*.swift"],
             dependencies: [
                 .target(name: "FastVLM"),
             ],
