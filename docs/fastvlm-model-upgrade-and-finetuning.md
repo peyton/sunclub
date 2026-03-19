@@ -163,13 +163,27 @@ After training, merge LoRA weights back into the base model, then run the MLX ex
 4. Replace model files in the app bundle
 5. No Swift code changes needed — `FastVLMService` loads whatever model is at the model directory
 
-### What we'd need to build
+### Tooling (implemented)
 
-1. **Data collection pipeline** — capture frames from the app's camera in varied conditions, label them YES/NO
-2. **Dataset in LLaVA format** — JSON file + image directory
-3. **Training script wrapper** — shell script that sets up the FastVLM training environment and runs fine-tuning
-4. **Export script** — automates LoRA merge + MLX export
-5. **Eval harness** — benchmark before/after fine-tuning on a held-out test set (this is where `evals/benchmark` would be extended)
+All scripts live in `evals/`:
+
+| Tool | Command | What it does |
+|------|---------|-------------|
+| Data collection | `just collect-data` | Downloads YouTube videos, extracts frames, labels with Claude Vision, outputs LLaVA-format dataset |
+| Quick test | `just collect-data-quick` | Same but only 2 queries (for testing the pipeline) |
+| LoRA training | `bash evals/scripts/train_lora.sh <repo> <ckpt> <dataset>` | Runs LoRA fine-tune on FastVLM Stage 3 checkpoint |
+| Merge + export | `bash evals/scripts/merge_and_export.sh <repo> <ckpt> <lora> [out]` | Merges LoRA, exports to CoreML + MLX |
+| Benchmark | `just benchmark` | Runs eval dataset through model, reports accuracy/precision/recall/F1 |
+| Strict benchmark | `just benchmark-strict` | Same but exits non-zero if F1 < 80% |
+
+**Data collection pipeline** (`evals/scripts/collect_data.py`):
+1. Searches YouTube for sunscreen-positive and negative queries (20 queries total)
+2. Downloads 2 videos per query via `yt-dlp`
+3. Extracts 10 frames per video via `ffmpeg` (every 3s, scaled to 1280x720)
+4. Labels each frame with Claude Vision (Sonnet) — resumable, saves progress after each label
+5. Splits 80/20 into `train.json` (LLaVA format) + `eval.json` (benchmark format)
+
+**Requirements**: `ANTHROPIC_API_KEY` env var, `yt-dlp`, `ffmpeg`. Install deps: `pip install -r evals/requirements.txt`
 
 ### Risk: catastrophic forgetting
 
@@ -185,10 +199,29 @@ LoRA mitigates this well for small models. However, since our task is extremely 
 | Fine-tune existing 0.5B on sunscreen data | Medium (data collection + LoRA training + export) | **High** (directly improves detection accuracy in failure cases) | **Do this** |
 | Fine-tune larger model (1.5B/7B) | High (bigger dataset, more compute, worse latency) | Medium (diminishing returns for binary classification) | Consider only if 0.5B fine-tune plateaus |
 
-### Next steps for fine-tuning
+### End-to-end workflow
 
-1. Build a labeled dataset of 500+ images from iPhone camera captures
-2. Set up the FastVLM training environment (Python 3.10, CUDA, DeepSpeed)
-3. Run LoRA fine-tune from the Stage 3 checkpoint
-4. Export to MLX and test on-device
-5. Extend `evals/benchmark` to measure before/after accuracy
+```bash
+# 1. Collect and label training data (requires ANTHROPIC_API_KEY)
+just collect-data
+
+# 2. Baseline benchmark (requires mlx-vlm)
+just benchmark
+
+# 3. Clone FastVLM repo and download PyTorch checkpoint
+git clone https://github.com/apple/ml-fastvlm.git ~/ml-fastvlm
+cd ~/ml-fastvlm && pip install -e ".[train]" && bash get_models.sh
+
+# 4. LoRA fine-tune
+bash evals/scripts/train_lora.sh ~/ml-fastvlm ~/ml-fastvlm/checkpoints/llava-fastvithd-0.5b_stage3 evals/datasets/sunscreen-v1
+
+# 5. Merge LoRA + export to MLX
+bash evals/scripts/merge_and_export.sh ~/ml-fastvlm ~/ml-fastvlm/checkpoints/llava-fastvithd-0.5b_stage3 evals/checkpoints/sunscreen-lora-v1
+
+# 6. Post-training benchmark (compare to baseline)
+just benchmark
+
+# 7. Deploy to app
+cp -R evals/export/sunscreen-mlx-v1/mlx/* app/FastVLM/model/
+just build
+```
