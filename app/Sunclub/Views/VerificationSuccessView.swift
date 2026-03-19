@@ -34,21 +34,63 @@ struct VerificationSuccessView: View {
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
+
+                    if presentation.isPersonalBest && presentation.streak > 1 {
+                        Text("New personal best!")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AppPalette.sun)
+                            .accessibilityIdentifier("success.personalBest")
+                    }
                 }
                 .frame(maxWidth: .infinity)
 
-                Spacer(minLength: 300)
+                if appState.settings.reapplyReminderEnabled {
+                    reapplyConfirmation
+                }
+
+                Spacer(minLength: 200)
             }
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Done") {
                 appState.clearVerificationSuccessPresentation()
+                if appState.settings.reapplyReminderEnabled {
+                    appState.scheduleReapplyReminder()
+                }
                 router.goHome()
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("success.done")
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var reapplyConfirmation: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "timer")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(AppPalette.sun)
+
+            Text("Reapply reminder in \(formatInterval(appState.settings.reapplyIntervalMinutes))")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AppPalette.warmGlow.opacity(0.4))
+        )
+        .accessibilityIdentifier("success.reapplyNote")
+    }
+
+    private func formatInterval(_ minutes: Int) -> String {
+        if minutes < 60 {
+            return "\(minutes) min"
+        } else {
+            let hours = minutes / 60
+            let remaining = minutes % 60
+            return remaining > 0 ? "\(hours)h \(remaining)m" : "\(hours)h"
+        }
     }
 }
 

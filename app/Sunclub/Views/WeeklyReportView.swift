@@ -21,6 +21,13 @@ struct WeeklyReportView: View {
                     Text("Days Applied This Week")
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.ink)
+
+                    if appState.longestStreak > 0 {
+                        Text("Longest streak: \(appState.longestStreak) days")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                            .accessibilityIdentifier("weekly.longestStreak")
+                    }
                 }
 
                 weeklyChart

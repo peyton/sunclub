@@ -73,6 +73,31 @@ enum CalendarAnalytics {
         return streak
     }
 
+    static func longestStreak(records: [Date], calendar: Calendar = Calendar.current) -> Int {
+        let byDay = normalizedDays(records, calendar: calendar).sorted()
+        guard let firstDay = byDay.first else { return 0 }
+
+        var longest = 1
+        var current = 1
+        var previousDay = firstDay
+
+        for day in byDay.dropFirst() {
+            guard let nextExpectedDay = calendar.date(byAdding: .day, value: 1, to: previousDay),
+                  calendar.isDate(nextExpectedDay, inSameDayAs: day) else {
+                longest = max(longest, current)
+                current = 1
+                previousDay = day
+                continue
+            }
+
+            current += 1
+            longest = max(longest, current)
+            previousDay = day
+        }
+
+        return max(longest, current)
+    }
+
     static func weeklyReport(records: [Date], now: Date, calendar: Calendar = Calendar.current) -> WeeklyReport {
         let today = calendar.startOfDay(for: now)
         let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today

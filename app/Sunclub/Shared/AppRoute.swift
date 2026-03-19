@@ -9,6 +9,8 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case verifySuccess
     case weeklySummary
     case settings
+    case history
+    case manualLog
 
     var id: String { rawValue }
 }

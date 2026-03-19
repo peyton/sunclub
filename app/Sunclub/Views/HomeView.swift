@@ -20,14 +20,30 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("home.streakCard")
 
-                Spacer(minLength: 340)
+                Button {
+                    router.open(.history)
+                } label: {
+                    historyCard
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.historyCard")
+
+                Spacer(minLength: 180)
             }
         } footer: {
-            Button("Verify Now") {
-                router.open(.verifyCamera)
+            VStack(spacing: 12) {
+                Button("Verify Now") {
+                    router.open(.verifyCamera)
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("home.verifyNow")
+
+                Button("Log Manually") {
+                    router.open(.manualLog)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("home.logManually")
             }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("home.verifyNow")
         }
         .onAppear {
             now = Date()
@@ -92,9 +108,17 @@ struct HomeView: View {
                 .font(.system(size: 60, weight: .bold))
                 .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
 
-            Text("Day Streak")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(AppPalette.ink)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("Day Streak")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(AppPalette.ink)
+
+                if appState.longestStreak > 0 {
+                    Text("Best: \(appState.longestStreak)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+            }
 
             Text("Tap to see your last 7 days.")
                 .font(.system(size: 14, weight: .medium))
@@ -105,6 +129,35 @@ struct HomeView: View {
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color(red: 1.000, green: 0.947, blue: 0.760))
+        )
+    }
+
+    private var historyCard: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "calendar")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(AppPalette.sun)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("History")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text("View your full calendar")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.72))
         )
     }
 

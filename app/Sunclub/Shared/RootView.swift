@@ -42,6 +42,10 @@ struct RootView: View {
             WeeklyReportView()
         case .settings:
             SettingsView()
+        case .history:
+            HistoryView()
+        case .manualLog:
+            ManualLogView()
         }
     }
 }

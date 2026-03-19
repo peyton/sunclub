@@ -3,4 +3,7 @@ version = 1
 name = "sunclub"
 
 [setup]
-script = ""
+script = '''
+mise trust -y
+just generate
+'''

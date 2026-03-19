@@ -1,0 +1,36 @@
+{
+  "app_name": "Sunclub — Daily Sunscreen",
+  "subtitle": "AI-Powered Sunscreen Habit Tracker",
+  "bundle_id": "app.peyton.sunclub",
+  "sku": "sunclub-ios-001",
+  "primary_locale": "en-US",
+  "primary_category": "HEALTH_AND_FITNESS",
+  "secondary_category": "LIFESTYLE",
+  "content_rights": "This app does not contain, show, or access third-party content.",
+  "age_rating": "4+",
+  "pricing": {
+    "model": "freemium",
+    "notes": "Free with optional subscription (monthly/annual) for premium features."
+  },
+  "description": "Sunclub helps you build a daily sunscreen habit — fast, private, and on-device.\n\nOpen the app, point your camera at your sunscreen bottle, and Sunclub's on-device AI confirms it in seconds. No typing, no manual logging. Just point and done.\n\nYour streak grows every day you check in. Miss a day? The weekly summary shows you exactly where you fell off — no guilt, just clarity.\n\nEverything runs locally on your iPhone. No accounts, no cloud sync, no data leaves your device.\n\nKey features:\n\n• AI-Powered Verification — FastVLM, an on-device vision model, recognizes your sunscreen bottle through the camera in real time. Two confirmed frames and your day is logged.\n\n• Streak Tracking — See your current streak front and center every time you open the app. Beat your personal best.\n\n• Weekly Summary — A quick 7-day view shows applied vs. missed days at a glance.\n\n• Smart Reminders — Set a daily reminder that opens straight to the camera. Reapplication reminders nudge you to reapply after a configurable interval.\n\n• Fully Offline — No account required. No network connection needed. Your data stays on your device.\n\n• Manual Logging — Forgot your bottle? Log manually when you can't scan.\n\n• History Calendar — Browse your full check-in history by month.\n\nSunclub is for anyone who wants to wear sunscreen every day and actually stick with it. Whether you're building the habit for the first time or maintaining a routine, Sunclub makes daily sun protection effortless.",
+  "keywords": "sunscreen,sunblock,SPF,skin care,habit tracker,daily routine,UV protection,streak,sun protection,skincare",
+  "promotional_text": "Build an unbreakable sunscreen habit. Point your camera, confirm with AI, grow your streak.",
+  "support_url": "https://sunclub.app/support",
+  "marketing_url": "https://sunclub.app",
+  "privacy_policy_url": "https://sunclub.app/privacy",
+  "copyright": "2026 Peyton",
+  "whats_new": "Initial release! Start building your daily sunscreen habit with AI-powered verification, streak tracking, weekly summaries, and smart reminders — all running privately on your device.",
+  "review_notes": {
+    "notes": "Sunclub uses the device camera to verify that sunscreen is present via an on-device vision model (FastVLM). No images are uploaded or stored — all inference runs locally. To test: open the app, tap 'Verify Now', and point the camera at any sunscreen bottle or tube. The model will confirm detection after two consecutive YES frames. You can also use 'Log Manually' to record a day without the camera.",
+    "demo_account": "No account required. The app is fully local.",
+    "attachment_notes": "No external services are used. All AI inference is on-device."
+  },
+  "app_store_screenshots": {
+    "required_sizes": {
+      "iphone_6_7": "1290x2796 (iPhone 15 Pro Max, 6.7-inch)",
+      "iphone_6_1": "1179x2556 (iPhone 15 Pro, 6.1-inch — optional but recommended)",
+      "ipad_12_9": "2048x2732 (iPad Pro 12.9-inch — if supporting iPad)"
+    },
+    "recommended_count": "6-10 screenshots per size"
+  }
+}
