@@ -40,10 +40,8 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
   - FastVLM inference, camera capture, notifications, subscriptions, and analytics
 - `Sunclub/Models`
   - `Settings`, `DailyRecord`, and `VerificationMethod`
-- `Sunclub/FastVLMRuntime`
-  - vendored FastVLM runtime files from Apple’s sample app
-- `Sunclub/FastVLMModel`
-  - local model folder populated by `just download-model` or `scripts/get_pretrained_mlx_model.sh`
+- `FastVLM`
+  - restored framework source and downloaded model assets
 - `SunclubTests`
   - analytics, parser, reminder persistence, and verification-success state tests
 - `SunclubUITests`
@@ -53,47 +51,23 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
 
 1. From the repo root, run `mise install`.
 2. Run `just download-model`.
-3. Run `just run` to build the debug app, install it on the default simulator, and launch it.
-4. If you prefer Xcode, open [`/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj`](/Users/peyton/Projects/sunclub/app/Sunclub.xcodeproj).
-5. Select an iPhone simulator or device running iOS 18.6+.
+3. Run `just generate`.
+4. Run `just run` to build the debug app, install it on the default simulator, and launch it.
+5. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.
 6. Build and run the `Sunclub` scheme.
 
-## Fastlane
+## Just Targets
 
-Tooling is pinned at the repo root in [`/Users/peyton/Projects/sunclub/mise.toml`](/Users/peyton/Projects/sunclub/mise.toml).
-
-1. From the repo root, run `mise install`.
-2. Optionally pre-seed the model with `just download-model`.
-3. Use the repo-root `just` wrappers:
-
+- `just check-model`
+- `just generate`
 - `just build`
 - `just run`
-- `just test`
 - `just test-unit`
 - `just test-ui`
+- `just test`
 - `just ci`
 
-4. Or run Fastlane directly from [`/Users/peyton/Projects/sunclub/app`](/Users/peyton/Projects/sunclub/app):
-
-- `mise exec -- fastlane prepare_model`
-- `mise exec -- fastlane unit_tests`
-- `mise exec -- fastlane ui_tests`
-- `mise exec -- fastlane tests`
-- `mise exec -- fastlane screenshots`
-- `mise exec -- fastlane build`
-- `mise exec -- fastlane launch`
-
-Release automation is also defined:
-
-- `mise exec -- fastlane beta`
-- `mise exec -- fastlane release`
-- `mise exec -- fastlane submit_release`
-
-`prepare_model` downloads the FastVLM `0.5B` model into `Sunclub/FastVLMModel/model` with [`/Users/peyton/Projects/sunclub/scripts/get_pretrained_mlx_model.sh`](/Users/peyton/Projects/sunclub/scripts/get_pretrained_mlx_model.sh) if it is missing. `beta`, `release`, and `submit_release` expect App Store Connect API key environment variables before upload:
-
-- `APP_STORE_CONNECT_API_KEY_ID`
-- `APP_STORE_CONNECT_API_ISSUER_ID`
-- `APP_STORE_CONNECT_API_KEY_PATH` or `APP_STORE_CONNECT_API_KEY_CONTENT`
+`just check-model` verifies that `app/FastVLM/model/config.json` exists and exits with guidance if it does not. `just download-model` runs `scripts/get_pretrained_mlx_model.sh` directly, and `just prepare-model` remains a compatibility alias for the same check.
 
 ## Notes
 

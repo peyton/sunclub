@@ -1,0 +1,44 @@
+# Tuist
+Derived/
+.build/
+Tuist/Dependencies/
+Tuist/Graph/
+Tuist/Cache/
+Tuist/Build/
+Tuist/Signing/
+Tuist/Versions/
+
+# Tuist workspace/project (generated)
+*.xcodeproj
+*.xcworkspace
+
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.moved-aside
+*.xcscmblueprint
+
+# SwiftPM
+.build/
+Packages/
+Package.resolved
+
+# CocoaPods (if used)
+Pods/
+
+# Carthage (if used)
+Carthage/Build/
+
+# Fastlane (optional artifacts)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log

@@ -2,16 +2,20 @@
 
 Repository layout:
 
-- App: [`app/README.md`](/Users/peyton/Projects/sunclub/app/README.md)
-- Docs: [`docs/`](/Users/peyton/Projects/sunclub/docs)
+- App: [app/README.md](app/README.md)
+- Docs: [docs/](docs/)
 
-The iOS app lives in [`app/`](/Users/peyton/Projects/sunclub/app). Product and design notes live in [`docs/`](/Users/peyton/Projects/sunclub/docs).
-Tooling is pinned in [`mise.toml`](/Users/peyton/Projects/sunclub/mise.toml).
+The iOS app lives in [app/](app). Product and design notes live in [docs/](docs).
+Tooling is pinned in [mise.toml](mise.toml).
 
 Common setup from the repo root:
 
 - `mise install`
 - `just download-model`
+- `just generate`
 - `just build`
 - `just run`
 - `just test`
+- `just test-unit`
+- `just test-ui`
+- `just ci`

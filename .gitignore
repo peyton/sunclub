@@ -16,6 +16,8 @@ data/processed/cache/
 *.xcactivitylog
 *.xcuserstate
 app/Sunclub.xcodeproj/xcuserdata/
+app/Sunclub.xcworkspace/
+app/Tuist/Dependencies/
 app/build/
 
 # macOS

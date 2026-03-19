@@ -5,17 +5,21 @@ iOS sunscreen tracking app with AI validation.
 ## Build & Run
 
 ```
-open app/Sunclub.xcodeproj
+just download-model
+just generate
+open app/Sunclub.xcworkspace
 ```
 
-Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No SPM resolve or pod install needed.
+Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.
 
 ## Test Commands
 
 | Surface | Command |
 |---------|---------|
-| Unit tests | `xcodebuild test -project app/Sunclub.xcodeproj -scheme Sunclub -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:SunclubTests` |
-| UI tests | `xcodebuild test -project app/Sunclub.xcodeproj -scheme Sunclub -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:SunclubUITests` |
+| Unit tests | `just test-unit` |
+| UI tests | `just test-ui` |
+| All tests | `just test` |
+| CI validation | `just ci` |
 | Python eval tests | `python -m pytest tests/ -v` |
 | Benchmark | `cd evals/benchmark && ./benchmark.sh --strict` |
 

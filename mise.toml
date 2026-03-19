@@ -1,13 +1,7 @@
 [tools]
-ruby = "4.0"
+just = "1.47.1"
 swift = "6.2"
-
-"spm:cpisciotta/xcbeautify" = "3.1.4"
 tuist = "4.160.3"
 
 [settings]
 lockfile = true
-idiomatic_version_file_enable_tools = ["ruby"]
-[settings.ruby]
-compile = false
-github_attestations = true
