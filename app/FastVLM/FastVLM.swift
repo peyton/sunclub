@@ -9,8 +9,7 @@ import Foundation
 import MLXVLM
 
 public enum FastVLM {
-    public static func resolveModelDirectory(searching bundles: [Bundle]? = nil) -> URL? {
-        let bundles = bundles ?? [Bundle(for: BundleToken.self), .main]
+    public static func resolveModelDirectory(searching bundles: [Bundle] = [.module, .main]) -> URL? {
         return resolveModelDirectory(searchRoots: bundles.compactMap(\.resourceURL))
     }
 
@@ -38,6 +37,4 @@ public enum FastVLM {
             root.appendingPathComponent("config.json"),
         ]
     }
-
-    final class BundleToken {}
 }

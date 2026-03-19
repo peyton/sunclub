@@ -18,7 +18,7 @@ protocol NotificationScheduling: AnyObject {
 }
 
 @MainActor
-final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, NotificationScheduling {
+final class NotificationManager: NSObject, NotificationScheduling, @MainActor UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
     private let center = UNUserNotificationCenter.current()

@@ -1,6 +1,7 @@
 import ProjectDescription
 
 let teamID = "3VDQ4656LX"
+let defaultDeploymentTarget = DeploymentTarget.iOS("18.6")
 
 func targetSettings(marketingVersion: String, swiftVersion: String) -> Settings {
     let base: SettingsDictionary = [
@@ -46,18 +47,15 @@ let copyFastVITPackageScript = TargetScript.post(
 
 let project = Project(
     name: "Sunclub",
-    options: .options(
-        automaticSchemesOptions: .disabled
-    ),
     targets: [
         .target(
             name: "Sunclub",
             destinations: .iOS,
             product: .app,
             bundleId: "app.peyton.sunclub",
-            deploymentTargets: .iOS("18.6"),
+            deploymentTargets: defaultDeploymentTarget,
             infoPlist: "Sunclub/Info.plist",
-            sources: ["Sunclub/**/*.swift"],
+            buildableFolders: ["Sunclub"],
             resources: [
                 "Sunclub/Assets.xcassets",
                 "Sunclub/StoreKit/SunclubSubscriptions.storekit",
@@ -73,8 +71,8 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "app.peyton.sunclubTests",
-            deploymentTargets: .iOS("18.6"),
-            sources: ["SunclubTests/**/*.swift"],
+            deploymentTargets: defaultDeploymentTarget,
+            buildableFolders: ["SunclubTests"],
             dependencies: [
                 .target(name: "Sunclub"),
             ],
@@ -85,8 +83,8 @@ let project = Project(
             destinations: .iOS,
             product: .uiTests,
             bundleId: "app.peyton.sunclubUITests",
-            deploymentTargets: .iOS("18.2"),
-            sources: ["SunclubUITests/**/*.swift"],
+            deploymentTargets: defaultDeploymentTarget,
+            buildableFolders: ["SunclubUITests"],
             dependencies: [
                 .target(name: "Sunclub"),
             ],
@@ -97,8 +95,8 @@ let project = Project(
             destinations: .iOS,
             product: .framework,
             bundleId: "app.peyton.sunclub.FastVLM",
-            deploymentTargets: .iOS("18.6"),
-            sources: ["FastVLM/**/*.swift"],
+            deploymentTargets: defaultDeploymentTarget,
+            buildableFolders: ["FastVLM"],
             resources: [
                 .glob(
                     pattern: "FastVLM/model/**/*.json",
@@ -119,8 +117,8 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "app.peyton.sunclub.FastVLMTests",
-            deploymentTargets: .iOS("18.6"),
-            sources: ["FastVLMTests/**/*.swift"],
+            deploymentTargets: defaultDeploymentTarget,
+            buildableFolders: ["FastVLMTests"],
             dependencies: [
                 .target(name: "FastVLM"),
             ],
