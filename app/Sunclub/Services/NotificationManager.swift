@@ -11,6 +11,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private let calendar = Calendar.current
     private let bgTaskID = "com.peyton.sunclub.weekly-report"
     private let dailyCategoryID = "SUNSCREEN_DAILY"
+    private let reapplyCategoryID = "SUNSCREEN_REAPPLY"
     private let actionVerifyID = "VERIFY_NOW_ACTION"
     private let routeKey = "targetRoute"
     private let verifyRoute = "verify"
@@ -207,6 +208,34 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private func fetchRecords(context: ModelContext) throws -> [Date] {
         let descriptor = FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .reverse)])
         return try context.fetch(descriptor).map { $0.startOfDay }
+    }
+
+    func scheduleReapplyReminder(intervalMinutes: Int) async {
+        await clearPendingRequests(prefix: "sunscreen.reapply.")
+
+        let content = UNMutableNotificationContent()
+        content.title = "Time to reapply"
+        content.body = "It's been \(intervalMinutes) minutes — reapply sunscreen for continued protection."
+        content.sound = .default
+        content.categoryIdentifier = reapplyCategoryID
+        content.userInfo = [routeKey: verifyRoute, "type": "reapply"]
+
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: TimeInterval(intervalMinutes * 60),
+            repeats: false
+        )
+
+        let request = UNNotificationRequest(
+            identifier: "sunscreen.reapply.\(Int(Date().timeIntervalSince1970))",
+            content: content,
+            trigger: trigger
+        )
+
+        try? await center.add(request)
+    }
+
+    func cancelReapplyReminders() async {
+        await clearPendingRequests(prefix: "sunscreen.reapply.")
     }
 
     private func clearPendingRequests(prefix: String) async {

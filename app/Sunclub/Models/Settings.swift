@@ -11,6 +11,9 @@ final class Settings {
     var weeklyWeekday: Int
     var dailyPhraseState: Data?
     var weeklyPhraseState: Data?
+    var longestStreak: Int
+    var reapplyReminderEnabled: Bool
+    var reapplyIntervalMinutes: Int
 
     init() {
         self.id = UUID()
@@ -21,5 +24,8 @@ final class Settings {
         self.weeklyWeekday = 1
         self.dailyPhraseState = nil
         self.weeklyPhraseState = nil
+        self.longestStreak = 0
+        self.reapplyReminderEnabled = false
+        self.reapplyIntervalMinutes = 120
     }
 }

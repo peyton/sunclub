@@ -55,6 +55,41 @@ final class SunclubUITests: XCTestCase {
         app.buttons["home.settingsButton"].tap()
         XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.manageSubscription"].exists)
+        XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+    }
+
+    @MainActor
+    func testHomeShowsManualLogButton() throws {
+        let app = launchAndCompleteOnboarding()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHomeShowsHistoryCard() throws {
+        let app = launchAndCompleteOnboarding()
+
+        XCTAssertTrue(app.buttons["home.historyCard"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testManualLogFlowShowsSuccess() throws {
+        let app = launchAndCompleteOnboarding()
+
+        app.buttons["home.logManually"].tap()
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+
+        app.buttons["manualLog.logToday"].tap()
+        XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHistoryViewShowsCalendar() throws {
+        let app = launchAndCompleteOnboarding()
+
+        app.buttons["home.historyCard"].tap()
+        XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["history.previousMonth"].exists)
     }
 
     @MainActor

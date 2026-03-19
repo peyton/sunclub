@@ -145,7 +145,9 @@ final class AppState {
 
     func markAppliedToday(
         method: VerificationMethod,
-        verificationDuration: Double? = nil
+        verificationDuration: Double? = nil,
+        spfLevel: Int? = nil,
+        notes: String? = nil
     ) {
         let now = Date()
         let today = calendar.startOfDay(for: now)
@@ -154,7 +156,10 @@ final class AppState {
             existing.verifiedAt = now
             existing.method = method
             existing.verificationDuration = verificationDuration
+            if let spfLevel { existing.spfLevel = spfLevel }
+            if let notes { existing.notes = notes }
             refreshAndSave()
+            updateLongestStreak()
             return
         }
 
@@ -162,10 +167,13 @@ final class AppState {
             startOfDay: today,
             verifiedAt: now,
             method: method,
-            verificationDuration: verificationDuration
+            verificationDuration: verificationDuration,
+            spfLevel: spfLevel,
+            notes: notes
         )
         modelContext.insert(record)
         refreshAndSave()
+        updateLongestStreak()
     }
 
     func recordVerificationSuccess(
@@ -181,6 +189,42 @@ final class AppState {
 
     func clearVerificationSuccessPresentation() {
         verificationSuccessPresentation = nil
+    }
+
+    func deleteRecord(for day: Date) {
+        let target = calendar.startOfDay(for: day)
+        if let existing = records.first(where: { calendar.isDate($0.startOfDay, inSameDayAs: target) }) {
+            modelContext.delete(existing)
+            refreshAndSave()
+            updateLongestStreak()
+        }
+    }
+
+    var longestStreak: Int {
+        settings.longestStreak
+    }
+
+    private func updateLongestStreak() {
+        let streak = currentStreak
+        if streak > settings.longestStreak {
+            settings.longestStreak = streak
+            save()
+        }
+    }
+
+    func scheduleReapplyReminder() {
+        guard settings.reapplyReminderEnabled else { return }
+        Task {
+            await NotificationManager.shared.scheduleReapplyReminder(
+                intervalMinutes: settings.reapplyIntervalMinutes
+            )
+        }
+    }
+
+    func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
+        settings.reapplyReminderEnabled = enabled
+        settings.reapplyIntervalMinutes = max(30, min(480, intervalMinutes))
+        save()
     }
 
     func record(for day: Date) -> DailyRecord? {
