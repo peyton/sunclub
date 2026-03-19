@@ -3,6 +3,25 @@ import SwiftData
 import XCTest
 @testable import Sunclub
 
+@MainActor
+final class MockNotificationManager: NotificationScheduling {
+    private(set) var scheduleRemindersCount = 0
+    private(set) var scheduleReapplyReminderIntervals: [Int] = []
+    private(set) var cancelReapplyRemindersCount = 0
+
+    func scheduleReminders(using state: AppState) async {
+        scheduleRemindersCount += 1
+    }
+
+    func scheduleReapplyReminder(intervalMinutes: Int) async {
+        scheduleReapplyReminderIntervals.append(intervalMinutes)
+    }
+
+    func cancelReapplyReminders() async {
+        cancelReapplyRemindersCount += 1
+    }
+}
+
 final class SunclubTests: XCTestCase {
     @MainActor
     func testDayStatusAppliesToFutureTodayAndPast() throws {
@@ -274,6 +293,27 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(state.longestStreak, 10, "Longest streak should never decrease")
     }
 
+    @MainActor
+    func testLongestStreakBackfillsFromHistoricalRecords() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        for offset in stride(from: -5, through: -3, by: 1) {
+            let day = calendar.date(byAdding: .day, value: offset, to: today)!
+            let record = DailyRecord(
+                startOfDay: day,
+                verifiedAt: calendar.date(byAdding: .hour, value: 8, to: day) ?? day,
+                method: .camera
+            )
+            state.modelContext.insert(record)
+        }
+
+        state.refresh()
+
+        XCTAssertEqual(state.longestStreak, 3)
+    }
+
     // MARK: - Delete Record Tests
 
     @MainActor
@@ -298,6 +338,18 @@ final class SunclubTests: XCTestCase {
         let yesterday = calendar.date(byAdding: .day, value: -1, to: Date())!
         state.deleteRecord(for: yesterday)
         XCTAssertEqual(state.records.count, 1, "Deleting a non-existent day should have no effect")
+    }
+
+    @MainActor
+    func testDeletingTodayCancelsPendingReapplyReminder() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.markAppliedToday(method: .camera)
+        state.deleteRecord(for: Date())
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
     }
 
     // MARK: - Reapplication Settings Tests
@@ -328,6 +380,18 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertFalse(state.settings.reapplyReminderEnabled)
         XCTAssertEqual(state.settings.reapplyIntervalMinutes, 120)
+    }
+
+    @MainActor
+    func testDisablingReapplyCancelsPendingReminder() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+        state.updateReapplySettings(enabled: false, intervalMinutes: 90)
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
     }
 
     // MARK: - UV Index Service Tests
@@ -491,6 +555,33 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(manualLogRoute.id, "manualLog")
     }
 
+    @MainActor
+    func testPersonalBestBannerOnlyShowsOnImprovement() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        let yesterdayRecord = DailyRecord(
+            startOfDay: yesterday,
+            verifiedAt: calendar.date(byAdding: .hour, value: 8, to: yesterday) ?? yesterday,
+            method: .camera
+        )
+        let todayRecord = DailyRecord(
+            startOfDay: today,
+            verifiedAt: calendar.date(byAdding: .hour, value: 9, to: today) ?? today,
+            method: .camera
+        )
+        state.modelContext.insert(yesterdayRecord)
+        state.modelContext.insert(todayRecord)
+        state.refresh()
+
+        state.recordVerificationSuccess(method: .camera, verificationDuration: 0.8)
+
+        XCTAssertEqual(state.currentStreak, 2)
+        XCTAssertFalse(state.verificationSuccessPresentation?.isPersonalBest ?? true)
+    }
+
     // MARK: - Integration: Manual Log + Streak Update
 
     @MainActor
@@ -515,16 +606,19 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(state.currentStreak, 2)
         XCTAssertGreaterThanOrEqual(state.longestStreak, 2)
         XCTAssertEqual(state.records.last?.method ?? state.records.first?.method, .manual)
+        XCTAssertEqual(state.records.last?(for: today)?.method, .manual)
     }
 
     // MARK: - Helpers
 
     @MainActor
-    private func makeAppState() throws -> AppState {
+    private func makeAppState(
+        notificationManager: NotificationScheduling = NotificationManager.shared
+    ) throws -> AppState {
         let schema = Schema([DailyRecord.self, Settings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
-        return AppState(context: ModelContext(container))
+        return AppState(context: ModelContext(container), notificationManager: notificationManager)
     }
 
     private func makeTemporaryDirectory() throws -> URL {

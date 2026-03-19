@@ -3,8 +3,22 @@ import Foundation
 import SwiftData
 import UserNotifications
 
+private enum NotificationConstants {
+    static let actionVerifyID = "VERIFY_NOW_ACTION"
+    static let routeKey = "targetRoute"
+    static let verifyRoute = "verify"
+    static let weeklyRoute = "weekly"
+}
+
 @MainActor
-final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
+protocol NotificationScheduling: AnyObject {
+    func scheduleReminders(using state: AppState) async
+    func scheduleReapplyReminder(intervalMinutes: Int) async
+    func cancelReapplyReminders() async
+}
+
+@MainActor
+final class NotificationManager: NSObject, NotificationScheduling, @MainActor UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
     private let center = UNUserNotificationCenter.current()
@@ -16,6 +30,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private let routeKey = "targetRoute"
     private let verifyRoute = "verify"
     private let weeklyRoute = "weekly"
+
     private let isTesting = RuntimeEnvironment.isRunningTests
 
     private var routeHandler: (AppRoute) -> Void = { _ in }
@@ -41,7 +56,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         if !configured {
             configured = true
 
-            let actionVerify = UNNotificationAction(identifier: actionVerifyID, title: "Verify Now", options: [.foreground])
+            let actionVerify = UNNotificationAction(identifier: NotificationConstants.actionVerifyID, title: "Verify Now", options: [.foreground])
             let category = UNNotificationCategory(identifier: dailyCategoryID, actions: [actionVerify], intentIdentifiers: [])
 
             center.setNotificationCategories([category])
@@ -82,7 +97,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             content.body = phrase
             content.sound = .default
             content.categoryIdentifier = dailyCategoryID
-            content.userInfo = [routeKey: verifyRoute, "type": "daily"]
+            content.userInfo = [NotificationConstants.routeKey: NotificationConstants.verifyRoute, "type": "daily"]
 
             var components = calendar.dateComponents([.year, .month, .day], from: day)
             components.hour = state.settings.reminderHour
@@ -106,7 +121,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.title = "Sunclub weekly report"
         content.body = "Open Sunclub to view your latest 7-day report."
         content.categoryIdentifier = dailyCategoryID
-        content.userInfo = [routeKey: weeklyRoute, "type": "weekly_fallback"]
+        content.userInfo = [NotificationConstants.routeKey: NotificationConstants.weeklyRoute, "type": "weekly_fallback"]
 
         var components = DateComponents()
         components.weekday = state.settings.weeklyWeekday
@@ -173,7 +188,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
                 + phrase.0
             content.categoryIdentifier = dailyCategoryID
-            content.userInfo = [routeKey: weeklyRoute, "type": "weekly_primary"]
+            content.userInfo = [NotificationConstants.routeKey: NotificationConstants.weeklyRoute, "type": "weekly_primary"]
 
             let request = UNNotificationRequest(
                 identifier: "sunscreen.weekly.primary.\(Int(Date().timeIntervalSince1970))",
@@ -218,7 +233,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.body = "It's been \(intervalMinutes) minutes — reapply sunscreen for continued protection."
         content.sound = .default
         content.categoryIdentifier = reapplyCategoryID
-        content.userInfo = [routeKey: verifyRoute, "type": "reapply"]
+        content.userInfo = [NotificationConstants.routeKey: NotificationConstants.verifyRoute, "type": "reapply"]
 
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: TimeInterval(intervalMinutes * 60),
@@ -247,7 +262,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
@@ -255,26 +270,31 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         completionHandler([.banner, .sound, .badge])
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let targetRoute = response.notification.request.content.userInfo[routeKey] as? String
+        let targetRoute = response.notification.request.content.userInfo[NotificationConstants.routeKey] as? String
+        let actionIdentifier = response.actionIdentifier
 
-        defer { completionHandler() }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
 
-        switch response.actionIdentifier {
-        case actionVerifyID:
-            routeHandler(.verifyCamera)
-        default:
-            if targetRoute == weeklyRoute {
-                routeHandler(.weeklySummary)
-            } else if targetRoute == verifyRoute {
+            switch actionIdentifier {
+            case NotificationConstants.actionVerifyID:
                 routeHandler(.verifyCamera)
-            } else {
-                routeHandler(.home)
+            default:
+                if targetRoute == NotificationConstants.weeklyRoute {
+                    routeHandler(.weeklySummary)
+                } else if targetRoute == NotificationConstants.verifyRoute {
+                    routeHandler(.verifyCamera)
+                } else {
+                    routeHandler(.home)
+                }
             }
         }
+
+        completionHandler()
     }
 }

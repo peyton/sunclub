@@ -4,6 +4,12 @@ import SwiftData
 
 struct VerificationSuccessPresentation: Equatable {
     let streak: Int
+    let isPersonalBest: Bool
+
+    init(streak: Int, isPersonalBest: Bool = false) {
+        self.streak = streak
+        self.isPersonalBest = isPersonalBest
+    }
 
     var detail: String {
         if streak == 1 {
@@ -22,6 +28,7 @@ final class AppState {
     var verificationSuccessPresentation: VerificationSuccessPresentation?
     private let subscriptionManager: SubscriptionManager
     private let verificationStore: VerificationStore
+    private let notificationManager: NotificationScheduling
     private(set) var records: [DailyRecord] = []
     private(set) var subscriptionStatus: SubscriptionStatus = .unknown
     private(set) var subscriptionProducts: [SubscriptionProduct] = []
@@ -31,10 +38,11 @@ final class AppState {
     private(set) var subscriptionErrorDescription: String?
     private let calendar = Calendar.current
 
-    init(context: ModelContext) {
+    init(context: ModelContext, notificationManager: NotificationScheduling = NotificationManager.shared) {
         modelContext = context
         subscriptionManager = SubscriptionManager(productIDs: Self.subscriptionProductIDs())
         verificationStore = VerificationStore(context: context)
+        self.notificationManager = notificationManager
         settings = Self.loadOrCreateSettings(from: context)
 
         subscriptionManager.onSnapshotChange = { [weak self] snapshot in
@@ -50,6 +58,8 @@ final class AppState {
         } catch {
             records = []
         }
+
+        syncLongestStreakIfNeeded()
     }
 
     private static func loadOrCreateSettings(from context: ModelContext) -> Settings {
@@ -71,7 +81,7 @@ final class AppState {
     private func saveAndRescheduleReminders() {
         save()
         Task {
-            await NotificationManager.shared.scheduleReminders(using: self)
+            await notificationManager.scheduleReminders(using: self)
         }
     }
 
@@ -180,11 +190,15 @@ final class AppState {
         method: VerificationMethod,
         verificationDuration: Double? = nil
     ) {
+        let previousLongestStreak = settings.longestStreak
         markAppliedToday(
             method: method,
             verificationDuration: verificationDuration
         )
-        verificationSuccessPresentation = VerificationSuccessPresentation(streak: currentStreak)
+        verificationSuccessPresentation = VerificationSuccessPresentation(
+            streak: currentStreak,
+            isPersonalBest: currentStreak > previousLongestStreak
+        )
     }
 
     func clearVerificationSuccessPresentation() {
@@ -196,6 +210,9 @@ final class AppState {
         if let existing = records.first(where: { calendar.isDate($0.startOfDay, inSameDayAs: target) }) {
             modelContext.delete(existing)
             refreshAndSave()
+            if calendar.isDateInToday(target), record(for: target) == nil {
+                cancelReapplyRemindersIfNeeded()
+            }
             updateLongestStreak()
         }
     }
@@ -215,7 +232,7 @@ final class AppState {
     func scheduleReapplyReminder() {
         guard settings.reapplyReminderEnabled else { return }
         Task {
-            await NotificationManager.shared.scheduleReapplyReminder(
+            await notificationManager.scheduleReapplyReminder(
                 intervalMinutes: settings.reapplyIntervalMinutes
             )
         }
@@ -225,6 +242,10 @@ final class AppState {
         settings.reapplyReminderEnabled = enabled
         settings.reapplyIntervalMinutes = max(30, min(480, intervalMinutes))
         save()
+
+        if !enabled {
+            cancelReapplyRemindersIfNeeded()
+        }
     }
 
     func record(for day: Date) -> DailyRecord? {
@@ -257,6 +278,20 @@ final class AppState {
 
     func recordStartsForTesting() -> [Date] {
         records.map { calendar.startOfDay(for: $0.startOfDay) }
+    }
+
+    private func syncLongestStreakIfNeeded() {
+        let computed = CalendarAnalytics.longestStreak(records: records.map { $0.startOfDay }, calendar: calendar)
+        if computed > settings.longestStreak {
+            settings.longestStreak = computed
+            save()
+        }
+    }
+
+    private func cancelReapplyRemindersIfNeeded() {
+        Task {
+            await notificationManager.cancelReapplyReminders()
+        }
     }
 
     private static func subscriptionProductIDs() -> [String] {

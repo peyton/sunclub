@@ -35,7 +35,7 @@ struct VerificationSuccessView: View {
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
 
-                    if appState.longestStreak > 1 && presentation.streak >= appState.longestStreak {
+                    if presentation.isPersonalBest && presentation.streak > 1 {
                         Text("New personal best!")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(AppPalette.sun)

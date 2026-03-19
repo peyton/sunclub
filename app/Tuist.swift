@@ -1,3 +1,4 @@
 import ProjectDescription
 
-let tuist = Config()
+let tuist = Tuist(project: .tuist())
+

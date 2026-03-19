@@ -1,6 +1,7 @@
 import ProjectDescription
 
 let teamID = "3VDQ4656LX"
+let defaultDeploymentTarget: DeploymentTargets = .iOS("18.6")
 
 func targetSettings(marketingVersion: String, swiftVersion: String) -> Settings {
     let base: SettingsDictionary = [
@@ -55,7 +56,7 @@ let project = Project(
             destinations: .iOS,
             product: .app,
             bundleId: "app.peyton.sunclub",
-            deploymentTargets: .iOS("18.6"),
+            deploymentTargets: defaultDeploymentTarget,
             infoPlist: "Sunclub/Info.plist",
             sources: ["Sunclub/**/*.swift"],
             resources: [
@@ -73,7 +74,7 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "app.peyton.sunclubTests",
-            deploymentTargets: .iOS("18.6"),
+            deploymentTargets: defaultDeploymentTarget,
             sources: ["SunclubTests/**/*.swift"],
             dependencies: [
                 .target(name: "Sunclub"),
@@ -85,7 +86,7 @@ let project = Project(
             destinations: .iOS,
             product: .uiTests,
             bundleId: "app.peyton.sunclubUITests",
-            deploymentTargets: .iOS("18.2"),
+            deploymentTargets: defaultDeploymentTarget,
             sources: ["SunclubUITests/**/*.swift"],
             dependencies: [
                 .target(name: "Sunclub"),
@@ -97,7 +98,7 @@ let project = Project(
             destinations: .iOS,
             product: .framework,
             bundleId: "app.peyton.sunclub.FastVLM",
-            deploymentTargets: .iOS("18.6"),
+            deploymentTargets: defaultDeploymentTarget,
             sources: ["FastVLM/**/*.swift"],
             resources: [
                 .glob(
@@ -119,7 +120,7 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "app.peyton.sunclub.FastVLMTests",
-            deploymentTargets: .iOS("18.6"),
+            deploymentTargets: defaultDeploymentTarget,
             sources: ["FastVLMTests/**/*.swift"],
             dependencies: [
                 .target(name: "FastVLM"),
