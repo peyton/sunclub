@@ -26,6 +26,11 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     private let bgTaskID = "com.peyton.sunclub.weekly-report"
     private let dailyCategoryID = "SUNSCREEN_DAILY"
     private let reapplyCategoryID = "SUNSCREEN_REAPPLY"
+    private let actionVerifyID = "VERIFY_NOW_ACTION"
+    private let routeKey = "targetRoute"
+    private let verifyRoute = "verify"
+    private let weeklyRoute = "weekly"
+
     private let isTesting = RuntimeEnvironment.isRunningTests
 
     private var routeHandler: (AppRoute) -> Void = { _ in }

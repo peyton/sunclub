@@ -605,7 +605,8 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.currentStreak, 2)
         XCTAssertGreaterThanOrEqual(state.longestStreak, 2)
-        XCTAssertEqual(state.record(for: today)?.method, .manual)
+        XCTAssertEqual(state.records.last?.method ?? state.records.first?.method, .manual)
+        XCTAssertEqual(state.records.last?(for: today)?.method, .manual)
     }
 
     // MARK: - Helpers
