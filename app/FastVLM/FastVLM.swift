@@ -9,8 +9,9 @@ import Foundation
 import MLXVLM
 
 public enum FastVLM {
-    public static func resolveModelDirectory(searching bundles: [Bundle] = [.module, .main]) -> URL? {
-        return resolveModelDirectory(searchRoots: bundles.compactMap(\.resourceURL))
+    public static func resolveModelDirectory(searching bundles: [Bundle]? = nil) -> URL? {
+        let searchBundles = bundles ?? [Bundle.module, .main]
+        return resolveModelDirectory(searchRoots: searchBundles.compactMap(\.resourceURL))
     }
 
     public static func resolveModelDirectory(searchRoots: [URL]) -> URL? {
