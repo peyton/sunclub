@@ -28,7 +28,7 @@ struct SunclubApp: App {
             assertionFailure("Failed to create ModelContainer: \(error)")
             fatalError("Failed to create ModelContainer: \(error)")
         }
-        AppDataContainer.shared = container
+        NotificationManager.shared.configure(modelContainer: container)
 
         let state = AppState(context: ModelContext(container))
         _appState = State(initialValue: state)

@@ -79,11 +79,6 @@ final class AppState {
         return next.0
     }
 
-    private func refreshAndSave() {
-        refresh()
-        save()
-    }
-
     var isUITesting: Bool {
         RuntimeEnvironment.isUITesting
     }
@@ -131,28 +126,35 @@ final class AppState {
         let now = Date()
         let today = calendar.startOfDay(for: now)
 
-        if let existing = record(for: today) {
-            existing.verifiedAt = now
-            existing.method = method
-            existing.verificationDuration = verificationDuration
-            if let spfLevel { existing.spfLevel = spfLevel }
-            if let notes { existing.notes = notes }
-            refreshAndSave()
+        do {
+            if let existing = try verificationStore.record(for: today) {
+                apply(verificationValues: (method, verificationDuration, spfLevel, notes), to: existing, verifiedAt: now)
+                try modelContext.save()
+            } else {
+                let record = DailyRecord(
+                    startOfDay: today,
+                    verifiedAt: now,
+                    method: method,
+                    verificationDuration: verificationDuration,
+                    spfLevel: spfLevel,
+                    notes: notes
+                )
+                modelContext.insert(record)
+                do {
+                    try modelContext.save()
+                } catch {
+                    modelContext.rollback()
+                    if let existing = try verificationStore.record(for: today) {
+                        apply(verificationValues: (method, verificationDuration, spfLevel, notes), to: existing, verifiedAt: now)
+                        try modelContext.save()
+                    }
+                }
+            }
+            refresh()
             updateLongestStreak()
-            return
+        } catch {
+            modelContext.rollback()
         }
-
-        let record = DailyRecord(
-            startOfDay: today,
-            verifiedAt: now,
-            method: method,
-            verificationDuration: verificationDuration,
-            spfLevel: spfLevel,
-            notes: notes
-        )
-        modelContext.insert(record)
-        refreshAndSave()
-        updateLongestStreak()
     }
 
     func recordVerificationSuccess(
@@ -176,10 +178,13 @@ final class AppState {
 
     func deleteRecord(for day: Date) {
         let target = calendar.startOfDay(for: day)
-        if let existing = records.first(where: { calendar.isDate($0.startOfDay, inSameDayAs: target) }) {
+
+        if let existing = try? verificationStore.record(for: target) {
             modelContext.delete(existing)
-            refreshAndSave()
-            if calendar.isDateInToday(target), record(for: target) == nil {
+            try? modelContext.save()
+            refresh()
+
+            if calendar.isDateInToday(target), (try? verificationStore.record(for: target)) == nil {
                 cancelReapplyRemindersIfNeeded()
             }
             updateLongestStreak()
@@ -218,9 +223,22 @@ final class AppState {
     }
 
     func record(for day: Date) -> DailyRecord? {
-        let target = calendar.startOfDay(for: day)
-        return records.first {
-            calendar.isDate($0.startOfDay, inSameDayAs: target)
+        (try? verificationStore.record(for: day)).flatMap { $0 }
+    }
+
+    private func apply(
+        verificationValues: (method: VerificationMethod, duration: Double?, spfLevel: Int?, notes: String?),
+        to record: DailyRecord,
+        verifiedAt: Date
+    ) {
+        record.verifiedAt = verifiedAt
+        record.method = verificationValues.method
+        record.verificationDuration = verificationValues.duration
+        if let spfLevel = verificationValues.spfLevel {
+            record.spfLevel = spfLevel
+        }
+        if let notes = verificationValues.notes {
+            record.notes = notes
         }
     }
 
