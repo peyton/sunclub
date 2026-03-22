@@ -86,3 +86,19 @@ test-python:
 test: test-unit test-ui test-python
 
 ci: test build
+
+# --- Eval & Fine-Tuning ---
+
+collect-data output_dir="evals/datasets/sunscreen-v1":
+    pip install -q -r evals/requirements.txt
+    python3 evals/scripts/collect_data.py --output-dir "{{output_dir}}"
+
+collect-data-quick output_dir="evals/datasets/sunscreen-v1":
+    pip install -q -r evals/requirements.txt
+    python3 evals/scripts/collect_data.py --output-dir "{{output_dir}}" --max-queries 2
+
+benchmark dataset="evals/datasets/sunscreen-v1/eval.json":
+    python3 evals/benchmark/benchmark.py --dataset "{{dataset}}" --model-dir "{{model_dir}}" --verbose
+
+benchmark-strict dataset="evals/datasets/sunscreen-v1/eval.json":
+    python3 evals/benchmark/benchmark.py --dataset "{{dataset}}" --model-dir "{{model_dir}}" --strict
