@@ -4,7 +4,7 @@ import SwiftData
 @Model
 final class DailyRecord {
     @Attribute(.unique) var id: UUID
-    var startOfDay: Date
+    @Attribute(.unique) var startOfDay: Date
     var verifiedAt: Date
     var methodRawValue: Int
     var verificationDuration: Double?

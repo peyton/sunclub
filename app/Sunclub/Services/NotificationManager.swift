@@ -32,10 +32,15 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     private let calendar = Calendar.current
 
     private let isTesting = RuntimeEnvironment.isRunningTests
+    private var modelContainer: ModelContainer?
 
     private var routeHandler: (AppRoute) -> Void = { _ in }
     private var configured = false
     private var backgroundTaskRegistered = false
+
+    func configure(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
+    }
 
     func registerBackgroundTaskIfNeeded() {
         guard !backgroundTaskRegistered, !isTesting else { return }
@@ -93,7 +98,11 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
             try? await center.add(weeklyFallback)
         }
-        submitWeeklyBackgroundTask(using: state)
+        submitWeeklyBackgroundTask(
+            weekday: state.settings.weeklyWeekday,
+            hour: state.settings.weeklyHour,
+            minute: 0
+        )
     }
 
     private func makeDailyReminderRequests(using state: AppState) -> [UNNotificationRequest] {
@@ -147,11 +156,11 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         )
     }
 
-    private func submitWeeklyBackgroundTask(using state: AppState) {
+    private func submitWeeklyBackgroundTask(weekday: Int, hour: Int, minute: Int) {
         guard backgroundTaskRegistered else { return }
 
         let request = BGAppRefreshTaskRequest(identifier: NotificationConstants.backgroundTaskID)
-        request.earliestBeginDate = nextDate(weekday: state.settings.weeklyWeekday, hour: state.settings.weeklyHour, minute: 0)
+        request.earliestBeginDate = nextDate(weekday: weekday, hour: hour, minute: minute)
 
         try? BGTaskScheduler.shared.submit(request)
     }
@@ -201,7 +210,11 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             )
 
             try await center.add(request)
-            submitWeeklyBackgroundTask(using: AppState(context: context))
+            submitWeeklyBackgroundTask(
+                weekday: settings.weeklyWeekday,
+                hour: settings.weeklyHour,
+                minute: 0
+            )
             task.setTaskCompleted(success: true)
         } catch {
             task.setTaskCompleted(success: false)
@@ -209,7 +222,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     private func makeBackgroundContext() -> ModelContext? {
-        guard let container = AppDataContainer.shared else { return nil }
+        guard let container = modelContainer else { return nil }
         return ModelContext(container)
     }
 
