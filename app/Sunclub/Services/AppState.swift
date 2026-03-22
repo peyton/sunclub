@@ -26,29 +26,16 @@ final class AppState {
     let modelContext: ModelContext
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
-    private let subscriptionManager: SubscriptionManager
     private let verificationStore: VerificationStore
     private let notificationManager: NotificationScheduling
     private(set) var records: [DailyRecord] = []
-    private(set) var subscriptionStatus: SubscriptionStatus = .unknown
-    private(set) var subscriptionProducts: [SubscriptionProduct] = []
-    private(set) var subscriptionEntitlement: SubscriptionEntitlement?
-    private(set) var isSubscriptionLoading = false
-    private(set) var isSubscriptionProcessing = false
-    private(set) var subscriptionErrorDescription: String?
     private let calendar = Calendar.current
 
     init(context: ModelContext, notificationManager: NotificationScheduling = NotificationManager.shared) {
         modelContext = context
-        subscriptionManager = SubscriptionManager(productIDs: Self.subscriptionProductIDs())
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager
         settings = Self.loadOrCreateSettings(from: context)
-
-        subscriptionManager.onSnapshotChange = { [weak self] snapshot in
-            self?.applySubscriptionSnapshot(snapshot)
-        }
-        subscriptionManager.start()
         refresh()
     }
 
@@ -133,24 +120,6 @@ final class AppState {
         nextPhrase(catalog: PhraseBank.weeklyPhrases, state: \.weeklyPhraseState) {
             settings.weeklyPhraseState = $0
         }
-    }
-
-    var hasActiveSubscription: Bool {
-        subscriptionStatus == .active
-    }
-
-    func refreshSubscriptions() {
-        Task {
-            await subscriptionManager.refresh()
-        }
-    }
-
-    func purchaseSubscription(productID: String) async throws -> SubscriptionPurchaseOutcome {
-        try await subscriptionManager.purchase(productID: productID)
-    }
-
-    func restoreSubscriptions() async throws {
-        try await subscriptionManager.restorePurchases()
     }
 
     func markAppliedToday(
@@ -292,25 +261,5 @@ final class AppState {
         Task {
             await notificationManager.cancelReapplyReminders()
         }
-    }
-
-    private static func subscriptionProductIDs() -> [String] {
-        guard let configuredIDs = Bundle.main.object(forInfoDictionaryKey: "SunclubSubscriptionProductIDs") as? [String] else {
-            return [
-                "com.peyton.sunclub.subscription.monthly",
-                "com.peyton.sunclub.subscription.annual"
-            ]
-        }
-
-        return configuredIDs.filter { !$0.isEmpty }
-    }
-
-    private func applySubscriptionSnapshot(_ snapshot: SubscriptionSnapshot) {
-        subscriptionStatus = snapshot.status
-        subscriptionProducts = snapshot.products
-        subscriptionEntitlement = snapshot.entitlement
-        isSubscriptionLoading = snapshot.isLoadingProducts
-        isSubscriptionProcessing = snapshot.isProcessingPurchase
-        subscriptionErrorDescription = snapshot.lastErrorDescription
     }
 }

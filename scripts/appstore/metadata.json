@@ -1,36 +1,128 @@
 {
-  "app_name": "Sunclub — Daily Sunscreen",
-  "subtitle": "AI-Powered Sunscreen Habit Tracker",
-  "bundle_id": "app.peyton.sunclub",
-  "sku": "sunclub-ios-001",
-  "primary_locale": "en-US",
-  "primary_category": "HEALTH_AND_FITNESS",
-  "secondary_category": "LIFESTYLE",
-  "content_rights": "This app does not contain, show, or access third-party content.",
-  "age_rating": "4+",
-  "pricing": {
-    "model": "freemium",
-    "notes": "Free with optional subscription (monthly/annual) for premium features."
+  "app": {
+    "name": "Sunclub",
+    "subtitle": "Daily SPF Habit Tracker",
+    "bundle_id": "app.peyton.sunclub",
+    "sku": "sunclub-ios-001",
+    "primary_locale": "en-US",
+    "primary_category": "HEALTH_AND_FITNESS",
+    "secondary_category": "LIFESTYLE",
+    "age_rating": "4+",
+    "device_family": "iphone",
+    "pricing_model": "free",
+    "supports_on_demand_resources": true
   },
-  "description": "Sunclub helps you build a daily sunscreen habit — fast, private, and on-device.\n\nOpen the app, point your camera at your sunscreen bottle, and Sunclub's on-device AI confirms it in seconds. No typing, no manual logging. Just point and done.\n\nYour streak grows every day you check in. Miss a day? The weekly summary shows you exactly where you fell off — no guilt, just clarity.\n\nEverything runs locally on your iPhone. No accounts, no cloud sync, no data leaves your device.\n\nKey features:\n\n• AI-Powered Verification — FastVLM, an on-device vision model, recognizes your sunscreen bottle through the camera in real time. Two confirmed frames and your day is logged.\n\n• Streak Tracking — See your current streak front and center every time you open the app. Beat your personal best.\n\n• Weekly Summary — A quick 7-day view shows applied vs. missed days at a glance.\n\n• Smart Reminders — Set a daily reminder that opens straight to the camera. Reapplication reminders nudge you to reapply after a configurable interval.\n\n• Fully Offline — No account required. No network connection needed. Your data stays on your device.\n\n• Manual Logging — Forgot your bottle? Log manually when you can't scan.\n\n• History Calendar — Browse your full check-in history by month.\n\nSunclub is for anyone who wants to wear sunscreen every day and actually stick with it. Whether you're building the habit for the first time or maintaining a routine, Sunclub makes daily sun protection effortless.",
-  "keywords": "sunscreen,sunblock,SPF,skin care,habit tracker,daily routine,UV protection,streak,sun protection,skincare",
-  "promotional_text": "Build an unbreakable sunscreen habit. Point your camera, confirm with AI, grow your streak.",
-  "support_url": "https://sunclub.app/support",
-  "marketing_url": "https://sunclub.app",
-  "privacy_policy_url": "https://sunclub.app/privacy",
-  "copyright": "2026 Peyton",
-  "whats_new": "Initial release! Start building your daily sunscreen habit with AI-powered verification, streak tracking, weekly summaries, and smart reminders — all running privately on your device.",
-  "review_notes": {
-    "notes": "Sunclub uses the device camera to verify that sunscreen is present via an on-device vision model (FastVLM). No images are uploaded or stored — all inference runs locally. To test: open the app, tap 'Verify Now', and point the camera at any sunscreen bottle or tube. The model will confirm detection after two consecutive YES frames. You can also use 'Log Manually' to record a day without the camera.",
-    "demo_account": "No account required. The app is fully local.",
-    "attachment_notes": "No external services are used. All AI inference is on-device."
+  "localizations": {
+    "en-US": {
+      "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nPoint your camera at a sunscreen bottle when you want AI verification, or log today manually when you already applied. Sunclub keeps your streak, shows your recent check-ins, and reminds you when it is time to apply again.\n\nCamera verification uses FastVLM, an on-device vision model hosted as a one-time App Store download. After the model finishes downloading, verification stays available offline on that iPhone.\n\nFeatures:\n\n• Camera Verification — Confirm a sunscreen bottle with on-device AI.\n• Manual Logging — Record today even when the bottle is not nearby.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No accounts, no cloud sync, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
+      "keywords": [
+        "sunscreen",
+        "spf",
+        "uv",
+        "habit",
+        "streak",
+        "daily",
+        "reminder",
+        "skincare",
+        "sun care"
+      ],
+      "promotional_text": "Build a steady sunscreen routine with camera verification, manual logging, streaks, and reminders.",
+      "whats_new": "Initial release. Verify sunscreen with the camera after a one-time model download, log manually when needed, and keep your streak on track."
+    }
   },
-  "app_store_screenshots": {
-    "required_sizes": {
-      "iphone_6_7": "1290x2796 (iPhone 15 Pro Max, 6.7-inch)",
-      "iphone_6_1": "1179x2556 (iPhone 15 Pro, 6.1-inch — optional but recommended)",
-      "ipad_12_9": "2048x2732 (iPad Pro 12.9-inch — if supporting iPad)"
+  "urls": {
+    "support": {
+      "value": "https://sunclub.app/support",
+      "ready": false
     },
-    "recommended_count": "6-10 screenshots per size"
+    "marketing": {
+      "value": "https://sunclub.app",
+      "ready": false
+    },
+    "privacy_policy": {
+      "value": "https://sunclub.app/privacy",
+      "ready": false
+    }
+  },
+  "review": {
+    "contact": {
+      "first_name": "Peyton",
+      "last_name": "Randolph",
+      "email": "review-contact@sunclub.app",
+      "phone": "+1-555-0100",
+      "ready": false
+    },
+    "demo_account_required": false,
+    "demo_account_notes": "No account required. All user data stays on device.",
+    "notes": "Sunclub requests camera access only for sunscreen verification. Reviewers can test manual logging from Home without downloading the model. To test camera verification, open Verify Now, approve the one-time FastVLM download, then point the camera at a sunscreen bottle or tube until the app confirms detection.",
+    "attachments": []
+  },
+  "privacy": {
+    "tracking": false,
+    "data_collection": "none",
+    "camera_usage_description": "Camera access is used to verify that sunscreen is present before Sunclub logs today.",
+    "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
+  },
+  "export_compliance": {
+    "uses_encryption": false,
+    "contains_third_party_content": false,
+    "content_rights_note": "This app does not contain, show, or access third-party content."
+  },
+  "assets": {
+    "icon_source_svg": "icon.svg",
+    "screenshots": {
+      "capture_device": "iPhone 17 Pro Max",
+      "required_size_class": "6.9-inch iPhone",
+      "output_directory": ".build/appstore-screenshots",
+      "screens": [
+        {
+          "id": "welcome",
+          "route": "welcome",
+          "complete_onboarding": false,
+          "launch_arguments": []
+        },
+        {
+          "id": "home",
+          "route": "home",
+          "complete_onboarding": true,
+          "launch_arguments": []
+        },
+        {
+          "id": "verify-download",
+          "route": "verifyCamera",
+          "complete_onboarding": true,
+          "launch_arguments": [
+            "UITEST_REQUIRE_MODEL_DOWNLOAD"
+          ]
+        },
+        {
+          "id": "verify-success",
+          "route": "verifySuccess",
+          "complete_onboarding": true,
+          "launch_arguments": []
+        },
+        {
+          "id": "weekly-summary",
+          "route": "weeklySummary",
+          "complete_onboarding": true,
+          "launch_arguments": []
+        },
+        {
+          "id": "settings",
+          "route": "settings",
+          "complete_onboarding": true,
+          "launch_arguments": []
+        }
+      ]
+    }
+  },
+  "submission": {
+    "copyright": "2026 Peyton Randolph",
+    "manual_steps": [
+      "Replace draft support, marketing, and privacy URLs with live pages and mark them ready.",
+      "Replace the draft App Review contact details and mark them ready.",
+      "Answer App Privacy and export compliance questions in App Store Connect to match this manifest.",
+      "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."
+    ]
   }
 }

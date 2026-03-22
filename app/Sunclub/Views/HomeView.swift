@@ -72,7 +72,12 @@ struct HomeView: View {
                 Image(systemName: "gearshape")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.72))
+                    )
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("home.settingsButton")

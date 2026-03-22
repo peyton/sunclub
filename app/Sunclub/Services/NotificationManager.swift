@@ -4,10 +4,17 @@ import SwiftData
 import UserNotifications
 
 private enum NotificationConstants {
+    static let backgroundTaskID = "com.peyton.sunclub.weekly-report"
+    static let dailyCategoryID = "SUNSCREEN_DAILY"
+    static let reapplyCategoryID = "SUNSCREEN_REAPPLY"
     static let actionVerifyID = "VERIFY_NOW_ACTION"
     static let routeKey = "targetRoute"
     static let verifyRoute = "verify"
     static let weeklyRoute = "weekly"
+    static let dailyPrefix = "sunscreen.daily."
+    static let weeklyFallbackPrefix = "sunscreen.weekly.fallback."
+    static let weeklyPrimaryPrefix = "sunscreen.weekly.primary."
+    static let reapplyPrefix = "sunscreen.reapply."
 }
 
 @MainActor
@@ -23,13 +30,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     private let center = UNUserNotificationCenter.current()
     private let calendar = Calendar.current
-    private let bgTaskID = "com.peyton.sunclub.weekly-report"
-    private let dailyCategoryID = "SUNSCREEN_DAILY"
-    private let reapplyCategoryID = "SUNSCREEN_REAPPLY"
-    private let actionVerifyID = "VERIFY_NOW_ACTION"
-    private let routeKey = "targetRoute"
-    private let verifyRoute = "verify"
-    private let weeklyRoute = "weekly"
 
     private let isTesting = RuntimeEnvironment.isRunningTests
 
@@ -41,7 +41,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         guard !backgroundTaskRegistered, !isTesting else { return }
         backgroundTaskRegistered = true
 
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: nil) { task in
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: NotificationConstants.backgroundTaskID, using: nil) { task in
             guard let refresh = task as? BGAppRefreshTask else {
                 task.setTaskCompleted(success: false)
                 return
@@ -57,9 +57,18 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             configured = true
 
             let actionVerify = UNNotificationAction(identifier: NotificationConstants.actionVerifyID, title: "Verify Now", options: [.foreground])
-            let category = UNNotificationCategory(identifier: dailyCategoryID, actions: [actionVerify], intentIdentifiers: [])
+            let dailyCategory = UNNotificationCategory(
+                identifier: NotificationConstants.dailyCategoryID,
+                actions: [actionVerify],
+                intentIdentifiers: []
+            )
+            let reapplyCategory = UNNotificationCategory(
+                identifier: NotificationConstants.reapplyCategoryID,
+                actions: [],
+                intentIdentifiers: []
+            )
 
-            center.setNotificationCategories([category])
+            center.setNotificationCategories([dailyCategory, reapplyCategory])
             center.delegate = self
         }
 
@@ -76,80 +85,75 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     func scheduleReminders(using state: AppState) async {
         registerBackgroundTaskIfNeeded()
 
-        await clearPendingRequests(prefix: "sunscreen.daily.")
-        await clearPendingRequests(prefix: "sunscreen.weekly.fallback.")
-        await clearPendingRequests(prefix: "sunscreen.weekly.primary.")
+        await clearPendingRequests(prefix: NotificationConstants.dailyPrefix)
+        await clearPendingRequests(prefix: NotificationConstants.weeklyFallbackPrefix)
+        await clearPendingRequests(prefix: NotificationConstants.weeklyPrimaryPrefix)
 
-        scheduleDailyReminders(using: state)
-        scheduleWeeklyFallback(using: state)
-        scheduleWeeklyBackgroundTask(using: state)
+        await addRequests(makeDailyReminderRequests(using: state))
+        if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
+            try? await center.add(weeklyFallback)
+        }
+        submitWeeklyBackgroundTask(using: state)
     }
 
-    private func scheduleDailyReminders(using state: AppState) {
+    private func makeDailyReminderRequests(using state: AppState) -> [UNNotificationRequest] {
         let dayStart = calendar.startOfDay(for: Date())
+        var requests: [UNNotificationRequest] = []
 
         for offset in 0..<60 {
             guard let day = calendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
             let phrase = state.nextDailyPhrase()
-
-            let content = UNMutableNotificationContent()
-            content.title = "Sunclub check-in"
-            content.body = phrase
-            content.sound = .default
-            content.categoryIdentifier = dailyCategoryID
-            content.userInfo = [NotificationConstants.routeKey: NotificationConstants.verifyRoute, "type": "daily"]
 
             var components = calendar.dateComponents([.year, .month, .day], from: day)
             components.hour = state.settings.reminderHour
             components.minute = state.settings.reminderMinute
 
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let request = UNNotificationRequest(
-                identifier: "sunscreen.daily.\(Int(day.timeIntervalSince1970))",
-                content: content,
-                trigger: trigger
+            requests.append(
+                UNNotificationRequest(
+                    identifier: "\(NotificationConstants.dailyPrefix)\(Int(day.timeIntervalSince1970))",
+                    content: makeContent(
+                        title: "Sunclub check-in",
+                        body: phrase,
+                        categoryIdentifier: NotificationConstants.dailyCategoryID,
+                        route: NotificationConstants.verifyRoute,
+                        type: "daily",
+                        includeDefaultSound: true
+                    ),
+                    trigger: trigger
+                )
             )
-
-            Task {
-                try? await center.add(request)
-            }
         }
+
+        return requests
     }
 
-    private func scheduleWeeklyFallback(using state: AppState) {
-        let content = UNMutableNotificationContent()
-        content.title = "Sunclub weekly report"
-        content.body = "Open Sunclub to view your latest 7-day report."
-        content.categoryIdentifier = dailyCategoryID
-        content.userInfo = [NotificationConstants.routeKey: NotificationConstants.weeklyRoute, "type": "weekly_fallback"]
-
+    private func makeWeeklyFallbackRequest(using state: AppState) -> UNNotificationRequest? {
         var components = DateComponents()
         components.weekday = state.settings.weeklyWeekday
         components.hour = state.settings.weeklyHour
         components.minute = 0
 
-        let request = UNNotificationRequest(
-            identifier: "sunscreen.weekly.fallback.repeating",
-            content: content,
+        return UNNotificationRequest(
+            identifier: "\(NotificationConstants.weeklyFallbackPrefix)repeating",
+            content: makeContent(
+                title: "Sunclub weekly report",
+                body: "Open Sunclub to view your latest 7-day report.",
+                categoryIdentifier: NotificationConstants.dailyCategoryID,
+                route: NotificationConstants.weeklyRoute,
+                type: "weekly_fallback"
+            ),
             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         )
-
-        Task {
-            try? await center.add(request)
-        }
     }
 
-    private func scheduleWeeklyBackgroundTask(using state: AppState) {
+    private func submitWeeklyBackgroundTask(using state: AppState) {
         guard backgroundTaskRegistered else { return }
 
-        let request = BGAppRefreshTaskRequest(identifier: bgTaskID)
+        let request = BGAppRefreshTaskRequest(identifier: NotificationConstants.backgroundTaskID)
         request.earliestBeginDate = nextDate(weekday: state.settings.weeklyWeekday, hour: state.settings.weeklyHour, minute: 0)
 
-        do {
-            try BGTaskScheduler.shared.submit(request)
-        } catch {
-            print("Failed to schedule BG task: \(error)")
-        }
+        try? BGTaskScheduler.shared.submit(request)
     }
 
     private func nextDate(weekday: Int, hour: Int, minute: Int) -> Date {
@@ -182,22 +186,22 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             settings.weeklyPhraseState = phrase.1
             try context.save()
 
-            let content = UNMutableNotificationContent()
-            content.title = "Sunclub weekly report"
-            content.body = "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
-                + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
-                + phrase.0
-            content.categoryIdentifier = dailyCategoryID
-            content.userInfo = [NotificationConstants.routeKey: NotificationConstants.weeklyRoute, "type": "weekly_primary"]
-
             let request = UNNotificationRequest(
-                identifier: "sunscreen.weekly.primary.\(Int(Date().timeIntervalSince1970))",
-                content: content,
+                identifier: "\(NotificationConstants.weeklyPrimaryPrefix)\(Int(Date().timeIntervalSince1970))",
+                content: makeContent(
+                    title: "Sunclub weekly report",
+                    body: "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
+                        + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
+                        + phrase.0,
+                    categoryIdentifier: NotificationConstants.dailyCategoryID,
+                    route: NotificationConstants.weeklyRoute,
+                    type: "weekly_primary"
+                ),
                 trigger: nil
             )
 
             try await center.add(request)
-            scheduleWeeklyBackgroundTask(using: AppState(context: context))
+            submitWeeklyBackgroundTask(using: AppState(context: context))
             task.setTaskCompleted(success: true)
         } catch {
             task.setTaskCompleted(success: false)
@@ -226,14 +230,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     func scheduleReapplyReminder(intervalMinutes: Int) async {
-        await clearPendingRequests(prefix: "sunscreen.reapply.")
-
-        let content = UNMutableNotificationContent()
-        content.title = "Time to reapply"
-        content.body = "It's been \(intervalMinutes) minutes — reapply sunscreen for continued protection."
-        content.sound = .default
-        content.categoryIdentifier = reapplyCategoryID
-        content.userInfo = [NotificationConstants.routeKey: NotificationConstants.verifyRoute, "type": "reapply"]
+        await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
 
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: TimeInterval(intervalMinutes * 60),
@@ -241,8 +238,15 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         )
 
         let request = UNNotificationRequest(
-            identifier: "sunscreen.reapply.\(Int(Date().timeIntervalSince1970))",
-            content: content,
+            identifier: "\(NotificationConstants.reapplyPrefix)\(Int(Date().timeIntervalSince1970))",
+            content: makeContent(
+                title: "Time to reapply",
+                body: "It's been \(intervalMinutes) minutes — reapply sunscreen for continued protection.",
+                categoryIdentifier: NotificationConstants.reapplyCategoryID,
+                route: NotificationConstants.verifyRoute,
+                type: "reapply",
+                includeDefaultSound: true
+            ),
             trigger: trigger
         )
 
@@ -250,7 +254,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     func cancelReapplyReminders() async {
-        await clearPendingRequests(prefix: "sunscreen.reapply.")
+        await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
     }
 
     private func clearPendingRequests(prefix: String) async {
@@ -260,6 +264,31 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if !ids.isEmpty {
             center.removePendingNotificationRequests(withIdentifiers: ids)
         }
+    }
+
+    private func addRequests(_ requests: [UNNotificationRequest]) async {
+        for request in requests {
+            try? await center.add(request)
+        }
+    }
+
+    private func makeContent(
+        title: String,
+        body: String,
+        categoryIdentifier: String,
+        route: String,
+        type: String,
+        includeDefaultSound: Bool = false
+    ) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.categoryIdentifier = categoryIdentifier
+        content.userInfo = [NotificationConstants.routeKey: route, "type": type]
+        if includeDefaultSound {
+            content.sound = .default
+        }
+        return content
     }
 
     nonisolated func userNotificationCenter(

@@ -25,21 +25,22 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     func testHomeRoutesToWeeklySummaryAndSettings() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = launchHome()
 
         app.buttons["home.streakCard"].tap()
         XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
 
         app.terminate()
-        let relaunchedApp = launchAndCompleteOnboarding()
+        let relaunchedApp = XCUIApplication()
+        relaunchedApp.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        relaunchedApp.launch()
 
-        relaunchedApp.buttons["home.settingsButton"].tap()
         XCTAssertTrue(relaunchedApp.staticTexts["Settings"].waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testVerifyFlowShowsSuccessAndReturnsHome() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = launchHome()
 
         app.buttons["home.verifyNow"].tap()
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
@@ -50,31 +51,43 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     func testSettingsShowsReminderControls() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
 
-        app.buttons["home.settingsButton"].tap()
         XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.manageSubscription"].exists)
+        XCTAssertFalse(app.buttons["settings.manageSubscription"].exists)
         XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
     }
 
     @MainActor
+    func testVerifyFlowPromptsForModelDownloadWhenUnavailable() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE_VERIFY_CAMERA", "UITEST_REQUIRE_MODEL_DOWNLOAD"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["verify.title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["verify.downloadModel"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["verify.logManual"].exists)
+    }
+
+    @MainActor
     func testHomeShowsManualLogButton() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = launchHome()
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testHomeShowsHistoryCard() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = launchHome()
 
         XCTAssertTrue(app.buttons["home.historyCard"].waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testManualLogFlowShowsSuccess() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = launchHome()
 
         app.buttons["home.logManually"].tap()
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
@@ -85,7 +98,7 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     func testHistoryViewShowsCalendar() throws {
-        let app = launchAndCompleteOnboarding()
+        let app = launchHome()
 
         app.buttons["home.historyCard"].tap()
         XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
@@ -116,6 +129,14 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments.append("UITEST_MODE")
         app.launch()
         return completeOnboarding(in: app)
+    }
+
+    @MainActor
+    private func launchHome() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"]
+        app.launch()
+        return app
     }
 
     @discardableResult

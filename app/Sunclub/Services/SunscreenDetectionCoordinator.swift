@@ -47,6 +47,7 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
     nonisolated(unsafe) private var latencyMs: Int?
     nonisolated(unsafe) private var errorDescription: String?
     nonisolated(unsafe) private var loadTask: Task<Void, Never>?
+    nonisolated(unsafe) private var modelDirectory: URL?
 
     var onStateChange: ((SunscreenDetectionResult) -> Void)?
 
@@ -71,6 +72,9 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
                 timeToFirstTokenMs = nil
                 latencyMs = nil
                 errorDescription = nil
+                modelIsLoading = false
+                modelIsReady = false
+                modelDirectory = nil
 
                 if !sessionConfigured {
                     configureSession()
@@ -79,9 +83,33 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
                 if !session.isRunning {
                     session.startRunning()
                 }
-                startLoadingModel()
                 emitResult()
             }
+        }
+    }
+
+    func prepareModel(using modelDirectory: URL) {
+        analysisQueue.async { [weak self] in
+            guard let self else { return }
+            startLoadingModel(using: modelDirectory)
+        }
+    }
+
+    func resetModelState() {
+        analysisQueue.async { [weak self] in
+            guard let self else { return }
+            loadTask?.cancel()
+            loadTask = nil
+            modelIsLoading = false
+            modelIsReady = false
+            modelDirectory = nil
+            parsedAnswer = nil
+            rawOutput = ""
+            timeToFirstTokenMs = nil
+            latencyMs = nil
+            consecutiveYesCount = 0
+            errorDescription = nil
+            emitResult()
         }
     }
 
@@ -139,9 +167,18 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
 
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
+            guard let modelDirectory = self.modelDirectory else {
+                self.analysisQueue.async { [weak self] in
+                    self?.processingFrame = false
+                }
+                return
+            }
 
             do {
-                let inference = try await FastVLMService.shared.detectSunscreen(in: pixelBuffer)
+                let inference = try await FastVLMService.shared.detectSunscreen(
+                    in: pixelBuffer,
+                    modelDirectory: modelDirectory
+                )
                 self.analysisQueue.async { [weak self] in
                     self?.handleInference(inference)
                 }
@@ -153,15 +190,20 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
         }
     }
 
-    private func startLoadingModel() {
-        guard !modelIsReady, !modelIsLoading else { return }
+    private func startLoadingModel(using modelDirectory: URL) {
+        guard !modelIsLoading else { return }
+        if modelIsReady, self.modelDirectory == modelDirectory {
+            return
+        }
 
+        self.modelDirectory = modelDirectory
         modelIsLoading = true
+        modelIsReady = false
         errorDescription = nil
         loadTask?.cancel()
         loadTask = Task { [weak self] in
             do {
-                _ = try await FastVLMService.shared.loadModelIfNeeded()
+                _ = try await FastVLMService.shared.loadModelIfNeeded(modelDirectory: modelDirectory)
                 self?.analysisQueue.async { [weak self] in
                     guard let self else { return }
                     modelIsLoading = false
@@ -204,6 +246,7 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
 
     private func handleError(_ error: Error) {
         processingFrame = false
+        modelIsReady = false
         parsedAnswer = nil
         rawOutput = ""
         timeToFirstTokenMs = nil

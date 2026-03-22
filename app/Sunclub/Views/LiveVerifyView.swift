@@ -5,11 +5,13 @@ struct LiveVerifyView: View {
     @Environment(AppRouter.self) private var router
 
     @StateObject private var coordinator = SunscreenDetectionCoordinator()
+    @State private var modelDownloadService = FastVLMModelDownloadService.shared
     @State private var latestResult = SunscreenDetectionResult.idle
     @State private var statusMessage = "Hold your sunscreen bottle in view while Sunclub scans."
     @State private var hasAdvanced = false
     @State private var appearedAt = Date()
     private let shouldHoldUITestVerifyScreen = ProcessInfo.processInfo.arguments.contains("UITEST_HOLD_VERIFY_SCREEN")
+    private let shouldRequireUITestModelDownload = ProcessInfo.processInfo.arguments.contains("UITEST_REQUIRE_MODEL_DOWNLOAD")
 
     var body: some View {
         SunDarkScreen {
@@ -55,6 +57,12 @@ struct LiveVerifyView: View {
             }
 
             if appState.isUITesting {
+                if shouldRequireUITestModelDownload {
+                    latestResult = .idle
+                    statusMessage = "Download FastVLM once to turn on camera verification."
+                    return
+                }
+
                 latestResult = SunscreenDetectionResult(
                     isDetected: false,
                     isLoadingModel: false,
@@ -77,6 +85,13 @@ struct LiveVerifyView: View {
             }
 
             coordinator.configure()
+            Task {
+                await modelDownloadService.refresh()
+                await prepareModelIfPossible()
+            }
+        }
+        .onChange(of: modelDownloadService.availability) { _, _ in
+            updateStatus(using: latestResult)
         }
         .onDisappear {
             coordinator.stop()
@@ -141,6 +156,10 @@ struct LiveVerifyView: View {
             Text(rawOutputSummary)
                 .font(.system(size: 13))
                 .foregroundStyle(Color.white.opacity(0.62))
+
+            if showsModelDownloadButton || showsManualFallbackButton {
+                actionButtons
+            }
         }
         .padding(16)
         .background(
@@ -150,6 +169,17 @@ struct LiveVerifyView: View {
     }
 
     private var answerLabel: String {
+        switch effectiveModelAvailability {
+        case .notDownloaded:
+            return "DOWNLOAD"
+        case .downloading:
+            return "DOWNLOADING"
+        case .failed:
+            return "ERROR"
+        case .ready:
+            break
+        }
+
         if latestResult.isLoadingModel {
             return "LOADING"
         }
@@ -166,6 +196,17 @@ struct LiveVerifyView: View {
     }
 
     private var answerColor: Color {
+        switch effectiveModelAvailability {
+        case .notDownloaded:
+            return AppPalette.sun
+        case .downloading:
+            return AppPalette.sun
+        case .failed:
+            return Color(red: 0.960, green: 0.500, blue: 0.360)
+        case .ready:
+            break
+        }
+
         if latestResult.errorDescription != nil {
             return Color(red: 0.960, green: 0.500, blue: 0.360)
         }
@@ -185,6 +226,10 @@ struct LiveVerifyView: View {
     }
 
     private var timingSummary: String? {
+        guard case .ready = effectiveModelAvailability else {
+            return nil
+        }
+
         guard let ttft = latestResult.timeToFirstTokenMs,
               let latency = latestResult.latencyMs else {
             return nil
@@ -194,6 +239,17 @@ struct LiveVerifyView: View {
     }
 
     private var rawOutputSummary: String {
+        switch effectiveModelAvailability {
+        case .notDownloaded:
+            return "Camera verification needs a one-time FastVLM model download. After that, Sunclub keeps verification available offline on this device."
+        case let .downloading(progress):
+            return "Download progress: \(Int(progress * 100))%"
+        case let .failed(message):
+            return message
+        case .ready:
+            break
+        }
+
         if let errorDescription = latestResult.errorDescription {
             return errorDescription
         }
@@ -209,10 +265,80 @@ struct LiveVerifyView: View {
         return "Model output: \(latestResult.rawOutput)"
     }
 
+    private var actionButtons: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if showsModelDownloadButton {
+                Button(downloadButtonTitle) {
+                    Task {
+                        await startModelDownload()
+                    }
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("verify.downloadModel")
+            }
+
+            if showsManualFallbackButton {
+                Button("Log Manually Instead") {
+                    router.open(.manualLog)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("verify.logManual")
+            }
+        }
+    }
+
+    private var effectiveModelAvailability: FastVLMModelAvailability {
+        if appState.isUITesting && shouldRequireUITestModelDownload {
+            return .notDownloaded
+        }
+
+        return modelDownloadService.availability
+    }
+
+    private var showsModelDownloadButton: Bool {
+        switch effectiveModelAvailability {
+        case .notDownloaded, .failed:
+            return !coordinator.permissionDenied
+        case .downloading, .ready:
+            return false
+        }
+    }
+
+    private var downloadButtonTitle: String {
+        if appState.isUITesting && shouldRequireUITestModelDownload {
+            return "Download FastVLM to Verify"
+        }
+
+        switch effectiveModelAvailability {
+        case .failed:
+            return "Retry FastVLM Download"
+        case .notDownloaded, .downloading, .ready:
+            return modelDownloadService.requiresDownloadConsent ? "Download FastVLM to Verify" : "Resume FastVLM Download"
+        }
+    }
+
+    private var showsManualFallbackButton: Bool {
+        coordinator.permissionDenied || latestResult.errorDescription != nil || showsModelDownloadButton
+    }
+
     private func updateStatus(using result: SunscreenDetectionResult) {
         if coordinator.permissionDenied {
             statusMessage = "Camera access is required for sunscreen verification."
             return
+        }
+
+        switch effectiveModelAvailability {
+        case .notDownloaded:
+            statusMessage = "Download FastVLM once to turn on camera verification."
+            return
+        case let .downloading(progress):
+            statusMessage = "Downloading FastVLM (\(Int(progress * 100))%)."
+            return
+        case let .failed(message):
+            statusMessage = message
+            return
+        case .ready:
+            break
         }
 
         if let errorDescription = result.errorDescription {
@@ -221,7 +347,7 @@ struct LiveVerifyView: View {
         }
 
         if result.isLoadingModel {
-            statusMessage = "Loading the FastVLM model…"
+            statusMessage = "Preparing FastVLM for camera verification…"
             return
         }
 
@@ -235,6 +361,30 @@ struct LiveVerifyView: View {
         case nil:
             statusMessage = "Hold your sunscreen bottle in view while Sunclub scans."
         }
+    }
+
+    private func prepareModelIfPossible() async {
+        if appState.isUITesting || PreviewRuntime.isRunning {
+            return
+        }
+
+        if let modelDirectory = await modelDownloadService.prepareForVerification() {
+            coordinator.prepareModel(using: modelDirectory)
+        } else {
+            coordinator.resetModelState()
+        }
+
+        await MainActor.run {
+            updateStatus(using: latestResult)
+        }
+    }
+
+    private func startModelDownload() async {
+        if modelDownloadService.requiresDownloadConsent {
+            modelDownloadService.recordDownloadConsent()
+        }
+
+        await prepareModelIfPossible()
     }
 
     private func completeVerification() {

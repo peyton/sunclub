@@ -276,9 +276,40 @@ struct SunLogoMark: View {
     let size: CGFloat
 
     var body: some View {
-        Circle()
-            .fill(AppPalette.sun)
-            .frame(width: size, height: size)
+        let cornerRadius = size * 0.22
+        let coreSize = size * 0.38
+
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.984, green: 0.969, blue: 0.937),
+                            Color(red: 1.000, green: 0.929, blue: 0.741),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Circle()
+                .stroke(AppPalette.sun.opacity(0.12), lineWidth: max(1, size * 0.008))
+                .frame(width: size * 0.51, height: size * 0.51)
+
+            Circle()
+                .stroke(AppPalette.sun.opacity(0.06), lineWidth: max(1, size * 0.004))
+                .frame(width: size * 0.63, height: size * 0.63)
+
+            Circle()
+                .fill(AppPalette.sun)
+                .frame(width: coreSize, height: coreSize)
+
+            Circle()
+                .fill(Color(red: 1.000, green: 0.867, blue: 0.502).opacity(0.3))
+                .frame(width: size * 0.23, height: size * 0.23)
+                .offset(x: -size * 0.03, y: -size * 0.05)
+        }
+        .frame(width: size, height: size)
     }
 }
 

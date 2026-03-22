@@ -6,19 +6,15 @@
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Sunclub uses the camera to confirm your sunscreen bottle during live verification.</string>
 		<key>BGTaskSchedulerPermittedIdentifiers</key>
 		<array>
 			<string>com.peyton.sunclub.weekly-report</string>
 		</array>
-		<key>SunclubSubscriptionProductIDs</key>
-		<array>
-			<string>com.peyton.sunclub.subscription.monthly</string>
-			<string>com.peyton.sunclub.subscription.annual</string>
-		</array>
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>fetch</string>
-			<string>processing</string>
 		</array>
 	</dict>
 </plist>

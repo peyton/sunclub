@@ -1,110 +1,61 @@
 #!/usr/bin/env bash
 #
-# archive-and-upload.sh — Build, archive, and upload Sunclub to App Store Connect.
-#
-# Prerequisites:
-#   - Xcode 16+ with valid signing identity
-#   - Apple Developer account enrolled in the Apple Developer Program
-#   - App created in App Store Connect (bundle ID: app.peyton.sunclub)
-#   - An app-specific password stored in Keychain (see setup steps below)
+# Build and export a signed App Store archive after validating the submission
+# manifest. This script intentionally stops short of automatic upload because
+# the remaining review/privacy/compliance steps still live in App Store Connect.
 #
 # Usage:
-#   ./scripts/appstore/archive-and-upload.sh [--skip-generate] [--skip-archive] [--dry-run]
+#   ./scripts/appstore/archive-and-upload.sh [--skip-generate] [--skip-archive] [--skip-export]
 #
 set -euo pipefail
-
-# ─── Configuration ───────────────────────────────────────────────────────────
 
 WORKSPACE="app/Sunclub.xcworkspace"
 SCHEME="Sunclub"
 ARCHIVE_PATH=".build/Sunclub.xcarchive"
 EXPORT_PATH=".build/export"
 EXPORT_OPTIONS="scripts/appstore/ExportOptions.plist"
-
-# Apple ID for App Store Connect authentication.
-# Set via env var or fall back to this default.
-APPLE_ID="${SUNCLUB_APPLE_ID:-}"
+DERIVED_DATA=".DerivedData/archive"
+VALIDATOR="scripts/appstore/validate_metadata.py"
 TEAM_ID="3VDQ4656LX"
-
-# ─── Flags ───────────────────────────────────────────────────────────────────
 
 SKIP_GENERATE=false
 SKIP_ARCHIVE=false
-DRY_RUN=false
+SKIP_EXPORT=false
 
 for arg in "$@"; do
   case "$arg" in
     --skip-generate) SKIP_GENERATE=true ;;
     --skip-archive)  SKIP_ARCHIVE=true ;;
-    --dry-run)       DRY_RUN=true ;;
+    --skip-export)   SKIP_EXPORT=true ;;
+    *) printf 'Unknown argument: %s\n' "$arg" >&2; exit 2 ;;
   esac
 done
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
-
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
-fail() { printf '\033[1;31m✗ %s\033[0m\n' "$1"; exit 1; }
+fail() { printf '\033[1;31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 
-# ─── Preflight checks ───────────────────────────────────────────────────────
+[ -f "$VALIDATOR" ] || fail "Missing metadata validator: $VALIDATOR"
+[ -f "$EXPORT_OPTIONS" ] || fail "Missing export options: $EXPORT_OPTIONS"
+command -v python3 >/dev/null || fail "python3 is required."
+command -v xcodebuild >/dev/null || fail "xcodebuild is required."
+command -v xcrun >/dev/null || fail "xcrun is required."
 
-step "Preflight checks"
-
-command -v xcodebuild >/dev/null || fail "xcodebuild not found. Install Xcode."
-command -v xcrun >/dev/null      || fail "xcrun not found. Install Xcode command line tools."
-
-if [ -z "$APPLE_ID" ]; then
-  echo ""
-  echo "  SUNCLUB_APPLE_ID is not set."
-  echo "  Export it before running, e.g.:"
-  echo ""
-  echo "    export SUNCLUB_APPLE_ID=\"you@example.com\""
-  echo ""
-  fail "Missing SUNCLUB_APPLE_ID environment variable."
-fi
-
-# Check for app-specific password in keychain
-if ! security find-generic-password -s "sunclub-asc" >/dev/null 2>&1; then
-  echo ""
-  echo "  No app-specific password found in Keychain under service 'sunclub-asc'."
-  echo "  Generate one at https://appleid.apple.com/account/manage → App-Specific Passwords"
-  echo "  Then store it:"
-  echo ""
-  echo "    security add-generic-password -s sunclub-asc -a \"\$SUNCLUB_APPLE_ID\" -w \"xxxx-xxxx-xxxx-xxxx\""
-  echo ""
-  fail "Missing app-specific password in Keychain."
-fi
-
-APP_SPECIFIC_PASSWORD=$(security find-generic-password -s "sunclub-asc" -w 2>/dev/null)
-ok "Preflight passed"
-
-# ─── Step 1: Generate project (Tuist) ───────────────────────────────────────
+step "Validating App Store metadata"
+python3 "$VALIDATOR" "scripts/appstore/metadata.json"
+ok "Submission manifest is valid"
 
 if [ "$SKIP_GENERATE" = false ]; then
-  step "Generating Xcode project with Tuist"
+  step "Generating the Tuist workspace"
   (cd app && tuist install && tuist generate --no-open)
-  ok "Project generated"
+  ok "Workspace generated"
 else
-  ok "Skipping project generation (--skip-generate)"
+  ok "Skipping workspace generation"
 fi
 
-# ─── Step 2: Bump build number ──────────────────────────────────────────────
-
-step "Setting build number"
-
-BUILD_NUMBER=$(date +%Y%m%d%H%M)
-echo "  Build number: $BUILD_NUMBER"
-
-# Tuist manages CURRENT_PROJECT_VERSION in Project.swift, but we can override
-# at build time via xcconfig/build settings.
-ok "Build number: $BUILD_NUMBER"
-
-# ─── Step 3: Archive ────────────────────────────────────────────────────────
-
 if [ "$SKIP_ARCHIVE" = false ]; then
-  step "Archiving $SCHEME"
-
-  rm -rf "$ARCHIVE_PATH"
+  step "Archiving the signed release build"
+  rm -rf "$ARCHIVE_PATH" "$DERIVED_DATA"
 
   xcodebuild archive \
     -workspace "$WORKSPACE" \
@@ -112,85 +63,54 @@ if [ "$SKIP_ARCHIVE" = false ]; then
     -configuration Release \
     -destination "generic/platform=iOS" \
     -archivePath "$ARCHIVE_PATH" \
-    CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+    -derivedDataPath "$DERIVED_DATA" \
     DEVELOPMENT_TEAM="$TEAM_ID" \
-    CODE_SIGN_STYLE=Automatic \
-    -quiet
+    CODE_SIGN_STYLE=Automatic
 
   ok "Archive created at $ARCHIVE_PATH"
 else
-  ok "Skipping archive (--skip-archive)"
+  ok "Skipping archive build"
 fi
 
-# ─── Step 4: Export IPA ─────────────────────────────────────────────────────
+APP_BUNDLE="$ARCHIVE_PATH/Products/Applications/Sunclub.app"
+[ -d "$APP_BUNDLE" ] || fail "Archive is missing $APP_BUNDLE"
 
-step "Exporting IPA"
-
-rm -rf "$EXPORT_PATH"
-
-xcodebuild -exportArchive \
-  -archivePath "$ARCHIVE_PATH" \
-  -exportOptionsPlist "$EXPORT_OPTIONS" \
-  -exportPath "$EXPORT_PATH" \
-  -quiet
-
-IPA_FILE=$(find "$EXPORT_PATH" -name "*.ipa" -print -quit)
-
-if [ -z "$IPA_FILE" ]; then
-  fail "No IPA found in $EXPORT_PATH"
+step "Verifying model packaging"
+if find "$APP_BUNDLE" \( -name "config.json" -o -name "*.mlpackage" -o -name "*.bin" \) | grep -q .; then
+  fail "The archived app bundle still contains FastVLM model payload files."
 fi
 
-ok "IPA exported: $IPA_FILE"
+if ! find "$ARCHIVE_PATH" \( -name "*.assetpack" -o -path "*OnDemandResources*" \) | grep -q .; then
+  fail "No On-Demand Resource asset pack was found in the archive."
+fi
 
-# ─── Step 5: Validate ───────────────────────────────────────────────────────
+ok "Archive keeps FastVLM out of the .app bundle and retains an ODR asset pack"
 
-step "Validating IPA with App Store Connect"
+if [ "$SKIP_EXPORT" = false ]; then
+  step "Exporting the App Store package"
+  rm -rf "$EXPORT_PATH"
 
-if [ "$DRY_RUN" = true ]; then
-  echo "  [DRY RUN] Skipping validation"
+  xcodebuild -exportArchive \
+    -archivePath "$ARCHIVE_PATH" \
+    -exportOptionsPlist "$EXPORT_OPTIONS" \
+    -exportPath "$EXPORT_PATH"
+
+  IPA_FILE="$(find "$EXPORT_PATH" -name '*.ipa' -print -quit)"
+  [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_PATH"
+  ok "Exported IPA: $IPA_FILE"
 else
-  xcrun altool --validate-app \
-    --file "$IPA_FILE" \
-    --type ios \
-    --apiKey "$APPLE_ID" \
-    --apiIssuer "$TEAM_ID" 2>/dev/null || \
-  xcrun altool --validate-app \
-    --file "$IPA_FILE" \
-    --type ios \
-    --username "$APPLE_ID" \
-    --password "$APP_SPECIFIC_PASSWORD"
-
-  ok "Validation passed"
+  ok "Skipping IPA export"
 fi
 
-# ─── Step 6: Upload ─────────────────────────────────────────────────────────
+cat <<EOF
 
-step "Uploading to App Store Connect"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Archive flow completed.
 
-if [ "$DRY_RUN" = true ]; then
-  echo "  [DRY RUN] Would upload: $IPA_FILE"
-  echo "  Run without --dry-run to upload for real."
-else
-  xcrun altool --upload-app \
-    --file "$IPA_FILE" \
-    --type ios \
-    --username "$APPLE_ID" \
-    --password "$APP_SPECIFIC_PASSWORD"
-
-  ok "Upload complete!"
-fi
-
-# ─── Done ────────────────────────────────────────────────────────────────────
-
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Archive:  $ARCHIVE_PATH"
-echo "  IPA:      $IPA_FILE"
-echo "  Build #:  $BUILD_NUMBER"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Next steps:"
-echo "  1. Go to App Store Connect → Your App → TestFlight"
-echo "  2. Wait for processing (usually 5–15 minutes)"
-echo "  3. Add to a test group or submit for review"
-echo ""
+Next manual steps:
+1. Replace the draft URLs and review contact fields in scripts/appstore/metadata.json.
+2. Capture the 6.9-inch iPhone screenshots with scripts/appstore/capture-screenshots.sh.
+3. Upload the screenshots and IPA in App Store Connect / Transporter.
+4. Complete App Privacy and export compliance answers in App Store Connect.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
