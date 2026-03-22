@@ -51,8 +51,8 @@ actor FastVLMService {
 
     private enum LoadState {
         case idle
-        case loading(Task<ModelContainer, Error>)
-        case loaded(ModelContainer)
+        case loading(URL, Task<ModelContainer, Error>)
+        case loaded(URL, ModelContainer)
     }
 
     private let prompt = "Is there sunscreen or a sunscreen bottle in this image? Answer ONLY with YES or NO. If unsure, answer NO."
@@ -64,48 +64,38 @@ actor FastVLMService {
         FastVLM.register(modelFactory: VLMModelFactory.shared)
     }
 
-    func prewarmIfPossible() async {
-        _ = try? await loadModelIfNeeded()
+    func prewarmIfPossible(modelDirectory: URL?) async {
+        guard let modelDirectory else { return }
+        _ = try? await loadModelIfNeeded(modelDirectory: modelDirectory)
     }
 
-    func loadModelIfNeeded() async throws -> ModelContainer {
+    func loadModelIfNeeded(modelDirectory: URL) async throws -> ModelContainer {
+        let normalizedModelDirectory = modelDirectory.resolvingSymlinksInPath().standardizedFileURL
+
         switch loadState {
         case .idle:
-            let task = Task {
-                #if !targetEnvironment(simulator)
-                // MLX GPU cache configuration is valid on-device, but it can abort on iOS Simulator.
-                MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
-                #endif
+            return try await loadContainer(from: normalizedModelDirectory)
 
-                guard let modelDirectory = Self.modelDirectory() else {
-                    throw FastVLMServiceError.modelMissing
-                }
-
-                let configuration = ModelConfiguration(directory: modelDirectory)
-                return try await VLMModelFactory.shared.loadContainer(configuration: configuration) { _ in }
+        case .loading(let directory, let task):
+            if directory == normalizedModelDirectory {
+                return try await task.value
             }
 
-            loadState = .loading(task)
+            loadState = .idle
+            return try await loadContainer(from: normalizedModelDirectory)
 
-            do {
-                let container = try await task.value
-                loadState = .loaded(container)
+        case .loaded(let directory, let container):
+            if directory == normalizedModelDirectory {
                 return container
-            } catch {
-                loadState = .idle
-                throw error
             }
 
-        case .loading(let task):
-            return try await task.value
-
-        case .loaded(let container):
-            return container
+            loadState = .idle
+            return try await loadContainer(from: normalizedModelDirectory)
         }
     }
 
-    func detectSunscreen(in pixelBuffer: CVPixelBuffer) async throws -> FastVLMInference {
-        let modelContainer = try await loadModelIfNeeded()
+    func detectSunscreen(in pixelBuffer: CVPixelBuffer, modelDirectory: URL) async throws -> FastVLMInference {
+        let modelContainer = try await loadModelIfNeeded(modelDirectory: modelDirectory)
         let startedAt = Date()
         let firstTokenTracker = FirstTokenTracker()
 
@@ -151,7 +141,26 @@ actor FastVLMService {
         FastVLM.resolveModelDirectory(searchRoots: searchRoots)
     }
 
-    private static func modelDirectory() -> URL? {
-        FastVLM.resolveModelDirectory()
+    private func loadContainer(from modelDirectory: URL) async throws -> ModelContainer {
+        let task = Task {
+            #if !targetEnvironment(simulator)
+            // MLX GPU cache configuration is valid on-device, but it can abort on iOS Simulator.
+            MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
+            #endif
+
+            let configuration = ModelConfiguration(directory: modelDirectory)
+            return try await VLMModelFactory.shared.loadContainer(configuration: configuration) { _ in }
+        }
+
+        loadState = .loading(modelDirectory, task)
+
+        do {
+            let container = try await task.value
+            loadState = .loaded(modelDirectory, container)
+            return container
+        } catch {
+            loadState = .idle
+            throw error
+        }
     }
 }

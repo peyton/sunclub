@@ -16,7 +16,7 @@ The product loop is:
 - Help users build a daily sunscreen routine with as little friction as possible.
 - Make daily logging fast and repeatable with an on-device camera flow.
 - Make daily progress visible through streaks and weekly reporting.
-- Keep the app useful without requiring an account, network connection, or external services.
+- Keep the app useful without requiring an account or cloud service.
 - Keep the product focused on one action: logging sunscreen for today.
 
 ## Non-Goals
@@ -25,7 +25,7 @@ The product loop is:
 - Cloud sync, account creation, or cross-device history.
 - Product education, ingredient analysis, or sunscreen recommendations.
 - Multi-user or household support.
-- Advanced subscription management inside the app beyond handing off to Apple.
+- In-app subscriptions, paywalls, or premium-only product tiers for v1.
 - Bottle identity, barcode capture, or per-product model training.
 
 ## Core Product Principles
@@ -87,12 +87,12 @@ The weekly summary should reinforce momentum, not punish failure.
 
 ### 4. Maintenance and Recovery
 
-Users need a lightweight way to update reminders or manage subscription status.
+Users need a lightweight way to update reminders or recover when camera verification is unavailable.
 
 Expected sequence:
 
 1. User opens Settings from Home.
-2. User can change reminder time or manage subscription externally.
+2. User can change reminder time or adjust reapply reminders.
 
 ## Screen Responsibilities
 
@@ -137,7 +137,7 @@ Expected sequence:
 ### Settings
 
 - Let the user update the daily reminder time.
-- Hand off subscription management to Apple when available.
+- Let the user tune reapply reminders without leaving the app.
 
 ## Feature Requirements
 
@@ -176,7 +176,7 @@ Expected sequence:
 ### Settings and Controls
 
 - Users should be able to change reminder time without repeating onboarding.
-- Subscription management should be a system handoff, not a custom in-app billing interface.
+- Manual logging should remain available even when camera verification cannot run.
 
 ## Key Behavioral Expectations
 
@@ -189,7 +189,7 @@ Expected sequence:
 ### Data and Persistence
 
 - Settings and daily completion history should persist locally on device.
-- The app should remain functional offline after installation.
+- The app should remain functional offline after the one-time verification model download completes.
 - There should be no required account or server dependency for core usage.
 
 ### Routing from Notifications

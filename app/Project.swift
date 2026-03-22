@@ -2,19 +2,32 @@ import ProjectDescription
 
 let teamID = "3VDQ4656LX"
 let defaultDeploymentTarget: DeploymentTargets = .iOS("18.6")
+let fastVLMResourceTag = "fastvlm-model"
 
-func targetSettings(marketingVersion: String, swiftVersion: String) -> Settings {
+func targetSettings(
+    marketingVersion: String,
+    swiftVersion: String,
+    additionalSettings: SettingsDictionary = [:]
+) -> Settings {
     let base: SettingsDictionary = [
         "CURRENT_PROJECT_VERSION": "1",
         "DEVELOPMENT_TEAM": .string(teamID),
         "MARKETING_VERSION": .string(marketingVersion),
         "SWIFT_VERSION": .string(swiftVersion),
+        "TARGETED_DEVICE_FAMILY": "1",
     ]
 
-    return .settings(base: base)
+    return .settings(base: base.merging(additionalSettings) { _, new in new })
 }
 
-let appSettings = targetSettings(marketingVersion: "0.1", swiftVersion: "6.0")
+let appSettings = targetSettings(
+    marketingVersion: "0.1",
+    swiftVersion: "6.0",
+    additionalSettings: [
+        "ENABLE_ON_DEMAND_RESOURCES": "YES",
+        "EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE": "YES",
+    ]
+)
 let frameworkSettings = targetSettings(marketingVersion: "1.0", swiftVersion: "5.0")
 let testSettings = targetSettings(marketingVersion: "1.0", swiftVersion: "6.0")
 
@@ -27,23 +40,6 @@ let fastVLMDependencies: [TargetDependency] = [
     .external(name: "MLXVLM"),
     .external(name: "Transformers"),
 ]
-
-let copyFastVITPackageScript = TargetScript.post(
-    script: """
-    set -euo pipefail
-
-    source_path="${SRCROOT}/FastVLM/model/fastvithd.mlpackage"
-    destination_path="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/fastvithd.mlpackage"
-
-    rm -rf "${destination_path}"
-    mkdir -p "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
-    ditto "${source_path}" "${destination_path}"
-    """,
-    name: "Copy fastvithd.mlpackage",
-    inputPaths: ["$(SRCROOT)/FastVLM/model/fastvithd.mlpackage"],
-    outputPaths: ["$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/fastvithd.mlpackage"],
-    basedOnDependencyAnalysis: false
-)
 
 let project = Project(
     name: "Sunclub",
@@ -61,7 +57,10 @@ let project = Project(
             sources: ["Sunclub/**/*.swift"],
             resources: [
                 "Sunclub/Assets.xcassets",
-                "Sunclub/StoreKit/SunclubSubscriptions.storekit",
+                .folderReference(
+                    path: "Generated/FastVLMODR/model",
+                    tags: [fastVLMResourceTag]
+                ),
             ],
             entitlements: "Sunclub/Sunclub.entitlements",
             dependencies: [
@@ -100,18 +99,7 @@ let project = Project(
             bundleId: "app.peyton.sunclub.FastVLM",
             deploymentTargets: defaultDeploymentTarget,
             sources: ["FastVLM/**/*.swift"],
-            resources: [
-                .glob(
-                    pattern: "FastVLM/model/**/*.json",
-                    excluding: ["FastVLM/model/**/*.mlpackage/**"]
-                ),
-                "FastVLM/model/**/*.txt",
-                "FastVLM/model/**/*.safetensors",
-            ],
             headers: .headers(public: ["FastVLM/FastVLM.h"]),
-            scripts: [
-                copyFastVITPackageScript,
-            ],
             dependencies: fastVLMDependencies,
             settings: frameworkSettings
         ),

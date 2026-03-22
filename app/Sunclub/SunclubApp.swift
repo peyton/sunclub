@@ -47,8 +47,10 @@ struct SunclubApp: App {
                         _ = await NotificationManager.shared.configure()
                         await NotificationManager.shared.scheduleReminders(using: appState)
                     }
-                    Task.detached(priority: .utility) {
-                        await FastVLMService.shared.prewarmIfPossible()
+                    Task(priority: .utility) {
+                        guard appState.settings.hasCompletedOnboarding else { return }
+                        let modelDirectory = await FastVLMModelDownloadService.shared.prepareForVerification()
+                        await FastVLMService.shared.prewarmIfPossible(modelDirectory: modelDirectory)
                     }
                 }
         }
@@ -59,16 +61,32 @@ struct SunclubApp: App {
         appliedUITestLaunchConfiguration = true
 
         let arguments = ProcessInfo.processInfo.arguments
+        let requestedRoute = requestedUITestRoute(from: arguments)
 
-        if arguments.contains("UITEST_COMPLETE_ONBOARDING"), !appState.settings.hasCompletedOnboarding {
+        if (arguments.contains("UITEST_COMPLETE_ONBOARDING") || requestedRoute.map({ $0 != .welcome }) == true),
+           !appState.settings.hasCompletedOnboarding {
             appState.completeOnboarding()
         }
 
-        if arguments.contains("UITEST_ROUTE_VERIFY_CAMERA") {
+        if let requestedRoute {
+            if requestedRoute == .verifySuccess {
+                appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
+            }
+            router.open(requestedRoute)
+        } else if arguments.contains("UITEST_ROUTE_VERIFY_CAMERA") {
             router.open(.verifyCamera)
         } else if arguments.contains("UITEST_ROUTE_WEEKLY_SUMMARY") {
             router.open(.weeklySummary)
         }
+    }
+
+    private func requestedUITestRoute(from arguments: [String]) -> AppRoute? {
+        guard let routeArgument = arguments.first(where: { $0.hasPrefix("UITEST_ROUTE=") }) else {
+            return nil
+        }
+
+        let rawValue = String(routeArgument.dropFirst("UITEST_ROUTE=".count))
+        return AppRoute(rawValue: rawValue)
     }
 }
 

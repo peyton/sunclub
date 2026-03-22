@@ -3,11 +3,9 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.openURL) private var openURL
 
     @State private var showTimePicker = false
     @State private var reminderTime = Date()
-    @State private var showSubscriptionFallback = false
     @State private var reapplyEnabled = false
     @State private var reapplyInterval = 120
 
@@ -28,11 +26,6 @@ struct SettingsView: View {
                         showTimePicker = true
                     }
                     .accessibilityIdentifier("settings.notificationTime")
-
-                    SunSettingsRow(title: "Manage Subscription") {
-                        openManageSubscriptions()
-                    }
-                    .accessibilityIdentifier("settings.manageSubscription")
                 }
 
                 reapplySection
@@ -43,11 +36,6 @@ struct SettingsView: View {
         .sheet(isPresented: $showTimePicker) {
             timePickerSheet
         }
-        .alert("Manage Subscription Unavailable", isPresented: $showSubscriptionFallback) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Subscription management is not available in this environment.")
-        }
         .onAppear {
             reapplyEnabled = appState.settings.reapplyReminderEnabled
             reapplyInterval = appState.settings.reapplyIntervalMinutes
@@ -57,7 +45,7 @@ struct SettingsView: View {
 
     private var reminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Daily Reminder")
+            Text("Reminders")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -168,19 +156,6 @@ struct SettingsView: View {
             }
         }
         .presentationDetents([.medium])
-    }
-
-    private func openManageSubscriptions() {
-        guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else {
-            showSubscriptionFallback = true
-            return
-        }
-
-        openURL(url) { accepted in
-            if !accepted {
-                showSubscriptionFallback = true
-            }
-        }
     }
 }
 

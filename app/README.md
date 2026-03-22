@@ -1,6 +1,6 @@
 # Sunclub App
 
-Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app uses an on-device FastVLM model to detect whether the live camera sees sunscreen and logs the day when the model answers `YES`.
+Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The app can verify sunscreen with an on-device FastVLM model after a one-time App Store-hosted download, and it always keeps manual logging available.
 
 ## Flow
 
@@ -13,7 +13,8 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
    - Shows the greeting, current streak card, `Verify Now`, and a gear button for Settings.
 4. `Verify - Camera`
    - Uses the rear camera and `SunscreenDetectionCoordinator`.
-   - Sends frames to `FastVLMService` with the fixed sunscreen prompt.
+   - Requests the FastVLM model on demand the first time camera verification is needed.
+   - Sends frames to `FastVLMService` with the fixed sunscreen prompt after the model is ready.
    - Logs the day after two consecutive `YES` answers.
 5. `Verify Success`
    - Confirms the verification and shows the updated streak.
@@ -21,14 +22,14 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
    - Shows the real `appliedCount / 7` result for the past week.
 7. `Settings`
    - `Notification Time` updates the daily reminder time.
-   - `Manage Subscription` hands off to Apple subscription management when available.
+   - Reapply reminder settings stay local to the device.
 
 ## What Still Works
 
 - Daily verification stays fully on-device and records a `DailyRecord`.
 - Reminder scheduling still uses `UNUserNotificationCenter` and the existing weekly background refresh path.
 - Streaks and weekly summaries still come from local `CalendarAnalytics`.
-- All data remains local. There are no accounts, uploads, or analytics SDKs.
+- All data remains local after the one-time verification model download. There are no accounts, uploads, or analytics SDKs.
 
 ## Project Structure
 
@@ -37,41 +38,45 @@ Sunclub is an offline iOS app for maintaining a daily sunscreen habit. The app u
 - `Sunclub/Views`
   - onboarding, home, camera verification, summary, and settings flow
 - `Sunclub/Services`
-  - FastVLM inference, camera capture, notifications, subscriptions, and analytics
+  - FastVLM inference, model download, camera capture, notifications, and analytics
 - `Sunclub/Models`
   - `Settings`, `DailyRecord`, and `VerificationMethod`
 - `FastVLM`
-  - restored framework source and downloaded model assets
+  - framework source and model resolution helpers
 - `SunclubTests`
-  - analytics, parser, reminder persistence, and verification-success state tests
+  - analytics, parser, reminder persistence, and model-download tests
 - `SunclubUITests`
-  - flow tests that use `UITEST_MODE` and canned camera/model behavior instead of real camera/notification permissions
+  - flow tests that use `UITEST_MODE` and deterministic routes instead of real camera/notification permissions
+- `../tests`
+  - repo-level Python validation coverage for App Store metadata and submission tooling
 
 ## Build and Run
 
 1. From the repo root, run `mise install`.
-2. Run `just download-model`.
-3. Run `just generate`.
-4. Run `just run` to build the debug app, install it on the default simulator, and launch it.
+2. Run `just generate`.
+3. Run `just run` to build the debug app, install it on the default simulator, and launch it.
+4. If you want camera verification in a local debug build, run `just download-model` before launching.
 5. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.
 6. Build and run the `Sunclub` scheme.
 
 ## Just Targets
 
-- `just check-model`
+- `just icons`
 - `just generate`
 - `just build`
 - `just run`
 - `just test-unit`
 - `just test-ui`
+- `just test-python`
 - `just test`
+- `just appstore-validate`
+- `just appstore-screenshots`
 - `just ci`
 
-`just check-model` verifies that `app/FastVLM/model/config.json` exists and exits with guidance if it does not. `just download-model` runs `scripts/get_pretrained_mlx_model.sh` directly, and `just prepare-model` remains a compatibility alias for the same check.
+`just download-model` stages the FastVLM files into `app/Generated/FastVLMODR/model` so local debug builds can exercise the same asset layout used for On-Demand Resources. The main generate, build, run, and test flows no longer require that staging step.
 
 ## Notes
 
-- FastVLM runs entirely on-device. No camera frames leave the device.
+- FastVLM runs entirely on-device after the model download completes. No camera frames leave the device.
 - Daily reminders and the `Verify Now` action route directly to the camera verification screen.
-- `Manage Subscription` is a system handoff, not an in-app billing screen.
-- UITests use `UITEST_MODE` and bypass real camera/model and notification permissions so the flow can be exercised end to end in automation.
+- UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=verifyCamera` so the flow can be exercised end to end in automation and screenshot capture.
