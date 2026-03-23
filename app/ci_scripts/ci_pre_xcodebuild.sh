@@ -2,4 +2,4 @@
 
 set -e
 
-xcodebuild -downloadComponent metalToolchain
+alias xcodebuild='./bin/mise exec -- tuist xcodebuild'
