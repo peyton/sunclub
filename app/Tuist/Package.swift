@@ -5,8 +5,8 @@ import PackageDescription
 let package = Package(
     name: "SunclubDependencies",
     dependencies: [
-        .package(url: "https://github.com/ml-explore/mlx-swift.git", exact: "0.25.6"),
-        .package(url: "https://github.com/ml-explore/mlx-swift-examples", exact: "2.25.7"),
-        .package(url: "https://github.com/huggingface/swift-transformers", exact: "0.1.24"),
+        .package(url: "https://github.com/ml-explore/mlx-swift.git", exact: "0.30.6"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "2.30.6"),
+        .package(url: "https://github.com/huggingface/swift-transformers", exact: "1.1.9"),
     ]
 )

@@ -4,10 +4,7 @@ let defaultDeploymentTarget: DeploymentTargets = .iOS("18.6")
 
 let fastVLMDependencies: [TargetDependency] = [
     .external(name: "MLX"),
-    .external(name: "MLXFast"),
     .external(name: "MLXLMCommon"),
-    .external(name: "MLXNN"),
-    .external(name: "MLXRandom"),
     .external(name: "MLXVLM"),
     .external(name: "Transformers"),
 ]
