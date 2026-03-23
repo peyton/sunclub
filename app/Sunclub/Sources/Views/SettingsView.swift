@@ -14,9 +14,9 @@ struct SettingsView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 30) {
-                SunLightHeader(title: "Settings", showsBack: true) {
+              SunLightHeader(title: "Settings", showsBack: true, onBack:{
                     router.goHome()
-                }
+                })
 
                 reminderSection
 
