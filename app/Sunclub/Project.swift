@@ -19,6 +19,7 @@ let project = Project(
             buildableFolders: [
                 .folder("Sources")
             ],
+            entitlements: "Sunclub.entitlements",
             dependencies: [
                 // Target dependencies can be defined here
                 // .framework(path: "Frameworks/MyFramework.framework")
@@ -33,6 +34,19 @@ let project = Project(
             infoPlist: "Tests.plist",
             buildableFolders: [
                 .folder("Tests")
+            ],
+            dependencies: [
+                .target(name: "Sunclub"),
+            ]
+        ),
+        .target(
+            name: "SunclubUITests",
+            destinations: .iOS,
+            product: .uiTests,
+            bundleId: "app.peyton.sunclub.UITests",
+            infoPlist: "Tests.plist",
+            buildableFolders: [
+                .folder("UITests")
             ],
             dependencies: [
                 .target(name: "Sunclub"),
