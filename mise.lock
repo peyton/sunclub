@@ -32,6 +32,10 @@ url = "https://github.com/casey/just/releases/download/1.47.1/just-1.47.1-x86_64
 checksum = "sha256:0f059a129049e4efaff5ff645182972edb07180248f769c5153a90765643bb7b"
 url = "https://github.com/casey/just/releases/download/1.47.1/just-1.47.1-x86_64-pc-windows-msvc.zip"
 
+[[tools.python]]
+version = "3.10.20"
+backend = "core:python"
+
 [[tools.swift]]
 version = "6.2.4"
 backend = "core:swift"

@@ -56,7 +56,7 @@ struct SunclubApp: App {
                     Task(priority: .utility) {
                         guard appState.settings.hasCompletedOnboarding else { return }
                         let modelDirectory = await FastVLMModelDownloadService.shared.prepareForVerification()
-                        await FastVLMService.shared.prewarmIfPossible(modelDirectory: modelDirectory)
+                      await SunscreenService.shared.inferenceService.prewarmIfPossible(modelDirectory: modelDirectory)
                     }
                 }
         }

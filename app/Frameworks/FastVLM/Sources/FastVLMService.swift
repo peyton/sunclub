@@ -1,17 +1,21 @@
+//
+//  FastVLMService.swift
+//  FastVLM
+//
+//  Created by Peyton Randolph on 3/22/26.
+//
+
 import CoreImage
 import Foundation
 import MLX
 import MLXLMCommon
 import MLXVLM
-import FastVLM
 
-extension CVPixelBuffer: @unchecked @retroactive Sendable {}
-
-struct FastVLMInference: Sendable {
-    let answer: SunscreenDetectionAnswer
-    let rawOutput: String
-    let timeToFirstTokenMs: Int?
-    let latencyMs: Int
+public struct FastVLMInference: Sendable {
+    public let answer: String
+    public let rawOutput: String
+    public let timeToFirstTokenMs: Int?
+    public let latencyMs: Int
 }
 
 enum FastVLMServiceError: LocalizedError {
@@ -46,9 +50,8 @@ private final class FirstTokenTracker: @unchecked Sendable {
     }
 }
 
-actor FastVLMService {
-    static let shared = FastVLMService()
 
+public actor FastVLMService {
     private enum LoadState {
         case idle
         case loading(URL, Task<ModelContainer, Error>)
@@ -60,16 +63,16 @@ actor FastVLMService {
     private let maxTokens = 8
     private var loadState: LoadState = .idle
 
-    private init() {
+    public init() {
         FastVLM.register(modelFactory: VLMModelFactory.shared)
     }
 
-    func prewarmIfPossible(modelDirectory: URL?) async {
+    public func prewarmIfPossible(modelDirectory: URL?) async {
         guard let modelDirectory else { return }
         _ = try? await loadModelIfNeeded(modelDirectory: modelDirectory)
     }
 
-    func loadModelIfNeeded(modelDirectory: URL) async throws -> ModelContainer {
+    public func loadModelIfNeeded(modelDirectory: URL) async throws -> ModelContainer {
         let normalizedModelDirectory = modelDirectory.resolvingSymlinksInPath().standardizedFileURL
 
         switch loadState {
@@ -94,16 +97,17 @@ actor FastVLMService {
         }
     }
 
-    func detectSunscreen(in pixelBuffer: CVPixelBuffer, modelDirectory: URL) async throws -> FastVLMInference {
-        let modelContainer = try await loadModelIfNeeded(modelDirectory: modelDirectory)
+    public func detect(in pixelBuffer: CVPixelBuffer, modelDirectory: URL) async throws -> FastVLMInference {
         let startedAt = Date()
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let modelContainer = try await loadModelIfNeeded(modelDirectory: modelDirectory)
         let firstTokenTracker = FirstTokenTracker()
 
         do {
             let rawOutput = try await modelContainer.perform { context in
                 let userInput = UserInput(
                     prompt: .text(self.prompt),
-                    images: [.ciImage(CIImage(cvPixelBuffer: pixelBuffer))]
+                    images: [.ciImage(ciImage)]
                 )
                 let input = try await context.processor.prepare(input: userInput)
                 var sawFirstToken = false
@@ -125,10 +129,9 @@ actor FastVLMService {
             }
 
             let latencyMs = Int(Date().timeIntervalSince(startedAt) * 1000)
-            let sanitized = SunscreenResponseParser.sanitized(rawOutput)
             return FastVLMInference(
-                answer: SunscreenResponseParser.parse(rawOutput),
-                rawOutput: sanitized,
+                answer: rawOutput,
+                rawOutput: rawOutput,
                 timeToFirstTokenMs: firstTokenTracker.value(),
                 latencyMs: latencyMs
             )

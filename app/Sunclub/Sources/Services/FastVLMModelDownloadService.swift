@@ -63,7 +63,7 @@ final class FastVLMModelDownloadService: FastVLMModelAssetProviding {
     private(set) var availability: FastVLMModelAvailability = .notDownloaded
 
     init(
-        requestFactory: @escaping ([String]) -> OnDemandResourceRequesting = { BundleOnDemandResourceRequest(tags: $0) },
+        requestFactory: @MainActor @escaping ([String]) -> OnDemandResourceRequesting = FastVLMModelDownloadService.defaultRequestFactory,
         defaults: UserDefaults = .standard,
         searchRootsProvider: @escaping () -> [URL] = {
             [Bundle.main.resourceURL].compactMap { $0 }
@@ -73,6 +73,11 @@ final class FastVLMModelDownloadService: FastVLMModelAssetProviding {
         self.defaults = defaults
         self.searchRootsProvider = searchRootsProvider
         refreshAvailability()
+    }
+
+    @MainActor
+    private static func defaultRequestFactory(tags: [String]) -> OnDemandResourceRequesting {
+        BundleOnDemandResourceRequest(tags: tags)
     }
 
     var requiresDownloadConsent: Bool {
@@ -164,3 +169,4 @@ final class FastVLMModelDownloadService: FastVLMModelAssetProviding {
         #endif
     }
 }
+

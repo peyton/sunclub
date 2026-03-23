@@ -54,7 +54,6 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: "Sunclub/Info.plist",
-            sources: ["Sunclub/**/*.swift"],
             resources: [
                 "Sunclub/Assets.xcassets",
                 .folderReference(
@@ -62,10 +61,13 @@ let project = Project(
                     tags: [fastVLMResourceTag]
                 ),
             ],
+            buildableFolders: [
+                .folder("Sunclub/Sources")
+            ],
             entitlements: "Sunclub/Sunclub.entitlements",
             dependencies: [
                 .target(name: "FastVLM"),
-            ] + fastVLMDependencies,
+            ],
             settings: appSettings
         ),
         .target(
@@ -74,7 +76,9 @@ let project = Project(
             product: .unitTests,
             bundleId: "app.peyton.sunclubTests",
             deploymentTargets: defaultDeploymentTarget,
-            sources: ["SunclubTests/**/*.swift"],
+            buildableFolders: [
+                .folder("SunclubTests/Sources")
+            ],
             dependencies: [
                 .target(name: "Sunclub"),
             ],
@@ -86,7 +90,9 @@ let project = Project(
             product: .uiTests,
             bundleId: "app.peyton.sunclubUITests",
             deploymentTargets: defaultDeploymentTarget,
-            sources: ["SunclubUITests/**/*.swift"],
+            buildableFolders: [
+                .folder("SunclubTests/Sources")
+            ],
             dependencies: [
                 .target(name: "Sunclub"),
             ],

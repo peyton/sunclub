@@ -175,7 +175,7 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
             }
 
             do {
-                let inference = try await FastVLMService.shared.detectSunscreen(
+                let inference = try await SunscreenService.shared.detectSunscreen(
                     in: pixelBuffer,
                     modelDirectory: modelDirectory
                 )
@@ -203,7 +203,8 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
         loadTask?.cancel()
         loadTask = Task { [weak self] in
             do {
-                _ = try await FastVLMService.shared.loadModelIfNeeded(modelDirectory: modelDirectory)
+              _ = try await SunscreenService.shared
+                .inferenceService.loadModelIfNeeded(modelDirectory: modelDirectory)
                 self?.analysisQueue.async { [weak self] in
                     guard let self else { return }
                     modelIsLoading = false
@@ -222,7 +223,7 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
         }
     }
 
-    private func handleInference(_ inference: FastVLMInference) {
+  private func handleInference(_ inference: SunscreenInference) {
         processingFrame = false
         parsedAnswer = inference.answer
         rawOutput = inference.rawOutput
