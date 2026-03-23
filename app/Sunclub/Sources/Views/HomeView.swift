@@ -28,7 +28,7 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("home.historyCard")
 
-                Spacer(minLength: 180)
+                Spacer(minLength: 0)
             }
         } footer: {
             VStack(spacing: 12) {

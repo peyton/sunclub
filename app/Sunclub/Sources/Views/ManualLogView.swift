@@ -29,7 +29,7 @@ struct ManualLogView: View {
 
                 notesField
 
-                Spacer(minLength: 200)
+                Spacer(minLength: 0)
             }
         } footer: {
             Button("Log Today") {

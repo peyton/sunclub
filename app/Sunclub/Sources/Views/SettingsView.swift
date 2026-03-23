@@ -30,7 +30,7 @@ struct SettingsView: View {
 
                 reapplySection
 
-                Spacer(minLength: 200)
+                Spacer(minLength: 0)
             }
         }
         .sheet(isPresented: $showTimePicker) {

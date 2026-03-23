@@ -12,8 +12,6 @@ struct WelcomeView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 24) {
-                Spacer(minLength: 80)
-
                 SunLogoMark(size: 120)
                     .frame(maxWidth: .infinity)
 
@@ -28,8 +26,9 @@ struct WelcomeView: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                Spacer(minLength: 320)
+                Spacer(minLength: 0)
             }
+            .padding(.top, 24)
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Get Started") {
@@ -50,8 +49,6 @@ struct EnableNotificationsView: View {
         SunLightScreen {
             VStack(spacing: 26) {
                 SunStepHeader(step: 1, total: 1, tint: AppPalette.softInk)
-
-                Spacer(minLength: 120)
 
                 Circle()
                     .fill(AppPalette.warmGlow)
@@ -74,8 +71,9 @@ struct EnableNotificationsView: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                Spacer(minLength: 260)
+                Spacer(minLength: 0)
             }
+            .padding(.top, 24)
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Enable Notifications") {

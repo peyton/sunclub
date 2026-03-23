@@ -33,7 +33,7 @@ struct WeeklyReportView: View {
                 weeklyChart
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                Spacer(minLength: 320)
+                Spacer(minLength: 0)
             }
         }
         .onAppear {

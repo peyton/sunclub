@@ -1,4 +1,4 @@
-app_workspace := "app/Sunclub.xcworkspace"
+app_workspace := "app/Sunclub Workspace.xcworkspace"
 app_scheme := "Sunclub"
 device_name := "iPhone 17 Pro"
 test_simulator_name := "Sunclub Test iPhone 17 Pro"
