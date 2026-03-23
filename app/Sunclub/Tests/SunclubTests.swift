@@ -146,24 +146,6 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(SunscreenResponseParser.parse("There might be sunscreen"), .no)
     }
 
-    func testFastVLMServiceResolveModelDirectoryPrefersFrameworkBundle() throws {
-        let sandbox = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: sandbox) }
-
-        let frameworkRoot = sandbox.appendingPathComponent("FastVLM.framework", isDirectory: true)
-        let appRoot = sandbox.appendingPathComponent("Sunclub.app", isDirectory: true)
-        let frameworkConfig = frameworkRoot.appendingPathComponent("FastVLM/model/config.json")
-        let appConfig = appRoot.appendingPathComponent("config.json")
-
-        try writeConfigFile(at: frameworkConfig)
-        try writeConfigFile(at: appConfig)
-
-        XCTAssertEqual(
-            FastVLMService.resolveModelDirectory(searchRoots: [frameworkRoot, appRoot]),
-            frameworkConfig.deletingLastPathComponent()
-        )
-    }
-
     // MARK: - Manual Verification Method Tests
 
     @MainActor

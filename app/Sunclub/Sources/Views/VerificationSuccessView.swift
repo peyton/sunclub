@@ -12,8 +12,6 @@ struct VerificationSuccessView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 28) {
-                Spacer(minLength: 120)
-
                 Circle()
                     .fill(AppPalette.success)
                     .frame(width: 120, height: 120)
@@ -48,8 +46,9 @@ struct VerificationSuccessView: View {
                     reapplyConfirmation
                 }
 
-                Spacer(minLength: 200)
+                Spacer(minLength: 0)
             }
+            .padding(.top, 56)
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Done") {

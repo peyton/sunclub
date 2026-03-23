@@ -7,7 +7,7 @@ iOS sunscreen tracking app with AI validation.
 ```
 just download-model
 just generate
-open app/Sunclub.xcworkspace
+open app/Sunclub Workspace.xcworkspace
 ```
 
 Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.

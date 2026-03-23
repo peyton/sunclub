@@ -28,7 +28,7 @@ struct HistoryView: View {
 
                 statsSection
 
-                Spacer(minLength: 100)
+                Spacer(minLength: 0)
             }
         }
         .toolbar(.hidden, for: .navigationBar)

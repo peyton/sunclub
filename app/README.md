@@ -56,7 +56,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The a
 2. Run `just generate`.
 3. Run `just run` to build the debug app, install it on the default simulator, and launch it.
 4. If you want camera verification in a local debug build, run `just download-model` before launching.
-5. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.
+5. If you prefer Xcode, open `app/Sunclub Workspace.xcworkspace` after generating the project.
 6. Build and run the `Sunclub` scheme.
 
 ## Just Targets
