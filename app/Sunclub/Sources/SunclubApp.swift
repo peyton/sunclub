@@ -9,10 +9,13 @@ struct SunclubApp: App {
     @State private var router = AppRouter()
     @State private var appliedUITestLaunchConfiguration = false
     private let container: ModelContainer
+    private let features: AppFeatures
     private let isUITesting = RuntimeEnvironment.isUITesting
     private let isRunningTests = RuntimeEnvironment.isRunningTests
 
     init() {
+        let features = AppFeatures.current
+        self.features = features
         let schema = Schema([
             DailyRecord.self,
             Settings.self
@@ -30,7 +33,7 @@ struct SunclubApp: App {
         }
         NotificationManager.shared.configure(modelContainer: container)
 
-        let state = AppState(context: ModelContext(container))
+        let state = AppState(context: ModelContext(container), features: features, notificationManager: NotificationManager.shared)
         _appState = State(initialValue: state)
     }
 
@@ -42,7 +45,7 @@ struct SunclubApp: App {
                 .modelContainer(container)
                 .onAppear {
                     NotificationManager.shared.setRouteHandler { route in
-                        router.open(route)
+                        router.open(route.resolved(scanEnabled: appState.isBottleScanEnabled))
                     }
                     guard !isRunningTests else {
                         applyUITestLaunchConfigurationIfNeeded()
@@ -54,9 +57,9 @@ struct SunclubApp: App {
                         await NotificationManager.shared.scheduleReminders(using: appState)
                     }
                     Task(priority: .utility) {
-                        guard appState.settings.hasCompletedOnboarding else { return }
+                        guard appState.settings.hasCompletedOnboarding, appState.isBottleScanEnabled else { return }
                         let modelDirectory = await FastVLMModelDownloadService.shared.prepareForVerification()
-                      await SunscreenService.shared.inferenceService.prewarmIfPossible(modelDirectory: modelDirectory)
+                        await SunscreenService.shared.inferenceService.prewarmIfPossible(modelDirectory: modelDirectory)
                     }
                 }
         }
@@ -78,9 +81,9 @@ struct SunclubApp: App {
             if requestedRoute == .verifySuccess {
                 appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
             }
-            router.open(requestedRoute)
+            router.open(requestedRoute.resolved(scanEnabled: appState.isBottleScanEnabled))
         } else if arguments.contains("UITEST_ROUTE_VERIFY_CAMERA") {
-            router.open(.verifyCamera)
+            router.open(appState.preferredCheckInRoute)
         } else if arguments.contains("UITEST_ROUTE_WEEKLY_SUMMARY") {
             router.open(.weeklySummary)
         }

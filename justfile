@@ -51,7 +51,7 @@ generate:
     cd app && tuist install && tuist generate --no-open
 
 [group('app')]
-build:
+build: generate
     #!/usr/bin/env sh
     set -euo pipefail
     BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
@@ -59,11 +59,11 @@ build:
       WORKSPACE="{{app_workspace}}" \
       SCHEME="{{app_scheme}}" \
       CONFIGURATION="Release" \
-      DESTINATION="generic/platform=iOS"
+      DESTINATION="generic/platform=iOS" \
       bash scripts/app-build.sh
 
 [group('app')]
-run:
+run: generate
     #!/usr/bin/env bash
     set -euo pipefail
     BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
@@ -79,7 +79,7 @@ run:
     xcrun simctl install booted "$BUILD_ROOT/DerivedData/{{run_app_path}}"
     xcrun simctl launch booted "{{app_identifier}}"
 
-test-unit:
+test-unit: generate
     #!/usr/bin/env bash
     set -euo pipefail
     BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
@@ -98,7 +98,7 @@ test-unit:
       -only-testing:SunclubTests \
       {{test_xcargs}}
 
-test-ui:
+test-ui: generate
     #!/usr/bin/env bash
     set -euo pipefail
     BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"

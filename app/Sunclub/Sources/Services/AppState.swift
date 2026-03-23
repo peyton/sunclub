@@ -24,6 +24,7 @@ struct VerificationSuccessPresentation: Equatable {
 @Observable
 final class AppState {
     let modelContext: ModelContext
+    let features: AppFeatures
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
     private let verificationStore: VerificationStore
@@ -32,11 +33,12 @@ final class AppState {
     private let calendar = Calendar.current
 
     convenience init(context: ModelContext) {
-        self.init(context: context, notificationManager: NotificationManager.shared)
+        self.init(context: context, features: .current, notificationManager: NotificationManager.shared)
     }
   
-    init(context: ModelContext, notificationManager: NotificationScheduling) {
+    init(context: ModelContext, features: AppFeatures, notificationManager: NotificationScheduling) {
         modelContext = context
+        self.features = features
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager
         settings = Self.loadOrCreateSettings(from: context)
@@ -85,6 +87,14 @@ final class AppState {
 
     var isUITesting: Bool {
         RuntimeEnvironment.isUITesting
+    }
+
+    var isBottleScanEnabled: Bool {
+        features.isBottleScanEnabled
+    }
+
+    var preferredCheckInRoute: AppRoute {
+        isBottleScanEnabled ? .verifyCamera : .manualLog
     }
 
     func completeOnboarding() {
@@ -211,7 +221,8 @@ final class AppState {
         guard settings.reapplyReminderEnabled else { return }
         Task {
             await notificationManager.scheduleReapplyReminder(
-                intervalMinutes: settings.reapplyIntervalMinutes
+                intervalMinutes: settings.reapplyIntervalMinutes,
+                route: preferredCheckInRoute
             )
         }
     }

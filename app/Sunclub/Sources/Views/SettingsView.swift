@@ -54,7 +54,7 @@ struct SettingsView: View {
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("settings.reminderSummary")
 
-            Text("Daily reminders open the sunscreen camera flow directly.")
+            Text(reminderDescription)
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }
@@ -124,6 +124,14 @@ struct SettingsView: View {
 
     private var reminderSummary: String {
         appState.reminderDate.formatted(date: .omitted, time: .shortened)
+    }
+
+    private var reminderDescription: String {
+        if appState.isBottleScanEnabled {
+            return "Daily reminders open the sunscreen camera flow directly."
+        }
+
+        return "Daily reminders open today's sunscreen check-in directly."
     }
 
     private var timePickerSheet: some View {

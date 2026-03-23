@@ -64,7 +64,7 @@ struct EnableNotificationsView: View {
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
-                    Text("Get daily reminders that take you straight to the camera check-in.")
+                    Text(reminderDescription)
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
@@ -90,6 +90,14 @@ struct EnableNotificationsView: View {
             .accessibilityIdentifier("onboarding.enableNotifications")
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var reminderDescription: String {
+        if appState.isBottleScanEnabled {
+            return "Get daily reminders that take you straight to the camera check-in."
+        }
+
+        return "Get daily reminders that take you straight to today's sunscreen check-in."
     }
 }
 

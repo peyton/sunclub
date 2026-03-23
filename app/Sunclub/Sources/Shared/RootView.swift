@@ -27,7 +27,7 @@ struct RootView: View {
 
     @ViewBuilder
     private func destination(for route: AppRoute) -> some View {
-        switch route {
+        switch route.resolved(scanEnabled: appState.isBottleScanEnabled) {
         case .welcome:
             WelcomeView()
         case .enableNotifications:
