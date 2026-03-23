@@ -2,8 +2,6 @@
 
 set -e
 
-xcodebuild -downloadComponent metalToolchain
-
 ./bin/mise install # Installs the version from .mise.toml
 
 ./bin/mise exec -- tuist install --path ../ # `--path` needed as this is run from within the `ci_scripts` directory
