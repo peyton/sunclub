@@ -1,8 +1,9 @@
 [tools]
 just = "1.47.1"
 swift = "6.2"
-tuist = "4.160.3"
-python = "3.10"
+tuist = "4.162.1"
+python = "3.14"
 
 [settings]
+experimental = true
 lockfile = true

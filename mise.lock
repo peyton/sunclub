@@ -33,37 +33,16 @@ checksum = "sha256:0f059a129049e4efaff5ff645182972edb07180248f769c5153a90765643b
 url = "https://github.com/casey/just/releases/download/1.47.1/just-1.47.1-x86_64-pc-windows-msvc.zip"
 
 [[tools.python]]
-version = "3.10.20"
+version = "3.14.3"
 backend = "core:python"
 
 [[tools.swift]]
 version = "6.2.4"
 backend = "core:swift"
 
+[tools.swift."platforms.macos-arm64"]
+checksum = "blake3:1c7e63667c164284d5bcf98dbd1fd66d25f3bafba9f952f1e2c890c6beeb06cc"
+
 [[tools.tuist]]
-version = "4.160.3"
+version = "4.162.1"
 backend = "aqua:tuist/tuist"
-
-[tools.tuist."platforms.linux-arm64"]
-checksum = "sha256:c9ce9c69e7d2df547a586fb7459f91cf619c2a05dc9e43e3caf4a84b5968fbe3"
-url = "https://github.com/tuist/tuist/releases/download/4.160.3/tuist-linux-aarch64.tar.gz"
-
-[tools.tuist."platforms.linux-arm64-musl"]
-checksum = "sha256:c9ce9c69e7d2df547a586fb7459f91cf619c2a05dc9e43e3caf4a84b5968fbe3"
-url = "https://github.com/tuist/tuist/releases/download/4.160.3/tuist-linux-aarch64.tar.gz"
-
-[tools.tuist."platforms.linux-x64"]
-checksum = "sha256:71bf6daef5ed2e889416c7f422ced533043cf8ff4d95720ecdcff3c69024ddf4"
-url = "https://github.com/tuist/tuist/releases/download/4.160.3/tuist-linux-x86_64.tar.gz"
-
-[tools.tuist."platforms.linux-x64-musl"]
-checksum = "sha256:71bf6daef5ed2e889416c7f422ced533043cf8ff4d95720ecdcff3c69024ddf4"
-url = "https://github.com/tuist/tuist/releases/download/4.160.3/tuist-linux-x86_64.tar.gz"
-
-[tools.tuist."platforms.macos-arm64"]
-checksum = "sha256:7aba56d014cc59af1d19f59769fc8783e11c11fa8a4365ec5b142255de4aa3fe"
-url = "https://github.com/tuist/tuist/releases/download/4.160.3/tuist.zip"
-
-[tools.tuist."platforms.macos-x64"]
-checksum = "sha256:7aba56d014cc59af1d19f59769fc8783e11c11fa8a4365ec5b142255de4aa3fe"
-url = "https://github.com/tuist/tuist/releases/download/4.160.3/tuist.zip"

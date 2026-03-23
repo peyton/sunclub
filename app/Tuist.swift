@@ -1,4 +1,11 @@
 import ProjectDescription
 
-let tuist = Tuist(project: .tuist())
+let tuist = Tuist(
+    fullHandle: "peyton/sunclub",
+    project: .tuist(
+        generationOptions: .options(
+            enableCaching: true
+        )
+    )
+  )
 

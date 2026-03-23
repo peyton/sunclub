@@ -32,3 +32,6 @@ app/Generated/FastVLMODR/model/*
 
 # Claude
 .claude/
+
+# mise
+.mise/
