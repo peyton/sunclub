@@ -31,7 +31,11 @@ final class AppState {
     private(set) var records: [DailyRecord] = []
     private let calendar = Calendar.current
 
-    init(context: ModelContext, notificationManager: NotificationScheduling = NotificationManager.shared) {
+    convenience init(context: ModelContext) {
+        self.init(context: context, notificationManager: NotificationManager.shared)
+    }
+  
+    init(context: ModelContext, notificationManager: NotificationScheduling) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager

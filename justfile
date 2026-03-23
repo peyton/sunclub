@@ -79,20 +79,31 @@ run:
     xcrun simctl install booted "$BUILD_ROOT/DerivedData/{{run_app_path}}"
     xcrun simctl launch booted "{{app_identifier}}"
 
-test-unit: generate
+test-unit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
+    RESULT_BUNDLE="$BUILD_ROOT/ResultBundle.xcresult"
+
     SIMULATOR_UDID="$(python3 scripts/resolve_simulator.py --name '{{test_simulator_name}}' --device-type-name '{{device_name}}')"; \
     xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
     xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
-    mise exec -- tuist xcodebuild test \
+    tuist xcodebuild test \
       -workspace "{{app_workspace}}" \
       -scheme "{{app_scheme}}" \
       -configuration Debug \
       -destination "id=$SIMULATOR_UDID" \
       -derivedDataPath "{{test_derived_data}}" \
+      -resultBundlePath "$RESULT_BUNDLE" \
       -only-testing:SunclubTests \
       {{test_xcargs}}
 
-test-ui: generate
+test-ui:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
+    RESULT_BUNDLE="$BUILD_ROOT/ResultBundle.xcresult"
+
     SIMULATOR_UDID="$(python3 scripts/resolve_simulator.py --name '{{test_simulator_name}}' --device-type-name '{{device_name}}')"; \
     xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
     xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
@@ -102,6 +113,7 @@ test-ui: generate
       -configuration Debug \
       -destination "id=$SIMULATOR_UDID" \
       -derivedDataPath "{{test_derived_data}}" \
+      -resultBundlePath "$RESULT_BUNDLE" \
       -only-testing:SunclubUITests/SunclubUITests \
       {{test_xcargs}}
 
