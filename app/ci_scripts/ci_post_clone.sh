@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # Mise installation taken from https://mise.jdx.dev/continuous-integration.html#xcode-cloud
-curl https://mise.run | sh # Install Mise
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$CI_WORKSPACE/bin:$PATH"
 
 mise install # Installs the version from .mise.toml
 

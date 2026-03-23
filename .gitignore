@@ -35,3 +35,6 @@ app/Generated/FastVLMODR/model/*
 
 # mise
 .mise/
+!/bin
+/bin/*
+!/bin/mise
