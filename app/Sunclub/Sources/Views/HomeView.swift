@@ -32,17 +32,25 @@ struct HomeView: View {
             }
         } footer: {
             VStack(spacing: 12) {
-                Button("Verify Now") {
-                    router.open(.verifyCamera)
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .accessibilityIdentifier("home.verifyNow")
+                if appState.isBottleScanEnabled {
+                    Button("Verify Now") {
+                        router.open(appState.preferredCheckInRoute)
+                    }
+                    .buttonStyle(SunPrimaryButtonStyle())
+                    .accessibilityIdentifier("home.verifyNow")
 
-                Button("Log Manually") {
-                    router.open(.manualLog)
+                    Button("Log Manually") {
+                        router.open(.manualLog)
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("home.logManually")
+                } else {
+                    Button("Log Manually") {
+                        router.open(.manualLog)
+                    }
+                    .buttonStyle(SunPrimaryButtonStyle())
+                    .accessibilityIdentifier("home.logManually")
                 }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityIdentifier("home.logManually")
             }
         }
         .onAppear {
@@ -193,15 +201,19 @@ struct HomeView: View {
             return "Already logged today"
         }
 
-        return "Ready for today's check-in"
+        return appState.isBottleScanEnabled ? "Ready for today's check-in" : "Ready to log today"
     }
 
     private var todayDetail: String {
         if appState.record(for: Date()) != nil {
-            return "You can scan again any time. Sunclub will keep just one record for today."
+            return "You can update today's check-in any time. Sunclub will keep just one record for today."
         }
 
-        return "Open the camera, point it at your sunscreen bottle, and Sunclub will log today when FastVLM sees it."
+        if appState.isBottleScanEnabled {
+            return "Open the camera, point it at your sunscreen bottle, and Sunclub will log today when FastVLM sees it."
+        }
+
+        return "Log today manually to keep your sunscreen routine moving."
     }
 }
 

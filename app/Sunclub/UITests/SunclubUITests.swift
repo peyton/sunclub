@@ -18,7 +18,8 @@ final class SunclubUITests: XCTestCase {
     func testOnboardingAdvancesToHome() throws {
         let app = launchAndCompleteOnboarding()
 
-        XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["home.verifyNow"].exists)
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
         XCTAssertTrue(app.staticTexts["home.todayStatus"].waitForExistence(timeout: 5))
     }
@@ -40,7 +41,7 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     func testVerifyFlowShowsSuccessAndReturnsHome() throws {
-        let app = launchHome()
+        let app = launchHome(scanEnabled: true)
 
         app.buttons["home.verifyNow"].tap()
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
@@ -63,7 +64,13 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testVerifyFlowPromptsForModelDownloadWhenUnavailable() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE_VERIFY_CAMERA", "UITEST_REQUIRE_MODEL_DOWNLOAD"]
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "FEATURE_ENABLE_BOTTLE_SCAN",
+            "UITEST_ROUTE_VERIFY_CAMERA",
+            "UITEST_REQUIRE_MODEL_DOWNLOAD"
+        ]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["verify.title"].waitForExistence(timeout: 5))
@@ -106,9 +113,25 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testDailyNotificationRouteOpensCamera() throws {
+    func testDailyNotificationRouteFallsBackToManualLogWhenBottleScanIsDisabled() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE_VERIFY_CAMERA", "UITEST_HOLD_VERIFY_SCREEN"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["verify.title"].exists)
+    }
+
+    @MainActor
+    func testDailyNotificationRouteOpensCameraWhenBottleScanIsEnabled() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "FEATURE_ENABLE_BOTTLE_SCAN",
+            "UITEST_ROUTE_VERIFY_CAMERA",
+            "UITEST_HOLD_VERIFY_SCREEN"
+        ]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["verify.title"].waitForExistence(timeout: 5))
@@ -133,8 +156,16 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func launchHome() -> XCUIApplication {
+        return launchHome(scanEnabled: false)
+    }
+
+    @MainActor
+    private func launchHome(scanEnabled: Bool) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"]
+        if scanEnabled {
+            app.launchArguments.append("FEATURE_ENABLE_BOTTLE_SCAN")
+        }
         app.launch()
         return app
     }
@@ -146,7 +177,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
-        XCTAssertTrue(app.buttons["home.verifyNow"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         return app
     }
 }

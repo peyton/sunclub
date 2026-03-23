@@ -1,6 +1,6 @@
 # Sunclub App
 
-Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The app can verify sunscreen with an on-device FastVLM model after a one-time App Store-hosted download, and it always keeps manual logging available.
+Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. Manual logging is always available, and bottle scanning stays behind an internal feature flag that is disabled by default.
 
 ## Flow
 
@@ -10,8 +10,9 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The a
    - Requests local notification permission.
    - Onboarding completes whether permission is allowed or denied.
 3. `Home Dashboard`
-   - Shows the greeting, current streak card, `Verify Now`, and a gear button for Settings.
+   - Shows the greeting, current streak card, manual logging, and a gear button for Settings.
 4. `Verify - Camera`
+   - Available only when bottle scan is enabled.
    - Uses the rear camera and `SunscreenDetectionCoordinator`.
    - Requests the FastVLM model on demand the first time camera verification is needed.
    - Sends frames to `FastVLMService` with the fixed sunscreen prompt after the model is ready.
@@ -36,7 +37,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The a
 - `Sunclub/Shared`
   - app routing, previews, root navigation, and app-wide UI shell/theme
 - `Sunclub/Views`
-  - onboarding, home, camera verification, summary, and settings flow
+  - onboarding, home, manual logging, camera verification, summary, and settings flow
 - `Sunclub/Services`
   - FastVLM inference, model download, camera capture, notifications, and analytics
 - `Sunclub/Models`
@@ -55,7 +56,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The a
 1. From the repo root, run `mise install`.
 2. Run `just generate`.
 3. Run `just run` to build the debug app, install it on the default simulator, and launch it.
-4. If you want camera verification in a local debug build, run `just download-model` before launching.
+4. Bottle scan is disabled by default. To test camera verification locally, add the `FEATURE_ENABLE_BOTTLE_SCAN` launch argument and run `just download-model` before launching.
 5. If you prefer Xcode, open `app/Sunclub Workspace.xcworkspace` after generating the project.
 6. Build and run the `Sunclub` scheme.
 
@@ -78,5 +79,5 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. The a
 ## Notes
 
 - FastVLM runs entirely on-device after the model download completes. No camera frames leave the device.
-- Daily reminders and the `Verify Now` action route directly to the camera verification screen.
+- Daily reminders route to the currently enabled check-in flow. With the default config, that is manual logging.
 - UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=verifyCamera` so the flow can be exercised end to end in automation and screenshot capture.

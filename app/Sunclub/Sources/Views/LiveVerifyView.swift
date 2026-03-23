@@ -30,6 +30,11 @@ struct LiveVerifyView: View {
             }
         }
         .onAppear {
+            guard appState.isBottleScanEnabled || PreviewRuntime.isRunning else {
+                router.open(.manualLog)
+                return
+            }
+
             appearedAt = Date()
             hasAdvanced = false
 
@@ -364,6 +369,11 @@ struct LiveVerifyView: View {
     }
 
     private func prepareModelIfPossible() async {
+        guard appState.isBottleScanEnabled else {
+            coordinator.resetModelState()
+            return
+        }
+
         if appState.isUITesting || PreviewRuntime.isRunning {
             return
         }

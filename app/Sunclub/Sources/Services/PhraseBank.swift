@@ -24,7 +24,7 @@ enum PhraseBank {
         "Consistency looks good on you.",
         "Sunscreen found. Day started right.",
         "Keep the routine steady even when the weather isn't.",
-        "One quick camera check and today's done.",
+        "One quick check-in and today's done.",
         "Build the habit one protected day at a time.",
         "Good skin days start with boring consistency. That's the point.",
         "Today's sunscreen is part of the plan.",

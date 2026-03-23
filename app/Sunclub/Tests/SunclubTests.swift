@@ -7,14 +7,16 @@ import XCTest
 final class MockNotificationManager: NotificationScheduling {
     private(set) var scheduleRemindersCount = 0
     private(set) var scheduleReapplyReminderIntervals: [Int] = []
+    private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var cancelReapplyRemindersCount = 0
 
     func scheduleReminders(using state: AppState) async {
         scheduleRemindersCount += 1
     }
 
-    func scheduleReapplyReminder(intervalMinutes: Int) async {
+    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async {
         scheduleReapplyReminderIntervals.append(intervalMinutes)
+        scheduleReapplyReminderRoutes.append(route)
     }
 
     func cancelReapplyReminders() async {
@@ -376,6 +378,22 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
     }
 
+    @MainActor
+    func testScheduleReapplyReminderUsesPreferredCheckInRoute() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(
+            features: AppFeatures(isBottleScanEnabled: false),
+            notificationManager: notificationManager
+        )
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+        state.scheduleReapplyReminder()
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderIntervals, [90])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.manualLog])
+    }
+
     // MARK: - UV Index Service Tests
 
     @MainActor
@@ -494,6 +512,23 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(settings.reapplyIntervalMinutes, 120)
     }
 
+    // MARK: - AppFeatures Tests
+
+    @MainActor
+    func testAppFeaturesDefaultBottleScanIsOff() {
+        let features = AppFeatures(infoDictionary: nil, launchArguments: [])
+        XCTAssertFalse(features.isBottleScanEnabled)
+    }
+
+    @MainActor
+    func testAppFeaturesLaunchArgumentEnablesBottleScan() {
+        let features = AppFeatures(
+            infoDictionary: ["FeatureBottleScanEnabled": false],
+            launchArguments: ["FEATURE_ENABLE_BOTTLE_SCAN"]
+        )
+        XCTAssertTrue(features.isBottleScanEnabled)
+    }
+
     // MARK: - Verification Method Exhaustive Tests
 
     @MainActor
@@ -535,6 +570,24 @@ final class SunclubTests: XCTestCase {
         let manualLogRoute = AppRoute.manualLog
         XCTAssertEqual(manualLogRoute.rawValue, "manualLog")
         XCTAssertEqual(manualLogRoute.id, "manualLog")
+    }
+
+    @MainActor
+    func testVerifyCameraRouteResolvesToManualLogWhenBottleScanIsDisabled() {
+        XCTAssertEqual(AppRoute.verifyCamera.resolved(scanEnabled: false), .manualLog)
+        XCTAssertEqual(AppRoute.verifyCamera.resolved(scanEnabled: true), .verifyCamera)
+        XCTAssertEqual(AppRoute.manualLog.resolved(scanEnabled: false), .manualLog)
+    }
+
+    @MainActor
+    func testPreferredCheckInRouteUsesFeatureFlag() throws {
+        let disabledState = try makeAppState(features: AppFeatures(isBottleScanEnabled: false))
+        XCTAssertFalse(disabledState.isBottleScanEnabled)
+        XCTAssertEqual(disabledState.preferredCheckInRoute, .manualLog)
+
+        let enabledState = try makeAppState(features: AppFeatures(isBottleScanEnabled: true))
+        XCTAssertTrue(enabledState.isBottleScanEnabled)
+        XCTAssertEqual(enabledState.preferredCheckInRoute, .verifyCamera)
     }
 
     @MainActor
@@ -594,12 +647,17 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     private func makeAppState(
+        features: AppFeatures = AppFeatures(isBottleScanEnabled: false),
         notificationManager: NotificationScheduling = NotificationManager.shared
     ) throws -> AppState {
         let schema = Schema([DailyRecord.self, Settings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
-        return AppState(context: ModelContext(container), notificationManager: notificationManager)
+        return AppState(
+            context: ModelContext(container),
+            features: features,
+            notificationManager: notificationManager
+        )
     }
 
     private func makeTemporaryDirectory() throws -> URL {

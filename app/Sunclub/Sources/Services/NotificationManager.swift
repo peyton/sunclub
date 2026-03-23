@@ -5,11 +5,14 @@ import UserNotifications
 
 private enum NotificationConstants {
     static let backgroundTaskID = "com.peyton.sunclub.weekly-report"
-    static let dailyCategoryID = "SUNSCREEN_DAILY"
+    static let dailyVerifyCategoryID = "SUNSCREEN_DAILY_VERIFY"
+    static let dailyManualCategoryID = "SUNSCREEN_DAILY_MANUAL"
     static let reapplyCategoryID = "SUNSCREEN_REAPPLY"
     static let actionVerifyID = "VERIFY_NOW_ACTION"
+    static let actionManualID = "LOG_TODAY_ACTION"
     static let routeKey = "targetRoute"
     static let verifyRoute = "verify"
+    static let manualRoute = "manual"
     static let weeklyRoute = "weekly"
     static let dailyPrefix = "sunscreen.daily."
     static let weeklyFallbackPrefix = "sunscreen.weekly.fallback."
@@ -20,7 +23,7 @@ private enum NotificationConstants {
 @MainActor
 protocol NotificationScheduling: AnyObject {
     func scheduleReminders(using state: AppState) async
-    func scheduleReapplyReminder(intervalMinutes: Int) async
+    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async
     func cancelReapplyReminders() async
 }
 
@@ -62,9 +65,15 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             configured = true
 
             let actionVerify = UNNotificationAction(identifier: NotificationConstants.actionVerifyID, title: "Verify Now", options: [.foreground])
-            let dailyCategory = UNNotificationCategory(
-                identifier: NotificationConstants.dailyCategoryID,
+            let actionManual = UNNotificationAction(identifier: NotificationConstants.actionManualID, title: "Log Today", options: [.foreground])
+            let dailyVerifyCategory = UNNotificationCategory(
+                identifier: NotificationConstants.dailyVerifyCategoryID,
                 actions: [actionVerify],
+                intentIdentifiers: []
+            )
+            let dailyManualCategory = UNNotificationCategory(
+                identifier: NotificationConstants.dailyManualCategoryID,
+                actions: [actionManual],
                 intentIdentifiers: []
             )
             let reapplyCategory = UNNotificationCategory(
@@ -73,7 +82,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 intentIdentifiers: []
             )
 
-            center.setNotificationCategories([dailyCategory, reapplyCategory])
+            center.setNotificationCategories([dailyVerifyCategory, dailyManualCategory, reapplyCategory])
             center.delegate = self
         }
 
@@ -108,6 +117,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     private func makeDailyReminderRequests(using state: AppState) -> [UNNotificationRequest] {
         let dayStart = calendar.startOfDay(for: Date())
         var requests: [UNNotificationRequest] = []
+        let reminderRoute = state.preferredCheckInRoute
+        let categoryIdentifier = dailyActionCategoryIdentifier(for: reminderRoute)
 
         for offset in 0..<60 {
             guard let day = calendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
@@ -124,8 +135,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     content: makeContent(
                         title: "Sunclub check-in",
                         body: phrase,
-                        categoryIdentifier: NotificationConstants.dailyCategoryID,
-                        route: NotificationConstants.verifyRoute,
+                        categoryIdentifier: categoryIdentifier,
+                        route: notificationRoute(for: reminderRoute),
                         type: "daily",
                         includeDefaultSound: true
                     ),
@@ -148,7 +159,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             content: makeContent(
                 title: "Sunclub weekly report",
                 body: "Open Sunclub to view your latest 7-day report.",
-                categoryIdentifier: NotificationConstants.dailyCategoryID,
+                categoryIdentifier: dailyActionCategoryIdentifier(for: state.preferredCheckInRoute),
                 route: NotificationConstants.weeklyRoute,
                 type: "weekly_fallback"
             ),
@@ -202,7 +213,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     body: "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
                         + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
                         + phrase.0,
-                    categoryIdentifier: NotificationConstants.dailyCategoryID,
+                    categoryIdentifier: dailyActionCategoryIdentifier(for: AppFeatures.current.isBottleScanEnabled ? .verifyCamera : .manualLog),
                     route: NotificationConstants.weeklyRoute,
                     type: "weekly_primary"
                 ),
@@ -242,7 +253,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return try context.fetch(descriptor).map { $0.startOfDay }
     }
 
-    func scheduleReapplyReminder(intervalMinutes: Int) async {
+    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async {
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
 
         let trigger = UNTimeIntervalNotificationTrigger(
@@ -256,7 +267,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 title: "Time to reapply",
                 body: "It's been \(intervalMinutes) minutes — reapply sunscreen for continued protection.",
                 categoryIdentifier: NotificationConstants.reapplyCategoryID,
-                route: NotificationConstants.verifyRoute,
+                route: notificationRoute(for: route),
                 type: "reapply",
                 includeDefaultSound: true
             ),
@@ -304,6 +315,23 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return content
     }
 
+    private func notificationRoute(for route: AppRoute) -> String {
+        switch route {
+        case .verifyCamera:
+            return NotificationConstants.verifyRoute
+        case .manualLog:
+            return NotificationConstants.manualRoute
+        case .weeklySummary:
+            return NotificationConstants.weeklyRoute
+        default:
+            return NotificationConstants.verifyRoute
+        }
+    }
+
+    private func dailyActionCategoryIdentifier(for route: AppRoute) -> String {
+        route == .manualLog ? NotificationConstants.dailyManualCategoryID : NotificationConstants.dailyVerifyCategoryID
+    }
+
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
@@ -326,9 +354,13 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             switch actionIdentifier {
             case NotificationConstants.actionVerifyID:
                 routeHandler(.verifyCamera)
+            case NotificationConstants.actionManualID:
+                routeHandler(.manualLog)
             default:
                 if targetRoute == NotificationConstants.weeklyRoute {
                     routeHandler(.weeklySummary)
+                } else if targetRoute == NotificationConstants.manualRoute {
+                    routeHandler(.manualLog)
                 } else if targetRoute == NotificationConstants.verifyRoute {
                     routeHandler(.verifyCamera)
                 } else {

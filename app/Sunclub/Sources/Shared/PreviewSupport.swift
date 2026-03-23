@@ -28,7 +28,7 @@ struct SunclubPreviewHost<Content: View>: View {
         let container = Self.makeContainer()
         NotificationManager.shared.configure(modelContainer: container)
 
-        let appState = AppState(context: ModelContext(container))
+        let appState = AppState(context: ModelContext(container), features: .current, notificationManager: NotificationManager.shared)
         Self.seed(appState, for: scenario)
 
         _appState = State(initialValue: appState)
