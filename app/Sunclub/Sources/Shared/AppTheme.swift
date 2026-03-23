@@ -75,8 +75,6 @@ struct SunLightScreen<Content: View, Footer: View>: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                SunBackdrop()
-
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 28) {
@@ -95,6 +93,10 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .padding(.bottom, 24)
                 }
             }
+            
+        }
+        .background {
+          SunBackdrop()
         }
     }
 }
@@ -120,7 +122,6 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                SunDarkBackdrop()
 
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
@@ -140,6 +141,9 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
                         .padding(.bottom, 24)
                 }
             }
+        }
+        .background {
+          SunDarkBackdrop()
         }
     }
 }
