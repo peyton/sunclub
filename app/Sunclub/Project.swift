@@ -1,10 +1,18 @@
 import ProjectDescription
 
 let defaultDeploymentTarget: DeploymentTargets = .iOS("18.6")
-
+let signingTeam = "AE5E5HVG56"
+let marketingVersion = "1.0.0"
+let buildNumber = "1"
 
 let project = Project(
     name: "Sunclub",
+    settings: .settings(
+    base: [
+    "MARKETING_VERSION": .string(marketingVersion),
+    "CURRENT_PROJECT_VERSION": .string(buildNumber)
+    ]
+    ),
     targets: [
         .target(
             name: "Sunclub",
@@ -21,10 +29,12 @@ let project = Project(
             ],
             entitlements: "Sunclub.entitlements",
             dependencies: [
-                // Target dependencies can be defined here
-                // .framework(path: "Frameworks/MyFramework.framework")
                 .project(target: "FastVLM", path: "../Frameworks/FastVLM"),
-            ]
+            ],
+                        settings: .settings(
+                base: [:]
+                    .automaticCodeSigning(devTeam: signingTeam)
+            )
         ),
         .target(
             name: "SunclubTests",

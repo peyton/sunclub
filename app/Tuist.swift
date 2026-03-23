@@ -4,8 +4,10 @@ let tuist = Tuist(
     fullHandle: "peyton/sunclub",
     project: .tuist(
         generationOptions: .options(
-            enableCaching: true
+            optionalAuthentication: true,
+            includeGenerateScheme: false,
+            enableCaching: true,
+            registryEnabled: true,
         )
     )
   )
-
