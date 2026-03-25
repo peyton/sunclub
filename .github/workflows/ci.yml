@@ -17,23 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install mise
-        uses: jdx/mise-action@v2
-
-      - name: Install hk
-        run: cargo install hk
-
-      - name: Install Python
-        uses: actions/setup-python@v5
+      - name: Install tools
+        uses: jdx/mise-action@v4
         with:
-          python-version: "3.14"
-          allow-prereleases: true
-
-      - name: Install lint tools
-        run: |
-          pip install ruff
-          npm install -g prettier
-          sudo apt-get install -y shellcheck shfmt
+          install_args: hk ruff shellcheck shfmt node npm:prettier
+          cache: true
 
       - name: Run hk check
         run: hk check --all
@@ -47,14 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Python
-        uses: actions/setup-python@v5
+      - name: Install tools
+        uses: jdx/mise-action@v4
         with:
-          python-version: "3.14"
-          allow-prereleases: true
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
+          install_args: python uv
+          cache: true
 
       - name: Run Python tests
         run: uv run python -m unittest discover -s tests -p 'test_*.py'
@@ -66,10 +51,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install mise
-        uses: jdx/mise-action@v2
+      - name: Install tools
+        uses: jdx/mise-action@v4
+        with:
+          install_args: just tuist
+          cache: true
 
-      - name: Cache Tuist
+      - name: Cache Tuist dependencies
         uses: actions/cache@v4
         with:
           path: |

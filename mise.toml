@@ -2,6 +2,13 @@
 just = "1.47.1"
 tuist = "4.162.1"
 hk = "latest"
+python = "3.14"
+uv = "latest"
+node = "22"
+"npm:prettier" = "latest"
+ruff = "latest"
+shellcheck = "latest"
+shfmt = "latest"
 
 [settings]
 experimental = true
