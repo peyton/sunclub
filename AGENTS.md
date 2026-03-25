@@ -14,14 +14,16 @@ Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or 
 
 ## Test Commands
 
-| Surface | Command |
-|---------|---------|
-| Unit tests | `just test-unit` |
-| UI tests | `just test-ui` |
-| All tests | `just test` |
-| CI validation | `just ci` |
-| Python eval tests | `python -m pytest tests/ -v` |
-| Benchmark | `cd evals/benchmark && ./benchmark.sh --strict` |
+| Surface           | Command                                         |
+| ----------------- | ----------------------------------------------- |
+| Unit tests        | `just test-unit`                                |
+| UI tests          | `just test-ui`                                  |
+| All tests         | `just test`                                     |
+| CI validation     | `just ci`                                       |
+| Lint              | `just lint`                                     |
+| Format            | `just fmt`                                      |
+| Python eval tests | `python -m pytest tests/ -v`                    |
+| Benchmark         | `cd evals/benchmark && ./benchmark.sh --strict` |
 
 ## Project Layout
 
@@ -59,9 +61,14 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 ## Code Style
 
 - Swift 6, strict concurrency (`@MainActor`, `nonisolated`, `Sendable`)
-- 4-space indent, no external linter
+- 4-space indent
 - Custom errors: enum conforming to `LocalizedError`
 - UI tests use `UITEST_MODE` launch arg to bypass camera/notifications
+- Linting/formatting managed by [hk](https://hk.jdx.dev/) — see `hk.toml`
+- Python: `ruff` for linting and formatting
+- Shell: `shellcheck` + `shfmt`
+- Markdown/JSON/YAML: `prettier`
+- Swift: `swiftlint` (macOS only)
 
 ## Things to Avoid
 

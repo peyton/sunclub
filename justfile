@@ -122,7 +122,13 @@ test-python:
 
 test: test-unit test-ui test-python
 
-ci: test build
+lint:
+    hk check --all
+
+fmt:
+    hk fix --all
+
+ci: lint test build
 
 # --- Eval & Fine-Tuning ---
 

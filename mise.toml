@@ -1,6 +1,7 @@
 [tools]
 just = "1.47.1"
 tuist = "4.162.1"
+hk = "latest"
 
 [settings]
 experimental = true

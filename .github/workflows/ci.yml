@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Install hk
+        run: cargo install hk
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          allow-prereleases: true
+
+      - name: Install lint tools
+        run: |
+          pip install ruff
+          npm install -g prettier
+          sudo apt-get install -y shellcheck shfmt
+
+      - name: Run hk check
+        run: hk check --all
+        env:
+          HK_SKIP_STEPS: swiftlint
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          allow-prereleases: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Run Python tests
+        run: uv run python -m unittest discover -s tests -p 'test_*.py'
+
+  build:
+    name: Build iOS
+    runs-on: macos-15
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Cache Tuist
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/Tuist/Dependencies/
+            .DerivedData/
+          key: tuist-${{ runner.os }}-${{ hashFiles('app/Tuist/Package.swift', 'app/Tuist/Package.resolved') }}
+          restore-keys: |
+            tuist-${{ runner.os }}-
+
+      - name: Generate Xcode project
+        run: cd app && tuist install && tuist generate --no-open
+
+      - name: Build
+        run: |
+          BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
+          BUILD_ROOT="$BUILD_ROOT" \
+            WORKSPACE="app/Sunclub.xcworkspace" \
+            SCHEME="Sunclub" \
+            CONFIGURATION="Release" \
+            DESTINATION="generic/platform=iOS" \
+            bash scripts/app-build.sh
