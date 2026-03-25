@@ -56,7 +56,9 @@ def lower_strings(values: list[str]) -> str:
     return "\n".join(value.lower() for value in values)
 
 
-def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) -> tuple[list[str], list[str]]:
+def validate_manifest(
+    manifest: dict[str, Any], *, allow_draft: bool = False
+) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -72,7 +74,9 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
     if not isinstance(primary_locale, str) or not primary_locale:
         errors.append("app.primary_locale is required.")
     elif primary_locale not in localizations:
-        errors.append(f"localizations must include the primary locale {primary_locale!r}.")
+        errors.append(
+            f"localizations must include the primary locale {primary_locale!r}."
+        )
 
     name = str(app.get("name", "")).strip()
     subtitle = str(app.get("subtitle", "")).strip()
@@ -95,7 +99,9 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
     if app.get("device_family") != "iphone":
         errors.append("app.device_family must be 'iphone' for the iPhone-only release.")
 
-    locale_payload = localizations.get(primary_locale, {}) if isinstance(primary_locale, str) else {}
+    locale_payload = (
+        localizations.get(primary_locale, {}) if isinstance(primary_locale, str) else {}
+    )
     if not isinstance(locale_payload, dict):
         errors.append(f"localizations.{primary_locale} must be an object.")
         locale_payload = {}
@@ -108,7 +114,9 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
     if not description:
         errors.append(f"localizations.{primary_locale}.description is required.")
     elif len(description) > DESCRIPTION_LIMIT:
-        errors.append(f"localizations.{primary_locale}.description exceeds {DESCRIPTION_LIMIT} characters.")
+        errors.append(
+            f"localizations.{primary_locale}.description exceeds {DESCRIPTION_LIMIT} characters."
+        )
 
     if promotional_text and len(promotional_text) > PROMOTIONAL_TEXT_LIMIT:
         errors.append(
@@ -116,21 +124,38 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
         )
 
     if whats_new and len(whats_new) > WHATS_NEW_LIMIT:
-        errors.append(f"localizations.{primary_locale}.whats_new exceeds {WHATS_NEW_LIMIT} characters.")
+        errors.append(
+            f"localizations.{primary_locale}.whats_new exceeds {WHATS_NEW_LIMIT} characters."
+        )
 
-    if not isinstance(keywords, list) or not all(isinstance(keyword, str) for keyword in keywords):
-        errors.append(f"localizations.{primary_locale}.keywords must be an array of strings.")
+    if not isinstance(keywords, list) or not all(
+        isinstance(keyword, str) for keyword in keywords
+    ):
+        errors.append(
+            f"localizations.{primary_locale}.keywords must be an array of strings."
+        )
         keywords = []
 
-    joined_keywords = ",".join(keyword.strip() for keyword in keywords if keyword.strip())
+    joined_keywords = ",".join(
+        keyword.strip() for keyword in keywords if keyword.strip()
+    )
     if not joined_keywords:
-        errors.append(f"localizations.{primary_locale}.keywords must contain at least one keyword.")
+        errors.append(
+            f"localizations.{primary_locale}.keywords must contain at least one keyword."
+        )
     elif utf8_len(joined_keywords) > KEYWORDS_LIMIT_BYTES:
         errors.append(
             f"localizations.{primary_locale}.keywords exceeds Apple’s {KEYWORDS_LIMIT_BYTES}-byte limit."
         )
 
-    copy_to_scan = [name, subtitle, description, promotional_text, whats_new, joined_keywords]
+    copy_to_scan = [
+        name,
+        subtitle,
+        description,
+        promotional_text,
+        whats_new,
+        joined_keywords,
+    ]
     review = manifest.get("review", {})
     if isinstance(review, dict):
         copy_to_scan.append(str(review.get("notes", "")))
@@ -138,13 +163,19 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
 
     lowered_copy = lower_strings(copy_to_scan)
 
-    if supports_odr and any(phrase in lowered_copy for phrase in FORBIDDEN_OFFLINE_CLAIMS):
+    if supports_odr and any(
+        phrase in lowered_copy for phrase in FORBIDDEN_OFFLINE_CLAIMS
+    ):
         errors.append(
             "Metadata claims the app is fully offline even though camera verification depends on a one-time ODR download."
         )
 
-    if pricing_model == "free" and any(word in lowered_copy for word in FORBIDDEN_FREE_COPY):
-        errors.append("Metadata mentions subscriptions, premium access, or freemium copy while the release is free-only.")
+    if pricing_model == "free" and any(
+        word in lowered_copy for word in FORBIDDEN_FREE_COPY
+    ):
+        errors.append(
+            "Metadata mentions subscriptions, premium access, or freemium copy while the release is free-only."
+        )
 
     urls = manifest.get("urls")
     if not isinstance(urls, dict):
@@ -153,7 +184,9 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
         for key in ("support", "marketing", "privacy_policy"):
             payload = urls.get(key)
             if not isinstance(payload, dict):
-                errors.append(f"urls.{key} must be an object with value and ready keys.")
+                errors.append(
+                    f"urls.{key} must be an object with value and ready keys."
+                )
                 continue
 
             value = str(payload.get("value", "")).strip()
@@ -162,7 +195,9 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
             if not validate_https_url(value):
                 errors.append(f"urls.{key}.value must be a valid https URL.")
             if ready is not True:
-                message = f"urls.{key} is still marked as not ready for App Store submission."
+                message = (
+                    f"urls.{key} is still marked as not ready for App Store submission."
+                )
                 if allow_draft:
                     warnings.append(message)
                 else:
@@ -224,18 +259,24 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
 
             screens = screenshots.get("screens")
             if not isinstance(screens, list) or not screens:
-                errors.append("assets.screenshots.screens must contain at least one screen definition.")
+                errors.append(
+                    "assets.screenshots.screens must contain at least one screen definition."
+                )
             else:
                 seen_ids: set[str] = set()
                 for index, screen in enumerate(screens):
                     if not isinstance(screen, dict):
-                        errors.append(f"assets.screenshots.screens[{index}] must be an object.")
+                        errors.append(
+                            f"assets.screenshots.screens[{index}] must be an object."
+                        )
                         continue
 
                     screen_id = str(screen.get("id", "")).strip()
                     route = str(screen.get("route", "")).strip()
                     if not screen_id:
-                        errors.append(f"assets.screenshots.screens[{index}].id is required.")
+                        errors.append(
+                            f"assets.screenshots.screens[{index}].id is required."
+                        )
                     elif screen_id in seen_ids:
                         errors.append(f"Duplicate screenshot id: {screen_id}.")
                     else:
@@ -249,14 +290,21 @@ def validate_manifest(manifest: dict[str, Any], *, allow_draft: bool = False) ->
     submission = manifest.get("submission")
     if not isinstance(submission, dict):
         errors.append("Missing required object: submission.")
-    elif not isinstance(submission.get("manual_steps"), list) or not submission["manual_steps"]:
-        warnings.append("submission.manual_steps should document the remaining App Store Connect work.")
+    elif (
+        not isinstance(submission.get("manual_steps"), list)
+        or not submission["manual_steps"]
+    ):
+        warnings.append(
+            "submission.manual_steps should document the remaining App Store Connect work."
+        )
 
     return errors, warnings
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate Sunclub App Store metadata manifest.")
+    parser = argparse.ArgumentParser(
+        description="Validate Sunclub App Store metadata manifest."
+    )
     parser.add_argument("manifest", nargs="?", default="scripts/appstore/metadata.json")
     parser.add_argument(
         "--allow-draft",

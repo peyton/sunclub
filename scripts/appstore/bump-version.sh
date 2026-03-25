@@ -11,16 +11,16 @@ set -euo pipefail
 PROJECT_FILE="app/Project.swift"
 
 if [ -z "${1:-}" ]; then
-  echo "Usage: $0 <version>"
-  echo "  Example: $0 1.0"
-  exit 1
+	echo "Usage: $0 <version>"
+	echo "  Example: $0 1.0"
+	exit 1
 fi
 
 NEW_VERSION="$1"
 
 if ! grep -q 'marketingVersion:' "$PROJECT_FILE"; then
-  echo "Error: Could not find marketingVersion in $PROJECT_FILE"
-  exit 1
+	echo "Error: Could not find marketingVersion in $PROJECT_FILE"
+	exit 1
 fi
 
 # Update the app target's marketing version (the first appSettings line)

@@ -23,17 +23,23 @@ SKIP_ARCHIVE=false
 SKIP_EXPORT=false
 
 for arg in "$@"; do
-  case "$arg" in
-    --skip-generate) SKIP_GENERATE=true ;;
-    --skip-archive)  SKIP_ARCHIVE=true ;;
-    --skip-export)   SKIP_EXPORT=true ;;
-    *) printf 'Unknown argument: %s\n' "$arg" >&2; exit 2 ;;
-  esac
+	case "$arg" in
+	--skip-generate) SKIP_GENERATE=true ;;
+	--skip-archive) SKIP_ARCHIVE=true ;;
+	--skip-export) SKIP_EXPORT=true ;;
+	*)
+		printf 'Unknown argument: %s\n' "$arg" >&2
+		exit 2
+		;;
+	esac
 done
 
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
-ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
-fail() { printf '\033[1;31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
+ok() { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
+fail() {
+	printf '\033[1;31m✗ %s\033[0m\n' "$1" >&2
+	exit 1
+}
 
 [ -f "$VALIDATOR" ] || fail "Missing metadata validator: $VALIDATOR"
 [ -f "$EXPORT_OPTIONS" ] || fail "Missing export options: $EXPORT_OPTIONS"
@@ -46,30 +52,30 @@ python3 "$VALIDATOR" "scripts/appstore/metadata.json"
 ok "Submission manifest is valid"
 
 if [ "$SKIP_GENERATE" = false ]; then
-  step "Generating the Tuist workspace"
-  (cd app && tuist install && tuist generate --no-open)
-  ok "Workspace generated"
+	step "Generating the Tuist workspace"
+	(cd app && tuist install && tuist generate --no-open)
+	ok "Workspace generated"
 else
-  ok "Skipping workspace generation"
+	ok "Skipping workspace generation"
 fi
 
 if [ "$SKIP_ARCHIVE" = false ]; then
-  step "Archiving the signed release build"
-  rm -rf "$ARCHIVE_PATH" "$DERIVED_DATA"
+	step "Archiving the signed release build"
+	rm -rf "$ARCHIVE_PATH" "$DERIVED_DATA"
 
-  xcodebuild archive \
-    -workspace "$WORKSPACE" \
-    -scheme "$SCHEME" \
-    -configuration Release \
-    -destination "generic/platform=iOS" \
-    -archivePath "$ARCHIVE_PATH" \
-    -derivedDataPath "$DERIVED_DATA" \
-    DEVELOPMENT_TEAM="$TEAM_ID" \
-    CODE_SIGN_STYLE=Automatic
+	xcodebuild archive \
+		-workspace "$WORKSPACE" \
+		-scheme "$SCHEME" \
+		-configuration Release \
+		-destination "generic/platform=iOS" \
+		-archivePath "$ARCHIVE_PATH" \
+		-derivedDataPath "$DERIVED_DATA" \
+		DEVELOPMENT_TEAM="$TEAM_ID" \
+		CODE_SIGN_STYLE=Automatic
 
-  ok "Archive created at $ARCHIVE_PATH"
+	ok "Archive created at $ARCHIVE_PATH"
 else
-  ok "Skipping archive build"
+	ok "Skipping archive build"
 fi
 
 APP_BUNDLE="$ARCHIVE_PATH/Products/Applications/Sunclub.app"
@@ -77,29 +83,29 @@ APP_BUNDLE="$ARCHIVE_PATH/Products/Applications/Sunclub.app"
 
 step "Verifying model packaging"
 if find "$APP_BUNDLE" \( -name "config.json" -o -name "*.mlpackage" -o -name "*.bin" \) | grep -q .; then
-  fail "The archived app bundle still contains FastVLM model payload files."
+	fail "The archived app bundle still contains FastVLM model payload files."
 fi
 
 if ! find "$ARCHIVE_PATH" \( -name "*.assetpack" -o -path "*OnDemandResources*" \) | grep -q .; then
-  fail "No On-Demand Resource asset pack was found in the archive."
+	fail "No On-Demand Resource asset pack was found in the archive."
 fi
 
 ok "Archive keeps FastVLM out of the .app bundle and retains an ODR asset pack"
 
 if [ "$SKIP_EXPORT" = false ]; then
-  step "Exporting the App Store package"
-  rm -rf "$EXPORT_PATH"
+	step "Exporting the App Store package"
+	rm -rf "$EXPORT_PATH"
 
-  xcodebuild -exportArchive \
-    -archivePath "$ARCHIVE_PATH" \
-    -exportOptionsPlist "$EXPORT_OPTIONS" \
-    -exportPath "$EXPORT_PATH"
+	xcodebuild -exportArchive \
+		-archivePath "$ARCHIVE_PATH" \
+		-exportOptionsPlist "$EXPORT_OPTIONS" \
+		-exportPath "$EXPORT_PATH"
 
-  IPA_FILE="$(find "$EXPORT_PATH" -name '*.ipa' -print -quit)"
-  [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_PATH"
-  ok "Exported IPA: $IPA_FILE"
+	IPA_FILE="$(find "$EXPORT_PATH" -name '*.ipa' -print -quit)"
+	[ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_PATH"
+	ok "Exported IPA: $IPA_FILE"
 else
-  ok "Skipping IPA export"
+	ok "Skipping IPA export"
 fi
 
 cat <<EOF

@@ -91,9 +91,7 @@
           "id": "verify-download",
           "route": "verifyCamera",
           "complete_onboarding": true,
-          "launch_arguments": [
-            "UITEST_REQUIRE_MODEL_DOWNLOAD"
-          ]
+          "launch_arguments": ["UITEST_REQUIRE_MODEL_DOWNLOAD"]
         },
         {
           "id": "verify-success",

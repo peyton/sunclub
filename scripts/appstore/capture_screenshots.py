@@ -17,7 +17,9 @@ DERIVED_DATA = REPO_ROOT / ".DerivedData/screenshots"
 APP_PATH = DERIVED_DATA / "Build/Products/Debug-iphonesimulator/Sunclub.app"
 
 
-def run(command: list[str], *, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
+def run(
+    command: list[str], *, cwd: Path | None = None, check: bool = True
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         cwd=str(cwd) if cwd else None,
@@ -27,8 +29,12 @@ def run(command: list[str], *, cwd: Path | None = None, check: bool = True) -> s
     )
 
 
-def run_logged(command: list[str], *, cwd: Path | None = None, check: bool = True) -> None:
-    result = subprocess.run(command, cwd=str(cwd) if cwd else None, check=check, text=True)
+def run_logged(
+    command: list[str], *, cwd: Path | None = None, check: bool = True
+) -> None:
+    result = subprocess.run(
+        command, cwd=str(cwd) if cwd else None, check=check, text=True
+    )
     if result.returncode != 0 and check:
         raise subprocess.CalledProcessError(result.returncode, command)
 
@@ -41,7 +47,10 @@ def main() -> int:
     with METADATA_PATH.open() as handle:
         manifest = json.load(handle)
 
-    subprocess.run([sys.executable, str(VALIDATOR_PATH), "--allow-draft", str(METADATA_PATH)], check=True)
+    subprocess.run(
+        [sys.executable, str(VALIDATOR_PATH), "--allow-draft", str(METADATA_PATH)],
+        check=True,
+    )
 
     screenshots = manifest["assets"]["screenshots"]
     device = screenshots["capture_device"]
@@ -51,19 +60,16 @@ def main() -> int:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    simulator_udid = (
-        run(
-            [
-                sys.executable,
-                str(SIMULATOR_RESOLVER),
-                "--name",
-                f"Sunclub Screenshots {device}",
-                "--device-type-name",
-                device,
-            ]
-        )
-        .stdout.strip()
-    )
+    simulator_udid = run(
+        [
+            sys.executable,
+            str(SIMULATOR_RESOLVER),
+            "--name",
+            f"Sunclub Screenshots {device}",
+            "--device-type-name",
+            device,
+        ]
+    ).stdout.strip()
 
     run_logged(["tuist", "install"], cwd=REPO_ROOT / "app")
     run_logged(["tuist", "generate", "--no-open"], cwd=REPO_ROOT / "app")
@@ -133,14 +139,27 @@ def main() -> int:
                 arguments.append("UITEST_COMPLETE_ONBOARDING")
             arguments.extend(launch_arguments)
 
-            run(["xcrun", "simctl", "terminate", simulator_udid, bundle_id], check=False)
-            run_logged(["xcrun", "simctl", "launch", simulator_udid, bundle_id, *arguments])
+            run(
+                ["xcrun", "simctl", "terminate", simulator_udid, bundle_id], check=False
+            )
+            run_logged(
+                ["xcrun", "simctl", "launch", simulator_udid, bundle_id, *arguments]
+            )
             time.sleep(1.5)
 
             output_path = output_dir / f"{screen_id}.png"
             if output_path.exists():
                 output_path.unlink()
-            run_logged(["xcrun", "simctl", "io", simulator_udid, "screenshot", str(output_path)])
+            run_logged(
+                [
+                    "xcrun",
+                    "simctl",
+                    "io",
+                    simulator_udid,
+                    "screenshot",
+                    str(output_path),
+                ]
+            )
             print(f"Saved {output_path}")
     finally:
         run(["xcrun", "simctl", "status_bar", simulator_udid, "clear"], check=False)

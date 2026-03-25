@@ -9,7 +9,9 @@ VALIDATOR_PATH = REPO_ROOT / "scripts" / "appstore" / "validate_metadata.py"
 
 
 def load_validator_module():
-    spec = importlib.util.spec_from_file_location("sunclub_appstore_validator", VALIDATOR_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "sunclub_appstore_validator", VALIDATOR_PATH
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Unable to load validator module from {VALIDATOR_PATH}")
 
@@ -105,7 +107,9 @@ class AppStoreMetadataValidatorTests(unittest.TestCase):
         self.assertTrue(errors)
         self.assertFalse(warnings)
         self.assertIn("app.subtitle exceeds Apple’s 30-character limit.", errors)
-        self.assertIn("localizations.en-US.keywords exceeds Apple’s 100-byte limit.", errors)
+        self.assertIn(
+            "localizations.en-US.keywords exceeds Apple’s 100-byte limit.", errors
+        )
         self.assertIn(
             "Metadata claims the app is fully offline even though camera verification depends on a one-time ODR download.",
             errors,
@@ -114,17 +118,29 @@ class AppStoreMetadataValidatorTests(unittest.TestCase):
             "Metadata mentions subscriptions, premium access, or freemium copy while the release is free-only.",
             errors,
         )
-        self.assertIn("urls.support is still marked as not ready for App Store submission.", errors)
-        self.assertIn("review.contact is still marked as not ready for submission.", errors)
+        self.assertIn(
+            "urls.support is still marked as not ready for App Store submission.",
+            errors,
+        )
+        self.assertIn(
+            "review.contact is still marked as not ready for submission.", errors
+        )
 
     def test_validator_allows_current_manifest_in_draft_mode(self) -> None:
-        manifest = validator.load_manifest(REPO_ROOT / "scripts" / "appstore" / "metadata.json")
+        manifest = validator.load_manifest(
+            REPO_ROOT / "scripts" / "appstore" / "metadata.json"
+        )
 
         errors, warnings = validator.validate_manifest(manifest, allow_draft=True)
 
         self.assertEqual(errors, [])
-        self.assertIn("urls.support is still marked as not ready for App Store submission.", warnings)
-        self.assertIn("review.contact is still marked as not ready for submission.", warnings)
+        self.assertIn(
+            "urls.support is still marked as not ready for App Store submission.",
+            warnings,
+        )
+        self.assertIn(
+            "review.contact is still marked as not ready for submission.", warnings
+        )
 
     def test_validator_accepts_submission_ready_manifest(self) -> None:
         manifest = json.loads(

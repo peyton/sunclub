@@ -7,13 +7,13 @@ SOURCE_SVG="$ROOT_DIR/icon.svg"
 ICONSET_DIR="$ROOT_DIR/app/Sunclub/Assets.xcassets/AppIcon.appiconset"
 
 if [ ! -f "$SOURCE_SVG" ]; then
-  printf 'Missing icon source: %s\n' "$SOURCE_SVG" >&2
-  exit 1
+	printf 'Missing icon source: %s\n' "$SOURCE_SVG" >&2
+	exit 1
 fi
 
 if ! command -v sips >/dev/null 2>&1; then
-  printf 'sips is required to render %s\n' "$SOURCE_SVG" >&2
-  exit 1
+	printf 'sips is required to render %s\n' "$SOURCE_SVG" >&2
+	exit 1
 fi
 
 mkdir -p "$ICONSET_DIR"

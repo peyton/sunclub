@@ -40,7 +40,9 @@ def latest_runtime(
         )
     ]
     if not candidates:
-        raise RuntimeError(f"No available {platform} runtime supports {device_type_name!r}.")
+        raise RuntimeError(
+            f"No available {platform} runtime supports {device_type_name!r}."
+        )
     return max(candidates, key=lambda runtime: parse_version(str(runtime["version"])))
 
 
@@ -52,7 +54,9 @@ def find_device_type_identifier(
     for device_type in device_types:
         if device_type.get("name") == device_type_name:
             return str(device_type["identifier"])
-    raise RuntimeError(f"Unable to find simulator device type named {device_type_name!r}.")
+    raise RuntimeError(
+        f"Unable to find simulator device type named {device_type_name!r}."
+    )
 
 
 def find_existing_device(
@@ -95,8 +99,12 @@ def create_device(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Resolve or create a dedicated simulator device.")
-    parser.add_argument("--name", required=True, help="Simulator name to resolve or create.")
+    parser = argparse.ArgumentParser(
+        description="Resolve or create a dedicated simulator device."
+    )
+    parser.add_argument(
+        "--name", required=True, help="Simulator name to resolve or create."
+    )
     parser.add_argument(
         "--device-type-name",
         default="iPhone 17 Pro",
