@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-
 APP_NAME_LIMIT = 30
 SUBTITLE_LIMIT = 30
 KEYWORDS_LIMIT_BYTES = 100
@@ -86,12 +85,12 @@ def validate_manifest(
     if not name:
         errors.append("app.name is required.")
     elif len(name) > APP_NAME_LIMIT:
-        errors.append(f"app.name exceeds Apple’s {APP_NAME_LIMIT}-character limit.")
+        errors.append(f"app.name exceeds Apple's {APP_NAME_LIMIT}-character limit.")
 
     if not subtitle:
         errors.append("app.subtitle is required.")
     elif len(subtitle) > SUBTITLE_LIMIT:
-        errors.append(f"app.subtitle exceeds Apple’s {SUBTITLE_LIMIT}-character limit.")
+        errors.append(f"app.subtitle exceeds Apple's {SUBTITLE_LIMIT}-character limit.")
 
     if pricing_model != "free":
         errors.append("app.pricing_model must be 'free' for this release train.")
@@ -120,7 +119,7 @@ def validate_manifest(
 
     if promotional_text and len(promotional_text) > PROMOTIONAL_TEXT_LIMIT:
         errors.append(
-            f"localizations.{primary_locale}.promotional_text exceeds Apple’s {PROMOTIONAL_TEXT_LIMIT}-character limit."
+            f"localizations.{primary_locale}.promotional_text exceeds Apple's {PROMOTIONAL_TEXT_LIMIT}-character limit."
         )
 
     if whats_new and len(whats_new) > WHATS_NEW_LIMIT:
@@ -145,7 +144,7 @@ def validate_manifest(
         )
     elif utf8_len(joined_keywords) > KEYWORDS_LIMIT_BYTES:
         errors.append(
-            f"localizations.{primary_locale}.keywords exceeds Apple’s {KEYWORDS_LIMIT_BYTES}-byte limit."
+            f"localizations.{primary_locale}.keywords exceeds Apple's {KEYWORDS_LIMIT_BYTES}-byte limit."
         )
 
     copy_to_scan = [

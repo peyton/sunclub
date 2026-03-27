@@ -43,7 +43,7 @@ Execution is still blocked by a pre-existing compile error in `app/Sunclub/FastV
 
 ## Context and Orientation
 
-The relevant project file is `app/Sunclub.xcodeproj/project.pbxproj`. The `FastVLM` framework target is declared there as a native target named `FastVLM`, and the app test target is declared there as `SunclubTests`. The app code that wraps the framework resolver lives in `app/Sunclub/Services/FastVLMService.swift`. The framework resolver itself lives in `app/Sunclub/FastVLM/FastVLM.swift`. The existing app tests live in `app/SunclubTests/SunclubTests.swift`. A “target” in Xcode is the independently built product and its source membership; if a test should validate the framework directly, it belongs in a test target that depends on `FastVLM.framework`, not on `Sunclub.app`.
+The relevant project file is `app/Sunclub.xcodeproj/project.pbxproj`. The `FastVLM` framework target is declared there as a native target named `FastVLM`, and the app test target is declared there as `SunclubTests`. The app code that wraps the framework resolver lives in `app/Sunclub/Services/FastVLMService.swift`. The framework resolver itself lives in `app/Sunclub/FastVLM/FastVLM.swift`. The existing app tests live in `app/SunclubTests/SunclubTests.swift`. A "target" in Xcode is the independently built product and its source membership; if a test should validate the framework directly, it belongs in a test target that depends on `FastVLM.framework`, not on `Sunclub.app`.
 
 ## Plan of Work
 

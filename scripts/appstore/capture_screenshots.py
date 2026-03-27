@@ -8,7 +8,6 @@ import sys
 import time
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METADATA_PATH = REPO_ROOT / "scripts/appstore/metadata.json"
 VALIDATOR_PATH = REPO_ROOT / "scripts/appstore/validate_metadata.py"

@@ -20,12 +20,12 @@ After this change, Sunclub will be shippable as a free, iPhone-only v1 without b
 ## Surprises & Discoveries
 
 - Observation: `just test-unit` currently fails before Xcode starts because the repo hard-requires `app/FastVLM/model/config.json`.
-  Evidence: `just test-unit` exits from the `check-model` recipe with “FastVLM model files are missing at app/FastVLM/model.”
+  Evidence: `just test-unit` exits from the `check-model` recipe with "FastVLM model files are missing at app/FastVLM/model."
 - Observation: the current App Store metadata is not submission-safe even before product questions; the subtitle is 34 characters and the keywords string is 105 characters.
   Evidence: local length check against `scripts/appstore/metadata.json`.
 - Observation: the app already has UI-test routing hooks, so simulator-driven screenshots can reuse launch arguments instead of adding a browser-based marketing mockup pipeline.
   Evidence: `app/SunclubUITests/SunclubUITests.swift` already uses `UITEST_ROUTE_VERIFY_CAMERA` and `UITEST_ROUTE_WEEKLY_SUMMARY`.
-- Observation: using the host’s shared `iPhone 17 Pro` simulator by name made `just test` flaky because CoreSimulator had multiple runtimes with the same device name and the shared device could be left in a Busy preflight state between runs.
+- Observation: using the host's shared `iPhone 17 Pro` simulator by name made `just test` flaky because CoreSimulator had multiple runtimes with the same device name and the shared device could be left in a Busy preflight state between runs.
   Evidence: repeated `xcodebuild test` failures with `FBSOpenApplicationErrorDomain Code=6 "Application failed preflight checks"` while `xcrun simctl list devices` showed duplicate `iPhone 17 Pro` devices across iOS 26.3 and 26.4 runtimes.
 - Observation: a repo-owned simulator plus an erase-before-test reset makes the top-level `just test` entry point reliable again.
   Evidence: `scripts/resolve_simulator.py` now resolves `Sunclub Test iPhone 17 Pro`, and `just test` completed successfully end-to-end after the test recipes switched to `-destination "id=<resolved udid>"`.
@@ -46,7 +46,7 @@ After this change, Sunclub will be shippable as a free, iPhone-only v1 without b
 
 ## Outcomes & Retrospective
 
-The structural release blockers from the initial state are now addressed. The model is delivered through ODR instead of the framework bundle, the app’s verification flow has explicit missing/downloading/ready/failed states, the free-only iPhone-only product surface matches the actual release scope, and the App Store helper layer is now a validated manifest plus simulator-driven screenshot capture rather than aspirational automation.
+The structural release blockers from the initial state are now addressed. The model is delivered through ODR instead of the framework bundle, the app's verification flow has explicit missing/downloading/ready/failed states, the free-only iPhone-only product surface matches the actual release scope, and the App Store helper layer is now a validated manifest plus simulator-driven screenshot capture rather than aspirational automation.
 
 The main remaining blockers are intentionally outside code: the manifest still marks support, marketing, privacy-policy, and review-contact data as draft-only, so strict submission validation is supposed to fail until those real values exist. That is the right failure mode for release readiness.
 
@@ -56,7 +56,7 @@ The iOS project lives in `app/`. `app/Project.swift` is the Tuist manifest that 
 
 Repo automation starts from the root `justfile`. Right now the `download-model`, `build`, `run`, and `test` commands are coupled to the local model folder. The App Store submission helpers live under `scripts/appstore/`, where `metadata.json` contains product copy and the shell scripts handle version bumps, metadata updates, screenshot capture, and archive/export operations.
 
-An “On-Demand Resource” is an App Store-hosted asset pack. The app ships with a tag name, requests that tag at runtime through `NSBundleResourceRequest`, and the system makes those tagged files available to the app without baking them into the final `.app` bundle. In this repository, that means the model files should move out of `app/FastVLM/model/` and into an app-target resource folder tagged as `fastvlm-model`.
+An "On-Demand Resource" is an App Store-hosted asset pack. The app ships with a tag name, requests that tag at runtime through `NSBundleResourceRequest`, and the system makes those tagged files available to the app without baking them into the final `.app` bundle. In this repository, that means the model files should move out of `app/FastVLM/model/` and into an app-target resource folder tagged as `fastvlm-model`.
 
 ## Plan of Work
 

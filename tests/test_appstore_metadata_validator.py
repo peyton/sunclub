@@ -3,7 +3,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR_PATH = REPO_ROOT / "scripts" / "appstore" / "validate_metadata.py"
 
@@ -106,9 +105,9 @@ class AppStoreMetadataValidatorTests(unittest.TestCase):
 
         self.assertTrue(errors)
         self.assertFalse(warnings)
-        self.assertIn("app.subtitle exceeds Apple’s 30-character limit.", errors)
+        self.assertIn("app.subtitle exceeds Apple's 30-character limit.", errors)
         self.assertIn(
-            "localizations.en-US.keywords exceeds Apple’s 100-byte limit.", errors
+            "localizations.en-US.keywords exceeds Apple's 100-byte limit.", errors
         )
         self.assertIn(
             "Metadata claims the app is fully offline even though camera verification depends on a one-time ODR download.",

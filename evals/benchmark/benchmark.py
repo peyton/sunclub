@@ -31,7 +31,7 @@ def run_mlx_inference(
     model_dir: str, image_path: str, prompt: str
 ) -> tuple[str, float]:
     """Run inference using MLX (same runtime as the iOS app)."""
-    from mlx_vlm import load, generate
+    from mlx_vlm import generate, load
     from mlx_vlm.utils import load_image
 
     # Lazy-load model (cached across calls via module-level state)

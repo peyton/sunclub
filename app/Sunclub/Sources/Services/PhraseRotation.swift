@@ -13,7 +13,7 @@ enum PhraseRotation {
             return (first, nextState)
         }
 
-        return (catalog.first ?? "You’re doing great.", encode([]))
+        return (catalog.first ?? "You're doing great.", encode([]))
     }
 
     static func decode(_ data: Data?) -> [String] {
