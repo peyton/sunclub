@@ -33,6 +33,7 @@ local project = new Group {
     // Black for consistent formatting (alternative to ruff_format)
     ["black"] = (Builtins.black) {
       depends = "ruff_format" // Run after ruff_format
+      profiles = List("ci")
     }
     // isort for import sorting
     ["isort"] = (Builtins.isort) {

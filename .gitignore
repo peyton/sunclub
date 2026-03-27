@@ -38,3 +38,6 @@ app/Generated/FastVLMODR/model/*
 !/bin
 /bin/*
 !/bin/mise
+
+# rumdl
+.rumdl_cache/

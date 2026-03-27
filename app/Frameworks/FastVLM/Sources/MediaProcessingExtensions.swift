@@ -117,8 +117,8 @@ enum MediaProcessingExtensions {
     static public func asPlanarMLXArray(_ image: CIImage, colorSpace: CGColorSpace? = nil)
         -> MLXArray {
         let size = image.extent.size
-        let w = Int(size.width.rounded())
-        let h = Int(size.height.rounded())
+        let width = Int(size.width.rounded())
+        let height = Int(size.height.rounded())
 
         // probably not strictly necessary, but this is what happens in
         // e.g. image_processing_siglip in transformers (float32)
@@ -126,48 +126,48 @@ enum MediaProcessingExtensions {
         let componentsPerPixel = 4
         let bytesPerComponent: Int = MemoryLayout<Float32>.size
         let bytesPerPixel = componentsPerPixel * bytesPerComponent
-        let bytesPerRow = w * bytesPerPixel
+        let bytesPerRow = width * bytesPerPixel
 
-        var data = Data(count: w * h * bytesPerPixel)
-        var planarData = Data(count: 3 * w * h * bytesPerComponent)
+        var data = Data(count: width * height * bytesPerPixel)
+        var planarData = Data(count: 3 * width * height * bytesPerComponent)
         data.withUnsafeMutableBytes { ptr in
             context.render(
                 image, toBitmap: ptr.baseAddress!, rowBytes: bytesPerRow, bounds: image.extent,
                 format: format, colorSpace: colorSpace)
             context.clearCaches()
 
-            let vh = vImagePixelCount(h)
-            let vw = vImagePixelCount(w)
+            let vheight = vImagePixelCount(height)
+            let vwidth = vImagePixelCount(width)
 
             // convert from RGBAf -> RGBf in place
-            let rgbBytesPerRow = w * 3 * bytesPerComponent
+            let rgbBytesPerRow = width * 3 * bytesPerComponent
             var rgbaSrc = vImage_Buffer(
-                data: ptr.baseAddress!, height: vh, width: vw, rowBytes: bytesPerRow)
+                data: ptr.baseAddress!, height: vheight, width: vwidth, rowBytes: bytesPerRow)
             var rgbDest = vImage_Buffer(
-                data: ptr.baseAddress!, height: vh, width: vw, rowBytes: rgbBytesPerRow)
+                data: ptr.baseAddress!, height: vheight, width: vwidth, rowBytes: rgbBytesPerRow)
 
             vImageConvert_RGBAFFFFtoRGBFFF(&rgbaSrc, &rgbDest, vImage_Flags(kvImageNoFlags))
 
             // and convert to planar data in a second buffer
             planarData.withUnsafeMutableBytes { planarPtr in
-                let planeBytesPerRow = w * bytesPerComponent
+                let planeBytesPerRow = width * bytesPerComponent
 
                 var rDest = vImage_Buffer(
-                    data: planarPtr.baseAddress!.advanced(by: 0 * planeBytesPerRow * h), height: vh,
-                    width: vw, rowBytes: planeBytesPerRow)
+                    data: planarPtr.baseAddress!.advanced(by: 0 * planeBytesPerRow * height), height: vheight,
+                    width: vwidth, rowBytes: planeBytesPerRow)
                 var gDest = vImage_Buffer(
-                    data: planarPtr.baseAddress!.advanced(by: 1 * planeBytesPerRow * h), height: vh,
-                    width: vw, rowBytes: planeBytesPerRow)
+                    data: planarPtr.baseAddress!.advanced(by: 1 * planeBytesPerRow * height), height: vheight,
+                    width: vwidth, rowBytes: planeBytesPerRow)
                 var bDest = vImage_Buffer(
-                    data: planarPtr.baseAddress!.advanced(by: 2 * planeBytesPerRow * h), height: vh,
-                    width: vw, rowBytes: planeBytesPerRow)
+                    data: planarPtr.baseAddress!.advanced(by: 2 * planeBytesPerRow * height), height: vheight,
+                    width: vwidth, rowBytes: planeBytesPerRow)
 
                 vImageConvert_RGBFFFtoPlanarF(
                     &rgbDest, &rDest, &gDest, &bDest, vImage_Flags(kvImageNoFlags))
             }
         }
 
-        return MLXArray(planarData, [1, 3, h, w], type: Float32.self)
+        return MLXArray(planarData, [1, 3, height, width], type: Float32.self)
     }
 
 }
