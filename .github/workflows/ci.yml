@@ -11,6 +11,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -67,6 +71,9 @@ jobs:
           key: tuist-${{ runner.os }}-${{ hashFiles('app/Tuist/Package.swift', 'app/Tuist/Package.resolved') }}
           restore-keys: |
             tuist-${{ runner.os }}-
+
+      - run: tuist auth login
+      - run: tuist setup cache
 
       - name: Generate Xcode project
         run: just generate

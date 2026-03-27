@@ -120,7 +120,7 @@ checksum = "sha256:c59a405c85f95b92ced677a500804e081596a4cae4a6a485af76065557d6e
 url = "https://github.com/realm/SwiftLint/releases/download/0.63.2/portable_swiftlint.zip"
 
 [[tools.tuist]]
-version = "4.162.1"
+version = "4.169.1"
 backend = "aqua:tuist/tuist"
 
 [[tools.uv]]
