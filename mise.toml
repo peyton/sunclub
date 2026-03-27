@@ -1,7 +1,7 @@
 [tools]
 cargo-binstall = "latest"
 just = "1.48.0"
-tuist = { version = "4.162.1", os = ["macos"] }
+tuist = { version = "4.169.1", os = ["macos"] }
 hk = "latest"
 python = "3.14"
 uv = "latest"
