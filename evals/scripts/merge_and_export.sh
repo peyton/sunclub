@@ -56,17 +56,17 @@ echo "=== Step 2: Exporting vision encoder to CoreML ==="
 
 cd "$FASTVLM_REPO"
 python model_export/export_vision_encoder.py \
-    --model-path "$MERGED_DIR" \
-    --output-dir "$MLX_DIR"
+	--model-path "$MERGED_DIR" \
+	--output-dir "$MLX_DIR"
 
 echo ""
 echo "=== Step 3: Exporting LLM to MLX format ==="
 
 # Uses the patched mlx-vlm (see FastVLM model_export/README.md)
 python -m mlx_vlm.convert \
-    --hf-path "$MERGED_DIR" \
-    --mlx-path "$MLX_DIR" \
-    --q-bits 16
+	--hf-path "$MERGED_DIR" \
+	--mlx-path "$MLX_DIR" \
+	--q-bits 16
 
 echo ""
 echo "=== Export complete ==="

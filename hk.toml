@@ -1,0 +1,178 @@
+# hk — git hook manager config
+# https://hk.jdx.dev/
+
+# ── pre-commit (auto-fix enabled) ─────────────────────────────
+
+[hooks.pre-commit]
+fix = true
+stash = "git"
+
+[hooks.pre-commit.steps.ruff]
+_type = "step"
+glob = "*.py"
+stage = ["*.py"]
+depends = []
+env = {}
+check = "ruff check {{ files }}"
+fix = "ruff check --fix {{ files }}"
+
+[hooks.pre-commit.steps.ruff-format]
+_type = "step"
+glob = "*.py"
+stage = ["*.py"]
+depends = ["ruff"]
+env = {}
+check = "ruff format --check {{ files }}"
+fix = "ruff format {{ files }}"
+
+[hooks.pre-commit.steps.shellcheck]
+_type = "step"
+batch = true
+glob = ["*.sh", "*.bash"]
+stage = ["*.sh", "*.bash"]
+depends = []
+env = {}
+check = "shellcheck {{ files }}"
+
+[hooks.pre-commit.steps.shfmt]
+_type = "step"
+batch = true
+glob = ["*.sh", "*.bash"]
+stage = ["*.sh", "*.bash"]
+depends = []
+env = {}
+check_list_files = """
+files=$(shfmt -l -s {{ files }})
+if [ -n "$files" ]; then
+  echo "$files"
+  exit 1
+fi
+"""
+fix = "shfmt -w -s {{ files }}"
+
+[hooks.pre-commit.steps.prettier]
+_type = "step"
+batch = true
+glob = ["*.md", "*.json", "*.yml", "*.yaml"]
+stage = ["*.md", "*.json", "*.yml", "*.yaml"]
+depends = []
+env = {}
+check = "prettier --check {{ files }}"
+fix = "prettier --write {{ files }}"
+
+[hooks.pre-commit.steps.swiftlint]
+_type = "step"
+glob = "*.swift"
+stage = ["*.swift"]
+depends = []
+env = {}
+check = "swiftlint lint {{ files }}"
+fix = "swiftlint --fix {{ files }}"
+
+# ── check (read-only, used in CI) ─────────────────────────────
+
+[hooks.check]
+
+[hooks.check.steps.ruff]
+_type = "step"
+glob = "*.py"
+depends = []
+env = {}
+check = "ruff check {{ files }}"
+
+[hooks.check.steps.ruff-format]
+_type = "step"
+glob = "*.py"
+depends = ["ruff"]
+env = {}
+check = "ruff format --check {{ files }}"
+
+[hooks.check.steps.shellcheck]
+_type = "step"
+batch = true
+glob = ["*.sh", "*.bash"]
+depends = []
+env = {}
+check = "shellcheck {{ files }}"
+
+[hooks.check.steps.shfmt]
+_type = "step"
+batch = true
+glob = ["*.sh", "*.bash"]
+depends = []
+env = {}
+check_list_files = """
+files=$(shfmt -l -s {{ files }})
+if [ -n "$files" ]; then
+  echo "$files"
+  exit 1
+fi
+"""
+
+[hooks.check.steps.prettier]
+_type = "step"
+batch = true
+glob = ["*.md", "*.json", "*.yml", "*.yaml"]
+depends = []
+env = {}
+check = "prettier --check {{ files }}"
+
+[hooks.check.steps.swiftlint]
+_type = "step"
+glob = "*.swift"
+depends = []
+env = {}
+check = "swiftlint lint {{ files }}"
+
+# ── fix (auto-fix all) ────────────────────────────────────────
+
+[hooks.fix]
+fix = true
+
+[hooks.fix.steps.ruff]
+_type = "step"
+glob = "*.py"
+depends = []
+env = {}
+check = "ruff check {{ files }}"
+fix = "ruff check --fix {{ files }}"
+
+[hooks.fix.steps.ruff-format]
+_type = "step"
+glob = "*.py"
+depends = ["ruff"]
+env = {}
+check = "ruff format --check {{ files }}"
+fix = "ruff format {{ files }}"
+
+[hooks.fix.steps.shfmt]
+_type = "step"
+batch = true
+glob = ["*.sh", "*.bash"]
+depends = []
+env = {}
+check_list_files = """
+files=$(shfmt -l -s {{ files }})
+if [ -n "$files" ]; then
+  echo "$files"
+  exit 1
+fi
+"""
+fix = "shfmt -w -s {{ files }}"
+
+[hooks.fix.steps.prettier]
+_type = "step"
+batch = true
+glob = ["*.md", "*.json", "*.yml", "*.yaml"]
+depends = []
+env = {}
+check = "prettier --check {{ files }}"
+fix = "prettier --write {{ files }}"
+
+[hooks.fix.steps.swiftlint]
+_type = "step"
+glob = "*.swift"
+depends = []
+env = {}
+check = "swiftlint lint {{ files }}"
+fix = "swiftlint --fix {{ files }}"

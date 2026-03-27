@@ -17,11 +17,14 @@ METADATA_FILE="$SCRIPT_DIR/metadata.json"
 VALIDATOR="$SCRIPT_DIR/validate_metadata.py"
 
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
-ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
-fail() { printf '\033[1;31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
+ok() { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
+fail() {
+	printf '\033[1;31m✗ %s\033[0m\n' "$1" >&2
+	exit 1
+}
 
 for var in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_FILE; do
-  [ -n "${!var:-}" ] || fail "Missing environment variable: $var"
+	[ -n "${!var:-}" ] || fail "Missing environment variable: $var"
 done
 
 [ -f "$ASC_KEY_FILE" ] || fail "Key file not found: $ASC_KEY_FILE"
@@ -38,34 +41,34 @@ ok "Metadata manifest is valid"
 step "Generating App Store Connect JWT"
 
 generate_jwt() {
-  local header payload signature now expires
-  now=$(date +%s)
-  expires=$((now + 1200))
+	local header payload signature now expires
+	now=$(date +%s)
+	expires=$((now + 1200))
 
-  header=$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' "$ASC_KEY_ID" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-  payload=$(printf '{"iss":"%s","exp":%d,"aud":"appstoreconnect-v1"}' "$ASC_ISSUER_ID" "$expires" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-  signature=$(printf '%s.%s' "$header" "$payload" | openssl dgst -sha256 -sign "$ASC_KEY_FILE" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+	header=$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' "$ASC_KEY_ID" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+	payload=$(printf '{"iss":"%s","exp":%d,"aud":"appstoreconnect-v1"}' "$ASC_ISSUER_ID" "$expires" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+	signature=$(printf '%s.%s' "$header" "$payload" | openssl dgst -sha256 -sign "$ASC_KEY_FILE" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
 
-  printf '%s.%s.%s' "$header" "$payload" "$signature"
+	printf '%s.%s.%s' "$header" "$payload" "$signature"
 }
 
 JWT="$(generate_jwt)"
 ASC_BASE="https://api.appstoreconnect.apple.com/v1"
 
 asc_get() {
-  curl -sf \
-    -H "Authorization: Bearer $JWT" \
-    -H "Content-Type: application/json" \
-    "$ASC_BASE$1"
+	curl -sf \
+		-H "Authorization: Bearer $JWT" \
+		-H "Content-Type: application/json" \
+		"$ASC_BASE$1"
 }
 
 asc_patch() {
-  curl -sf \
-    -X PATCH \
-    -H "Authorization: Bearer $JWT" \
-    -H "Content-Type: application/json" \
-    -d "$2" \
-    "$ASC_BASE$1"
+	curl -sf \
+		-X PATCH \
+		-H "Authorization: Bearer $JWT" \
+		-H "Content-Type: application/json" \
+		-d "$2" \
+		"$ASC_BASE$1"
 }
 
 APP_NAME="$(jq -r '.app.name' "$METADATA_FILE")"
@@ -87,16 +90,16 @@ ok "Found app: $APP_ID"
 
 step "Finding the editable App Store version"
 VERSION_ID="$(
-  asc_get "/apps/$APP_ID/appStoreVersions?filter[appStoreState]=PREPARE_FOR_SUBMISSION,READY_FOR_SALE" \
-    | jq -r '.data[0].id // empty'
+	asc_get "/apps/$APP_ID/appStoreVersions?filter[appStoreState]=PREPARE_FOR_SUBMISSION,READY_FOR_SALE" |
+		jq -r '.data[0].id // empty'
 )"
 [ -n "$VERSION_ID" ] || fail "No editable App Store version found. Create a version in App Store Connect first."
 ok "Found version: $VERSION_ID"
 
 step "Updating version localization fields"
 LOCALIZATION_ID="$(
-  asc_get "/appStoreVersions/$VERSION_ID/appStoreVersionLocalizations" \
-    | jq -r --arg locale "$PRIMARY_LOCALE" '.data[] | select(.attributes.locale == $locale) | .id'
+	asc_get "/appStoreVersions/$VERSION_ID/appStoreVersionLocalizations" |
+		jq -r --arg locale "$PRIMARY_LOCALE" '.data[] | select(.attributes.locale == $locale) | .id'
 )"
 [ -n "$LOCALIZATION_ID" ] || fail "No version localization exists for $PRIMARY_LOCALE."
 
@@ -105,7 +108,8 @@ ESCAPED_PROMO="$(printf '%s' "$PROMOTIONAL_TEXT" | jq -Rs '.')"
 ESCAPED_WHATS_NEW="$(printf '%s' "$WHATS_NEW" | jq -Rs '.')"
 ESCAPED_KEYWORDS="$(printf '%s' "$KEYWORDS" | jq -Rs '.')"
 
-VERSION_PAYLOAD="$(cat <<EOF
+VERSION_PAYLOAD="$(
+	cat <<EOF
 {
   "data": {
     "type": "appStoreVersionLocalizations",
@@ -131,12 +135,13 @@ APP_INFO_ID="$(asc_get "/apps/$APP_ID/appInfos" | jq -r '.data[0].id // empty')"
 [ -n "$APP_INFO_ID" ] || fail "No app info record found for app $APP_ID."
 
 APP_INFO_LOCALIZATION_ID="$(
-  asc_get "/appInfos/$APP_INFO_ID/appInfoLocalizations" \
-    | jq -r --arg locale "$PRIMARY_LOCALE" '.data[] | select(.attributes.locale == $locale) | .id'
+	asc_get "/appInfos/$APP_INFO_ID/appInfoLocalizations" |
+		jq -r --arg locale "$PRIMARY_LOCALE" '.data[] | select(.attributes.locale == $locale) | .id'
 )"
 [ -n "$APP_INFO_LOCALIZATION_ID" ] || fail "No app info localization exists for $PRIMARY_LOCALE."
 
-APP_INFO_PAYLOAD="$(cat <<EOF
+APP_INFO_PAYLOAD="$(
+	cat <<EOF
 {
   "data": {
     "type": "appInfoLocalizations",

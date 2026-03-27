@@ -27,7 +27,9 @@ def load_dataset(dataset_path: str) -> list[dict]:
         return json.load(f)
 
 
-def run_mlx_inference(model_dir: str, image_path: str, prompt: str) -> tuple[str, float]:
+def run_mlx_inference(
+    model_dir: str, image_path: str, prompt: str
+) -> tuple[str, float]:
     """Run inference using MLX (same runtime as the iOS app)."""
     from mlx_vlm import load, generate
     from mlx_vlm.utils import load_image
@@ -72,7 +74,9 @@ def compute_metrics(results: list[dict]) -> dict:
     accuracy = (tp + tn) / total if total > 0 else 0
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+    f1 = (
+        2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+    )
 
     latencies = [r["latency_ms"] for r in results if r["latency_ms"] is not None]
     avg_latency = sum(latencies) / len(latencies) if latencies else 0
@@ -96,9 +100,15 @@ def compute_metrics(results: list[dict]) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Sunscreen detection benchmark")
     parser.add_argument("--dataset", required=True, help="Path to eval.json")
-    parser.add_argument("--model-dir", required=True, help="Path to MLX model directory")
-    parser.add_argument("--verbose", action="store_true", help="Print per-image results")
-    parser.add_argument("--strict", action="store_true", help="Exit non-zero if F1 < 0.8")
+    parser.add_argument(
+        "--model-dir", required=True, help="Path to MLX model directory"
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Print per-image results"
+    )
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit non-zero if F1 < 0.8"
+    )
     parser.add_argument("--output", help="Write results JSON to this path")
     args = parser.parse_args()
 
@@ -149,19 +159,27 @@ def main():
 
         if args.verbose:
             mark = "OK" if correct else "FAIL"
-            print(f"  [{i+1}/{len(dataset)}] {mark}  expected={expected} got={predicted}  ({item['image']})")
+            print(
+                f"  [{i + 1}/{len(dataset)}] {mark}  expected={expected} got={predicted}  ({item['image']})"
+            )
 
     metrics = compute_metrics(results)
 
     print()
     print("=" * 50)
-    print(f"  Accuracy:  {metrics['accuracy']:.1%}  ({metrics['tp']+metrics['tn']}/{metrics['total']})")
+    print(
+        f"  Accuracy:  {metrics['accuracy']:.1%}  ({metrics['tp'] + metrics['tn']}/{metrics['total']})"
+    )
     print(f"  Precision: {metrics['precision']:.1%}")
     print(f"  Recall:    {metrics['recall']:.1%}")
     print(f"  F1 Score:  {metrics['f1']:.1%}")
-    print(f"  TP={metrics['tp']} TN={metrics['tn']} FP={metrics['fp']} FN={metrics['fn']}")
+    print(
+        f"  TP={metrics['tp']} TN={metrics['tn']} FP={metrics['fp']} FN={metrics['fn']}"
+    )
     if metrics["avg_latency_ms"]:
-        print(f"  Avg latency: {metrics['avg_latency_ms']:.0f}ms  P95: {metrics['p95_latency_ms']:.0f}ms")
+        print(
+            f"  Avg latency: {metrics['avg_latency_ms']:.0f}ms  P95: {metrics['p95_latency_ms']:.0f}ms"
+        )
     print("=" * 50)
 
     if args.output:

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Run hk check
+        run: hk check --all
+        env:
+          HK_SKIP_STEPS: swiftlint
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Run Python tests
+        run: uv run python -m unittest discover -s tests -p 'test_*.py'
+
+  build:
+    name: Build iOS
+    runs-on: macos-15
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Cache Tuist dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/Tuist/Dependencies/
+            .DerivedData/
+          key: tuist-${{ runner.os }}-${{ hashFiles('app/Tuist/Package.swift', 'app/Tuist/Package.resolved') }}
+          restore-keys: |
+            tuist-${{ runner.os }}-
+
+      - name: Generate Xcode project
+        run: cd app && tuist install && tuist generate --no-open
+
+      - name: Build
+        run: |
+          BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
+          BUILD_ROOT="$BUILD_ROOT" \
+            WORKSPACE="app/Sunclub.xcworkspace" \
+            SCHEME="Sunclub" \
+            CONFIGURATION="Release" \
+            DESTINATION="generic/platform=iOS" \
+            bash scripts/app-build.sh

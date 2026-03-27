@@ -27,20 +27,20 @@ OUTPUT_DIR="${4:-evals/checkpoints/sunscreen-lora-v1}"
 TRAIN_JSON="${DATASET_DIR}/train.json"
 IMAGES_DIR="${DATASET_DIR}/images"
 
-if [[ ! -f "$TRAIN_JSON" ]]; then
-    echo "ERROR: $TRAIN_JSON not found. Run collect_data.py first." >&2
-    exit 1
+if [[ ! -f $TRAIN_JSON ]]; then
+	echo "ERROR: $TRAIN_JSON not found. Run collect_data.py first." >&2
+	exit 1
 fi
 
-if [[ ! -d "$IMAGES_DIR" ]]; then
-    echo "ERROR: $IMAGES_DIR not found." >&2
-    exit 1
+if [[ ! -d $IMAGES_DIR ]]; then
+	echo "ERROR: $IMAGES_DIR not found." >&2
+	exit 1
 fi
 
 TRAIN_SCRIPT="${FASTVLM_REPO}/llava/train/train_qwen.py"
-if [[ ! -f "$TRAIN_SCRIPT" ]]; then
-    echo "ERROR: $TRAIN_SCRIPT not found. Is FASTVLM_REPO correct?" >&2
-    exit 1
+if [[ ! -f $TRAIN_SCRIPT ]]; then
+	echo "ERROR: $TRAIN_SCRIPT not found. Is FASTVLM_REPO correct?" >&2
+	exit 1
 fi
 
 NUM_IMAGES=$(find "$IMAGES_DIR" -name '*.jpg' | wc -l | tr -d ' ')
@@ -54,33 +54,33 @@ mkdir -p "$OUTPUT_DIR"
 cd "$FASTVLM_REPO"
 
 python llava/train/train_qwen.py \
-    --model_name_or_path "$CHECKPOINT" \
-    --data_path "$TRAIN_JSON" \
-    --image_folder "$IMAGES_DIR" \
-    --vision_tower "$(find "$CHECKPOINT" -name 'fastvithd*' -type d | head -1)" \
-    --mm_projector_type linear \
-    --mm_patch_merge_type flat \
-    --image_aspect_ratio square \
-    --lora_enable True \
-    --lora_r 64 \
-    --lora_alpha 16 \
-    --mm_vision_select_layer -2 \
-    --mm_vision_select_feature patch \
-    --bf16 True \
-    --output_dir "$OUTPUT_DIR" \
-    --num_train_epochs 5 \
-    --per_device_train_batch_size 4 \
-    --gradient_accumulation_steps 2 \
-    --learning_rate 2e-5 \
-    --weight_decay 0.0 \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type cosine \
-    --model_max_length 128 \
-    --logging_steps 1 \
-    --save_strategy epoch \
-    --save_total_limit 3 \
-    --dataloader_num_workers 4 \
-    --report_to none
+	--model_name_or_path "$CHECKPOINT" \
+	--data_path "$TRAIN_JSON" \
+	--image_folder "$IMAGES_DIR" \
+	--vision_tower "$(find "$CHECKPOINT" -name 'fastvithd*' -type d | head -1)" \
+	--mm_projector_type linear \
+	--mm_patch_merge_type flat \
+	--image_aspect_ratio square \
+	--lora_enable True \
+	--lora_r 64 \
+	--lora_alpha 16 \
+	--mm_vision_select_layer -2 \
+	--mm_vision_select_feature patch \
+	--bf16 True \
+	--output_dir "$OUTPUT_DIR" \
+	--num_train_epochs 5 \
+	--per_device_train_batch_size 4 \
+	--gradient_accumulation_steps 2 \
+	--learning_rate 2e-5 \
+	--weight_decay 0.0 \
+	--warmup_ratio 0.03 \
+	--lr_scheduler_type cosine \
+	--model_max_length 128 \
+	--logging_steps 1 \
+	--save_strategy epoch \
+	--save_total_limit 3 \
+	--dataloader_num_workers 4 \
+	--report_to none
 
 echo ""
 echo "Training complete. LoRA adapter saved to: $OUTPUT_DIR"

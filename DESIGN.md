@@ -2,34 +2,34 @@
 
 ## Palette
 
-| Token        | Hex       | Usage                        |
-|-------------|-----------|------------------------------|
-| Sun         | `#FAA402` | Primary brand, CTAs, icon    |
-| Sun Light   | `#FFDD80` | Highlights, glows            |
-| Cream       | `#FBF7EF` | Page background              |
-| Warm Glow   | `#FFEDBD` | Ambient gradient blobs       |
-| Ink         | `#1D1A16` | Headlines, primary text      |
-| Soft Ink    | `#837568` | Secondary text               |
-| Surface     | `rgba(255,255,255,0.82)` | Cards, overlays |
-| Dark        | `#1D1916` | Dark mode background         |
-| Dark Surface| `#2C2621` | Dark mode cards              |
-| Success     | `#26C55A` | Positive states              |
-| White       | `#FFFFFF` | Contrast text on dark fills  |
+| Token        | Hex                      | Usage                       |
+| ------------ | ------------------------ | --------------------------- |
+| Sun          | `#FAA402`                | Primary brand, CTAs, icon   |
+| Sun Light    | `#FFDD80`                | Highlights, glows           |
+| Cream        | `#FBF7EF`                | Page background             |
+| Warm Glow    | `#FFEDBD`                | Ambient gradient blobs      |
+| Ink          | `#1D1A16`                | Headlines, primary text     |
+| Soft Ink     | `#837568`                | Secondary text              |
+| Surface      | `rgba(255,255,255,0.82)` | Cards, overlays             |
+| Dark         | `#1D1916`                | Dark mode background        |
+| Dark Surface | `#2C2621`                | Dark mode cards             |
+| Success      | `#26C55A`                | Positive states             |
+| White        | `#FFFFFF`                | Contrast text on dark fills |
 
 ## Typography
 
 System font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
 
-| Scale   | Size   | Weight | Use                |
-|---------|--------|--------|--------------------|
-| Hero    | 60px   | 800    | Landing headlines  |
-| 3XL     | 44px   | 800    | Section titles     |
-| 2XL     | 32px   | 800    | Card titles        |
-| XL      | 24px   | 700    | Subtitles          |
-| LG      | 18px   | 600    | Nav, buttons       |
-| Base    | 16px   | 400    | Body text          |
-| SM      | 14px   | 500    | Captions           |
-| XS      | 12px   | 600    | Badges, labels     |
+| Scale | Size | Weight | Use               |
+| ----- | ---- | ------ | ----------------- |
+| Hero  | 60px | 800    | Landing headlines |
+| 3XL   | 44px | 800    | Section titles    |
+| 2XL   | 32px | 800    | Card titles       |
+| XL    | 24px | 700    | Subtitles         |
+| LG    | 18px | 600    | Nav, buttons      |
+| Base  | 16px | 400    | Body text         |
+| SM    | 14px | 500    | Captions          |
+| XS    | 12px | 600    | Badges, labels    |
 
 ## Spacing
 
@@ -37,13 +37,13 @@ System font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe 
 
 ## Radii
 
-| Token | Value  | Use               |
-|-------|--------|-------------------|
-| SM    | 10px   | Feature icons     |
-| MD    | 16px   | Buttons, inputs   |
-| LG    | 24px   | Cards             |
-| XL    | 32px   | Large panels      |
-| Full  | 9999px | Badges, dots      |
+| Token | Value  | Use             |
+| ----- | ------ | --------------- |
+| SM    | 10px   | Feature icons   |
+| MD    | 16px   | Buttons, inputs |
+| LG    | 24px   | Cards           |
+| XL    | 32px   | Large panels    |
+| Full  | 9999px | Badges, dots    |
 
 ## Icon / Logo
 
