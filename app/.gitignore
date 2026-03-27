@@ -1,4 +1,7 @@
 # Tuist
+# - uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-sb
 Derived/
 .build/
 Tuist/Dependencies/
@@ -7,6 +10,7 @@ Tuist/Cache/
 Tuist/Build/
 Tuist/Signing/
 Tuist/Versions/
+!Tuist/Package.resolved
 
 # Tuist workspace/project (generated)
 *.xcodeproj

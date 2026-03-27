@@ -22,7 +22,7 @@ let project = Project(
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: "Info.plist",
             buildableFolders: [
-                .folder("Sources")
+                .folder("Sources"),
                 .folder("Resources")
             ],
             entitlements: "Sunclub.entitlements",
