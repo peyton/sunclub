@@ -20,7 +20,12 @@ let project = Project(
             product: .app,
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
-            infoPlist: "Info.plist",
+            infoPlist: .extendingDefault(with: [
+              "UILaunchScreen": [
+                  "UIColorName": "",
+                  "UIImageName": "",
+              ],
+          ]),
             buildableFolders: [
                 .folder("Sources"),
                 .folder("Resources")
@@ -29,7 +34,7 @@ let project = Project(
             dependencies: [
                 .project(target: "FastVLM", path: "../Frameworks/FastVLM")
             ],
-                        settings: .settings(
+            settings: .settings(
                 base: [:]
                     .automaticCodeSigning(devTeam: signingTeam)
             )
@@ -39,7 +44,7 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "app.peyton.sunclub.StaticAppTests",
-            infoPlist: "Tests.plist",
+            infoPlist: .default,
             buildableFolders: [
                 .folder("Tests")
             ],
@@ -52,7 +57,7 @@ let project = Project(
             destinations: .iOS,
             product: .uiTests,
             bundleId: "app.peyton.sunclub.UITests",
-            infoPlist: "Tests.plist",
+            infoPlist: .default,
             buildableFolders: [
                 .folder("UITests")
             ],

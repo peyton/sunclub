@@ -18,7 +18,6 @@ let project = Project(
             product: .framework,
             bundleId: "app.peyton.sunclub-fastVLM",
             deploymentTargets: defaultDeploymentTarget,
-            infoPlist: "Info.plist",
             buildableFolders: [
                 .folder("Sources")
             ],
