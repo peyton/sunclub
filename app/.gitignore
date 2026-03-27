@@ -10,7 +10,6 @@ Tuist/Cache/
 Tuist/Build/
 Tuist/Signing/
 Tuist/Versions/
-!Tuist/Package.resolved
 
 # Tuist workspace/project (generated)
 *.xcodeproj
