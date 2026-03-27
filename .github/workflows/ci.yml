@@ -63,7 +63,7 @@ jobs:
           cache: true
 
       - name: Cache Tuist dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             app/Tuist/Dependencies/
@@ -73,7 +73,9 @@ jobs:
             tuist-${{ runner.os }}-
 
       - run: tuist auth login
+        working-directory: ./app
       - run: tuist setup cache
+        working-directory: ./app
 
       - name: Generate Xcode project
         run: just generate
