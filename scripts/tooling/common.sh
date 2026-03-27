@@ -32,7 +32,7 @@ setup_local_tooling_env() {
 }
 
 run_mise() {
-  "$REPO_ROOT/bin/mise" "$@"
+  mise "$@"
 }
 
 run_mise_exec() {

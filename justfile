@@ -2,6 +2,7 @@
 
 model_dir := "model"
 model_marker := "app/Frameworks/FastVLM/Sources/model/config.json"
+staged_model_dir := "app/Generated/FastVLMODR/model"
 
 [private]
 @default:
@@ -51,6 +52,22 @@ build:
 [group('app')]
 run:
     bash scripts/tooling/run.sh
+
+[group('maintenance')]
+clean-build:
+    rm -rf .build .DerivedData app/build app/Sunclub.xcworkspace
+
+[group('maintenance')]
+clean-generated: clean-build
+    rm -rf evals/datasets evals/export .state .venv .ruff_cache .rumdl_cache .pytest_cache .cache .mise .config
+    find . -type d -name '__pycache__' -prune -exec rm -rf {} +
+
+[group('maintenance')]
+clean-model: clean-generated
+    if [ -d "{{ staged_model_dir }}" ]; then find "{{ staged_model_dir }}" -mindepth 1 ! -name '.keep' -exec rm -rf {} +; fi
+
+[group('maintenance')]
+clean: clean-model
 
 test-unit:
     bash scripts/tooling/test_ios.sh --suite unit

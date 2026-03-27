@@ -67,6 +67,10 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. Manua
 - `just generate`
 - `just build`
 - `just run`
+- `just clean-build`
+- `just clean-generated`
+- `just clean-model`
+- `just clean`
 - `just lint`
 - `just fmt`
 - `just test-unit`
@@ -82,6 +86,8 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. Manua
 - `just ci`
 
 `just download-model` stages the FastVLM files into `app/Generated/FastVLMODR/model` so local debug builds can exercise the same asset layout used for On-Demand Resources. The main generate, build, run, and test flows no longer require that staging step.
+
+`just clean-build` removes build artifacts and the generated workspace, `just clean-generated` also removes generated eval outputs plus repo-local caches and environments such as `.venv`, `.mise`, `.cache`, `.config`, `.state`, and `__pycache__`, `just clean-model` also clears the staged FastVLM model, and `just clean` runs the full cleanup chain.
 
 ## Notes
 
