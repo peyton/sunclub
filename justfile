@@ -24,7 +24,7 @@ generate-icons: icons
 
 [group('app')]
 appstore-validate:
-    ./bin/mise exec -- uv run python -m scripts.appstore.validate_metadata --allow-draft
+    uv run python -m scripts.appstore.validate_metadata --allow-draft
 
 [group('app')]
 appstore-screenshots:
@@ -76,7 +76,7 @@ test-ui:
     bash scripts/tooling/test_ios.sh --suite ui
 
 test-python:
-    ./bin/mise exec -- uv run pytest tests -v
+    uv run pytest tests -v
 
 test: test-unit test-ui test-python
 
@@ -98,13 +98,13 @@ ci: ci-lint ci-python test-unit test-ui ci-build
 # --- Eval & Fine-Tuning ---
 
 collect-data output_dir="evals/datasets/sunscreen-v1":
-    ./bin/mise exec -- uv run --group eval python -m evals.scripts.collect_data --output-dir "{{ output_dir }}"
+    uv run --group eval python -m evals.scripts.collect_data --output-dir "{{ output_dir }}"
 
 collect-data-quick output_dir="evals/datasets/sunscreen-v1":
-    ./bin/mise exec -- uv run --group eval python -m evals.scripts.collect_data --output-dir "{{ output_dir }}" --max-queries 2
+    uv run --group eval python -m evals.scripts.collect_data --output-dir "{{ output_dir }}" --max-queries 2
 
 benchmark dataset="evals/datasets/sunscreen-v1/eval.json":
-    ./bin/mise exec -- uv run --group eval --with mlx-vlm python -m evals.benchmark.benchmark --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --verbose
+    uv run --group eval --with mlx-vlm python -m evals.benchmark.benchmark --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --verbose
 
 benchmark-strict dataset="evals/datasets/sunscreen-v1/eval.json":
-    ./bin/mise exec -- uv run --group eval --with mlx-vlm python -m evals.benchmark.benchmark --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --strict
+    uv run --group eval --with mlx-vlm python -m evals.benchmark.benchmark --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --strict
