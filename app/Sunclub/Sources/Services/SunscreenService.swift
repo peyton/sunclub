@@ -16,21 +16,21 @@ actor SunscreenService {
 
     let inferenceService: FastVLMService
     private init() {
-      inferenceService = FastVLMService()
+        inferenceService = FastVLMService()
     }
 
-  func detectSunscreen(in pixelBuffer: CVPixelBuffer, modelDirectory: URL) async throws -> SunscreenInference {
+    func detectSunscreen(in pixelBuffer: CVPixelBuffer, modelDirectory: URL) async throws -> SunscreenInference {
 
-    let raw = try await inferenceService.detect(
-      in: pixelBuffer,
-      modelDirectory: modelDirectory
-    )
-    let sanitized = SunscreenResponseParser.sanitized(raw.rawOutput)
-    return SunscreenInference(
-      answer: SunscreenResponseParser.parse(raw.rawOutput),
-      rawOutput: sanitized,
-      timeToFirstTokenMs: raw.timeToFirstTokenMs,
-      latencyMs: raw.latencyMs)
+        let raw = try await inferenceService.detect(
+            in: pixelBuffer,
+            modelDirectory: modelDirectory
+        )
+        let sanitized = SunscreenResponseParser.sanitized(raw.rawOutput)
+        return SunscreenInference(
+            answer: SunscreenResponseParser.parse(raw.rawOutput),
+            rawOutput: sanitized,
+            timeToFirstTokenMs: raw.timeToFirstTokenMs,
+            latencyMs: raw.latencyMs)
 
-  }
+    }
 }

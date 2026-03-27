@@ -1,0 +1,1 @@
+"""App Store automation entrypoints."""

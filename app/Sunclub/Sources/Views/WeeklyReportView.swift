@@ -8,7 +8,7 @@ struct WeeklyReportView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 28) {
-              SunLightHeader(title: "Weekly Summary", showsBack: true, onBack: {
+                SunLightHeader(title: "Weekly Summary", showsBack: true, onBack: {
                     router.goHome()
                 })
 

@@ -53,25 +53,32 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit. Manua
 
 ## Build and Run
 
-1. From the repo root, run `mise install`.
+1. From the repo root, run `just bootstrap`.
 2. Run `just generate`.
-3. Run `just run` to build the debug app, install it on the default simulator, and launch it.
+3. Run `just run` to build the debug app, install it on the dedicated run simulator, and launch it.
 4. Bottle scan is disabled by default. To test camera verification locally, add the `FEATURE_ENABLE_BOTTLE_SCAN` launch argument and run `just download-model` before launching.
-5. If you prefer Xcode, open `app/Sunclub Workspace.xcworkspace` after generating the project.
+5. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.
 6. Build and run the `Sunclub` scheme.
 
 ## Just Targets
 
+- `just bootstrap`
 - `just icons`
 - `just generate`
 - `just build`
 - `just run`
+- `just lint`
+- `just fmt`
 - `just test-unit`
 - `just test-ui`
 - `just test-python`
 - `just test`
+- `just ci-lint`
+- `just ci-python`
+- `just ci-build`
 - `just appstore-validate`
 - `just appstore-screenshots`
+- `just appstore-archive`
 - `just ci`
 
 `just download-model` stages the FastVLM files into `app/Generated/FastVLMODR/model` so local debug builds can exercise the same asset layout used for On-Demand Resources. The main generate, build, run, and test flows no longer require that staging step.

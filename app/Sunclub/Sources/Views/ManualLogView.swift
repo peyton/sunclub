@@ -11,7 +11,7 @@ struct ManualLogView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 26) {
-              SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
+                SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
                     router.goHome()
                 })
 

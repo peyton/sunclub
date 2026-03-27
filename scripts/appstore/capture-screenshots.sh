@@ -3,4 +3,5 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec python3 "$SCRIPT_DIR/capture_screenshots.py" "$@"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+exec "$ROOT_DIR/bin/mise" exec -- uv run python -m scripts.appstore.capture_screenshots "$@"

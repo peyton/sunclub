@@ -8,10 +8,10 @@ let buildNumber = "1"
 let project = Project(
     name: "Sunclub",
     settings: .settings(
-    base: [
-    "MARKETING_VERSION": .string(marketingVersion),
-    "CURRENT_PROJECT_VERSION": .string(buildNumber)
-    ]
+        base: [
+            "MARKETING_VERSION": .string(marketingVersion),
+            "CURRENT_PROJECT_VERSION": .string(buildNumber)
+        ]
     ),
     targets: [
         .target(
@@ -21,11 +21,11 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: .extendingDefault(with: [
-              "UILaunchScreen": [
-                  "UIColorName": "",
-                  "UIImageName": "",
-              ],
-          ]),
+                "UILaunchScreen": [
+                    "UIColorName": "",
+                    "UIImageName": ""
+                ]
+            ]),
             buildableFolders: [
                 .folder("Sources"),
                 .folder("Resources")

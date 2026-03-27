@@ -203,8 +203,8 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
         loadTask?.cancel()
         loadTask = Task { [weak self] in
             do {
-              _ = try await SunscreenService.shared
-                .inferenceService.loadModelIfNeeded(modelDirectory: modelDirectory)
+                _ = try await SunscreenService.shared
+                    .inferenceService.loadModelIfNeeded(modelDirectory: modelDirectory)
                 self?.analysisQueue.async { [weak self] in
                     guard let self else { return }
                     modelIsLoading = false
@@ -223,7 +223,7 @@ final class SunscreenDetectionCoordinator: NSObject, ObservableObject, AVCapture
         }
     }
 
-  private func handleInference(_ inference: SunscreenInference) {
+    private func handleInference(_ inference: SunscreenInference) {
         processingFrame = false
         parsedAnswer = inference.answer
         rawOutput = inference.rawOutput

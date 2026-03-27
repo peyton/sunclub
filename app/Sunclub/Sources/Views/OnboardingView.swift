@@ -54,7 +54,7 @@ struct EnableNotificationsView: View {
                     .fill(AppPalette.warmGlow)
                     .frame(width: 120, height: 120)
                     .overlay {
-                      Image(systemName: "bell.badge.fill")
+                        Image(systemName: "bell.badge.fill")
                             .font(.system(size: 48))
                     }
                     .frame(maxWidth: .infinity)

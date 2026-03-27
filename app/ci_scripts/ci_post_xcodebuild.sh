@@ -1,5 +1,6 @@
 #!/bin/sh
 
-set -e
+set -eu
 
-./bin/mise exec -- tuist inspect build --derived-data-path "$CI_DERIVED_DATA_PATH" -p ../
+ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
+exec "$ROOT_DIR/scripts/tooling/xcodecloud_post_xcodebuild.sh"

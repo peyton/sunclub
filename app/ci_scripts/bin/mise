@@ -2,8 +2,21 @@
 set -eu
 
 __mise_bootstrap() {
-    local project_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && cd .. && pwd )
+    local script_dir project_dir
+    script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+    project_dir="$script_dir"
+    while [ "$project_dir" != "/" ] && [ ! -f "$project_dir/mise.toml" ]; do
+        project_dir="$(dirname "$project_dir")"
+    done
+    if [ ! -f "$project_dir/mise.toml" ]; then
+        echo "Unable to find repo root containing mise.toml" >&2
+        exit 1
+    fi
     local localized_dir="$project_dir/.mise"
+    local cache_dir="$project_dir/.cache"
+    local config_dir="$project_dir/.config"
+    local state_dir="$project_dir/.state"
+    mkdir -p "$localized_dir/cache" "$localized_dir/state" "$cache_dir/npm" "$cache_dir/uv" "$config_dir/mise" "$state_dir"
     export MISE_DATA_DIR="$localized_dir"
     export MISE_CONFIG_DIR="$localized_dir"
     export MISE_CACHE_DIR="$localized_dir/cache"
@@ -11,6 +24,11 @@ __mise_bootstrap() {
     export MISE_INSTALL_PATH="$localized_dir/mise-2026.3.12"
     export MISE_TRUSTED_CONFIG_PATHS="$project_dir${MISE_TRUSTED_CONFIG_PATHS:+:$MISE_TRUSTED_CONFIG_PATHS}"
     export MISE_IGNORED_CONFIG_PATHS="$HOME/.config/mise${MISE_IGNORED_CONFIG_PATHS:+:$MISE_IGNORED_CONFIG_PATHS}"
+    export npm_config_cache="$cache_dir/npm"
+    export UV_CACHE_DIR="$cache_dir/uv"
+    export UV_PROJECT_ENVIRONMENT="$project_dir/.venv"
+    export CARGO_HOME="$cache_dir/cargo"
+    export RUSTUP_HOME="$cache_dir/rustup"
     install() {
         local initial_working_dir="$PWD"
         #!/bin/sh

@@ -8,12 +8,12 @@ import sys
 import time
 from pathlib import Path
 
+from scripts.tooling.config import CONFIG
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METADATA_PATH = REPO_ROOT / "scripts/appstore/metadata.json"
-VALIDATOR_PATH = REPO_ROOT / "scripts/appstore/validate_metadata.py"
-SIMULATOR_RESOLVER = REPO_ROOT / "scripts/resolve_simulator.py"
-DERIVED_DATA = REPO_ROOT / ".DerivedData/screenshots"
-APP_PATH = DERIVED_DATA / "Build/Products/Debug-iphonesimulator/Sunclub.app"
+DERIVED_DATA = REPO_ROOT / CONFIG.screenshot_derived_data
+APP_PATH = DERIVED_DATA / CONFIG.run_app_path
 
 
 def run(
@@ -39,15 +39,17 @@ def run_logged(
 
 
 def main() -> int:
-    if not VALIDATOR_PATH.is_file():
-        print(f"Missing validator: {VALIDATOR_PATH}", file=sys.stderr)
-        return 2
-
     with METADATA_PATH.open() as handle:
         manifest = json.load(handle)
 
     subprocess.run(
-        [sys.executable, str(VALIDATOR_PATH), "--allow-draft", str(METADATA_PATH)],
+        [
+            sys.executable,
+            "-m",
+            "scripts.appstore.validate_metadata",
+            "--allow-draft",
+            str(METADATA_PATH),
+        ],
         check=True,
     )
 
@@ -55,41 +57,35 @@ def main() -> int:
     device = screenshots["capture_device"]
     output_dir = REPO_ROOT / screenshots["output_directory"]
     screens = screenshots["screens"]
-    bundle_id = manifest["app"]["bundle_id"]
+    bundle_id = CONFIG.app_identifier
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     simulator_udid = run(
         [
             sys.executable,
-            str(SIMULATOR_RESOLVER),
+            "-m",
+            "scripts.resolve_simulator",
             "--name",
-            f"Sunclub Screenshots {device}",
+            f"{CONFIG.screenshot_simulator_prefix} {device}",
             "--device-type-name",
             device,
         ]
     ).stdout.strip()
 
-    run_logged(["tuist", "install"], cwd=REPO_ROOT / "app")
-    run_logged(["tuist", "generate", "--no-open"], cwd=REPO_ROOT / "app")
-
-    build_command = [
-        "xcodebuild",
-        "build",
-        "-workspace",
-        "app/Sunclub.xcworkspace",
-        "-scheme",
-        "Sunclub",
-        "-configuration",
-        "Debug",
-        "-sdk",
-        "iphonesimulator",
-        "-destination",
-        f"id={simulator_udid}",
-        "-derivedDataPath",
-        str(DERIVED_DATA),
-    ]
-    run_logged(build_command, cwd=REPO_ROOT)
+    run_logged(
+        [
+            "bash",
+            "scripts/tooling/build.sh",
+            "--configuration",
+            "Debug",
+            "--destination",
+            f"id={simulator_udid}",
+            "--derived-data-path",
+            str(DERIVED_DATA),
+        ],
+        cwd=REPO_ROOT,
+    )
 
     if not APP_PATH.is_dir():
         print(f"Built app not found: {APP_PATH}", file=sys.stderr)

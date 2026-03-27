@@ -11,6 +11,6 @@ let tuist = Tuist(
             includeGenerateScheme: false,
             enableCaching: true,
             registryEnabled: true,
-        )
+            )
     )
-  )
+)

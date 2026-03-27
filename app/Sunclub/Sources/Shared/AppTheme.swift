@@ -96,7 +96,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
 
         }
         .background {
-          SunBackdrop()
+            SunBackdrop()
         }
     }
 }
@@ -143,7 +143,7 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
             }
         }
         .background {
-          SunDarkBackdrop()
+            SunDarkBackdrop()
         }
     }
 }
