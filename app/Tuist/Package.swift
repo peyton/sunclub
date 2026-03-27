@@ -7,6 +7,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/ml-explore/mlx-swift.git", exact: "0.30.6"),
         .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "2.30.6"),
-        .package(url: "https://github.com/huggingface/swift-transformers", exact: "1.1.9"),
+        .package(url: "https://github.com/huggingface/swift-transformers", exact: "1.1.9")
     ]
 )

@@ -37,7 +37,7 @@ public enum FastVLM {
         [
             root.appendingPathComponent("FastVLM/model/config.json"),
             root.appendingPathComponent("model/config.json"),
-            root.appendingPathComponent("config.json"),
+            root.appendingPathComponent("config.json")
         ]
     }
 }

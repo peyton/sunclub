@@ -35,7 +35,7 @@ final class AppState {
     convenience init(context: ModelContext) {
         self.init(context: context, features: .current, notificationManager: NotificationManager.shared)
     }
-  
+
     init(context: ModelContext, features: AppFeatures, notificationManager: NotificationScheduling) {
         modelContext = context
         self.features = features

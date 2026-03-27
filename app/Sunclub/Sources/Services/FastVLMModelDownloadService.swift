@@ -169,4 +169,3 @@ final class FastVLMModelDownloadService: FastVLMModelAssetProviding {
         #endif
     }
 }
-

@@ -4,7 +4,7 @@
 
 ### Flow 1: Onboarding (First Launch)
 
-```
+```text
 WelcomeView → EnableNotificationsView → HomeView
 ```
 
@@ -14,7 +14,7 @@ WelcomeView → EnableNotificationsView → HomeView
 
 ### Flow 2: Daily Verification
 
-```
+```text
 HomeView → [Verify Now] → LiveVerifyView → VerificationSuccessView → HomeView
 ```
 
@@ -25,7 +25,7 @@ HomeView → [Verify Now] → LiveVerifyView → VerificationSuccessView → Hom
 
 ### Flow 3: Weekly Summary
 
-```
+```text
 HomeView → [Tap Streak Card] → WeeklyReportView → HomeView
 ```
 
@@ -35,7 +35,7 @@ HomeView → [Tap Streak Card] → WeeklyReportView → HomeView
 
 ### Flow 4: Settings
 
-```
+```text
 HomeView → [Gear Icon] → SettingsView → HomeView
 ```
 
@@ -44,7 +44,7 @@ HomeView → [Gear Icon] → SettingsView → HomeView
 
 ### Flow 5: Notification Deep Links
 
-```
+```text
 Daily notification → LiveVerifyView
 Weekly notification → WeeklyReportView
 ```

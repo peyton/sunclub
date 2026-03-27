@@ -4,7 +4,7 @@ iOS sunscreen tracking app with AI validation.
 
 ## Build & Run
 
-```
+```text
 just download-model
 just generate
 open app/Sunclub Workspace.xcworkspace
@@ -27,7 +27,7 @@ Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or 
 
 ## Project Layout
 
-```
+```text
 app/          iOS Apps, Swift source, iOS tests, UI tests
 evals/        Benchmark suite and eval harness
 scripts/      All project-level scripts.

@@ -5,7 +5,6 @@
 //  Created by Peyton Randolph on 3/17/26.
 //
 
-
 import Accelerate
 import CoreImage
 import MLX
@@ -116,8 +115,7 @@ enum MediaProcessingExtensions {
     /// dedicated functions than transforming into contiguous memory
     /// on readout.
     static public func asPlanarMLXArray(_ image: CIImage, colorSpace: CGColorSpace? = nil)
-        -> MLXArray
-    {
+        -> MLXArray {
         let size = image.extent.size
         let w = Int(size.width.rounded())
         let h = Int(size.height.rounded())

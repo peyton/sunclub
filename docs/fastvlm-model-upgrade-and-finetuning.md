@@ -17,7 +17,7 @@ Research into two questions: (1) upgrading the base LLM from Qwen2.5 to a newer 
 
 ## Architecture Overview
 
-```
+```text
 Camera Frame (CVPixelBuffer)
     │
     ▼

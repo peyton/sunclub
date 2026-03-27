@@ -12,7 +12,7 @@ struct HistoryView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
-              SunLightHeader(title: "History", showsBack: true, onBack:  {
+              SunLightHeader(title: "History", showsBack: true, onBack: {
                 router.goHome()
             })
 

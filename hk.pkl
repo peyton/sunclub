@@ -1,0 +1,92 @@
+/// Example configuration for a monorepo with multiple languages
+/// * Frontend: JavaScript/TypeScript with React
+/// * Backend: Rust
+/// * Infrastructure: Terraform
+/// * Uses groups to organize steps by component
+amends "package://github.com/jdx/hk/releases/download/v1.39.0/hk@1.39.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.39.0/hk@1.39.0#/Builtins.pkl"
+
+local app = new Group {
+  steps {
+    ["prettier"] = (Builtins.prettier) {
+      dir = "app"
+      batch = true
+    }
+    ["swiftlint"] = (Builtins.swiftlint) {
+      batch = true
+      dir = "app"
+    }
+  }
+}
+
+local project = new Group {
+  steps {
+    // Ruff is a fast Python linter
+    ["ruff"] = (Builtins.ruff) {
+      // Run ruff first as it's the fastest
+      batch = true
+    }
+    // Ruff formatter for code formatting
+    ["ruff_format"] = (Builtins.ruff_format) {
+      depends = "ruff" // Run after ruff
+    }
+    // Black for consistent formatting (alternative to ruff_format)
+    ["black"] = (Builtins.black) {
+      depends = "ruff_format" // Run after ruff_format
+    }
+    // isort for import sorting
+    ["isort"] = (Builtins.isort) {
+      depends = "black" // Run after black
+    }
+    // Type checking with mypy
+    ["mypy"] = (Builtins.mypy) {
+      // Type checking doesn't modify files
+      stomp = true
+      // Only run with "types" profile
+      profiles = List("types", "full")
+    }
+    // Additional validation with flake8
+    ["flake8"] = (Builtins.flake8) {
+      // Only run in CI
+      profiles = List("ci")
+    }
+  }
+}
+
+// Shared linters (apply to all components)
+local shared = new Mapping<String, Step> {
+  ["markdown"] = (Builtins.rumdl) {}
+  ["yaml"] = (Builtins.ryl) {}
+  ["pkl"] = Builtins.pkl
+  ["pkl-format"] = (Builtins.pkl_format) {
+    depends = "pkl"
+  }
+  ["shellcheck"] = Builtins.shellcheck
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      ...shared
+      ["app"] = app
+      ["project"] = project
+    }
+  }
+  ["check"] {
+    steps {
+      ...shared
+      ["app"] = app
+      ["project"] = project
+    }
+  }
+  ["fix"] {
+    fix = true
+    steps {
+      ...shared
+      ["app"] = app
+      ["project"] = project
+    }
+  }
+}

@@ -50,7 +50,6 @@ private final class FirstTokenTracker: @unchecked Sendable {
     }
 }
 
-
 public actor FastVLMService {
     private enum LoadState {
         case idle

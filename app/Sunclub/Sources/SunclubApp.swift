@@ -72,7 +72,7 @@ struct SunclubApp: App {
         let arguments = ProcessInfo.processInfo.arguments
         let requestedRoute = requestedUITestRoute(from: arguments)
 
-        if (arguments.contains("UITEST_COMPLETE_ONBOARDING") || requestedRoute.map({ $0 != .welcome }) == true),
+        if arguments.contains("UITEST_COMPLETE_ONBOARDING") || requestedRoute.map({ $0 != .welcome }) == true,
            !appState.settings.hasCompletedOnboarding {
             appState.completeOnboarding()
         }
@@ -101,7 +101,7 @@ struct SunclubApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = NotificationManager.shared
         NotificationManager.shared.registerBackgroundTaskIfNeeded()
         return true

@@ -11,7 +11,6 @@ struct SunscreenInference: Sendable {
     let latencyMs: Int
 }
 
-
 actor SunscreenService {
     static let shared = SunscreenService()
 
@@ -20,9 +19,8 @@ actor SunscreenService {
       inferenceService = FastVLMService()
     }
 
-    
   func detectSunscreen(in pixelBuffer: CVPixelBuffer, modelDirectory: URL) async throws -> SunscreenInference {
-    
+
     let raw = try await inferenceService.detect(
       in: pixelBuffer,
       modelDirectory: modelDirectory
@@ -33,6 +31,6 @@ actor SunscreenService {
       rawOutput: sanitized,
       timeToFirstTokenMs: raw.timeToFirstTokenMs,
       latencyMs: raw.latencyMs)
-    
+
   }
 }

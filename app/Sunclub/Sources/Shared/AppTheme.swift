@@ -93,7 +93,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .padding(.bottom, 24)
                 }
             }
-            
+
         }
         .background {
           SunBackdrop()
@@ -289,7 +289,7 @@ struct SunLogoMark: View {
                     LinearGradient(
                         colors: [
                             Color(red: 0.984, green: 0.969, blue: 0.937),
-                            Color(red: 1.000, green: 0.929, blue: 0.741),
+                            Color(red: 1.000, green: 0.929, blue: 0.741)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing

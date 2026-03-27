@@ -29,7 +29,7 @@ let project = Project(
             ],
             entitlements: "Sunclub.entitlements",
             dependencies: [
-                .project(target: "FastVLM", path: "../Frameworks/FastVLM"),
+                .project(target: "FastVLM", path: "../Frameworks/FastVLM")
             ],
                         settings: .settings(
                 base: [:]
@@ -46,7 +46,7 @@ let project = Project(
                 .folder("Tests")
             ],
             dependencies: [
-                .target(name: "Sunclub"),
+                .target(name: "Sunclub")
             ]
         ),
         .target(
@@ -59,8 +59,8 @@ let project = Project(
                 .folder("UITests")
             ],
             dependencies: [
-                .target(name: "Sunclub"),
+                .target(name: "Sunclub")
             ]
-        ),
+        )
     ]
 )

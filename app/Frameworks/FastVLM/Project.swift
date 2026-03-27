@@ -6,7 +6,7 @@ let fastVLMDependencies: [TargetDependency] = [
     .external(name: "MLX"),
     .external(name: "MLXLMCommon"),
     .external(name: "MLXVLM"),
-    .external(name: "Transformers"),
+    .external(name: "Transformers")
 ]
 
 let project = Project(
@@ -36,8 +36,8 @@ let project = Project(
                 .folder("Tests")
             ],
             dependencies: [
-                .target(name: "FastVLM"),
+                .target(name: "FastVLM")
             ]
-        ),
+        )
     ]
 )
