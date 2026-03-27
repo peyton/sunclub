@@ -26,6 +26,8 @@ tuist xcodebuild \
 	-resultBundlePath "$RESULT_BUNDLE" \
 	CODE_SIGNING_ALLOWED=NO \
 	CODE_SIGNING_REQUIRED=NO \
-	clean build
+	build
+
+tuist share Sunclub --configuration $CONFIGURATION --platforms iOS
 
 echo "Result bundle: $RESULT_BUNDLE"

@@ -2,6 +2,9 @@ import ProjectDescription
 
 let tuist = Tuist(
     fullHandle: "peyton/sunclub",
+    cache: .cache(
+        upload: Environment.isCI
+    ),
     project: .tuist(
         generationOptions: .options(
             optionalAuthentication: true,
