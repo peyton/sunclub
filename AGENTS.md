@@ -5,25 +5,26 @@ iOS sunscreen tracking app with AI validation.
 ## Build & Run
 
 ```text
+just bootstrap
 just download-model
 just generate
-open app/Sunclub Workspace.xcworkspace
+open app/Sunclub.xcworkspace
 ```
 
 Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.
 
 ## Test Commands
 
-| Surface           | Command                                         |
-| ----------------- | ----------------------------------------------- |
-| Unit tests        | `just test-unit`                                |
-| UI tests          | `just test-ui`                                  |
-| All tests         | `just test`                                     |
-| CI validation     | `just ci`                                       |
-| Lint              | `just lint`                                     |
-| Format            | `just fmt`                                      |
-| Python eval tests | `python -m pytest tests/ -v`                    |
-| Benchmark         | `cd evals/benchmark && ./benchmark.sh --strict` |
+| Surface           | Command                 |
+| ----------------- | ----------------------- |
+| Unit tests        | `just test-unit`        |
+| UI tests          | `just test-ui`          |
+| All tests         | `just test`             |
+| CI validation     | `just ci`               |
+| Lint              | `just lint`             |
+| Format            | `just fmt`              |
+| Python eval tests | `just test-python`      |
+| Benchmark         | `just benchmark-strict` |
 
 ## Project Layout
 
@@ -64,7 +65,7 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 - 4-space indent
 - Custom errors: enum conforming to `LocalizedError`
 - UI tests use `UITEST_MODE` launch arg to bypass camera/notifications
-- Linting/formatting managed by [hk](https://hk.jdx.dev/) — see `hk.toml`
+- Linting/formatting managed by [hk](https://hk.jdx.dev/) — see `hk.pkl`
 - Python: `ruff` for linting and formatting
 - Shell: `shellcheck` + `shfmt`
 - Markdown/JSON/YAML: `prettier`

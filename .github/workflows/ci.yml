@@ -27,10 +27,8 @@ jobs:
         with:
           cache: true
 
-      - name: Run hk check
-        run: hk check --all
-        env:
-          HK_SKIP_STEPS: swiftlint
+      - name: Run lint shard
+        run: mise exec -- just ci-lint
 
   test-python:
     name: Python Tests
@@ -38,14 +36,13 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v6
-
       - name: Install tools
         uses: jdx/mise-action@v4
         with:
           cache: true
 
-      - name: Run Python tests
-        run: uv run python -m unittest discover -s tests -p 'test_*.py'
+      - name: Run Python shard
+        run: mise exec -- just ci-python
 
   build:
     name: Build iOS
@@ -56,36 +53,9 @@ jobs:
         with:
           xcode-version: latest
       - uses: actions/checkout@v6
-
       - name: Install tools
         uses: jdx/mise-action@v4
         with:
           cache: true
-
-      - name: Cache Tuist dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            app/Tuist/Dependencies/
-            .DerivedData/
-          key: tuist-${{ runner.os }}-${{ hashFiles('app/Tuist/Package.swift', 'app/Tuist/Package.resolved') }}
-          restore-keys: |
-            tuist-${{ runner.os }}-
-
-      - run: tuist auth login
-        working-directory: ./app
-      - run: tuist setup cache
-        working-directory: ./app
-
-      - name: Generate Xcode project
-        run: just generate
-
-      - name: Build
-        run: |
-          BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
-          BUILD_ROOT="$BUILD_ROOT" \
-            WORKSPACE="app/Sunclub.xcworkspace" \
-            SCHEME="Sunclub" \
-            CONFIGURATION="Release" \
-            DESTINATION="generic/platform=iOS" \
-            bash scripts/app-build.sh
+      - name: Run iOS build shard
+        run: mise exec -- just ci-build

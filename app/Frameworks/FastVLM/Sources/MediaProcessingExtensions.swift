@@ -115,7 +115,7 @@ enum MediaProcessingExtensions {
     /// dedicated functions than transforming into contiguous memory
     /// on readout.
     static public func asPlanarMLXArray(_ image: CIImage, colorSpace: CGColorSpace? = nil)
-        -> MLXArray {
+    -> MLXArray {
         let size = image.extent.size
         let width = Int(size.width.rounded())
         let height = Int(size.height.rounded())

@@ -1,5 +1,4 @@
 [tools]
-cargo-binstall = "latest"
 just = "1.48.0"
 tuist = { version = "4.169.1", os = ["macos"] }
 hk = "latest"
@@ -8,18 +7,12 @@ uv = "latest"
 node = "24"
 "npm:prettier" = "latest"
 ruff = "latest"
-"cargo:ryl" = "latest"
 shellcheck = "latest"
-rust = "stable"
 rumdl = "latest"
 shfmt = "latest"
 swiftlint = "0.63.2"
 pkl = "latest"
-"pipx:isort" = "latest"
 
 [settings]
 experimental = true
 lockfile = true
-
-[settings.cargo]
-binstall = true

@@ -1,41 +1,38 @@
 #!/usr/bin/env -S just --working-directory . --justfile
 
-app_workspace := "app/Sunclub.xcworkspace"
-app_scheme := "Sunclub"
-device_name := "iPhone 17 Pro"
-test_simulator_name := "Sunclub Test iPhone 17 Pro"
 model_dir := "model"
 model_marker := "app/Frameworks/FastVLM/Sources/model/config.json"
-build_derived_data := ".DerivedData/build"
-run_derived_data := ".DerivedData/run"
-test_derived_data := ".DerivedData/test"
-result_derived_data := ".DerivedData/result"
-run_app_path := "Build/Products/Debug-iphonesimulator/Sunclub.app"
-app_identifier := "app.peyton.sunclub"
-test_xcargs := "-parallel-testing-enabled NO -maximum-parallel-testing-workers 1"
+staged_model_dir := "app/Generated/FastVLMODR/model"
 
 [private]
 @default:
     just --list
 
 bootstrap:
-    ./bin/mise install
+    bash scripts/tooling/bootstrap.sh
 
 [group('model')]
 download-model:
     bash scripts/get_pretrained_mlx_model.sh --model 0.5b --dest "{{ model_dir }}"
 
 [group('app')]
-generate-icons:
+icons:
     bash scripts/generate-app-icons.sh
 
 [group('app')]
+generate-icons: icons
+
+[group('app')]
 appstore-validate:
-    python3 scripts/appstore/validate_metadata.py --allow-draft
+    ./bin/mise exec -- uv run python -m scripts.appstore.validate_metadata --allow-draft
 
 [group('app')]
 appstore-screenshots:
     bash scripts/appstore/capture-screenshots.sh
+
+[group('app')]
+appstore-archive:
+    bash scripts/appstore/archive-and-upload.sh
 
 [group('model')]
 check-model:
@@ -46,100 +43,68 @@ prepare-model: check-model
 
 [group('app')]
 generate:
-    cd app && tuist install --force-resolved-versions && tuist generate --no-open
+    bash scripts/tooling/generate.sh
 
 [group('app')]
-build: generate
-    #!/usr/bin/env sh
-    set -euo pipefail
-    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
-    BUILD_ROOT="$BUILD_ROOT" \
-      WORKSPACE="{{ app_workspace }}" \
-      SCHEME="{{ app_scheme }}" \
-      CONFIGURATION="Release" \
-      DESTINATION="generic/platform=iOS" \
-      bash scripts/app-build.sh
+build:
+    bash scripts/tooling/build.sh
 
 [group('app')]
-run: generate
-    #!/usr/bin/env bash
-    set -euo pipefail
-    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
+run:
+    bash scripts/tooling/run.sh
 
-    BUILD_ROOT="$BUILD_ROOT" \
-    WORKSPACE="{{ app_workspace }}" \
-      SCHEME="{{ app_scheme }}" \
-      CONFIGURATION="Debug" \
-      DESTINATION="platform=iOS Simulator,name={{ device_name }}" \
-      bash scripts/app-build.sh
-    xcrun simctl boot "{{ device_name }}" || true
-    xcrun simctl bootstatus booted -b
-    xcrun simctl install booted "$BUILD_ROOT/DerivedData/{{ run_app_path }}"
-    xcrun simctl launch booted "{{ app_identifier }}"
+[group('maintenance')]
+clean-build:
+    rm -rf .build .DerivedData app/build app/Sunclub.xcworkspace
 
-test-unit: generate
-    #!/usr/bin/env bash
-    set -euo pipefail
-    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
-    RESULT_BUNDLE="$BUILD_ROOT/ResultBundle.xcresult"
+[group('maintenance')]
+clean-generated: clean-build
+    rm -rf evals/datasets evals/export .state .venv .ruff_cache .rumdl_cache .pytest_cache .cache .mise .config
+    find . -type d -name '__pycache__' -prune -exec rm -rf {} +
 
-    SIMULATOR_UDID="$(python3 scripts/resolve_simulator.py --name '{{ test_simulator_name }}' --device-type-name '{{ device_name }}')"; \
-    xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
-    xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
-    tuist xcodebuild test \
-      -workspace "{{ app_workspace }}" \
-      -scheme "{{ app_scheme }}" \
-      -configuration Debug \
-      -destination "id=$SIMULATOR_UDID" \
-      -derivedDataPath "{{ test_derived_data }}" \
-      -resultBundlePath "$RESULT_BUNDLE" \
-      -only-testing:SunclubTests \
-      {{ test_xcargs }}
+[group('maintenance')]
+clean-model: clean-generated
+    if [ -d "{{ staged_model_dir }}" ]; then find "{{ staged_model_dir }}" -mindepth 1 ! -name '.keep' -exec rm -rf {} +; fi
 
-test-ui: generate
-    #!/usr/bin/env bash
-    set -euo pipefail
-    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")"
-    RESULT_BUNDLE="$BUILD_ROOT/ResultBundle.xcresult"
+[group('maintenance')]
+clean: clean-model
 
-    SIMULATOR_UDID="$(python3 scripts/resolve_simulator.py --name '{{ test_simulator_name }}' --device-type-name '{{ device_name }}')"; \
-    xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
-    xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true; \
-    mise exec -- tuist xcodebuild test \
-      -workspace "{{ app_workspace }}" \
-      -scheme "{{ app_scheme }}" \
-      -configuration Debug \
-      -destination "id=$SIMULATOR_UDID" \
-      -derivedDataPath "{{ test_derived_data }}" \
-      -resultBundlePath "$RESULT_BUNDLE" \
-      -only-testing:SunclubUITests/SunclubUITests \
-      {{ test_xcargs }}
+test-unit:
+    bash scripts/tooling/test_ios.sh --suite unit
+
+test-ui:
+    bash scripts/tooling/test_ios.sh --suite ui
 
 test-python:
-    uv run python -m unittest discover -s tests -p 'test_*.py'
+    ./bin/mise exec -- uv run pytest tests -v
 
 test: test-unit test-ui test-python
 
 lint:
-    hk check --all
+    bash scripts/tooling/lint.sh
 
 fmt:
-    hk fix --all
+    bash scripts/tooling/fmt.sh
 
-ci: lint test build
+ci-lint: lint
+
+ci-python: test-python
+
+ci-build:
+    bash scripts/tooling/ci_build.sh
+
+ci: ci-lint ci-python test-unit test-ui ci-build
 
 # --- Eval & Fine-Tuning ---
 
 collect-data output_dir="evals/datasets/sunscreen-v1":
-    pip install -q -r evals/requirements.txt
-    python3 evals/scripts/collect_data.py --output-dir "{{ output_dir }}"
+    ./bin/mise exec -- uv run --group eval python -m evals.scripts.collect_data --output-dir "{{ output_dir }}"
 
 collect-data-quick output_dir="evals/datasets/sunscreen-v1":
-    pip install -q -r evals/requirements.txt
-    python3 evals/scripts/collect_data.py --output-dir "{{ output_dir }}" --max-queries 2
+    ./bin/mise exec -- uv run --group eval python -m evals.scripts.collect_data --output-dir "{{ output_dir }}" --max-queries 2
 
 benchmark dataset="evals/datasets/sunscreen-v1/eval.json":
-    python3 evals/benchmark/benchmark.py --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --verbose
+    ./bin/mise exec -- uv run --group eval --with mlx-vlm python -m evals.benchmark.benchmark --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --verbose
 
 benchmark-strict dataset="evals/datasets/sunscreen-v1/eval.json":
-    python3 evals/benchmark/benchmark.py --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --strict
+    ./bin/mise exec -- uv run --group eval --with mlx-vlm python -m evals.benchmark.benchmark --dataset "{{ dataset }}" --model-dir "{{ model_dir }}" --strict

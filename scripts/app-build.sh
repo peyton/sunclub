@@ -1,33 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ---- Config (can be overridden via env) ----
-WORKSPACE="${WORKSPACE:-Sunclub.xcworkspace}"
-SCHEME="${SCHEME:-Sunclub}"
-CONFIGURATION="${CONFIGURATION:-Release}"
-DESTINATION="${DESTINATION:-generic/platform=iOS}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 
-# ---- Paths ----
+build_args=()
+if [ -n "${CONFIGURATION:-}" ]; then
+  build_args+=(--configuration "$CONFIGURATION")
+fi
+if [ -n "${DESTINATION:-}" ]; then
+  build_args+=(--destination "$DESTINATION")
+fi
+if [ -n "${BUILD_ROOT:-}" ]; then
+  build_args+=(--build-root "$BUILD_ROOT")
+fi
+if [ -n "${DERIVED_DATA:-}" ]; then
+  build_args+=(--derived-data-path "$DERIVED_DATA")
+fi
+if [ -n "${RESULT_BUNDLE:-}" ]; then
+  build_args+=(--result-bundle-path "$RESULT_BUNDLE")
+fi
 
-BUILD_ROOT="${BUILD_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/ci-build.XXXXXX")}"
-DERIVED_DATA="$BUILD_ROOT/DerivedData"
-RESULT_BUNDLE="$BUILD_ROOT/ResultBundle.xcresult"
-
-echo "BUILD_ROOT=$BUILD_ROOT"
-echo "DERIVED_DATA=$DERIVED_DATA"
-echo "RESULT_BUNDLE=$RESULT_BUNDLE"
-
-tuist xcodebuild \
-	-workspace "$WORKSPACE" \
-	-scheme "$SCHEME" \
-	-configuration "$CONFIGURATION" \
-	-destination "$DESTINATION" \
-	-derivedDataPath "$DERIVED_DATA" \
-	-resultBundlePath "$RESULT_BUNDLE" \
-	CODE_SIGNING_ALLOWED=NO \
-	CODE_SIGNING_REQUIRED=NO \
-	build
-
-tuist share Sunclub --configuration "$CONFIGURATION" --platforms "iOS"
-
-echo "Result bundle: $RESULT_BUNDLE"
+exec "$SCRIPT_DIR/tooling/build.sh" --skip-generate "${build_args[@]}"

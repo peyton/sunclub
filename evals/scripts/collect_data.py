@@ -146,7 +146,7 @@ def extract_frames(
 
     try:
         subprocess.run(cmd, check=True, capture_output=True, timeout=60)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         return []
 
     frames = sorted(frames_dir.glob(f"{stem}_frame_*.jpg"))

@@ -185,7 +185,7 @@ All scripts live in `evals/`:
 4. Labels each frame with Claude Vision (Sonnet) — resumable, saves progress after each label
 5. Splits 80/20 into `train.json` (LLaVA format) + `eval.json` (benchmark format)
 
-**Requirements**: `ANTHROPIC_API_KEY` env var, `yt-dlp`, `ffmpeg`. Install deps: `pip install -r evals/requirements.txt`
+**Requirements**: `ANTHROPIC_API_KEY` env var, `yt-dlp`, `ffmpeg`. Bootstrap repo tooling with `just bootstrap`.
 
 ### Risk: catastrophic forgetting
 
@@ -212,7 +212,7 @@ just benchmark
 
 # 3. Clone FastVLM repo and download PyTorch checkpoint
 git clone https://github.com/apple/ml-fastvlm.git ~/ml-fastvlm
-cd ~/ml-fastvlm && pip install -e ".[train]" && bash get_models.sh
+cd ~/ml-fastvlm && uv pip install -e ".[train]" && bash get_models.sh
 
 # 4. LoRA fine-tune
 bash evals/scripts/train_lora.sh ~/ml-fastvlm ~/ml-fastvlm/checkpoints/llava-fastvithd-0.5b_stage3 evals/datasets/sunscreen-v1

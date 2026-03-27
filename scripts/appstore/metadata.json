@@ -15,17 +15,7 @@
   "localizations": {
     "en-US": {
       "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nPoint your camera at a sunscreen bottle when you want AI verification, or log today manually when you already applied. Sunclub keeps your streak, shows your recent check-ins, and reminds you when it is time to apply again.\n\nCamera verification uses FastVLM, an on-device vision model hosted as a one-time App Store download. After the model finishes downloading, verification stays available offline on that iPhone.\n\nFeatures:\n\n• Camera Verification — Confirm a sunscreen bottle with on-device AI.\n• Manual Logging — Record today even when the bottle is not nearby.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No accounts, no cloud sync, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
-      "keywords": [
-        "sunscreen",
-        "spf",
-        "uv",
-        "habit",
-        "streak",
-        "daily",
-        "reminder",
-        "skincare",
-        "sun care"
-      ],
+      "keywords": ["sunscreen", "spf", "uv", "habit", "streak", "daily", "reminder", "skincare", "sun care"],
       "promotional_text": "Build a steady sunscreen routine with camera verification, manual logging, streaks, and reminders.",
       "whats_new": "Initial release. Verify sunscreen with the camera after a one-time model download, log manually when needed, and keep your streak on track."
     }
@@ -116,11 +106,6 @@
   },
   "submission": {
     "copyright": "2026 Peyton Randolph",
-    "manual_steps": [
-      "Replace draft support, marketing, and privacy URLs with live pages and mark them ready.",
-      "Replace the draft App Review contact details and mark them ready.",
-      "Answer App Privacy and export compliance questions in App Store Connect to match this manifest.",
-      "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."
-    ]
+    "manual_steps": ["Replace draft support, marketing, and privacy URLs with live pages and mark them ready.", "Replace the draft App Review contact details and mark them ready.", "Answer App Privacy and export compliance questions in App Store Connect to match this manifest.", "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."]
   }
 }

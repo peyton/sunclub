@@ -1,6 +1,11 @@
 .venv-eval/
+.venv/
 __pycache__/
 .pytest_cache/
+.cache/
+.config/
+.state/
+.build/
 data/raw/
 data/processed/cache/
 
