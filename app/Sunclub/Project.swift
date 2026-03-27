@@ -21,11 +21,9 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: "Info.plist",
-            resources: [
-                "Resources/**"
-            ],
             buildableFolders: [
                 .folder("Sources")
+                .folder("Resources")
             ],
             entitlements: "Sunclub.entitlements",
             dependencies: [

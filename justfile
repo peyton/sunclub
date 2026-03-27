@@ -46,7 +46,7 @@ prepare-model: check-model
 
 [group('app')]
 generate:
-    cd app && tuist install && tuist generate --no-open
+    cd app && tuist install --force-resolved-versions && tuist generate --no-open
 
 [group('app')]
 build: generate
