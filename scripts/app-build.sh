@@ -28,6 +28,6 @@ tuist xcodebuild \
 	CODE_SIGNING_REQUIRED=NO \
 	build
 
-tuist share Sunclub --configuration $CONFIGURATION --platforms iOS
+tuist share Sunclub --configuration "$CONFIGURATION" --platforms "iOS"
 
 echo "Result bundle: $RESULT_BUNDLE"
