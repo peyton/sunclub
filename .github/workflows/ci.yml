@@ -65,5 +65,15 @@ jobs:
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           cache: true
+      - name: Set CI build metadata
+        shell: bash
+        run: |
+          echo "SUNCLUB_BUILD_NUMBER=$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"
+          else
+            echo "SUNCLUB_TUIST_SHARE=1" >> "$GITHUB_ENV"
+          fi
       - name: Run iOS build shard
         run: mise exec -- just ci-build

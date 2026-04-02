@@ -2,8 +2,8 @@ import ProjectDescription
 
 let defaultDeploymentTarget: DeploymentTargets = .iOS("18.6")
 let signingTeam = "AE5E5HVG56"
-let marketingVersion = "1.0.0"
-let buildNumber = "1"
+let marketingVersion = Environment.SUNCLUB_MARKETING_VERSION.getString(default: "1.0.0")
+let buildNumber = Environment.SUNCLUB_BUILD_NUMBER.getString(default: "1")
 
 let project = Project(
     name: "Sunclub",
