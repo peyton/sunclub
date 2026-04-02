@@ -38,7 +38,7 @@ Common setup from the repo root:
 - `just appstore-validate`
 - `just appstore-screenshots`
 - `just appstore-archive`
-- `just release-tag VERSION=1.2.3`
+- `just release-tag 1.2.3`
 - `just ci`
 
 `just bootstrap` installs repo-local tooling into `.mise/`, syncs the Python environment into `.venv/`, and prepares repo-local caches under `.cache/`.

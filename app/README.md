@@ -68,7 +68,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 
 - `SunclubDev` is the default local flavor and installs side by side with TestFlight.
 - `Sunclub` is the production/TestFlight flavor used by `just appstore-archive`.
-- `just release-tag VERSION=1.2.3` creates and pushes the `v1.2.3` tag that triggers the TestFlight GitHub Actions workflow.
+- `just release-tag 1.2.3` creates and pushes the `v1.2.3` tag that triggers the TestFlight GitHub Actions workflow.
 
 ## Just Targets
 
@@ -97,7 +97,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - `just appstore-validate`
 - `just appstore-screenshots`
 - `just appstore-archive`
-- `just release-tag VERSION=1.2.3`
+- `just release-tag 1.2.3`
 - `just ci`
 
 `just clean-build` removes build artifacts and the generated workspace, `just clean-generated` also removes repo-local caches and environments such as `.venv`, `.mise`, `.cache`, `.config`, `.state`, and `__pycache__`, and `just clean` runs the full cleanup chain.

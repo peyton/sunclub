@@ -20,7 +20,7 @@ just appstore-validate
 bash scripts/appstore/capture-screenshots.sh
 bash scripts/appstore/create-app-store-listing.sh
 bash scripts/appstore/archive-and-upload.sh
-just release-tag VERSION=1.2.3
+just release-tag 1.2.3
 ```
 
 See [docs/testflight-release.md](testflight-release.md) for the full flavor and versioning flow.

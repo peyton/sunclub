@@ -48,10 +48,10 @@ From the repo root:
 just appstore-validate
 just appstore-screenshots
 just appstore-archive
-just release-tag VERSION=1.2.3
+just release-tag 1.2.3
 ```
 
-`just release-tag VERSION=1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
+`just release-tag 1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
 
