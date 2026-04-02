@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 require_cktool
+require_cloudkit_team_access
 
 if [ "${CLOUDKIT_RESET_CONFIRM:-}" != "reset-development" ]; then
   printf 'Refusing to reset the CloudKit development environment without confirmation.\n' >&2

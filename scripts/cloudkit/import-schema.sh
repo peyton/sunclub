@@ -8,6 +8,7 @@ source "$SCRIPT_DIR/common.sh"
 
 require_cktool
 require_schema_file
+require_cloudkit_team_access
 
 run_cktool_for_container import-schema --validate --file "$CLOUDKIT_SCHEMA_FILE"
 printf 'Imported CloudKit schema %s into %s (%s).\n' \

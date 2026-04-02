@@ -17,6 +17,7 @@ The change matters because streaks are one of the core product loops. The implem
 - [x] (2026-04-02 16:19Z) Updated Settings, Home, History, and a new `RecoveryView` so iCloud sync, imported backups, conflicts, and undoable changes are visible in the product UI.
 - [x] (2026-04-02 16:34Z) Added CloudKit repo-local helper scripts, Tuist-driven container configuration, updated product docs, and expanded unit plus UI coverage for sync and recovery flows.
 - [x] (2026-04-02 14:24Z) Re-ran generation, unit tests, UI tests, and lint on the final code state; `cloudkit-validate-schema` remains externally blocked until a local CloudKit schema export and management token are present.
+- [x] (2026-04-02 17:42Z) Added a CloudKit doctor flow, aligned the Tuist signing team with the repo `TEAM_ID`, and documented the remaining Apple-side manual container creation step after confirming `cktool` does not create containers from this CLI.
 
 ## Surprises & Discoveries
 
@@ -28,6 +29,10 @@ The change matters because streaks are one of the core product loops. The implem
   Evidence: before this change there was no `scripts/cloudkit/` directory and no `just` targets for `cktool`.
 - Observation: enabling app-level iCloud/CloudKit capabilities also changed SwiftData's default store behavior, even though sync is implemented manually with `CKSyncEngine`.
   Evidence: once the entitlements and container settings were added, migration tests started failing until every `ModelConfiguration` in `SunclubModelContainerFactory` and the legacy test fixtures explicitly set `cloudKitDatabase: .none`.
+- Observation: the repo had drifted to two different Apple teams: Tuist generated the app for `AE5E5HVG56` while all release and CloudKit tooling defaulted to `3VDQ4656LX`.
+  Evidence: `Project.swift` hardcoded `AE5E5HVG56`, but `scripts/tooling/sunclub.env`, App Store export options, and the CloudKit token all targeted `3VDQ4656LX`.
+- Observation: the installed `cktool` CLI can validate management-token team access and schema operations, but it does not expose a create-container or list-containers command.
+  Evidence: `xcrun cktool --help` lists schema, record, token, and team commands only; Apple’s account help still documents iCloud container creation in Certificates, IDs & Profiles with Account Holder/Admin permissions.
 
 ## Decision Log
 
@@ -54,6 +59,7 @@ Shipped:
 - Settings now includes default-on iCloud sync controls, visible sync status, pending imported-change actions, and a route into `Recovery & Changes`.
 - Home and History now surface pending imported changes or auto-merged conflicts without requiring the user to guess that a hidden merge occurred.
 - The repo now includes `scripts/cloudkit/*.sh` helpers plus `just cloudkit-*` targets for saving tokens, exporting schemas, validating schemas, importing schemas, and resetting the development schema.
+- The repo now also includes `just cloudkit-doctor` and `just cloudkit-ensure-container`, which validate the management token, confirm the configured team matches Xcode signing, run a signed provisioning build, and point directly to Apple’s official container/App ID setup flow if the signed app still lacks CloudKit entitlements.
 
 Verification:
 
@@ -62,3 +68,4 @@ Verification:
 - `just test-ui` passed on 2026-04-02 with 29 tests passing, including the new iCloud toggle, import publish/restore, conflict review, and recovery undo flows.
 - `just lint` passed on 2026-04-02 after splitting the import path in `SunclubHistoryService` and fixing a ShellCheck string-literal warning in the new CloudKit helpers.
 - `just cloudkit-validate-schema` is currently blocked in a clean checkout until a management token is saved and a schema file exists locally. The observed failure was: schema file missing at `.state/cloudkit/sunclub-cloudkit-schema.json`, and `just cloudkit-export-schema` then failed because `cktool` had no management token available.
+- After saving a management token, `cktool get-teams` succeeded for team `3VDQ4656LX`, which confirms the token type and team-level management permissions are correct. The remaining failure is container-side: `cktool export-schema` still returns `authorization-failed`, and a signed provisioning build on `3VDQ4656LX` currently strips the CloudKit entitlements from the app, which means the App ID on that team still lacks the `iCloud.app.peyton.sunclub` assignment.

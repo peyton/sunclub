@@ -55,6 +55,14 @@ cloudkit-save-token:
     bash scripts/cloudkit/save-token.sh
 
 [group('cloudkit')]
+cloudkit-doctor:
+    bash scripts/cloudkit/doctor.sh
+
+[group('cloudkit')]
+cloudkit-ensure-container:
+    bash scripts/cloudkit/ensure-container.sh
+
+[group('cloudkit')]
 cloudkit-export-schema:
     bash scripts/cloudkit/export-schema.sh
 

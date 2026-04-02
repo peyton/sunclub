@@ -8,6 +8,7 @@ source "$SCRIPT_DIR/common.sh"
 
 require_cktool
 ensure_cloudkit_state
+require_cloudkit_team_access
 
 run_cktool_for_container export-schema --output-file "$CLOUDKIT_SCHEMA_FILE"
 printf 'Exported CloudKit schema to %s\n' "$CLOUDKIT_SCHEMA_FILE"

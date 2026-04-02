@@ -1,7 +1,7 @@
 import ProjectDescription
 
 let defaultDeploymentTarget: DeploymentTargets = .iOS("18.6")
-let signingTeam = "AE5E5HVG56"
+let signingTeam = Environment.TEAM_ID.getString(default: "3VDQ4656LX")
 let marketingVersion = Environment.SUNCLUB_MARKETING_VERSION.getString(default: "1.0.0")
 let buildNumber = Environment.SUNCLUB_BUILD_NUMBER.getString(default: "1")
 let cloudKitContainerIdentifier = "iCloud.app.peyton.sunclub"
