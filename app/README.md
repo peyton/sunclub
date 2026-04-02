@@ -1,12 +1,14 @@
 # Sunclub App
 
-Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit through quick manual check-ins, streak tracking, weekly summaries, and reminder settings.
+Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit through quick manual check-ins, streak tracking, weekly summaries, widget status surfaces, and reminder settings.
 
 ## Flow
 
-1. `Home / Lock Screen Widget`
-   - Exposes a single `Log Today` action.
-   - Opens Sunclub and records the day through the existing success flow.
+1. `Home / Lock Screen / Control Center`
+   - `Log Today` logs in place when the day is still open.
+   - Logged-state widgets switch to status and navigation instead of re-logging.
+   - `Streak`, `Stats`, and `Calendar` widgets summarize current progress with low-text layouts.
+   - Control Center exposes `Log Today`, `Summary`, and `History`.
 2. `Welcome`
    - Intro screen with the Sunclub mark and `Get Started`.
 3. `Enable Notifications`
@@ -34,6 +36,8 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - Optional SPF and notes metadata now feed a lightweight recap inside `Weekly Summary` and day detail in `History`.
 - The projected app state still works fully offline, but revision history now syncs through the user's private iCloud database by default.
 - Local backup export/import still works without an account migration step. Import changes only the local device until the user explicitly publishes the imported batches to iCloud.
+- The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
+- Sunclub still has no app-owned accounts or analytics SDKs. The only sync path is the user's private iCloud database.
 
 ## Project Structure
 
@@ -97,5 +101,16 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - The widget `Log Today` action routes into the same success flow used by manual logging.
 - Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
 - Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
+- The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
+- The widget suite now covers all iPhone Home Screen and Lock Screen families supported by the app:
+  - `Log Today`: `systemSmall`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
+  - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
+  - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
+  - `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
+- Widgets and controls route through shared widget routes for summary, history, and manual-update surfaces.
+- The widget `Log Today` action routes into the same success flow used by manual logging.
+- Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
+- Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
+- The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
 - The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
 - UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=manualLog` so the flow can be exercised end to end in automation and screenshot capture.

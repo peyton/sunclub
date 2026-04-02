@@ -194,15 +194,20 @@ Expected sequence:
 
 ### Widgets
 
-- A Home Screen widget should expose a single obvious `Log Today` action.
-- A Lock Screen widget should expose the same action through an accessory family.
-- The widget action should reuse the existing manual success path instead of creating a separate logging flow.
+- Widgets should stay glanceable and low-text across all supported families.
+- The Home Screen suite should include `Log Today`, `Streak`, `Stats`, and `Calendar` layouts.
+- The Lock Screen suite should cover `accessoryInline`, `accessoryCircular`, and `accessoryRectangular` layouts with content appropriate to the family.
+- `Log Today` should log in place only when the current day is still open.
+- If the current day is already logged, the primary widget should surface completion and streak state, then route into the existing app flow for viewing or updating.
+- Widget state should come from a lightweight shared snapshot mirror rather than direct widget access to the live SwiftData store.
+- Widgets should refresh at the next local midnight so daily state and streak continuity roll over correctly without requiring an app launch.
 
 ### Settings and Controls
 
 - Users should be able to change reminder timing and reminder behavior without repeating onboarding.
 - Manual logging should always remain available as the primary check-in flow.
 - iCloud sync should default to on for supported devices, but the user must be able to pause it locally.
+- Control Center should expose quick actions for `Log Today`, `Summary`, and `History`.
 
 ### History Recovery
 

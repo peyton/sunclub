@@ -82,3 +82,50 @@ printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
     assert build_derived_data == str(derived_data_path)
     assert shared_derived_data == build_derived_data
     assert shared_configuration == "Release"
+
+
+def test_build_script_disables_swift_compile_cache_under_act(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / "app").mkdir(parents=True)
+
+    for script_name in ("build.sh", "common.sh", "sunclub.env"):
+        _copy_tooling_script(repo_root, script_name)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    mise_log = tmp_path / "mise.log"
+
+    _write_executable(
+        bin_dir / "xcodebuild",
+        f"""#!/bin/sh
+printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
+""",
+    )
+    _write_executable(
+        bin_dir / "mise",
+        f"""#!/bin/sh
+printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
+""",
+    )
+
+    env = os.environ.copy()
+    env["ACT"] = "true"
+    env["SUNCLUB_TUIST_SHARE"] = "0"
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+
+    subprocess.run(
+        [
+            "bash",
+            str(repo_root / "scripts" / "tooling" / "build.sh"),
+            "--skip-generate",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+
+    xcodebuild_args = xcodebuild_log.read_text().splitlines()
+    assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in xcodebuild_args
+    assert not mise_log.exists()

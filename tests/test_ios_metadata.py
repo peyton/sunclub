@@ -57,3 +57,19 @@ def test_info_plist_declares_background_task_and_backup_document_type() -> None:
     )
     assert backup_document_type["CFBundleTypeRole"] == "Editor"
     assert backup_document_type["LSHandlerRank"] == "Owner"
+
+
+def test_info_plist_declares_explicit_file_opening_behavior() -> None:
+    info = load_info_plist()
+
+    assert info["LSSupportsOpeningDocumentsInPlace"] is False
+
+
+def test_widget_extension_inherits_app_version_metadata() -> None:
+    source = PROJECT_SWIFT.read_text()
+
+    assert re.search(
+        r'name: "SunclubWidgetsExtension".*?"CFBundleShortVersionString": "\$\(MARKETING_VERSION\)".*?"CFBundleVersion": "\$\(CURRENT_PROJECT_VERSION\)"',
+        source,
+        re.DOTALL,
+    )

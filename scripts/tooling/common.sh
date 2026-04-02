@@ -79,6 +79,11 @@ prepare_ci_workspace() {
       return 0
     fi
 
+    if [ "${ACT:-}" = "true" ]; then
+      printf 'Skipping GitHub Actions Tuist setup under act.\n'
+      return 0
+    fi
+
     run_in_app run_mise_exec tuist auth login
     run_in_app run_mise_exec tuist setup cache
     ;;

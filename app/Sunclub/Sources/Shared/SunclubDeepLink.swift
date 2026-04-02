@@ -2,6 +2,7 @@ import Foundation
 
 enum SunclubDeepLink: Equatable {
     case widgetLogToday
+    case widgetRoute(SunclubWidgetRoute)
 
     private static let scheme = "sunclub"
 
@@ -13,18 +14,31 @@ enum SunclubDeepLink: Equatable {
         let host = (url.host ?? "").lowercased()
         let pathComponents = url.pathComponents.filter { $0 != "/" }
 
-        switch (host, pathComponents) {
-        case ("widget", ["log-today"]):
-            self = .widgetLogToday
-        default:
+        guard host == "widget" else {
             return nil
         }
+
+        if pathComponents == ["log-today"] {
+            self = .widgetLogToday
+            return
+        }
+
+        if pathComponents.count == 2,
+           pathComponents.first == "open",
+           let route = SunclubWidgetRoute(rawValue: pathComponents[1]) {
+            self = .widgetRoute(route)
+            return
+        }
+
+        return nil
     }
 
     var url: URL {
         switch self {
         case .widgetLogToday:
             return URL(string: "\(Self.scheme)://widget/log-today")!
+        case let .widgetRoute(route):
+            return route.url
         }
     }
 }
@@ -50,8 +64,19 @@ enum SunclubDeepLinkHandler {
                 return true
             }
 
-            _ = SunclubQuickLogAction.perform(using: appState)
+            appState.recordVerificationSuccess(method: .manual)
+            if appState.settings.reapplyReminderEnabled {
+                appState.scheduleReapplyReminder()
+            }
             router.open(.verifySuccess)
+            return true
+        case let .widgetRoute(route):
+            guard appState.settings.hasCompletedOnboarding else {
+                router.goToWelcome()
+                return true
+            }
+
+            router.open(route.appRoute)
             return true
         }
     }

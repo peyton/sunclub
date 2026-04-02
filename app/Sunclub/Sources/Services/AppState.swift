@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftData
+import WidgetKit
 
 struct HomeTodayCardPresentation: Equatable {
     let title: String
@@ -124,7 +125,7 @@ final class AppState {
     private let notificationManager: NotificationScheduling
     private let uvIndexService: UVIndexService
     private let backupService: SunclubBackupService
-
+    private let widgetSnapshotStore: SunclubWidgetSnapshotStore
     private(set) var records: [DailyRecord] = []
     private(set) var changeBatches: [SunclubChangeBatch] = []
     private(set) var importSessions: [SunclubImportSession] = []
@@ -162,7 +163,8 @@ final class AppState {
         uvIndexService: UVIndexService,
         backupService: SunclubBackupService = SunclubBackupService(),
         historyService: SunclubHistoryService? = nil,
-        cloudSyncCoordinator: CloudSyncControlling? = nil
+        cloudSyncCoordinator: CloudSyncControlling? = nil,
+        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore()
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
@@ -172,6 +174,7 @@ final class AppState {
         self.uvIndexService = uvIndexService
         self.backupService = backupService
         try? resolvedHistoryService.bootstrapIfNeeded()
+        self.widgetSnapshotStore = widgetSnapshotStore
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
         if let cloudSyncCoordinator {
             self.cloudSyncCoordinator = cloudSyncCoordinator
@@ -210,6 +213,7 @@ final class AppState {
         }
 
         syncLongestStreakIfNeeded()
+        syncWidgetSnapshot()
     }
 
     private static func loadOrCreateSettings(from context: ModelContext) -> Settings {
@@ -1041,6 +1045,8 @@ final class AppState {
             return
         }
 
+        reloadWidgetTimelines()
+
         Task {
             await cloudSyncCoordinator.queueBatchIfNeeded(batch.id)
         }
@@ -1075,5 +1081,24 @@ final class AppState {
         refreshNotificationHealth()
         refreshUVReadingIfNeeded()
         _ = importedBatchCount
+        reloadWidgetTimelines()
+    }
+
+    private func syncWidgetSnapshot() {
+        let snapshot = SunclubWidgetSnapshotBuilder.make(
+            settings: settings,
+            records: records,
+            now: Date(),
+            calendar: calendar
+        )
+        widgetSnapshotStore.save(snapshot)
+    }
+
+    private func reloadWidgetTimelines() {
+        guard !RuntimeEnvironment.isRunningTests else {
+            return
+        }
+
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
