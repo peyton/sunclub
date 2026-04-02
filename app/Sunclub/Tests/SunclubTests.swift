@@ -648,6 +648,58 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testSunclubDeepLinkParsesWidgetLogTodayURL() throws {
+        let url = try XCTUnwrap(URL(string: "sunclub://widget/log-today"))
+
+        XCTAssertEqual(SunclubDeepLink(url: url), .widgetLogToday)
+        XCTAssertEqual(SunclubDeepLink.widgetLogToday.url, url)
+    }
+
+    @MainActor
+    func testWidgetLogTodayDeepLinkRecordsTodayAndRoutesToSuccess() throws {
+        let state = try makeAppState()
+        let router = AppRouter()
+        state.completeOnboarding()
+
+        let handled = SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router)
+
+        XCTAssertTrue(handled)
+        XCTAssertEqual(state.records.count, 1)
+        XCTAssertEqual(state.record(for: Date())?.method, .manual)
+        XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
+        XCTAssertEqual(router.path, [.verifySuccess])
+    }
+
+    @MainActor
+    func testWidgetLogTodayDeepLinkSchedulesReapplyReminderWhenEnabled() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+        let router = AppRouter()
+        state.completeOnboarding()
+        state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+
+        let handled = SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router)
+
+        await Task.yield()
+        XCTAssertTrue(handled)
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.manualLog])
+    }
+
+    @MainActor
+    func testWidgetLogTodayDeepLinkDoesNotLogBeforeOnboarding() throws {
+        let state = try makeAppState()
+        let router = AppRouter()
+
+        let handled = SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router)
+
+        XCTAssertTrue(handled)
+        XCTAssertTrue(state.records.isEmpty)
+        XCTAssertNil(state.verificationSuccessPresentation)
+        XCTAssertTrue(router.path.isEmpty)
+    }
+
+    @MainActor
     private func makeAppState(
         notificationManager: NotificationScheduling? = nil
     ) throws -> AppState {
