@@ -82,4 +82,40 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(record.reapplyCount, 0)
         XCTAssertNil(record.lastReappliedAt)
     }
+
+    func testMigrationFromV3SeedsRevisionHistoryAndDefaultSyncPreference() throws {
+        let storeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: storeDirectory) }
+
+        let storeURL = storeDirectory.appendingPathComponent("Sunclub.store")
+        let seededDates = try LegacyStoreFixture.seedCurrentV3Store(at: storeURL)
+
+        let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
+        let context = ModelContext(container)
+
+        let settings = try XCTUnwrap(try context.fetch(FetchDescriptor<Settings>()).first)
+        XCTAssertTrue(settings.hasCompletedOnboarding)
+        XCTAssertEqual(settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 7, minute: 45))
+        XCTAssertEqual(settings.smartReminderSettings.weekendTime, ReminderTime(hour: 8, minute: 30))
+        XCTAssertTrue(settings.reapplyReminderEnabled)
+        XCTAssertEqual(settings.reapplyIntervalMinutes, 90)
+
+        let records = try context.fetch(
+            FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .forward)])
+        )
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(records.first?.startOfDay, seededDates.startOfDay)
+        XCTAssertEqual(records.first?.verifiedAt, seededDates.verifiedAt)
+
+        let syncPreference = try XCTUnwrap(try context.fetch(FetchDescriptor<CloudSyncPreference>()).first)
+        XCTAssertTrue(syncPreference.isICloudSyncEnabled)
+        XCTAssertEqual(syncPreference.status, .idle)
+
+        XCTAssertEqual(try context.fetch(FetchDescriptor<CloudSyncState>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<SunclubChangeBatch>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<SettingsRevision>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<DailyRecordRevision>()).count, 1)
+    }
 }

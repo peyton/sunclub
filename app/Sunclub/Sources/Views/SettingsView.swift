@@ -3,6 +3,7 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
@@ -13,6 +14,7 @@ struct SettingsView: View {
     @State private var followsTravelTimeZone = true
     @State private var streakRiskEnabled = true
     @State private var usesLiveUV = false
+    @State private var iCloudSyncEnabled = true
     @State private var backupDocument: SunclubBackupDocument?
     @State private var isExportingBackup = false
     @State private var isImportingBackup = false
@@ -33,6 +35,7 @@ struct SettingsView: View {
                 notificationHealthSection
                 reapplySection
                 liveUVSection
+                iCloudSection
                 backupSection
 
                 Spacer(minLength: 0)
@@ -338,7 +341,7 @@ struct SettingsView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("Keep your history local. Export one backup file before you reinstall the app or move to a new device.")
+                Text("Export a local backup file before you reinstall the app or move to a new device. Import restores this device first and keeps iCloud unchanged until you explicitly publish the imported changes.")
                     .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
 
@@ -356,7 +359,7 @@ struct SettingsView: View {
                     action: { isImportingBackup = true }
                 )
 
-                Text("Import replaces current on-device history and reminder settings.")
+                Text("Local import stays recoverable. Use Recovery & Changes if you want to undo it or publish it to iCloud later.")
                     .font(.system(size: 13))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -405,6 +408,107 @@ struct SettingsView: View {
             ?? timeZone.identifier.replacingOccurrences(of: "_", with: " ")
     }
 
+    private var iCloudSection: some View {
+        let presentation = appState.cloudSyncStatusPresentation
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("iCloud")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: $iCloudSyncEnabled) {
+                    Text("Sync history with iCloud")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(AppPalette.ink)
+                }
+                .tint(AppPalette.sun)
+                .onChange(of: iCloudSyncEnabled) { _, newValue in
+                    appState.updateCloudSyncEnabled(newValue)
+                }
+                .accessibilityIdentifier("settings.icloudToggle")
+
+                SunStatusCard(
+                    title: presentation.title,
+                    detail: presentation.detail,
+                    tint: iCloudStatusTint,
+                    symbol: iCloudStatusSymbol
+                )
+                .accessibilityIdentifier("settings.icloudStatus")
+
+                if let actionTitle = presentation.actionTitle {
+                    Button(actionTitle) {
+                        handleCloudSyncAction()
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("settings.icloudAction")
+                }
+
+                if let session = appState.recentImportSession,
+                   session.publishedAt == nil {
+                    pendingImportActions(for: session)
+                }
+
+                Button("Recovery & Changes") {
+                    router.open(.recovery)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("settings.recovery")
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
+    @ViewBuilder
+    private func pendingImportActions(for session: SunclubImportSession) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(appState.cloudSyncStatusPresentation.pendingImportedBatchCount) imported change(s) are still local-only.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings.icloud.pendingImports")
+
+            Button("Publish Imported Changes") {
+                appState.publishImportedChanges(for: session.id)
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("settings.icloud.publishImported")
+
+            Button("Restore Pre-Import State") {
+                appState.restoreImportedChanges(for: session.id)
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("settings.icloud.restoreImported")
+        }
+    }
+
+    private var iCloudStatusTint: Color {
+        switch appState.syncPreference?.status ?? .idle {
+        case .error:
+            return Color.red.opacity(0.75)
+        case .paused:
+            return AppPalette.softInk
+        case .syncing:
+            return AppPalette.sun
+        case .idle:
+            return AppPalette.success
+        }
+    }
+
+    private var iCloudStatusSymbol: String {
+        switch appState.syncPreference?.status ?? .idle {
+        case .error:
+            return "exclamationmark.icloud.fill"
+        case .paused:
+            return "icloud.slash"
+        case .syncing:
+            return "arrow.trianglehead.2.clockwise.icloud"
+        case .idle:
+            return "icloud.fill"
+        }
+    }
+
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(Color.white.opacity(0.82))
@@ -434,6 +538,7 @@ struct SettingsView: View {
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
         usesLiveUV = appState.settings.usesLiveUV
+        iCloudSyncEnabled = appState.syncPreference?.isICloudSyncEnabled ?? true
     }
 
     private func beginBackupExport() {
@@ -493,6 +598,16 @@ struct SettingsView: View {
             }
         case .requestPermission, .refresh:
             appState.performLiveUVAction(action)
+        }
+    }
+
+    private func handleCloudSyncAction() {
+        switch appState.syncPreference?.status ?? .idle {
+        case .paused:
+            iCloudSyncEnabled = true
+            appState.updateCloudSyncEnabled(true)
+        case .error, .idle, .syncing:
+            appState.syncCloudNow()
         }
     }
 

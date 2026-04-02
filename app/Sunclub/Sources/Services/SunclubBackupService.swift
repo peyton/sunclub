@@ -4,10 +4,12 @@ import SwiftData
 struct SunclubBackupImportSummary: Equatable {
     let restoredRecordCount: Int
     let exportedAt: Date
+    let importedBatchCount: Int
+    let importSessionID: UUID
 
     var statusMessage: String {
         let noun = restoredRecordCount == 1 ? "day" : "days"
-        return "Imported \(restoredRecordCount) \(noun) from backup."
+        return "Imported \(restoredRecordCount) \(noun) from backup. iCloud stays unchanged until you publish these changes."
     }
 }
 
@@ -19,13 +21,15 @@ struct SunclubBackupService {
         self.fileManager = fileManager
     }
 
+    @MainActor
     func exportDocument(from context: ModelContext) throws -> SunclubBackupDocument {
-        let snapshot = try snapshot(from: context)
+        let historyService = SunclubHistoryService(context: context)
+        try historyService.bootstrapIfNeeded()
         let temporaryDirectory = try makeTemporaryDirectory()
         defer { removeItemIfPresent(at: temporaryDirectory) }
 
         let storeURL = temporaryDirectory.appendingPathComponent(Self.storeFilename)
-        try write(snapshot: snapshot, toStoreAt: storeURL)
+        try writeStore(from: context, toStoreAt: storeURL)
         let storeFiles = try Self.storeFiles(at: storeURL, fileManager: fileManager)
 
         return SunclubBackupDocument(
@@ -38,6 +42,7 @@ struct SunclubBackupService {
     }
 
     @discardableResult
+    @MainActor
     func exportBackup(from context: ModelContext, to url: URL) throws -> SunclubBackupDocument {
         let document = try exportDocument(from: context)
         let data = try document.serializedData()
@@ -45,6 +50,7 @@ struct SunclubBackupService {
         return document
     }
 
+    @MainActor
     func importBackupDocument(_ document: SunclubBackupDocument, into context: ModelContext) throws -> SunclubBackupImportSummary {
         let temporaryDirectory = try makeTemporaryDirectory()
         defer { removeItemIfPresent(at: temporaryDirectory) }
@@ -55,14 +61,21 @@ struct SunclubBackupService {
         let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
         let importedContext = ModelContext(container)
         let importedSnapshot = try snapshot(from: importedContext)
-        try apply(snapshot: importedSnapshot, to: context)
+        let historyService = SunclubHistoryService(context: context)
+        let importResult = try historyService.importDomainData(
+            from: importedContext,
+            sourceDescription: "Local backup import"
+        )
 
         return SunclubBackupImportSummary(
             restoredRecordCount: importedSnapshot.records.count,
-            exportedAt: document.payload.createdAt
+            exportedAt: document.payload.createdAt,
+            importedBatchCount: importResult.importedBatchCount,
+            importSessionID: importResult.importSessionID
         )
     }
 
+    @MainActor
     func importBackup(from url: URL, into context: ModelContext) throws -> SunclubBackupImportSummary {
         let didAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -145,11 +158,96 @@ struct SunclubBackupService {
         }
     }
 
-    private func write(snapshot: SunclubBackupSnapshot, toStoreAt storeURL: URL) throws {
+    @MainActor
+    private func writeStore(from sourceContext: ModelContext, toStoreAt storeURL: URL) throws {
+        let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
+        let targetContext = ModelContext(container)
+        try copyExportDomain(from: sourceContext, to: targetContext)
+    }
+
+    @MainActor
+    private func copyExportDomain(from sourceContext: ModelContext, to targetContext: ModelContext) throws {
         do {
-            let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
-            let context = ModelContext(container)
-            try apply(snapshot: snapshot, to: context)
+            let sourceSettings = try loadOrCreateSettings(from: sourceContext)
+            let targetSettings = try loadOrCreateSettings(from: targetContext)
+            targetSettings.apply(snapshot: sourceSettings.projectionSnapshot)
+
+            let sourceRecords = try sourceContext.fetch(
+                FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .forward)])
+            )
+            for record in sourceRecords {
+                targetContext.insert(record.projectionSnapshot.makeModel())
+            }
+
+            let sourceBatches = try sourceContext.fetch(
+                FetchDescriptor<SunclubChangeBatch>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
+            )
+            for batch in sourceBatches {
+                targetContext.insert(
+                    SunclubChangeBatch(
+                        id: batch.id,
+                        createdAt: batch.createdAt,
+                        kind: batch.kind,
+                        scope: batch.scope,
+                        scopeIdentifier: batch.scopeIdentifier,
+                        authorDeviceID: batch.authorDeviceID,
+                        summary: batch.summary,
+                        isLocalOnly: batch.isLocalOnly,
+                        isPublishedToCloud: batch.isPublishedToCloud,
+                        cloudPublishedAt: batch.cloudPublishedAt,
+                        inverseOfBatchID: batch.inverseOfBatchID,
+                        undoneByBatchID: batch.undoneByBatchID,
+                        importSessionID: batch.importSessionID
+                    )
+                )
+            }
+
+            let sourceRecordRevisions = try sourceContext.fetch(
+                FetchDescriptor<DailyRecordRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
+            )
+            for revision in sourceRecordRevisions {
+                targetContext.insert(
+                    DailyRecordRevision(
+                        id: revision.id,
+                        batchID: revision.batchID,
+                        createdAt: revision.createdAt,
+                        authorDeviceID: revision.authorDeviceID,
+                        startOfDay: revision.startOfDay,
+                        isDeleted: revision.isDeleted,
+                        verifiedAt: revision.verifiedAt,
+                        methodRawValue: revision.methodRawValue,
+                        verificationDuration: revision.verificationDuration,
+                        spfLevel: revision.spfLevel,
+                        notes: revision.notes,
+                        reapplyCount: revision.reapplyCount,
+                        lastReappliedAt: revision.lastReappliedAt,
+                        changedFields: revision.changedFields,
+                        batchKind: revision.batchKind
+                    )
+                )
+            }
+
+            let sourceSettingsRevisions = try sourceContext.fetch(
+                FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
+            )
+            for revision in sourceSettingsRevisions {
+                targetContext.insert(
+                    SettingsRevision(
+                        id: revision.id,
+                        batchID: revision.batchID,
+                        createdAt: revision.createdAt,
+                        authorDeviceID: revision.authorDeviceID,
+                        snapshot: revision.snapshot,
+                        changedFields: revision.changedFields,
+                        batchKind: revision.batchKind
+                    )
+                )
+            }
+
+            try targetContext.save()
+        } catch {
+            targetContext.rollback()
+            throw error
         }
     }
 

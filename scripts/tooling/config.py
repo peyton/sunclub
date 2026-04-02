@@ -53,6 +53,9 @@ class ToolingConfig:
     export_path: str
     export_options_path: str
     team_id: str
+    cloudkit_container_id: str
+    cloudkit_team_id: str
+    cloudkit_environment: str
 
 
 _raw_config = _parse_env_file(CONFIG_PATH)
@@ -75,4 +78,7 @@ CONFIG = ToolingConfig(
     export_path=_raw_config["EXPORT_PATH"],
     export_options_path=_raw_config["EXPORT_OPTIONS_PATH"],
     team_id=_raw_config["TEAM_ID"],
+    cloudkit_container_id=_raw_config["CLOUDKIT_CONTAINER_ID"],
+    cloudkit_team_id=_raw_config["CLOUDKIT_TEAM_ID"],
+    cloudkit_environment=_raw_config["CLOUDKIT_ENVIRONMENT"],
 )

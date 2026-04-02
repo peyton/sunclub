@@ -23,6 +23,15 @@ def test_main_target_uses_checked_in_info_plist() -> None:
     )
 
 
+def test_project_reads_signing_team_from_team_id_env() -> None:
+    source = PROJECT_SWIFT.read_text()
+
+    assert (
+        'let signingTeam = Environment.TEAM_ID.getString(default: "3VDQ4656LX")'
+        in source
+    )
+
+
 def test_info_plist_declares_background_task_and_backup_document_type() -> None:
     info = load_info_plist()
 

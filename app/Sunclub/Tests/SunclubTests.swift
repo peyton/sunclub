@@ -381,14 +381,15 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testLongestStreakNeverDecreases() throws {
+    func testLongestStreakRecomputesFromProjectedHistoryInsteadOfUsingStaleCache() throws {
         let state = try makeAppState()
         state.settings.longestStreak = 10
         state.save()
 
         state.markAppliedToday(method: .manual)
 
-        XCTAssertEqual(state.longestStreak, 10)
+        XCTAssertEqual(state.longestStreak, 1)
+        XCTAssertEqual(state.settings.longestStreak, 1)
     }
 
     @MainActor
@@ -431,7 +432,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 0)
-        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 1)
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 2)
     }
 
     @MainActor
@@ -601,6 +602,31 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testCloudSyncDefaultsToEnabled() throws {
+        let state = try makeAppState()
+
+        XCTAssertTrue(state.syncPreference?.isICloudSyncEnabled ?? false)
+        XCTAssertEqual(state.cloudSyncStatusPresentation.title, "iCloud sync is on")
+    }
+
+    @MainActor
+    func testCloudSyncToggleUpdatesPresentation() async throws {
+        let state = try makeAppState()
+
+        state.updateCloudSyncEnabled(false)
+        await Task.yield()
+
+        XCTAssertFalse(state.syncPreference?.isICloudSyncEnabled ?? true)
+        XCTAssertEqual(state.cloudSyncStatusPresentation.title, "iCloud sync is paused")
+
+        state.updateCloudSyncEnabled(true)
+        await Task.yield()
+
+        XCTAssertTrue(state.syncPreference?.isICloudSyncEnabled ?? false)
+        XCTAssertEqual(state.cloudSyncStatusPresentation.title, "iCloud sync is on")
+    }
+
+    @MainActor
     func testDailyRecordMethodRoundTrips() {
         let now = Date()
         let record = DailyRecord(startOfDay: now, verifiedAt: now, method: .manual)
@@ -621,6 +647,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(AppRoute.reapplyCheckIn.rawValue, "reapplyCheckIn")
         XCTAssertEqual(AppRoute.backfillYesterday.rawValue, "backfillYesterday")
         XCTAssertEqual(AppRoute.weeklySummary.rawValue, "weeklySummary")
+        XCTAssertEqual(AppRoute.recovery.rawValue, "recovery")
     }
 
     @MainActor
@@ -744,6 +771,73 @@ final class SunclubTests: XCTestCase {
         XCTAssertTrue(record.hasReapplied)
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
         XCTAssertEqual(state.reapplyCheckInPresentation?.actionTitle, "Log Another Reapply")
+    }
+
+    @MainActor
+    func testUndoingDeleteRestoresProjectedRecord() throws {
+        let state = try makeAppState()
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+
+        state.saveManualRecord(for: yesterday, spfLevel: 50, notes: "Beach day")
+        state.deleteRecord(for: yesterday)
+
+        let deletedBatch = try XCTUnwrap(state.changeBatches.first(where: { $0.kind == .deleteRecord }))
+        XCTAssertNil(state.record(for: yesterday))
+
+        state.undoChange(deletedBatch.id)
+
+        let restored = try XCTUnwrap(state.record(for: yesterday))
+        XCTAssertEqual(restored.spfLevel, 50)
+        XCTAssertEqual(restored.notes, "Beach day")
+    }
+
+    @MainActor
+    func testRemoteDayConflictAutoMergesAndCreatesReviewItem() throws {
+        let state = try makeAppState()
+        let today = Calendar.current.startOfDay(for: Date())
+        let verifiedAt = Calendar.current.date(byAdding: .hour, value: 9, to: today) ?? today
+
+        state.saveManualRecord(for: today, verifiedAt: verifiedAt, spfLevel: 30, notes: "Local entry")
+
+        let remoteCreatedAt = Date().addingTimeInterval(60)
+        let remoteBatch = SunclubChangeBatch(
+            createdAt: remoteCreatedAt,
+            kind: .historyEdit,
+            scope: .day,
+            scopeIdentifier: today.formatted(.iso8601.year().month().day()),
+            authorDeviceID: "remote-device",
+            summary: "Remote history edit",
+            isLocalOnly: false,
+            isPublishedToCloud: true,
+            cloudPublishedAt: remoteCreatedAt
+        )
+        state.modelContext.insert(remoteBatch)
+        state.modelContext.insert(
+            DailyRecordRevision(
+                batch: remoteBatch,
+                snapshot: DailyRecordProjectionSnapshot(
+                    startOfDay: today,
+                    verifiedAt: verifiedAt,
+                    methodRawValue: VerificationMethod.manual.rawValue,
+                    verificationDuration: nil,
+                    spfLevel: 50,
+                    notes: "Remote entry",
+                    reapplyCount: 1,
+                    lastReappliedAt: remoteCreatedAt
+                ),
+                changedFields: [.spfLevel, .notes, .reapplyCount, .lastReappliedAt]
+            )
+        )
+        state.save()
+
+        state.refresh()
+
+        let mergedRecord = try XCTUnwrap(state.record(for: today))
+        XCTAssertEqual(mergedRecord.spfLevel, 50)
+        XCTAssertEqual(mergedRecord.notes, "Remote entry")
+        XCTAssertEqual(mergedRecord.reapplyCount, 1)
+        XCTAssertEqual(state.conflicts.count, 1)
+        XCTAssertEqual(state.conflicts.first?.scope, .day)
     }
 
     @MainActor

@@ -23,7 +23,10 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
    - Surfaces the most-used logged SPF and recent notes when that metadata exists.
 7. `Settings`
    - `Notification Time` updates the daily reminder time.
-   - Reapply reminder settings stay local to the device.
+   - Reapply reminders, iCloud sync state, local backup controls, and `Recovery & Changes` live here.
+8. `Recovery & Changes`
+   - Lists undoable change batches, imported backups, and any auto-merged conflicts that still need review.
+   - Lets the user undo or redo recent changes, restore the pre-import state, and explicitly publish imported local backups to iCloud.
 
 ## What Still Works
 
@@ -31,8 +34,10 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - Reminder scheduling still uses `UNUserNotificationCenter` and the existing weekly background refresh path.
 - Streaks and weekly summaries still come from local `CalendarAnalytics`.
 - Optional SPF and notes metadata now feed a lightweight recap inside `Weekly Summary` and day detail in `History`.
-- All data remains local on device. There are no accounts, uploads, or analytics SDKs.
+- The projected app state still works fully offline, but revision history now syncs through the user's private iCloud database by default.
+- Local backup export/import still works without an account migration step. Import changes only the local device until the user explicitly publishes the imported batches to iCloud.
 - The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
+- Sunclub still has no app-owned accounts or analytics SDKs. The only sync path is the user's private iCloud database.
 
 ## Project Structure
 
@@ -66,6 +71,11 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - `just generate`
 - `just build`
 - `just run`
+- `just cloudkit-save-token`
+- `just cloudkit-export-schema`
+- `just cloudkit-validate-schema`
+- `just cloudkit-import-schema`
+- `just cloudkit-reset-dev`
 - `just clean-build`
 - `just clean-generated`
 - `just clean`
@@ -88,10 +98,19 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 ## Notes
 
 - Daily reminders route directly to manual logging.
+- The widget `Log Today` action routes into the same success flow used by manual logging.
+- Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
+- Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
+- The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
 - The widget suite now covers all iPhone Home Screen and Lock Screen families supported by the app:
   - `Log Today`: `systemSmall`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
   - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
   - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
   - `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
 - Widgets and controls route through shared widget routes for summary, history, and manual-update surfaces.
+- The widget `Log Today` action routes into the same success flow used by manual logging.
+- Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
+- Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
+- The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
+- The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
 - UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=manualLog` so the flow can be exercised end to end in automation and screenshot capture.
