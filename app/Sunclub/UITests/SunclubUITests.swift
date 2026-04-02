@@ -157,6 +157,25 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(reapplyNote.label.contains("1h 30m"))
     }
 
+    func testWeeklySummaryShowsUsageInsights() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=weeklySummary",
+            "UITEST_SEED_USAGE_INSIGHTS"
+        ]
+        app.launch()
+
+        let mostUsedSPF = app.staticTexts["weekly.mostUsedSPFValue"]
+        XCTAssertTrue(mostUsedSPF.waitForExistence(timeout: 5))
+        XCTAssertEqual(mostUsedSPF.label, "SPF 50")
+
+        let recentNote = app.staticTexts["weekly.recentNoteText.0"]
+        XCTAssertTrue(recentNote.waitForExistence(timeout: 5))
+        XCTAssertEqual(recentNote.label, "Before beach walk")
+    }
+
     @MainActor
     private func launchAndCompleteOnboarding() -> XCUIApplication {
         let app = XCUIApplication()

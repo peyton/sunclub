@@ -79,7 +79,7 @@ Expected sequence:
 
 1. User taps the streak card on Home.
 2. App opens the weekly summary.
-3. User sees the number of applied days in the last seven days and any missed days.
+3. User sees the number of applied days in the last seven days, any missed days, and a lightweight recap of their logged SPF and recent notes when that data exists.
 
 The weekly summary should reinforce momentum, not punish failure.
 
@@ -124,6 +124,7 @@ Expected sequence:
 
 - Show how many of the last seven days were completed.
 - Surface missed days in a readable way.
+- Surface lightweight SPF and recent note insights when the user has logged that metadata.
 - Make progress easy to scan at a glance.
 
 ### Settings
@@ -150,6 +151,7 @@ Expected sequence:
 - Home should display the current streak as a primary motivational element.
 - Streaks should reflect consecutive completed days.
 - Weekly summary should cover the rolling last seven days, including today.
+- Weekly summary may show lightweight SPF and note recaps from saved check-ins.
 - Progress UI should stay simple and legible rather than analytical.
 
 ### Notifications
@@ -191,7 +193,7 @@ Expected sequence:
 - Multiple tracked products or bottles.
 - Barcode identity or custom bottle training.
 - Household or family plans.
-- Deep analytics beyond streak and weekly summary.
+- Deep analytics beyond streak, weekly summary, and lightweight SPF/note recap.
 - Rich calendar history browsing.
 - Product catalog, purchase flow, or refill logistics inside the app.
 - Coaching content beyond short reminder and summary copy.
