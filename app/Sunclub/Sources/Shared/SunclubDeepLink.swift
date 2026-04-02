@@ -64,7 +64,10 @@ enum SunclubDeepLinkHandler {
                 return true
             }
 
-            _ = SunclubQuickLogAction.perform(using: appState)
+            appState.recordVerificationSuccess(method: .manual)
+            if appState.settings.reapplyReminderEnabled {
+                appState.scheduleReapplyReminder()
+            }
             router.open(.verifySuccess)
             return true
         case let .widgetRoute(route):
