@@ -2,7 +2,7 @@
 
 ## Product Summary
 
-Sunclub is a local-first iOS app for maintaining a daily sunscreen habit.
+Sunclub is a local-first iOS app for maintaining a daily sunscreen habit, with optional local backup import/export and default-on iCloud sync for undoable history.
 
 The product loop is:
 
@@ -15,13 +15,14 @@ The product loop is:
 - Help users build a daily sunscreen routine with as little friction as possible.
 - Make daily logging fast and repeatable with a simple manual flow.
 - Make daily progress visible through streaks and weekly reporting.
-- Keep the app useful without requiring an account or cloud service.
+- Keep the app useful without requiring an account gate or a server-owned profile.
 - Keep the product focused on one action: logging sunscreen for today.
+- Preserve streaks and user trust when history changes, imports, or merges happen.
 
 ## Non-Goals
 
 - Social features, sharing, or community participation.
-- Cloud sync, account creation, or cross-device history.
+- Mandatory account creation, collaborative editing, or server-owned history.
 - Product education, ingredient analysis, or sunscreen recommendations.
 - Multi-user or household support.
 - In-app subscriptions, paywalls, or premium-only product tiers for v1.
@@ -31,9 +32,10 @@ The product loop is:
 
 - One primary action per visit: the app should always guide the user toward the next obvious step.
 - Low ceremony: the daily check-in should be fast enough to feel routine, not like work.
-- Private by default: user data stays on device.
+- Private by default: projected state works fully offline and iCloud sync uses the user's private database.
 - Habit-first: progress, reminders, and summaries should reinforce consistency more than novelty.
 - Deterministic logging: recording today should be a direct, low-friction action.
+- Recoverable changes: user-visible history changes should remain reviewable and undoable.
 
 ## Primary User Journey
 
@@ -95,6 +97,7 @@ Expected sequence:
 4. User can toggle streak-risk nudges and reapply reminders.
 5. User can export a local backup file before reinstalling or switching devices.
 6. User can import that backup later to restore reminder settings and sunscreen history on-device.
+7. User can review recent changes, undo or redo them, and explicitly choose whether an imported local backup should be published to iCloud.
 
 ## Screen Responsibilities
 
@@ -144,7 +147,16 @@ Expected sequence:
 - Let the user decide whether reminders stay anchored or follow the current local timezone while traveling.
 - Let the user opt into a streak-risk nudge before the day closes.
 - Let the user tune reapply reminders without leaving the app.
-- Let the user export and import a local backup file without requiring an account or cloud sync.
+- Let the user pause or resume iCloud sync without deleting local or cloud history.
+- Let the user export and import a local backup file without forcing an account migration flow.
+- Let the user open `Recovery & Changes` to review imports, conflicts, and undoable history.
+
+### Recovery & Changes
+
+- Show the most recent change batches in readable order.
+- Let the user undo and redo supported history changes without mutating earlier revisions in place.
+- Show imported local backups as recoverable sessions with explicit `Publish to iCloud` and `Restore Pre-Import State` actions.
+- Surface auto-merged conflicts so the visible result stays usable while the merge remains reviewable.
 
 ## Feature Requirements
 
@@ -190,12 +202,15 @@ Expected sequence:
 
 - Users should be able to change reminder timing and reminder behavior without repeating onboarding.
 - Manual logging should always remain available as the primary check-in flow.
+- iCloud sync should default to on for supported devices, but the user must be able to pause it locally.
 
 ### History Recovery
 
 - History should allow editing an existing past or current manual entry without creating duplicates.
 - History should allow backfilling a missed past day with a manual entry.
 - History edits should be scoped to the selected day and should not unlock future-day logging.
+- Imported local backups must not automatically delete or roll back iCloud history.
+- Conflict resolution should preserve streak continuity whenever a merged day has at least one non-deleted logged revision.
 
 ## Key Behavioral Expectations
 
@@ -210,6 +225,9 @@ Expected sequence:
 - The app should remain functional offline.
 - There should be no required account or server dependency for core usage.
 - Backup export and import should stay local-first: one local backup file should be enough to restore history after a reinstall or on a replacement device.
+- Local backup import should not automatically publish deletions or rollback events to iCloud.
+- Current visible `DailyRecord` and `Settings` values should be rebuilt from revision history so every user-visible change remains undoable.
+- Streak values should be derived from the projected timeline after merge resolution instead of trusting stale persisted counters.
 - Importing a backup from an older supported database schema should migrate it to the current schema before the restored data becomes live.
 
 ### Routing from Notifications
@@ -224,8 +242,8 @@ Expected sequence:
 - Barcode identity or custom bottle training.
 - Household or family plans.
 - Deep analytics beyond streak, weekly summary, and lightweight SPF/note recap.
-- Cross-device or collaborative history editing.
-- Automatic cloud sync between devices.
+- Collaborative or shared-family history editing.
+- Shared or server-owned sync conflict arbitration beyond the user's private iCloud history.
 - Product catalog, purchase flow, or refill logistics inside the app.
 - Coaching content beyond short reminder and summary copy.
 

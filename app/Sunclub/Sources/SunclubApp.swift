@@ -85,11 +85,10 @@ struct SunclubApp: App {
         }
 
         if arguments.contains("UITEST_REAPPLY_ENABLED") {
-            appState.settings.reapplyReminderEnabled = true
-            if let requestedReapplyInterval {
-                appState.settings.reapplyIntervalMinutes = max(30, min(480, requestedReapplyInterval))
-            }
-            appState.save()
+            appState.updateReapplySettings(
+                enabled: true,
+                intervalMinutes: requestedReapplyInterval ?? appState.settings.reapplyIntervalMinutes
+            )
         }
 
         applyUITestSeedData(from: arguments)
@@ -154,6 +153,10 @@ struct SunclubApp: App {
                 seedReminderCoachingScenario()
             case "monthlyReview":
                 seedCurrentMonthReviewScenario()
+            case "conflictDay":
+                seedDayConflictScenario()
+            case "undoDeleteToday":
+                seedUndoDeleteTodayScenario()
             default:
                 break
             }
@@ -171,20 +174,8 @@ struct SunclubApp: App {
     private func seedHistoryEditBackfillScenario() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-
-        guard let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today) else {
-            return
-        }
-
-        let todayRecord = DailyRecord(
-            startOfDay: today,
-            verifiedAt: verifiedAt,
-            method: .manual,
-            spfLevel: 30,
-            notes: "Seeded today"
-        )
-        appState.modelContext.insert(todayRecord)
-        appState.save()
+        let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today)
+        appState.saveManualRecord(for: today, verifiedAt: verifiedAt, spfLevel: 30, notes: "Seeded today")
         appState.refresh()
     }
 
@@ -282,6 +273,56 @@ struct SunclubApp: App {
         appState.refresh()
     }
 
+    private func seedDayConflictScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today) ?? today
+        appState.saveManualRecord(for: today, verifiedAt: verifiedAt, spfLevel: 30, notes: "Local entry")
+
+        let remoteCreatedAt = Date().addingTimeInterval(60)
+        let remoteBatch = SunclubChangeBatch(
+            createdAt: remoteCreatedAt,
+            kind: .historyEdit,
+            scope: .day,
+            scopeIdentifier: today.formatted(.iso8601.year().month().day()),
+            authorDeviceID: "uitest-remote-device",
+            summary: "Remote history edit",
+            isLocalOnly: false,
+            isPublishedToCloud: true,
+            cloudPublishedAt: remoteCreatedAt
+        )
+        appState.modelContext.insert(remoteBatch)
+        appState.modelContext.insert(
+            DailyRecordRevision(
+                batch: remoteBatch,
+                snapshot: DailyRecordProjectionSnapshot(
+                    startOfDay: today,
+                    verifiedAt: verifiedAt,
+                    methodRawValue: VerificationMethod.manual.rawValue,
+                    verificationDuration: nil,
+                    spfLevel: 50,
+                    notes: "Remote entry",
+                    reapplyCount: 0,
+                    lastReappliedAt: nil
+                ),
+                changedFields: [.spfLevel, .notes]
+            )
+        )
+        appState.save()
+        appState.refresh()
+    }
+
+    private func seedUndoDeleteTodayScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+
+        insertSeedRecord(day: yesterday, hour: 8, minute: 30, spfLevel: 50, notes: "Yesterday")
+        insertSeedRecord(day: today, hour: 9, minute: 0, spfLevel: 30, notes: "Today")
+        appState.deleteRecord(for: today)
+        appState.refresh()
+    }
+
     private func seedUsageInsightsForUITestsIfNeeded(arguments: [String]) {
         guard arguments.contains("UITEST_SEED_USAGE_INSIGHTS") else {
             return
@@ -302,14 +343,12 @@ struct SunclubApp: App {
                 continue
             }
 
-            let record = DailyRecord(
-                startOfDay: day,
+            appState.saveManualRecord(
+                for: day,
                 verifiedAt: verifiedAt,
-                method: .manual,
                 spfLevel: entry.spfLevel,
                 notes: entry.notes
             )
-            appState.modelContext.insert(record)
         }
 
         appState.save()
@@ -329,16 +368,18 @@ struct SunclubApp: App {
         let startOfDay = calendar.startOfDay(for: day)
         let verifiedAt = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: startOfDay) ?? startOfDay
 
-        let record = DailyRecord(
-            startOfDay: startOfDay,
+        appState.saveManualRecord(
+            for: startOfDay,
             verifiedAt: verifiedAt,
-            method: .manual,
             spfLevel: spfLevel,
-            notes: notes,
-            reapplyCount: reapplyCount,
-            lastReappliedAt: lastReappliedAt
+            notes: notes
         )
-        appState.modelContext.insert(record)
+
+        if reapplyCount > 0 {
+            for _ in 0..<reapplyCount {
+                appState.recordReapplication(for: startOfDay, performedAt: lastReappliedAt)
+            }
+        }
     }
 
     private func requestedUITestNotificationHealth(from arguments: [String]) -> UITestNotificationHealth? {

@@ -172,11 +172,28 @@ enum SunclubSchemaV3: VersionedSchema {
     ]
 }
 
+enum SunclubSchemaV4: VersionedSchema {
+    static let versionIdentifier = Schema.Version(4, 0, 0)
+    static let models: [any PersistentModel.Type] = [
+        DailyRecord.self,
+        Settings.self,
+        SunclubChangeBatch.self,
+        DailyRecordRevision.self,
+        SettingsRevision.self,
+        CloudSyncPreference.self,
+        CloudSyncState.self,
+        CloudSyncDiagnostic.self,
+        SunclubConflictItem.self,
+        SunclubImportSession.self
+    ]
+}
+
 enum SunclubMigrationPlan: SchemaMigrationPlan {
     static let schemas: [any VersionedSchema.Type] = [
         SunclubSchemaV1.self,
         SunclubSchemaV2.self,
-        SunclubSchemaV3.self
+        SunclubSchemaV3.self,
+        SunclubSchemaV4.self
     ]
 
     static let stages: [MigrationStage] = [
@@ -226,29 +243,116 @@ enum SunclubMigrationPlan: SchemaMigrationPlan {
                     try context.save()
                 }
             }
+        ),
+        .custom(
+            fromVersion: SunclubSchemaV3.self,
+            toVersion: SunclubSchemaV4.self,
+            willMigrate: nil,
+            didMigrate: { context in
+                let settings = try context.fetch(FetchDescriptor<Settings>()).first ?? {
+                    let settings = Settings()
+                    context.insert(settings)
+                    return settings
+                }()
+
+                let preference = try context.fetch(FetchDescriptor<CloudSyncPreference>()).first ?? {
+                    let preference = CloudSyncPreference()
+                    context.insert(preference)
+                    return preference
+                }()
+
+                if try context.fetch(FetchDescriptor<CloudSyncState>()).isEmpty {
+                    context.insert(CloudSyncState())
+                }
+
+                if try context.fetch(FetchDescriptor<SunclubChangeBatch>()).isEmpty {
+                    let batch = SunclubChangeBatch(
+                        kind: .migrationSeed,
+                        scope: .timeline,
+                        scopeIdentifier: "timeline",
+                        authorDeviceID: preference.deviceID,
+                        summary: "Migrated the local store to revision history."
+                    )
+                    context.insert(batch)
+
+                    context.insert(
+                        SettingsRevision(
+                            batch: batch,
+                            snapshot: settings.projectionSnapshot,
+                            changedFields: [
+                                .hasCompletedOnboarding,
+                                .reminderHour,
+                                .reminderMinute,
+                                .weeklyHour,
+                                .weeklyWeekday,
+                                .dailyPhraseState,
+                                .weeklyPhraseState,
+                                .smartReminderSettingsData,
+                                .reapplyReminderEnabled,
+                                .reapplyIntervalMinutes,
+                                .usesLiveUV
+                            ]
+                        )
+                    )
+
+                    let recordDescriptor = FetchDescriptor<DailyRecord>(
+                        sortBy: [SortDescriptor(\.startOfDay, order: .forward)]
+                    )
+                    for record in try context.fetch(recordDescriptor) {
+                        context.insert(
+                            DailyRecordRevision(
+                                batch: batch,
+                                snapshot: record.projectionSnapshot,
+                                changedFields: [
+                                    .verifiedAt,
+                                    .methodRawValue,
+                                    .verificationDuration,
+                                    .spfLevel,
+                                    .notes,
+                                    .reapplyCount,
+                                    .lastReappliedAt
+                                ]
+                            )
+                        )
+                    }
+                }
+
+                if context.hasChanges {
+                    try context.save()
+                }
+            }
         )
     ]
 }
 
 enum SunclubModelContainerFactory {
-    static let currentSchema = Schema(versionedSchema: SunclubSchemaV3.self)
+    static let currentSchema = Schema(versionedSchema: SunclubSchemaV4.self)
 
     static func makeSharedContainer(isStoredInMemoryOnly: Bool) throws -> ModelContainer {
         let configuration = ModelConfiguration(
             schema: currentSchema,
             isStoredInMemoryOnly: isStoredInMemoryOnly,
-            groupContainer: .automatic
+            groupContainer: .automatic,
+            cloudKitDatabase: .none
         )
         return try makeContainer(configuration: configuration)
     }
 
     static func makeInMemoryContainer() throws -> ModelContainer {
-        let configuration = ModelConfiguration(schema: currentSchema, isStoredInMemoryOnly: true)
+        let configuration = ModelConfiguration(
+            schema: currentSchema,
+            isStoredInMemoryOnly: true,
+            cloudKitDatabase: .none
+        )
         return try makeContainer(configuration: configuration)
     }
 
     static func makeDiskBackedContainer(url: URL) throws -> ModelContainer {
-        let configuration = ModelConfiguration(schema: currentSchema, url: url)
+        let configuration = ModelConfiguration(
+            schema: currentSchema,
+            url: url,
+            cloudKitDatabase: .none
+        )
         return try makeContainer(configuration: configuration)
     }
 

@@ -75,11 +75,7 @@ struct VerificationSuccessPresentation: Equatable {
     }
 
     var detail: String {
-        if streak == 1 {
-            return "You're on a 1-day streak."
-        }
-
-        return "You're on a \(streak)-day streak."
+        streak == 1 ? "You're on a 1-day streak." : "You're on a \(streak)-day streak."
     }
 }
 
@@ -102,6 +98,13 @@ struct LiveUVStatusPresentation: Equatable {
     let actionKind: LiveUVActionKind?
 }
 
+struct CloudSyncStatusPresentation: Equatable {
+    let title: String
+    let detail: String
+    let actionTitle: String?
+    let pendingImportedBatchCount: Int
+}
+
 @MainActor
 @Observable
 final class AppState {
@@ -116,12 +119,20 @@ final class AppState {
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
     private let verificationStore: VerificationStore
+    private let historyService: SunclubHistoryService
+    private let cloudSyncCoordinator: CloudSyncControlling
     private let notificationManager: NotificationScheduling
     private let uvIndexService: UVIndexService
     private let backupService: SunclubBackupService
+
     private(set) var records: [DailyRecord] = []
+    private(set) var changeBatches: [SunclubChangeBatch] = []
+    private(set) var importSessions: [SunclubImportSession] = []
+    private(set) var conflicts: [SunclubConflictItem] = []
+    private(set) var syncPreference: CloudSyncPreference?
     private(set) var uvReading: UVReading?
     private(set) var notificationHealthSnapshot: NotificationHealthSnapshot = .unknown
+
     private let calendar = Calendar.current
     private var uvReadingOverride: UVReading?
     private var notificationHealthOverride: NotificationHealthSnapshot?
@@ -149,29 +160,53 @@ final class AppState {
         context: ModelContext,
         notificationManager: NotificationScheduling,
         uvIndexService: UVIndexService,
-        backupService: SunclubBackupService = SunclubBackupService()
+        backupService: SunclubBackupService = SunclubBackupService(),
+        historyService: SunclubHistoryService? = nil,
+        cloudSyncCoordinator: CloudSyncControlling? = nil
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
+        let resolvedHistoryService = historyService ?? SunclubHistoryService(context: context)
+        self.historyService = resolvedHistoryService
         self.notificationManager = notificationManager
         self.uvIndexService = uvIndexService
         self.backupService = backupService
-        settings = Self.loadOrCreateSettings(from: context)
+        try? resolvedHistoryService.bootstrapIfNeeded()
+        settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
+        if let cloudSyncCoordinator {
+            self.cloudSyncCoordinator = cloudSyncCoordinator
+        } else if RuntimeEnvironment.isRunningTests {
+            self.cloudSyncCoordinator = NoopCloudSyncCoordinator(historyService: resolvedHistoryService)
+        } else {
+            self.cloudSyncCoordinator = CloudSyncCoordinator(historyService: resolvedHistoryService)
+        }
         refresh()
         refreshUVReadingIfNeeded()
         refreshNotificationHealth()
+
+        if !RuntimeEnvironment.isRunningTests {
+            Task {
+                await self.cloudSyncCoordinator.start()
+                self.refresh()
+            }
+        }
     }
 
     func refresh() {
         do {
-            let fetchedRecords = try verificationStore.fetchRecords()
-            let didNormalize = normalizeLegacyVerificationMethods(in: fetchedRecords)
-            records = fetchedRecords
-            if didNormalize {
-                save()
-            }
+            try historyService.refreshProjectedState()
+            settings = try historyService.settings()
+            records = try historyService.records()
+            changeBatches = try historyService.changeBatches()
+            importSessions = try historyService.importSessions()
+            conflicts = try historyService.unresolvedConflicts()
+            syncPreference = try historyService.syncPreference()
         } catch {
             records = []
+            changeBatches = []
+            importSessions = []
+            conflicts = []
+            syncPreference = nil
         }
 
         syncLongestStreakIfNeeded()
@@ -193,11 +228,6 @@ final class AppState {
         try? modelContext.save()
     }
 
-    private func saveAndRescheduleReminders() {
-        save()
-        scheduleReminders()
-    }
-
     func scheduleReminders() {
         Task {
             await notificationManager.scheduleReminders(using: self)
@@ -210,10 +240,28 @@ final class AppState {
         }
     }
 
-    private func nextPhrase(catalog: [String], state: KeyPath<Settings, Data?>, setState: (Data) -> Void) -> String {
+    private func nextPhrase(
+        catalog: [String],
+        state: KeyPath<Settings, Data?>,
+        changedField: SunclubTrackedField,
+        summary: String
+    ) -> String {
         let next = PhraseRotation.nextPhrase(from: settings[keyPath: state], catalog: catalog)
-        setState(next.1)
-        save()
+        let batch = try? historyService.applySettingsChange(
+            kind: .phraseRotation,
+            summary: summary,
+            changedFields: [changedField]
+        ) { snapshot in
+            switch changedField {
+            case .dailyPhraseState:
+                snapshot.dailyPhraseState = next.1
+            case .weeklyPhraseState:
+                snapshot.weeklyPhraseState = next.1
+            default:
+                break
+            }
+        }
+        finishDurableChange(batch, reschedulesReminders: false)
         return next.0
     }
 
@@ -225,9 +273,69 @@ final class AppState {
         .reapplyCheckIn
     }
 
+    var pendingImportedBatchCount: Int {
+        importSessions
+            .filter { $0.publishedAt == nil }
+            .flatMap(\.importedBatchIDs)
+            .count
+    }
+
+    var cloudSyncStatusPresentation: CloudSyncStatusPresentation {
+        let pendingImportedBatchCount = pendingImportedBatchCount
+        let status = syncPreference?.status ?? .idle
+
+        switch status {
+        case .paused:
+            return CloudSyncStatusPresentation(
+                title: "iCloud sync is paused",
+                detail: "This device keeps changes local until you turn iCloud sync back on.",
+                actionTitle: "Resume Sync",
+                pendingImportedBatchCount: pendingImportedBatchCount
+            )
+        case .syncing:
+            return CloudSyncStatusPresentation(
+                title: "Syncing with iCloud",
+                detail: "Sunclub is sending recent changes and checking for updates from your other devices.",
+                actionTitle: nil,
+                pendingImportedBatchCount: pendingImportedBatchCount
+            )
+        case .error:
+            return CloudSyncStatusPresentation(
+                title: "iCloud needs attention",
+                detail: syncPreference?.lastSyncErrorDescription ?? "Sunclub couldn't finish the last sync.",
+                actionTitle: "Try Again",
+                pendingImportedBatchCount: pendingImportedBatchCount
+            )
+        case .idle:
+            let detail: String
+            if let lastSyncAt = syncPreference?.lastSyncAt {
+                detail = "Last synced \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))."
+            } else {
+                detail = "Sync is on and Sunclub will keep your history in iCloud."
+            }
+
+            return CloudSyncStatusPresentation(
+                title: "iCloud sync is on",
+                detail: detail,
+                actionTitle: "Sync Now",
+                pendingImportedBatchCount: pendingImportedBatchCount
+            )
+        }
+    }
+
+    var recentImportSession: SunclubImportSession? {
+        importSessions.first
+    }
+
     func completeOnboarding() {
-        settings.hasCompletedOnboarding = true
-        save()
+        let batch = try? historyService.applySettingsChange(
+            kind: .onboarding,
+            summary: "Completed onboarding.",
+            changedFields: [.hasCompletedOnboarding]
+        ) { snapshot in
+            snapshot.hasCompletedOnboarding = true
+        }
+        finishDurableChange(batch, reschedulesReminders: false)
     }
 
     func updateDailyReminder(hour: Int, minute: Int) {
@@ -235,8 +343,10 @@ final class AppState {
         let reminderTime = ReminderTime(hour: hour, minute: minute)
         reminderSettings.weekdayTime = reminderTime
         reminderSettings.weekendTime = reminderTime
-        settings.smartReminderSettings = reminderSettings
-        saveAndRescheduleReminders()
+        applyReminderSettingsChange(
+            reminderSettings,
+            summary: "Updated the daily reminder schedule."
+        )
     }
 
     func updateReminderTime(for kind: ReminderScheduleKind, hour: Int, minute: Int) {
@@ -250,8 +360,10 @@ final class AppState {
             reminderSettings.weekendTime = reminderTime
         }
 
-        settings.smartReminderSettings = reminderSettings
-        saveAndRescheduleReminders()
+        applyReminderSettingsChange(
+            reminderSettings,
+            summary: "Updated the \(kind.shortTitle.lowercased()) reminder."
+        )
     }
 
     func updateTravelTimeZoneHandling(followsTravelTimeZone: Bool) {
@@ -260,21 +372,76 @@ final class AppState {
         if !followsTravelTimeZone {
             reminderSettings.anchoredTimeZoneIdentifier = TimeZone.autoupdatingCurrent.identifier
         }
-        settings.smartReminderSettings = reminderSettings
-        saveAndRescheduleReminders()
+        applyReminderSettingsChange(
+            reminderSettings,
+            summary: "Updated the travel reminder preference."
+        )
     }
 
     func updateStreakRiskReminder(enabled: Bool) {
         var reminderSettings = settings.smartReminderSettings
         reminderSettings.streakRiskEnabled = enabled
-        settings.smartReminderSettings = reminderSettings
-        saveAndRescheduleReminders()
+        applyReminderSettingsChange(
+            reminderSettings,
+            summary: "Updated the streak-risk reminder."
+        )
     }
 
     func updateWeeklyReminder(hour: Int, weekday: Int) {
-        settings.weeklyHour = hour
-        settings.weeklyWeekday = max(1, min(7, weekday))
-        saveAndRescheduleReminders()
+        let batch = try? historyService.applySettingsChange(
+            kind: .weeklyReminder,
+            summary: "Updated the weekly summary reminder.",
+            changedFields: [.weeklyHour, .weeklyWeekday]
+        ) { snapshot in
+            snapshot.weeklyHour = hour
+            snapshot.weeklyWeekday = max(1, min(7, weekday))
+        }
+        finishDurableChange(batch, reschedulesReminders: true)
+    }
+
+    func updateCloudSyncEnabled(_ enabled: Bool) {
+        Task {
+            try? await cloudSyncCoordinator.setEnabled(enabled)
+            refresh()
+        }
+    }
+
+    func syncCloudNow() {
+        Task {
+            await cloudSyncCoordinator.syncNow()
+            refresh()
+        }
+    }
+
+    func publishImportedChanges(for sessionID: UUID) {
+        Task {
+            _ = try? await cloudSyncCoordinator.publishImportedSession(sessionID)
+            refresh()
+        }
+    }
+
+    func restoreImportedChanges(for sessionID: UUID) {
+        let batch = try? historyService.restoreImportSession(sessionID)
+        finishDurableChange(batch, reschedulesReminders: true)
+    }
+
+    func undoChange(_ batchID: UUID) {
+        let batch = try? historyService.undo(batchID: batchID)
+        finishDurableChange(batch, reschedulesReminders: true)
+    }
+
+    func redoChange(_ batchID: UUID) {
+        let batch = try? historyService.redo(batchID: batchID)
+        finishDurableChange(batch, reschedulesReminders: true)
+    }
+
+    func resolveConflict(_ conflictID: UUID) {
+        try? historyService.resolveConflict(conflictID)
+        refresh()
+    }
+
+    func conflict(for day: Date) -> SunclubConflictItem? {
+        try? historyService.conflict(for: day)
     }
 
     var reminderDate: Date {
@@ -284,7 +451,12 @@ final class AppState {
     func reminderDate(for kind: ReminderScheduleKind) -> Date {
         let reminderTime = settings.smartReminderSettings.time(for: kind)
         let today = calendar.startOfDay(for: Date())
-        return calendar.date(bySettingHour: reminderTime.hour, minute: reminderTime.minute, second: 0, of: today) ?? today
+        return calendar.date(
+            bySettingHour: reminderTime.hour,
+            minute: reminderTime.minute,
+            second: 0,
+            of: today
+        ) ?? today
     }
 
     var todayCardPresentation: HomeTodayCardPresentation {
@@ -322,10 +494,7 @@ final class AppState {
     }
 
     var reapplyReminderPlan: ReapplyReminderPlan {
-        ReapplyReminderPlan(
-            baseIntervalMinutes: settings.reapplyIntervalMinutes,
-            uvReading: uvReading
-        )
+        ReapplyReminderPlan(baseIntervalMinutes: settings.reapplyIntervalMinutes, uvReading: uvReading)
     }
 
     var homeRecoveryActions: [HomeRecoveryAction] {
@@ -451,15 +620,21 @@ final class AppState {
     }
 
     func nextDailyPhrase() -> String {
-        nextPhrase(catalog: PhraseBank.dailyPhrases, state: \.dailyPhraseState) {
-            settings.dailyPhraseState = $0
-        }
+        nextPhrase(
+            catalog: PhraseBank.dailyPhrases,
+            state: \.dailyPhraseState,
+            changedField: .dailyPhraseState,
+            summary: "Updated the daily phrase rotation."
+        )
     }
 
     func nextWeeklyPhrase() -> String {
-        nextPhrase(catalog: PhraseBank.weeklyPhrases, state: \.weeklyPhraseState) {
-            settings.weeklyPhraseState = $0
-        }
+        nextPhrase(
+            catalog: PhraseBank.weeklyPhrases,
+            state: \.weeklyPhraseState,
+            changedField: .weeklyPhraseState,
+            summary: "Updated the weekly phrase rotation."
+        )
     }
 
     func markAppliedToday(
@@ -474,7 +649,9 @@ final class AppState {
             verifiedAt: now,
             verificationValues: (method, verificationDuration, spfLevel, notes),
             replaceOptionalFields: false,
-            preserveExistingDuration: false
+            preserveExistingDuration: false,
+            kind: .manualLog,
+            summary: "Logged sunscreen for today."
         )
     }
 
@@ -484,14 +661,20 @@ final class AppState {
         spfLevel: Int?,
         notes: String?
     ) {
-        let existingTimestamp = (try? verificationStore.record(for: day))?.verifiedAt
+        let existingTimestamp = record(for: day)?.verifiedAt
         let timestamp = verifiedAt ?? existingTimestamp ?? defaultVerifiedAt(for: day)
+        let kind: SunclubChangeKind = record(for: day) == nil ? .historyBackfill : .historyEdit
+        let summary = kind == .historyBackfill
+            ? "Backfilled \(calendar.startOfDay(for: day).formatted(.dateTime.month().day()))."
+            : "Edited \(calendar.startOfDay(for: day).formatted(.dateTime.month().day()))."
         upsertRecord(
             for: day,
             verifiedAt: timestamp,
             verificationValues: (.manual, nil, spfLevel, notes),
             replaceOptionalFields: true,
-            preserveExistingDuration: true
+            preserveExistingDuration: true,
+            kind: kind,
+            summary: summary
         )
     }
 
@@ -519,31 +702,28 @@ final class AppState {
     }
 
     func deleteRecord(for day: Date) {
-        let target = calendar.startOfDay(for: day)
-
-        if let existing = try? verificationStore.record(for: target) {
-            modelContext.delete(existing)
-            try? modelContext.save()
-            refresh()
-
-            if calendar.isDateInToday(target), (try? verificationStore.record(for: target)) == nil {
-                cancelReapplyRemindersIfNeeded()
+        let batch = try? historyService.applyDayChange(
+            for: day,
+            kind: .deleteRecord,
+            summary: "Deleted \(calendar.startOfDay(for: day).formatted(.dateTime.month().day())).",
+            changedFields: [.isDeleted]
+        ) { existingSnapshot in
+            guard existingSnapshot != nil else {
+                return existingSnapshot
             }
-            updateLongestStreak()
-            refreshStreakRiskReminder()
+            return nil
+        }
+
+        finishDurableChange(batch, reschedulesReminders: false)
+
+        let target = calendar.startOfDay(for: day)
+        if calendar.isDateInToday(target), record(for: target) == nil {
+            cancelReapplyRemindersIfNeeded()
         }
     }
 
     var longestStreak: Int {
         settings.longestStreak
-    }
-
-    private func updateLongestStreak() {
-        let streak = currentStreak
-        if streak > settings.longestStreak {
-            settings.longestStreak = streak
-            save()
-        }
     }
 
     func scheduleReapplyReminder() {
@@ -557,35 +737,53 @@ final class AppState {
     }
 
     func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
-        settings.reapplyReminderEnabled = enabled
-        settings.reapplyIntervalMinutes = max(30, min(480, intervalMinutes))
-        save()
+        let batch = try? historyService.applySettingsChange(
+            kind: .reapplySettings,
+            summary: "Updated the reapply reminder.",
+            changedFields: [.reapplyReminderEnabled, .reapplyIntervalMinutes]
+        ) { snapshot in
+            snapshot.reapplyReminderEnabled = enabled
+            snapshot.reapplyIntervalMinutes = max(30, min(480, intervalMinutes))
+        }
+        finishDurableChange(batch, reschedulesReminders: false)
 
         if !enabled {
             cancelReapplyRemindersIfNeeded()
         }
     }
 
-    func recordReapplication(for day: Date = Date()) {
-        let targetDay = calendar.startOfDay(for: day)
+    func recordReapplication(for day: Date = Date(), performedAt: Date? = nil) {
+        let now = performedAt ?? Date()
+        let batch = try? historyService.applyDayChange(
+            for: day,
+            kind: .reapply,
+            summary: "Logged a reapply check-in.",
+            changedFields: [.reapplyCount, .lastReappliedAt]
+        ) { existingSnapshot in
+            guard var snapshot = existingSnapshot else {
+                return nil
+            }
 
-        guard let existing = try? verificationStore.record(for: targetDay) else {
-            return
+            snapshot.reapplyCount += 1
+            snapshot.lastReappliedAt = now
+            return snapshot
         }
+        finishDurableChange(batch, reschedulesReminders: false)
 
-        existing.reapplyCount += 1
-        existing.lastReappliedAt = Date()
-        try? modelContext.save()
-        refresh()
-
-        if calendar.isDateInToday(targetDay) {
+        if calendar.isDateInToday(day) {
             cancelReapplyRemindersIfNeeded()
         }
     }
 
     func updateLiveUVPreference(enabled: Bool, allowPermissionPrompt: Bool = true) {
-        settings.usesLiveUV = enabled
-        save()
+        let batch = try? historyService.applySettingsChange(
+            kind: .liveUVSettings,
+            summary: "Updated the live UV preference.",
+            changedFields: [.usesLiveUV]
+        ) { snapshot in
+            snapshot.usesLiveUV = enabled
+        }
+        finishDurableChange(batch, reschedulesReminders: false)
         refreshUVReadingIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
     }
 
@@ -620,14 +818,14 @@ final class AppState {
     @discardableResult
     func importBackupDocument(_ document: SunclubBackupDocument) throws -> SunclubBackupImportSummary {
         let summary = try backupService.importBackupDocument(document, into: modelContext)
-        finalizeImportedBackup()
+        finalizeImportedBackup(importedBatchCount: summary.importedBatchCount)
         return summary
     }
 
     @discardableResult
     func importBackup(from url: URL) throws -> SunclubBackupImportSummary {
         let summary = try backupService.importBackup(from: url, into: modelContext)
-        finalizeImportedBackup()
+        finalizeImportedBackup(importedBatchCount: summary.importedBatchCount)
         return summary
     }
 
@@ -686,168 +884,6 @@ final class AppState {
         }
     }
 
-    private func normalizeLegacyVerificationMethods(in fetchedRecords: [DailyRecord]) -> Bool {
-        let legacyMethodRawValue = 0
-        var didNormalize = false
-
-        for record in fetchedRecords where record.methodRawValue == legacyMethodRawValue {
-            record.method = .manual
-            didNormalize = true
-        }
-
-        return didNormalize
-    }
-
-    private func apply(
-        verificationValues: VerificationValues,
-        to record: DailyRecord,
-        verifiedAt: Date,
-        replaceOptionalFields: Bool
-    ) {
-        record.verifiedAt = verifiedAt
-        record.method = verificationValues.method
-        record.verificationDuration = verificationValues.duration
-        if replaceOptionalFields {
-            record.spfLevel = verificationValues.spfLevel
-            record.notes = Self.normalizedNotes(verificationValues.notes)
-            return
-        }
-
-        if let spfLevel = verificationValues.spfLevel {
-            record.spfLevel = spfLevel
-        }
-        if let notes = Self.normalizedNotes(verificationValues.notes) {
-            record.notes = notes
-        }
-    }
-
-    private func upsertRecord(
-        for day: Date,
-        verifiedAt: Date,
-        verificationValues: VerificationValues,
-        replaceOptionalFields: Bool,
-        preserveExistingDuration: Bool
-    ) {
-        let targetDay = calendar.startOfDay(for: day)
-
-        do {
-            if let existing = try verificationStore.record(for: targetDay) {
-                try updateRecord(
-                    existing,
-                    verifiedAt: verifiedAt,
-                    verificationValues: verificationValues,
-                    replaceOptionalFields: replaceOptionalFields,
-                    preserveExistingDuration: preserveExistingDuration
-                )
-            } else {
-                try insertRecord(
-                    for: targetDay,
-                    verifiedAt: verifiedAt,
-                    verificationValues: verificationValues,
-                    replaceOptionalFields: replaceOptionalFields,
-                    preserveExistingDuration: preserveExistingDuration
-                )
-            }
-            refresh()
-            updateLongestStreak()
-            refreshStreakRiskReminder()
-        } catch {
-            modelContext.rollback()
-        }
-    }
-
-    private func updateRecord(
-        _ record: DailyRecord,
-        verifiedAt: Date,
-        verificationValues: VerificationValues,
-        replaceOptionalFields: Bool,
-        preserveExistingDuration: Bool
-    ) throws {
-        let values = resolvedVerificationValues(
-            from: verificationValues,
-            existingRecord: record,
-            preserveExistingDuration: preserveExistingDuration
-        )
-        apply(
-            verificationValues: values,
-            to: record,
-            verifiedAt: verifiedAt,
-            replaceOptionalFields: replaceOptionalFields
-        )
-        try modelContext.save()
-    }
-
-    private func insertRecord(
-        for day: Date,
-        verifiedAt: Date,
-        verificationValues: VerificationValues,
-        replaceOptionalFields: Bool,
-        preserveExistingDuration: Bool
-    ) throws {
-        let record = DailyRecord(
-            startOfDay: day,
-            verifiedAt: verifiedAt,
-            method: verificationValues.method,
-            verificationDuration: verificationValues.duration,
-            spfLevel: verificationValues.spfLevel,
-            notes: Self.normalizedNotes(verificationValues.notes)
-        )
-        modelContext.insert(record)
-
-        do {
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            if let existing = try verificationStore.record(for: day) {
-                try updateRecord(
-                    existing,
-                    verifiedAt: verifiedAt,
-                    verificationValues: verificationValues,
-                    replaceOptionalFields: replaceOptionalFields,
-                    preserveExistingDuration: preserveExistingDuration
-                )
-            } else {
-                throw error
-            }
-        }
-    }
-
-    private func resolvedVerificationValues(
-        from values: VerificationValues,
-        existingRecord: DailyRecord,
-        preserveExistingDuration: Bool
-    ) -> VerificationValues {
-        (
-            method: values.method,
-            duration: preserveExistingDuration ? (values.duration ?? existingRecord.verificationDuration) : values.duration,
-            spfLevel: values.spfLevel,
-            notes: values.notes
-        )
-    }
-
-    private func defaultVerifiedAt(for day: Date) -> Date {
-        let targetDay = calendar.startOfDay(for: day)
-        let nowComponents = calendar.dateComponents([.hour, .minute, .second], from: Date())
-        let dayComponents = calendar.dateComponents([.year, .month, .day], from: targetDay)
-
-        return calendar.date(
-            from: DateComponents(
-                year: dayComponents.year,
-                month: dayComponents.month,
-                day: dayComponents.day,
-                hour: nowComponents.hour,
-                minute: nowComponents.minute,
-                second: nowComponents.second
-            )
-        ) ?? targetDay
-    }
-
-    private static func normalizedNotes(_ notes: String?) -> String? {
-        guard let notes else { return nil }
-        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-
     func dayStatus(for date: Date, now: Date = Date()) -> DayStatus {
         let set = Set(records.map { calendar.startOfDay(for: $0.startOfDay) })
         return CalendarAnalytics.status(for: date, with: set, now: now, calendar: calendar)
@@ -866,7 +902,7 @@ final class AppState {
     }
 
     func last7DaysReport() -> WeeklyReport {
-        CalendarAnalytics.weeklyReport(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
+        CalendarAnalytics.weeklyReport(records: records.map(\.startOfDay), now: Date(), calendar: calendar)
     }
 
     func sunscreenUsageInsights(recentNotesLimit: Int = 3) -> SunscreenUsageInsights {
@@ -894,9 +930,125 @@ final class AppState {
         recordedDays
     }
 
+    var recordedDays: [Date] {
+        records.map { calendar.startOfDay(for: $0.startOfDay) }
+    }
+
+    private func applyReminderSettingsChange(
+        _ reminderSettings: SmartReminderSettings,
+        summary: String
+    ) {
+        let encodedSettings = try? JSONEncoder().encode(
+            reminderSettings.normalized(
+                fallbackHour: reminderSettings.weekdayTime.hour,
+                fallbackMinute: reminderSettings.weekdayTime.minute
+            )
+        )
+
+        let batch = try? historyService.applySettingsChange(
+            kind: .reminderSettings,
+            summary: summary,
+            changedFields: [.reminderHour, .reminderMinute, .smartReminderSettingsData]
+        ) { snapshot in
+            snapshot.reminderHour = reminderSettings.weekdayTime.hour
+            snapshot.reminderMinute = reminderSettings.weekdayTime.minute
+            snapshot.smartReminderSettingsData = encodedSettings
+        }
+        finishDurableChange(batch, reschedulesReminders: true)
+    }
+
+    private func upsertRecord(
+        for day: Date,
+        verifiedAt: Date,
+        verificationValues: VerificationValues,
+        replaceOptionalFields: Bool,
+        preserveExistingDuration: Bool,
+        kind: SunclubChangeKind,
+        summary: String
+    ) {
+        let batch = try? historyService.applyDayChange(
+            for: day,
+            kind: kind,
+            summary: summary,
+            changedFields: [.verifiedAt, .methodRawValue, .verificationDuration, .spfLevel, .notes]
+        ) { existingSnapshot in
+            let normalizedNotes = Self.normalizedNotes(verificationValues.notes)
+            if var snapshot = existingSnapshot {
+                snapshot.verifiedAt = verifiedAt
+                snapshot.methodRawValue = verificationValues.method.rawValue
+                snapshot.verificationDuration = preserveExistingDuration
+                    ? (verificationValues.duration ?? snapshot.verificationDuration)
+                    : verificationValues.duration
+
+                if replaceOptionalFields {
+                    snapshot.spfLevel = verificationValues.spfLevel
+                    snapshot.notes = normalizedNotes
+                } else {
+                    if let spfLevel = verificationValues.spfLevel {
+                        snapshot.spfLevel = spfLevel
+                    }
+                    if let normalizedNotes {
+                        snapshot.notes = normalizedNotes
+                    }
+                }
+                return snapshot
+            }
+
+            return DailyRecordProjectionSnapshot(
+                startOfDay: self.calendar.startOfDay(for: day),
+                verifiedAt: verifiedAt,
+                methodRawValue: verificationValues.method.rawValue,
+                verificationDuration: verificationValues.duration,
+                spfLevel: verificationValues.spfLevel,
+                notes: normalizedNotes,
+                reapplyCount: 0,
+                lastReappliedAt: nil
+            )
+        }
+        finishDurableChange(batch, reschedulesReminders: false)
+    }
+
+    private func defaultVerifiedAt(for day: Date) -> Date {
+        let targetDay = calendar.startOfDay(for: day)
+        let nowComponents = calendar.dateComponents([.hour, .minute, .second], from: Date())
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: targetDay)
+
+        return calendar.date(
+            from: DateComponents(
+                year: dayComponents.year,
+                month: dayComponents.month,
+                day: dayComponents.day,
+                hour: nowComponents.hour,
+                minute: nowComponents.minute,
+                second: nowComponents.second
+            )
+        ) ?? targetDay
+    }
+
+    private func finishDurableChange(
+        _ batch: SunclubChangeBatch?,
+        reschedulesReminders: Bool
+    ) {
+        refresh()
+
+        if reschedulesReminders {
+            scheduleReminders()
+        }
+
+        refreshStreakRiskReminder()
+
+        guard let batch else {
+            return
+        }
+
+        Task {
+            await cloudSyncCoordinator.queueBatchIfNeeded(batch.id)
+        }
+    }
+
     private func syncLongestStreakIfNeeded() {
         let computed = CalendarAnalytics.longestStreak(records: recordedDays, calendar: calendar)
-        if computed > settings.longestStreak {
+        if computed != settings.longestStreak {
             settings.longestStreak = computed
             save()
         }
@@ -908,11 +1060,13 @@ final class AppState {
         }
     }
 
-    var recordedDays: [Date] {
-        records.map { calendar.startOfDay(for: $0.startOfDay) }
+    private static func normalizedNotes(_ notes: String?) -> String? {
+        guard let notes else { return nil }
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
-    private func finalizeImportedBackup() {
+    private func finalizeImportedBackup(importedBatchCount: Int) {
         clearVerificationSuccessPresentation()
         refresh()
         cancelReapplyRemindersIfNeeded()
@@ -920,5 +1074,6 @@ final class AppState {
         refreshStreakRiskReminder()
         refreshNotificationHealth()
         refreshUVReadingIfNeeded()
+        _ = importedBatchCount
     }
 }

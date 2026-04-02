@@ -43,6 +43,8 @@ struct RootView: View {
             WeeklyReportView()
         case .settings:
             SettingsView()
+        case .recovery:
+            RecoveryView()
         case .history:
             HistoryView()
         case .backfillYesterday:

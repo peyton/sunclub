@@ -69,6 +69,37 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsShowsICloudSyncEnabledByDefault() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        let iCloudToggle = app.switches["settings.icloudToggle"]
+        XCTAssertTrue(scrollToElement(iCloudToggle, in: app))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
+        XCTAssertTrue(app.staticTexts["iCloud sync is on"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSettingsCanPauseAndResumeICloudSync() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        let iCloudToggle = app.switches["settings.icloudToggle"]
+        XCTAssertTrue(scrollToElement(iCloudToggle, in: app))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
+
+        iCloudToggle.tap()
+        XCTAssertTrue(app.staticTexts["iCloud sync is paused"].waitForExistence(timeout: 5))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "0")
+
+        iCloudToggle.tap()
+        XCTAssertTrue(app.staticTexts["iCloud sync is on"].waitForExistence(timeout: 5))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
+    }
+
+    @MainActor
     func testWeekdayReminderPickerOpensFromSettings() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
@@ -138,9 +169,17 @@ final class SunclubUITests: XCTestCase {
 
         importApp.buttons["settings.backup.importHarness"].tap()
 
-        XCTAssertTrue(waitForLabel("Imported 1 day from backup.", on: importApp.staticTexts["settings.backupStatus"]))
+        XCTAssertTrue(
+            waitForLabel(
+                "Imported 1 day from backup. iCloud stays unchanged until you publish these changes.",
+                on: importApp.staticTexts["settings.backupStatus"]
+            )
+        )
         XCTAssertTrue(waitForLabel("History entries: 1", on: importApp.staticTexts["settings.backupRecordCount"]))
         XCTAssertEqual(stringValue(of: importTravelToggle), "0")
+        XCTAssertTrue(scrollToElement(importApp.staticTexts["settings.icloud.pendingImports"], in: importApp))
+        XCTAssertTrue(importApp.buttons["settings.icloud.publishImported"].exists)
+        XCTAssertTrue(importApp.buttons["settings.icloud.restoreImported"].exists)
     }
 
     @MainActor
@@ -243,6 +282,50 @@ final class SunclubUITests: XCTestCase {
         app.buttons["historyEditor.save"].tap()
 
         XCTAssertTrue(waitForLabel("SPF 50", on: app.staticTexts["historyHarness.spf"]))
+    }
+
+    @MainActor
+    func testRecoveryShowsConflictReviewActions() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=recovery",
+            "UITEST_SEED_HISTORY=conflictDay"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Recovery"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.staticTexts["recovery.conflict.summary"], in: app))
+        XCTAssertTrue(app.buttons["recovery.conflict.undo"].exists)
+        XCTAssertTrue(app.buttons["recovery.conflict.resolve"].exists)
+    }
+
+    @MainActor
+    func testRecoveryUndoRestoresTodayAndStreak() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=recovery",
+            "UITEST_SEED_HISTORY=undoDeleteToday"
+        ]
+        app.launch()
+
+        let undoButton = app.buttons["recovery.batch.0.undo"]
+        XCTAssertTrue(scrollToElement(undoButton, in: app))
+
+        undoButton.tap()
+
+        performBackSwipe(in: app)
+
+        let todayStatus = app.staticTexts["home.todayStatus"]
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(todayStatus.label, "Already logged today")
+
+        let streakValue = app.staticTexts["home.streakValue"]
+        XCTAssertTrue(streakValue.waitForExistence(timeout: 5))
+        XCTAssertEqual(streakValue.label, "2")
     }
 
     @MainActor

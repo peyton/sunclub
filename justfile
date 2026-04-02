@@ -50,6 +50,26 @@ clean-generated: clean-build
 [group('maintenance')]
 clean: clean-generated
 
+[group('cloudkit')]
+cloudkit-save-token:
+    bash scripts/cloudkit/save-token.sh
+
+[group('cloudkit')]
+cloudkit-export-schema:
+    bash scripts/cloudkit/export-schema.sh
+
+[group('cloudkit')]
+cloudkit-validate-schema:
+    bash scripts/cloudkit/validate-schema.sh
+
+[group('cloudkit')]
+cloudkit-import-schema:
+    bash scripts/cloudkit/import-schema.sh
+
+[group('cloudkit')]
+cloudkit-reset-dev:
+    bash scripts/cloudkit/reset-development.sh
+
 test-unit:
     bash scripts/tooling/test_ios.sh --suite unit
 

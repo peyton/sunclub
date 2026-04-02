@@ -13,6 +13,7 @@ struct HomeView: View {
                 todayCard
                 notificationHealthCard
                 recoveryCard
+                syncRecoveryCard
                 reapplyCard
 
                 Button {
@@ -137,6 +138,7 @@ struct HomeView: View {
             Text("\(appState.currentStreak)")
                 .font(.system(size: 60, weight: .bold))
                 .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
+                .accessibilityIdentifier("home.streakValue")
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("Day Streak")
@@ -271,6 +273,48 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("home.reapplyCard")
         }
+    }
+
+    @ViewBuilder
+    private var syncRecoveryCard: some View {
+        if appState.pendingImportedBatchCount > 0 || !appState.conflicts.isEmpty {
+            Button {
+                router.open(.recovery)
+            } label: {
+                SunStatusCard(
+                    title: syncRecoveryTitle,
+                    detail: syncRecoveryDetail,
+                    tint: !appState.conflicts.isEmpty ? Color.red.opacity(0.75) : AppPalette.sun,
+                    symbol: !appState.conflicts.isEmpty
+                        ? "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
+                        : "icloud.and.arrow.up"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.syncRecoveryCard")
+        }
+    }
+
+    private var syncRecoveryTitle: String {
+        if !appState.conflicts.isEmpty {
+            return "Review merged changes"
+        }
+
+        return "Imported changes are local-only"
+    }
+
+    private var syncRecoveryDetail: String {
+        var parts: [String] = []
+
+        if appState.pendingImportedBatchCount > 0 {
+            parts.append("\(appState.pendingImportedBatchCount) imported change(s) are waiting for an explicit publish to iCloud.")
+        }
+
+        if !appState.conflicts.isEmpty {
+            parts.append("\(appState.conflicts.count) auto-merged change(s) should be reviewed.")
+        }
+
+        return parts.joined(separator: " ")
     }
 
     private var primaryActionTitle: String {

@@ -34,6 +34,8 @@ final class BackupTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(summary.restoredRecordCount, 2)
+        XCTAssertGreaterThan(target.pendingImportedBatchCount, 0)
+        XCTAssertNil(target.recentImportSession?.publishedAt)
         XCTAssertTrue(target.settings.hasCompletedOnboarding)
         XCTAssertEqual(target.settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 7, minute: 30))
         XCTAssertEqual(target.settings.smartReminderSettings.weekendTime, ReminderTime(hour: 9, minute: 15))
@@ -84,7 +86,7 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(target.settings.weeklyWeekday, 6)
         XCTAssertEqual(target.settings.dailyPhraseState, Data("daily".utf8))
         XCTAssertEqual(target.settings.weeklyPhraseState, Data("weekly".utf8))
-        XCTAssertEqual(target.settings.longestStreak, 4)
+        XCTAssertEqual(target.settings.longestStreak, 1)
         XCTAssertTrue(target.settings.reapplyReminderEnabled)
         XCTAssertEqual(target.settings.reapplyIntervalMinutes, 90)
         XCTAssertNotNil(target.settings.smartReminderSettingsData)
@@ -103,6 +105,27 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(record.verificationDuration, 1.5)
         XCTAssertEqual(record.spfLevel, 50)
         XCTAssertEqual(record.notes, "Beach day")
+    }
+
+    func testImportedBackupRequiresExplicitPublishBeforeMarkingImportSynced() async throws {
+        let source = try makeAppState(notificationManager: MockNotificationManager())
+        source.completeOnboarding()
+        source.saveManualRecord(for: Date(), spfLevel: 50, notes: "Today")
+        let document = try source.exportBackupDocument()
+
+        let target = try makeAppState(notificationManager: MockNotificationManager())
+        let summary = try target.importBackupDocument(document)
+        await Task.yield()
+
+        XCTAssertGreaterThan(target.pendingImportedBatchCount, 0)
+        XCTAssertNil(target.recentImportSession?.publishedAt)
+
+        target.publishImportedChanges(for: summary.importSessionID)
+        await Task.yield()
+
+        XCTAssertEqual(target.pendingImportedBatchCount, 0)
+        XCTAssertEqual(target.recentImportSession?.id, summary.importSessionID)
+        XCTAssertNotNil(target.recentImportSession?.publishedAt)
     }
 
     private func makeAppState(notificationManager: NotificationScheduling) throws -> AppState {

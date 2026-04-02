@@ -6,7 +6,7 @@ import XCTest
 enum LegacyStoreFixture {
     static func seedCommit22ffStore(at storeURL: URL) throws -> (startOfDay: Date, verifiedAt: Date) {
         let schema = Schema(versionedSchema: SunclubSchemaV1.self)
-        let configuration = ModelConfiguration(schema: schema, url: storeURL)
+        let configuration = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         let context = ModelContext(container)
 
@@ -49,7 +49,7 @@ enum LegacyStoreFixture {
 
     static func seedCurrentV2Store(at storeURL: URL) throws -> (startOfDay: Date, verifiedAt: Date) {
         let schema = Schema(versionedSchema: SunclubSchemaV2.self)
-        let configuration = ModelConfiguration(schema: schema, url: storeURL)
+        let configuration = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         let context = ModelContext(container)
 
@@ -90,6 +90,61 @@ enum LegacyStoreFixture {
             verificationDuration: nil,
             spfLevel: 50,
             notes: "Morning beach walk"
+        )
+
+        context.insert(settings)
+        context.insert(record)
+        try context.save()
+
+        return (startOfDay, verifiedAt)
+    }
+
+    static func seedCurrentV3Store(at storeURL: URL) throws -> (startOfDay: Date, verifiedAt: Date) {
+        let schema = Schema(versionedSchema: SunclubSchemaV3.self)
+        let configuration = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(container)
+
+        let settings = Settings()
+        settings.hasCompletedOnboarding = true
+        settings.reminderHour = 7
+        settings.reminderMinute = 45
+        settings.weeklyHour = 20
+        settings.weeklyWeekday = 6
+        settings.dailyPhraseState = Data("daily".utf8)
+        settings.weeklyPhraseState = Data("weekly".utf8)
+        settings.smartReminderSettingsData = try JSONEncoder().encode(
+            SmartReminderSettings(
+                weekdayTime: ReminderTime(hour: 7, minute: 45),
+                weekendTime: ReminderTime(hour: 8, minute: 30),
+                followsTravelTimeZone: false,
+                anchoredTimeZoneIdentifier: "America/Los_Angeles",
+                streakRiskEnabled: true
+            )
+        )
+        settings.longestStreak = 4
+        settings.reapplyReminderEnabled = true
+        settings.reapplyIntervalMinutes = 90
+        settings.lastReminderScheduleAt = Date(timeIntervalSince1970: 1_743_199_200)
+        settings.usesLiveUV = true
+
+        let calendar = Calendar.migrationTestCalendar
+        let startOfDay = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 1, hour: 0, minute: 0, second: 0))
+        )
+        let verifiedAt = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 1, hour: 8, minute: 35, second: 0))
+        )
+
+        let record = DailyRecord(
+            startOfDay: startOfDay,
+            verifiedAt: verifiedAt,
+            method: .manual,
+            verificationDuration: nil,
+            spfLevel: 50,
+            notes: "Morning beach walk",
+            reapplyCount: 1,
+            lastReappliedAt: calendar.date(byAdding: .hour, value: 2, to: verifiedAt)
         )
 
         context.insert(settings)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(AppState.self) private var appState
+    @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var displayedMonth: Date
     @State private var selectedDay: Date?
@@ -166,6 +167,7 @@ struct HistoryView: View {
         let dayStart = calendar.startOfDay(for: day)
         let record = appState.record(for: dayStart)
         let status = appState.dayStatus(for: dayStart)
+        let conflict = appState.conflict(for: dayStart)
 
         VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
@@ -205,6 +207,27 @@ struct HistoryView: View {
                             .foregroundStyle(AppPalette.softInk)
                             .lineLimit(3)
                             .accessibilityIdentifier("history.dayNote")
+                    }
+
+                    if let conflict {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Auto-merged for review")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.red.opacity(0.8))
+
+                            Text(conflict.summary)
+                                .font(.system(size: 13))
+                                .foregroundStyle(AppPalette.softInk)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button("Review Recovery & Changes") {
+                                router.open(.recovery)
+                            }
+                            .buttonStyle(SunSecondaryButtonStyle())
+                            .accessibilityIdentifier("history.conflict.review")
+                        }
+                        .padding(.top, 6)
+                        .accessibilityIdentifier("history.conflictBanner")
                     }
                 }
 
