@@ -13,17 +13,10 @@ struct SunclubApp: App {
     private let isRunningTests = RuntimeEnvironment.isRunningTests
 
     init() {
-        let schema = Schema([
-            DailyRecord.self,
-            Settings.self
-        ])
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: RuntimeEnvironment.isRunningTests,
-            groupContainer: .automatic
-        )
         do {
-            container = try ModelContainer(for: schema, configurations: [configuration])
+            container = try SunclubModelContainerFactory.makeSharedContainer(
+                isStoredInMemoryOnly: RuntimeEnvironment.isRunningTests
+            )
         } catch {
             assertionFailure("Failed to create ModelContainer: \(error)")
             fatalError("Failed to create ModelContainer: \(error)")

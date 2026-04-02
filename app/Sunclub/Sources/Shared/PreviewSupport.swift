@@ -39,13 +39,7 @@ struct SunclubPreviewHost<Content: View>: View {
     }
 
     private static func makeContainer() -> ModelContainer {
-        let schema = Schema([
-            DailyRecord.self,
-            Settings.self
-        ])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-
-        guard let container = try? ModelContainer(for: schema, configurations: [configuration]) else {
+        guard let container = try? SunclubModelContainerFactory.makeInMemoryContainer() else {
             fatalError("Failed to create preview ModelContainer")
         }
 
