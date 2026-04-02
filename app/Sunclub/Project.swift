@@ -21,6 +21,12 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: .extendingDefault(with: [
+                "CFBundleURLTypes": [
+                    [
+                        "CFBundleURLName": "app.peyton.sunclub",
+                        "CFBundleURLSchemes": ["sunclub"]
+                    ]
+                ],
                 "UILaunchScreen": [
                     "UIColorName": "",
                     "UIImageName": ""
@@ -31,6 +37,28 @@ let project = Project(
                 .folder("Resources")
             ],
             entitlements: "Sunclub.entitlements",
+            dependencies: [
+                .target(name: "SunclubWidgetsExtension")
+            ],
+            settings: .settings(
+                base: [:]
+                    .automaticCodeSigning(devTeam: signingTeam)
+            )
+        ),
+        .target(
+            name: "SunclubWidgetsExtension",
+            destinations: .iOS,
+            product: .appExtension,
+            bundleId: "app.peyton.sunclub.widgets",
+            deploymentTargets: defaultDeploymentTarget,
+            infoPlist: .extendingDefault(with: [
+                "NSExtension": [
+                    "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
+                ]
+            ]),
+            sources: [
+                "WidgetExtension/Sources/**"
+            ],
             settings: .settings(
                 base: [:]
                     .automaticCodeSigning(devTeam: signingTeam)

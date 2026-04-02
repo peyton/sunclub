@@ -4,19 +4,22 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 
 ## Flow
 
-1. `Welcome`
+1. `Home / Lock Screen Widget`
+   - Exposes a single `Log Today` action.
+   - Opens Sunclub and records the day through the existing success flow.
+2. `Welcome`
    - Intro screen with the Sunclub mark and `Get Started`.
-2. `Enable Notifications`
+3. `Enable Notifications`
    - Requests local notification permission.
    - Onboarding completes whether permission is allowed or denied.
-3. `Home Dashboard`
+4. `Home Dashboard`
    - Shows the greeting, current streak card, manual logging, and a gear button for Settings.
-4. `Verify Success`
+5. `Verify Success`
    - Confirms the verification and shows the updated streak.
-5. `Weekly Summary`
+6. `Weekly Summary`
    - Shows the real `appliedCount / 7` result for the past week.
    - Surfaces the most-used logged SPF and recent notes when that metadata exists.
-6. `Settings`
+7. `Settings`
    - `Notification Time` updates the daily reminder time.
    - Reapply reminder settings stay local to the device.
 
@@ -82,4 +85,5 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 ## Notes
 
 - Daily reminders route directly to manual logging.
+- The widget `Log Today` action routes into the same success flow used by manual logging.
 - UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=manualLog` so the flow can be exercised end to end in automation and screenshot capture.

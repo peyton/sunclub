@@ -33,6 +33,9 @@ struct SunclubApp: App {
                 .environment(appState)
                 .environment(router)
                 .modelContainer(container)
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
                 .onAppear {
                     NotificationManager.shared.setRouteHandler { route in
                         router.open(route)
@@ -62,6 +65,7 @@ struct SunclubApp: App {
 
         let arguments = ProcessInfo.processInfo.arguments
         let requestedRoute = requestedUITestRoute(from: arguments)
+        let requestedURL = requestedUITestURL(from: arguments)
         let requestedUVIndex = requestedUITestUVIndex(from: arguments)
         let requestedReapplyInterval = requestedUITestReapplyInterval(from: arguments)
 
@@ -84,7 +88,9 @@ struct SunclubApp: App {
 
         applyUITestSeedData(from: arguments)
 
-        if let requestedRoute {
+        if let requestedURL {
+            handleIncomingURL(requestedURL)
+        } else if let requestedRoute {
             if requestedRoute == .verifySuccess {
                 appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
             }
@@ -99,6 +105,15 @@ struct SunclubApp: App {
 
         let rawValue = String(routeArgument.dropFirst("UITEST_ROUTE=".count))
         return AppRoute(rawValue: rawValue)
+    }
+
+    private func requestedUITestURL(from arguments: [String]) -> URL? {
+        guard let urlArgument = arguments.first(where: { $0.hasPrefix("UITEST_URL=") }) else {
+            return nil
+        }
+
+        let rawValue = String(urlArgument.dropFirst("UITEST_URL=".count))
+        return URL(string: rawValue)
     }
 
     private func requestedUITestUVIndex(from arguments: [String]) -> Int? {
@@ -189,6 +204,10 @@ struct SunclubApp: App {
             _ = await NotificationManager.shared.configure()
             await NotificationManager.shared.scheduleReminders(using: appState)
         }
+    }
+
+    private func handleIncomingURL(_ url: URL) {
+        _ = SunclubDeepLinkHandler.handle(url: url, appState: appState, router: router)
     }
 }
 

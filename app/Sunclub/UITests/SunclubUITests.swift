@@ -216,6 +216,25 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testWidgetLogTodayURLShowsSuccessAndUpdatesHome() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_URL=sunclub://widget/log-today"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
+
+        app.buttons["success.done"].tap()
+
+        let todayStatus = app.staticTexts["home.todayStatus"]
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(todayStatus.label, "Already logged today")
+    }
+
+    @MainActor
     private func launchAndCompleteOnboarding() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("UITEST_MODE")

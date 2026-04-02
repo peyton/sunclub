@@ -6,7 +6,7 @@ Sunclub is a local-first iOS app for maintaining a daily sunscreen habit.
 
 The product loop is:
 
-1. Open the app or tap the reminder.
+1. Open the app, tap the widget, or tap the reminder.
 2. Log the day manually.
 3. Reinforce the streak.
 
@@ -58,7 +58,7 @@ The main recurring flow starts from Home.
 
 Expected sequence:
 
-1. User opens the app.
+1. User opens the app or taps `Log Today` from a widget.
 2. Home highlights the current streak and offers a prominent `Log Manually` action.
 3. Manual logging records the day as complete.
 4. Success screen confirms completion and shows the updated streak.
@@ -176,6 +176,12 @@ Expected sequence:
 - Weekly reminders should open the weekly summary view.
 - Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
 - Reapply reminder timing and copy should get stronger on elevated UV days without changing the user's saved base interval.
+
+### Widgets
+
+- A Home Screen widget should expose a single obvious `Log Today` action.
+- A Lock Screen widget should expose the same action through an accessory family.
+- The widget action should reuse the existing manual success path instead of creating a separate logging flow.
 
 ### Settings and Controls
 
