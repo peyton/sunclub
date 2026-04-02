@@ -63,6 +63,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
         XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
         XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+        XCTAssertTrue(app.switches["settings.liveUVToggle"].exists)
         XCTAssertTrue(app.buttons["settings.backup.export"].exists)
         XCTAssertTrue(app.buttons["settings.backup.import"].exists)
     }
@@ -149,6 +150,14 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHomeShowsRecoveryActionsWhenTodayAndYesterdayNeedAttention() throws {
+        let app = launchHome()
+
+        XCTAssertTrue(app.buttons["home.recovery.logToday"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.recovery.backfillYesterday"].exists)
+    }
+
+    @MainActor
     func testHomeShowsHistoryCard() throws {
         let app = launchHome()
         XCTAssertTrue(app.buttons["home.historyCard"].waitForExistence(timeout: 5))
@@ -179,12 +188,39 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testManualLogShowsSmartReuseSuggestions() throws {
+        let app = launchHome(additionalArguments: ["UITEST_SEED_HISTORY=manualSuggestions"])
+
+        app.buttons["home.logManually"].tap()
+
+        XCTAssertTrue(app.buttons["manualLog.sameAsLastTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["manualLog.noteSnippet.0"].exists)
+        app.buttons["manualLog.noteSnippet.0"].tap()
+
+        let notesField = app.textFields["manualLog.notesField"]
+        XCTAssertEqual(notesField.value as? String, "Before lunch")
+    }
+
+    @MainActor
     func testHistoryViewShowsCalendar() throws {
         let app = launchHome()
 
         app.buttons["home.historyCard"].tap()
         XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["history.previousMonth"].exists)
+    }
+
+    @MainActor
+    func testHistoryShowsMonthlyReviewInsights() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=history",
+            "UITEST_SEED_HISTORY=monthlyReview"
+        ])
+
+        XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Best Weekday"], in: app, attempts: 8))
+        XCTAssertTrue(app.staticTexts["Hardest Weekday"].exists)
+        XCTAssertTrue(app.staticTexts["Most Common SPF"].exists)
     }
 
     @MainActor
@@ -216,6 +252,20 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testReapplyCheckInFlowLogsCompletionAndReturnsHome() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=reapplyCheckIn",
+            "UITEST_SEED_HISTORY=todayLogged",
+            "UITEST_REAPPLY_ENABLED"
+        ])
+
+        XCTAssertTrue(app.buttons["reapply.log"].waitForExistence(timeout: 5))
+        app.buttons["reapply.log"].tap()
+
+        XCTAssertTrue(app.buttons["home.reapplyCard"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -263,6 +313,23 @@ final class SunclubUITests: XCTestCase {
         let recentNote = app.staticTexts["Before beach walk"]
         XCTAssertTrue(scrollToElement(recentNote, in: app))
         XCTAssertEqual(recentNote.label, "Before beach walk")
+    }
+
+    @MainActor
+    func testSettingsShowsReminderCoachingAndNotificationHealth() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_SEED_HISTORY=reminderCoaching",
+            "UITEST_NOTIFICATION_HEALTH=stale"
+        ]
+        app.launch()
+
+        XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
+        XCTAssertTrue(app.buttons["settings.notificationHealth.action"].exists)
+        XCTAssertTrue(app.switches["settings.liveUVToggle"].exists)
     }
 
     @MainActor
@@ -352,7 +419,7 @@ final class SunclubUITests: XCTestCase {
     private func scrollToElement(
         _ element: XCUIElement,
         in app: XCUIApplication,
-        attempts: Int = 4
+        attempts: Int = 6
     ) -> Bool {
         if element.waitForExistence(timeout: 2) {
             return true
@@ -360,6 +427,13 @@ final class SunclubUITests: XCTestCase {
 
         for _ in 0..<attempts {
             app.swipeUp()
+            if element.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        for _ in 0..<attempts {
+            app.swipeDown()
             if element.waitForExistence(timeout: 1) {
                 return true
             }

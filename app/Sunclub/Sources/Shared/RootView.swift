@@ -37,12 +37,20 @@ struct RootView: View {
             HomeView()
         case .verifySuccess:
             VerificationSuccessView()
+        case .reapplyCheckIn:
+            ReapplyCheckInView()
         case .weeklySummary:
             WeeklyReportView()
         case .settings:
             SettingsView()
         case .history:
             HistoryView()
+        case .backfillYesterday:
+            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+            HistoryRecordEditorView(
+                day: yesterday,
+                existingRecord: appState.record(for: yesterday)
+            )
         case .historyEditToday:
             HistoryEditorTestHarnessView(day: Calendar.current.startOfDay(for: Date()))
         case .historyBackfillTwoDaysAgo:

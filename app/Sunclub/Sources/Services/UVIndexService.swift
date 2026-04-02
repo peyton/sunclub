@@ -1,12 +1,16 @@
 import CoreLocation
 import Foundation
+import Observation
+#if canImport(WeatherKit)
+import WeatherKit
+#endif
 
 enum UVLevel: Equatable {
-    case low       // 0-2
-    case moderate  // 3-5
-    case high      // 6-7
-    case veryHigh  // 8-10
-    case extreme   // 11+
+    case low
+    case moderate
+    case high
+    case veryHigh
+    case extreme
     case unknown
 
     var displayName: String {
@@ -108,15 +112,43 @@ enum UVLevel: Equatable {
     }
 }
 
+enum UVReadingSource: Equatable {
+    case heuristic
+    case weatherKit
+
+    var statusLabel: String {
+        switch self {
+        case .heuristic:
+            return "Estimated locally"
+        case .weatherKit:
+            return "Live WeatherKit UV"
+        }
+    }
+}
+
+enum LiveUVAccessState: Equatable {
+    case disabled
+    case live
+    case needsPermission
+    case denied
+    case unavailable
+}
+
 struct UVReading: Equatable {
     let index: Int
     let level: UVLevel
     let timestamp: Date
+    let source: UVReadingSource
 
-    init(index: Int, timestamp: Date = Date()) {
+    init(
+        index: Int,
+        timestamp: Date = Date(),
+        source: UVReadingSource = .heuristic
+    ) {
         self.index = index
         self.level = UVLevel.from(index: index)
         self.timestamp = timestamp
+        self.source = source
     }
 
     var isStale: Bool {
@@ -130,22 +162,92 @@ final class UVIndexService {
     private(set) var currentReading: UVReading?
     private(set) var isLoading = false
     private(set) var errorMessage: String?
+    private(set) var liveUVAccessState: LiveUVAccessState = .disabled
 
-    func fetchUVIndex() {
-        guard !isLoading else { return }
+    private var locationProviderStorage: CurrentLocationProvider?
+    #if canImport(WeatherKit)
+    private let weatherService = WeatherService()
+    #endif
 
-        if let reading = currentReading, !reading.isStale {
+    private var locationProvider: CurrentLocationProvider {
+        if let locationProviderStorage {
+            return locationProviderStorage
+        }
+
+        let provider = CurrentLocationProvider()
+        locationProviderStorage = provider
+        return provider
+    }
+
+    func fetchUVIndex(
+        prefersLiveData: Bool,
+        allowPermissionPrompt: Bool = false
+    ) async {
+        guard !isLoading else {
+            return
+        }
+
+        if let currentReading,
+           !currentReading.isStale,
+           canReuse(currentReading: currentReading, prefersLiveData: prefersLiveData) {
             return
         }
 
         isLoading = true
         errorMessage = nil
+        defer { isLoading = false }
 
-        // Estimate UV index based on time of day and season
-        // This is a simplified heuristic; a real implementation would use WeatherKit
-        let estimate = estimateUVFromTimeAndSeason()
-        currentReading = UVReading(index: estimate)
-        isLoading = false
+        if prefersLiveData {
+            let authorizationStatus = allowPermissionPrompt
+                ? await locationProvider.requestAuthorizationIfNeeded()
+                : locationProvider.authorizationStatus()
+
+            switch authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                do {
+                    currentReading = try await fetchWeatherKitReading()
+                    liveUVAccessState = .live
+                    return
+                } catch {
+                    liveUVAccessState = .unavailable
+                    errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            case .notDetermined:
+                liveUVAccessState = .needsPermission
+            case .denied, .restricted:
+                liveUVAccessState = .denied
+            @unknown default:
+                liveUVAccessState = .unavailable
+            }
+        } else {
+            liveUVAccessState = .disabled
+        }
+
+        currentReading = UVReading(index: estimateUVFromTimeAndSeason(), source: .heuristic)
+    }
+
+    private func canReuse(
+        currentReading: UVReading,
+        prefersLiveData: Bool
+    ) -> Bool {
+        if prefersLiveData {
+            return currentReading.source == .weatherKit
+        }
+
+        return currentReading.source == .heuristic
+    }
+
+    private func fetchWeatherKitReading() async throws -> UVReading {
+        #if canImport(WeatherKit)
+        let location = try await locationProvider.currentLocation()
+        let weather = try await weatherService.weather(for: location)
+        return UVReading(
+            index: weather.currentWeather.uvIndex.value,
+            source: .weatherKit
+        )
+        #else
+        throw UVIndexServiceError.weatherKitUnavailable
+        #endif
     }
 
     private func estimateUVFromTimeAndSeason() -> Int {
@@ -154,17 +256,20 @@ final class UVIndexService {
         let hour = calendar.component(.hour, from: now)
         let month = calendar.component(.month, from: now)
 
-        // Base UV by season (Northern Hemisphere approximation)
         let seasonalBase: Int
         switch month {
-        case 6, 7, 8: seasonalBase = 8       // Summer
-        case 5, 9: seasonalBase = 6           // Late spring / early fall
-        case 4, 10: seasonalBase = 4          // Spring / fall
-        case 3, 11: seasonalBase = 3          // Early spring / late fall
-        default: seasonalBase = 2             // Winter
+        case 6, 7, 8:
+            seasonalBase = 8
+        case 5, 9:
+            seasonalBase = 6
+        case 4, 10:
+            seasonalBase = 4
+        case 3, 11:
+            seasonalBase = 3
+        default:
+            seasonalBase = 2
         }
 
-        // Adjust for time of day
         let timeMultiplier: Double
         switch hour {
         case 0...5: timeMultiplier = 0.0
@@ -183,5 +288,89 @@ final class UVIndexService {
         }
 
         return max(0, Int(Double(seasonalBase) * timeMultiplier))
+    }
+}
+
+private enum UVIndexServiceError: LocalizedError {
+    case weatherKitUnavailable
+    case locationUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .weatherKitUnavailable:
+            return "WeatherKit is unavailable on this build."
+        case .locationUnavailable:
+            return "Sunclub could not determine your location for live UV."
+        }
+    }
+}
+
+@MainActor
+private final class CurrentLocationProvider: NSObject, @preconcurrency CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
+    private var locationContinuation: CheckedContinuation<CLLocation, Error>?
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
+    }
+
+    func authorizationStatus() -> CLAuthorizationStatus {
+        manager.authorizationStatus
+    }
+
+    func requestAuthorizationIfNeeded() async -> CLAuthorizationStatus {
+        guard CLLocationManager.locationServicesEnabled() else {
+            return .restricted
+        }
+
+        let status = manager.authorizationStatus
+        guard status == .notDetermined else {
+            return status
+        }
+
+        return await withCheckedContinuation { continuation in
+            authorizationContinuation = continuation
+            manager.requestWhenInUseAuthorization()
+        }
+    }
+
+    func currentLocation() async throws -> CLLocation {
+        guard CLLocationManager.locationServicesEnabled() else {
+            throw UVIndexServiceError.locationUnavailable
+        }
+
+        if let location = manager.location,
+           abs(location.timestamp.timeIntervalSinceNow) < 1800 {
+            return location
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            locationContinuation = continuation
+            manager.requestLocation()
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        authorizationContinuation?.resume(returning: manager.authorizationStatus)
+        authorizationContinuation = nil
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else {
+            locationContinuation?.resume(throwing: UVIndexServiceError.locationUnavailable)
+            locationContinuation = nil
+            return
+        }
+
+        locationContinuation?.resume(returning: location)
+        locationContinuation = nil
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        locationContinuation?.resume(throwing: error)
+        locationContinuation = nil
     }
 }

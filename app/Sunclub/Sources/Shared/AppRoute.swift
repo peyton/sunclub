@@ -6,9 +6,11 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case enableNotifications
     case home
     case verifySuccess
+    case reapplyCheckIn
     case weeklySummary
     case settings
     case history
+    case backfillYesterday
     case historyEditToday
     case historyBackfillTwoDaysAgo
     case manualLog

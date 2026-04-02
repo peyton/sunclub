@@ -50,10 +50,7 @@ enum SunclubDeepLinkHandler {
                 return true
             }
 
-            appState.recordVerificationSuccess(method: .manual)
-            if appState.settings.reapplyReminderEnabled {
-                appState.scheduleReapplyReminder()
-            }
+            _ = SunclubQuickLogAction.perform(using: appState)
             router.open(.verifySuccess)
             return true
         }

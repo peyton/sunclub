@@ -1,8 +1,10 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     @State private var selectedReminderPicker: ReminderScheduleKind?
     @State private var pickerTime = Date()
@@ -10,6 +12,7 @@ struct SettingsView: View {
     @State private var reapplyInterval = 120
     @State private var followsTravelTimeZone = true
     @State private var streakRiskEnabled = true
+    @State private var usesLiveUV = false
     @State private var backupDocument: SunclubBackupDocument?
     @State private var isExportingBackup = false
     @State private var isImportingBackup = false
@@ -26,7 +29,10 @@ struct SettingsView: View {
                 })
 
                 smarterReminderSection
+                reminderCoachingSection
+                notificationHealthSection
                 reapplySection
+                liveUVSection
                 backupSection
 
                 Spacer(minLength: 0)
@@ -69,7 +75,11 @@ struct SettingsView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        .onAppear(perform: syncLocalState)
+        .onAppear {
+            syncLocalState()
+            appState.refreshNotificationHealth()
+            appState.refreshUVReadingIfNeeded()
+        }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -211,6 +221,116 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private var reminderCoachingSection: some View {
+        if !appState.reminderCoachingSuggestions.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Reminder Coaching")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                VStack(spacing: 12) {
+                    ForEach(appState.reminderCoachingSuggestions) { suggestion in
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(suggestion.title)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(AppPalette.ink)
+
+                            Text(suggestion.detail)
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppPalette.softInk)
+
+                            Button(suggestion.actionTitle) {
+                                appState.applyReminderCoachingSuggestion(suggestion)
+                                syncLocalState()
+                            }
+                            .buttonStyle(SunSecondaryButtonStyle())
+                            .accessibilityIdentifier("settings.coaching.\(suggestion.kind.rawValue)")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .background(cardBackground)
+                    }
+                }
+            }
+        }
+    }
+
+    private var notificationHealthSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Notification Health")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                if let presentation = appState.notificationHealthPresentation {
+                    SunStatusCard(
+                        title: presentation.title,
+                        detail: presentation.detail,
+                        tint: Color.red.opacity(0.72),
+                        symbol: "bell.badge.fill"
+                    )
+
+                    Button(presentation.actionTitle) {
+                        handleNotificationHealthAction(for: presentation)
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("settings.notificationHealth.action")
+                } else {
+                    SunStatusCard(
+                        title: "Notifications look healthy",
+                        detail: "Daily reminders are scheduled and ready to keep the sunscreen loop moving.",
+                        tint: AppPalette.success,
+                        symbol: "bell.fill"
+                    )
+                }
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
+    private var liveUVSection: some View {
+        let presentation = appState.liveUVStatusPresentation
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("UV Data")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: $usesLiveUV) {
+                    Text("Use live UV when available")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(AppPalette.ink)
+                }
+                .tint(AppPalette.sun)
+                .onChange(of: usesLiveUV) { _, newValue in
+                    appState.updateLiveUVPreference(enabled: newValue)
+                }
+                .accessibilityIdentifier("settings.liveUVToggle")
+
+                SunStatusCard(
+                    title: presentation.title,
+                    detail: presentation.detail,
+                    tint: AppPalette.sun,
+                    symbol: "sun.max.fill"
+                )
+
+                if let actionTitle = presentation.actionTitle,
+                   let actionKind = presentation.actionKind {
+                    Button(actionTitle) {
+                        handleLiveUVAction(actionKind)
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("settings.liveUV.action")
+                }
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
     private var backupSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Backup")
@@ -313,6 +433,7 @@ struct SettingsView: View {
         streakRiskEnabled = reminderSettings.streakRiskEnabled
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
+        usesLiveUV = appState.settings.usesLiveUV
     }
 
     private func beginBackupExport() {
@@ -349,6 +470,30 @@ struct SettingsView: View {
         let hours = minutes / 60
         let remaining = minutes % 60
         return remaining > 0 ? "\(hours)h\(remaining)m" : "\(hours)h"
+    }
+
+    private func handleNotificationHealthAction(for presentation: NotificationHealthPresentation) {
+        switch presentation.state {
+        case .denied:
+            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                openURL(settingsURL)
+            }
+        case .stale:
+            appState.repairReminderSchedule()
+        case .healthy:
+            break
+        }
+    }
+
+    private func handleLiveUVAction(_ action: LiveUVActionKind) {
+        switch action {
+        case .openSettings:
+            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                openURL(settingsURL)
+            }
+        case .requestPermission, .refresh:
+            appState.performLiveUVAction(action)
+        }
     }
 
     private func reminderPickerSheet(for schedule: ReminderScheduleKind) -> some View {

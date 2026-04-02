@@ -6,6 +6,7 @@ struct ManualLogView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedSPF: Int?
     @State private var notes: String = ""
+    @State private var hasLoadedInitialState = false
 
     var body: some View {
         SunLightScreen {
@@ -27,16 +28,18 @@ struct ManualLogView: View {
                 SunManualLogFields(
                     selectedSPF: $selectedSPF,
                     notes: $notes,
-                    accessibilityPrefix: "manualLog"
+                    accessibilityPrefix: "manualLog",
+                    suggestions: appState.manualLogSuggestionState(for: Date())
                 )
 
                 Spacer(minLength: 0)
             }
         } footer: {
-            Button("Log Today", action: logToday)
+            Button(primaryActionTitle, action: logToday)
                 .buttonStyle(SunPrimaryButtonStyle())
                 .accessibilityIdentifier("manualLog.logToday")
         }
+        .onAppear(perform: syncInitialStateIfNeeded)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -52,6 +55,27 @@ struct ManualLogView: View {
             appState.scheduleReapplyReminder()
         }
         router.open(.verifySuccess)
+    }
+
+    private var primaryActionTitle: String {
+        appState.record(for: Date()) == nil ? "Log Today" : "Update Today"
+    }
+
+    private func syncInitialStateIfNeeded() {
+        guard !hasLoadedInitialState else {
+            return
+        }
+
+        hasLoadedInitialState = true
+
+        if let existingRecord = appState.record(for: Date()) {
+            selectedSPF = existingRecord.spfLevel
+            notes = existingRecord.notes ?? ""
+            return
+        }
+
+        let suggestions = appState.manualLogSuggestionState(for: Date())
+        selectedSPF = suggestions.defaultSPF
     }
 }
 
