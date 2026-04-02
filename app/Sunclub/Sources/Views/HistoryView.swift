@@ -177,6 +177,14 @@ struct HistoryView: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(AppPalette.sun)
                     }
+
+                    if let notes = record?.trimmedNotes {
+                        Text(notes)
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppPalette.softInk)
+                            .lineLimit(3)
+                            .accessibilityIdentifier("history.dayNote")
+                    }
                 }
 
                 Spacer()

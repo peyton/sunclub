@@ -33,20 +33,7 @@ struct ManualLogView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            Button("Log Today") {
-                appState.recordVerificationSuccess(method: .manual, verificationDuration: nil)
-                if let spf = selectedSPF {
-                    appState.record(for: Date())?.spfLevel = spf
-                }
-                if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    appState.record(for: Date())?.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                appState.save()
-                if appState.settings.reapplyReminderEnabled {
-                    appState.scheduleReapplyReminder()
-                }
-                router.open(.verifySuccess)
-            }
+            Button("Log Today", action: logToday)
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("manualLog.logToday")
         }
@@ -106,6 +93,19 @@ struct ManualLogView: View {
                 }
                 .accessibilityIdentifier("manualLog.notesField")
         }
+    }
+
+    private func logToday() {
+        appState.recordVerificationSuccess(
+            method: .manual,
+            verificationDuration: nil,
+            spfLevel: selectedSPF,
+            notes: notes
+        )
+        if appState.settings.reapplyReminderEnabled {
+            appState.scheduleReapplyReminder()
+        }
+        router.open(.verifySuccess)
     }
 }
 
