@@ -125,11 +125,12 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         scheduleCalendar.timeZone = timeZone
 
         let dayStart = scheduleCalendar.startOfDay(for: Date())
+        // Persist the rotation state once for the whole schedule instead of once per request.
+        let phrases = state.nextDailyPhrases(count: 60)
         var requests: [UNNotificationRequest] = []
 
-        for offset in 0..<60 {
+        for (offset, phrase) in phrases.enumerated() {
             guard let day = scheduleCalendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
-            let phrase = state.nextDailyPhrase()
             let reminderTime = reminderSettings.time(for: day, calendar: scheduleCalendar)
             let components = ReminderPlanner.notificationComponents(
                 for: day,

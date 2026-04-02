@@ -89,6 +89,22 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testNextDailyPhrasesPersistRotationOncePerSchedulePass() throws {
+        let state = try makeAppState()
+        let initialBatchCount = try state.modelContext.fetch(FetchDescriptor<SunclubChangeBatch>()).count
+        let initialSettingsRevisionCount = try state.modelContext.fetch(FetchDescriptor<SettingsRevision>()).count
+
+        let phrases = state.nextDailyPhrases(count: 60)
+
+        XCTAssertEqual(phrases.count, 60)
+        XCTAssertEqual(try state.modelContext.fetch(FetchDescriptor<SunclubChangeBatch>()).count, initialBatchCount + 1)
+        XCTAssertEqual(
+            try state.modelContext.fetch(FetchDescriptor<SettingsRevision>()).count,
+            initialSettingsRevisionCount + 1
+        )
+    }
+
+    @MainActor
     func testVerificationSuccessPresentationUsesUpdatedStreak() throws {
         let state = try makeAppState()
         let calendar = Calendar.current

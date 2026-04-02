@@ -246,11 +246,40 @@ final class AppState {
 
     private func nextPhrase(
         catalog: [String],
-        state: KeyPath<Settings, Data?>,
+        state: ReferenceWritableKeyPath<Settings, Data?>,
         changedField: SunclubTrackedField,
         summary: String
     ) -> String {
-        let next = PhraseRotation.nextPhrase(from: settings[keyPath: state], catalog: catalog)
+        nextPhrases(
+            count: 1,
+            catalog: catalog,
+            state: state,
+            changedField: changedField,
+            summary: summary
+        ).first ?? (catalog.first ?? "You're doing great.")
+    }
+
+    private func nextPhrases(
+        count: Int,
+        catalog: [String],
+        state: ReferenceWritableKeyPath<Settings, Data?>,
+        changedField: SunclubTrackedField,
+        summary: String
+    ) -> [String] {
+        guard count > 0 else {
+            return []
+        }
+
+        var phraseState = settings[keyPath: state]
+        var phrases: [String] = []
+        phrases.reserveCapacity(count)
+
+        for _ in 0..<count {
+            let next = PhraseRotation.nextPhrase(from: phraseState, catalog: catalog)
+            phrases.append(next.0)
+            phraseState = next.1
+        }
+
         let batch = try? historyService.applySettingsChange(
             kind: .phraseRotation,
             summary: summary,
@@ -258,15 +287,21 @@ final class AppState {
         ) { snapshot in
             switch changedField {
             case .dailyPhraseState:
-                snapshot.dailyPhraseState = next.1
+                snapshot.dailyPhraseState = phraseState
             case .weeklyPhraseState:
-                snapshot.weeklyPhraseState = next.1
+                snapshot.weeklyPhraseState = phraseState
             default:
                 break
             }
         }
-        finishDurableChange(batch, reschedulesReminders: false)
-        return next.0
+
+        if let batch {
+            Task {
+                await cloudSyncCoordinator.queueBatchIfNeeded(batch.id)
+            }
+        }
+
+        return phrases
     }
 
     var isUITesting: Bool {
@@ -625,6 +660,16 @@ final class AppState {
 
     func nextDailyPhrase() -> String {
         nextPhrase(
+            catalog: PhraseBank.dailyPhrases,
+            state: \.dailyPhraseState,
+            changedField: .dailyPhraseState,
+            summary: "Updated the daily phrase rotation."
+        )
+    }
+
+    func nextDailyPhrases(count: Int) -> [String] {
+        nextPhrases(
+            count: count,
             catalog: PhraseBank.dailyPhrases,
             state: \.dailyPhraseState,
             changedField: .dailyPhraseState,
