@@ -168,6 +168,22 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testSaveManualRecordBackfillsPastDay() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: Date())!
+
+        state.saveManualRecord(for: yesterday, spfLevel: 70, notes: "After lunch")
+
+        let record = try XCTUnwrap(state.record(for: yesterday))
+        XCTAssertEqual(record.spfLevel, 70)
+        XCTAssertEqual(record.notes, "After lunch")
+        XCTAssertTrue(calendar.isDate(record.startOfDay, inSameDayAs: yesterday))
+        XCTAssertTrue(calendar.isDate(record.verifiedAt, inSameDayAs: yesterday))
+        XCTAssertEqual(state.dayStatus(for: yesterday), .applied)
+    }
+
+    @MainActor
     func testUpdateExistingRecordPreservesSPF() throws {
         let state = try makeAppState()
 
@@ -176,6 +192,32 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.records.count, 1)
         XCTAssertEqual(state.records.first?.spfLevel, 50)
+    }
+
+    @MainActor
+    func testSaveManualRecordCanClearOptionalFieldsAndPreserveDuration() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let yesterday = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: Date())!)
+        let existingVerifiedAt = calendar.date(byAdding: .hour, value: 8, to: yesterday) ?? yesterday
+        let existing = DailyRecord(
+            startOfDay: yesterday,
+            verifiedAt: existingVerifiedAt,
+            method: .manual,
+            verificationDuration: 1.5,
+            spfLevel: 50,
+            notes: "Before run"
+        )
+        state.modelContext.insert(existing)
+        state.refresh()
+
+        state.saveManualRecord(for: yesterday, spfLevel: nil, notes: "")
+
+        let updated = try XCTUnwrap(state.record(for: yesterday))
+        XCTAssertNil(updated.spfLevel)
+        XCTAssertNil(updated.notes)
+        XCTAssertEqual(updated.verificationDuration, 1.5)
+        XCTAssertEqual(updated.verifiedAt, existingVerifiedAt)
     }
 
     @MainActor
@@ -268,6 +310,17 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
         XCTAssertTrue(state.verificationSuccessPresentation?.isPersonalBest ?? false)
+    }
+
+    @MainActor
+    func testRecordVerificationSuccessPersistsSPFAndNotes() throws {
+        let state = try makeAppState()
+
+        state.recordVerificationSuccess(method: .manual, spfLevel: 30, notes: "Pool day")
+
+        let record = try XCTUnwrap(state.record(for: Date()))
+        XCTAssertEqual(record.spfLevel, 30)
+        XCTAssertEqual(record.notes, "Pool day")
     }
 
     @MainActor

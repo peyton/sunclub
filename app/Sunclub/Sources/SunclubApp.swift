@@ -68,6 +68,8 @@ struct SunclubApp: App {
             appState.completeOnboarding()
         }
 
+        applyUITestSeedData(from: arguments)
+
         if let requestedRoute {
             if requestedRoute == .verifySuccess {
                 appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
@@ -83,6 +85,37 @@ struct SunclubApp: App {
 
         let rawValue = String(routeArgument.dropFirst("UITEST_ROUTE=".count))
         return AppRoute(rawValue: rawValue)
+    }
+
+    private func applyUITestSeedData(from arguments: [String]) {
+        guard let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) else {
+            return
+        }
+
+        let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
+        guard scenario == "editBackfill" else { return }
+
+        seedHistoryEditBackfillScenario()
+    }
+
+    private func seedHistoryEditBackfillScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        guard let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today) else {
+            return
+        }
+
+        let todayRecord = DailyRecord(
+            startOfDay: today,
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: 30,
+            notes: "Seeded today"
+        )
+        appState.modelContext.insert(todayRecord)
+        appState.refresh()
+        appState.save()
     }
 }
 

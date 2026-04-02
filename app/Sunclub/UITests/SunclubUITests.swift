@@ -109,6 +109,28 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHistoryCanEditExistingRecord() throws {
+        let app = launchHistoryWithSeededRecords(route: "historyEditToday")
+        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+
+        app.buttons["70"].tap()
+        app.buttons["historyEditor.save"].tap()
+
+        XCTAssertTrue(waitForLabel("SPF 70", on: app.staticTexts["historyHarness.spf"]))
+    }
+
+    @MainActor
+    func testHistoryCanBackfillMissedDay() throws {
+        let app = launchHistoryWithSeededRecords(route: "historyBackfillTwoDaysAgo")
+        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+
+        app.buttons["50"].tap()
+        app.buttons["historyEditor.save"].tap()
+
+        XCTAssertTrue(waitForLabel("SPF 50", on: app.staticTexts["historyHarness.spf"]))
+    }
+
+    @MainActor
     func testDailyNotificationRouteOpensManualLog() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=manualLog"]
@@ -142,6 +164,19 @@ final class SunclubUITests: XCTestCase {
         return app
     }
 
+    @MainActor
+    private func launchHistoryWithSeededRecords(route: String = "history") -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=\(route)",
+            "UITEST_SEED_HISTORY=editBackfill"
+        ]
+        app.launch()
+        return app
+    }
+
     @discardableResult
     @MainActor
     private func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
@@ -158,5 +193,12 @@ final class SunclubUITests: XCTestCase {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
         let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    private func waitForLabel(_ label: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "label == %@", label)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 }

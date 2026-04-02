@@ -3,11 +3,18 @@ import SwiftUI
 struct HistoryView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
-    @State private var displayedMonth = Date()
+    @State private var displayedMonth: Date
     @State private var selectedDay: Date?
+    @State private var editorPresentation: HistoryEditorPresentation?
 
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
+
+    init(preselectedDay: Date? = nil) {
+        let initialMonth = preselectedDay ?? Date()
+        _displayedMonth = State(initialValue: initialMonth)
+        _selectedDay = State(initialValue: preselectedDay)
+    }
 
     var body: some View {
         SunLightScreen {
@@ -22,7 +29,7 @@ struct HistoryView: View {
 
                 calendarGrid
 
-                if let selectedDay {
+                if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay)
                 }
 
@@ -30,9 +37,17 @@ struct HistoryView: View {
 
                 Spacer(minLength: 0)
             }
+        } footer: {
+            historyActionFooter
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+        .sheet(item: $editorPresentation) { presentation in
+            HistoryRecordEditorView(
+                day: presentation.day,
+                existingRecord: appState.record(for: presentation.day)
+            )
+        }
     }
 
     private var monthNavigator: some View {
@@ -133,6 +148,7 @@ struct HistoryView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!isCurrentMonth || isFuture)
+                .accessibilityIdentifier(dayAccessibilityIdentifier(for: dayStart))
             }
         }
         .accessibilityIdentifier("history.calendarGrid")
@@ -165,9 +181,14 @@ struct HistoryView: View {
                     Text(statusTitle(for: status))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
+                        .accessibilityIdentifier("history.statusTitle")
 
                     if let record {
                         Text("Verified via \(record.method.displayName) at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppPalette.softInk)
+                    } else {
+                        Text("No entry for this day yet.")
                             .font(.system(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                     }
@@ -180,21 +201,8 @@ struct HistoryView: View {
                 }
 
                 Spacer()
-
-                if record != nil {
-                    Button {
-                        appState.deleteRecord(for: dayStart)
-                        selectedDay = nil
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color.red.opacity(0.7))
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("history.deleteRecord")
-                }
             }
+
         }
         .padding(18)
         .background(
@@ -202,6 +210,17 @@ struct HistoryView: View {
                 .fill(Color.white.opacity(0.72))
         )
         .accessibilityIdentifier("history.dayDetail")
+    }
+
+    @ViewBuilder
+    private var historyActionFooter: some View {
+        if let selectedDay = selectedDay {
+            let dayStart = calendar.startOfDay(for: selectedDay)
+            let record = appState.record(for: dayStart)
+
+            actionButtons(for: dayStart, record: record)
+                .accessibilityIdentifier("history.actionFooter")
+        }
     }
 
     private var statsSection: some View {
@@ -234,6 +253,36 @@ struct HistoryView: View {
             }
         }
         .accessibilityIdentifier("history.monthStats")
+    }
+
+    @ViewBuilder
+    private func actionButtons(for day: Date, record: DailyRecord?) -> some View {
+        if record != nil {
+            HStack(spacing: 12) {
+                Button("Edit Entry") {
+                    editorPresentation = HistoryEditorPresentation(day: day)
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("history.editRecord")
+
+                Button("Delete") {
+                    appState.deleteRecord(for: day)
+                    selectedDay = nil
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("history.deleteRecord")
+            }
+        } else {
+            Button("Backfill Day") {
+                editorPresentation = HistoryEditorPresentation(day: day)
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("history.backfillRecord")
+        }
+    }
+
+    private func dayAccessibilityIdentifier(for day: Date) -> String {
+        "history.day.\(Self.dayIdentifierFormatter.string(from: day))"
     }
 
     private func statBubble(value: String, label: String) -> some View {
@@ -278,6 +327,137 @@ struct HistoryView: View {
         case .missed: return "Missed"
         case .future: return "Future"
         }
+    }
+
+    private static let dayIdentifierFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
+private struct HistoryEditorPresentation: Identifiable {
+    let day: Date
+
+    var id: Date { day }
+}
+
+struct HistoryRecordEditorView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
+
+    let day: Date
+    let existingRecord: DailyRecord?
+
+    @State private var selectedSPF: Int?
+    @State private var notes: String
+
+    init(day: Date, existingRecord: DailyRecord?) {
+        self.day = day
+        self.existingRecord = existingRecord
+        _selectedSPF = State(initialValue: existingRecord?.spfLevel)
+        _notes = State(initialValue: existingRecord?.notes ?? "")
+    }
+
+    var body: some View {
+        SunLightScreen {
+            VStack(alignment: .leading, spacing: 26) {
+                SunLightHeader(title: editorTitle, showsBack: true, onBack: {
+                    dismiss()
+                })
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(day.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(editorMessage)
+                        .font(.system(size: 15))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+                .accessibilityIdentifier("historyEditor.title")
+
+                SunManualLogFields(
+                    selectedSPF: $selectedSPF,
+                    notes: $notes,
+                    accessibilityPrefix: "historyEditor"
+                )
+            }
+        } footer: {
+            Button(primaryActionTitle) {
+                appState.saveManualRecord(
+                    for: day,
+                    verifiedAt: existingRecord?.verifiedAt,
+                    spfLevel: selectedSPF,
+                    notes: notes
+                )
+                dismiss()
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("historyEditor.save")
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
+    }
+
+    private var editorTitle: String {
+        existingRecord == nil ? "Backfill Day" : "Edit Entry"
+    }
+
+    private var editorMessage: String {
+        if existingRecord == nil {
+            return "Add a manual log for this day so your history reflects what actually happened."
+        }
+
+        return "Update SPF or notes without changing the selected day."
+    }
+
+    private var primaryActionTitle: String {
+        existingRecord == nil ? "Save Backfill" : "Save Changes"
+    }
+}
+
+struct HistoryEditorTestHarnessView: View {
+    @Environment(AppState.self) private var appState
+
+    let day: Date
+    @State private var isPresentingEditor = true
+
+    var body: some View {
+        SunLightScreen {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("historyHarness.day")
+
+                Text(spfSummary)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityIdentifier("historyHarness.spf")
+            }
+        }
+        .sheet(isPresented: $isPresentingEditor) {
+            HistoryRecordEditorView(
+                day: day,
+                existingRecord: appState.record(for: day)
+            )
+        }
+    }
+
+    private var spfSummary: String {
+        guard let spf = currentRecord?.spfLevel else {
+            return "No SPF logged"
+        }
+
+        return "SPF \(spf)"
+    }
+
+    private var currentRecord: DailyRecord? {
+        let dayStart = Calendar.current.startOfDay(for: day)
+        return appState.records.first { Calendar.current.isDate($0.startOfDay, inSameDayAs: dayStart) }
     }
 }
 
