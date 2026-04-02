@@ -90,7 +90,9 @@ Users need a lightweight way to update reminders or review recent progress witho
 Expected sequence:
 
 1. User opens Settings from Home.
-2. User can change reminder time or adjust reapply reminders.
+2. User can adjust weekday and weekend reminder times.
+3. User can choose whether reminders follow local time while traveling.
+4. User can toggle streak-risk nudges and reapply reminders.
 
 ## Screen Responsibilities
 
@@ -129,7 +131,9 @@ Expected sequence:
 
 ### Settings
 
-- Let the user update the daily reminder time.
+- Let the user update weekday and weekend reminder times.
+- Let the user decide whether reminders stay anchored or follow the current local timezone while traveling.
+- Let the user opt into a streak-risk nudge before the day closes.
 - Let the user tune reapply reminders without leaving the app.
 
 ## Feature Requirements
@@ -156,17 +160,19 @@ Expected sequence:
 
 ### Notifications
 
-- The app should support a user-configurable daily reminder time.
+- The app should support separate weekday and weekend reminder times.
+- The app should support reminders that can either stay anchored or follow the current local timezone.
 - Reminder copy should rotate so messaging does not feel overly repetitive.
 - Daily notifications should provide a quick path back into the app.
 - A `Log Today` notification action should route directly to manual logging.
+- If the user has an active streak and the relevant day is still open, the app should be able to send a same-day streak-risk nudge before the day ends.
 - Weekly reminders should open the weekly summary view.
 - Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
 - Reapply reminder timing and copy should get stronger on elevated UV days without changing the user's saved base interval.
 
 ### Settings and Controls
 
-- Users should be able to change reminder time without repeating onboarding.
+- Users should be able to change reminder timing and reminder behavior without repeating onboarding.
 - Manual logging should always remain available as the primary check-in flow.
 
 ## Key Behavioral Expectations

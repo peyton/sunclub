@@ -15,11 +15,13 @@ private enum NotificationConstants {
     static let weeklyFallbackPrefix = "sunscreen.weekly.fallback."
     static let weeklyPrimaryPrefix = "sunscreen.weekly.primary."
     static let reapplyPrefix = "sunscreen.reapply."
+    static let streakRiskPrefix = "sunscreen.streak-risk."
 }
 
 @MainActor
 protocol NotificationScheduling: AnyObject {
     func scheduleReminders(using state: AppState) async
+    func refreshStreakRiskReminder(using state: AppState) async
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async
     func cancelReapplyReminders() async
 }
@@ -93,11 +95,13 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         await clearPendingRequests(prefix: NotificationConstants.dailyPrefix)
         await clearPendingRequests(prefix: NotificationConstants.weeklyFallbackPrefix)
         await clearPendingRequests(prefix: NotificationConstants.weeklyPrimaryPrefix)
+        await clearPendingRequests(prefix: NotificationConstants.streakRiskPrefix)
 
         await addRequests(makeDailyReminderRequests(using: state))
         if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
             try? await center.add(weeklyFallback)
         }
+        await refreshStreakRiskReminder(using: state)
         submitWeeklyBackgroundTask(
             weekday: state.settings.weeklyWeekday,
             hour: state.settings.weeklyHour,
@@ -106,16 +110,24 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     private func makeDailyReminderRequests(using state: AppState) -> [UNNotificationRequest] {
-        let dayStart = calendar.startOfDay(for: Date())
+        let reminderSettings = state.settings.smartReminderSettings
+        let timeZone = reminderSettings.notificationTimeZone()
+        var scheduleCalendar = calendar
+        scheduleCalendar.timeZone = timeZone
+
+        let dayStart = scheduleCalendar.startOfDay(for: Date())
         var requests: [UNNotificationRequest] = []
 
         for offset in 0..<60 {
-            guard let day = calendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
+            guard let day = scheduleCalendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
             let phrase = state.nextDailyPhrase()
-
-            var components = calendar.dateComponents([.year, .month, .day], from: day)
-            components.hour = state.settings.reminderHour
-            components.minute = state.settings.reminderMinute
+            let reminderTime = reminderSettings.time(for: day, calendar: scheduleCalendar)
+            let components = ReminderPlanner.notificationComponents(
+                for: day,
+                time: reminderTime,
+                timeZone: timeZone,
+                calendar: scheduleCalendar
+            )
 
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             requests.append(
@@ -135,6 +147,16 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
 
         return requests
+    }
+
+    func refreshStreakRiskReminder(using state: AppState) async {
+        await clearPendingRequests(prefix: NotificationConstants.streakRiskPrefix)
+
+        guard let streakRiskRequest = makeStreakRiskRequest(using: state) else {
+            return
+        }
+
+        try? await center.add(streakRiskRequest)
     }
 
     private func makeWeeklyFallbackRequest(using state: AppState) -> UNNotificationRequest? {
@@ -268,6 +290,41 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     func cancelReapplyReminders() async {
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
+    }
+
+    private func makeStreakRiskRequest(using state: AppState) -> UNNotificationRequest? {
+        guard let plan = ReminderPlanner.streakRiskPlan(
+            records: state.recordedDays,
+            now: Date(),
+            settings: state.settings.smartReminderSettings,
+            calendar: calendar
+        ) else {
+            return nil
+        }
+
+        let streakLabel = plan.streakCount == 1 ? "1-day streak" : "\(plan.streakCount)-day streak"
+        let timeZone = state.settings.smartReminderSettings.notificationTimeZone()
+        var scheduleCalendar = calendar
+        scheduleCalendar.timeZone = timeZone
+        var triggerComponents = scheduleCalendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: plan.fireDate)
+        triggerComponents.timeZone = timeZone
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: triggerComponents,
+            repeats: false
+        )
+
+        return UNNotificationRequest(
+            identifier: "\(NotificationConstants.streakRiskPrefix)\(Int(plan.fireDate.timeIntervalSince1970))",
+            content: makeContent(
+                title: "Keep your streak alive",
+                body: "Today is still open. Log sunscreen before the day ends to protect your \(streakLabel).",
+                categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+                route: NotificationConstants.manualRoute,
+                type: "streak_risk",
+                includeDefaultSound: true
+            ),
+            trigger: trigger
+        )
     }
 
     private func clearPendingRequests(prefix: String) async {

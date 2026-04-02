@@ -7,6 +7,7 @@ import XCTest
 final class MockNotificationManager: NotificationScheduling {
     private(set) var scheduleRemindersCount = 0
     private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
+    private(set) var refreshStreakRiskReminderCount = 0
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var cancelReapplyRemindersCount = 0
 
@@ -17,6 +18,10 @@ final class MockNotificationManager: NotificationScheduling {
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
         scheduleReapplyReminderPlans.append(plan)
         scheduleReapplyReminderRoutes.append(route)
+    }
+
+    func refreshStreakRiskReminder(using state: AppState) async {
+        refreshStreakRiskReminderCount += 1
     }
 
     func cancelReapplyReminders() async {
@@ -113,6 +118,49 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.settings.reminderHour, 9)
         XCTAssertEqual(state.settings.reminderMinute, 45)
+        XCTAssertEqual(state.settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 9, minute: 45))
+        XCTAssertEqual(state.settings.smartReminderSettings.weekendTime, ReminderTime(hour: 9, minute: 45))
+    }
+
+    @MainActor
+    func testUpdateReminderTimePersistsSeparateWeekdayAndWeekendSchedules() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateReminderTime(for: .weekday, hour: 7, minute: 30)
+        state.updateReminderTime(for: .weekend, hour: 9, minute: 15)
+
+        await Task.yield()
+        XCTAssertEqual(state.settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 7, minute: 30))
+        XCTAssertEqual(state.settings.smartReminderSettings.weekendTime, ReminderTime(hour: 9, minute: 15))
+        XCTAssertEqual(state.settings.reminderHour, 7)
+        XCTAssertEqual(state.settings.reminderMinute, 30)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 2)
+    }
+
+    @MainActor
+    func testUpdateTravelTimeZoneHandlingAnchorsCurrentZoneWhenDisabled() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateTravelTimeZoneHandling(followsTravelTimeZone: false)
+
+        await Task.yield()
+        XCTAssertFalse(state.settings.smartReminderSettings.followsTravelTimeZone)
+        XCTAssertEqual(state.settings.smartReminderSettings.anchoredTimeZoneIdentifier, TimeZone.autoupdatingCurrent.identifier)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
+    }
+
+    @MainActor
+    func testUpdateStreakRiskReminderPersistsAndReschedules() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateStreakRiskReminder(enabled: false)
+
+        await Task.yield()
+        XCTAssertFalse(state.settings.smartReminderSettings.streakRiskEnabled)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
     }
 
     @MainActor
@@ -292,6 +340,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 2)
     }
 
     @MainActor
@@ -305,6 +354,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 0)
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 1)
     }
 
     @MainActor
@@ -460,9 +510,14 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(settings.weeklyWeekday, 1)
         XCTAssertNil(settings.dailyPhraseState)
         XCTAssertNil(settings.weeklyPhraseState)
+        XCTAssertNil(settings.smartReminderSettingsData)
         XCTAssertEqual(settings.longestStreak, 0)
         XCTAssertFalse(settings.reapplyReminderEnabled)
         XCTAssertEqual(settings.reapplyIntervalMinutes, 120)
+        XCTAssertEqual(settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 8, minute: 0))
+        XCTAssertEqual(settings.smartReminderSettings.weekendTime, ReminderTime(hour: 8, minute: 0))
+        XCTAssertTrue(settings.smartReminderSettings.followsTravelTimeZone)
+        XCTAssertTrue(settings.smartReminderSettings.streakRiskEnabled)
     }
 
     @MainActor
@@ -539,15 +594,26 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testRecordVerificationSuccessRefreshesStreakRiskReminder() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.recordVerificationSuccess(method: .manual, verificationDuration: 0.8)
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 1)
+    }
+
+    @MainActor
     private func makeAppState(
-        notificationManager: NotificationScheduling = NotificationManager.shared
+        notificationManager: NotificationScheduling? = nil
     ) throws -> AppState {
         let schema = Schema([DailyRecord.self, Settings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return AppState(
             context: ModelContext(container),
-            notificationManager: notificationManager
+            notificationManager: notificationManager ?? NotificationManager.shared
         )
     }
 
