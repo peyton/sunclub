@@ -3,6 +3,7 @@ import SwiftUI
 struct ManualLogView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedSPF: Int?
     @State private var notes: String = ""
 
@@ -12,7 +13,7 @@ struct ManualLogView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 26) {
                 SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
-                    router.goHome()
+                    dismiss()
                 })
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -50,6 +51,7 @@ struct ManualLogView: View {
             .accessibilityIdentifier("manualLog.logToday")
         }
         .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
     }
 
     private var spfSelector: some View {

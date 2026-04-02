@@ -64,6 +64,19 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsEdgeSwipeReturnsHome() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
+
+        performBackSwipe(in: app)
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testHomeShowsManualLogButton() throws {
         let app = launchHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
@@ -138,5 +151,12 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         return app
+    }
+
+    @MainActor
+    private func performBackSwipe(in app: XCUIApplication) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 }

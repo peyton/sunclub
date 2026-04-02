@@ -2,14 +2,14 @@ import SwiftUI
 
 struct WeeklyReportView: View {
     @Environment(AppState.self) private var appState
-    @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
 
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 28) {
                 SunLightHeader(title: "Weekly Summary", showsBack: true, onBack: {
-                    router.goHome()
+                    dismiss()
                 })
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -40,6 +40,7 @@ struct WeeklyReportView: View {
             report = appState.last7DaysReport()
         }
         .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
     }
 
     private var weeklyChart: some View {

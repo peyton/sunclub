@@ -90,6 +90,7 @@ struct EnableNotificationsView: View {
             .accessibilityIdentifier("onboarding.enableNotifications")
         }
         .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
     }
 
     private var reminderDescription: String {

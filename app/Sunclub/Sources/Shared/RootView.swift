@@ -13,6 +13,7 @@ struct RootView: View {
                     destination(for: route)
                 }
         }
+        .interactivePopGestureEnabled()
         .tint(AppPalette.sun)
     }
 

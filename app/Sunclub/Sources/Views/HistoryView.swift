@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(AppState.self) private var appState
-    @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
     @State private var displayedMonth = Date()
     @State private var selectedDay: Date?
 
@@ -13,7 +13,7 @@ struct HistoryView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "History", showsBack: true, onBack: {
-                    router.goHome()
+                    dismiss()
                 })
 
                 monthNavigator
@@ -32,6 +32,7 @@ struct HistoryView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
     }
 
     private var monthNavigator: some View {

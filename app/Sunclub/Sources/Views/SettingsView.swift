@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
-    @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
 
     @State private var showTimePicker = false
     @State private var reminderTime = Date()
@@ -15,7 +15,7 @@ struct SettingsView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 30) {
                 SunLightHeader(title: "Settings", showsBack: true, onBack: {
-                    router.goHome()
+                    dismiss()
                 })
 
                 reminderSection
@@ -41,6 +41,7 @@ struct SettingsView: View {
             reapplyInterval = appState.settings.reapplyIntervalMinutes
         }
         .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
     }
 
     private var reminderSection: some View {
