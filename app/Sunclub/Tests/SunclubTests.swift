@@ -651,9 +651,7 @@ final class SunclubTests: XCTestCase {
     private func makeAppState(
         notificationManager: NotificationScheduling? = nil
     ) throws -> AppState {
-        let schema = Schema([DailyRecord.self, Settings.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
         return AppState(
             context: ModelContext(container),
             notificationManager: notificationManager ?? NotificationManager.shared

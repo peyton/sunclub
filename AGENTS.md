@@ -39,16 +39,25 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 ## Architecture Conventions
 
 - **Models** → `app/Sunclub/Models/` — SwiftData `@Model` types
+- **Persistence Versioning** → `app/Sunclub/Sources/Models/SunclubSchema.swift` — all SwiftData `VersionedSchema`, migration stages, and `ModelContainer` factory wiring live here
 - **Services** → `app/Sunclub/Services/` — coordinators, matchers, managers
 - **Views** → `app/Sunclub/Views/` — one file per screen
 - **Theme** → `app/Sunclub/Shared/AppTheme.swift` — all UI tokens live here
 - Singletons: `VisionFeaturePrintService.shared`, `NotificationManager.shared`
 - Observable state: `AppState` is the single source of truth, injected via `@Environment`
 
+### SwiftData Migration Rules
+
+- Treat every persisted SwiftData field change as a schema version bump. Add a new `VersionedSchema` entry in `app/Sunclub/Sources/Models/SunclubSchema.swift` and keep older schema definitions immutable.
+- When freezing an older schema, annotate it with the shipped commit or release it matches so migration tests have a concrete source of truth.
+- Route every `ModelContainer` creation path through `SunclubModelContainerFactory`; do not create ad-hoc containers that skip the migration plan.
+- Keep data fixes that must happen once per upgrade inside the migration stage, not scattered across unrelated runtime code.
+
 ## Documentation Rules
 
 - **All specs, design docs, and investigation notes go in `docs/`** as Markdown files.
 - All documentation about tools goes in `docs/` as Markdown files.
+- Persisted-data changes should add or update a migration note/ExecPlan in `docs/` when the migration behavior or rollout assumptions are non-trivial.
 - Keep docs terse — spec fields, not prose
 - DO NOT reference Linear ticket IDs (e.g. `PER-44`) in doc filenames or headers
 - Existing specs: `SPEC.md` (benchmark), `app/SPEC.md` (product), `docs/subscription-screen-spec.md`
@@ -75,5 +84,6 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 
 - Don't add external dependencies — the app is intentionally self-contained
 - Don't change matching thresholds without running the benchmark
+- Don't change persisted SwiftData models without bumping the schema version and adding/updating a migration test that opens the previous shipped store
 - Don't bypass `UITEST_MODE` in UI tests — they must work without real camera/notifications
 - Don't put documentation anywhere other than `docs/`
