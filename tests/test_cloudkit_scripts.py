@@ -220,6 +220,12 @@ def test_cloudkit_ensure_container_opens_setup_when_cloudkit_is_missing(
     tmp_path: Path,
 ) -> None:
     repo_root, open_log = _prepare_cloudkit_repo(tmp_path)
+    _write_executable(
+        tmp_path / "bin" / "plutil",
+        """#!/bin/sh
+exit 127
+""",
+    )
 
     env = os.environ.copy()
     env["PATH"] = f"{tmp_path / 'bin'}:{env['PATH']}"
