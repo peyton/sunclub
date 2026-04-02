@@ -1,7 +1,0 @@
-# Downloaded videos and extracted frames (large, regenerable)
-datasets/*/videos/
-datasets/*/images/
-
-# Model checkpoints (large, regenerable)
-checkpoints/
-export/

@@ -24,7 +24,6 @@ struct VerificationSuccessPresentation: Equatable {
 @Observable
 final class AppState {
     let modelContext: ModelContext
-    let features: AppFeatures
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
     private let verificationStore: VerificationStore
@@ -33,12 +32,11 @@ final class AppState {
     private let calendar = Calendar.current
 
     convenience init(context: ModelContext) {
-        self.init(context: context, features: .current, notificationManager: NotificationManager.shared)
+        self.init(context: context, notificationManager: NotificationManager.shared)
     }
 
-    init(context: ModelContext, features: AppFeatures, notificationManager: NotificationScheduling) {
+    init(context: ModelContext, notificationManager: NotificationScheduling) {
         modelContext = context
-        self.features = features
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager
         settings = Self.loadOrCreateSettings(from: context)
@@ -47,7 +45,12 @@ final class AppState {
 
     func refresh() {
         do {
-            records = try verificationStore.fetchRecords()
+            let fetchedRecords = try verificationStore.fetchRecords()
+            let didNormalize = normalizeLegacyVerificationMethods(in: fetchedRecords)
+            records = fetchedRecords
+            if didNormalize {
+                save()
+            }
         } catch {
             records = []
         }
@@ -89,12 +92,8 @@ final class AppState {
         RuntimeEnvironment.isUITesting
     }
 
-    var isBottleScanEnabled: Bool {
-        features.isBottleScanEnabled
-    }
-
     var preferredCheckInRoute: AppRoute {
-        isBottleScanEnabled ? .verifyCamera : .manualLog
+        .manualLog
     }
 
     func completeOnboarding() {
@@ -239,6 +238,18 @@ final class AppState {
 
     func record(for day: Date) -> DailyRecord? {
         (try? verificationStore.record(for: day)).flatMap { $0 }
+    }
+
+    private func normalizeLegacyVerificationMethods(in fetchedRecords: [DailyRecord]) -> Bool {
+        let legacyMethodRawValue = 0
+        var didNormalize = false
+
+        for record in fetchedRecords where record.methodRawValue == legacyMethodRawValue {
+            record.method = .manual
+            didNormalize = true
+        }
+
+        return didNormalize
     }
 
     private func apply(

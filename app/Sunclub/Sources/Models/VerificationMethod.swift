@@ -1,37 +1,21 @@
 import Foundation
 
 enum VerificationMethod: Int, Codable, CaseIterable, Identifiable {
-    case camera
-    case manual
+    case manual = 1
 
     var id: Int { rawValue }
 
     var title: String {
-        switch self {
-        case .camera:
-            return "camera"
-        case .manual:
-            return "manual"
-        }
+        "manual"
     }
 }
 
 extension VerificationMethod {
     var displayName: String {
-        switch self {
-        case .camera:
-            return "Live Camera"
-        case .manual:
-            return "Manual Log"
-        }
+        "Manual Log"
     }
 
     var symbolName: String {
-        switch self {
-        case .camera:
-            return "camera.viewfinder"
-        case .manual:
-            return "hand.tap"
-        }
+        "hand.tap"
     }
 }

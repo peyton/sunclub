@@ -29,7 +29,7 @@ final class DailyRecord {
     }
 
     var method: VerificationMethod {
-        get { VerificationMethod(rawValue: methodRawValue) ?? .camera }
+        get { VerificationMethod(rawValue: methodRawValue) ?? .manual }
         set { methodRawValue = newValue.rawValue }
     }
 }

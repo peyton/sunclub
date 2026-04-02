@@ -84,17 +84,6 @@ fi
 APP_BUNDLE="$ARCHIVE_OUTPUT_PATH/Products/Applications/Sunclub.app"
 [ -d "$APP_BUNDLE" ] || fail "Archive is missing $APP_BUNDLE"
 
-step "Verifying model packaging"
-if find "$APP_BUNDLE" \( -name "config.json" -o -name "*.mlpackage" -o -name "*.bin" \) | grep -q .; then
-  fail "The archived app bundle still contains FastVLM model payload files."
-fi
-
-if ! find "$ARCHIVE_OUTPUT_PATH" \( -name "*.assetpack" -o -path "*OnDemandResources*" \) | grep -q .; then
-  fail "No On-Demand Resource asset pack was found in the archive."
-fi
-
-ok "Archive keeps FastVLM out of the .app bundle and retains an ODR asset pack"
-
 if [ "$SKIP_EXPORT" = false ]; then
   step "Exporting the App Store package"
   rm -rf "$EXPORT_OUTPUT_PATH"

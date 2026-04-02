@@ -31,9 +31,6 @@ let project = Project(
                 .folder("Resources")
             ],
             entitlements: "Sunclub.entitlements",
-            dependencies: [
-                .project(target: "FastVLM", path: "../Frameworks/FastVLM")
-            ],
             settings: .settings(
                 base: [:]
                     .automaticCodeSigning(devTeam: signingTeam)

@@ -1,12 +1,6 @@
 import SwiftData
 import SwiftUI
 
-enum PreviewRuntime {
-    static var isRunning: Bool {
-        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-    }
-}
-
 enum PreviewScenario {
     case onboarding
     case home
@@ -28,7 +22,7 @@ struct SunclubPreviewHost<Content: View>: View {
         let container = Self.makeContainer()
         NotificationManager.shared.configure(modelContainer: container)
 
-        let appState = AppState(context: ModelContext(container), features: .current, notificationManager: NotificationManager.shared)
+        let appState = AppState(context: ModelContext(container), notificationManager: NotificationManager.shared)
         Self.seed(appState, for: scenario)
 
         _appState = State(initialValue: appState)
@@ -86,8 +80,7 @@ struct SunclubPreviewHost<Content: View>: View {
             let record = DailyRecord(
                 startOfDay: day,
                 verifiedAt: verifiedAt,
-                method: .camera,
-                verificationDuration: 1.1
+                method: .manual
             )
             appState.modelContext.insert(record)
         }

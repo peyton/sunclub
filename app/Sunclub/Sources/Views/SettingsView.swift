@@ -127,10 +127,6 @@ struct SettingsView: View {
     }
 
     private var reminderDescription: String {
-        if appState.isBottleScanEnabled {
-            return "Daily reminders open the sunscreen camera flow directly."
-        }
-
         return "Daily reminders open today's sunscreen check-in directly."
     }
 

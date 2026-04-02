@@ -5,38 +5,30 @@ graph TD
     end
 
     subgraph Main ["Main App"]
-        H[HomeView<br/>Greeting + Today Card<br/>Streak Card + Verify Button]
-        H -->|Verify Now| LV[LiveVerifyView<br/>Camera + FastVLM<br/>2x YES → Confirm]
-        LV -->|Detection Success| VS[VerificationSuccessView<br/>Checkmark + Streak]
+        H[HomeView<br/>Greeting + Today Card<br/>Streak Card + Manual Log Button]
+        H -->|Log Manually| ML[ManualLogView<br/>SPF + Notes + Log Today]
+        ML -->|Log Today| VS[VerificationSuccessView<br/>Checkmark + Streak]
         VS -->|Done| H
         H -->|Tap Streak Card| WR[WeeklyReportView<br/>7-day summary<br/>Applied grid + Missed list]
         WR -->|Back| H
-        H -->|Gear Icon| S[SettingsView<br/>Reminder Time<br/>Manage Subscription]
+        H -->|History Card| HIS[HistoryView<br/>Month calendar<br/>Day detail on tap]
+        HIS -->|Back| H
+        H -->|Gear Icon| S[SettingsView<br/>Reminder Time<br/>Reapply Reminder]
         S -->|Back| H
     end
 
     subgraph Notifications ["Notification Deep Links"]
-        DN[Daily Notification<br/>Verify Now action] -->|Opens App| LV
+        DN[Daily Notification<br/>Log Today action] -->|Opens App| ML
         WN[Weekly Notification<br/>Summary available] -->|Opens App| WR
-    end
-
-    subgraph "Proposed New Flows"
-        H -.->|New: History| HIS[HistoryView<br/>Month calendar<br/>Day detail on tap]
-        HIS -.->|Back| H
-        H -.->|New: Log Manually| MC[Manual Confirmation<br/>One-tap logging]
-        MC -.->|Confirmed| VS
-        LV -.->|New: After Success| RA[Reapply Timer<br/>2hr reminder set]
     end
 
     style W fill:#faf6f0,stroke:#1d1915,color:#1d1915
     style EN fill:#fdecc2,stroke:#1d1915,color:#1d1915
     style H fill:#faf6f0,stroke:#faa30c,color:#1d1915,stroke-width:3px
-    style LV fill:#1d1915,stroke:#faa30c,color:#faf6f0
+    style ML fill:#faf6f0,stroke:#faa30c,color:#1d1915
     style VS fill:#268948,stroke:#1d1915,color:#faf6f0
     style WR fill:#faf6f0,stroke:#1d1915,color:#1d1915
+    style HIS fill:#faf6f0,stroke:#1d1915,color:#1d1915
     style S fill:#faf6f0,stroke:#1d1915,color:#1d1915
     style DN fill:#fdecc2,stroke:#1d1915,color:#1d1915
     style WN fill:#fdecc2,stroke:#1d1915,color:#1d1915
-    style HIS fill:#faf6f0,stroke:#faa30c,color:#1d1915,stroke-dasharray:5 5
-    style MC fill:#faf6f0,stroke:#faa30c,color:#1d1915,stroke-dasharray:5 5
-    style RA fill:#fdecc2,stroke:#faa30c,color:#1d1915,stroke-dasharray:5 5

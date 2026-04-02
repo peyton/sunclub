@@ -7,14 +7,13 @@ Sunclub is a local-first iOS app for maintaining a daily sunscreen habit.
 The product loop is:
 
 1. Open the app or tap the reminder.
-2. Point the camera at sunscreen.
-3. Let FastVLM answer `YES` or `NO`.
-4. Log the day and reinforce the streak.
+2. Log the day manually.
+3. Reinforce the streak.
 
 ## Goals
 
 - Help users build a daily sunscreen routine with as little friction as possible.
-- Make daily logging fast and repeatable with an on-device camera flow.
+- Make daily logging fast and repeatable with a simple manual flow.
 - Make daily progress visible through streaks and weekly reporting.
 - Keep the app useful without requiring an account or cloud service.
 - Keep the product focused on one action: logging sunscreen for today.
@@ -34,7 +33,7 @@ The product loop is:
 - Low ceremony: the daily check-in should be fast enough to feel routine, not like work.
 - Private by default: user data stays on device.
 - Habit-first: progress, reminders, and summaries should reinforce consistency more than novelty.
-- Deterministic logging: only a clear model `YES` should complete the day.
+- Deterministic logging: recording today should be a direct, low-friction action.
 
 ## Primary User Journey
 
@@ -60,11 +59,10 @@ The main recurring flow starts from Home.
 Expected sequence:
 
 1. User opens the app.
-2. Home highlights the current streak and offers a prominent `Verify Now` action.
-3. Verification screen uses the camera and FastVLM to answer whether sunscreen is present.
-4. Successful verification records the day as complete.
-5. Success screen confirms completion and shows the updated streak.
-6. User returns to Home.
+2. Home highlights the current streak and offers a prominent `Log Manually` action.
+3. Manual logging records the day as complete.
+4. Success screen confirms completion and shows the updated streak.
+5. User returns to Home.
 
 Important expectations:
 
@@ -87,7 +85,7 @@ The weekly summary should reinforce momentum, not punish failure.
 
 ### 4. Maintenance and Recovery
 
-Users need a lightweight way to update reminders or recover when camera verification is unavailable.
+Users need a lightweight way to update reminders or review recent progress without leaving the core manual flow.
 
 Expected sequence:
 
@@ -112,15 +110,8 @@ Expected sequence:
 
 - Serve as the app's main dashboard.
 - Show current streak prominently.
-- Provide a single primary call to action: `Verify Now`.
+- Provide a single primary call to action: `Log Manually`.
 - Provide quick access to weekly summary and settings.
-
-### Verify
-
-- Use the live camera experience to confirm sunscreen is present.
-- Communicate current model status clearly while scanning is in progress.
-- Display whether FastVLM is loading, currently answering `YES` or `NO`, and recent latency.
-- Transition automatically to success once verification is complete.
 
 ### Verification Success
 
@@ -150,12 +141,8 @@ Expected sequence:
 
 ### Daily Verification
 
-- Verification should rely on the FastVLM prompt `Is there sunscreen or a sunscreen bottle in this image? Answer ONLY with YES or NO. If unsure, answer NO.`
-- Any model output other than `YES` should be treated as `NO`.
 - The app should record a successful check-in for the current calendar day.
-- Re-verifying on the same day should update the existing day entry, not create duplicates.
-- The app should only allow one in-flight inference at a time while the camera is scanning.
-- Frame analysis should be throttled to keep the flow performant on device.
+- Re-logging on the same day should update the existing day entry, not create duplicates.
 
 ### Streaks and Progress
 
@@ -169,33 +156,32 @@ Expected sequence:
 - The app should support a user-configurable daily reminder time.
 - Reminder copy should rotate so messaging does not feel overly repetitive.
 - Daily notifications should provide a quick path back into the app.
-- A `Verify Now` notification action should route directly to the camera verification screen.
+- A `Log Today` notification action should route directly to manual logging.
 - Weekly reminders should open the weekly summary view.
 - Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
 
 ### Settings and Controls
 
 - Users should be able to change reminder time without repeating onboarding.
-- Manual logging should remain available even when camera verification cannot run.
+- Manual logging should always remain available as the primary check-in flow.
 
 ## Key Behavioral Expectations
 
 ### Permissions
 
-- Camera-denied states should be handled gracefully on the verification screen.
 - Notification-denied users should still be able to use the full app.
 - Permission failures should surface as understandable states, not broken flows.
 
 ### Data and Persistence
 
 - Settings and daily completion history should persist locally on device.
-- The app should remain functional offline after the one-time verification model download completes.
+- The app should remain functional offline.
 - There should be no required account or server dependency for core usage.
 
 ### Routing from Notifications
 
-- A daily reminder should bring the user back into the camera verification flow.
-- A `Verify Now` notification action should route directly to verification.
+- A daily reminder should bring the user into the manual logging flow.
+- A `Log Today` notification action should route directly to manual logging.
 - Weekly reminders should open the weekly summary view.
 
 ## Out of Scope for This Version
@@ -211,7 +197,7 @@ Expected sequence:
 ## Success Criteria
 
 - A new user can complete onboarding in one short session.
-- A returning user can complete a daily verification quickly from Home.
+- A returning user can complete a daily check-in quickly from Home.
 - Users can understand their recent adherence from the weekly summary without explanation.
 - Reminder settings are easy enough to use without support.
 - The app remains valuable even for users who decline notifications.

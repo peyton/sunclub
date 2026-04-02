@@ -10,14 +10,14 @@
     "age_rating": "4+",
     "device_family": "iphone",
     "pricing_model": "free",
-    "supports_on_demand_resources": true
+    "supports_on_demand_resources": false
   },
   "localizations": {
     "en-US": {
-      "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nPoint your camera at a sunscreen bottle when you want AI verification, or log today manually when you already applied. Sunclub keeps your streak, shows your recent check-ins, and reminds you when it is time to apply again.\n\nCamera verification uses FastVLM, an on-device vision model hosted as a one-time App Store download. After the model finishes downloading, verification stays available offline on that iPhone.\n\nFeatures:\n\n• Camera Verification — Confirm a sunscreen bottle with on-device AI.\n• Manual Logging — Record today even when the bottle is not nearby.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No accounts, no cloud sync, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
+      "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nLog today in a few taps, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No accounts, no cloud sync, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
       "keywords": ["sunscreen", "spf", "uv", "habit", "streak", "daily", "reminder", "skincare", "sun care"],
-      "promotional_text": "Build a steady sunscreen routine with camera verification, manual logging, streaks, and reminders.",
-      "whats_new": "Initial release. Verify sunscreen with the camera after a one-time model download, log manually when needed, and keep your streak on track."
+      "promotional_text": "Build a steady sunscreen routine with quick logging, streaks, and reminders.",
+      "whats_new": "Initial release. Log sunscreen use quickly, keep your streak on track, and stay consistent with reminders."
     }
   },
   "urls": {
@@ -44,13 +44,12 @@
     },
     "demo_account_required": false,
     "demo_account_notes": "No account required. All user data stays on device.",
-    "notes": "Sunclub requests camera access only for sunscreen verification. Reviewers can test manual logging from Home without downloading the model. To test camera verification, open Verify Now, approve the one-time FastVLM download, then point the camera at a sunscreen bottle or tube until the app confirms detection.",
+    "notes": "Sunclub does not require an account. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.",
     "attachments": []
   },
   "privacy": {
     "tracking": false,
     "data_collection": "none",
-    "camera_usage_description": "Camera access is used to verify that sunscreen is present before Sunclub logs today.",
     "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
   },
   "export_compliance": {
@@ -78,13 +77,7 @@
           "launch_arguments": []
         },
         {
-          "id": "verify-download",
-          "route": "verifyCamera",
-          "complete_onboarding": true,
-          "launch_arguments": ["UITEST_REQUIRE_MODEL_DOWNLOAD"]
-        },
-        {
-          "id": "verify-success",
+          "id": "check-in-success",
           "route": "verifySuccess",
           "complete_onboarding": true,
           "launch_arguments": []

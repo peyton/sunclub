@@ -1,6 +1,6 @@
 [tools]
-just = "1.48.0"
-tuist = { version = "4.169.1", os = ["macos"] }
+just = "1.48.1"
+tuist = { version = "4.174.0", os = ["macos"] }
 hk = "latest"
 python = "3.14"
 uv = "latest"

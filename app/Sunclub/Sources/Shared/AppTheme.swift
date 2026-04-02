@@ -1,4 +1,3 @@
-import AVFoundation
 import SwiftUI
 
 enum AppPalette {
@@ -314,38 +313,6 @@ struct SunLogoMark: View {
                 .offset(x: -size * 0.03, y: -size * 0.05)
         }
         .frame(width: size, height: size)
-    }
-}
-
-struct SunCameraFrame: View {
-    let session: AVCaptureSession
-    let square: Bool
-
-    init(session: AVCaptureSession, square: Bool = false) {
-        self.session = session
-        self.square = square
-    }
-
-    var body: some View {
-        ZStack {
-            CameraPreview(session: session)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                }
-
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(square ? 0.9 : 0.0), lineWidth: square ? 3 : 0)
-                .padding(square ? 48 : 0)
-        }
-        .frame(height: square ? 300 : 320)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(AppPalette.darkSurface)
-        )
     }
 }
 

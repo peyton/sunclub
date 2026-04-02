@@ -6,4 +6,4 @@ source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
 setup_local_tooling_env
 run_mise install
-run_mise_exec uv sync --group dev --group eval
+run_mise_exec uv sync --group dev

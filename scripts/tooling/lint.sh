@@ -33,7 +33,6 @@ if [ "$(uname -s)" = "Darwin" ]; then
       Workspace.swift \
       Tuist.swift \
       Tuist/Package.swift \
-      Sunclub \
-      Frameworks/FastVLM
+      Sunclub
   )
 fi

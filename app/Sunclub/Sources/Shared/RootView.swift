@@ -27,15 +27,13 @@ struct RootView: View {
 
     @ViewBuilder
     private func destination(for route: AppRoute) -> some View {
-        switch route.resolved(scanEnabled: appState.isBottleScanEnabled) {
+        switch route {
         case .welcome:
             WelcomeView()
         case .enableNotifications:
             EnableNotificationsView()
         case .home:
             HomeView()
-        case .verifyCamera:
-            LiveVerifyView()
         case .verifySuccess:
             VerificationSuccessView()
         case .weeklySummary:

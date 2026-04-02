@@ -22,11 +22,11 @@ def test_validator_rejects_legacy_submission_problems() -> None:
             "age_rating": "4+",
             "device_family": "iphone",
             "pricing_model": "free",
-            "supports_on_demand_resources": true
+            "supports_on_demand_resources": false
           },
           "localizations": {
             "en-US": {
-              "description": "Fully Offline. No network connection needed. Premium subscription unlocks extra features.",
+              "description": "Fully Offline. Premium subscription unlocks extra features.",
               "keywords": ["sunscreen","sunblock","SPF","skin care","habit tracker","daily routine","UV protection","streak","sun protection","skincare"],
               "promotional_text": "Build an unbreakable sunscreen habit.",
               "whats_new": "Initial release."
@@ -53,7 +53,6 @@ def test_validator_rejects_legacy_submission_problems() -> None:
           "privacy": {
             "tracking": false,
             "data_collection": "none",
-            "camera_usage_description": "Camera access is used to verify sunscreen.",
             "notifications_usage_description": "Notifications remind the user to apply sunscreen."
           },
           "export_compliance": {
@@ -91,10 +90,6 @@ def test_validator_rejects_legacy_submission_problems() -> None:
     assert not warnings
     assert "app.subtitle exceeds Apple's 30-character limit." in errors
     assert "localizations.en-US.keywords exceeds Apple's 100-byte limit." in errors
-    assert (
-        "Metadata claims the app is fully offline even though camera verification depends on a one-time ODR download."
-        in errors
-    )
     assert (
         "Metadata mentions subscriptions, premium access, or freemium copy while the release is free-only."
         in errors
@@ -135,13 +130,13 @@ def test_validator_accepts_submission_ready_manifest() -> None:
             "age_rating": "4+",
             "device_family": "iphone",
             "pricing_model": "free",
-            "supports_on_demand_resources": true
+            "supports_on_demand_resources": false
           },
           "localizations": {
             "en-US": {
-              "description": "Sunclub helps users keep a sunscreen routine with manual logging, streaks, reminders, and camera verification after a one-time model download.",
+              "description": "Sunclub helps users keep a sunscreen routine with manual logging, streaks, reminders, and weekly summaries.",
               "keywords": ["sunscreen","spf","habit","streak","reminder","daily","uv"],
-              "promotional_text": "Build a steady sunscreen routine with reminders and camera verification.",
+              "promotional_text": "Build a steady sunscreen routine with reminders and quick logging.",
               "whats_new": "Initial release."
             }
           },
@@ -160,13 +155,12 @@ def test_validator_accepts_submission_ready_manifest() -> None:
             },
             "demo_account_required": false,
             "demo_account_notes": "No account required.",
-            "notes": "Reviewers can log manually or download the verification model once from the Verify screen.",
+            "notes": "Reviewers can complete onboarding, log manually from Home, and open Weekly Summary and Settings.",
             "attachments": []
           },
           "privacy": {
             "tracking": false,
             "data_collection": "none",
-            "camera_usage_description": "Camera access is used to verify sunscreen before logging today.",
             "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
           },
           "export_compliance": {

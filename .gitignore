@@ -24,13 +24,6 @@ app/Sunclub.xcodeproj/xcuserdata/
 app/Sunclub.xcworkspace/
 app/Tuist/Dependencies/
 app/build/
-app/Generated/*
-!app/Generated/.keep
-!app/Generated/FastVLMODR/
-app/Generated/FastVLMODR/*
-!app/Generated/FastVLMODR/model/
-app/Generated/FastVLMODR/model/*
-!app/Generated/FastVLMODR/model/.keep
 
 # macOS
 .DS_Store

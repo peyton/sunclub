@@ -5,7 +5,6 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case welcome
     case enableNotifications
     case home
-    case verifyCamera
     case verifySuccess
     case weeklySummary
     case settings
@@ -13,14 +12,6 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case manualLog
 
     var id: String { rawValue }
-
-    func resolved(scanEnabled: Bool) -> AppRoute {
-        guard self == .verifyCamera, !scanEnabled else {
-            return self
-        }
-
-        return .manualLog
-    }
 }
 
 @Observable

@@ -5,13 +5,10 @@ import UserNotifications
 
 private enum NotificationConstants {
     static let backgroundTaskID = "com.peyton.sunclub.weekly-report"
-    static let dailyVerifyCategoryID = "SUNSCREEN_DAILY_VERIFY"
     static let dailyManualCategoryID = "SUNSCREEN_DAILY_MANUAL"
     static let reapplyCategoryID = "SUNSCREEN_REAPPLY"
-    static let actionVerifyID = "VERIFY_NOW_ACTION"
     static let actionManualID = "LOG_TODAY_ACTION"
     static let routeKey = "targetRoute"
-    static let verifyRoute = "verify"
     static let manualRoute = "manual"
     static let weeklyRoute = "weekly"
     static let dailyPrefix = "sunscreen.daily."
@@ -64,13 +61,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if !configured {
             configured = true
 
-            let actionVerify = UNNotificationAction(identifier: NotificationConstants.actionVerifyID, title: "Verify Now", options: [.foreground])
             let actionManual = UNNotificationAction(identifier: NotificationConstants.actionManualID, title: "Log Today", options: [.foreground])
-            let dailyVerifyCategory = UNNotificationCategory(
-                identifier: NotificationConstants.dailyVerifyCategoryID,
-                actions: [actionVerify],
-                intentIdentifiers: []
-            )
             let dailyManualCategory = UNNotificationCategory(
                 identifier: NotificationConstants.dailyManualCategoryID,
                 actions: [actionManual],
@@ -82,7 +73,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 intentIdentifiers: []
             )
 
-            center.setNotificationCategories([dailyVerifyCategory, dailyManualCategory, reapplyCategory])
+            center.setNotificationCategories([dailyManualCategory, reapplyCategory])
             center.delegate = self
         }
 
@@ -117,8 +108,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     private func makeDailyReminderRequests(using state: AppState) -> [UNNotificationRequest] {
         let dayStart = calendar.startOfDay(for: Date())
         var requests: [UNNotificationRequest] = []
-        let reminderRoute = state.preferredCheckInRoute
-        let categoryIdentifier = dailyActionCategoryIdentifier(for: reminderRoute)
 
         for offset in 0..<60 {
             guard let day = calendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
@@ -135,8 +124,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     content: makeContent(
                         title: "Sunclub check-in",
                         body: phrase,
-                        categoryIdentifier: categoryIdentifier,
-                        route: notificationRoute(for: reminderRoute),
+                        categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+                        route: NotificationConstants.manualRoute,
                         type: "daily",
                         includeDefaultSound: true
                     ),
@@ -159,7 +148,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             content: makeContent(
                 title: "Sunclub weekly report",
                 body: "Open Sunclub to view your latest 7-day report.",
-                categoryIdentifier: dailyActionCategoryIdentifier(for: state.preferredCheckInRoute),
+                categoryIdentifier: NotificationConstants.dailyManualCategoryID,
                 route: NotificationConstants.weeklyRoute,
                 type: "weekly_fallback"
             ),
@@ -213,7 +202,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     body: "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
                         + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
                         + phrase.0,
-                    categoryIdentifier: dailyActionCategoryIdentifier(for: AppFeatures.current.isBottleScanEnabled ? .verifyCamera : .manualLog),
+                    categoryIdentifier: NotificationConstants.dailyManualCategoryID,
                     route: NotificationConstants.weeklyRoute,
                     type: "weekly_primary"
                 ),
@@ -317,19 +306,13 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     private func notificationRoute(for route: AppRoute) -> String {
         switch route {
-        case .verifyCamera:
-            return NotificationConstants.verifyRoute
         case .manualLog:
             return NotificationConstants.manualRoute
         case .weeklySummary:
             return NotificationConstants.weeklyRoute
         default:
-            return NotificationConstants.verifyRoute
+            return NotificationConstants.manualRoute
         }
-    }
-
-    private func dailyActionCategoryIdentifier(for route: AppRoute) -> String {
-        route == .manualLog ? NotificationConstants.dailyManualCategoryID : NotificationConstants.dailyVerifyCategoryID
     }
 
     nonisolated func userNotificationCenter(
@@ -352,8 +335,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             guard let self else { return }
 
             switch actionIdentifier {
-            case NotificationConstants.actionVerifyID:
-                routeHandler(.verifyCamera)
             case NotificationConstants.actionManualID:
                 routeHandler(.manualLog)
             default:
@@ -361,8 +342,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     routeHandler(.weeklySummary)
                 } else if targetRoute == NotificationConstants.manualRoute {
                     routeHandler(.manualLog)
-                } else if targetRoute == NotificationConstants.verifyRoute {
-                    routeHandler(.verifyCamera)
                 } else {
                     routeHandler(.home)
                 }

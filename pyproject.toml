@@ -10,11 +10,6 @@ dependencies = []
 dev = [
   "pytest>=8.3.5",
 ]
-eval = [
-  "anthropic>=0.40.0",
-  "pillow>=10.0",
-  "yt-dlp>=2024.0",
-]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

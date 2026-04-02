@@ -93,10 +93,6 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        if appState.isBottleScanEnabled {
-            return "Get daily reminders that take you straight to the camera check-in."
-        }
-
         return "Get daily reminders that take you straight to today's sunscreen check-in."
     }
 }

@@ -43,10 +43,6 @@ run_repo_python_module() {
   run_mise_exec uv run python -m "$@"
 }
 
-run_eval_python_module() {
-  run_mise_exec uv run --group eval python -m "$@"
-}
-
 run_in_app() {
   (
     cd "$REPO_ROOT/app"
@@ -55,7 +51,9 @@ run_in_app() {
 }
 
 generate_workspace() {
-  run_in_app run_mise_exec tuist install --force-resolved-versions
+  if [ -f "$REPO_ROOT/app/Tuist/Package.resolved" ]; then
+    run_in_app run_mise_exec tuist install --force-resolved-versions
+  fi
   run_in_app run_mise_exec tuist generate --no-open
 }
 

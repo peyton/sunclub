@@ -18,18 +18,12 @@ WHATS_NEW_LIMIT = 4000
 VALID_ROUTES = {
     "welcome",
     "home",
-    "verifyCamera",
     "verifySuccess",
     "weeklySummary",
     "settings",
     "history",
     "manualLog",
 }
-FORBIDDEN_OFFLINE_CLAIMS = (
-    "fully offline",
-    "no network connection needed",
-    "no internet connection needed",
-)
 FORBIDDEN_FREE_COPY = (
     "freemium",
     "subscription",
@@ -80,8 +74,6 @@ def validate_manifest(
     name = str(app.get("name", "")).strip()
     subtitle = str(app.get("subtitle", "")).strip()
     pricing_model = str(app.get("pricing_model", "")).strip().lower()
-    supports_odr = bool(app.get("supports_on_demand_resources", False))
-
     if not name:
         errors.append("app.name is required.")
     elif len(name) > APP_NAME_LIMIT:
@@ -162,13 +154,6 @@ def validate_manifest(
 
     lowered_copy = lower_strings(copy_to_scan)
 
-    if supports_odr and any(
-        phrase in lowered_copy for phrase in FORBIDDEN_OFFLINE_CLAIMS
-    ):
-        errors.append(
-            "Metadata claims the app is fully offline even though camera verification depends on a one-time ODR download."
-        )
-
     if pricing_model == "free" and any(
         word in lowered_copy for word in FORBIDDEN_FREE_COPY
     ):
@@ -229,8 +214,6 @@ def validate_manifest(
     else:
         if privacy.get("tracking") not in (True, False):
             errors.append("privacy.tracking must be a boolean.")
-        if not str(privacy.get("camera_usage_description", "")).strip():
-            errors.append("privacy.camera_usage_description is required.")
         if not str(privacy.get("notifications_usage_description", "")).strip():
             errors.append("privacy.notifications_usage_description is required.")
 
