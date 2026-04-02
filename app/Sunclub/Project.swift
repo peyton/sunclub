@@ -20,19 +20,7 @@ let project = Project(
             product: .app,
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
-            infoPlist: .extendingDefault(with: [
-                "CFBundleURLTypes": [
-                    [
-                        "CFBundleURLName": "app.peyton.sunclub",
-                        "CFBundleURLSchemes": ["sunclub"]
-                    ]
-                ],
-                "NSLocationWhenInUseUsageDescription": "Sunclub uses your location only when you turn on live UV data.",
-                "UILaunchScreen": [
-                    "UIColorName": "",
-                    "UIImageName": ""
-                ]
-            ]),
+            infoPlist: .file(path: "Info.plist"),
             buildableFolders: [
                 .folder("Sources"),
                 .folder("Resources")
