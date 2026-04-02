@@ -11,6 +11,13 @@ local toolSteps = new Mapping<String, Step> {
   }
   ["shellcheck"] = Builtins.shellcheck
   ["shfmt"] = Builtins.shfmt
+  ["actionlint"] = Builtins.actionlint
+  ["zizmor"] = (Builtins.zizmor) {
+    check_diff =
+      "tool_path=\"$(mise which zizmor)\" && env -u GITHUB_TOKEN -u GH_TOKEN -u ZIZMOR_GITHUB_TOKEN \"$tool_path\" --no-progress {{ files }}"
+    fix =
+      "tool_path=\"$(mise which zizmor)\" && env -u GITHUB_TOKEN -u GH_TOKEN -u ZIZMOR_GITHUB_TOKEN \"$tool_path\" --no-progress --fix {{ files }}"
+  }
   ["prettier"] = (Builtins.prettier) {
     dir = "."
     batch = true

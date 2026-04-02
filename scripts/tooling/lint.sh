@@ -12,6 +12,8 @@ hk_steps=(
   pkl-format
   shellcheck
   shfmt
+  actionlint
+  zizmor
   prettier
   ruff
   ruff_format
