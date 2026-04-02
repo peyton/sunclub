@@ -36,15 +36,7 @@ enum SunscreenUsageAnalytics {
         from records: [DailyRecord],
         recentNotesLimit: Int = 3
     ) -> SunscreenUsageInsights {
-        let spfRecords = records.compactMap { record -> (level: Int, verifiedAt: Date)? in
-            guard let level = record.spfLevel else {
-                return nil
-            }
-
-            return (level, record.verifiedAt)
-        }
-
-        let mostUsedSPF = mostUsedSPFInsight(from: spfRecords)
+        let mostUsedSPF = mostUsedSPFInsight(from: records)
 
         let recentNotes = records
             .compactMap { record -> RecentUsageNote? in
@@ -66,6 +58,18 @@ enum SunscreenUsageAnalytics {
             mostUsedSPF: mostUsedSPF,
             recentNotes: Array(recentNotes.prefix(recentNotesLimit))
         )
+    }
+
+    static func mostUsedSPFInsight(from records: [DailyRecord]) -> MostUsedSPFInsight? {
+        let spfRecords = records.compactMap { record -> (level: Int, verifiedAt: Date)? in
+            guard let level = record.spfLevel else {
+                return nil
+            }
+
+            return (level, record.verifiedAt)
+        }
+
+        return mostUsedSPFInsight(from: spfRecords)
     }
 
     private static func mostUsedSPFInsight(

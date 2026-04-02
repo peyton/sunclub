@@ -238,6 +238,7 @@ struct HistoryView: View {
         let today = calendar.startOfDay(for: Date())
         let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today)!)
         let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
+        let monthlyInsights = appState.monthlyReviewInsights(for: displayedMonth)
 
         let daysInRange: Int = {
             if monthEnd <= today {
@@ -258,6 +259,37 @@ struct HistoryView: View {
                 statBubble(value: "\(monthRecords.count)", label: "Applied")
                 statBubble(value: "\(max(daysInRange - monthRecords.count, 0))", label: "Missed")
                 statBubble(value: "\(rate)%", label: "Rate")
+            }
+
+            if monthlyInsights.hasContent {
+                VStack(spacing: 12) {
+                    if let bestWeekday = monthlyInsights.bestWeekday {
+                        monthInsightCard(
+                            title: "Best Weekday",
+                            value: bestWeekday.title,
+                            detail: bestWeekday.detail,
+                            accessibilityIdentifier: "history.bestWeekday"
+                        )
+                    }
+
+                    if let hardestWeekday = monthlyInsights.hardestWeekday {
+                        monthInsightCard(
+                            title: "Hardest Weekday",
+                            value: hardestWeekday.title,
+                            detail: hardestWeekday.detail,
+                            accessibilityIdentifier: "history.hardestWeekday"
+                        )
+                    }
+
+                    if let mostCommonSPF = monthlyInsights.mostCommonSPF {
+                        monthInsightCard(
+                            title: "Most Common SPF",
+                            value: mostCommonSPF.title,
+                            detail: mostCommonSPF.detail,
+                            accessibilityIdentifier: "history.mostCommonSPF"
+                        )
+                    }
+                }
             }
         }
         .accessibilityIdentifier("history.monthStats")
@@ -308,6 +340,36 @@ struct HistoryView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+    }
+
+    private func monthInsightCard(
+        title: String,
+        value: String,
+        detail: String,
+        accessibilityIdentifier: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            Text(value)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+                .accessibilityIdentifier(accessibilityIdentifier)
+
+            Text(detail)
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private func statusSymbol(for status: DayStatus) -> String {
@@ -361,6 +423,7 @@ struct HistoryRecordEditorView: View {
 
     @State private var selectedSPF: Int?
     @State private var notes: String
+    @State private var hasLoadedInitialState = false
 
     init(day: Date, existingRecord: DailyRecord?) {
         self.day = day
@@ -390,7 +453,8 @@ struct HistoryRecordEditorView: View {
                 SunManualLogFields(
                     selectedSPF: $selectedSPF,
                     notes: $notes,
-                    accessibilityPrefix: "historyEditor"
+                    accessibilityPrefix: "historyEditor",
+                    suggestions: appState.manualLogSuggestionState(for: day)
                 )
             }
         } footer: {
@@ -406,6 +470,7 @@ struct HistoryRecordEditorView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("historyEditor.save")
         }
+        .onAppear(perform: syncInitialStateIfNeeded)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -424,6 +489,21 @@ struct HistoryRecordEditorView: View {
 
     private var primaryActionTitle: String {
         existingRecord == nil ? "Save Backfill" : "Save Changes"
+    }
+
+    private func syncInitialStateIfNeeded() {
+        guard !hasLoadedInitialState else {
+            return
+        }
+
+        hasLoadedInitialState = true
+
+        guard existingRecord == nil else {
+            return
+        }
+
+        let suggestions = appState.manualLogSuggestionState(for: day)
+        selectedSPF = suggestions.defaultSPF
     }
 }
 

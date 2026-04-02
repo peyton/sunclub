@@ -5,11 +5,21 @@ import XCTest
 
 @MainActor
 final class MockNotificationManager: NotificationScheduling {
+    private(set) var requestAuthorizationIfNeededCount = 0
     private(set) var scheduleRemindersCount = 0
     private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
     private(set) var refreshStreakRiskReminderCount = 0
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var cancelReapplyRemindersCount = 0
+    private(set) var notificationHealthSnapshotCount = 0
+
+    var requestAuthorizationResult = true
+    var notificationHealthSnapshotResult: NotificationHealthSnapshot = .unknown
+
+    func requestAuthorizationIfNeeded() async -> Bool {
+        requestAuthorizationIfNeededCount += 1
+        return requestAuthorizationResult
+    }
 
     func scheduleReminders(using state: AppState) async {
         scheduleRemindersCount += 1
@@ -26,6 +36,11 @@ final class MockNotificationManager: NotificationScheduling {
 
     func cancelReapplyReminders() async {
         cancelReapplyRemindersCount += 1
+    }
+
+    func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot {
+        notificationHealthSnapshotCount += 1
+        return notificationHealthSnapshotResult
     }
 }
 
@@ -269,6 +284,26 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testManualLogSuggestionStatePrefillsLastSPFAndRecentNoteSnippets() {
+        let records = [
+            makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: 50, notes: "Morning beach walk"),
+            makeDailyRecord(dayOffset: 2, hour: 8, spfLevel: 30, notes: "Before lunch"),
+            makeDailyRecord(dayOffset: 3, hour: 7, spfLevel: 50, notes: "Morning beach walk")
+        ]
+
+        let suggestions = ManualLogSuggestionEngine.suggestions(
+            from: records,
+            excluding: Date(),
+            calendar: Calendar.current
+        )
+
+        XCTAssertEqual(suggestions.defaultSPF, 50)
+        XCTAssertEqual(suggestions.sameAsLastTime?.spfLevel, 50)
+        XCTAssertEqual(suggestions.sameAsLastTime?.note, "Morning beach walk")
+        XCTAssertEqual(suggestions.noteSnippets, ["Before lunch"])
+    }
+
+    @MainActor
     func testSunscreenUsageInsightsReturnsMostUsedSPF() {
         let records = [
             makeDailyRecord(dayOffset: 0, spfLevel: 50),
@@ -459,7 +494,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.manualLog])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
     }
 
     @MainActor
@@ -557,6 +592,8 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(settings.longestStreak, 0)
         XCTAssertFalse(settings.reapplyReminderEnabled)
         XCTAssertEqual(settings.reapplyIntervalMinutes, 120)
+        XCTAssertNil(settings.lastReminderScheduleAt)
+        XCTAssertFalse(settings.usesLiveUV)
         XCTAssertEqual(settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 8, minute: 0))
         XCTAssertEqual(settings.smartReminderSettings.weekendTime, ReminderTime(hour: 8, minute: 0))
         XCTAssertTrue(settings.smartReminderSettings.followsTravelTimeZone)
@@ -569,6 +606,9 @@ final class SunclubTests: XCTestCase {
         let record = DailyRecord(startOfDay: now, verifiedAt: now, method: .manual)
         XCTAssertEqual(record.method, .manual)
         XCTAssertEqual(record.methodRawValue, 1)
+        XCTAssertEqual(record.reapplyCount, 0)
+        XCTAssertNil(record.lastReappliedAt)
+        XCTAssertFalse(record.hasReapplied)
 
         record.methodRawValue = 999
         XCTAssertEqual(record.method, .manual)
@@ -578,13 +618,15 @@ final class SunclubTests: XCTestCase {
     func testAppRouteCasesExist() {
         XCTAssertEqual(AppRoute.history.rawValue, "history")
         XCTAssertEqual(AppRoute.manualLog.rawValue, "manualLog")
+        XCTAssertEqual(AppRoute.reapplyCheckIn.rawValue, "reapplyCheckIn")
+        XCTAssertEqual(AppRoute.backfillYesterday.rawValue, "backfillYesterday")
         XCTAssertEqual(AppRoute.weeklySummary.rawValue, "weeklySummary")
     }
 
     @MainActor
-    func testPreferredCheckInRouteIsManualLog() throws {
+    func testPreferredCheckInRouteIsReapplyCheckIn() throws {
         let state = try makeAppState()
-        XCTAssertEqual(state.preferredCheckInRoute, .manualLog)
+        XCTAssertEqual(state.preferredCheckInRoute, .reapplyCheckIn)
     }
 
     @MainActor
@@ -683,7 +725,177 @@ final class SunclubTests: XCTestCase {
         await Task.yield()
         XCTAssertTrue(handled)
         XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.manualLog])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
+    }
+
+    @MainActor
+    func testRecordReapplicationUpdatesTodayRecordAndCancelsReminder() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.markAppliedToday(method: .manual, spfLevel: 50)
+
+        state.recordReapplication()
+
+        await Task.yield()
+        let record = try XCTUnwrap(state.record(for: Date()))
+        XCTAssertEqual(record.reapplyCount, 1)
+        XCTAssertNotNil(record.lastReappliedAt)
+        XCTAssertTrue(record.hasReapplied)
+        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
+        XCTAssertEqual(state.reapplyCheckInPresentation?.actionTitle, "Log Another Reapply")
+    }
+
+    @MainActor
+    func testHomeRecoveryActionsShowTodayAndYesterdayWhenMissing() throws {
+        let state = try makeAppState()
+
+        XCTAssertEqual(state.homeRecoveryActions.map(\.kind), [.logToday, .backfillYesterday])
+    }
+
+    @MainActor
+    func testHomeRecoveryActionsDisappearWhenTodayAndYesterdayAreLogged() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let today = Date()
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
+
+        state.saveManualRecord(for: today, spfLevel: 50, notes: nil)
+        state.saveManualRecord(for: yesterday, spfLevel: 30, notes: nil)
+
+        XCTAssertTrue(state.homeRecoveryActions.isEmpty)
+    }
+
+    @MainActor
+    func testReminderCoachingEngineSuggestsWeekdayAndWeekendTimes() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+
+        func date(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+        }
+
+        let now = date(year: 2026, month: 4, day: 20, hour: 12, minute: 0)
+        let records = [
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 6, hour: 0, minute: 0), verifiedAt: date(year: 2026, month: 4, day: 6, hour: 9, minute: 15), method: .manual),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 13, hour: 0, minute: 0), verifiedAt: date(year: 2026, month: 4, day: 13, hour: 9, minute: 0), method: .manual),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 20, hour: 0, minute: 0), verifiedAt: date(year: 2026, month: 4, day: 20, hour: 9, minute: 30), method: .manual),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 4, hour: 0, minute: 0), verifiedAt: date(year: 2026, month: 4, day: 4, hour: 11, minute: 0), method: .manual),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 5, hour: 0, minute: 0), verifiedAt: date(year: 2026, month: 4, day: 5, hour: 10, minute: 45), method: .manual),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 11, hour: 0, minute: 0), verifiedAt: date(year: 2026, month: 4, day: 11, hour: 11, minute: 15), method: .manual)
+        ]
+        let settings = SmartReminderSettings(
+            weekdayTime: ReminderTime(hour: 8, minute: 0),
+            weekendTime: ReminderTime(hour: 8, minute: 0),
+            followsTravelTimeZone: true,
+            anchoredTimeZoneIdentifier: TimeZone.autoupdatingCurrent.identifier,
+            streakRiskEnabled: true
+        )
+
+        let suggestions = ReminderCoachingEngine.suggestions(
+            from: records,
+            settings: settings,
+            now: now,
+            calendar: calendar
+        )
+
+        let weekday = try XCTUnwrap(suggestions.first { $0.kind == .weekday })
+        XCTAssertEqual(weekday.typicalLogTime, ReminderTime(hour: 9, minute: 15))
+        XCTAssertEqual(weekday.suggestedTime, ReminderTime(hour: 8, minute: 45))
+
+        let weekend = try XCTUnwrap(suggestions.first { $0.kind == .weekend })
+        XCTAssertEqual(weekend.typicalLogTime, ReminderTime(hour: 11, minute: 0))
+        XCTAssertEqual(weekend.suggestedTime, ReminderTime(hour: 10, minute: 30))
+    }
+
+    @MainActor
+    func testMonthlyReviewInsightsHighlightBestHardestWeekdayAndMostCommonSPF() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+
+        func date(year: Int, month: Int, day: Int, hour: Int = 0, minute: Int = 0) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+        }
+
+        let records = [
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 1), verifiedAt: date(year: 2026, month: 4, day: 1, hour: 9), method: .manual, spfLevel: 50),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 3), verifiedAt: date(year: 2026, month: 4, day: 3, hour: 9), method: .manual, spfLevel: 50),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 5), verifiedAt: date(year: 2026, month: 4, day: 5, hour: 10), method: .manual, spfLevel: 30),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 7), verifiedAt: date(year: 2026, month: 4, day: 7, hour: 9), method: .manual, spfLevel: 50),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 8), verifiedAt: date(year: 2026, month: 4, day: 8, hour: 9), method: .manual, spfLevel: 30),
+            DailyRecord(startOfDay: date(year: 2026, month: 4, day: 10), verifiedAt: date(year: 2026, month: 4, day: 10, hour: 9), method: .manual, spfLevel: 50)
+        ]
+
+        let insights = MonthlyReviewAnalytics.insights(
+            from: records,
+            month: date(year: 2026, month: 4, day: 15),
+            now: date(year: 2026, month: 4, day: 10, hour: 12),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(insights.bestWeekday?.weekday, 4)
+        XCTAssertEqual(insights.hardestWeekday?.weekday, 5)
+        XCTAssertEqual(insights.mostCommonSPF?.level, 50)
+        XCTAssertEqual(insights.mostCommonSPF?.count, 4)
+    }
+
+    @MainActor
+    func testNotificationHealthEvaluatorReturnsDeniedAndStalePresentations() {
+        let denied = NotificationHealthEvaluator.presentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .denied,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(denied?.state, .denied)
+        XCTAssertEqual(denied?.actionTitle, "Open Settings")
+
+        let stale = NotificationHealthEvaluator.presentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .authorized,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(stale?.state, .stale)
+        XCTAssertEqual(stale?.actionTitle, "Refresh Reminders")
+    }
+
+    @MainActor
+    func testRepairReminderScheduleRequestsAuthorizationReschedulesAndRefreshesSnapshot() async throws {
+        let notificationManager = MockNotificationManager()
+        notificationManager.notificationHealthSnapshotResult = NotificationHealthSnapshot(
+            authorizationState: .authorized,
+            pendingDailyReminderCount: 2,
+            pendingStreakRiskReminderCount: 1,
+            pendingReapplyReminderCount: 0,
+            lastScheduledAt: Date()
+        )
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.repairReminderSchedule()
+
+        await Task.yield()
+        await Task.yield()
+        XCTAssertEqual(notificationManager.requestAuthorizationIfNeededCount, 1)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
+        XCTAssertEqual(notificationManager.notificationHealthSnapshotCount, 2)
+        XCTAssertEqual(state.notificationHealthSnapshot, notificationManager.notificationHealthSnapshotResult)
+    }
+
+    @MainActor
+    func testLiveUVStatusPresentationDefaultsToEstimatedUVWhenDisabled() throws {
+        let state = try makeAppState()
+
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "Estimated UV")
+        XCTAssertNil(state.liveUVStatusPresentation.actionKind)
     }
 
     @MainActor

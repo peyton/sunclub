@@ -11,6 +11,7 @@ private enum NotificationConstants {
     static let routeKey = "targetRoute"
     static let manualRoute = "manual"
     static let weeklyRoute = "weekly"
+    static let reapplyRoute = "reapply"
     static let dailyPrefix = "sunscreen.daily."
     static let weeklyFallbackPrefix = "sunscreen.weekly.fallback."
     static let weeklyPrimaryPrefix = "sunscreen.weekly.primary."
@@ -20,10 +21,12 @@ private enum NotificationConstants {
 
 @MainActor
 protocol NotificationScheduling: AnyObject {
+    func requestAuthorizationIfNeeded() async -> Bool
     func scheduleReminders(using state: AppState) async
     func refreshStreakRiskReminder(using state: AppState) async
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async
     func cancelReapplyReminders() async
+    func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot
 }
 
 @MainActor
@@ -85,6 +88,10 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return granted
     }
 
+    func requestAuthorizationIfNeeded() async -> Bool {
+        await configure()
+    }
+
     func setRouteHandler(_ handler: @escaping (AppRoute) -> Void) {
         routeHandler = handler
     }
@@ -101,6 +108,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
             try? await center.add(weeklyFallback)
         }
+        state.settings.lastReminderScheduleAt = Date()
+        state.save()
         await refreshStreakRiskReminder(using: state)
         submitWeeklyBackgroundTask(
             weekday: state.settings.weeklyWeekday,
@@ -292,6 +301,25 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
     }
 
+    func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot {
+        let settings = await center.notificationSettings()
+        let pendingRequests = await center.pendingNotificationRequests()
+
+        return NotificationHealthSnapshot(
+            authorizationState: authorizationState(from: settings.authorizationStatus),
+            pendingDailyReminderCount: pendingRequests.filter {
+                $0.identifier.hasPrefix(NotificationConstants.dailyPrefix)
+            }.count,
+            pendingStreakRiskReminderCount: pendingRequests.filter {
+                $0.identifier.hasPrefix(NotificationConstants.streakRiskPrefix)
+            }.count,
+            pendingReapplyReminderCount: pendingRequests.filter {
+                $0.identifier.hasPrefix(NotificationConstants.reapplyPrefix)
+            }.count,
+            lastScheduledAt: state.settings.lastReminderScheduleAt
+        )
+    }
+
     private func makeStreakRiskRequest(using state: AppState) -> UNNotificationRequest? {
         guard let plan = ReminderPlanner.streakRiskPlan(
             records: state.recordedDays,
@@ -365,6 +393,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         switch route {
         case .manualLog:
             return NotificationConstants.manualRoute
+        case .reapplyCheckIn:
+            return NotificationConstants.reapplyRoute
         case .weeklySummary:
             return NotificationConstants.weeklyRoute
         default:
@@ -397,6 +427,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             default:
                 if targetRoute == NotificationConstants.weeklyRoute {
                     routeHandler(.weeklySummary)
+                } else if targetRoute == NotificationConstants.reapplyRoute {
+                    routeHandler(.reapplyCheckIn)
                 } else if targetRoute == NotificationConstants.manualRoute {
                     routeHandler(.manualLog)
                 } else {
@@ -406,5 +438,22 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
 
         completionHandler()
+    }
+
+    private func authorizationState(from status: UNAuthorizationStatus) -> NotificationAuthorizationState {
+        switch status {
+        case .notDetermined:
+            return .notDetermined
+        case .denied:
+            return .denied
+        case .authorized:
+            return .authorized
+        case .provisional:
+            return .provisional
+        case .ephemeral:
+            return .ephemeral
+        @unknown default:
+            return .unknown
+        }
     }
 }

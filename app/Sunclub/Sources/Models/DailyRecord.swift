@@ -10,6 +10,8 @@ final class DailyRecord {
     var verificationDuration: Double?
     var spfLevel: Int?
     var notes: String?
+    var reapplyCount: Int = 0
+    var lastReappliedAt: Date? = nil
 
     init(
         startOfDay: Date,
@@ -17,7 +19,9 @@ final class DailyRecord {
         method: VerificationMethod,
         verificationDuration: Double? = nil,
         spfLevel: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        reapplyCount: Int = 0,
+        lastReappliedAt: Date? = nil
     ) {
         self.id = UUID()
         self.startOfDay = startOfDay
@@ -26,6 +30,8 @@ final class DailyRecord {
         self.verificationDuration = verificationDuration
         self.spfLevel = spfLevel
         self.notes = notes
+        self.reapplyCount = reapplyCount
+        self.lastReappliedAt = lastReappliedAt
     }
 
     var method: VerificationMethod {
@@ -40,5 +46,9 @@ final class DailyRecord {
 
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var hasReapplied: Bool {
+        reapplyCount > 0
     }
 }

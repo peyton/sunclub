@@ -46,6 +46,58 @@ enum LegacyStoreFixture {
 
         return (startOfDay, verifiedAt)
     }
+
+    static func seedCurrentV2Store(at storeURL: URL) throws -> (startOfDay: Date, verifiedAt: Date) {
+        let schema = Schema(versionedSchema: SunclubSchemaV2.self)
+        let configuration = ModelConfiguration(schema: schema, url: storeURL)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(container)
+
+        let settings = SunclubSchemaV2.Settings(
+            hasCompletedOnboarding: true,
+            reminderHour: 7,
+            reminderMinute: 45,
+            weeklyHour: 20,
+            weeklyWeekday: 6,
+            dailyPhraseState: Data("daily".utf8),
+            weeklyPhraseState: Data("weekly".utf8),
+            smartReminderSettingsData: try JSONEncoder().encode(
+                SmartReminderSettings(
+                    weekdayTime: ReminderTime(hour: 7, minute: 45),
+                    weekendTime: ReminderTime(hour: 8, minute: 30),
+                    followsTravelTimeZone: false,
+                    anchoredTimeZoneIdentifier: "America/Los_Angeles",
+                    streakRiskEnabled: true
+                )
+            ),
+            longestStreak: 4,
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90
+        )
+
+        let calendar = Calendar.migrationTestCalendar
+        let startOfDay = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 1, hour: 0, minute: 0, second: 0))
+        )
+        let verifiedAt = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 1, hour: 8, minute: 35, second: 0))
+        )
+
+        let record = SunclubSchemaV2.DailyRecord(
+            startOfDay: startOfDay,
+            verifiedAt: verifiedAt,
+            methodRawValue: VerificationMethod.manual.rawValue,
+            verificationDuration: nil,
+            spfLevel: 50,
+            notes: "Morning beach walk"
+        )
+
+        context.insert(settings)
+        context.insert(record)
+        try context.save()
+
+        return (startOfDay, verifiedAt)
+    }
 }
 
 extension Calendar {

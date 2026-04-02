@@ -34,6 +34,8 @@ final class MigrationTests: XCTestCase {
         XCTAssertTrue(settings.smartReminderSettings.followsTravelTimeZone)
         XCTAssertTrue(settings.smartReminderSettings.streakRiskEnabled)
         XCTAssertFalse(settings.smartReminderSettings.anchoredTimeZoneIdentifier.isEmpty)
+        XCTAssertNil(settings.lastReminderScheduleAt)
+        XCTAssertFalse(settings.usesLiveUV)
 
         let records = try context.fetch(
             FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .forward)])
@@ -47,5 +49,37 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(record.verificationDuration, 1.5)
         XCTAssertEqual(record.spfLevel, 50)
         XCTAssertEqual(record.notes, "Beach day")
+        XCTAssertEqual(record.reapplyCount, 0)
+        XCTAssertNil(record.lastReappliedAt)
+    }
+
+    func testMigrationFromCurrentV2SchemaSeedsNewDefaults() throws {
+        let storeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: storeDirectory) }
+
+        let storeURL = storeDirectory.appendingPathComponent("Sunclub.store")
+        let seededDates = try LegacyStoreFixture.seedCurrentV2Store(at: storeURL)
+
+        let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
+        let context = ModelContext(container)
+
+        let settings = try XCTUnwrap(try context.fetch(FetchDescriptor<Settings>()).first)
+        XCTAssertTrue(settings.hasCompletedOnboarding)
+        XCTAssertEqual(settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 7, minute: 45))
+        XCTAssertEqual(settings.smartReminderSettings.weekendTime, ReminderTime(hour: 8, minute: 30))
+        XCTAssertNil(settings.lastReminderScheduleAt)
+        XCTAssertFalse(settings.usesLiveUV)
+
+        let record = try XCTUnwrap(
+            try context.fetch(FetchDescriptor<DailyRecord>()).first
+        )
+        XCTAssertEqual(record.startOfDay, seededDates.startOfDay)
+        XCTAssertEqual(record.verifiedAt, seededDates.verifiedAt)
+        XCTAssertEqual(record.spfLevel, 50)
+        XCTAssertEqual(record.notes, "Morning beach walk")
+        XCTAssertEqual(record.reapplyCount, 0)
+        XCTAssertNil(record.lastReappliedAt)
     }
 }

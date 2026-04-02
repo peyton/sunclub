@@ -12,6 +12,12 @@ struct SunclubApp: App {
     private let container: ModelContainer
     private let isRunningTests = RuntimeEnvironment.isRunningTests
 
+    private enum UITestNotificationHealth: String {
+        case denied
+        case stale
+        case healthy
+    }
+
     init() {
         do {
             container = try SunclubModelContainerFactory.makeSharedContainer(
@@ -44,17 +50,17 @@ struct SunclubApp: App {
                         applyUITestLaunchConfigurationIfNeeded()
                         return
                     }
-                    refreshReminderScheduleIfNeeded()
+                    refreshAppStateForForeground()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
-                    refreshReminderScheduleIfNeeded()
+                    refreshAppStateForForeground()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                    refreshReminderScheduleIfNeeded()
+                    refreshAppStateForForeground()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
-                    refreshReminderScheduleIfNeeded()
+                    refreshAppStateForForeground()
                 }
         }
     }
@@ -135,9 +141,28 @@ struct SunclubApp: App {
     private func applyUITestSeedData(from arguments: [String]) {
         if let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) {
             let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
-            if scenario == "editBackfill" {
+            switch scenario {
+            case "editBackfill":
                 seedHistoryEditBackfillScenario()
+            case "manualSuggestions":
+                seedManualSuggestionsScenario()
+            case "todayLogged":
+                seedTodayLoggedScenario()
+            case "reapplyToday":
+                seedReapplyTodayScenario()
+            case "reminderCoaching":
+                seedReminderCoachingScenario()
+            case "monthlyReview":
+                seedCurrentMonthReviewScenario()
+            default:
+                break
             }
+        }
+
+        if let notificationHealth = requestedUITestNotificationHealth(from: arguments) {
+            appState.setNotificationHealthSnapshotForTesting(
+                notificationHealthSnapshot(for: notificationHealth)
+            )
         }
 
         seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
@@ -159,6 +184,100 @@ struct SunclubApp: App {
             notes: "Seeded today"
         )
         appState.modelContext.insert(todayRecord)
+        appState.save()
+        appState.refresh()
+    }
+
+    private func seedManualSuggestionsScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+              let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today) else {
+            return
+        }
+
+        insertSeedRecord(day: yesterday, hour: 9, minute: 0, spfLevel: 50, notes: "Morning beach walk")
+        insertSeedRecord(day: twoDaysAgo, hour: 8, minute: 15, spfLevel: 30, notes: "Before lunch")
+        appState.save()
+        appState.refresh()
+    }
+
+    private func seedTodayLoggedScenario() {
+        let today = Calendar.current.startOfDay(for: Date())
+        insertSeedRecord(day: today, hour: 9, minute: 0, spfLevel: 50, notes: "Seeded today")
+        appState.save()
+        appState.refresh()
+    }
+
+    private func seedReapplyTodayScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let lastReappliedAt = calendar.date(byAdding: .hour, value: 2, to: today)
+        insertSeedRecord(
+            day: today,
+            hour: 9,
+            minute: 0,
+            spfLevel: 50,
+            notes: "Seeded today",
+            reapplyCount: 1,
+            lastReappliedAt: lastReappliedAt
+        )
+        appState.save()
+        appState.refresh()
+    }
+
+    private func seedReminderCoachingScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var weekdayDays: [Date] = []
+        var weekendDays: [Date] = []
+
+        for offset in 1..<29 {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else {
+                continue
+            }
+
+            if calendar.isDateInWeekend(day) {
+                if weekendDays.count < 3 {
+                    weekendDays.append(day)
+                }
+            } else if weekdayDays.count < 3 {
+                weekdayDays.append(day)
+            }
+
+            if weekdayDays.count == 3, weekendDays.count == 3 {
+                break
+            }
+        }
+
+        let weekdayTimes = [(9, 15), (9, 0), (9, 30)]
+        for (day, time) in zip(weekdayDays, weekdayTimes) {
+            insertSeedRecord(day: day, hour: time.0, minute: time.1, spfLevel: 50, notes: "Weekday seed")
+        }
+
+        let weekendTimes = [(11, 0), (10, 45), (11, 15)]
+        for (day, time) in zip(weekendDays, weekendTimes) {
+            insertSeedRecord(day: day, hour: time.0, minute: time.1, spfLevel: 30, notes: "Weekend seed")
+        }
+
+        appState.save()
+        appState.refresh()
+    }
+
+    private func seedCurrentMonthReviewScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
+
+        insertSeedRecord(day: monthStart, hour: 9, minute: 0, spfLevel: 50, notes: "Month start")
+        if let secondDay = calendar.date(byAdding: .day, value: 1, to: monthStart), secondDay <= today {
+            insertSeedRecord(day: secondDay, hour: 10, minute: 0, spfLevel: 30, notes: "Day two")
+        }
+        if let thirdDay = calendar.date(byAdding: .day, value: 2, to: monthStart), thirdDay <= today {
+            insertSeedRecord(day: thirdDay, hour: 9, minute: 30, spfLevel: 50, notes: "Day three")
+        }
+
         appState.save()
         appState.refresh()
     }
@@ -195,6 +314,75 @@ struct SunclubApp: App {
 
         appState.save()
         appState.refresh()
+    }
+
+    private func insertSeedRecord(
+        day: Date,
+        hour: Int,
+        minute: Int,
+        spfLevel: Int? = nil,
+        notes: String? = nil,
+        reapplyCount: Int = 0,
+        lastReappliedAt: Date? = nil
+    ) {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: day)
+        let verifiedAt = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: startOfDay) ?? startOfDay
+
+        let record = DailyRecord(
+            startOfDay: startOfDay,
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: spfLevel,
+            notes: notes,
+            reapplyCount: reapplyCount,
+            lastReappliedAt: lastReappliedAt
+        )
+        appState.modelContext.insert(record)
+    }
+
+    private func requestedUITestNotificationHealth(from arguments: [String]) -> UITestNotificationHealth? {
+        guard let value = RuntimeEnvironment.argumentValue(withPrefix: "UITEST_NOTIFICATION_HEALTH=") else {
+            return nil
+        }
+
+        return UITestNotificationHealth(rawValue: value)
+    }
+
+    private func notificationHealthSnapshot(for health: UITestNotificationHealth) -> NotificationHealthSnapshot {
+        switch health {
+        case .denied:
+            return NotificationHealthSnapshot(
+                authorizationState: .denied,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            )
+        case .stale:
+            return NotificationHealthSnapshot(
+                authorizationState: .authorized,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            )
+        case .healthy:
+            return NotificationHealthSnapshot(
+                authorizationState: .authorized,
+                pendingDailyReminderCount: 3,
+                pendingStreakRiskReminderCount: 1,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: Date()
+            )
+        }
+    }
+
+    private func refreshAppStateForForeground() {
+        appState.refresh()
+        appState.refreshNotificationHealth()
+        appState.refreshUVReadingIfNeeded()
+        refreshReminderScheduleIfNeeded()
     }
 
     private func refreshReminderScheduleIfNeeded() {

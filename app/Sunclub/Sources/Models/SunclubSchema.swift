@@ -81,8 +81,91 @@ enum SunclubSchemaV1: VersionedSchema {
     }
 }
 
+// Matches the persisted SwiftData schema shipped at commit
+// 3f6d2ef0fed82b4587d0a50ec4e92331f6ab6e1e.
 enum SunclubSchemaV2: VersionedSchema {
     static let versionIdentifier = Schema.Version(2, 0, 0)
+    static let models: [any PersistentModel.Type] = [
+        DailyRecord.self,
+        Settings.self
+    ]
+
+    @Model
+    final class DailyRecord {
+        @Attribute(.unique) var id: UUID
+        @Attribute(.unique) var startOfDay: Date
+        var verifiedAt: Date
+        var methodRawValue: Int
+        var verificationDuration: Double?
+        var spfLevel: Int?
+        var notes: String?
+
+        init(
+            id: UUID = UUID(),
+            startOfDay: Date,
+            verifiedAt: Date,
+            methodRawValue: Int,
+            verificationDuration: Double? = nil,
+            spfLevel: Int? = nil,
+            notes: String? = nil
+        ) {
+            self.id = id
+            self.startOfDay = startOfDay
+            self.verifiedAt = verifiedAt
+            self.methodRawValue = methodRawValue
+            self.verificationDuration = verificationDuration
+            self.spfLevel = spfLevel
+            self.notes = notes
+        }
+    }
+
+    @Model
+    final class Settings {
+        @Attribute(.unique) var id: UUID
+        var hasCompletedOnboarding: Bool
+        var reminderHour: Int
+        var reminderMinute: Int
+        var weeklyHour: Int
+        var weeklyWeekday: Int
+        var dailyPhraseState: Data?
+        var weeklyPhraseState: Data?
+        var smartReminderSettingsData: Data?
+        var longestStreak: Int
+        var reapplyReminderEnabled: Bool
+        var reapplyIntervalMinutes: Int
+
+        init(
+            id: UUID = UUID(),
+            hasCompletedOnboarding: Bool = false,
+            reminderHour: Int = 8,
+            reminderMinute: Int = 0,
+            weeklyHour: Int = 18,
+            weeklyWeekday: Int = 1,
+            dailyPhraseState: Data? = nil,
+            weeklyPhraseState: Data? = nil,
+            smartReminderSettingsData: Data? = nil,
+            longestStreak: Int = 0,
+            reapplyReminderEnabled: Bool = false,
+            reapplyIntervalMinutes: Int = 120
+        ) {
+            self.id = id
+            self.hasCompletedOnboarding = hasCompletedOnboarding
+            self.reminderHour = reminderHour
+            self.reminderMinute = reminderMinute
+            self.weeklyHour = weeklyHour
+            self.weeklyWeekday = weeklyWeekday
+            self.dailyPhraseState = dailyPhraseState
+            self.weeklyPhraseState = weeklyPhraseState
+            self.smartReminderSettingsData = smartReminderSettingsData
+            self.longestStreak = longestStreak
+            self.reapplyReminderEnabled = reapplyReminderEnabled
+            self.reapplyIntervalMinutes = reapplyIntervalMinutes
+        }
+    }
+}
+
+enum SunclubSchemaV3: VersionedSchema {
+    static let versionIdentifier = Schema.Version(3, 0, 0)
     static let models: [any PersistentModel.Type] = [
         DailyRecord.self,
         Settings.self
@@ -92,7 +175,8 @@ enum SunclubSchemaV2: VersionedSchema {
 enum SunclubMigrationPlan: SchemaMigrationPlan {
     static let schemas: [any VersionedSchema.Type] = [
         SunclubSchemaV1.self,
-        SunclubSchemaV2.self
+        SunclubSchemaV2.self,
+        SunclubSchemaV3.self
     ]
 
     static let stages: [MigrationStage] = [
@@ -103,17 +187,39 @@ enum SunclubMigrationPlan: SchemaMigrationPlan {
             didMigrate: { context in
                 let legacyCameraMethodRawValue = 0
 
-                let settingsDescriptor = FetchDescriptor<Settings>()
+                let settingsDescriptor = FetchDescriptor<SunclubSchemaV2.Settings>()
                 for settings in try context.fetch(settingsDescriptor) {
-                    settings.smartReminderSettings = .legacyDefault(
+                    settings.smartReminderSettingsData = encodedLegacySmartReminderSettings(
                         hour: settings.reminderHour,
                         minute: settings.reminderMinute
                     )
                 }
 
-                let recordDescriptor = FetchDescriptor<DailyRecord>()
+                let recordDescriptor = FetchDescriptor<SunclubSchemaV2.DailyRecord>()
                 for record in try context.fetch(recordDescriptor) where record.methodRawValue == legacyCameraMethodRawValue {
-                    record.method = .manual
+                    record.methodRawValue = VerificationMethod.manual.rawValue
+                }
+
+                if context.hasChanges {
+                    try context.save()
+                }
+            }
+        ),
+        .custom(
+            fromVersion: SunclubSchemaV2.self,
+            toVersion: SunclubSchemaV3.self,
+            willMigrate: nil,
+            didMigrate: { context in
+                let settingsDescriptor = FetchDescriptor<Settings>()
+                for settings in try context.fetch(settingsDescriptor) {
+                    settings.lastReminderScheduleAt = nil
+                    settings.usesLiveUV = false
+                }
+
+                let recordDescriptor = FetchDescriptor<DailyRecord>()
+                for record in try context.fetch(recordDescriptor) {
+                    record.reapplyCount = 0
+                    record.lastReappliedAt = nil
                 }
 
                 if context.hasChanges {
@@ -125,7 +231,7 @@ enum SunclubMigrationPlan: SchemaMigrationPlan {
 }
 
 enum SunclubModelContainerFactory {
-    static let currentSchema = Schema(versionedSchema: SunclubSchemaV2.self)
+    static let currentSchema = Schema(versionedSchema: SunclubSchemaV3.self)
 
     static func makeSharedContainer(isStoredInMemoryOnly: Bool) throws -> ModelContainer {
         let configuration = ModelConfiguration(
@@ -153,4 +259,10 @@ enum SunclubModelContainerFactory {
             configurations: [configuration]
         )
     }
+}
+
+private func encodedLegacySmartReminderSettings(hour: Int, minute: Int) -> Data? {
+    try? JSONEncoder().encode(
+        SmartReminderSettings.legacyDefault(hour: hour, minute: minute)
+    )
 }

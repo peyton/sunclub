@@ -15,6 +15,8 @@ final class Settings {
     var longestStreak: Int
     var reapplyReminderEnabled: Bool
     var reapplyIntervalMinutes: Int
+    var lastReminderScheduleAt: Date? = nil
+    var usesLiveUV: Bool = false
 
     init() {
         self.id = UUID()
@@ -29,5 +31,7 @@ final class Settings {
         self.longestStreak = 0
         self.reapplyReminderEnabled = false
         self.reapplyIntervalMinutes = 120
+        self.lastReminderScheduleAt = nil
+        self.usesLiveUV = false
     }
 }

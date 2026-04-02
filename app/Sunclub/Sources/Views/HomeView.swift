@@ -11,6 +11,9 @@ struct HomeView: View {
                 header
 
                 todayCard
+                notificationHealthCard
+                recoveryCard
+                reapplyCard
 
                 Button {
                     router.open(.weeklySummary)
@@ -32,7 +35,7 @@ struct HomeView: View {
             }
         } footer: {
             VStack(spacing: 12) {
-                Button("Log Manually") {
+                Button(primaryActionTitle) {
                     router.open(.manualLog)
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
@@ -43,6 +46,7 @@ struct HomeView: View {
             now = Date()
             appState.clearVerificationSuccessPresentation()
             appState.refreshUVReadingIfNeeded()
+            appState.refreshNotificationHealth()
         }
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -185,6 +189,101 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+    }
+
+    @ViewBuilder
+    private var notificationHealthCard: some View {
+        if let presentation = appState.notificationHealthPresentation {
+            VStack(alignment: .leading, spacing: 12) {
+                SunStatusCard(
+                    title: presentation.title,
+                    detail: presentation.detail,
+                    tint: Color.red.opacity(0.75),
+                    symbol: "bell.badge.fill"
+                )
+
+                Button(presentation.actionTitle) {
+                    switch presentation.state {
+                    case .denied:
+                        router.open(.settings)
+                    case .stale:
+                        appState.repairReminderSchedule()
+                    case .healthy:
+                        break
+                    }
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("home.notificationHealthAction")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var recoveryCard: some View {
+        if !appState.homeRecoveryActions.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Catch Up")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                VStack(spacing: 12) {
+                    ForEach(appState.homeRecoveryActions) { action in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(action.title)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(AppPalette.ink)
+
+                            Text(action.detail)
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppPalette.softInk)
+
+                            Button(action.buttonTitle) {
+                                performRecoveryAction(action)
+                            }
+                            .buttonStyle(SunSecondaryButtonStyle())
+                            .accessibilityIdentifier("home.recovery.\(action.kind.rawValue)")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.white.opacity(0.72))
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var reapplyCard: some View {
+        if let presentation = appState.reapplyCheckInPresentation {
+            Button {
+                router.open(.reapplyCheckIn)
+            } label: {
+                SunStatusCard(
+                    title: presentation.title,
+                    detail: presentation.detail,
+                    tint: AppPalette.sun,
+                    symbol: "arrow.clockwise.circle.fill"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.reapplyCard")
+        }
+    }
+
+    private var primaryActionTitle: String {
+        appState.record(for: Date()) == nil ? "Log Today" : "Update Today"
+    }
+
+    private func performRecoveryAction(_ action: HomeRecoveryAction) {
+        switch action.kind {
+        case .logToday:
+            router.open(.manualLog)
+        case .backfillYesterday:
+            router.open(.backfillYesterday)
+        }
     }
 
     private var greeting: String {

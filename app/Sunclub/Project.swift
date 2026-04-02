@@ -27,6 +27,7 @@ let project = Project(
                         "CFBundleURLSchemes": ["sunclub"]
                     ]
                 ],
+                "NSLocationWhenInUseUsageDescription": "Sunclub uses your location only when you turn on live UV data.",
                 "UILaunchScreen": [
                     "UIColorName": "",
                     "UIImageName": ""

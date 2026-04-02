@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
+import re
 import shlex
 
 
 CONFIG_PATH = Path(__file__).with_name("sunclub.env")
+DEFAULT_PATTERN = re.compile(r"^\$\{(?P<name>[A-Z0-9_]+):-(?P<default>.*)\}$")
+
+
+def _resolve_shell_default(value: str) -> str:
+    match = DEFAULT_PATTERN.match(value)
+    if match is None:
+        return value
+
+    name = match.group("name")
+    return os.environ.get(name, match.group("default"))
 
 
 def _parse_env_file(path: Path) -> dict[str, str]:
@@ -17,7 +29,7 @@ def _parse_env_file(path: Path) -> dict[str, str]:
 
         key, value = line.split("=", 1)
         parsed = shlex.split(value, posix=True)
-        values[key] = parsed[0] if parsed else ""
+        values[key] = _resolve_shell_default(parsed[0]) if parsed else ""
     return values
 
 
