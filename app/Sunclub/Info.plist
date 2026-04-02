@@ -50,6 +50,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Sunclub uses your location only when you turn on live UV data.</string>
 	<key>UTExportedTypeDeclarations</key>

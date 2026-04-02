@@ -43,6 +43,8 @@ let project = Project(
             bundleId: "app.peyton.sunclub.widgets",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: .extendingDefault(with: [
+                "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+                "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "NSExtension": [
                     "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
                 ]
