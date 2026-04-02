@@ -60,9 +60,15 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 
 1. From the repo root, run `just bootstrap`.
 2. Run `just generate`.
-3. Run `just run` to build the debug app, install it on the dedicated run simulator, and launch it.
+3. Run `just run` to build the `SunclubDev` debug app, install it on the dedicated run simulator, and launch it.
 4. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.
-5. Build and run the `Sunclub` scheme.
+5. Build and run the `SunclubDev` scheme for local development or the `Sunclub` scheme for release work.
+
+## Release Modes
+
+- `SunclubDev` is the default local flavor and installs side by side with TestFlight.
+- `Sunclub` is the production/TestFlight flavor used by `just appstore-archive`.
+- `just release-tag VERSION=1.2.3` creates and pushes the `v1.2.3` tag that triggers the TestFlight GitHub Actions workflow.
 
 ## Just Targets
 
@@ -91,6 +97,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - `just appstore-validate`
 - `just appstore-screenshots`
 - `just appstore-archive`
+- `just release-tag VERSION=1.2.3`
 - `just ci`
 
 `just clean-build` removes build artifacts and the generated workspace, `just clean-generated` also removes repo-local caches and environments such as `.venv`, `.mise`, `.cache`, `.config`, `.state`, and `__pycache__`, and `just clean` runs the full cleanup chain.
@@ -114,3 +121,4 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
 - The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
 - UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=manualLog` so the flow can be exercised end to end in automation and screenshot capture.
+- Normal build commands regenerate the workspace before building so resolved version metadata reaches the Tuist-generated project.

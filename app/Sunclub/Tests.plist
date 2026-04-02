@@ -12,12 +12,14 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+	<key>SunclubURLScheme</key>
+	<string>$(SUNCLUB_URL_SCHEME)</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(SUNCLUB_BUILD_NUMBER)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright ©. All rights reserved.</string>
 </dict>

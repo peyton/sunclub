@@ -85,7 +85,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
 
     init(
         historyService: SunclubHistoryService,
-        containerIdentifier: String = "iCloud.app.peyton.sunclub"
+        containerIdentifier: String = SunclubRuntimeConfiguration.cloudKitContainerIdentifier
     ) {
         self.historyService = historyService
         self.containerIdentifier = containerIdentifier

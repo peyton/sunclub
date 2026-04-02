@@ -99,7 +99,7 @@ jobs:
       - name: Set CI build metadata
         shell: bash
         run: |
-          echo "SUNCLUB_BUILD_NUMBER=$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env >> "$GITHUB_ENV"
 
           if [ "${ACT:-}" = "true" ]; then
             echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"

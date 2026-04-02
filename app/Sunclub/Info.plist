@@ -33,21 +33,29 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(SUNCLUB_DISPLAY_NAME)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>SunclubAppGroupID</key>
+	<string>$(SUNCLUB_APP_GROUP_ID)</string>
+	<key>SunclubICloudContainerIdentifier</key>
+	<string>$(SUNCLUB_ICLOUD_CONTAINER)</string>
+	<key>SunclubURLScheme</key>
+	<string>$(SUNCLUB_URL_SCHEME)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>app.peyton.sunclub</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>sunclub</string>
+				<string>$(SUNCLUB_URL_SCHEME)</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<string>$(SUNCLUB_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

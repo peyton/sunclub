@@ -421,7 +421,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += [
             "UITEST_MODE",
             "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_URL=sunclub://widget/log-today"
+            "UITEST_URL=\(widgetURL(path: "log-today"))"
         ]
         app.launch()
 
@@ -466,6 +466,11 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
         return app
+    }
+
+    private func widgetURL(path: String) -> String {
+        let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub-dev"
+        return "\(scheme)://widget/\(path)"
     }
 
     @discardableResult

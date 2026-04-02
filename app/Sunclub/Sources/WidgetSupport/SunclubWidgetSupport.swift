@@ -1,7 +1,7 @@
 import Foundation
 
 enum SunclubWidgetDefaults {
-    static let appGroupID = "group.app.peyton.sunclub"
+    static let appGroupID = SunclubRuntimeConfiguration.appGroupID
     static let snapshotKey = "sunclub.widget.snapshot"
     static let pendingRouteKey = "sunclub.widget.pending-route"
 }
@@ -23,7 +23,7 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
     }
 
     var url: URL {
-        URL(string: "sunclub://widget/open/\(rawValue)")!
+        URL(string: "\(SunclubRuntimeConfiguration.urlScheme)://widget/open/\(rawValue)")!
     }
 }
 
