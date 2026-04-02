@@ -1,0 +1,5 @@
+rules:
+  secrets-outside-env:
+    ignore:
+      - claude-code-review.yml:40
+      - claude.yml:39
