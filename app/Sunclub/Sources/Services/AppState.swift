@@ -149,8 +149,18 @@ final class AppState {
 
     private func saveAndRescheduleReminders() {
         save()
+        scheduleReminders()
+    }
+
+    func scheduleReminders() {
         Task {
             await notificationManager.scheduleReminders(using: self)
+        }
+    }
+
+    private func refreshStreakRiskReminder() {
+        Task {
+            await notificationManager.refreshStreakRiskReminder(using: self)
         }
     }
 
@@ -175,8 +185,43 @@ final class AppState {
     }
 
     func updateDailyReminder(hour: Int, minute: Int) {
-        settings.reminderHour = hour
-        settings.reminderMinute = minute
+        var reminderSettings = settings.smartReminderSettings
+        let reminderTime = ReminderTime(hour: hour, minute: minute)
+        reminderSettings.weekdayTime = reminderTime
+        reminderSettings.weekendTime = reminderTime
+        settings.smartReminderSettings = reminderSettings
+        saveAndRescheduleReminders()
+    }
+
+    func updateReminderTime(for kind: ReminderScheduleKind, hour: Int, minute: Int) {
+        var reminderSettings = settings.smartReminderSettings
+        let reminderTime = ReminderTime(hour: hour, minute: minute)
+
+        switch kind {
+        case .weekday:
+            reminderSettings.weekdayTime = reminderTime
+        case .weekend:
+            reminderSettings.weekendTime = reminderTime
+        }
+
+        settings.smartReminderSettings = reminderSettings
+        saveAndRescheduleReminders()
+    }
+
+    func updateTravelTimeZoneHandling(followsTravelTimeZone: Bool) {
+        var reminderSettings = settings.smartReminderSettings
+        reminderSettings.followsTravelTimeZone = followsTravelTimeZone
+        if !followsTravelTimeZone {
+            reminderSettings.anchoredTimeZoneIdentifier = TimeZone.autoupdatingCurrent.identifier
+        }
+        settings.smartReminderSettings = reminderSettings
+        saveAndRescheduleReminders()
+    }
+
+    func updateStreakRiskReminder(enabled: Bool) {
+        var reminderSettings = settings.smartReminderSettings
+        reminderSettings.streakRiskEnabled = enabled
+        settings.smartReminderSettings = reminderSettings
         saveAndRescheduleReminders()
     }
 
@@ -187,8 +232,13 @@ final class AppState {
     }
 
     var reminderDate: Date {
+        reminderDate(for: ReminderPlanner.scheduleKind(for: Date(), calendar: calendar))
+    }
+
+    func reminderDate(for kind: ReminderScheduleKind) -> Date {
+        let reminderTime = settings.smartReminderSettings.time(for: kind)
         let today = calendar.startOfDay(for: Date())
-        return calendar.date(bySettingHour: settings.reminderHour, minute: settings.reminderMinute, second: 0, of: today) ?? today
+        return calendar.date(bySettingHour: reminderTime.hour, minute: reminderTime.minute, second: 0, of: today) ?? today
     }
 
     var todayCardPresentation: HomeTodayCardPresentation {
@@ -280,6 +330,7 @@ final class AppState {
             }
             refresh()
             updateLongestStreak()
+            refreshStreakRiskReminder()
         } catch {
             modelContext.rollback()
         }
@@ -320,6 +371,7 @@ final class AppState {
                 cancelReapplyRemindersIfNeeded()
             }
             updateLongestStreak()
+            refreshStreakRiskReminder()
         }
     }
 
@@ -416,7 +468,7 @@ final class AppState {
     }
 
     var currentStreak: Int {
-        CalendarAnalytics.currentStreak(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
+        CalendarAnalytics.currentStreak(records: recordedDays, now: Date(), calendar: calendar)
     }
 
     func last7DaysReport() -> WeeklyReport {
@@ -428,11 +480,11 @@ final class AppState {
     }
 
     func recordStartsForTesting() -> [Date] {
-        records.map { calendar.startOfDay(for: $0.startOfDay) }
+        recordedDays
     }
 
     private func syncLongestStreakIfNeeded() {
-        let computed = CalendarAnalytics.longestStreak(records: records.map { $0.startOfDay }, calendar: calendar)
+        let computed = CalendarAnalytics.longestStreak(records: recordedDays, calendar: calendar)
         if computed > settings.longestStreak {
             settings.longestStreak = computed
             save()
@@ -452,5 +504,9 @@ final class AppState {
 
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var recordedDays: [Date] {
+        records.map { calendar.startOfDay(for: $0.startOfDay) }
     }
 }

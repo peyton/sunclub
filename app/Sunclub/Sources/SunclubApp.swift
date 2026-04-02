@@ -4,6 +4,7 @@ import UIKit
 
 @main
 struct SunclubApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState: AppState
     @State private var router = AppRouter()
@@ -47,11 +48,17 @@ struct SunclubApp: App {
                         applyUITestLaunchConfigurationIfNeeded()
                         return
                     }
-                    Task {
-                        guard appState.settings.hasCompletedOnboarding else { return }
-                        _ = await NotificationManager.shared.configure()
-                        await NotificationManager.shared.scheduleReminders(using: appState)
-                    }
+                    refreshReminderScheduleIfNeeded()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    refreshReminderScheduleIfNeeded()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                    refreshReminderScheduleIfNeeded()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                    refreshReminderScheduleIfNeeded()
                 }
         }
     }
@@ -149,6 +156,15 @@ struct SunclubApp: App {
 
         appState.save()
         appState.refresh()
+    }
+
+    private func refreshReminderScheduleIfNeeded() {
+        guard !isRunningTests, appState.settings.hasCompletedOnboarding else { return }
+
+        Task {
+            _ = await NotificationManager.shared.configure()
+            await NotificationManager.shared.scheduleReminders(using: appState)
+        }
     }
 }
 

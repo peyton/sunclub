@@ -58,9 +58,25 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["settings.manageSubscription"].exists)
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
+        XCTAssertTrue(app.switches["settings.travelToggle"].exists)
+        XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
         XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+    }
+
+    @MainActor
+    func testWeekdayReminderPickerOpensFromSettings() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        let weekdayButton = app.buttons["settings.weekdayReminderTime"]
+        XCTAssertTrue(weekdayButton.waitForExistence(timeout: 5))
+
+        weekdayButton.tap()
+
+        XCTAssertTrue(app.buttons["Save Time"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -69,7 +85,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
 
         performBackSwipe(in: app)
 
@@ -92,12 +108,12 @@ final class SunclubUITests: XCTestCase {
     func testHomeShowsHighUVStatusFromLaunchOverride() throws {
         let app = launchHome(additionalArguments: ["UITEST_UV_INDEX=7"])
 
-        let uvStatus = app.otherElements["home.uvStatus"]
-        XCTAssertTrue(uvStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(uvStatus.label, "UV is high today")
+        let uvHeadline = app.staticTexts["home.uvHeadline"]
+        XCTAssertTrue(uvHeadline.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvHeadline.label, "UV is high today")
 
         let detail = app.staticTexts["home.todayDetail"]
-        XCTAssertTrue(detail.exists)
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
         XCTAssertTrue(detail.label.contains("reapply sooner"))
     }
 
@@ -151,12 +167,13 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
         app.buttons["manualLog.logToday"].tap()
 
-        let reapplyNote = app.otherElements["success.reapplyNote"]
-        XCTAssertTrue(reapplyNote.waitForExistence(timeout: 5))
-        XCTAssertTrue(reapplyNote.label.contains("High UV today"))
-        XCTAssertTrue(reapplyNote.label.contains("1h 30m"))
+        let reapplyMessage = app.staticTexts["success.reapplyMessage"]
+        XCTAssertTrue(reapplyMessage.waitForExistence(timeout: 5))
+        XCTAssertTrue(reapplyMessage.label.contains("High UV today"))
+        XCTAssertTrue(reapplyMessage.label.contains("1h 30m"))
     }
 
+    @MainActor
     func testWeeklySummaryShowsUsageInsights() throws {
         let app = XCUIApplication()
         app.launchArguments += [
@@ -167,12 +184,12 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
-        let mostUsedSPF = app.staticTexts["weekly.mostUsedSPFValue"]
-        XCTAssertTrue(mostUsedSPF.waitForExistence(timeout: 5))
+        let mostUsedSPF = app.staticTexts["SPF 50"]
+        XCTAssertTrue(scrollToElement(mostUsedSPF, in: app))
         XCTAssertEqual(mostUsedSPF.label, "SPF 50")
 
-        let recentNote = app.staticTexts["weekly.recentNoteText.0"]
-        XCTAssertTrue(recentNote.waitForExistence(timeout: 5))
+        let recentNote = app.staticTexts["Before beach walk"]
+        XCTAssertTrue(scrollToElement(recentNote, in: app))
         XCTAssertEqual(recentNote.label, "Before beach walk")
     }
 
@@ -213,5 +230,25 @@ final class SunclubUITests: XCTestCase {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
         let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    private func scrollToElement(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int = 4
+    ) -> Bool {
+        if element.waitForExistence(timeout: 2) {
+            return true
+        }
+
+        for _ in 0..<attempts {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        return false
     }
 }
