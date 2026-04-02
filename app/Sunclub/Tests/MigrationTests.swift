@@ -118,4 +118,18 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(try context.fetch(FetchDescriptor<SettingsRevision>()).count, 1)
         XCTAssertEqual(try context.fetch(FetchDescriptor<DailyRecordRevision>()).count, 1)
     }
+
+    func testDiskBackedContainerCreatesMissingParentDirectory() throws {
+        let rootDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootDirectory) }
+
+        let storeURL = rootDirectory
+            .appendingPathComponent("nested", isDirectory: true)
+            .appendingPathComponent("Sunclub.store")
+
+        _ = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: storeURL.deletingLastPathComponent().path))
+    }
 }

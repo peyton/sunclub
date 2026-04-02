@@ -55,9 +55,10 @@ final class SunclubWidgetTests: XCTestCase {
     }
 
     func testSunclubDeepLinkParsesWidgetRoutes() throws {
-        let summaryURL = try XCTUnwrap(URL(string: "sunclub://widget/open/summary"))
-        let historyURL = try XCTUnwrap(URL(string: "sunclub://widget/open/history"))
-        let updateURL = try XCTUnwrap(URL(string: "sunclub://widget/open/updateToday"))
+        let scheme = SunclubRuntimeConfiguration.urlScheme
+        let summaryURL = try XCTUnwrap(URL(string: "\(scheme)://widget/open/summary"))
+        let historyURL = try XCTUnwrap(URL(string: "\(scheme)://widget/open/history"))
+        let updateURL = try XCTUnwrap(URL(string: "\(scheme)://widget/open/updateToday"))
 
         XCTAssertEqual(SunclubDeepLink(url: summaryURL), .widgetRoute(.summary))
         XCTAssertEqual(SunclubDeepLink(url: historyURL), .widgetRoute(.history))

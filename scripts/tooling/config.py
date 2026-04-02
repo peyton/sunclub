@@ -36,13 +36,20 @@ def _parse_env_file(path: Path) -> dict[str, str]:
 @dataclass(frozen=True)
 class ToolingConfig:
     app_workspace: str
-    app_scheme: str
-    app_identifier: str
+    sunclub_flavor: str
+    dev_app_scheme: str
+    dev_app_identifier: str
+    dev_app_product_name: str
+    release_app_scheme: str
+    release_app_identifier: str
+    release_app_product_name: str
+    app_scheme_override: str
+    app_identifier_override: str
+    run_app_path_override: str
     default_simulator_device: str
     run_simulator_name: str
     test_simulator_name: str
     screenshot_simulator_prefix: str
-    run_app_path: str
     test_xcodebuild_args: str
     build_derived_data: str
     run_derived_data: str
@@ -57,17 +64,66 @@ class ToolingConfig:
     cloudkit_team_id: str
     cloudkit_environment: str
 
+    @property
+    def app_scheme(self) -> str:
+        return self.app_scheme_override or self.app_scheme_for_flavor(self.sunclub_flavor)
+
+    @property
+    def app_identifier(self) -> str:
+        return self.app_identifier_override or self.app_identifier_for_flavor(self.sunclub_flavor)
+
+    @property
+    def run_app_path(self) -> str:
+        return self.run_app_path_override or self.run_app_path_for_flavor(self.sunclub_flavor)
+
+    def app_scheme_for_flavor(self, flavor: str) -> str:
+        normalized = normalize_flavor(flavor)
+        return self.release_app_scheme if normalized == "prod" else self.dev_app_scheme
+
+    def app_identifier_for_flavor(self, flavor: str) -> str:
+        normalized = normalize_flavor(flavor)
+        return (
+            self.release_app_identifier
+            if normalized == "prod"
+            else self.dev_app_identifier
+        )
+
+    def product_name_for_flavor(self, flavor: str) -> str:
+        normalized = normalize_flavor(flavor)
+        return (
+            self.release_app_product_name
+            if normalized == "prod"
+            else self.dev_app_product_name
+        )
+
+    def run_app_path_for_flavor(self, flavor: str) -> str:
+        return (
+            f"Build/Products/Debug-iphonesimulator/"
+            f"{self.product_name_for_flavor(flavor)}.app"
+        )
+
+
+def normalize_flavor(flavor: str) -> str:
+    return "prod" if flavor == "prod" else "dev"
+
 
 _raw_config = _parse_env_file(CONFIG_PATH)
 CONFIG = ToolingConfig(
     app_workspace=_raw_config["APP_WORKSPACE"],
-    app_scheme=_raw_config["APP_SCHEME"],
-    app_identifier=_raw_config["APP_IDENTIFIER"],
+    sunclub_flavor=normalize_flavor(_raw_config["SUNCLUB_FLAVOR"]),
+    dev_app_scheme=_raw_config["DEV_APP_SCHEME"],
+    dev_app_identifier=_raw_config["DEV_APP_IDENTIFIER"],
+    dev_app_product_name=_raw_config["DEV_APP_PRODUCT_NAME"],
+    release_app_scheme=_raw_config["RELEASE_APP_SCHEME"],
+    release_app_identifier=_raw_config["RELEASE_APP_IDENTIFIER"],
+    release_app_product_name=_raw_config["RELEASE_APP_PRODUCT_NAME"],
+    app_scheme_override=_raw_config["APP_SCHEME"],
+    app_identifier_override=_raw_config["APP_IDENTIFIER"],
+    run_app_path_override=_raw_config["RUN_APP_PATH"],
     default_simulator_device=_raw_config["DEFAULT_SIMULATOR_DEVICE"],
     run_simulator_name=_raw_config["RUN_SIMULATOR_NAME"],
     test_simulator_name=_raw_config["TEST_SIMULATOR_NAME"],
     screenshot_simulator_prefix=_raw_config["SCREENSHOT_SIMULATOR_PREFIX"],
-    run_app_path=_raw_config["RUN_APP_PATH"],
     test_xcodebuild_args=_raw_config["TEST_XCODEBUILD_ARGS"],
     build_derived_data=_raw_config["BUILD_DERIVED_DATA"],
     run_derived_data=_raw_config["RUN_DERIVED_DATA"],

@@ -718,7 +718,9 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     func testSunclubDeepLinkParsesWidgetLogTodayURL() throws {
-        let url = try XCTUnwrap(URL(string: "sunclub://widget/log-today"))
+        let url = try XCTUnwrap(
+            URL(string: "\(SunclubRuntimeConfiguration.urlScheme)://widget/log-today")
+        )
 
         XCTAssertEqual(SunclubDeepLink(url: url), .widgetLogToday)
         XCTAssertEqual(SunclubDeepLink.widgetLogToday.url, url)

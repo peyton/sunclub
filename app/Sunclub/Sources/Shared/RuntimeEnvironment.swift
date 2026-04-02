@@ -9,6 +9,12 @@ enum RuntimeEnvironment {
         isUITesting || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
+    static var hasAppGroupContainer: Bool {
+        FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: SunclubRuntimeConfiguration.appGroupID
+        ) != nil
+    }
+
     static func argumentValue(withPrefix prefix: String) -> String? {
         guard let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix(prefix) }) else {
             return nil

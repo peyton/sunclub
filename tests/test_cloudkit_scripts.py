@@ -174,6 +174,7 @@ def test_cloudkit_doctor_succeeds_with_management_access_and_schema_access(
     env = os.environ.copy()
     env["PATH"] = f"{tmp_path / 'bin'}:{env['PATH']}"
     env["FAKE_CKTOOL_EXPORT_MODE"] = "success"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
 
     result = subprocess.run(
         ["bash", str(repo_root / "scripts" / "cloudkit" / "doctor.sh")],
@@ -200,6 +201,7 @@ def test_cloudkit_doctor_fails_when_token_cannot_access_configured_team(
     env = os.environ.copy()
     env["PATH"] = f"{tmp_path / 'bin'}:{env['PATH']}"
     env["FAKE_CKTOOL_TEAMS"] = "OTHERTEAM: Someone Else"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
 
     result = subprocess.run(
         ["bash", str(repo_root / "scripts" / "cloudkit" / "doctor.sh")],
@@ -223,6 +225,7 @@ def test_cloudkit_ensure_container_opens_setup_when_cloudkit_is_missing(
     env["PATH"] = f"{tmp_path / 'bin'}:{env['PATH']}"
     env["FAKE_CKTOOL_EXPORT_MODE"] = "auth-failed"
     env["FAKE_XCENT_MODE"] = "plain"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
 
     result = subprocess.run(
         ["bash", str(repo_root / "scripts" / "cloudkit" / "ensure-container.sh")],

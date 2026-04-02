@@ -178,7 +178,7 @@ final class AppState {
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
         if let cloudSyncCoordinator {
             self.cloudSyncCoordinator = cloudSyncCoordinator
-        } else if RuntimeEnvironment.isRunningTests {
+        } else if RuntimeEnvironment.isRunningTests || !RuntimeEnvironment.hasAppGroupContainer {
             self.cloudSyncCoordinator = NoopCloudSyncCoordinator(historyService: resolvedHistoryService)
         } else {
             self.cloudSyncCoordinator = CloudSyncCoordinator(historyService: resolvedHistoryService)
