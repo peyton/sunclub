@@ -16,6 +16,10 @@ code_signing="none"
 share_scheme=1
 run_generate=1
 
+if [ "${SUNCLUB_TUIST_SHARE:-1}" = "0" ]; then
+  share_scheme=0
+fi
+
 while [ $# -gt 0 ]; do
   case "$1" in
   --configuration)
