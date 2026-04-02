@@ -122,8 +122,34 @@ workspace_is_generated() {
   [ -d "$REPO_ROOT/$APP_WORKSPACE" ]
 }
 
+workspace_has_scheme() {
+  xcodebuild -list -workspace "$REPO_ROOT/$APP_WORKSPACE" 2>/dev/null |
+    grep -Eq "^[[:space:]]+$APP_SCHEME$"
+}
+
+workspace_needs_regeneration() {
+  local generation_marker="$REPO_ROOT/$APP_WORKSPACE/.tuist-generated"
+  local manifest
+
+  if [ ! -f "$generation_marker" ]; then
+    return 0
+  fi
+
+  for manifest in \
+    "$REPO_ROOT/app/Tuist.swift" \
+    "$REPO_ROOT/app/Workspace.swift" \
+    "$REPO_ROOT/app/Tuist/Package.swift" \
+    "$REPO_ROOT/app/Sunclub/Project.swift"; do
+    if [ -e "$manifest" ] && [ "$manifest" -nt "$generation_marker" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 ensure_workspace_generated() {
-  if workspace_is_generated; then
+  if workspace_is_generated && workspace_has_scheme && ! workspace_needs_regeneration; then
     return 0
   fi
 

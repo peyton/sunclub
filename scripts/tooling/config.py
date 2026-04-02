@@ -66,15 +66,21 @@ class ToolingConfig:
 
     @property
     def app_scheme(self) -> str:
-        return self.app_scheme_override or self.app_scheme_for_flavor(self.sunclub_flavor)
+        return self.app_scheme_override or self.app_scheme_for_flavor(
+            self.sunclub_flavor
+        )
 
     @property
     def app_identifier(self) -> str:
-        return self.app_identifier_override or self.app_identifier_for_flavor(self.sunclub_flavor)
+        return self.app_identifier_override or self.app_identifier_for_flavor(
+            self.sunclub_flavor
+        )
 
     @property
     def run_app_path(self) -> str:
-        return self.run_app_path_override or self.run_app_path_for_flavor(self.sunclub_flavor)
+        return self.run_app_path_override or self.run_app_path_for_flavor(
+            self.sunclub_flavor
+        )
 
     def app_scheme_for_flavor(self, flavor: str) -> str:
         normalized = normalize_flavor(flavor)

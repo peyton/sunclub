@@ -26,6 +26,12 @@ Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or 
 | Python eval tests | `just test-python`      |
 | Benchmark         | `just benchmark-strict` |
 
+## Verification Rules
+
+- For changes touching GitHub Actions, CI scripts, workflow files, or PR merge behavior, run the closest local CI-equivalent command before calling the fix ready.
+- Prefer `just ci-lint`, `just ci`, or the specific underlying repo script that matches the failing GitHub job.
+- Do not report a CI fix as ready unless the relevant GitHub workflow is expected to pass from the current branch state.
+
 ## Project Layout
 
 ```text

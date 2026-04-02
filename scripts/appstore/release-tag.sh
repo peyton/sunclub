@@ -13,10 +13,10 @@ fail() {
 [ -n "$version" ] || fail "usage: VERSION=1.2.3 $0"
 
 case "$version" in
-  [0-9]*.[0-9]*.[0-9]*) ;;
-  *)
-    fail "version must match X.Y.Z"
-    ;;
+[0-9]*.[0-9]*.[0-9]*) ;;
+*)
+  fail "version must match X.Y.Z"
+  ;;
 esac
 
 cd "$ROOT_DIR"

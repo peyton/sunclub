@@ -469,7 +469,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     private func widgetURL(path: String) -> String {
-        let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub-dev"
+        let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub"
         return "\(scheme)://widget/\(path)"
     }
 

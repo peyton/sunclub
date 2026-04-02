@@ -67,7 +67,7 @@ def latest_reachable_release_tag(repo_root: Path = REPO_ROOT) -> str | None:
             capture_output=True,
             text=True,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except FileNotFoundError, subprocess.CalledProcessError:
         return None
 
     tag = result.stdout.strip()
@@ -110,7 +110,10 @@ def resolve_build_number(
 
 
 def resolve_versions(
-    environment: Mapping[str, str], repo_root: Path = REPO_ROOT, *, now: datetime | None = None
+    environment: Mapping[str, str],
+    repo_root: Path = REPO_ROOT,
+    *,
+    now: datetime | None = None,
 ) -> ResolvedVersions:
     return ResolvedVersions(
         marketing_version=resolve_marketing_version(environment, repo_root),
@@ -149,7 +152,9 @@ if __name__ == "__main__":
     import argparse
     import os
 
-    parser = argparse.ArgumentParser(description="Resolve Sunclub marketing/build versions.")
+    parser = argparse.ArgumentParser(
+        description="Resolve Sunclub marketing/build versions."
+    )
     parser.add_argument(
         "--format",
         choices=("shell", "github-env", "json"),

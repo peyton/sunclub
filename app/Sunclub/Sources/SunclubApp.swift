@@ -9,6 +9,7 @@ struct SunclubApp: App {
     @State private var appState: AppState
     @State private var router = AppRouter()
     @State private var appliedUITestLaunchConfiguration = false
+    @State private var hasRefreshedForegroundSinceVisibility = false
     private let container: ModelContainer
     private let isRunningTests = RuntimeEnvironment.isRunningTests
 
@@ -50,10 +51,19 @@ struct SunclubApp: App {
                         applyUITestLaunchConfigurationIfNeeded()
                         return
                     }
+                    guard scenePhase == .active, !hasRefreshedForegroundSinceVisibility else {
+                        return
+                    }
+                    hasRefreshedForegroundSinceVisibility = true
                     refreshAppStateForForeground()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
-                    guard newPhase == .active else { return }
+                    guard newPhase == .active else {
+                        hasRefreshedForegroundSinceVisibility = false
+                        return
+                    }
+                    guard !hasRefreshedForegroundSinceVisibility else { return }
+                    hasRefreshedForegroundSinceVisibility = true
                     refreshAppStateForForeground()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in

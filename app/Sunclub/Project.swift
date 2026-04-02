@@ -146,9 +146,9 @@ let project = Project(
                 .folder("Tests")
             ],
             dependencies: [
-                .target(name: developmentFlavor.appTargetName)
+                .target(name: productionFlavor.appTargetName)
             ],
-            settings: .settings(base: flavorBuildSettings(developmentFlavor))
+            settings: .settings(base: flavorBuildSettings(productionFlavor))
         ),
         .target(
             name: "SunclubUITests",
@@ -160,9 +160,9 @@ let project = Project(
                 .folder("UITests")
             ],
             dependencies: [
-                .target(name: developmentFlavor.appTargetName)
+                .target(name: productionFlavor.appTargetName)
             ],
-            settings: .settings(base: flavorBuildSettings(developmentFlavor))
+            settings: .settings(base: flavorBuildSettings(productionFlavor))
         )
     ]
 )

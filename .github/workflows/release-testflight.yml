@@ -28,7 +28,8 @@ jobs:
           fetch-depth: 0
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
-          cache: true
+          cache: false
+          cache_save: false
 
       - name: Materialize App Store Connect key
         shell: bash
@@ -46,9 +47,11 @@ jobs:
       - name: Resolve release versions
         shell: bash
         run: |
-          mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env >> "$GITHUB_ENV"
-          echo "SUNCLUB_FLAVOR=prod" >> "$GITHUB_ENV"
-          echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"
+          {
+            mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
+            echo "SUNCLUB_FLAVOR=prod"
+            echo "SUNCLUB_TUIST_SHARE=0"
+          } >> "$GITHUB_ENV"
 
       - name: Validate App Store metadata
         run: mise exec -- just appstore-validate
@@ -61,7 +64,7 @@ jobs:
         run: bash scripts/appstore/archive-and-upload.sh --upload-testflight
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sunclub-testflight-${{ github.ref_name }}
           path: |

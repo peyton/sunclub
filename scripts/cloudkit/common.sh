@@ -7,7 +7,7 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/tooling/common.sh"
 
-SUNCLUB_FLAVOR=prod
+: "${SUNCLUB_FLAVOR:=prod}"
 setup_local_tooling_env
 
 CLOUDKIT_CONTAINER_ID="${CLOUDKIT_CONTAINER_ID:-iCloud.app.peyton.sunclub}"
@@ -140,7 +140,30 @@ find_signed_app_xcent() {
 
 read_plist_summary() {
   local plist_path="$1"
-  plutil -p "$plist_path"
+
+  if command -v plutil >/dev/null 2>&1 && plutil -p "$plist_path" 2>/dev/null; then
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$plist_path" <<'PY'
+from __future__ import annotations
+
+import json
+import plistlib
+import sys
+from pathlib import Path
+
+plist_path = Path(sys.argv[1])
+with plist_path.open("rb") as plist_file:
+    plist = plistlib.load(plist_file)
+
+print(json.dumps(plist, indent=2, sort_keys=True))
+PY
+    return 0
+  fi
+
+  cat "$plist_path"
 }
 
 signed_entitlements_have_cloudkit() {

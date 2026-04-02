@@ -12,7 +12,7 @@ ROOT_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$ROOT_DIR/scripts/tooling/common.sh"
 
-SUNCLUB_FLAVOR=prod
+: "${SUNCLUB_FLAVOR:=prod}"
 setup_local_tooling_env
 
 WORKSPACE="$ROOT_DIR/$APP_WORKSPACE"

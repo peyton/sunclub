@@ -1,5 +1,4 @@
 import plistlib
-import re
 from pathlib import Path
 
 
@@ -18,14 +17,17 @@ def load_info_plist() -> dict:
 def test_main_target_uses_checked_in_info_plist() -> None:
     source = PROJECT_SWIFT.read_text()
 
-    assert 'func appTarget(for flavor: SunclubFlavor) -> Target {' in source
+    assert "func appTarget(for flavor: SunclubFlavor) -> Target {" in source
     assert 'infoPlist: .file(path: "Info.plist")' in source
 
 
 def test_project_reads_signing_team_from_team_id_env() -> None:
     source = PROJECT_SWIFT.read_text()
 
-    assert 'let signingTeam = Environment.teamId.getString(default: "3VDQ4656LX")' in source
+    assert (
+        'let signingTeam = Environment.teamId.getString(default: "3VDQ4656LX")'
+        in source
+    )
 
 
 def test_project_reads_versioning_from_tuist_manifest_environment() -> None:
@@ -35,7 +37,10 @@ def test_project_reads_versioning_from_tuist_manifest_environment() -> None:
         'let marketingVersion = Environment.sunclubMarketingVersion.getString(default: "1.0.0")'
         in source
     )
-    assert 'let buildNumber = Environment.sunclubBuildNumber.getString(default: "1")' in source
+    assert (
+        'let buildNumber = Environment.sunclubBuildNumber.getString(default: "1")'
+        in source
+    )
 
 
 def test_info_plist_declares_background_task_and_backup_document_type() -> None:
@@ -74,7 +79,7 @@ def test_info_plist_declares_explicit_file_opening_behavior() -> None:
 def test_widget_extension_inherits_app_version_metadata() -> None:
     source = PROJECT_SWIFT.read_text()
 
-    assert 'func widgetTarget(for flavor: SunclubFlavor) -> Target {' in source
+    assert "func widgetTarget(for flavor: SunclubFlavor) -> Target {" in source
     assert '"CFBundleShortVersionString": "$(MARKETING_VERSION)"' in source
     assert '"CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)"' in source
 
@@ -98,6 +103,13 @@ def test_project_declares_prod_and_dev_flavors() -> None:
     assert 'cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev"' in source
 
 
+def test_project_test_targets_follow_production_flavor_contract() -> None:
+    source = PROJECT_SWIFT.read_text()
+
+    assert source.count(".target(name: productionFlavor.appTargetName)") == 2
+    assert source.count(".settings(base: flavorBuildSettings(productionFlavor))") == 2
+
+
 def test_tests_plist_uses_resolved_version_placeholders() -> None:
     tests_plist = (REPO_ROOT / "app" / "Sunclub" / "Tests.plist").read_text()
 
@@ -118,6 +130,6 @@ def test_archive_script_uses_transporter_with_api_key_auth() -> None:
     script = ARCHIVE_SCRIPT.read_text()
 
     assert "xcrun iTMSTransporter" in script
-    assert "-apiKey \"$ASC_KEY_ID\"" in script
-    assert "-apiIssuer \"$ASC_ISSUER_ID\"" in script
+    assert '-apiKey "$ASC_KEY_ID"' in script
+    assert '-apiIssuer "$ASC_ISSUER_ID"' in script
     assert "AuthKey_${ASC_KEY_ID}.p8" in script
