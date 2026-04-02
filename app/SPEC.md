@@ -129,6 +129,13 @@ Expected sequence:
 - Surface lightweight SPF and recent note insights when the user has logged that metadata.
 - Make progress easy to scan at a glance.
 
+### History
+
+- Show the user's month-by-month completion calendar.
+- Let the user inspect one selected day at a time.
+- Allow correcting an existing manual entry or backfilling a missed past day.
+- Keep future days read-only.
+
 ### Settings
 
 - Let the user update weekday and weekend reminder times.
@@ -175,6 +182,12 @@ Expected sequence:
 - Users should be able to change reminder timing and reminder behavior without repeating onboarding.
 - Manual logging should always remain available as the primary check-in flow.
 
+### History Recovery
+
+- History should allow editing an existing past or current manual entry without creating duplicates.
+- History should allow backfilling a missed past day with a manual entry.
+- History edits should be scoped to the selected day and should not unlock future-day logging.
+
 ## Key Behavioral Expectations
 
 ### Permissions
@@ -200,7 +213,7 @@ Expected sequence:
 - Barcode identity or custom bottle training.
 - Household or family plans.
 - Deep analytics beyond streak, weekly summary, and lightweight SPF/note recap.
-- Rich calendar history browsing.
+- Cross-device or collaborative history editing.
 - Product catalog, purchase flow, or refill logistics inside the app.
 - Coaching content beyond short reminder and summary copy.
 

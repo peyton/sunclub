@@ -43,6 +43,13 @@ struct RootView: View {
             SettingsView()
         case .history:
             HistoryView()
+        case .historyEditToday:
+            HistoryEditorTestHarnessView(day: Calendar.current.startOfDay(for: Date()))
+        case .historyBackfillTwoDaysAgo:
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let missedDay = calendar.date(byAdding: .day, value: -2, to: today) ?? today
+            HistoryEditorTestHarnessView(day: missedDay)
         case .manualLog:
             ManualLogView()
         }

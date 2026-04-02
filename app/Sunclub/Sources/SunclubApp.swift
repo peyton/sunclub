@@ -89,7 +89,7 @@ struct SunclubApp: App {
             appState.save()
         }
 
-        seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
+        applyUITestSeedData(from: arguments)
 
         if let requestedRoute {
             if requestedRoute == .verifySuccess {
@@ -122,6 +122,37 @@ struct SunclubApp: App {
         }
 
         return Int(argument.dropFirst(prefix.count))
+    }
+
+    private func applyUITestSeedData(from arguments: [String]) {
+        if let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) {
+            let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
+            if scenario == "editBackfill" {
+                seedHistoryEditBackfillScenario()
+            }
+        }
+
+        seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
+    }
+
+    private func seedHistoryEditBackfillScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        guard let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today) else {
+            return
+        }
+
+        let todayRecord = DailyRecord(
+            startOfDay: today,
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: 30,
+            notes: "Seeded today"
+        )
+        appState.modelContext.insert(todayRecord)
+        appState.save()
+        appState.refresh()
     }
 
     private func seedUsageInsightsForUITestsIfNeeded(arguments: [String]) {

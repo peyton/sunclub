@@ -72,6 +72,13 @@ struct VerificationSuccessPresentation: Equatable {
 @MainActor
 @Observable
 final class AppState {
+    private typealias VerificationValues = (
+        method: VerificationMethod,
+        duration: Double?,
+        spfLevel: Int?,
+        notes: String?
+    )
+
     let modelContext: ModelContext
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
@@ -301,39 +308,30 @@ final class AppState {
         notes: String? = nil
     ) {
         let now = Date()
-        let today = calendar.startOfDay(for: now)
-        let normalizedNotes = Self.normalizedNotes(notes)
+        upsertRecord(
+            for: now,
+            verifiedAt: now,
+            verificationValues: (method, verificationDuration, spfLevel, notes),
+            replaceOptionalFields: false,
+            preserveExistingDuration: false
+        )
+    }
 
-        do {
-            if let existing = try verificationStore.record(for: today) {
-                apply(verificationValues: (method, verificationDuration, spfLevel, normalizedNotes), to: existing, verifiedAt: now)
-                try modelContext.save()
-            } else {
-                let record = DailyRecord(
-                    startOfDay: today,
-                    verifiedAt: now,
-                    method: method,
-                    verificationDuration: verificationDuration,
-                    spfLevel: spfLevel,
-                    notes: normalizedNotes
-                )
-                modelContext.insert(record)
-                do {
-                    try modelContext.save()
-                } catch {
-                    modelContext.rollback()
-                    if let existing = try verificationStore.record(for: today) {
-                        apply(verificationValues: (method, verificationDuration, spfLevel, normalizedNotes), to: existing, verifiedAt: now)
-                        try modelContext.save()
-                    }
-                }
-            }
-            refresh()
-            updateLongestStreak()
-            refreshStreakRiskReminder()
-        } catch {
-            modelContext.rollback()
-        }
+    func saveManualRecord(
+        for day: Date,
+        verifiedAt: Date? = nil,
+        spfLevel: Int?,
+        notes: String?
+    ) {
+        let existingTimestamp = (try? verificationStore.record(for: day))?.verifiedAt
+        let timestamp = verifiedAt ?? existingTimestamp ?? defaultVerifiedAt(for: day)
+        upsertRecord(
+            for: day,
+            verifiedAt: timestamp,
+            verificationValues: (.manual, nil, spfLevel, notes),
+            replaceOptionalFields: true,
+            preserveExistingDuration: true
+        )
     }
 
     func recordVerificationSuccess(
@@ -439,19 +437,125 @@ final class AppState {
     }
 
     private func apply(
-        verificationValues: (method: VerificationMethod, duration: Double?, spfLevel: Int?, notes: String?),
+        verificationValues: VerificationValues,
         to record: DailyRecord,
-        verifiedAt: Date
+        verifiedAt: Date,
+        replaceOptionalFields: Bool
     ) {
         record.verifiedAt = verifiedAt
         record.method = verificationValues.method
         record.verificationDuration = verificationValues.duration
+        if replaceOptionalFields {
+            record.spfLevel = verificationValues.spfLevel
+            record.notes = Self.normalizedNotes(verificationValues.notes)
+            return
+        }
+
         if let spfLevel = verificationValues.spfLevel {
             record.spfLevel = spfLevel
         }
-        if let notes = verificationValues.notes {
+        if let notes = Self.normalizedNotes(verificationValues.notes) {
             record.notes = notes
         }
+    }
+
+    private func upsertRecord(
+        for day: Date,
+        verifiedAt: Date,
+        verificationValues: VerificationValues,
+        replaceOptionalFields: Bool,
+        preserveExistingDuration: Bool
+    ) {
+        let targetDay = calendar.startOfDay(for: day)
+
+        do {
+            if let existing = try verificationStore.record(for: targetDay) {
+                let values = resolvedVerificationValues(
+                    from: verificationValues,
+                    existingRecord: existing,
+                    preserveExistingDuration: preserveExistingDuration
+                )
+                apply(
+                    verificationValues: values,
+                    to: existing,
+                    verifiedAt: verifiedAt,
+                    replaceOptionalFields: replaceOptionalFields
+                )
+                try modelContext.save()
+            } else {
+                let record = DailyRecord(
+                    startOfDay: targetDay,
+                    verifiedAt: verifiedAt,
+                    method: verificationValues.method,
+                    verificationDuration: verificationValues.duration,
+                    spfLevel: verificationValues.spfLevel,
+                    notes: Self.normalizedNotes(verificationValues.notes)
+                )
+                modelContext.insert(record)
+                do {
+                    try modelContext.save()
+                } catch {
+                    modelContext.rollback()
+                    if let existing = try verificationStore.record(for: targetDay) {
+                        let values = resolvedVerificationValues(
+                            from: verificationValues,
+                            existingRecord: existing,
+                            preserveExistingDuration: preserveExistingDuration
+                        )
+                        apply(
+                            verificationValues: values,
+                            to: existing,
+                            verifiedAt: verifiedAt,
+                            replaceOptionalFields: replaceOptionalFields
+                        )
+                        try modelContext.save()
+                    } else {
+                        throw error
+                    }
+                }
+            }
+            refresh()
+            updateLongestStreak()
+            refreshStreakRiskReminder()
+        } catch {
+            modelContext.rollback()
+        }
+    }
+
+    private func resolvedVerificationValues(
+        from values: VerificationValues,
+        existingRecord: DailyRecord,
+        preserveExistingDuration: Bool
+    ) -> VerificationValues {
+        (
+            method: values.method,
+            duration: preserveExistingDuration ? (values.duration ?? existingRecord.verificationDuration) : values.duration,
+            spfLevel: values.spfLevel,
+            notes: values.notes
+        )
+    }
+
+    private func defaultVerifiedAt(for day: Date) -> Date {
+        let targetDay = calendar.startOfDay(for: day)
+        let nowComponents = calendar.dateComponents([.hour, .minute, .second], from: Date())
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: targetDay)
+
+        return calendar.date(
+            from: DateComponents(
+                year: dayComponents.year,
+                month: dayComponents.month,
+                day: dayComponents.day,
+                hour: nowComponents.hour,
+                minute: nowComponents.minute,
+                second: nowComponents.second
+            )
+        ) ?? targetDay
+    }
+
+    private static func normalizedNotes(_ notes: String?) -> String? {
+        guard let notes else { return nil }
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     func dayStatus(for date: Date, now: Date = Date()) -> DayStatus {
@@ -495,15 +599,6 @@ final class AppState {
         Task {
             await notificationManager.cancelReapplyReminders()
         }
-    }
-
-    private static func normalizedNotes(_ notes: String?) -> String? {
-        guard let notes else {
-            return nil
-        }
-
-        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 
     var recordedDays: [Date] {

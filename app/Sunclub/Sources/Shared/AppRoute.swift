@@ -9,6 +9,8 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case weeklySummary
     case settings
     case history
+    case historyEditToday
+    case historyBackfillTwoDaysAgo
     case manualLog
 
     var id: String { rawValue }
