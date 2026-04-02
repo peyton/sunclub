@@ -382,6 +382,9 @@ struct SunclubApp: App {
         appState.refresh()
         appState.refreshNotificationHealth()
         appState.refreshUVReadingIfNeeded()
+        if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
+            router.open(route.appRoute)
+        }
         refreshReminderScheduleIfNeeded()
     }
 

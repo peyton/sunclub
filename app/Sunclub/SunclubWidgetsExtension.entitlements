@@ -6,7 +6,5 @@
 	<array>
 		<string>group.app.peyton.sunclub</string>
 	</array>
-	<key>com.apple.developer.kernel.increased-memory-limit</key>
-	<true/>
 </dict>
 </plist>

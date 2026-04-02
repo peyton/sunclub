@@ -1,49 +1,92 @@
-# Widget Log Today ExecPlan
+# Widget And Control Suite ExecPlan
 
-This ExecPlan is the working record for adding a Home Screen and Lock Screen widget that gives Sunclub a one-tap `Log Today` entrypoint. The sections `Progress`, `Decision Log`, and `Outcomes & Retrospective` will be updated as implementation and verification land.
+This ExecPlan is the living record for Sunclub's full widget and Control Center surface. It replaces the earlier single-action widget plan. The sections `Progress`, `Decision Log`, and `Outcomes & Retrospective` should stay current as the suite evolves.
 
 ## Purpose / Big Picture
 
-Sunclub already has a low-friction manual flow inside the app, but the product can get even closer to its "one obvious action" rule by exposing that action before the user even opens Home. This change adds a widget extension with a single tappable `Log Today` action that opens Sunclub, records today immediately, and lands on the existing success state instead of introducing another surface or alternate logging flow.
+Sunclub's product loop is stronger when the user can see daily state before opening the app. The goal of this work is a low-text widget suite that makes today's status, streak momentum, weekly/monthly stats, and calendar history glanceable across every iPhone Home Screen and Lock Screen family, plus a small Control Center action set for the fastest common routes.
 
 ## Progress
 
-- [x] (2026-04-02) Audited the current Tuist project, app routing, manual logging flow, and unit/UI test seams.
-- [x] (2026-04-02) Added this ExecPlan before implementation so the widget work has a tracked design and verification record.
-- [ ] Add a shared deep-link action model that both the app and widget extension can use.
-- [ ] Add a WidgetKit extension target in Tuist with Home Screen and Lock Screen families.
-- [ ] Route the widget action into the existing app-side manual success path.
-- [ ] Add unit coverage for deep-link parsing/handling and UI coverage for the widget-triggered app flow.
-- [ ] Regenerate the Tuist workspace and run the relevant validation commands from the repo root.
+- [x] (2026-04-02) Audited the existing widget, app routing, manual log flow, and test seams.
+- [x] (2026-04-02) Switched the detached worktree onto local branch `codex/widget-suite` from `origin/master` instead of creating a no-op merge commit.
+- [x] (2026-04-02) Added a shared widget-support layer with snapshot, store, builder, and widget routes compiled into both the app target and widget extension target.
+- [x] (2026-04-02) Added an explicit app group for shared widget snapshot data without moving the live SwiftData store.
+- [x] (2026-04-02) Updated app-side state mutations and foreground refresh paths to rewrite widget snapshots and reload widget timelines.
+- [x] (2026-04-02) Reworked the widget extension into a multi-widget bundle covering Home Screen, Lock Screen, and Control Center surfaces.
+- [x] (2026-04-02) Added unit coverage for snapshot rollover behavior and widget deep-link routes.
+- [ ] Run the UI suite to completion and capture the final result.
+- [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
 
-- Decision: Implement the widget action as a deep link that opens Sunclub and immediately records today, rather than an in-widget background write to the SwiftData store.
-  Rationale: The user asked for a one-tap widget action, not a background persistence architecture change. Reusing the existing in-app success path is the smallest coherent solution, preserves reminder behavior, avoids store-sharing and migration risk, and is much easier to verify with the repo's current UI-test setup.
+- Decision: Keep the live SwiftData store in the app sandbox and mirror only a compact snapshot into an app-group `UserDefaults` payload.
+  Rationale: The widget suite needs read access to current streak/calendar state, but moving the live store into an app group would create unnecessary migration and integrity risk. A small mirrored snapshot keeps the persistence architecture stable while still letting widgets stay current.
   Date/Author: 2026-04-02 / Codex
 
-## Context and Orientation
+- Decision: Use terse, status-first copy rules across widgets instead of explanatory sentences.
+  Rationale: The user explicitly asked to reduce text. Small and accessory surfaces now favor numerals and state words such as `Logged`, `6d streak`, `5/7`, and `Today open`, while medium and large surfaces get at most one supporting line.
+  Date/Author: 2026-04-02 / Codex
 
-The app project lives in `app/Sunclub/Project.swift`. App entry and launch handling live in `app/Sunclub/Sources/SunclubApp.swift`. Routing types live in `app/Sunclub/Sources/Shared/`. The existing manual success path lives in `app/Sunclub/Sources/Services/AppState.swift` and `app/Sunclub/Sources/Views/ManualLogView.swift`. Unit tests live in `app/Sunclub/Tests/`, and UI tests live in `app/Sunclub/UITests/`.
+- Decision: Keep `Log Today` as the only in-place logging action. Logged-state widgets and the other widgets route into the app.
+  Rationale: The app should keep one deterministic logging path. `Log Today` can stay fast when the day is open, while logged-state, summary, and history surfaces become status/navigation surfaces instead of duplicate write paths.
+  Date/Author: 2026-04-02 / Codex
 
-## Plan of Work
+- Decision: Schedule timelines to refresh at the next local midnight.
+  Rationale: Today's open/logged state and streak continuity can roll over without an app launch, so time-derived widget state should be recomputed at day boundaries.
+  Date/Author: 2026-04-02 / Codex
 
-1. Add a shared widget deep-link type and app-side handler for `Log Today`.
-2. Register a URL scheme on the app and route widget taps through the existing success flow.
-3. Add a WidgetKit extension target with one Home Screen widget and one Lock Screen accessory family, both exposing the same single tap action.
-4. Add deterministic unit and UI coverage for the widget-triggered logging path.
-5. Regenerate the Tuist project and run the targeted validation commands.
+## Context And Orientation
 
-## Validation and Acceptance
+The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Project.swift). Shared widget snapshot and route logic lives in [app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift). App state sync lives in [app/Sunclub/Sources/Services/AppState.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Services/AppState.swift). Widget and control surfaces live in [app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift). App routes and deep-link parsing live in [app/Sunclub/Sources/Shared/SunclubDeepLink.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Shared/SunclubDeepLink.swift).
 
-1. A Home Screen widget is available and presents one obvious `Log Today` action.
-2. A Lock Screen widget is available and routes to the same action.
-3. Tapping either widget path records today's manual entry through the existing app flow and shows the success screen when onboarding is already complete.
-4. Unit tests cover deep-link parsing and action handling.
-5. UI tests cover the app behavior when launched through the widget action path.
+## Scope
+
+Supported widget families:
+
+- `Log Today`: `systemSmall`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
+- `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
+- `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
+- `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
+
+Supported Control Center controls:
+
+- `Log Today`
+- `Summary`
+- `History`
+
+Out of scope:
+
+- iPad or `systemExtraLarge` widget layouts
+- Moving the main database into the app group
+- New dedicated summary/history screens created only for widgets
+
+## Plan Of Work
+
+1. Keep widget-support types shared between the app and widget extension.
+2. Persist a compact snapshot mirror into shared `UserDefaults` and refresh it whenever onboarding or records change.
+3. Render Home Screen and Lock Screen layouts from that snapshot with low-text, state-forward designs.
+4. Use `LogSunscreenIntent` for in-place logging and route-based intents/deep links for navigation-only widget and control surfaces.
+5. Verify snapshot math, route parsing, app routing, and repo-level build/test/lint flows.
+
+## Validation And Acceptance
+
+1. Every iPhone Home Screen and Lock Screen family listed above is exposed by the widget bundle.
+2. `Log Today` logs in place only when the current day is still open.
+3. When today is already logged, the log widget shows useful completion/streak state and routes into the app instead of re-logging.
+4. Stats and calendar widgets derive current-day state from stored dates plus current time, not stale strings.
+5. Control Center exposes `Log Today`, `Summary`, and `History`.
+6. Unit tests cover snapshot rollover math and new widget/control deep-link routes.
+7. Repo validation commands pass from the repo root.
 
 ## Outcomes & Retrospective
 
-- Outcome: Pending implementation.
-- Verification: Pending implementation.
-- Follow-up: None yet.
+- Outcome: Shared snapshot-backed widget suite implemented with Home Screen, Lock Screen, and Control Center coverage.
+- Verification:
+  - `just generate`
+  - `just test-unit`
+  - `just lint`
+  - `xcodebuild -workspace app/Sunclub.xcworkspace -scheme Sunclub -configuration Debug -destination 'platform=iOS Simulator,name=Sunclub Test iPhone 17 Pro' build`
+  - `just test-ui` pending final completion at time of update
+- Follow-up:
+  - Manually add each widget/control in Simulator and confirm the visible state and tap behavior match the supported-family matrix above.

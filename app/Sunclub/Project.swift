@@ -21,9 +21,11 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: .file(path: "Info.plist"),
-            buildableFolders: [
-                .folder("Sources"),
-                .folder("Resources")
+            sources: [
+                "Sources/**"
+            ],
+            resources: [
+                "Resources/**"
             ],
             entitlements: "Sunclub.entitlements",
             dependencies: [
@@ -41,13 +43,24 @@ let project = Project(
             bundleId: "app.peyton.sunclub.widgets",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: .extendingDefault(with: [
+                "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+                "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "NSExtension": [
                     "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
                 ]
             ]),
             sources: [
-                "WidgetExtension/Sources/**"
+                "WidgetExtension/Sources/**",
+                "Sources/Intents/**",
+                "Sources/Models/**",
+                "Sources/Services/CalendarAnalytics.swift",
+                "Sources/Services/ReminderPlanner.swift",
+                "Sources/Services/SunclubQuickLogAction.swift",
+                "Sources/Services/SunscreenUsageInsights.swift",
+                "Sources/Shared/AppRoute.swift",
+                "Sources/WidgetSupport/**"
             ],
+            entitlements: "SunclubWidgetsExtension.entitlements",
             settings: .settings(
                 base: [:]
                     .automaticCodeSigning(devTeam: signingTeam)

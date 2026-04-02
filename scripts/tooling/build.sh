@@ -102,6 +102,11 @@ if [ "$code_signing" = "none" ]; then
   build_args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
 fi
 
+if [ "${ACT:-}" = "true" ]; then
+  printf 'Disabling Swift compile cache under act.\n'
+  build_args+=(SWIFT_ENABLE_COMPILE_CACHE=NO)
+fi
+
 xcodebuild "${build_args[@]}" build
 
 if [ "$share_scheme" -eq 1 ]; then
