@@ -3,3 +3,7 @@ rules:
     ignore:
       - claude-code-review.yml:40
       - claude.yml:39
+      - release-testflight.yml:37
+      - release-testflight.yml:38
+      - release-testflight.yml:61
+      - release-testflight.yml:62

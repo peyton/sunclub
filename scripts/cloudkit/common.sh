@@ -103,15 +103,30 @@ run_cloudkit_signed_build() {
   rm -rf "$derived_data_path"
   mkdir -p "$(dirname -- "$derived_data_path")"
 
-  xcodebuild \
-    -workspace "$REPO_ROOT/$APP_WORKSPACE" \
-    -scheme "$APP_SCHEME" \
-    -configuration Debug \
-    -destination "generic/platform=iOS" \
-    -derivedDataPath "$derived_data_path" \
-    -allowProvisioningUpdates \
-    DEVELOPMENT_TEAM="$CLOUDKIT_TEAM_ID" \
-    build
+  if has_app_store_connect_auth; then
+    xcodebuild \
+      -workspace "$REPO_ROOT/$APP_WORKSPACE" \
+      -scheme "$RELEASE_APP_SCHEME" \
+      -configuration Debug \
+      -destination "generic/platform=iOS" \
+      -derivedDataPath "$derived_data_path" \
+      -allowProvisioningUpdates \
+      -authenticationKeyPath "$ASC_KEY_FILE" \
+      -authenticationKeyID "$ASC_KEY_ID" \
+      -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+      DEVELOPMENT_TEAM="$CLOUDKIT_TEAM_ID" \
+      build
+  else
+    xcodebuild \
+      -workspace "$REPO_ROOT/$APP_WORKSPACE" \
+      -scheme "$RELEASE_APP_SCHEME" \
+      -configuration Debug \
+      -destination "generic/platform=iOS" \
+      -derivedDataPath "$derived_data_path" \
+      -allowProvisioningUpdates \
+      DEVELOPMENT_TEAM="$CLOUDKIT_TEAM_ID" \
+      build
+  fi
 }
 
 find_signed_app_xcent() {
@@ -148,11 +163,11 @@ signed_entitlements_have_cloudkit() {
 
 print_cloudkit_setup_instructions() {
   cat <<EOF
-CloudKit is not configured for App ID app.peyton.sunclub on team $CLOUDKIT_TEAM_ID.
+CloudKit is not configured for App ID $RELEASE_APP_IDENTIFIER on team $CLOUDKIT_TEAM_ID.
 
 Required Apple-side setup:
 1. Create the iCloud container $CLOUDKIT_CONTAINER_ID.
-2. Enable the iCloud capability on App ID app.peyton.sunclub and assign $CLOUDKIT_CONTAINER_ID.
+2. Enable the iCloud capability on App ID $RELEASE_APP_IDENTIFIER and assign $CLOUDKIT_CONTAINER_ID.
 3. If Xcode automatic signing should be allowed to make those changes, confirm Automatic Signing Controls are not blocking App ID updates for your role.
 
 Official Apple references:

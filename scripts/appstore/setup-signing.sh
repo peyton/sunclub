@@ -84,6 +84,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  Setup complete! Next steps:"
 echo ""
 echo "  1. Source your shell profile:  source ~/.zshrc"
-echo "  2. Bump version:              ./scripts/appstore/bump-version.sh 1.0"
-echo "  3. Archive & upload:          ./scripts/appstore/archive-and-upload.sh"
+echo "  2. Create a release tag:      just release-tag VERSION=1.2.3"
+echo "  3. Archive locally:           ./scripts/appstore/archive-and-upload.sh"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

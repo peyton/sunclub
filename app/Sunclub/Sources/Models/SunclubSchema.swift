@@ -327,12 +327,16 @@ enum SunclubMigrationPlan: SchemaMigrationPlan {
 
 enum SunclubModelContainerFactory {
     static let currentSchema = Schema(versionedSchema: SunclubSchemaV4.self)
+    private static let sharedStoreFilename = "default.store"
 
     static func makeSharedContainer(isStoredInMemoryOnly: Bool) throws -> ModelContainer {
+        if isStoredInMemoryOnly {
+            return try makeInMemoryContainer()
+        }
+
         let configuration = ModelConfiguration(
             schema: currentSchema,
-            isStoredInMemoryOnly: isStoredInMemoryOnly,
-            groupContainer: .automatic,
+            url: try sharedStoreURL(),
             cloudKitDatabase: .none
         )
         return try makeContainer(configuration: configuration)
@@ -348,6 +352,7 @@ enum SunclubModelContainerFactory {
     }
 
     static func makeDiskBackedContainer(url: URL) throws -> ModelContainer {
+        try ensureParentDirectoryExists(for: url)
         let configuration = ModelConfiguration(
             schema: currentSchema,
             url: url,
@@ -362,6 +367,29 @@ enum SunclubModelContainerFactory {
             migrationPlan: SunclubMigrationPlan.self,
             configurations: [configuration]
         )
+    }
+
+    private static func sharedStoreURL(fileManager: FileManager = .default) throws -> URL {
+        let baseURL: URL
+        if let groupContainerURL = fileManager.containerURL(
+            forSecurityApplicationGroupIdentifier: SunclubRuntimeConfiguration.appGroupID
+        ) {
+            baseURL = groupContainerURL
+        } else {
+            baseURL = try fileManager.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+        }
+        try fileManager.createDirectory(at: baseURL, withIntermediateDirectories: true)
+        return baseURL.appendingPathComponent(sharedStoreFilename, isDirectory: false)
+    }
+
+    private static func ensureParentDirectoryExists(for fileURL: URL, fileManager: FileManager = .default) throws {
+        let directoryURL = fileURL.deletingLastPathComponent()
+        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
     }
 }
 

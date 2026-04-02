@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -13,11 +14,15 @@ from scripts.tooling.config import CONFIG
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METADATA_PATH = REPO_ROOT / "scripts/appstore/metadata.json"
 DERIVED_DATA = REPO_ROOT / CONFIG.screenshot_derived_data
-APP_PATH = DERIVED_DATA / CONFIG.run_app_path
+APP_PATH = DERIVED_DATA / CONFIG.run_app_path_for_flavor("prod")
 
 
 def run(
-    command: list[str], *, cwd: Path | None = None, check: bool = True
+    command: list[str],
+    *,
+    cwd: Path | None = None,
+    check: bool = True,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
@@ -25,14 +30,23 @@ def run(
         check=check,
         text=True,
         capture_output=True,
+        env=env,
     )
 
 
 def run_logged(
-    command: list[str], *, cwd: Path | None = None, check: bool = True
+    command: list[str],
+    *,
+    cwd: Path | None = None,
+    check: bool = True,
+    env: dict[str, str] | None = None,
 ) -> None:
     result = subprocess.run(
-        command, cwd=str(cwd) if cwd else None, check=check, text=True
+        command,
+        cwd=str(cwd) if cwd else None,
+        check=check,
+        text=True,
+        env=env,
     )
     if result.returncode != 0 and check:
         raise subprocess.CalledProcessError(result.returncode, command)
@@ -57,7 +71,7 @@ def main() -> int:
     device = screenshots["capture_device"]
     output_dir = REPO_ROOT / screenshots["output_directory"]
     screens = screenshots["screens"]
-    bundle_id = CONFIG.app_identifier
+    bundle_id = CONFIG.release_app_identifier
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -85,6 +99,7 @@ def main() -> int:
             str(DERIVED_DATA),
         ],
         cwd=REPO_ROOT,
+        env={**os.environ, "SUNCLUB_FLAVOR": "prod"},
     )
 
     if not APP_PATH.is_dir():

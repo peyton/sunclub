@@ -1,32 +1,13 @@
 #!/usr/bin/env bash
 #
-# bump-version.sh — Bump the marketing version in Project.swift.
+# bump-version.sh — Deprecated wrapper for release-tag.sh.
 #
 # Usage:
-#   ./scripts/appstore/bump-version.sh 1.0    # Set to 1.0
-#   ./scripts/appstore/bump-version.sh 1.1    # Set to 1.1
+#   ./scripts/appstore/bump-version.sh 1.2.3
 #
 set -euo pipefail
 
-PROJECT_FILE="app/Project.swift"
+ROOT_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 
-if [ -z "${1:-}" ]; then
-  echo "Usage: $0 <version>"
-  echo "  Example: $0 1.0"
-  exit 1
-fi
-
-NEW_VERSION="$1"
-
-if ! grep -q 'marketingVersion:' "$PROJECT_FILE"; then
-  echo "Error: Could not find marketingVersion in $PROJECT_FILE"
-  exit 1
-fi
-
-# Update the app target's marketing version (the first appSettings line)
-sed -i '' "s/let appSettings = targetSettings(marketingVersion: \"[^\"]*\"/let appSettings = targetSettings(marketingVersion: \"$NEW_VERSION\"/" "$PROJECT_FILE"
-
-echo "✓ Marketing version set to $NEW_VERSION in $PROJECT_FILE"
-echo ""
-echo "Remember to regenerate:"
-echo "  just generate"
+printf '%s\n' 'bump-version.sh is deprecated; tagging now drives release versions.'
+exec "$ROOT_DIR/scripts/appstore/release-tag.sh" "$@"

@@ -82,7 +82,7 @@ mkdir -p "$(dirname "$derived_data_path")" "$(dirname "$result_bundle_path")"
 rm -rf "$result_bundle_path"
 
 if [ "$run_generate" -eq 1 ]; then
-  ensure_workspace_generated
+  generate_workspace
 fi
 
 printf 'BUILD_ROOT=%s\n' "$build_root"
@@ -102,17 +102,26 @@ if [ "$code_signing" = "none" ]; then
   build_args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
 fi
 
-if [ "${ACT:-}" = "true" ]; then
-  printf 'Disabling Swift compile cache under act.\n'
-  build_args+=(SWIFT_ENABLE_COMPILE_CACHE=NO)
+if should_disable_swift_compile_cache; then
+  printf 'Disabling compiler caches for this build.\n'
+  build_args+=(
+    SWIFT_ENABLE_COMPILE_CACHE=NO
+    COMPILATION_CACHE_ENABLE_CACHING=NO
+    COMPILATION_CACHE_ENABLE_PLUGIN=NO
+    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
+    COMPILATION_CACHE_KEEP_CAS_DIRECTORY=NO
+    COMPILATION_CACHE_REMOTE_SERVICE_PATH=
+  )
 fi
 
 xcodebuild "${build_args[@]}" build
 
 if [ "$share_scheme" -eq 1 ]; then
-  run_in_app run_mise_exec tuist share \
+  if ! run_in_app run_mise_exec tuist share \
     "$APP_SCHEME" \
     --configuration "$configuration" \
     --derived-data-path "$derived_data_path" \
-    --platforms iOS
+    --platforms iOS; then
+    printf 'Warning: tuist share failed; continuing with local build artifacts.\n' >&2
+  fi
 fi

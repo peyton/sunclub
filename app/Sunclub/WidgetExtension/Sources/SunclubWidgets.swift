@@ -47,7 +47,7 @@ private struct SunclubSnapshotProvider: TimelineProvider {
 }
 
 struct SunclubLogTodayWidget: Widget {
-    private let kind = "SunclubLogTodayWidget"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubLogTodayWidget")
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SunclubSnapshotProvider()) { entry in
@@ -63,7 +63,7 @@ struct SunclubLogTodayWidget: Widget {
 }
 
 struct SunclubStreakWidget: Widget {
-    private let kind = "SunclubStreakWidget"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubStreakWidget")
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SunclubSnapshotProvider()) { entry in
@@ -79,7 +79,7 @@ struct SunclubStreakWidget: Widget {
 }
 
 struct SunclubStatsWidget: Widget {
-    private let kind = "SunclubStatsWidget"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubStatsWidget")
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SunclubSnapshotProvider()) { entry in
@@ -95,7 +95,7 @@ struct SunclubStatsWidget: Widget {
 }
 
 struct SunclubCalendarWidget: Widget {
-    private let kind = "SunclubCalendarWidget"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubCalendarWidget")
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SunclubSnapshotProvider()) { entry in
@@ -111,7 +111,7 @@ struct SunclubCalendarWidget: Widget {
 }
 
 struct SunclubLogTodayControl: ControlWidget {
-    private let kind = "SunclubLogTodayControl"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubLogTodayControl")
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: kind) {
@@ -125,7 +125,7 @@ struct SunclubLogTodayControl: ControlWidget {
 }
 
 struct SunclubSummaryControl: ControlWidget {
-    private let kind = "SunclubSummaryControl"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubSummaryControl")
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: kind) {
@@ -139,7 +139,7 @@ struct SunclubSummaryControl: ControlWidget {
 }
 
 struct SunclubHistoryControl: ControlWidget {
-    private let kind = "SunclubHistoryControl"
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubHistoryControl")
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: kind) {

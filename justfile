@@ -27,6 +27,10 @@ appstore-archive:
     bash scripts/appstore/archive-and-upload.sh
 
 [group('app')]
+release-tag VERSION:
+    VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
+
+[group('app')]
 generate:
     bash scripts/tooling/generate.sh
 

@@ -9,6 +9,61 @@ set -a
 source "$TOOLING_DIR/sunclub.env"
 set +a
 
+normalize_flavor() {
+  case "${1:-dev}" in
+  prod) printf 'prod' ;;
+  *) printf 'dev' ;;
+  esac
+}
+
+apply_flavor_defaults() {
+  SUNCLUB_FLAVOR="$(normalize_flavor "${SUNCLUB_FLAVOR:-dev}")"
+
+  if [ -z "${APP_SCHEME:-}" ]; then
+    if [ "$SUNCLUB_FLAVOR" = "prod" ]; then
+      APP_SCHEME="$RELEASE_APP_SCHEME"
+    else
+      APP_SCHEME="$DEV_APP_SCHEME"
+    fi
+  fi
+
+  if [ -z "${APP_IDENTIFIER:-}" ]; then
+    if [ "$SUNCLUB_FLAVOR" = "prod" ]; then
+      APP_IDENTIFIER="$RELEASE_APP_IDENTIFIER"
+    else
+      APP_IDENTIFIER="$DEV_APP_IDENTIFIER"
+    fi
+  fi
+
+  if [ -z "${RUN_APP_PATH:-}" ]; then
+    if [ "$APP_SCHEME" = "$RELEASE_APP_SCHEME" ]; then
+      RUN_APP_PATH="Build/Products/Debug-iphonesimulator/$RELEASE_APP_PRODUCT_NAME.app"
+    else
+      RUN_APP_PATH="Build/Products/Debug-iphonesimulator/$DEV_APP_PRODUCT_NAME.app"
+    fi
+  fi
+
+  export SUNCLUB_FLAVOR APP_SCHEME APP_IDENTIFIER RUN_APP_PATH
+}
+
+resolve_version_metadata() {
+  if [ "${SUNCLUB_SKIP_VERSION_RESOLUTION:-0}" = "1" ]; then
+    return 0
+  fi
+
+  local exports
+  exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell)"
+  eval "$exports"
+  export SUNCLUB_MARKETING_VERSION SUNCLUB_BUILD_NUMBER
+}
+
+export_tuist_manifest_env() {
+  export TUIST_SUNCLUB_FLAVOR="$SUNCLUB_FLAVOR"
+  export TUIST_SUNCLUB_MARKETING_VERSION="${SUNCLUB_MARKETING_VERSION:-}"
+  export TUIST_SUNCLUB_BUILD_NUMBER="${SUNCLUB_BUILD_NUMBER:-}"
+  export TUIST_TEAM_ID="${TEAM_ID:-}"
+}
+
 ensure_local_state() {
   mkdir -p \
     "$REPO_ROOT/.build" \
@@ -24,14 +79,20 @@ ensure_local_state() {
 setup_local_tooling_env() {
   ensure_local_state
 
+  export MISE_CONFIG_DIR="$REPO_ROOT/.config/mise"
   export UV_CACHE_DIR="$REPO_ROOT/.cache/uv"
   export UV_PROJECT_ENVIRONMENT="$REPO_ROOT/.venv"
   export HK_CACHE_DIR="$REPO_ROOT/.cache/hk"
   export HK_STATE_DIR="$REPO_ROOT/.state/hk"
   export npm_config_cache="$REPO_ROOT/.cache/npm"
+
+  apply_flavor_defaults
+  resolve_version_metadata
+  export_tuist_manifest_env
 }
 
 run_mise() {
+  command mise trust "$REPO_ROOT/mise.toml" >/dev/null 2>&1 || true
   mise "$@"
 }
 
@@ -61,8 +122,34 @@ workspace_is_generated() {
   [ -d "$REPO_ROOT/$APP_WORKSPACE" ]
 }
 
+workspace_has_scheme() {
+  xcodebuild -list -workspace "$REPO_ROOT/$APP_WORKSPACE" 2>/dev/null |
+    grep -Eq "^[[:space:]]+$APP_SCHEME$"
+}
+
+workspace_needs_regeneration() {
+  local generation_marker="$REPO_ROOT/$APP_WORKSPACE/.tuist-generated"
+  local manifest
+
+  if [ ! -f "$generation_marker" ]; then
+    return 0
+  fi
+
+  for manifest in \
+    "$REPO_ROOT/app/Tuist.swift" \
+    "$REPO_ROOT/app/Workspace.swift" \
+    "$REPO_ROOT/app/Tuist/Package.swift" \
+    "$REPO_ROOT/app/Sunclub/Project.swift"; do
+    if [ -e "$manifest" ] && [ "$manifest" -nt "$generation_marker" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 ensure_workspace_generated() {
-  if workspace_is_generated; then
+  if workspace_is_generated && workspace_has_scheme && ! workspace_needs_regeneration; then
     return 0
   fi
 
@@ -102,4 +189,21 @@ resolve_simulator_udid() {
   run_repo_python_module scripts.resolve_simulator \
     --name "$1" \
     --device-type-name "$2"
+}
+
+is_beta_xcode() {
+  xcodebuild -version 2>/dev/null | grep -qi 'beta' ||
+    xcode-select -p 2>/dev/null | grep -qi 'beta'
+}
+
+should_disable_swift_compile_cache() {
+  [ "${ACT:-}" = "true" ] ||
+    [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-0}" = "1" ] ||
+    is_beta_xcode
+}
+
+has_app_store_connect_auth() {
+  [ -n "${ASC_KEY_FILE:-}" ] &&
+    [ -n "${ASC_KEY_ID:-}" ] &&
+    [ -n "${ASC_ISSUER_ID:-}" ]
 }
