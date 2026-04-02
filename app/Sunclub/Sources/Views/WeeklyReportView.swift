@@ -4,6 +4,7 @@ struct WeeklyReportView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
+    @State private var insights = SunscreenUsageInsights.empty
 
     var body: some View {
         SunLightScreen {
@@ -33,11 +34,13 @@ struct WeeklyReportView: View {
                 weeklyChart
                     .frame(maxWidth: .infinity, alignment: .center)
 
+                usageInsightsSection
+
                 Spacer(minLength: 0)
             }
         }
         .onAppear {
-            report = appState.last7DaysReport()
+            refreshReport()
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -77,6 +80,109 @@ struct WeeklyReportView: View {
             }
             return records.contains(calendar.startOfDay(for: day))
         }
+    }
+
+    private var usageInsightsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("From Your Logs")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            if let mostUsedSPF = insights.mostUsedSPF {
+                WeeklyInsightCard(
+                    eyebrow: "Most Used SPF",
+                    value: mostUsedSPF.title,
+                    detail: mostUsedSPF.detail,
+                    valueAccessibilityIdentifier: "weekly.mostUsedSPFValue"
+                )
+            }
+
+            if !insights.recentNotes.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Recent Notes")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    VStack(spacing: 10) {
+                        ForEach(Array(insights.recentNotes.enumerated()), id: \.offset) { index, note in
+                            WeeklyRecentNoteRow(
+                                note: note,
+                                index: index
+                            )
+                        }
+                    }
+                }
+                .accessibilityIdentifier("weekly.recentNotes")
+            }
+
+            if !insights.hasContent {
+                Text("Add SPF or a note while logging to see what you use most often.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityIdentifier("weekly.usageInsightsPlaceholder")
+            }
+        }
+        .accessibilityIdentifier("weekly.usageInsights")
+    }
+
+    private func refreshReport() {
+        report = appState.last7DaysReport()
+        insights = appState.sunscreenUsageInsights()
+    }
+}
+
+private struct WeeklyInsightCard: View {
+    let eyebrow: String
+    let value: String
+    let detail: String
+    let valueAccessibilityIdentifier: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(eyebrow)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            Text(value)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+                .accessibilityIdentifier(valueAccessibilityIdentifier)
+
+            Text(detail)
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+        .accessibilityIdentifier("weekly.mostUsedSPFCard")
+    }
+}
+
+private struct WeeklyRecentNoteRow: View {
+    let note: RecentUsageNote
+    let index: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(note.date.formatted(.dateTime.month(.abbreviated).day()))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+
+            Text(note.text)
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.ink)
+                .accessibilityIdentifier("weekly.recentNoteText.\(index)")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
     }
 }
 

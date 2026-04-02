@@ -15,6 +15,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
    - Confirms the verification and shows the updated streak.
 5. `Weekly Summary`
    - Shows the real `appliedCount / 7` result for the past week.
+   - Surfaces the most-used logged SPF and recent notes when that metadata exists.
 6. `Settings`
    - `Notification Time` updates the daily reminder time.
    - Reapply reminder settings stay local to the device.
@@ -24,6 +25,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - Daily logging records a `DailyRecord`.
 - Reminder scheduling still uses `UNUserNotificationCenter` and the existing weekly background refresh path.
 - Streaks and weekly summaries still come from local `CalendarAnalytics`.
+- Optional SPF and notes metadata now feed a lightweight recap inside `Weekly Summary` and day detail in `History`.
 - All data remains local on device. There are no accounts, uploads, or analytics SDKs.
 
 ## Project Structure

@@ -179,6 +179,53 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testSunscreenUsageInsightsReturnsMostUsedSPF() {
+        let records = [
+            makeDailyRecord(dayOffset: 0, spfLevel: 50),
+            makeDailyRecord(dayOffset: 1, spfLevel: 30),
+            makeDailyRecord(dayOffset: 2, spfLevel: 50),
+            makeDailyRecord(dayOffset: 3, spfLevel: nil)
+        ]
+
+        let insights = SunscreenUsageAnalytics.insights(from: records)
+
+        XCTAssertEqual(insights.mostUsedSPF?.level, 50)
+        XCTAssertEqual(insights.mostUsedSPF?.count, 2)
+        XCTAssertEqual(insights.mostUsedSPF?.totalLoggedCount, 3)
+    }
+
+    @MainActor
+    func testSunscreenUsageInsightsBreaksSPFTiesByRecency() {
+        let records = [
+            makeDailyRecord(dayOffset: 4, spfLevel: 30),
+            makeDailyRecord(dayOffset: 1, spfLevel: 30),
+            makeDailyRecord(dayOffset: 2, spfLevel: 50),
+            makeDailyRecord(dayOffset: 0, spfLevel: 50)
+        ]
+
+        let insights = SunscreenUsageAnalytics.insights(from: records)
+
+        XCTAssertEqual(insights.mostUsedSPF?.level, 50)
+    }
+
+    @MainActor
+    func testSunscreenUsageInsightsReturnsRecentTrimmedNotesNewestFirst() {
+        let records = [
+            makeDailyRecord(dayOffset: 0, notes: "  Before beach walk  "),
+            makeDailyRecord(dayOffset: 1, notes: "Applied before morning run"),
+            makeDailyRecord(dayOffset: 2, notes: "   "),
+            makeDailyRecord(dayOffset: 3, notes: nil)
+        ]
+
+        let insights = SunscreenUsageAnalytics.insights(from: records, recentNotesLimit: 2)
+
+        XCTAssertEqual(insights.recentNotes.map(\.text), [
+            "Before beach walk",
+            "Applied before morning run"
+        ])
+    }
+
+    @MainActor
     func testLongestStreakUpdatesOnNewRecord() throws {
         let state = try makeAppState()
 
@@ -268,6 +315,21 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
         XCTAssertTrue(state.verificationSuccessPresentation?.isPersonalBest ?? false)
+    }
+
+    @MainActor
+    func testRecordVerificationSuccessStoresSPFAndTrimmedNotes() throws {
+        let state = try makeAppState()
+
+        state.recordVerificationSuccess(
+            method: .manual,
+            verificationDuration: 0.8,
+            spfLevel: 50,
+            notes: "  Before morning run  "
+        )
+
+        XCTAssertEqual(state.records.first?.spfLevel, 50)
+        XCTAssertEqual(state.records.first?.notes, "Before morning run")
     }
 
     @MainActor
@@ -424,6 +486,27 @@ final class SunclubTests: XCTestCase {
         return AppState(
             context: ModelContext(container),
             notificationManager: notificationManager
+        )
+    }
+
+    @MainActor
+    private func makeDailyRecord(
+        dayOffset: Int,
+        hour: Int = 9,
+        spfLevel: Int? = nil,
+        notes: String? = nil
+    ) -> DailyRecord {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.date(byAdding: .day, value: -dayOffset, to: today) ?? today
+        let verifiedAt = calendar.date(byAdding: .hour, value: hour, to: day) ?? day
+
+        return DailyRecord(
+            startOfDay: day,
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: spfLevel,
+            notes: notes
         )
     }
 }

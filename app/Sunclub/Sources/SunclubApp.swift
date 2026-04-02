@@ -68,6 +68,8 @@ struct SunclubApp: App {
             appState.completeOnboarding()
         }
 
+        seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
+
         if let requestedRoute {
             if requestedRoute == .verifySuccess {
                 appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
@@ -83,6 +85,40 @@ struct SunclubApp: App {
 
         let rawValue = String(routeArgument.dropFirst("UITEST_ROUTE=".count))
         return AppRoute(rawValue: rawValue)
+    }
+
+    private func seedUsageInsightsForUITestsIfNeeded(arguments: [String]) {
+        guard arguments.contains("UITEST_SEED_USAGE_INSIGHTS") else {
+            return
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let seedData: [(dayOffset: Int, spfLevel: Int?, notes: String?)] = [
+            (0, 50, "Before beach walk"),
+            (1, 30, "Applied before morning run"),
+            (2, 50, nil),
+            (4, 50, "Reapplied after lunch")
+        ]
+
+        for entry in seedData {
+            guard let day = calendar.date(byAdding: .day, value: -entry.dayOffset, to: today),
+                  let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: day) else {
+                continue
+            }
+
+            let record = DailyRecord(
+                startOfDay: day,
+                verifiedAt: verifiedAt,
+                method: .manual,
+                spfLevel: entry.spfLevel,
+                notes: entry.notes
+            )
+            appState.modelContext.insert(record)
+        }
+
+        appState.save()
+        appState.refresh()
     }
 }
 

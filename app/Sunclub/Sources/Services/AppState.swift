@@ -138,10 +138,11 @@ final class AppState {
     ) {
         let now = Date()
         let today = calendar.startOfDay(for: now)
+        let normalizedNotes = Self.normalizedNotes(notes)
 
         do {
             if let existing = try verificationStore.record(for: today) {
-                apply(verificationValues: (method, verificationDuration, spfLevel, notes), to: existing, verifiedAt: now)
+                apply(verificationValues: (method, verificationDuration, spfLevel, normalizedNotes), to: existing, verifiedAt: now)
                 try modelContext.save()
             } else {
                 let record = DailyRecord(
@@ -150,7 +151,7 @@ final class AppState {
                     method: method,
                     verificationDuration: verificationDuration,
                     spfLevel: spfLevel,
-                    notes: notes
+                    notes: normalizedNotes
                 )
                 modelContext.insert(record)
                 do {
@@ -158,7 +159,7 @@ final class AppState {
                 } catch {
                     modelContext.rollback()
                     if let existing = try verificationStore.record(for: today) {
-                        apply(verificationValues: (method, verificationDuration, spfLevel, notes), to: existing, verifiedAt: now)
+                        apply(verificationValues: (method, verificationDuration, spfLevel, normalizedNotes), to: existing, verifiedAt: now)
                         try modelContext.save()
                     }
                 }
@@ -172,12 +173,16 @@ final class AppState {
 
     func recordVerificationSuccess(
         method: VerificationMethod,
-        verificationDuration: Double? = nil
+        verificationDuration: Double? = nil,
+        spfLevel: Int? = nil,
+        notes: String? = nil
     ) {
         let previousLongestStreak = settings.longestStreak
         markAppliedToday(
             method: method,
-            verificationDuration: verificationDuration
+            verificationDuration: verificationDuration,
+            spfLevel: spfLevel,
+            notes: notes
         )
         verificationSuccessPresentation = VerificationSuccessPresentation(
             streak: currentStreak,
@@ -289,6 +294,10 @@ final class AppState {
         CalendarAnalytics.weeklyReport(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
     }
 
+    func sunscreenUsageInsights(recentNotesLimit: Int = 3) -> SunscreenUsageInsights {
+        SunscreenUsageAnalytics.insights(from: records, recentNotesLimit: recentNotesLimit)
+    }
+
     func recordStartsForTesting() -> [Date] {
         records.map { calendar.startOfDay(for: $0.startOfDay) }
     }
@@ -305,5 +314,14 @@ final class AppState {
         Task {
             await notificationManager.cancelReapplyReminders()
         }
+    }
+
+    private static func normalizedNotes(_ notes: String?) -> String? {
+        guard let notes else {
+            return nil
+        }
+
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
