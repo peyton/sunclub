@@ -20,7 +20,7 @@ private enum NotificationConstants {
 @MainActor
 protocol NotificationScheduling: AnyObject {
     func scheduleReminders(using state: AppState) async
-    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async
+    func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async
     func cancelReapplyReminders() async
 }
 
@@ -242,19 +242,19 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return try context.fetch(descriptor).map { $0.startOfDay }
     }
 
-    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async {
+    func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
 
         let trigger = UNTimeIntervalNotificationTrigger(
-            timeInterval: TimeInterval(intervalMinutes * 60),
+            timeInterval: TimeInterval(plan.intervalMinutes * 60),
             repeats: false
         )
 
         let request = UNNotificationRequest(
             identifier: "\(NotificationConstants.reapplyPrefix)\(Int(Date().timeIntervalSince1970))",
             content: makeContent(
-                title: "Time to reapply",
-                body: "It's been \(intervalMinutes) minutes — reapply sunscreen for continued protection.",
+                title: plan.notificationTitle,
+                body: plan.notificationBody,
                 categoryIdentifier: NotificationConstants.reapplyCategoryID,
                 route: notificationRoute(for: route),
                 type: "reapply",

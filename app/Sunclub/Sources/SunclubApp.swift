@@ -62,10 +62,24 @@ struct SunclubApp: App {
 
         let arguments = ProcessInfo.processInfo.arguments
         let requestedRoute = requestedUITestRoute(from: arguments)
+        let requestedUVIndex = requestedUITestUVIndex(from: arguments)
+        let requestedReapplyInterval = requestedUITestReapplyInterval(from: arguments)
 
         if arguments.contains("UITEST_COMPLETE_ONBOARDING") || requestedRoute.map({ $0 != .welcome }) == true,
            !appState.settings.hasCompletedOnboarding {
             appState.completeOnboarding()
+        }
+
+        if let requestedUVIndex {
+            appState.setUVReadingForTesting(UVReading(index: requestedUVIndex))
+        }
+
+        if arguments.contains("UITEST_REAPPLY_ENABLED") {
+            appState.settings.reapplyReminderEnabled = true
+            if let requestedReapplyInterval {
+                appState.settings.reapplyIntervalMinutes = max(30, min(480, requestedReapplyInterval))
+            }
+            appState.save()
         }
 
         if let requestedRoute {
@@ -83,6 +97,22 @@ struct SunclubApp: App {
 
         let rawValue = String(routeArgument.dropFirst("UITEST_ROUTE=".count))
         return AppRoute(rawValue: rawValue)
+    }
+
+    private func requestedUITestUVIndex(from arguments: [String]) -> Int? {
+        requestedIntegerArgument(withPrefix: "UITEST_UV_INDEX=", from: arguments)
+    }
+
+    private func requestedUITestReapplyInterval(from arguments: [String]) -> Int? {
+        requestedIntegerArgument(withPrefix: "UITEST_REAPPLY_INTERVAL=", from: arguments)
+    }
+
+    private func requestedIntegerArgument(withPrefix prefix: String, from arguments: [String]) -> Int? {
+        guard let argument = arguments.first(where: { $0.hasPrefix(prefix) }) else {
+            return nil
+        }
+
+        return Int(argument.dropFirst(prefix.count))
     }
 }
 
