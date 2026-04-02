@@ -4,6 +4,7 @@ import UIKit
 
 @main
 struct SunclubApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState: AppState
     @State private var router = AppRouter()
@@ -47,11 +48,17 @@ struct SunclubApp: App {
                         applyUITestLaunchConfigurationIfNeeded()
                         return
                     }
-                    Task {
-                        guard appState.settings.hasCompletedOnboarding else { return }
-                        _ = await NotificationManager.shared.configure()
-                        await NotificationManager.shared.scheduleReminders(using: appState)
-                    }
+                    refreshReminderScheduleIfNeeded()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    refreshReminderScheduleIfNeeded()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                    refreshReminderScheduleIfNeeded()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                    refreshReminderScheduleIfNeeded()
                 }
         }
     }
@@ -62,10 +69,24 @@ struct SunclubApp: App {
 
         let arguments = ProcessInfo.processInfo.arguments
         let requestedRoute = requestedUITestRoute(from: arguments)
+        let requestedUVIndex = requestedUITestUVIndex(from: arguments)
+        let requestedReapplyInterval = requestedUITestReapplyInterval(from: arguments)
 
         if arguments.contains("UITEST_COMPLETE_ONBOARDING") || requestedRoute.map({ $0 != .welcome }) == true,
            !appState.settings.hasCompletedOnboarding {
             appState.completeOnboarding()
+        }
+
+        if let requestedUVIndex {
+            appState.setUVReadingForTesting(UVReading(index: requestedUVIndex))
+        }
+
+        if arguments.contains("UITEST_REAPPLY_ENABLED") {
+            appState.settings.reapplyReminderEnabled = true
+            if let requestedReapplyInterval {
+                appState.settings.reapplyIntervalMinutes = max(30, min(480, requestedReapplyInterval))
+            }
+            appState.save()
         }
 
         applyUITestSeedData(from: arguments)
@@ -87,15 +108,31 @@ struct SunclubApp: App {
         return AppRoute(rawValue: rawValue)
     }
 
-    private func applyUITestSeedData(from arguments: [String]) {
-        guard let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) else {
-            return
+    private func requestedUITestUVIndex(from arguments: [String]) -> Int? {
+        requestedIntegerArgument(withPrefix: "UITEST_UV_INDEX=", from: arguments)
+    }
+
+    private func requestedUITestReapplyInterval(from arguments: [String]) -> Int? {
+        requestedIntegerArgument(withPrefix: "UITEST_REAPPLY_INTERVAL=", from: arguments)
+    }
+
+    private func requestedIntegerArgument(withPrefix prefix: String, from arguments: [String]) -> Int? {
+        guard let argument = arguments.first(where: { $0.hasPrefix(prefix) }) else {
+            return nil
         }
 
-        let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
-        guard scenario == "editBackfill" else { return }
+        return Int(argument.dropFirst(prefix.count))
+    }
 
-        seedHistoryEditBackfillScenario()
+    private func applyUITestSeedData(from arguments: [String]) {
+        if let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) {
+            let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
+            if scenario == "editBackfill" {
+                seedHistoryEditBackfillScenario()
+            }
+        }
+
+        seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
     }
 
     private func seedHistoryEditBackfillScenario() {
@@ -114,8 +151,51 @@ struct SunclubApp: App {
             notes: "Seeded today"
         )
         appState.modelContext.insert(todayRecord)
-        appState.refresh()
         appState.save()
+        appState.refresh()
+    }
+
+    private func seedUsageInsightsForUITestsIfNeeded(arguments: [String]) {
+        guard arguments.contains("UITEST_SEED_USAGE_INSIGHTS") else {
+            return
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let seedData: [(dayOffset: Int, spfLevel: Int?, notes: String?)] = [
+            (0, 50, "Before beach walk"),
+            (1, 30, "Applied before morning run"),
+            (2, 50, nil),
+            (4, 50, "Reapplied after lunch")
+        ]
+
+        for entry in seedData {
+            guard let day = calendar.date(byAdding: .day, value: -entry.dayOffset, to: today),
+                  let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: day) else {
+                continue
+            }
+
+            let record = DailyRecord(
+                startOfDay: day,
+                verifiedAt: verifiedAt,
+                method: .manual,
+                spfLevel: entry.spfLevel,
+                notes: entry.notes
+            )
+            appState.modelContext.insert(record)
+        }
+
+        appState.save()
+        appState.refresh()
+    }
+
+    private func refreshReminderScheduleIfNeeded() {
+        guard !isRunningTests, appState.settings.hasCompletedOnboarding else { return }
+
+        Task {
+            _ = await NotificationManager.shared.configure()
+            await NotificationManager.shared.scheduleReminders(using: appState)
+        }
     }
 }
 

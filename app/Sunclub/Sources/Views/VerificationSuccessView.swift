@@ -70,26 +70,19 @@ struct VerificationSuccessView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(AppPalette.sun)
 
-            Text("Reapply reminder in \(formatInterval(appState.settings.reapplyIntervalMinutes))")
+            Text(appState.reapplyReminderPlan.confirmationText)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
+                .accessibilityIdentifier("success.reapplyMessage")
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.4))
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(appState.reapplyReminderPlan.confirmationText)
         .accessibilityIdentifier("success.reapplyNote")
-    }
-
-    private func formatInterval(_ minutes: Int) -> String {
-        if minutes < 60 {
-            return "\(minutes) min"
-        } else {
-            let hours = minutes / 60
-            let remaining = minutes % 60
-            return remaining > 0 ? "\(hours)h \(remaining)m" : "\(hours)h"
-        }
     }
 }
 

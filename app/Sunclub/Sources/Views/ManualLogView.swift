@@ -33,23 +33,25 @@ struct ManualLogView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            Button("Log Today") {
-                appState.recordVerificationSuccess(
-                    method: .manual,
-                    verificationDuration: nil,
-                    spfLevel: selectedSPF,
-                    notes: notes
-                )
-                if appState.settings.reapplyReminderEnabled {
-                    appState.scheduleReapplyReminder()
-                }
-                router.open(.verifySuccess)
-            }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("manualLog.logToday")
+            Button("Log Today", action: logToday)
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("manualLog.logToday")
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+    }
+
+    private func logToday() {
+        appState.recordVerificationSuccess(
+            method: .manual,
+            verificationDuration: nil,
+            spfLevel: selectedSPF,
+            notes: notes
+        )
+        if appState.settings.reapplyReminderEnabled {
+            appState.scheduleReapplyReminder()
+        }
+        router.open(.verifySuccess)
     }
 }
 

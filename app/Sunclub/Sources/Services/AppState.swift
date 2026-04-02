@@ -2,6 +2,55 @@ import Foundation
 import Observation
 import SwiftData
 
+struct HomeTodayCardPresentation: Equatable {
+    let title: String
+    let detail: String
+    let uvHeadline: String?
+    let uvSymbolName: String?
+}
+
+struct ReapplyReminderPlan: Equatable {
+    let baseIntervalMinutes: Int
+    let intervalMinutes: Int
+    let notificationTitle: String
+    let notificationBody: String
+    let confirmationText: String
+    let isElevated: Bool
+
+    init(baseIntervalMinutes: Int, uvReading: UVReading?) {
+        let level = uvReading?.level ?? .unknown
+        let adjustedInterval = max(30, baseIntervalMinutes - level.reapplyAdvanceMinutes)
+        let isElevated = level.reapplyLabelPrefix != nil
+
+        self.baseIntervalMinutes = baseIntervalMinutes
+        self.intervalMinutes = adjustedInterval
+        self.isElevated = isElevated
+        self.notificationTitle = isElevated ? "Reapply sooner today" : "Time to reapply"
+
+        if let strongerMessage = level.strongerReapplyMessage {
+            self.notificationBody = "\(strongerMessage) It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
+        } else {
+            self.notificationBody = "It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
+        }
+
+        if let prefix = level.reapplyLabelPrefix {
+            self.confirmationText = "\(prefix): reminder in \(Self.formattedInterval(adjustedInterval))"
+        } else {
+            self.confirmationText = "Reapply reminder in \(Self.formattedInterval(adjustedInterval))"
+        }
+    }
+
+    private static func formattedInterval(_ minutes: Int) -> String {
+        if minutes < 60 {
+            return "\(minutes) min"
+        }
+
+        let hours = minutes / 60
+        let remaining = minutes % 60
+        return remaining > 0 ? "\(hours)h \(remaining)m" : "\(hours)h"
+    }
+}
+
 struct VerificationSuccessPresentation: Equatable {
     let streak: Int
     let isPersonalBest: Bool
@@ -35,19 +84,43 @@ final class AppState {
     var verificationSuccessPresentation: VerificationSuccessPresentation?
     private let verificationStore: VerificationStore
     private let notificationManager: NotificationScheduling
+    private let uvIndexService: UVIndexService
     private(set) var records: [DailyRecord] = []
+    private(set) var uvReading: UVReading?
     private let calendar = Calendar.current
+    private var uvReadingOverride: UVReading?
 
     convenience init(context: ModelContext) {
-        self.init(context: context, notificationManager: NotificationManager.shared)
+        self.init(
+            context: context,
+            notificationManager: NotificationManager.shared,
+            uvIndexService: UVIndexService()
+        )
     }
 
-    init(context: ModelContext, notificationManager: NotificationScheduling) {
+    convenience init(
+        context: ModelContext,
+        notificationManager: NotificationScheduling
+    ) {
+        self.init(
+            context: context,
+            notificationManager: notificationManager,
+            uvIndexService: UVIndexService()
+        )
+    }
+
+    init(
+        context: ModelContext,
+        notificationManager: NotificationScheduling,
+        uvIndexService: UVIndexService
+    ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager
+        self.uvIndexService = uvIndexService
         settings = Self.loadOrCreateSettings(from: context)
         refresh()
+        refreshUVReadingIfNeeded()
     }
 
     func refresh() {
@@ -83,8 +156,18 @@ final class AppState {
 
     private func saveAndRescheduleReminders() {
         save()
+        scheduleReminders()
+    }
+
+    func scheduleReminders() {
         Task {
             await notificationManager.scheduleReminders(using: self)
+        }
+    }
+
+    private func refreshStreakRiskReminder() {
+        Task {
+            await notificationManager.refreshStreakRiskReminder(using: self)
         }
     }
 
@@ -109,8 +192,43 @@ final class AppState {
     }
 
     func updateDailyReminder(hour: Int, minute: Int) {
-        settings.reminderHour = hour
-        settings.reminderMinute = minute
+        var reminderSettings = settings.smartReminderSettings
+        let reminderTime = ReminderTime(hour: hour, minute: minute)
+        reminderSettings.weekdayTime = reminderTime
+        reminderSettings.weekendTime = reminderTime
+        settings.smartReminderSettings = reminderSettings
+        saveAndRescheduleReminders()
+    }
+
+    func updateReminderTime(for kind: ReminderScheduleKind, hour: Int, minute: Int) {
+        var reminderSettings = settings.smartReminderSettings
+        let reminderTime = ReminderTime(hour: hour, minute: minute)
+
+        switch kind {
+        case .weekday:
+            reminderSettings.weekdayTime = reminderTime
+        case .weekend:
+            reminderSettings.weekendTime = reminderTime
+        }
+
+        settings.smartReminderSettings = reminderSettings
+        saveAndRescheduleReminders()
+    }
+
+    func updateTravelTimeZoneHandling(followsTravelTimeZone: Bool) {
+        var reminderSettings = settings.smartReminderSettings
+        reminderSettings.followsTravelTimeZone = followsTravelTimeZone
+        if !followsTravelTimeZone {
+            reminderSettings.anchoredTimeZoneIdentifier = TimeZone.autoupdatingCurrent.identifier
+        }
+        settings.smartReminderSettings = reminderSettings
+        saveAndRescheduleReminders()
+    }
+
+    func updateStreakRiskReminder(enabled: Bool) {
+        var reminderSettings = settings.smartReminderSettings
+        reminderSettings.streakRiskEnabled = enabled
+        settings.smartReminderSettings = reminderSettings
         saveAndRescheduleReminders()
     }
 
@@ -121,8 +239,54 @@ final class AppState {
     }
 
     var reminderDate: Date {
+        reminderDate(for: ReminderPlanner.scheduleKind(for: Date(), calendar: calendar))
+    }
+
+    func reminderDate(for kind: ReminderScheduleKind) -> Date {
+        let reminderTime = settings.smartReminderSettings.time(for: kind)
         let today = calendar.startOfDay(for: Date())
-        return calendar.date(bySettingHour: settings.reminderHour, minute: settings.reminderMinute, second: 0, of: today) ?? today
+        return calendar.date(bySettingHour: reminderTime.hour, minute: reminderTime.minute, second: 0, of: today) ?? today
+    }
+
+    var todayCardPresentation: HomeTodayCardPresentation {
+        let hasLoggedToday = record(for: Date()) != nil
+        let title = hasLoggedToday ? "Already logged today" : "Ready to log today"
+        let defaultDetail = hasLoggedToday
+            ? "You can update today's check-in any time. Sunclub will keep just one record for today."
+            : "Log today manually to keep your sunscreen routine moving."
+
+        guard let level = uvReading?.level,
+              let uvHeadline = level.homeHeadline else {
+            return HomeTodayCardPresentation(
+                title: title,
+                detail: defaultDetail,
+                uvHeadline: nil,
+                uvSymbolName: nil
+            )
+        }
+
+        let detail: String
+        if reapplyReminderPlan.isElevated {
+            detail = hasLoggedToday
+                ? "You've logged today. Reapply sooner if you're spending time outside."
+                : "Log today manually, then plan to reapply sooner while UV stays elevated."
+        } else {
+            detail = defaultDetail
+        }
+
+        return HomeTodayCardPresentation(
+            title: title,
+            detail: detail,
+            uvHeadline: uvHeadline,
+            uvSymbolName: level.symbolName
+        )
+    }
+
+    var reapplyReminderPlan: ReapplyReminderPlan {
+        ReapplyReminderPlan(
+            baseIntervalMinutes: settings.reapplyIntervalMinutes,
+            uvReading: uvReading
+        )
     }
 
     func nextDailyPhrase() -> String {
@@ -205,6 +369,7 @@ final class AppState {
                 cancelReapplyRemindersIfNeeded()
             }
             updateLongestStreak()
+            refreshStreakRiskReminder()
         }
     }
 
@@ -224,7 +389,7 @@ final class AppState {
         guard settings.reapplyReminderEnabled else { return }
         Task {
             await notificationManager.scheduleReapplyReminder(
-                intervalMinutes: settings.reapplyIntervalMinutes,
+                plan: reapplyReminderPlan,
                 route: preferredCheckInRoute
             )
         }
@@ -242,6 +407,21 @@ final class AppState {
 
     func record(for day: Date) -> DailyRecord? {
         (try? verificationStore.record(for: day)).flatMap { $0 }
+    }
+
+    func refreshUVReadingIfNeeded() {
+        if let uvReadingOverride {
+            uvReading = uvReadingOverride
+            return
+        }
+
+        uvIndexService.fetchUVIndex()
+        uvReading = uvIndexService.currentReading
+    }
+
+    func setUVReadingForTesting(_ reading: UVReading?) {
+        uvReadingOverride = reading
+        uvReading = reading
     }
 
     private func normalizeLegacyVerificationMethods(in fetchedRecords: [DailyRecord]) -> Bool {
@@ -336,6 +516,7 @@ final class AppState {
             }
             refresh()
             updateLongestStreak()
+            refreshStreakRiskReminder()
         } catch {
             modelContext.rollback()
         }
@@ -391,19 +572,23 @@ final class AppState {
     }
 
     var currentStreak: Int {
-        CalendarAnalytics.currentStreak(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
+        CalendarAnalytics.currentStreak(records: recordedDays, now: Date(), calendar: calendar)
     }
 
     func last7DaysReport() -> WeeklyReport {
         CalendarAnalytics.weeklyReport(records: records.map { $0.startOfDay }, now: Date(), calendar: calendar)
     }
 
+    func sunscreenUsageInsights(recentNotesLimit: Int = 3) -> SunscreenUsageInsights {
+        SunscreenUsageAnalytics.insights(from: records, recentNotesLimit: recentNotesLimit)
+    }
+
     func recordStartsForTesting() -> [Date] {
-        records.map { calendar.startOfDay(for: $0.startOfDay) }
+        recordedDays
     }
 
     private func syncLongestStreakIfNeeded() {
-        let computed = CalendarAnalytics.longestStreak(records: records.map { $0.startOfDay }, calendar: calendar)
+        let computed = CalendarAnalytics.longestStreak(records: recordedDays, calendar: calendar)
         if computed > settings.longestStreak {
             settings.longestStreak = computed
             save()
@@ -414,5 +599,9 @@ final class AppState {
         Task {
             await notificationManager.cancelReapplyReminders()
         }
+    }
+
+    var recordedDays: [Date] {
+        records.map { calendar.startOfDay(for: $0.startOfDay) }
     }
 }

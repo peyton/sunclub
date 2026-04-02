@@ -32,4 +32,13 @@ final class DailyRecord {
         get { VerificationMethod(rawValue: methodRawValue) ?? .manual }
         set { methodRawValue = newValue.rawValue }
     }
+
+    var trimmedNotes: String? {
+        guard let notes else {
+            return nil
+        }
+
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }

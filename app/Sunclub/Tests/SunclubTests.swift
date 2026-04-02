@@ -6,7 +6,8 @@ import XCTest
 @MainActor
 final class MockNotificationManager: NotificationScheduling {
     private(set) var scheduleRemindersCount = 0
-    private(set) var scheduleReapplyReminderIntervals: [Int] = []
+    private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
+    private(set) var refreshStreakRiskReminderCount = 0
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var cancelReapplyRemindersCount = 0
 
@@ -14,9 +15,13 @@ final class MockNotificationManager: NotificationScheduling {
         scheduleRemindersCount += 1
     }
 
-    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async {
-        scheduleReapplyReminderIntervals.append(intervalMinutes)
+    func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
+        scheduleReapplyReminderPlans.append(plan)
         scheduleReapplyReminderRoutes.append(route)
+    }
+
+    func refreshStreakRiskReminder(using state: AppState) async {
+        refreshStreakRiskReminderCount += 1
     }
 
     func cancelReapplyReminders() async {
@@ -113,6 +118,49 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.settings.reminderHour, 9)
         XCTAssertEqual(state.settings.reminderMinute, 45)
+        XCTAssertEqual(state.settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 9, minute: 45))
+        XCTAssertEqual(state.settings.smartReminderSettings.weekendTime, ReminderTime(hour: 9, minute: 45))
+    }
+
+    @MainActor
+    func testUpdateReminderTimePersistsSeparateWeekdayAndWeekendSchedules() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateReminderTime(for: .weekday, hour: 7, minute: 30)
+        state.updateReminderTime(for: .weekend, hour: 9, minute: 15)
+
+        await Task.yield()
+        XCTAssertEqual(state.settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 7, minute: 30))
+        XCTAssertEqual(state.settings.smartReminderSettings.weekendTime, ReminderTime(hour: 9, minute: 15))
+        XCTAssertEqual(state.settings.reminderHour, 7)
+        XCTAssertEqual(state.settings.reminderMinute, 30)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 2)
+    }
+
+    @MainActor
+    func testUpdateTravelTimeZoneHandlingAnchorsCurrentZoneWhenDisabled() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateTravelTimeZoneHandling(followsTravelTimeZone: false)
+
+        await Task.yield()
+        XCTAssertFalse(state.settings.smartReminderSettings.followsTravelTimeZone)
+        XCTAssertEqual(state.settings.smartReminderSettings.anchoredTimeZoneIdentifier, TimeZone.autoupdatingCurrent.identifier)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
+    }
+
+    @MainActor
+    func testUpdateStreakRiskReminderPersistsAndReschedules() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateStreakRiskReminder(enabled: false)
+
+        await Task.yield()
+        XCTAssertFalse(state.settings.smartReminderSettings.streakRiskEnabled)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
     }
 
     @MainActor
@@ -221,6 +269,53 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testSunscreenUsageInsightsReturnsMostUsedSPF() {
+        let records = [
+            makeDailyRecord(dayOffset: 0, spfLevel: 50),
+            makeDailyRecord(dayOffset: 1, spfLevel: 30),
+            makeDailyRecord(dayOffset: 2, spfLevel: 50),
+            makeDailyRecord(dayOffset: 3, spfLevel: nil)
+        ]
+
+        let insights = SunscreenUsageAnalytics.insights(from: records)
+
+        XCTAssertEqual(insights.mostUsedSPF?.level, 50)
+        XCTAssertEqual(insights.mostUsedSPF?.count, 2)
+        XCTAssertEqual(insights.mostUsedSPF?.totalLoggedCount, 3)
+    }
+
+    @MainActor
+    func testSunscreenUsageInsightsBreaksSPFTiesByRecency() {
+        let records = [
+            makeDailyRecord(dayOffset: 4, spfLevel: 30),
+            makeDailyRecord(dayOffset: 1, spfLevel: 30),
+            makeDailyRecord(dayOffset: 2, spfLevel: 50),
+            makeDailyRecord(dayOffset: 0, spfLevel: 50)
+        ]
+
+        let insights = SunscreenUsageAnalytics.insights(from: records)
+
+        XCTAssertEqual(insights.mostUsedSPF?.level, 50)
+    }
+
+    @MainActor
+    func testSunscreenUsageInsightsReturnsRecentTrimmedNotesNewestFirst() {
+        let records = [
+            makeDailyRecord(dayOffset: 0, notes: "  Before beach walk  "),
+            makeDailyRecord(dayOffset: 1, notes: "Applied before morning run"),
+            makeDailyRecord(dayOffset: 2, notes: "   "),
+            makeDailyRecord(dayOffset: 3, notes: nil)
+        ]
+
+        let insights = SunscreenUsageAnalytics.insights(from: records, recentNotesLimit: 2)
+
+        XCTAssertEqual(insights.recentNotes.map(\.text), [
+            "Before beach walk",
+            "Applied before morning run"
+        ])
+    }
+
+    @MainActor
     func testLongestStreakUpdatesOnNewRecord() throws {
         let state = try makeAppState()
 
@@ -287,6 +382,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 2)
     }
 
     @MainActor
@@ -300,6 +396,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 0)
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 1)
     }
 
     @MainActor
@@ -313,10 +410,15 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testRecordVerificationSuccessPersistsSPFAndNotes() throws {
+    func testRecordVerificationSuccessStoresSPFAndTrimmedNotes() throws {
         let state = try makeAppState()
 
-        state.recordVerificationSuccess(method: .manual, spfLevel: 30, notes: "Pool day")
+        state.recordVerificationSuccess(
+            method: .manual,
+            verificationDuration: 0.8,
+            spfLevel: 30,
+            notes: "  Pool day  "
+        )
 
         let record = try XCTUnwrap(state.record(for: Date()))
         XCTAssertEqual(record.spfLevel, 30)
@@ -356,8 +458,62 @@ final class SunclubTests: XCTestCase {
         state.scheduleReapplyReminder()
 
         await Task.yield()
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderIntervals, [90])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
         XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.manualLog])
+    }
+
+    @MainActor
+    func testTodayCardPresentationShowsHighUVMessaging() throws {
+        let state = try makeAppState()
+
+        state.setUVReadingForTesting(UVReading(index: 7))
+
+        let presentation = state.todayCardPresentation
+        XCTAssertEqual(presentation.title, "Ready to log today")
+        XCTAssertEqual(presentation.uvHeadline, "UV is high today")
+        XCTAssertEqual(presentation.uvSymbolName, UVLevel.high.symbolName)
+        XCTAssertTrue(presentation.detail.contains("reapply sooner"))
+    }
+
+    @MainActor
+    func testTodayCardPresentationKeepsDefaultDetailForModerateUV() throws {
+        let state = try makeAppState()
+
+        state.setUVReadingForTesting(UVReading(index: 4))
+
+        let presentation = state.todayCardPresentation
+        XCTAssertEqual(presentation.uvHeadline, "UV is moderate today")
+        XCTAssertEqual(presentation.detail, "Log today manually to keep your sunscreen routine moving.")
+    }
+
+    @MainActor
+    func testReapplyReminderPlanShortensIntervalOnHighUV() throws {
+        let state = try makeAppState()
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.setUVReadingForTesting(UVReading(index: 7))
+
+        let plan = state.reapplyReminderPlan
+
+        XCTAssertTrue(plan.isElevated)
+        XCTAssertEqual(plan.baseIntervalMinutes, 120)
+        XCTAssertEqual(plan.intervalMinutes, 90)
+        XCTAssertEqual(plan.notificationTitle, "Reapply sooner today")
+        XCTAssertTrue(plan.notificationBody.contains("UV is high today"))
+        XCTAssertEqual(plan.confirmationText, "High UV today: reminder in 1h 30m")
+    }
+
+    @MainActor
+    func testScheduleReapplyReminderUsesUVAwarePlan() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.setUVReadingForTesting(UVReading(index: 9))
+        state.scheduleReapplyReminder()
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [60])
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.first?.notificationBody.contains("very high today") ?? false)
     }
 
     @MainActor
@@ -380,6 +536,14 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testUVLevelHighTriggersStrongerReapplyRules() {
+        XCTAssertEqual(UVLevel.high.homeHeadline, "UV is high today")
+        XCTAssertEqual(UVLevel.high.reapplyAdvanceMinutes, 30)
+        XCTAssertEqual(UVLevel.high.reapplyLabelPrefix, "High UV today")
+        XCTAssertNotNil(UVLevel.high.strongerReapplyMessage)
+    }
+
+    @MainActor
     func testSettingsDefaultValues() {
         let settings = Settings()
         XCTAssertFalse(settings.hasCompletedOnboarding)
@@ -389,9 +553,14 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(settings.weeklyWeekday, 1)
         XCTAssertNil(settings.dailyPhraseState)
         XCTAssertNil(settings.weeklyPhraseState)
+        XCTAssertNil(settings.smartReminderSettingsData)
         XCTAssertEqual(settings.longestStreak, 0)
         XCTAssertFalse(settings.reapplyReminderEnabled)
         XCTAssertEqual(settings.reapplyIntervalMinutes, 120)
+        XCTAssertEqual(settings.smartReminderSettings.weekdayTime, ReminderTime(hour: 8, minute: 0))
+        XCTAssertEqual(settings.smartReminderSettings.weekendTime, ReminderTime(hour: 8, minute: 0))
+        XCTAssertTrue(settings.smartReminderSettings.followsTravelTimeZone)
+        XCTAssertTrue(settings.smartReminderSettings.streakRiskEnabled)
     }
 
     @MainActor
@@ -468,15 +637,47 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testRecordVerificationSuccessRefreshesStreakRiskReminder() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.recordVerificationSuccess(method: .manual, verificationDuration: 0.8)
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 1)
+    }
+
+    @MainActor
     private func makeAppState(
-        notificationManager: NotificationScheduling = NotificationManager.shared
+        notificationManager: NotificationScheduling? = nil
     ) throws -> AppState {
         let schema = Schema([DailyRecord.self, Settings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return AppState(
             context: ModelContext(container),
-            notificationManager: notificationManager
+            notificationManager: notificationManager ?? NotificationManager.shared
+        )
+    }
+
+    @MainActor
+    private func makeDailyRecord(
+        dayOffset: Int,
+        hour: Int = 9,
+        spfLevel: Int? = nil,
+        notes: String? = nil
+    ) -> DailyRecord {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.date(byAdding: .day, value: -dayOffset, to: today) ?? today
+        let verifiedAt = calendar.date(byAdding: .hour, value: hour, to: day) ?? day
+
+        return DailyRecord(
+            startOfDay: day,
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: spfLevel,
+            notes: notes
         )
     }
 }

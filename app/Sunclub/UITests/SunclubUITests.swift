@@ -58,9 +58,25 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["settings.manageSubscription"].exists)
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
+        XCTAssertTrue(app.switches["settings.travelToggle"].exists)
+        XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
         XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+    }
+
+    @MainActor
+    func testWeekdayReminderPickerOpensFromSettings() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        let weekdayButton = app.buttons["settings.weekdayReminderTime"]
+        XCTAssertTrue(weekdayButton.waitForExistence(timeout: 5))
+
+        weekdayButton.tap()
+
+        XCTAssertTrue(app.buttons["Save Time"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -69,7 +85,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["settings.notificationTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
 
         performBackSwipe(in: app)
 
@@ -86,6 +102,19 @@ final class SunclubUITests: XCTestCase {
     func testHomeShowsHistoryCard() throws {
         let app = launchHome()
         XCTAssertTrue(app.buttons["home.historyCard"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHomeShowsHighUVStatusFromLaunchOverride() throws {
+        let app = launchHome(additionalArguments: ["UITEST_UV_INDEX=7"])
+
+        let uvHeadline = app.staticTexts["home.uvHeadline"]
+        XCTAssertTrue(uvHeadline.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvHeadline.label, "UV is high today")
+
+        let detail = app.staticTexts["home.todayDetail"]
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(detail.label.contains("reapply sooner"))
     }
 
     @MainActor
@@ -149,6 +178,44 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHighUVReapplyReminderNoteUsesStrongerCopy() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_UV_INDEX=7",
+            "UITEST_REAPPLY_ENABLED",
+            "UITEST_REAPPLY_INTERVAL=120"
+        ])
+
+        app.buttons["home.logManually"].tap()
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        app.buttons["manualLog.logToday"].tap()
+
+        let reapplyMessage = app.staticTexts["success.reapplyMessage"]
+        XCTAssertTrue(reapplyMessage.waitForExistence(timeout: 5))
+        XCTAssertTrue(reapplyMessage.label.contains("High UV today"))
+        XCTAssertTrue(reapplyMessage.label.contains("1h 30m"))
+    }
+
+    @MainActor
+    func testWeeklySummaryShowsUsageInsights() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=weeklySummary",
+            "UITEST_SEED_USAGE_INSIGHTS"
+        ]
+        app.launch()
+
+        let mostUsedSPF = app.staticTexts["SPF 50"]
+        XCTAssertTrue(scrollToElement(mostUsedSPF, in: app))
+        XCTAssertEqual(mostUsedSPF.label, "SPF 50")
+
+        let recentNote = app.staticTexts["Before beach walk"]
+        XCTAssertTrue(scrollToElement(recentNote, in: app))
+        XCTAssertEqual(recentNote.label, "Before beach walk")
+    }
+
+    @MainActor
     private func launchAndCompleteOnboarding() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("UITEST_MODE")
@@ -158,8 +225,13 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func launchHome() -> XCUIApplication {
+        launchHome(additionalArguments: [])
+    }
+
+    @MainActor
+    private func launchHome(additionalArguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"]
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"] + additionalArguments
         app.launch()
         return app
     }
@@ -200,5 +272,25 @@ final class SunclubUITests: XCTestCase {
         let predicate = NSPredicate(format: "label == %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func scrollToElement(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int = 4
+    ) -> Bool {
+        if element.waitForExistence(timeout: 2) {
+            return true
+        }
+
+        for _ in 0..<attempts {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        return false
     }
 }

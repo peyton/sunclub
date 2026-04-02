@@ -23,6 +23,32 @@ def parse_version(version: str) -> tuple[int, ...]:
     return tuple(int(part) for part in version.split("."))
 
 
+def preferred_sdk_runtime_version(platform: str) -> str | None:
+    sdk_names = {
+        "iOS": "iphonesimulator",
+        "tvOS": "appletvsimulator",
+        "watchOS": "watchsimulator",
+        "visionOS": "xrsimulator",
+    }
+
+    sdk_name = sdk_names.get(platform)
+    if sdk_name is None:
+        return None
+
+    try:
+        result = subprocess.run(
+            ["xcrun", "--sdk", sdk_name, "--show-sdk-version"],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+
+    version = result.stdout.strip()
+    return version or None
+
+
 def latest_runtime(
     runtimes: list[dict[str, Any]],
     *,
@@ -43,6 +69,20 @@ def latest_runtime(
         raise RuntimeError(
             f"No available {platform} runtime supports {device_type_name!r}."
         )
+
+    preferred_version = preferred_sdk_runtime_version(platform)
+    if preferred_version is not None:
+        preferred_matches = [
+            runtime
+            for runtime in candidates
+            if str(runtime.get("version")) == preferred_version
+        ]
+        if preferred_matches:
+            return max(
+                preferred_matches,
+                key=lambda runtime: parse_version(str(runtime["version"])),
+            )
+
     return max(candidates, key=lambda runtime: parse_version(str(runtime["version"])))
 
 
