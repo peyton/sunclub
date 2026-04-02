@@ -7,6 +7,7 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/tooling/common.sh"
 
+: "${SUNCLUB_FLAVOR:=prod}"
 setup_local_tooling_env
 
 CLOUDKIT_CONTAINER_ID="${CLOUDKIT_CONTAINER_ID:-iCloud.app.peyton.sunclub}"
