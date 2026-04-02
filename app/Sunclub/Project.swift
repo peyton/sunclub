@@ -21,9 +21,11 @@ let project = Project(
             bundleId: "app.peyton.sunclub",
             deploymentTargets: defaultDeploymentTarget,
             infoPlist: .file(path: "Info.plist"),
-            buildableFolders: [
-                .folder("Sources"),
-                .folder("Resources")
+            sources: [
+                "Sources/**"
+            ],
+            resources: [
+                "Resources/**"
             ],
             entitlements: "Sunclub.entitlements",
             dependencies: [
@@ -46,8 +48,16 @@ let project = Project(
                 ]
             ]),
             sources: [
-                "WidgetExtension/Sources/**"
+                "WidgetExtension/Sources/**",
+                "Sources/Intents/**",
+                "Sources/Models/**",
+                "Sources/Services/**",
+                "Sources/Shared/AppRoute.swift",
+                "Sources/Shared/RuntimeEnvironment.swift",
+                "Sources/Shared/SunclubDeepLink.swift",
+                "Sources/WidgetSupport/**"
             ],
+            entitlements: "SunclubWidgetsExtension.entitlements",
             settings: .settings(
                 base: [:]
                     .automaticCodeSigning(devTeam: signingTeam)

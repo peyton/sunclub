@@ -5,5 +5,11 @@ import WidgetKit
 struct SunclubWidgetsBundle: WidgetBundle {
     var body: some Widget {
         SunclubLogTodayWidget()
+        SunclubStreakWidget()
+        SunclubStatsWidget()
+        SunclubCalendarWidget()
+        SunclubLogTodayControl()
+        SunclubSummaryControl()
+        SunclubHistoryControl()
     }
 }

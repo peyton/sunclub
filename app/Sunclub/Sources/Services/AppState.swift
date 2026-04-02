@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftData
+import WidgetKit
 
 struct HomeTodayCardPresentation: Equatable {
     let title: String
@@ -119,6 +120,7 @@ final class AppState {
     private let notificationManager: NotificationScheduling
     private let uvIndexService: UVIndexService
     private let backupService: SunclubBackupService
+    private let widgetSnapshotStore: SunclubWidgetSnapshotStore
     private(set) var records: [DailyRecord] = []
     private(set) var uvReading: UVReading?
     private(set) var notificationHealthSnapshot: NotificationHealthSnapshot = .unknown
@@ -149,13 +151,15 @@ final class AppState {
         context: ModelContext,
         notificationManager: NotificationScheduling,
         uvIndexService: UVIndexService,
-        backupService: SunclubBackupService = SunclubBackupService()
+        backupService: SunclubBackupService = SunclubBackupService(),
+        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore()
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager
         self.uvIndexService = uvIndexService
         self.backupService = backupService
+        self.widgetSnapshotStore = widgetSnapshotStore
         settings = Self.loadOrCreateSettings(from: context)
         refresh()
         refreshUVReadingIfNeeded()
@@ -175,6 +179,7 @@ final class AppState {
         }
 
         syncLongestStreakIfNeeded()
+        syncWidgetSnapshot()
     }
 
     private static func loadOrCreateSettings(from context: ModelContext) -> Settings {
@@ -228,6 +233,8 @@ final class AppState {
     func completeOnboarding() {
         settings.hasCompletedOnboarding = true
         save()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
     }
 
     func updateDailyReminder(hour: Int, minute: Int) {
@@ -531,6 +538,7 @@ final class AppState {
             }
             updateLongestStreak()
             refreshStreakRiskReminder()
+            reloadWidgetTimelines()
         }
     }
 
@@ -543,6 +551,7 @@ final class AppState {
         if streak > settings.longestStreak {
             settings.longestStreak = streak
             save()
+            syncWidgetSnapshot()
         }
     }
 
@@ -581,6 +590,7 @@ final class AppState {
         if calendar.isDateInToday(targetDay) {
             cancelReapplyRemindersIfNeeded()
         }
+        reloadWidgetTimelines()
     }
 
     func updateLiveUVPreference(enabled: Bool, allowPermissionPrompt: Bool = true) {
@@ -751,6 +761,7 @@ final class AppState {
             refresh()
             updateLongestStreak()
             refreshStreakRiskReminder()
+            reloadWidgetTimelines()
         } catch {
             modelContext.rollback()
         }
@@ -920,5 +931,24 @@ final class AppState {
         refreshStreakRiskReminder()
         refreshNotificationHealth()
         refreshUVReadingIfNeeded()
+        reloadWidgetTimelines()
+    }
+
+    private func syncWidgetSnapshot() {
+        let snapshot = SunclubWidgetSnapshotBuilder.make(
+            settings: settings,
+            records: records,
+            now: Date(),
+            calendar: calendar
+        )
+        widgetSnapshotStore.save(snapshot)
+    }
+
+    private func reloadWidgetTimelines() {
+        guard !RuntimeEnvironment.isRunningTests else {
+            return
+        }
+
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
