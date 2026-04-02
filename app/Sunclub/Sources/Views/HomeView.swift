@@ -42,6 +42,7 @@ struct HomeView: View {
         .onAppear {
             now = Date()
             appState.clearVerificationSuccessPresentation()
+            appState.refreshUVReadingIfNeeded()
         }
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -79,19 +80,45 @@ struct HomeView: View {
     }
 
     private var todayCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let presentation = appState.todayCardPresentation
+
+        return VStack(alignment: .leading, spacing: 10) {
             Text("Today")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            Text(todayTitle)
+            Text(presentation.title)
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("home.todayStatus")
 
-            Text(todayDetail)
+            if let uvHeadline = presentation.uvHeadline,
+               let uvSymbolName = presentation.uvSymbolName {
+                HStack(spacing: 8) {
+                    Image(systemName: uvSymbolName)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.sun)
+
+                    Text(uvHeadline)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+                        .accessibilityIdentifier("home.uvHeadline")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(AppPalette.warmGlow.opacity(0.45))
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(uvHeadline)
+                .accessibilityIdentifier("home.uvStatus")
+            }
+
+            Text(presentation.detail)
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
+                .accessibilityIdentifier("home.todayDetail")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(22)
@@ -180,22 +207,6 @@ struct HomeView: View {
         default:
             return "moon.stars"
         }
-    }
-
-    private var todayTitle: String {
-        if appState.record(for: Date()) != nil {
-            return "Already logged today"
-        }
-
-        return "Ready to log today"
-    }
-
-    private var todayDetail: String {
-        if appState.record(for: Date()) != nil {
-            return "You can update today's check-in any time. Sunclub will keep just one record for today."
-        }
-
-        return "Log today manually to keep your sunscreen routine moving."
     }
 }
 

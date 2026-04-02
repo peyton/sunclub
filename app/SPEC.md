@@ -110,6 +110,7 @@ Expected sequence:
 
 - Serve as the app's main dashboard.
 - Show current streak prominently.
+- Surface elevated UV days when protection needs are stronger.
 - Provide a single primary call to action: `Log Manually`.
 - Provide quick access to weekly summary and settings.
 
@@ -161,6 +162,7 @@ Expected sequence:
 - A `Log Today` notification action should route directly to manual logging.
 - Weekly reminders should open the weekly summary view.
 - Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
+- Reapply reminder timing and copy should get stronger on elevated UV days without changing the user's saved base interval.
 
 ### Settings and Controls
 

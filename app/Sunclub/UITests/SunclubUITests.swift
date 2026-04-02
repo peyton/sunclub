@@ -89,6 +89,19 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHomeShowsHighUVStatusFromLaunchOverride() throws {
+        let app = launchHome(additionalArguments: ["UITEST_UV_INDEX=7"])
+
+        let uvStatus = app.otherElements["home.uvStatus"]
+        XCTAssertTrue(uvStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvStatus.label, "UV is high today")
+
+        let detail = app.staticTexts["home.todayDetail"]
+        XCTAssertTrue(detail.exists)
+        XCTAssertTrue(detail.label.contains("reapply sooner"))
+    }
+
+    @MainActor
     func testManualLogFlowShowsSuccess() throws {
         let app = launchHome()
 
@@ -127,6 +140,23 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHighUVReapplyReminderNoteUsesStrongerCopy() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_UV_INDEX=7",
+            "UITEST_REAPPLY_ENABLED",
+            "UITEST_REAPPLY_INTERVAL=120"
+        ])
+
+        app.buttons["home.logManually"].tap()
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        app.buttons["manualLog.logToday"].tap()
+
+        let reapplyNote = app.otherElements["success.reapplyNote"]
+        XCTAssertTrue(reapplyNote.waitForExistence(timeout: 5))
+        XCTAssertTrue(reapplyNote.label.contains("High UV today"))
+        XCTAssertTrue(reapplyNote.label.contains("1h 30m"))
+    }
+
     func testWeeklySummaryShowsUsageInsights() throws {
         let app = XCUIApplication()
         app.launchArguments += [
@@ -156,8 +186,13 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func launchHome() -> XCUIApplication {
+        launchHome(additionalArguments: [])
+    }
+
+    @MainActor
+    private func launchHome(additionalArguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"]
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"] + additionalArguments
         app.launch()
         return app
     }

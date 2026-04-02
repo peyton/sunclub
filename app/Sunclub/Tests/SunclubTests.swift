@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class MockNotificationManager: NotificationScheduling {
     private(set) var scheduleRemindersCount = 0
-    private(set) var scheduleReapplyReminderIntervals: [Int] = []
+    private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var cancelReapplyRemindersCount = 0
 
@@ -14,8 +14,8 @@ final class MockNotificationManager: NotificationScheduling {
         scheduleRemindersCount += 1
     }
 
-    func scheduleReapplyReminder(intervalMinutes: Int, route: AppRoute) async {
-        scheduleReapplyReminderIntervals.append(intervalMinutes)
+    func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
+        scheduleReapplyReminderPlans.append(plan)
         scheduleReapplyReminderRoutes.append(route)
     }
 
@@ -365,8 +365,62 @@ final class SunclubTests: XCTestCase {
         state.scheduleReapplyReminder()
 
         await Task.yield()
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderIntervals, [90])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
         XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.manualLog])
+    }
+
+    @MainActor
+    func testTodayCardPresentationShowsHighUVMessaging() throws {
+        let state = try makeAppState()
+
+        state.setUVReadingForTesting(UVReading(index: 7))
+
+        let presentation = state.todayCardPresentation
+        XCTAssertEqual(presentation.title, "Ready to log today")
+        XCTAssertEqual(presentation.uvHeadline, "UV is high today")
+        XCTAssertEqual(presentation.uvSymbolName, UVLevel.high.symbolName)
+        XCTAssertTrue(presentation.detail.contains("reapply sooner"))
+    }
+
+    @MainActor
+    func testTodayCardPresentationKeepsDefaultDetailForModerateUV() throws {
+        let state = try makeAppState()
+
+        state.setUVReadingForTesting(UVReading(index: 4))
+
+        let presentation = state.todayCardPresentation
+        XCTAssertEqual(presentation.uvHeadline, "UV is moderate today")
+        XCTAssertEqual(presentation.detail, "Log today manually to keep your sunscreen routine moving.")
+    }
+
+    @MainActor
+    func testReapplyReminderPlanShortensIntervalOnHighUV() throws {
+        let state = try makeAppState()
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.setUVReadingForTesting(UVReading(index: 7))
+
+        let plan = state.reapplyReminderPlan
+
+        XCTAssertTrue(plan.isElevated)
+        XCTAssertEqual(plan.baseIntervalMinutes, 120)
+        XCTAssertEqual(plan.intervalMinutes, 90)
+        XCTAssertEqual(plan.notificationTitle, "Reapply sooner today")
+        XCTAssertTrue(plan.notificationBody.contains("UV is high today"))
+        XCTAssertEqual(plan.confirmationText, "High UV today: reminder in 1h 30m")
+    }
+
+    @MainActor
+    func testScheduleReapplyReminderUsesUVAwarePlan() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.setUVReadingForTesting(UVReading(index: 9))
+        state.scheduleReapplyReminder()
+
+        await Task.yield()
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [60])
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.first?.notificationBody.contains("very high today") ?? false)
     }
 
     @MainActor
@@ -386,6 +440,14 @@ final class SunclubTests: XCTestCase {
         XCTAssertTrue(UVLevel.veryHigh.shouldShowBanner)
         XCTAssertTrue(UVLevel.extreme.shouldShowBanner)
         XCTAssertFalse(UVLevel.unknown.shouldShowBanner)
+    }
+
+    @MainActor
+    func testUVLevelHighTriggersStrongerReapplyRules() {
+        XCTAssertEqual(UVLevel.high.homeHeadline, "UV is high today")
+        XCTAssertEqual(UVLevel.high.reapplyAdvanceMinutes, 30)
+        XCTAssertEqual(UVLevel.high.reapplyLabelPrefix, "High UV today")
+        XCTAssertNotNil(UVLevel.high.strongerReapplyMessage)
     }
 
     @MainActor
