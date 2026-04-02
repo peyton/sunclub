@@ -4,7 +4,7 @@
 # manifest. Optionally upload the exported IPA to TestFlight.
 #
 # Usage:
-#   ./scripts/appstore/archive-and-upload.sh [--skip-generate] [--skip-archive] [--skip-export] [--upload-testflight]
+#   ./scripts/appstore/archive-and-upload.sh [--allow-draft-metadata] [--skip-generate] [--skip-archive] [--skip-export] [--upload-testflight]
 #
 set -euo pipefail
 
@@ -28,9 +28,11 @@ SKIP_GENERATE=false
 SKIP_ARCHIVE=false
 SKIP_EXPORT=false
 UPLOAD_TESTFLIGHT=false
+ALLOW_DRAFT_METADATA=false
 
 for arg in "$@"; do
   case "$arg" in
+  --allow-draft-metadata) ALLOW_DRAFT_METADATA=true ;;
   --skip-generate) SKIP_GENERATE=true ;;
   --skip-archive) SKIP_ARCHIVE=true ;;
   --skip-export) SKIP_EXPORT=true ;;
@@ -58,7 +60,11 @@ if [ "$UPLOAD_TESTFLIGHT" = true ] && [ "$SKIP_EXPORT" = true ]; then
 fi
 
 step "Validating App Store metadata"
-run_repo_python_module scripts.appstore.validate_metadata "scripts/appstore/metadata.json"
+metadata_args=("scripts/appstore/metadata.json")
+if [ "$ALLOW_DRAFT_METADATA" = true ]; then
+  metadata_args=(--allow-draft "${metadata_args[@]}")
+fi
+run_repo_python_module scripts.appstore.validate_metadata "${metadata_args[@]}"
 ok "Submission manifest is valid"
 
 if [ "$SKIP_GENERATE" = false ]; then

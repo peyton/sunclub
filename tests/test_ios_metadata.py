@@ -123,7 +123,10 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
 
     assert '- "v*.*.*"' in workflow
     assert 'xcode-version: "26.3"' in workflow
-    assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in workflow
+    assert (
+        "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight"
+        in workflow
+    )
 
 
 def test_archive_script_uses_transporter_with_api_key_auth() -> None:

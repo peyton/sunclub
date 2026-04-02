@@ -61,7 +61,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
-        run: bash scripts/appstore/archive-and-upload.sh --upload-testflight
+        run: bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

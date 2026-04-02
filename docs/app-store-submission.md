@@ -9,7 +9,7 @@ Sunclub treats `scripts/appstore/metadata.json` as the single submission manifes
 - `scripts/appstore/capture-screenshots.sh` builds the real app, boots the simulator named in the manifest, and captures the manifest-defined iPhone screenshots through `UITEST_MODE` launch routes.
 - `scripts/appstore/create-app-store-listing.sh` only patches the App Store Connect fields that map cleanly to the manifest. It does not create the app record, upload screenshots, or answer App Privacy questionnaires.
 - `scripts/appstore/archive-and-upload.sh` validates the manifest, archives the signed release build, exports the IPA, and can upload to TestFlight with Transporter when App Store Connect API key credentials are available.
-- `.github/workflows/release-testflight.yml` runs the same archive flow automatically for pushed `vX.Y.Z` tags.
+- `.github/workflows/release-testflight.yml` runs the same archive flow automatically for pushed `vX.Y.Z` tags, but passes `--allow-draft-metadata` so TestFlight uploads are not blocked by still-draft App Store listing URLs or App Review contact details.
 
 ## Commands
 
@@ -24,6 +24,7 @@ just release-tag VERSION=1.2.3
 ```
 
 See [docs/testflight-release.md](testflight-release.md) for the full flavor and versioning flow.
+Use the default strict archive path when you are preparing the actual App Store submission package.
 
 ## Required Manual Work
 

@@ -52,6 +52,8 @@ just release-tag VERSION=1.2.3
 ```
 
 `just release-tag VERSION=1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
+The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
+Keep `just appstore-archive` strict for final submission-ready archives.
 
 ## GitHub Automation
 
@@ -61,6 +63,7 @@ It:
 
 1. resolves release versions
 2. validates App Store metadata
+   - uses draft mode for TestFlight-only fields
 3. archives and exports the production IPA on pinned stable Xcode `26.3`
 4. uploads the IPA to TestFlight with Transporter and App Store Connect API key auth
 5. publishes the `.xcarchive` and exported IPA as workflow artifacts
