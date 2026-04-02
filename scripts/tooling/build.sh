@@ -101,5 +101,9 @@ fi
 xcodebuild "${build_args[@]}" build
 
 if [ "$share_scheme" -eq 1 ]; then
-  run_in_app run_mise_exec tuist share "$APP_SCHEME" --configuration "$configuration" --platforms iOS
+  run_in_app run_mise_exec tuist share \
+    "$APP_SCHEME" \
+    --configuration "$configuration" \
+    --derived-data-path "$derived_data_path" \
+    --platforms iOS
 fi
