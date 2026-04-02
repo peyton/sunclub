@@ -10,6 +10,11 @@ struct SettingsView: View {
     @State private var reapplyInterval = 120
     @State private var followsTravelTimeZone = true
     @State private var streakRiskEnabled = true
+    @State private var backupDocument: SunclubBackupDocument?
+    @State private var isExportingBackup = false
+    @State private var isImportingBackup = false
+    @State private var backupStatus: BackupFeedback?
+    @State private var backupAlert: BackupAlert?
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 
@@ -22,12 +27,47 @@ struct SettingsView: View {
 
                 smarterReminderSection
                 reapplySection
+                backupSection
 
                 Spacer(minLength: 0)
             }
         }
         .sheet(item: $selectedReminderPicker) { schedule in
             reminderPickerSheet(for: schedule)
+        }
+        .fileExporter(
+            isPresented: $isExportingBackup,
+            document: backupDocument,
+            contentType: SunclubBackupDocument.contentType,
+            defaultFilename: backupDocument?.suggestedFilename
+        ) { result in
+            switch result {
+            case .success:
+                backupStatus = BackupFeedback(
+                    message: "Backup exported.",
+                    tint: AppPalette.softInk
+                )
+            case let .failure(error):
+                presentBackupError(error)
+            }
+        }
+        .fileImporter(
+            isPresented: $isImportingBackup,
+            allowedContentTypes: SunclubBackupDocument.readableContentTypes
+        ) { result in
+            switch result {
+            case let .success(url):
+                importBackup(from: url)
+            case let .failure(error):
+                presentBackupError(error)
+            }
+        }
+        .alert(item: $backupAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
         .onAppear(perform: syncLocalState)
         .toolbar(.hidden, for: .navigationBar)
@@ -171,6 +211,53 @@ struct SettingsView: View {
         }
     }
 
+    private var backupSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Backup")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Keep your history local. Export one backup file before you reinstall the app or move to a new device.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppPalette.softInk)
+
+                backupActionButton(
+                    title: "Export Backup",
+                    symbolName: "square.and.arrow.up",
+                    accessibilityIdentifier: "settings.backup.export",
+                    action: beginBackupExport
+                )
+
+                backupActionButton(
+                    title: "Import Backup",
+                    symbolName: "square.and.arrow.down",
+                    accessibilityIdentifier: "settings.backup.import",
+                    action: { isImportingBackup = true }
+                )
+
+                Text("Import replaces current on-device history and reminder settings.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if appState.isUITesting {
+                    backupHarnessSection
+                }
+
+                if let backupStatus {
+                    Text(backupStatus.message)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(backupStatus.tint)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("settings.backupStatus")
+                }
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
     private var reminderHeadline: String {
         let weekday = formattedReminderTime(for: .weekday)
         let weekend = formattedReminderTime(for: .weekend)
@@ -228,6 +315,32 @@ struct SettingsView: View {
         reapplyInterval = appState.settings.reapplyIntervalMinutes
     }
 
+    private func beginBackupExport() {
+        do {
+            backupDocument = try appState.exportBackupDocument()
+            isExportingBackup = true
+        } catch {
+            presentBackupError(error)
+        }
+    }
+
+    private func importBackup(from url: URL) {
+        do {
+            let summary = try appState.importBackup(from: url)
+            syncLocalState()
+            backupStatus = BackupFeedback(message: summary.statusMessage, tint: AppPalette.softInk)
+        } catch {
+            presentBackupError(error)
+        }
+    }
+
+    private func presentBackupError(_ error: any Error) {
+        backupAlert = BackupAlert(
+            title: "Backup Failed",
+            message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        )
+    }
+
     private func formatInterval(_ minutes: Int) -> String {
         if minutes < 60 {
             return "\(minutes)m"
@@ -274,6 +387,69 @@ struct SettingsView: View {
         }
         .presentationDetents([.medium])
     }
+
+    private func backupActionButton(
+        title: String,
+        symbolName: String,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbolName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.sun)
+                    .frame(width: 24, height: 24)
+
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    @ViewBuilder
+    private var backupHarnessSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let exportURL = RuntimeEnvironment.fileURLArgument(withPrefix: "UITEST_EXPORT_BACKUP_URL=") {
+                Button("Export Test Backup") {
+                    do {
+                        _ = try appState.exportBackup(to: exportURL)
+                        backupStatus = BackupFeedback(
+                            message: "Backup exported.",
+                            tint: AppPalette.softInk
+                        )
+                    } catch {
+                        presentBackupError(error)
+                    }
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("settings.backup.exportHarness")
+            }
+
+            if let importURL = RuntimeEnvironment.fileURLArgument(withPrefix: "UITEST_IMPORT_BACKUP_URL=") {
+                Button("Import Test Backup") {
+                    importBackup(from: importURL)
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("settings.backup.importHarness")
+            }
+
+            Text("History entries: \(appState.records.count)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
+                .accessibilityIdentifier("settings.backupRecordCount")
+        }
+    }
 }
 
 private struct ReminderToggleCard: View {
@@ -307,6 +483,17 @@ private struct ReminderToggleCard: View {
                 }
         )
     }
+}
+
+private struct BackupFeedback {
+    let message: String
+    let tint: Color
+}
+
+private struct BackupAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 #Preview {

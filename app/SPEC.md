@@ -85,7 +85,7 @@ The weekly summary should reinforce momentum, not punish failure.
 
 ### 4. Maintenance and Recovery
 
-Users need a lightweight way to update reminders or review recent progress without leaving the core manual flow.
+Users need a lightweight way to update reminders, protect local history, or review recent progress without leaving the core manual flow.
 
 Expected sequence:
 
@@ -93,6 +93,8 @@ Expected sequence:
 2. User can adjust weekday and weekend reminder times.
 3. User can choose whether reminders follow local time while traveling.
 4. User can toggle streak-risk nudges and reapply reminders.
+5. User can export a local backup file before reinstalling or switching devices.
+6. User can import that backup later to restore reminder settings and sunscreen history on-device.
 
 ## Screen Responsibilities
 
@@ -142,6 +144,7 @@ Expected sequence:
 - Let the user decide whether reminders stay anchored or follow the current local timezone while traveling.
 - Let the user opt into a streak-risk nudge before the day closes.
 - Let the user tune reapply reminders without leaving the app.
+- Let the user export and import a local backup file without requiring an account or cloud sync.
 
 ## Feature Requirements
 
@@ -206,6 +209,8 @@ Expected sequence:
 - Settings and daily completion history should persist locally on device.
 - The app should remain functional offline.
 - There should be no required account or server dependency for core usage.
+- Backup export and import should stay local-first: one local backup file should be enough to restore history after a reinstall or on a replacement device.
+- Importing a backup from an older supported database schema should migrate it to the current schema before the restored data becomes live.
 
 ### Routing from Notifications
 
@@ -220,6 +225,7 @@ Expected sequence:
 - Household or family plans.
 - Deep analytics beyond streak, weekly summary, and lightweight SPF/note recap.
 - Cross-device or collaborative history editing.
+- Automatic cloud sync between devices.
 - Product catalog, purchase flow, or refill logistics inside the app.
 - Coaching content beyond short reminder and summary copy.
 

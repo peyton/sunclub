@@ -63,6 +63,8 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
         XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
         XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+        XCTAssertTrue(app.buttons["settings.backup.export"].exists)
+        XCTAssertTrue(app.buttons["settings.backup.import"].exists)
     }
 
     @MainActor
@@ -90,6 +92,54 @@ final class SunclubUITests: XCTestCase {
         performBackSwipe(in: app)
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testBackupHarnessExportsAndImportsHistoryAndSettings() throws {
+        let backupURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("json")
+        defer { try? FileManager.default.removeItem(at: backupURL) }
+
+        let exportApp = XCUIApplication()
+        exportApp.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_SEED_HISTORY=editBackfill",
+            "UITEST_EXPORT_BACKUP_URL=\(backupURL.path)"
+        ]
+        exportApp.launch()
+
+        XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"]))
+        let exportTravelToggle = exportApp.switches["settings.travelToggle"]
+        XCTAssertEqual(stringValue(of: exportTravelToggle), "1")
+        exportTravelToggle.tap()
+        XCTAssertEqual(stringValue(of: exportTravelToggle), "0")
+
+        exportApp.buttons["settings.backup.exportHarness"].tap()
+        XCTAssertTrue(waitForLabel("Backup exported.", on: exportApp.staticTexts["settings.backupStatus"]))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backupURL.path))
+        exportApp.terminate()
+
+        let importApp = XCUIApplication()
+        importApp.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_IMPORT_BACKUP_URL=\(backupURL.path)"
+        ]
+        importApp.launch()
+
+        XCTAssertTrue(waitForLabel("History entries: 0", on: importApp.staticTexts["settings.backupRecordCount"]))
+        let importTravelToggle = importApp.switches["settings.travelToggle"]
+        XCTAssertEqual(stringValue(of: importTravelToggle), "1")
+
+        importApp.buttons["settings.backup.importHarness"].tap()
+
+        XCTAssertTrue(waitForLabel("Imported 1 day from backup.", on: importApp.staticTexts["settings.backupStatus"]))
+        XCTAssertTrue(waitForLabel("History entries: 1", on: importApp.staticTexts["settings.backupRecordCount"]))
+        XCTAssertEqual(stringValue(of: importTravelToggle), "0")
     }
 
     @MainActor
@@ -291,6 +341,11 @@ final class SunclubUITests: XCTestCase {
         let predicate = NSPredicate(format: "label == %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func stringValue(of element: XCUIElement) -> String? {
+        element.value as? String
     }
 
     @MainActor

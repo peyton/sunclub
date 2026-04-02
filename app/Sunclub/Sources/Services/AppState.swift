@@ -85,6 +85,7 @@ final class AppState {
     private let verificationStore: VerificationStore
     private let notificationManager: NotificationScheduling
     private let uvIndexService: UVIndexService
+    private let backupService: SunclubBackupService
     private(set) var records: [DailyRecord] = []
     private(set) var uvReading: UVReading?
     private let calendar = Calendar.current
@@ -112,12 +113,14 @@ final class AppState {
     init(
         context: ModelContext,
         notificationManager: NotificationScheduling,
-        uvIndexService: UVIndexService
+        uvIndexService: UVIndexService,
+        backupService: SunclubBackupService = SunclubBackupService()
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
         self.notificationManager = notificationManager
         self.uvIndexService = uvIndexService
+        self.backupService = backupService
         settings = Self.loadOrCreateSettings(from: context)
         refresh()
         refreshUVReadingIfNeeded()
@@ -405,6 +408,29 @@ final class AppState {
         }
     }
 
+    func exportBackupDocument() throws -> SunclubBackupDocument {
+        try backupService.exportDocument(from: modelContext)
+    }
+
+    @discardableResult
+    func exportBackup(to url: URL) throws -> SunclubBackupDocument {
+        try backupService.exportBackup(from: modelContext, to: url)
+    }
+
+    @discardableResult
+    func importBackupDocument(_ document: SunclubBackupDocument) throws -> SunclubBackupImportSummary {
+        let summary = try backupService.importBackupDocument(document, into: modelContext)
+        finalizeImportedBackup()
+        return summary
+    }
+
+    @discardableResult
+    func importBackup(from url: URL) throws -> SunclubBackupImportSummary {
+        let summary = try backupService.importBackup(from: url, into: modelContext)
+        finalizeImportedBackup()
+        return summary
+    }
+
     func record(for day: Date) -> DailyRecord? {
         (try? verificationStore.record(for: day)).flatMap { $0 }
     }
@@ -470,55 +496,83 @@ final class AppState {
 
         do {
             if let existing = try verificationStore.record(for: targetDay) {
-                let values = resolvedVerificationValues(
-                    from: verificationValues,
-                    existingRecord: existing,
+                try updateRecord(
+                    existing,
+                    verifiedAt: verifiedAt,
+                    verificationValues: verificationValues,
+                    replaceOptionalFields: replaceOptionalFields,
                     preserveExistingDuration: preserveExistingDuration
                 )
-                apply(
-                    verificationValues: values,
-                    to: existing,
-                    verifiedAt: verifiedAt,
-                    replaceOptionalFields: replaceOptionalFields
-                )
-                try modelContext.save()
             } else {
-                let record = DailyRecord(
-                    startOfDay: targetDay,
+                try insertRecord(
+                    for: targetDay,
                     verifiedAt: verifiedAt,
-                    method: verificationValues.method,
-                    verificationDuration: verificationValues.duration,
-                    spfLevel: verificationValues.spfLevel,
-                    notes: Self.normalizedNotes(verificationValues.notes)
+                    verificationValues: verificationValues,
+                    replaceOptionalFields: replaceOptionalFields,
+                    preserveExistingDuration: preserveExistingDuration
                 )
-                modelContext.insert(record)
-                do {
-                    try modelContext.save()
-                } catch {
-                    modelContext.rollback()
-                    if let existing = try verificationStore.record(for: targetDay) {
-                        let values = resolvedVerificationValues(
-                            from: verificationValues,
-                            existingRecord: existing,
-                            preserveExistingDuration: preserveExistingDuration
-                        )
-                        apply(
-                            verificationValues: values,
-                            to: existing,
-                            verifiedAt: verifiedAt,
-                            replaceOptionalFields: replaceOptionalFields
-                        )
-                        try modelContext.save()
-                    } else {
-                        throw error
-                    }
-                }
             }
             refresh()
             updateLongestStreak()
             refreshStreakRiskReminder()
         } catch {
             modelContext.rollback()
+        }
+    }
+
+    private func updateRecord(
+        _ record: DailyRecord,
+        verifiedAt: Date,
+        verificationValues: VerificationValues,
+        replaceOptionalFields: Bool,
+        preserveExistingDuration: Bool
+    ) throws {
+        let values = resolvedVerificationValues(
+            from: verificationValues,
+            existingRecord: record,
+            preserveExistingDuration: preserveExistingDuration
+        )
+        apply(
+            verificationValues: values,
+            to: record,
+            verifiedAt: verifiedAt,
+            replaceOptionalFields: replaceOptionalFields
+        )
+        try modelContext.save()
+    }
+
+    private func insertRecord(
+        for day: Date,
+        verifiedAt: Date,
+        verificationValues: VerificationValues,
+        replaceOptionalFields: Bool,
+        preserveExistingDuration: Bool
+    ) throws {
+        let record = DailyRecord(
+            startOfDay: day,
+            verifiedAt: verifiedAt,
+            method: verificationValues.method,
+            verificationDuration: verificationValues.duration,
+            spfLevel: verificationValues.spfLevel,
+            notes: Self.normalizedNotes(verificationValues.notes)
+        )
+        modelContext.insert(record)
+
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            if let existing = try verificationStore.record(for: day) {
+                try updateRecord(
+                    existing,
+                    verifiedAt: verifiedAt,
+                    verificationValues: verificationValues,
+                    replaceOptionalFields: replaceOptionalFields,
+                    preserveExistingDuration: preserveExistingDuration
+                )
+            } else {
+                throw error
+            }
         }
     }
 
@@ -603,5 +657,13 @@ final class AppState {
 
     var recordedDays: [Date] {
         records.map { calendar.startOfDay(for: $0.startOfDay) }
+    }
+
+    private func finalizeImportedBackup() {
+        clearVerificationSuccessPresentation()
+        refresh()
+        cancelReapplyRemindersIfNeeded()
+        scheduleReminders()
+        refreshStreakRiskReminder()
     }
 }
