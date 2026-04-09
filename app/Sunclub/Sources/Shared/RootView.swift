@@ -51,7 +51,8 @@ struct RootView: View {
             let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
             HistoryRecordEditorView(
                 day: yesterday,
-                existingRecord: appState.record(for: yesterday)
+                existingRecord: appState.record(for: yesterday),
+                route: .backfillYesterday
             )
         case .historyEditToday:
             HistoryEditorTestHarnessView(day: Calendar.current.startOfDay(for: Date()))

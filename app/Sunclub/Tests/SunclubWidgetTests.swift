@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 import XCTest
 @testable import Sunclub
 
@@ -96,6 +97,48 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertTrue(handled)
         XCTAssertEqual(router.path, [.manualLog])
+    }
+
+    func testPendingRouteStoreRoundTripsAppRoutes() throws {
+        let suiteName = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        let store = SunclubWidgetSnapshotStore(userDefaults: defaults)
+
+        store.setPendingRoute(.manualLog)
+
+        XCTAssertEqual(store.takePendingRoute(), .manualLog)
+        XCTAssertNil(store.takePendingRoute())
+    }
+
+    func testPendingRouteStoreReadsLegacyWidgetRouteValues() throws {
+        let suiteName = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        let store = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        defaults.set(SunclubWidgetRoute.updateToday.rawValue, forKey: SunclubWidgetDefaults.pendingRouteKey)
+
+        XCTAssertEqual(store.takePendingRoute(), .manualLog)
+    }
+
+    func testHomeScreenQuickActionStoresManualLogRoute() throws {
+        let suiteName = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        let store = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        let shortcutItem = UIApplicationShortcutItem(
+            type: SunclubHomeScreenQuickAction.logToday.rawValue,
+            localizedTitle: "Log Today"
+        )
+
+        XCTAssertTrue(SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem, routeStore: store))
+        XCTAssertEqual(store.takePendingRoute(), .manualLog)
     }
 
     private func makeSnapshot(dayOffsets: [Int], longestStreak: Int) -> SunclubWidgetSnapshot {

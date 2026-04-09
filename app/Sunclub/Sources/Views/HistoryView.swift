@@ -3,7 +3,6 @@ import SwiftUI
 struct HistoryView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.dismiss) private var dismiss
     @State private var displayedMonth: Date
     @State private var selectedDay: Date?
     @State private var editorPresentation: HistoryEditorPresentation?
@@ -21,7 +20,7 @@ struct HistoryView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "History", showsBack: true, onBack: {
-                    dismiss()
+                    router.goBack()
                 })
 
                 monthNavigator
@@ -439,18 +438,21 @@ private struct HistoryEditorPresentation: Identifiable {
 
 struct HistoryRecordEditorView: View {
     @Environment(AppState.self) private var appState
+    @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
 
     let day: Date
     let existingRecord: DailyRecord?
+    let route: AppRoute?
 
     @State private var selectedSPF: Int?
     @State private var notes: String
     @State private var hasLoadedInitialState = false
 
-    init(day: Date, existingRecord: DailyRecord?) {
+    init(day: Date, existingRecord: DailyRecord?, route: AppRoute? = nil) {
         self.day = day
         self.existingRecord = existingRecord
+        self.route = route
         _selectedSPF = State(initialValue: existingRecord?.spfLevel)
         _notes = State(initialValue: existingRecord?.notes ?? "")
     }
@@ -459,7 +461,7 @@ struct HistoryRecordEditorView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 26) {
                 SunLightHeader(title: editorTitle, showsBack: true, onBack: {
-                    dismiss()
+                    closeEditor()
                 })
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -488,7 +490,7 @@ struct HistoryRecordEditorView: View {
                     spfLevel: selectedSPF,
                     notes: notes
                 )
-                dismiss()
+                closeEditor()
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("historyEditor.save")
@@ -527,6 +529,14 @@ struct HistoryRecordEditorView: View {
 
         let suggestions = appState.manualLogSuggestionState(for: day)
         selectedSPF = suggestions.defaultSPF
+    }
+
+    private func closeEditor() {
+        if route != nil {
+            router.goBack()
+        } else {
+            dismiss()
+        }
     }
 }
 

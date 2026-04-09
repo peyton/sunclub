@@ -71,7 +71,7 @@ struct OpenSunclubRouteIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        SunclubWidgetSnapshotStore().setPendingRoute(route.route)
+        SunclubWidgetSnapshotStore().setPendingRoute(route.route.appRoute)
         return .result()
     }
 }

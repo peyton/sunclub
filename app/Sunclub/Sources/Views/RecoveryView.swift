@@ -2,13 +2,13 @@ import SwiftUI
 
 struct RecoveryView: View {
     @Environment(AppState.self) private var appState
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 24) {
                 SunLightHeader(title: "Recovery", showsBack: true, onBack: {
-                    dismiss()
+                    router.goBack()
                 })
 
                 overviewSection

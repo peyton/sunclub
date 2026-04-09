@@ -23,12 +23,24 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
 final class AppRouter {
     var path: [AppRoute] = []
 
+    var canGoBack: Bool {
+        !path.isEmpty
+    }
+
     func open(_ route: AppRoute) {
         if route == .home || route == .welcome {
             path.removeAll()
         } else {
             path = [route]
         }
+    }
+
+    func goBack() {
+        guard !path.isEmpty else {
+            return
+        }
+
+        path.removeLast()
     }
 
     func goHome() {

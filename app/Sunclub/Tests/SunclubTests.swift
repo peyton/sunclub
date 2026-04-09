@@ -46,6 +46,20 @@ final class MockNotificationManager: NotificationScheduling {
 
 final class SunclubTests: XCTestCase {
     @MainActor
+    func testAppRouterGoBackRemovesCurrentRoute() {
+        let router = AppRouter()
+
+        router.open(.manualLog)
+        XCTAssertEqual(router.path, [.manualLog])
+        XCTAssertTrue(router.canGoBack)
+
+        router.goBack()
+
+        XCTAssertTrue(router.path.isEmpty)
+        XCTAssertFalse(router.canGoBack)
+    }
+
+    @MainActor
     func testDayStatusAppliesToFutureTodayAndPast() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())

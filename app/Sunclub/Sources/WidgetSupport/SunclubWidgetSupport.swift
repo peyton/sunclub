@@ -166,17 +166,24 @@ struct SunclubWidgetSnapshotStore {
         userDefaults.set(data, forKey: SunclubWidgetDefaults.snapshotKey)
     }
 
-    func setPendingRoute(_ route: SunclubWidgetRoute?) {
+    func setPendingRoute(_ route: AppRoute?) {
         userDefaults.set(route?.rawValue, forKey: SunclubWidgetDefaults.pendingRouteKey)
     }
 
-    func takePendingRoute() -> SunclubWidgetRoute? {
-        guard let rawValue = userDefaults.string(forKey: SunclubWidgetDefaults.pendingRouteKey),
-              let route = SunclubWidgetRoute(rawValue: rawValue) else {
+    func setPendingRoute(_ route: SunclubWidgetRoute?) {
+        setPendingRoute(route?.appRoute)
+    }
+
+    func takePendingRoute() -> AppRoute? {
+        guard let rawValue = userDefaults.string(forKey: SunclubWidgetDefaults.pendingRouteKey) else {
             return nil
         }
 
         userDefaults.removeObject(forKey: SunclubWidgetDefaults.pendingRouteKey)
-        return route
+        if let route = AppRoute(rawValue: rawValue) {
+            return route
+        }
+
+        return SunclubWidgetRoute(rawValue: rawValue)?.appRoute
     }
 }

@@ -56,8 +56,8 @@ struct SunclubLogTodayWidget: Widget {
                     SunclubWidgetBackground(style: .warm)
                 }
         }
-        .configurationDisplayName("Log Today")
-        .description("Log today or see today at a glance.")
+        .configurationDisplayName("Sunclub Log Today")
+        .description("Sunclub quick log and today status.")
         .supportedFamilies([.systemSmall, .accessoryInline, .accessoryCircular, .accessoryRectangular])
     }
 }
@@ -72,8 +72,8 @@ struct SunclubStreakWidget: Widget {
                     SunclubWidgetBackground(style: .warmStrong)
                 }
         }
-        .configurationDisplayName("Streak")
-        .description("Current streak and recent momentum.")
+        .configurationDisplayName("Sunclub Streak")
+        .description("Sunclub streak and recent momentum.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }
@@ -88,8 +88,8 @@ struct SunclubStatsWidget: Widget {
                     SunclubWidgetBackground(style: .cool)
                 }
         }
-        .configurationDisplayName("Stats")
-        .description("Weekly and monthly habit stats.")
+        .configurationDisplayName("Sunclub Stats")
+        .description("Sunclub weekly and monthly habit stats.")
         .supportedFamilies([.systemMedium, .systemLarge, .accessoryInline, .accessoryRectangular])
     }
 }
@@ -104,8 +104,8 @@ struct SunclubCalendarWidget: Widget {
                     SunclubWidgetBackground(style: .warm)
                 }
         }
-        .configurationDisplayName("Calendar")
-        .description("This month and this week at a glance.")
+        .configurationDisplayName("Sunclub Calendar")
+        .description("Sunclub month and week history at a glance.")
         .supportedFamilies([.systemMedium, .systemLarge, .accessoryInline, .accessoryRectangular])
     }
 }
@@ -119,8 +119,8 @@ struct SunclubLogTodayControl: ControlWidget {
                 Label("Log Today", systemImage: "sun.max.fill")
             }
         }
-        .displayName("Log Today")
-        .description("Log today from Control Center.")
+        .displayName("Sunclub Log Today")
+        .description("Log today from Sunclub in Control Center.")
     }
 }
 
@@ -133,8 +133,8 @@ struct SunclubSummaryControl: ControlWidget {
                 Label("Summary", systemImage: "flame.fill")
             }
         }
-        .displayName("Summary")
-        .description("Open the weekly summary.")
+        .displayName("Sunclub Summary")
+        .description("Open the Sunclub weekly summary.")
     }
 }
 
@@ -147,8 +147,8 @@ struct SunclubHistoryControl: ControlWidget {
                 Label("History", systemImage: "calendar")
             }
         }
-        .displayName("History")
-        .description("Open your calendar history.")
+        .displayName("Sunclub History")
+        .description("Open Sunclub calendar history.")
     }
 }
 
@@ -313,7 +313,11 @@ private struct SunclubLogInlineView: View {
     let now: Date
 
     var body: some View {
-        Text(snapshot.isOnboardingComplete ? (snapshot.hasLoggedToday(now: now) ? "Logged \(snapshot.streakValue(now: now))d" : "Log Today") : "Open Sunclub")
+        Text(
+            snapshot.isOnboardingComplete
+                ? (snapshot.hasLoggedToday(now: now) ? "Sunclub Logged \(snapshot.streakValue(now: now))d" : "Sunclub Log Today")
+                : "Open Sunclub"
+        )
     }
 }
 
@@ -347,7 +351,7 @@ private struct SunclubLogRectangularView: View {
                 .foregroundStyle(snapshot.hasLoggedToday(now: now) ? SunclubWidgetPalette.success : SunclubWidgetPalette.sun)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.hasLoggedToday(now: now) ? "Logged" : "Log Today")
+                Text(snapshot.hasLoggedToday(now: now) ? "Sunclub Logged" : "Sunclub Log Today")
                     .font(.system(size: 15, weight: .semibold))
                 Text(snapshot.hasLoggedToday(now: now) ? "\(snapshot.streakValue(now: now))d streak" : "Today open")
                     .font(.system(size: 12, weight: .medium))
@@ -365,7 +369,7 @@ private struct SunclubStreakSmallView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Streak")
+            Text("Sunclub Streak")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
 
@@ -389,6 +393,10 @@ private struct SunclubStreakMediumView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            Text("Sunclub Streak")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SunclubWidgetPalette.softInk)
+
             HStack(alignment: .firstTextBaseline) {
                 Text("\(snapshot.streakValue(now: now))d")
                     .font(.system(size: 34, weight: .bold))
@@ -430,6 +438,9 @@ private struct SunclubStreakRectangularView: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
+                Text("Sunclub")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
                 Text("\(snapshot.streakValue(now: now))d streak")
                     .font(.system(size: 15, weight: .semibold))
                 Text("Best \(max(snapshot.longestStreak, snapshot.streakValue(now: now)))d")
@@ -451,7 +462,7 @@ private struct SunclubStatsMediumView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Stats")
+            Text("Sunclub Stats")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
 
@@ -470,6 +481,10 @@ private struct SunclubStatsLargeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            Text("Sunclub Stats")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SunclubWidgetPalette.softInk)
+
             HStack(spacing: 14) {
                 SunclubMetricBlock(primary: "\(snapshot.weeklyValue(now: now))/7", secondary: "week")
                 SunclubMetricBlock(primary: snapshot.monthlyPercent(now: now), secondary: "month")
@@ -497,7 +512,7 @@ private struct SunclubStatsInlineView: View {
     let now: Date
 
     var body: some View {
-        Text("\(snapshot.weeklyValue(now: now))/7 • \(snapshot.monthlyPercent(now: now))")
+        Text("Sunclub \(snapshot.weeklyValue(now: now))/7 • \(snapshot.monthlyPercent(now: now))")
     }
 }
 
@@ -506,10 +521,16 @@ private struct SunclubStatsRectangularView: View {
     let now: Date
 
     var body: some View {
-        HStack(spacing: 16) {
-            SunclubCompactStat(title: "Week", value: "\(snapshot.weeklyValue(now: now))/7")
-            SunclubCompactStat(title: "Month", value: snapshot.monthlyPercent(now: now))
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Sunclub")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 16) {
+                SunclubCompactStat(title: "Week", value: "\(snapshot.weeklyValue(now: now))/7")
+                SunclubCompactStat(title: "Month", value: snapshot.monthlyPercent(now: now))
+                Spacer(minLength: 0)
+            }
         }
     }
 }
@@ -520,7 +541,7 @@ private struct SunclubCalendarMediumView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(now.formatted(.dateTime.month(.wide)))
+            Text("Sunclub \(now.formatted(.dateTime.month(.wide)))")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
 
@@ -536,7 +557,7 @@ private struct SunclubCalendarLargeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(now.formatted(.dateTime.month(.wide).year()))
+            Text("Sunclub \(now.formatted(.dateTime.month(.wide).year()))")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
 
@@ -559,7 +580,7 @@ private struct SunclubCalendarInlineView: View {
     let now: Date
 
     var body: some View {
-        Text(snapshot.hasLoggedToday(now: now) ? "Logged today" : "Today open")
+        Text(snapshot.hasLoggedToday(now: now) ? "Sunclub Logged" : "Sunclub Open")
     }
 }
 
@@ -569,7 +590,7 @@ private struct SunclubCalendarRectangularView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("This Week")
+            Text("Sunclub Week")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
