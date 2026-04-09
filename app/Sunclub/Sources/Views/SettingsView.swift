@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var reapplyInterval = 120
     @State private var followsTravelTimeZone = true
     @State private var streakRiskEnabled = true
+    @State private var leaveHomeReminderEnabled = false
     @State private var usesLiveUV = false
     @State private var iCloudSyncEnabled = true
     @State private var backupDocument: SunclubBackupDocument?
@@ -81,6 +82,7 @@ struct SettingsView: View {
         .onAppear {
             syncLocalState()
             appState.refreshNotificationHealth()
+            appState.refreshLeaveHomeReminderStatus()
             appState.refreshUVReadingIfNeeded()
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -106,6 +108,8 @@ struct SettingsView: View {
                 reminderCard(for: .weekday, detail: "Used Monday through Friday")
                 reminderCard(for: .weekend, detail: "Used Saturday and Sunday")
             }
+
+            leaveHomeReminderCard
 
             ReminderToggleCard(
                 title: "Follow local time when traveling",
@@ -166,6 +170,54 @@ struct SettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier(for: kind))
+    }
+
+    private var leaveHomeReminderCard: some View {
+        let presentation = appState.leaveHomeReminderStatusPresentation
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Toggle(isOn: $leaveHomeReminderEnabled) {
+                Text("Remind when I leave home")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(AppPalette.ink)
+            }
+            .tint(AppPalette.sun)
+            .onChange(of: leaveHomeReminderEnabled) { _, newValue in
+                appState.updateLeaveHomeReminderEnabled(enabled: newValue)
+            }
+            .accessibilityIdentifier("settings.leaveHomeToggle")
+
+            Text("Sunclub can catch the first home exit of the day and use it as a smarter reminder trigger.")
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+
+            SunStatusCard(
+                title: presentation.title,
+                detail: presentation.detail,
+                tint: leaveHomeReminderTint(for: presentation.tone),
+                symbol: presentation.symbol
+            )
+            .accessibilityIdentifier("settings.leaveHome.status")
+
+            if let actionTitle = presentation.actionTitle,
+               let actionKind = presentation.actionKind {
+                Button(actionTitle) {
+                    handleLeaveHomeReminderAction(actionKind)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("settings.leaveHome.action")
+            }
+
+            if appState.settings.smartReminderSettings.leaveHomeReminder.homeLocation != nil {
+                Button("Reset Home") {
+                    appState.clearSavedHomeLocation()
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("settings.leaveHome.resetHome")
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
     }
 
     private var reapplySection: some View {
@@ -531,10 +583,22 @@ struct SettingsView: View {
         }
     }
 
+    private func leaveHomeReminderTint(for tone: LeaveHomeReminderTone) -> Color {
+        switch tone {
+        case .neutral:
+            return AppPalette.softInk
+        case .success:
+            return AppPalette.success
+        case .warning:
+            return Color.red.opacity(0.72)
+        }
+    }
+
     private func syncLocalState() {
         let reminderSettings = appState.settings.smartReminderSettings
         followsTravelTimeZone = reminderSettings.followsTravelTimeZone
         streakRiskEnabled = reminderSettings.streakRiskEnabled
+        leaveHomeReminderEnabled = reminderSettings.leaveHomeReminder.isEnabled
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
         usesLiveUV = appState.settings.usesLiveUV
@@ -587,6 +651,19 @@ struct SettingsView: View {
             appState.repairReminderSchedule()
         case .healthy:
             break
+        }
+    }
+
+    private func handleLeaveHomeReminderAction(_ action: LeaveHomeReminderActionKind) {
+        switch action {
+        case .setHomeFromCurrentLocation:
+            appState.saveCurrentLocationAsHome()
+        case .requestAlwaysAuthorization:
+            appState.requestLeaveHomeMonitoringPermission()
+        case .openSettings:
+            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                openURL(settingsURL)
+            }
         }
     }
 
