@@ -5,6 +5,39 @@ enum RuntimeEnvironment {
         ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
     }
 
+    static var currentDateOverride: Date? {
+        guard isUITesting,
+              let rawTime = argumentValue(withPrefix: "UITEST_CURRENT_TIME=") else {
+            return nil
+        }
+
+        let components = rawTime
+            .split(separator: ":")
+            .compactMap { Int($0) }
+        guard components.count == 2 || components.count == 3 else {
+            return nil
+        }
+
+        let hour = components[0]
+        let minute = components[1]
+        let second = components.count == 3 ? components[2] : 0
+
+        guard (0..<24).contains(hour),
+              (0..<60).contains(minute),
+              (0..<60).contains(second) else {
+            return nil
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: second,
+            of: today
+        )
+    }
+
     static var isRunningTests: Bool {
         isUITesting || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }

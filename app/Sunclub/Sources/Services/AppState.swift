@@ -30,17 +30,34 @@ struct ReapplyReminderPlan: Equatable {
     let notificationTitle: String
     let notificationBody: String
     let confirmationText: String
+    let confirmationSymbolName: String
+    let fireDate: Date?
     let isElevated: Bool
 
-    init(baseIntervalMinutes: Int, uvReading: UVReading?) {
+    var shouldScheduleNotification: Bool {
+        fireDate != nil
+    }
+
+    init(
+        baseIntervalMinutes: Int,
+        uvReading: UVReading?,
+        now: Date = Date(),
+        calendar: Calendar = Calendar.current
+    ) {
         let level = uvReading?.level ?? .unknown
         let adjustedInterval = max(30, baseIntervalMinutes - level.reapplyAdvanceMinutes)
         let isElevated = level.reapplyLabelPrefix != nil
+        let scheduledFireDate = ReminderPlanner.reapplyFireDate(
+            from: now,
+            intervalMinutes: adjustedInterval,
+            calendar: calendar
+        )
 
         self.baseIntervalMinutes = baseIntervalMinutes
         self.intervalMinutes = adjustedInterval
         self.isElevated = isElevated
         self.notificationTitle = isElevated ? "Reapply sooner today" : "Time to reapply"
+        self.fireDate = scheduledFireDate
 
         if let strongerMessage = level.strongerReapplyMessage {
             self.notificationBody = "\(strongerMessage) It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
@@ -48,10 +65,16 @@ struct ReapplyReminderPlan: Equatable {
             self.notificationBody = "It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
         }
 
-        if let prefix = level.reapplyLabelPrefix {
-            self.confirmationText = "\(prefix): reminder in \(Self.formattedInterval(adjustedInterval))"
+        if scheduledFireDate != nil {
+            if let prefix = level.reapplyLabelPrefix {
+                self.confirmationText = "\(prefix): reminder in \(Self.formattedInterval(adjustedInterval))"
+            } else {
+                self.confirmationText = "Reapply reminder in \(Self.formattedInterval(adjustedInterval))"
+            }
+            self.confirmationSymbolName = "timer"
         } else {
-            self.confirmationText = "Reapply reminder in \(Self.formattedInterval(adjustedInterval))"
+            self.confirmationText = "No reapply reminder today after sunset."
+            self.confirmationSymbolName = "moon.stars"
         }
     }
 
@@ -126,6 +149,7 @@ final class AppState {
     private let uvIndexService: UVIndexService
     private let backupService: SunclubBackupService
     private let widgetSnapshotStore: SunclubWidgetSnapshotStore
+    private let currentDate: () -> Date
     private(set) var records: [DailyRecord] = []
     private(set) var changeBatches: [SunclubChangeBatch] = []
     private(set) var importSessions: [SunclubImportSession] = []
@@ -164,7 +188,8 @@ final class AppState {
         backupService: SunclubBackupService = SunclubBackupService(),
         historyService: SunclubHistoryService? = nil,
         cloudSyncCoordinator: CloudSyncControlling? = nil,
-        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore()
+        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
+        clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
@@ -175,6 +200,7 @@ final class AppState {
         self.backupService = backupService
         try? resolvedHistoryService.bootstrapIfNeeded()
         self.widgetSnapshotStore = widgetSnapshotStore
+        currentDate = clock
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
         if let cloudSyncCoordinator {
             self.cloudSyncCoordinator = cloudSyncCoordinator
@@ -533,7 +559,12 @@ final class AppState {
     }
 
     var reapplyReminderPlan: ReapplyReminderPlan {
-        ReapplyReminderPlan(baseIntervalMinutes: settings.reapplyIntervalMinutes, uvReading: uvReading)
+        ReapplyReminderPlan(
+            baseIntervalMinutes: settings.reapplyIntervalMinutes,
+            uvReading: uvReading,
+            now: currentDate(),
+            calendar: calendar
+        )
     }
 
     var homeRecoveryActions: [HomeRecoveryAction] {
@@ -777,9 +808,16 @@ final class AppState {
 
     func scheduleReapplyReminder() {
         guard settings.reapplyReminderEnabled else { return }
+        let plan = reapplyReminderPlan
+
+        guard plan.shouldScheduleNotification else {
+            cancelReapplyRemindersIfNeeded()
+            return
+        }
+
         Task {
             await notificationManager.scheduleReapplyReminder(
-                plan: reapplyReminderPlan,
+                plan: plan,
                 route: preferredCheckInRoute
             )
         }

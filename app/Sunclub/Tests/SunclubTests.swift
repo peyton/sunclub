@@ -504,7 +504,13 @@ final class SunclubTests: XCTestCase {
     @MainActor
     func testScheduleReapplyReminderUsesPreferredCheckInRoute() async throws {
         let notificationManager = MockNotificationManager()
-        let state = try makeAppState(notificationManager: notificationManager)
+        let daytime = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { daytime }
+        )
 
         state.updateReapplySettings(enabled: true, intervalMinutes: 90)
         state.scheduleReapplyReminder()
@@ -512,6 +518,31 @@ final class SunclubTests: XCTestCase {
         await Task.yield()
         XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
         XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
+    }
+
+    @MainActor
+    func testScheduleReapplyReminderSkipsPastSunset() async throws {
+        let notificationManager = MockNotificationManager()
+        let afterSunset = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 12, hour: 17, minute: 15))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { afterSunset }
+        )
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 60)
+
+        let plan = state.reapplyReminderPlan
+        XCTAssertFalse(plan.shouldScheduleNotification)
+        XCTAssertNil(plan.fireDate)
+        XCTAssertEqual(plan.confirmationText, "No reapply reminder today after sunset.")
+
+        state.scheduleReapplyReminder()
+
+        await Task.yield()
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
+        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
     }
 
     @MainActor
@@ -540,7 +571,10 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     func testReapplyReminderPlanShortensIntervalOnHighUV() throws {
-        let state = try makeAppState()
+        let daytime = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(clock: { daytime })
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         state.setUVReadingForTesting(UVReading(index: 7))
 
@@ -557,7 +591,13 @@ final class SunclubTests: XCTestCase {
     @MainActor
     func testScheduleReapplyReminderUsesUVAwarePlan() async throws {
         let notificationManager = MockNotificationManager()
-        let state = try makeAppState(notificationManager: notificationManager)
+        let daytime = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { daytime }
+        )
 
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         state.setUVReadingForTesting(UVReading(index: 9))
@@ -760,7 +800,13 @@ final class SunclubTests: XCTestCase {
     @MainActor
     func testWidgetLogTodayDeepLinkSchedulesReapplyReminderWhenEnabled() async throws {
         let notificationManager = MockNotificationManager()
-        let state = try makeAppState(notificationManager: notificationManager)
+        let daytime = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { daytime }
+        )
         let router = AppRouter()
         state.completeOnboarding()
         state.updateReapplySettings(enabled: true, intervalMinutes: 90)
@@ -1025,12 +1071,15 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     private func makeAppState(
-        notificationManager: NotificationScheduling? = nil
+        notificationManager: NotificationScheduling? = nil,
+        clock: @escaping () -> Date = Date.init
     ) throws -> AppState {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()
         return AppState(
             context: ModelContext(container),
-            notificationManager: notificationManager ?? NotificationManager.shared
+            notificationManager: notificationManager ?? NotificationManager.shared,
+            uvIndexService: UVIndexService(),
+            clock: clock
         )
     }
 
