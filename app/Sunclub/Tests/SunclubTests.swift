@@ -58,6 +58,25 @@ final class MockNotificationManager: NotificationScheduling {
 }
 
 @MainActor
+final class ProbeCloudSyncCoordinator: CloudSyncControlling {
+    private(set) var startCallCount = 0
+
+    func start() async {
+        startCallCount += 1
+    }
+
+    func setEnabled(_ enabled: Bool) async throws {}
+
+    func queueBatchIfNeeded(_ batchID: UUID) async {}
+
+    func syncNow() async {}
+
+    func publishImportedSession(_ sessionID: UUID) async throws -> CloudPublishResult {
+        CloudPublishResult(importSessionID: sessionID, publishedBatchCount: 0)
+    }
+}
+
+@MainActor
 final class MockHomeExitReminderMonitor: HomeExitReminderMonitoring {
     private(set) var refreshMonitoringCalls: [(enabled: Bool, hasHome: Bool, allowPermissionPrompt: Bool)] = []
     private(set) var saveHomeFromCurrentLocationCount = 0
@@ -795,6 +814,74 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertTrue(state.syncPreference?.isICloudSyncEnabled ?? false)
         XCTAssertEqual(state.cloudSyncStatusPresentation.title, "iCloud sync is on")
+    }
+
+    @MainActor
+    func testDefaultCloudSyncCoordinatorUsesLiveSyncWhenAppGroupContainerIsUnavailableInProductionRuntime() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        let runtimeEnvironment = RuntimeEnvironmentSnapshot(
+            isRunningTests: false,
+            isPreviewing: false,
+            hasAppGroupContainer: false
+        )
+
+        let coordinator = AppState.defaultCloudSyncCoordinator(
+            historyService: historyService,
+            runtimeEnvironment: runtimeEnvironment
+        )
+
+        XCTAssertTrue(coordinator is CloudSyncCoordinator)
+    }
+
+    @MainActor
+    func testDefaultCloudSyncCoordinatorUsesNoopSyncForTestsAndPreviews() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+
+        let testCoordinator = AppState.defaultCloudSyncCoordinator(
+            historyService: historyService,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: true,
+                isPreviewing: false,
+                hasAppGroupContainer: false
+            )
+        )
+        let previewCoordinator = AppState.defaultCloudSyncCoordinator(
+            historyService: historyService,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: false,
+                isPreviewing: true,
+                hasAppGroupContainer: false
+            )
+        )
+
+        XCTAssertTrue(testCoordinator is NoopCloudSyncCoordinator)
+        XCTAssertTrue(previewCoordinator is NoopCloudSyncCoordinator)
+    }
+
+    @MainActor
+    func testAppStateStartsInjectedCloudSyncCoordinatorWhenProductionRuntimeLacksAppGroupContainer() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let coordinator = ProbeCloudSyncCoordinator()
+
+        let state = AppState(
+            context: ModelContext(container),
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(),
+            cloudSyncCoordinator: coordinator,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: false,
+                isPreviewing: false,
+                hasAppGroupContainer: false
+            )
+        )
+
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertEqual(coordinator.startCallCount, 1)
+        XCTAssertTrue(state.syncPreference?.isICloudSyncEnabled ?? false)
     }
 
     @MainActor
