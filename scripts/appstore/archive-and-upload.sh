@@ -53,6 +53,19 @@ if has_app_store_connect_auth; then
   )
 fi
 
+XCODEBUILD_COMPILE_CACHE_ARGS=()
+if should_disable_swift_compile_cache; then
+  printf 'Disabling compiler caches for this archive build.\n'
+  XCODEBUILD_COMPILE_CACHE_ARGS=(
+    SWIFT_ENABLE_COMPILE_CACHE=NO
+    COMPILATION_CACHE_ENABLE_CACHING=NO
+    COMPILATION_CACHE_ENABLE_PLUGIN=NO
+    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
+    COMPILATION_CACHE_KEEP_CAS_DIRECTORY=NO
+    COMPILATION_CACHE_REMOTE_SERVICE_PATH=
+  )
+fi
+
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
 ok() { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
 fail() {
@@ -97,6 +110,7 @@ if [ "$SKIP_ARCHIVE" = false ]; then
     -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH" \
     -allowProvisioningUpdates \
     "${XCODEBUILD_AUTH_ARGS[@]}" \
+    "${XCODEBUILD_COMPILE_CACHE_ARGS[@]}" \
     DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
     CODE_SIGN_STYLE=Automatic
 

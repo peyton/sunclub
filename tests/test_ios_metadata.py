@@ -123,6 +123,7 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
 
     assert '- "v*.*.*"' in workflow
     assert 'xcode-version: "26.3"' in workflow
+    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight"
         in workflow
@@ -137,6 +138,8 @@ def test_archive_script_uses_transporter_with_api_key_auth() -> None:
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
+    assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in script
+    assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
     assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
     assert "xcrun iTMSTransporter" in script
     assert '-apiKey "$ASC_KEY_ID"' in script
