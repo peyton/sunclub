@@ -7,6 +7,7 @@ import pytest
 from scripts.tooling.resolve_versions import (
     VersionResolutionError,
     github_release_tag,
+    latest_reachable_release_tag,
     parse_release_tag,
     resolve_build_number,
     resolve_marketing_version,
@@ -65,6 +66,10 @@ def test_resolve_build_number_uses_local_timestamp_shape_without_ci() -> None:
     now = datetime(2026, 4, 2, 19, 55, 1, tzinfo=UTC)
 
     assert resolve_build_number({}, now=now) == "20260402.195501.0"
+
+
+def test_latest_reachable_release_tag_returns_none_for_missing_repo(tmp_path) -> None:
+    assert latest_reachable_release_tag(repo_root=tmp_path) is None
 
 
 def test_resolve_versions_respects_explicit_build_number(tmp_path) -> None:

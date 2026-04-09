@@ -154,7 +154,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(appState.currentStreak)")
                 .font(.system(size: 60, weight: .bold))
-                .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
+                .foregroundStyle(AppPalette.streakAccent)
                 .accessibilityIdentifier("home.streakValue")
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -179,7 +179,7 @@ struct HomeView: View {
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(red: 1.000, green: 0.947, blue: 0.760))
+                .fill(AppPalette.streakBackground)
         )
     }
 

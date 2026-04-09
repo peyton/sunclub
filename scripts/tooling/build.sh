@@ -117,11 +117,13 @@ fi
 xcodebuild "${build_args[@]}" build
 
 if [ "$share_scheme" -eq 1 ]; then
-  if ! run_in_app run_mise_exec tuist share \
+  share_exit=0
+  run_in_app run_mise_exec tuist share \
     "$APP_SCHEME" \
     --configuration "$configuration" \
     --derived-data-path "$derived_data_path" \
-    --platforms iOS; then
-    printf 'Warning: tuist share failed; continuing with local build artifacts.\n' >&2
+    --platforms iOS || share_exit=$?
+  if [ "$share_exit" -ne 0 ]; then
+    printf 'Warning: tuist share failed (exit %d); continuing with local build artifacts.\n' "$share_exit" >&2
   fi
 fi

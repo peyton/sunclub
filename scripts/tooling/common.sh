@@ -52,7 +52,10 @@ resolve_version_metadata() {
   fi
 
   local exports
-  exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell)"
+  if ! exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell)"; then
+    printf 'Error: version resolution failed\n' >&2
+    return 1
+  fi
   eval "$exports"
   export SUNCLUB_MARKETING_VERSION SUNCLUB_BUILD_NUMBER
 }

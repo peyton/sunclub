@@ -16,7 +16,7 @@ struct WeeklyReportView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(report.appliedSummaryText)
                         .font(.system(size: 54, weight: .light))
-                        .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
+                        .foregroundStyle(AppPalette.streakAccent)
                         .accessibilityIdentifier("weekly.summaryValue")
 
                     Text("Days this week")
@@ -101,7 +101,7 @@ struct WeeklyReportView: View {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: report.endDate)
         let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-        let records = Set(appState.recordStartsForTesting())
+        let records = Set(appState.recordedDays)
 
         return (0..<7).compactMap { offset in
             guard let day = calendar.date(byAdding: .day, value: offset, to: start) else {

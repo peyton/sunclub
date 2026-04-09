@@ -10,6 +10,8 @@ enum AppPalette {
     static let softInk = Color(red: 0.514, green: 0.459, blue: 0.427)
     static let success = Color(red: 0.151, green: 0.772, blue: 0.353)
     static let muted = Color(red: 0.832, green: 0.832, blue: 0.842)
+    static let streakAccent = Color(red: 0.870, green: 0.482, blue: 0.000)
+    static let streakBackground = Color(red: 1.000, green: 0.947, blue: 0.760)
     static let white = Color.white
 }
 
