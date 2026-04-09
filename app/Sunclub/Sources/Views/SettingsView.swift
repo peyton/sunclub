@@ -4,7 +4,6 @@ import UIKit
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     @State private var selectedReminderPicker: ReminderScheduleKind?
@@ -28,7 +27,7 @@ struct SettingsView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 30) {
                 SunLightHeader(title: "Settings", showsBack: true, onBack: {
-                    dismiss()
+                    router.goBack()
                 })
 
                 smarterReminderSection

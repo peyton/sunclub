@@ -76,6 +76,18 @@ def test_info_plist_declares_explicit_file_opening_behavior() -> None:
     assert info["LSSupportsOpeningDocumentsInPlace"] is False
 
 
+def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
+    info = load_info_plist()
+
+    quick_action = next(
+        item
+        for item in info["UIApplicationShortcutItems"]
+        if item["UIApplicationShortcutItemType"] == "app.peyton.sunclub.log-today"
+    )
+    assert quick_action["UIApplicationShortcutItemTitle"] == "Log Today"
+    assert quick_action["UIApplicationShortcutItemIconSymbolName"] == "sun.max.fill"
+
+
 def test_widget_extension_inherits_app_version_metadata() -> None:
     source = PROJECT_SWIFT.read_text()
 

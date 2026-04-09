@@ -42,7 +42,9 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     private let isTesting = RuntimeEnvironment.isRunningTests
     private var modelContainer: ModelContainer?
 
-    private var routeHandler: (AppRoute) -> Void = { _ in }
+    private var routeHandler: (AppRoute) -> Void = { route in
+        SunclubWidgetSnapshotStore().setPendingRoute(route)
+    }
     private var configured = false
     private var backgroundTaskRegistered = false
 

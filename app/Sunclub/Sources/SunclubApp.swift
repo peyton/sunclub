@@ -82,6 +82,7 @@ struct SunclubApp: App {
         let arguments = ProcessInfo.processInfo.arguments
         let requestedRoute = requestedUITestRoute(from: arguments)
         let requestedURL = requestedUITestURL(from: arguments)
+        let requestedShortcutType = requestedUITestShortcutType(from: arguments)
         let requestedUVIndex = requestedUITestUVIndex(from: arguments)
         let requestedReapplyInterval = requestedUITestReapplyInterval(from: arguments)
 
@@ -110,6 +111,11 @@ struct SunclubApp: App {
 
         if let requestedURL {
             handleIncomingURL(requestedURL)
+        } else if let requestedShortcutType {
+            if SunclubHomeScreenQuickAction.handleShortcutType(requestedShortcutType),
+               let pendingRoute = SunclubWidgetSnapshotStore().takePendingRoute() {
+                openExternalRoute(pendingRoute)
+            }
         } else if let requestedRoute {
             if requestedRoute == .verifySuccess {
                 appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
@@ -134,6 +140,14 @@ struct SunclubApp: App {
 
         let rawValue = String(urlArgument.dropFirst("UITEST_URL=".count))
         return URL(string: rawValue)
+    }
+
+    private func requestedUITestShortcutType(from arguments: [String]) -> String? {
+        guard let shortcutArgument = arguments.first(where: { $0.hasPrefix("UITEST_SHORTCUT_TYPE=") }) else {
+            return nil
+        }
+
+        return String(shortcutArgument.dropFirst("UITEST_SHORTCUT_TYPE=".count))
     }
 
     private func requestedUITestUVIndex(from arguments: [String]) -> Int? {
@@ -440,7 +454,7 @@ struct SunclubApp: App {
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshUVReadingIfNeeded()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
-            router.open(route.appRoute)
+            openExternalRoute(route)
         }
         refreshReminderScheduleIfNeeded()
     }
@@ -457,6 +471,15 @@ struct SunclubApp: App {
     private func handleIncomingURL(_ url: URL) {
         _ = SunclubDeepLinkHandler.handle(url: url, appState: appState, router: router)
     }
+
+    private func openExternalRoute(_ route: AppRoute) {
+        guard appState.settings.hasCompletedOnboarding else {
+            router.goToWelcome()
+            return
+        }
+
+        router.open(route)
+    }
 }
 
 @MainActor
@@ -465,5 +488,39 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = NotificationManager.shared
         NotificationManager.shared.registerBackgroundTaskIfNeeded()
         return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        configuration.delegateClass = SunclubSceneDelegate.self
+        return configuration
+    }
+
+    func application(
+        _ application: UIApplication,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        completionHandler(SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem))
+    }
+}
+
+final class SunclubSceneDelegate: NSObject, UIWindowSceneDelegate {
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        if let shortcutItem = connectionOptions.shortcutItem {
+            _ = SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem)
+        }
+    }
+
+    func windowScene(
+        _ windowScene: UIWindowScene,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        completionHandler(SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem))
     }
 }

@@ -248,6 +248,8 @@ struct SunLightHeader: View {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Back")
+                .accessibilityIdentifier("screen.back")
             } else {
                 Color.clear.frame(width: 32, height: 32)
             }

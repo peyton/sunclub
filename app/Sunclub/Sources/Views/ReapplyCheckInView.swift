@@ -3,13 +3,12 @@ import SwiftUI
 struct ReapplyCheckInView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 26) {
                 SunLightHeader(title: "Reapply Check-In", showsBack: true, onBack: {
-                    dismiss()
+                    router.goBack()
                 })
 
                 if let presentation = appState.reapplyCheckInPresentation {

@@ -354,6 +354,22 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testWidgetManualLogRouteBackButtonReturnsHome() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_URL=\(widgetURL(path: "open/updateToday"))"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testReapplyCheckInFlowLogsCompletionAndReturnsHome() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=reapplyCheckIn",
@@ -374,6 +390,34 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testWeeklySummaryBackButtonReturnsHome() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=weeklySummary"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testLogTodayQuickActionOpensManualLogAndReturnsHome() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_SHORTCUT_TYPE=app.peyton.sunclub.log-today"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
     }
 
     @MainActor
