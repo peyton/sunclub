@@ -170,6 +170,91 @@ enum SunclubSchemaV3: VersionedSchema {
         DailyRecord.self,
         Settings.self
     ]
+
+    @Model
+    final class DailyRecord {
+        @Attribute(.unique) var id: UUID
+        @Attribute(.unique) var startOfDay: Date
+        var verifiedAt: Date
+        var methodRawValue: Int
+        var verificationDuration: Double?
+        var spfLevel: Int?
+        var notes: String?
+        var reapplyCount: Int
+        var lastReappliedAt: Date?
+
+        init(
+            id: UUID = UUID(),
+            startOfDay: Date,
+            verifiedAt: Date,
+            methodRawValue: Int,
+            verificationDuration: Double? = nil,
+            spfLevel: Int? = nil,
+            notes: String? = nil,
+            reapplyCount: Int = 0,
+            lastReappliedAt: Date? = nil
+        ) {
+            self.id = id
+            self.startOfDay = startOfDay
+            self.verifiedAt = verifiedAt
+            self.methodRawValue = methodRawValue
+            self.verificationDuration = verificationDuration
+            self.spfLevel = spfLevel
+            self.notes = notes
+            self.reapplyCount = reapplyCount
+            self.lastReappliedAt = lastReappliedAt
+        }
+    }
+
+    @Model
+    final class Settings {
+        @Attribute(.unique) var id: UUID
+        var hasCompletedOnboarding: Bool
+        var reminderHour: Int
+        var reminderMinute: Int
+        var weeklyHour: Int
+        var weeklyWeekday: Int
+        var dailyPhraseState: Data?
+        var weeklyPhraseState: Data?
+        var smartReminderSettingsData: Data?
+        var longestStreak: Int
+        var reapplyReminderEnabled: Bool
+        var reapplyIntervalMinutes: Int
+        var lastReminderScheduleAt: Date?
+        var usesLiveUV: Bool
+
+        init(
+            id: UUID = UUID(),
+            hasCompletedOnboarding: Bool = false,
+            reminderHour: Int = 8,
+            reminderMinute: Int = 0,
+            weeklyHour: Int = 18,
+            weeklyWeekday: Int = 1,
+            dailyPhraseState: Data? = nil,
+            weeklyPhraseState: Data? = nil,
+            smartReminderSettingsData: Data? = nil,
+            longestStreak: Int = 0,
+            reapplyReminderEnabled: Bool = false,
+            reapplyIntervalMinutes: Int = 120,
+            lastReminderScheduleAt: Date? = nil,
+            usesLiveUV: Bool = false
+        ) {
+            self.id = id
+            self.hasCompletedOnboarding = hasCompletedOnboarding
+            self.reminderHour = reminderHour
+            self.reminderMinute = reminderMinute
+            self.weeklyHour = weeklyHour
+            self.weeklyWeekday = weeklyWeekday
+            self.dailyPhraseState = dailyPhraseState
+            self.weeklyPhraseState = weeklyPhraseState
+            self.smartReminderSettingsData = smartReminderSettingsData
+            self.longestStreak = longestStreak
+            self.reapplyReminderEnabled = reapplyReminderEnabled
+            self.reapplyIntervalMinutes = reapplyIntervalMinutes
+            self.lastReminderScheduleAt = lastReminderScheduleAt
+            self.usesLiveUV = usesLiveUV
+        }
+    }
 }
 
 enum SunclubSchemaV4: VersionedSchema {
@@ -227,13 +312,13 @@ enum SunclubMigrationPlan: SchemaMigrationPlan {
             toVersion: SunclubSchemaV3.self,
             willMigrate: nil,
             didMigrate: { context in
-                let settingsDescriptor = FetchDescriptor<Settings>()
+                let settingsDescriptor = FetchDescriptor<SunclubSchemaV3.Settings>()
                 for settings in try context.fetch(settingsDescriptor) {
                     settings.lastReminderScheduleAt = nil
                     settings.usesLiveUV = false
                 }
 
-                let recordDescriptor = FetchDescriptor<DailyRecord>()
+                let recordDescriptor = FetchDescriptor<SunclubSchemaV3.DailyRecord>()
                 for record in try context.fetch(recordDescriptor) {
                     record.reapplyCount = 0
                     record.lastReappliedAt = nil

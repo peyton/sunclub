@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 import SwiftData
 import WidgetKit
 
@@ -182,6 +183,9 @@ final class AppState {
     private(set) var leaveHomeAuthorizationState: LeaveHomeAuthorizationState = .notDetermined
     private(set) var leaveHomeReminderErrorMessage: String?
 
+    private(set) var lastRefreshError: String?
+
+    private static let logger = Logger(subsystem: "com.sunclub", category: "AppState")
     private let calendar = Calendar.current
     private var uvReadingOverride: UVReading?
     private var notificationHealthOverride: NotificationHealthSnapshot?
@@ -229,7 +233,6 @@ final class AppState {
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
-        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
     ) {
         modelContext = context
@@ -290,12 +293,16 @@ final class AppState {
             importSessions = try historyService.importSessions()
             conflicts = try historyService.unresolvedConflicts()
             syncPreference = try historyService.syncPreference()
+            lastRefreshError = nil
         } catch {
-            records = []
-            changeBatches = []
-            importSessions = []
-            conflicts = []
-            syncPreference = nil
+            Self.logger.error("Failed to refresh projected state: \(error)")
+            lastRefreshError = "Unable to load your data. Please try again."
+            if records.isEmpty {
+                changeBatches = []
+                importSessions = []
+                conflicts = []
+                syncPreference = nil
+            }
         }
 
         syncLongestStreakIfNeeded()
@@ -315,7 +322,11 @@ final class AppState {
     }
 
     func save() {
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            Self.logger.error("Failed to save model context: \(error)")
+        }
     }
 
     func scheduleReminders() {
