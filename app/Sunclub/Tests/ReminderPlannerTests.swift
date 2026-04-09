@@ -122,6 +122,35 @@ final class ReminderPlannerTests: XCTestCase {
         XCTAssertNil(plan)
     }
 
+    func testReapplyFireDateReturnsNilAtEstimatedSunset() {
+        let calendar = makeCalendar()
+        let start = makeDate(year: 2026, month: 1, day: 12, hour: 16, minute: 45, calendar: calendar)
+
+        let fireDate = ReminderPlanner.reapplyFireDate(
+            from: start,
+            intervalMinutes: 15,
+            calendar: calendar
+        )
+
+        XCTAssertNil(fireDate)
+    }
+
+    func testReapplyFireDateReturnsDateBeforeEstimatedSunset() {
+        let calendar = makeCalendar()
+        let start = makeDate(year: 2026, month: 7, day: 12, hour: 18, minute: 30, calendar: calendar)
+
+        let fireDate = ReminderPlanner.reapplyFireDate(
+            from: start,
+            intervalMinutes: 60,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(
+            fireDate,
+            makeDate(year: 2026, month: 7, day: 12, hour: 19, minute: 30, calendar: calendar)
+        )
+    }
+
     private func makeCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!

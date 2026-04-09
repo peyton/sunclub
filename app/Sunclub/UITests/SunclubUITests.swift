@@ -379,6 +379,7 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testHighUVReapplyReminderNoteUsesStrongerCopy() throws {
         let app = launchHome(additionalArguments: [
+            "UITEST_CURRENT_TIME=13:00",
             "UITEST_UV_INDEX=7",
             "UITEST_REAPPLY_ENABLED",
             "UITEST_REAPPLY_INTERVAL=120"
