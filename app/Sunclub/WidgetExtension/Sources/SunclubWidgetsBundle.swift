@@ -11,5 +11,6 @@ struct SunclubWidgetsBundle: WidgetBundle {
         SunclubLogTodayControl()
         SunclubSummaryControl()
         SunclubHistoryControl()
+        SunclubLiveActivityWidget()
     }
 }

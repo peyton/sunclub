@@ -63,6 +63,14 @@ struct RootView: View {
             HistoryEditorTestHarnessView(day: missedDay)
         case .manualLog:
             ManualLogView()
+        case .achievements:
+            AchievementsView()
+        case .friends:
+            FriendsView()
+        case .skinHealthReport:
+            SkinHealthReportView()
+        case .productScanner:
+            ProductScannerView()
         }
     }
 }

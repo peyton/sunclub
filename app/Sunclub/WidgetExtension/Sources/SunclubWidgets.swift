@@ -295,11 +295,16 @@ private struct SunclubLogSmallView: View {
                 Text("\(snapshot.streakValue(now: now))d streak")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
+                if let reapplyDeadline = snapshot.reapplyDeadline(now: now) {
+                    Text("Reapply \(reapplyDeadline.formatted(date: .omitted, time: .shortened))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SunclubWidgetPalette.softInk)
+                }
             } else {
                 Text("Log Today")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(SunclubWidgetPalette.ink)
-                Text("Today open")
+                Text(snapshot.uvSummary)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
             }
@@ -315,7 +320,9 @@ private struct SunclubLogInlineView: View {
     var body: some View {
         Text(
             snapshot.isOnboardingComplete
-                ? (snapshot.hasLoggedToday(now: now) ? "Sunclub Logged \(snapshot.streakValue(now: now))d" : "Sunclub Log Today")
+                ? (snapshot.hasLoggedToday(now: now)
+                    ? "Sunclub \(snapshot.reapplyInlineLabel(now: now) ?? "Logged \(snapshot.streakValue(now: now))d")"
+                    : "Sunclub \(snapshot.uvSummary)")
                 : "Open Sunclub"
         )
     }
@@ -332,7 +339,7 @@ private struct SunclubLogCircularView: View {
             VStack(spacing: 2) {
                 Image(systemName: snapshot.hasLoggedToday(now: now) ? "checkmark" : "sun.max.fill")
                     .font(.system(size: 16, weight: .bold))
-                Text(snapshot.hasLoggedToday(now: now) ? "\(snapshot.streakValue(now: now))d" : "Log")
+                Text(snapshot.hasLoggedToday(now: now) ? "\(snapshot.streakValue(now: now))d" : (snapshot.currentUVIndex.map { "UV\($0)" } ?? "Log"))
                     .font(.system(size: 11, weight: .semibold))
             }
             .foregroundStyle(snapshot.hasLoggedToday(now: now) ? SunclubWidgetPalette.success : SunclubWidgetPalette.sun)
@@ -353,7 +360,7 @@ private struct SunclubLogRectangularView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(snapshot.hasLoggedToday(now: now) ? "Sunclub Logged" : "Sunclub Log Today")
                     .font(.system(size: 15, weight: .semibold))
-                Text(snapshot.hasLoggedToday(now: now) ? "\(snapshot.streakValue(now: now))d streak" : "Today open")
+                Text(snapshot.hasLoggedToday(now: now) ? (snapshot.reapplyInlineLabel(now: now) ?? "\(snapshot.streakValue(now: now))d streak") : snapshot.uvSummary)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -762,6 +769,23 @@ private extension SunclubWidgetSnapshot {
         return "\(Int((Double(applied) / Double(total)) * 100))%"
     }
 
+    var uvSummary: String {
+        if let peakUVIndex {
+            return "Peak UV \(peakUVIndex)"
+        }
+        if let currentUVIndex {
+            return "UV \(currentUVIndex)"
+        }
+        return "Today open"
+    }
+
+    func reapplyInlineLabel(now: Date) -> String? {
+        guard let reapplyDeadline = reapplyDeadline(now: now) else {
+            return nil
+        }
+        return "Reapply \(reapplyDeadline.formatted(date: .omitted, time: .shortened))"
+    }
+
     static var previewLogged: SunclubWidgetSnapshot {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -772,13 +796,20 @@ private extension SunclubWidgetSnapshot {
         return SunclubWidgetSnapshot(
             isOnboardingComplete: true,
             lastLoggedDay: today,
+            lastVerifiedAt: calendar.date(byAdding: .hour, value: 9, to: today),
+            lastReappliedAt: calendar.date(byAdding: .hour, value: 11, to: today),
             recordedDays: records.sorted(),
             currentStreak: 4,
             longestStreak: 8,
             weeklyAppliedCount: 5,
             monthlyAppliedCount: 8,
             monthlyDayCount: max(calendar.component(.day, from: today), 1),
-            mostUsedSPF: 50
+            mostUsedSPF: 50,
+            currentUVIndex: 6,
+            peakUVIndex: 8,
+            peakUVHour: calendar.date(bySettingHour: 13, minute: 0, second: 0, of: today),
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 120
         )
     }
 
@@ -792,13 +823,20 @@ private extension SunclubWidgetSnapshot {
         return SunclubWidgetSnapshot(
             isOnboardingComplete: true,
             lastLoggedDay: calendar.date(byAdding: .day, value: -1, to: today),
+            lastVerifiedAt: calendar.date(byAdding: .day, value: -1, to: today),
+            lastReappliedAt: nil,
             recordedDays: records.sorted(),
             currentStreak: 4,
             longestStreak: 9,
             weeklyAppliedCount: 4,
             monthlyAppliedCount: 6,
             monthlyDayCount: max(calendar.component(.day, from: today), 1),
-            mostUsedSPF: 30
+            mostUsedSPF: 30,
+            currentUVIndex: 7,
+            peakUVIndex: 9,
+            peakUVHour: calendar.date(bySettingHour: 12, minute: 0, second: 0, of: today),
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90
         )
     }
 }

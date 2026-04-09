@@ -11,6 +11,9 @@ struct HomeView: View {
                 header
 
                 todayCard
+                uvBriefingCard
+                achievementCelebrationCard
+                growthLinksGrid
 
                 Button {
                     router.open(.weeklySummary)
@@ -45,6 +48,7 @@ struct HomeView: View {
             now = Date()
             appState.clearVerificationSuccessPresentation()
             appState.refreshUVReadingIfNeeded()
+            appState.refreshUVForecastIfNeeded()
             appState.refreshNotificationHealth()
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -150,6 +154,130 @@ struct HomeView: View {
         )
     }
 
+    @ViewBuilder
+    private var uvBriefingCard: some View {
+        if let uvForecast = appState.uvForecast {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Skin's Weather Report")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    Spacer(minLength: 0)
+
+                    if let peakHour = uvForecast.peakHour {
+                        Text("Peak \(peakHour.index)")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AppPalette.sun)
+                    }
+                }
+
+                Text(uvForecast.headline)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+
+                if !uvForecast.hours.isEmpty {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(Array(uvForecast.hours.prefix(8))) { hour in
+                            VStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(barColor(for: hour.level))
+                                    .frame(width: 18, height: max(CGFloat(hour.index) * 8, 10))
+
+                                Text(hour.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated))))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(AppPalette.softInk)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Text(uvForecast.recommendation)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var achievementCelebrationCard: some View {
+        if let achievement = appState.achievementCelebration {
+            HStack(spacing: 14) {
+                Image(systemName: achievement.symbolName)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AppPalette.sun)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Unlocked: \(achievement.title)")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(achievement.detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppPalette.softInk)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                Button("View") {
+                    router.open(.achievements)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppPalette.warmGlow.opacity(0.5))
+            )
+        }
+    }
+
+    private var growthLinksGrid: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("More Sunclub")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                homeFeatureButton(
+                    title: "Achievements",
+                    detail: appState.unseenAchievementCount > 0 ? "\(appState.unseenAchievementCount) new" : "Badges and challenges",
+                    symbol: "rosette",
+                    route: .achievements
+                )
+
+                homeFeatureButton(
+                    title: "Friends",
+                    detail: appState.friends.isEmpty ? "Invite someone" : "\(appState.friends.count) synced",
+                    symbol: "person.2.fill",
+                    route: .friends
+                )
+
+                homeFeatureButton(
+                    title: "Skin Report",
+                    detail: "PDF and streak share",
+                    symbol: "doc.richtext.fill",
+                    route: .skinHealthReport
+                )
+
+                homeFeatureButton(
+                    title: "Scanner",
+                    detail: "Read SPF from a bottle",
+                    symbol: "camera.viewfinder",
+                    route: .productScanner
+                )
+            }
+        }
+    }
+
     private var streakCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(appState.currentStreak)")
@@ -210,6 +338,56 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+    }
+
+    private func homeFeatureButton(
+        title: String,
+        detail: String,
+        symbol: String,
+        route: AppRoute
+    ) -> some View {
+        Button {
+            router.open(route)
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppPalette.sun)
+
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(detail)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppPalette.softInk)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func barColor(for level: UVLevel) -> Color {
+        switch level {
+        case .low:
+            return AppPalette.success
+        case .moderate:
+            return AppPalette.sun
+        case .high:
+            return Color.orange
+        case .veryHigh:
+            return Color.red.opacity(0.75)
+        case .extreme:
+            return Color.pink.opacity(0.8)
+        case .unknown:
+            return AppPalette.muted
+        }
     }
 
     @ViewBuilder

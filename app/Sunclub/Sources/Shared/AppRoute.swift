@@ -15,6 +15,10 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case historyEditToday
     case historyBackfillTwoDaysAgo
     case manualLog
+    case achievements
+    case friends
+    case skinHealthReport
+    case productScanner
 
     var id: String { rawValue }
 }

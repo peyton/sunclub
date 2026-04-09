@@ -18,6 +18,8 @@ private enum NotificationConstants {
     static let reapplyPrefix = "sunscreen.reapply."
     static let streakRiskPrefix = "sunscreen.streak-risk."
     static let leaveHomePrefix = "sunscreen.leave-home."
+    static let uvBriefingPrefix = "sunscreen.uv-briefing."
+    static let extremeUVPrefix = "sunscreen.uv-extreme."
 }
 
 @MainActor
@@ -38,6 +40,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     private let center = UNUserNotificationCenter.current()
     private let calendar = Calendar.current
+    private let uvBriefingService = SunclubUVBriefingService()
 
     private let isTesting = RuntimeEnvironment.isRunningTests
     private var modelContainer: ModelContainer?
@@ -109,8 +112,12 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         await clearPendingRequests(prefix: NotificationConstants.weeklyPrimaryPrefix)
         await clearPendingRequests(prefix: NotificationConstants.streakRiskPrefix)
         await clearPendingRequests(prefix: NotificationConstants.leaveHomePrefix)
+        await clearPendingRequests(prefix: NotificationConstants.uvBriefingPrefix)
+        await clearPendingRequests(prefix: NotificationConstants.extremeUVPrefix)
 
         await addRequests(makeDailyReminderRequests(using: state))
+        await addRequests(makeUVBriefingRequests(using: state))
+        await addRequests(makeExtremeUVRequests(using: state))
         if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
             try? await center.add(weeklyFallback)
         }
@@ -164,6 +171,83 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
 
         return requests
+    }
+
+    private func makeUVBriefingRequests(using state: AppState) -> [UNNotificationRequest] {
+        guard state.growthSettings.uvBriefing.dailyBriefingEnabled else {
+            return []
+        }
+
+        let reminderSettings = state.settings.smartReminderSettings
+        let timeZone = reminderSettings.notificationTimeZone()
+        var scheduleCalendar = calendar
+        scheduleCalendar.timeZone = timeZone
+        let dayStart = scheduleCalendar.startOfDay(for: Date())
+
+        return (0..<30).compactMap { offset in
+            guard let day = scheduleCalendar.date(byAdding: .day, value: offset, to: dayStart) else {
+                return nil
+            }
+
+            let forecast = uvBriefingService.notificationForecast(referenceDate: day, calendar: scheduleCalendar)
+            var components = scheduleCalendar.dateComponents([.year, .month, .day], from: day)
+            components.hour = state.growthSettings.uvBriefing.morningHour
+            components.minute = state.growthSettings.uvBriefing.morningMinute
+            components.timeZone = timeZone
+
+            return UNNotificationRequest(
+                identifier: "\(NotificationConstants.uvBriefingPrefix)\(Int(day.timeIntervalSince1970))",
+                content: makeContent(
+                    title: "Skin's weather report",
+                    body: "\(forecast.headline). \(forecast.recommendation)",
+                    categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+                    route: NotificationConstants.manualRoute,
+                    type: "uv_briefing"
+                ),
+                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            )
+        }
+    }
+
+    private func makeExtremeUVRequests(using state: AppState) -> [UNNotificationRequest] {
+        guard state.growthSettings.uvBriefing.extremeAlertEnabled else {
+            return []
+        }
+
+        let reminderSettings = state.settings.smartReminderSettings
+        let timeZone = reminderSettings.notificationTimeZone()
+        var scheduleCalendar = calendar
+        scheduleCalendar.timeZone = timeZone
+        let dayStart = scheduleCalendar.startOfDay(for: Date())
+
+        return (0..<14).compactMap { offset in
+            guard let day = scheduleCalendar.date(byAdding: .day, value: offset, to: dayStart) else {
+                return nil
+            }
+
+            let forecast = uvBriefingService.notificationForecast(referenceDate: day, calendar: scheduleCalendar)
+            guard let peakHour = forecast.peakHour, peakHour.level == .extreme else {
+                return nil
+            }
+
+            var components = scheduleCalendar.dateComponents([.year, .month, .day], from: peakHour.date)
+            components.hour = scheduleCalendar.component(.hour, from: peakHour.date)
+            components.minute = 0
+            components.timeZone = timeZone
+
+            return UNNotificationRequest(
+                identifier: "\(NotificationConstants.extremeUVPrefix)\(Int(day.timeIntervalSince1970))",
+                content: makeContent(
+                    title: "Extreme UV today",
+                    body: "UV peaks around \(peakHour.date.formatted(date: .omitted, time: .shortened)). Apply early and plan to reapply sooner.",
+                    categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+                    route: NotificationConstants.manualRoute,
+                    type: "uv_extreme",
+                    includeDefaultSound: true
+                ),
+                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            )
+        }
     }
 
     func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async {

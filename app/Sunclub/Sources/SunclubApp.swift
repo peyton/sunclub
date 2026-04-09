@@ -29,6 +29,7 @@ struct SunclubApp: App {
             fatalError("Failed to create ModelContainer: \(error)")
         }
         NotificationManager.shared.configure(modelContainer: container)
+        SunclubWatchSyncCoordinator.shared.activate()
 
         let state = AppState(context: ModelContext(container), notificationManager: NotificationManager.shared)
         _appState = State(initialValue: state)

@@ -151,6 +151,11 @@ struct CloudSyncStatusPresentation: Equatable {
     let pendingImportedBatchCount: Int
 }
 
+struct ManualLogPrefill: Equatable {
+    let spfLevel: Int?
+    let notes: String
+}
+
 @MainActor
 @Observable
 final class AppState {
@@ -170,8 +175,12 @@ final class AppState {
     private let notificationManager: NotificationScheduling
     private let homeExitReminderMonitor: HomeExitReminderMonitoring
     private let uvIndexService: UVIndexService
+    private let uvBriefingService: SunclubUVBriefingService
+    private let healthKitService: SunclubHealthKitServing
+    private let liveActivityCoordinator: SunclubLiveActivityCoordinating
     private let backupService: SunclubBackupService
     private let widgetSnapshotStore: SunclubWidgetSnapshotStore
+    private let growthFeatureStore: SunclubGrowthFeatureStoring
     private let currentDate: () -> Date
     private(set) var records: [DailyRecord] = []
     private(set) var changeBatches: [SunclubChangeBatch] = []
@@ -179,9 +188,14 @@ final class AppState {
     private(set) var conflicts: [SunclubConflictItem] = []
     private(set) var syncPreference: CloudSyncPreference?
     private(set) var uvReading: UVReading?
+    private(set) var uvForecast: SunclubUVForecast?
     private(set) var notificationHealthSnapshot: NotificationHealthSnapshot = .unknown
     private(set) var leaveHomeAuthorizationState: LeaveHomeAuthorizationState = .notDetermined
     private(set) var leaveHomeReminderErrorMessage: String?
+    private(set) var growthSettings: SunclubGrowthSettings
+    private(set) var achievementCelebration: SunclubAchievement?
+    private(set) var friendImportMessage: String?
+    var manualLogPrefill: ManualLogPrefill?
 
     private(set) var lastRefreshError: String?
 
@@ -195,7 +209,10 @@ final class AppState {
         self.init(
             context: context,
             notificationManager: NotificationManager.shared,
-            uvIndexService: UVIndexService()
+            uvIndexService: UVIndexService(),
+            uvBriefingService: SunclubUVBriefingService(),
+            healthKitService: SunclubHealthKitService.shared,
+            liveActivityCoordinator: SunclubLiveActivityCoordinator.shared
         )
     }
 
@@ -206,7 +223,10 @@ final class AppState {
         self.init(
             context: context,
             notificationManager: notificationManager,
-            uvIndexService: UVIndexService()
+            uvIndexService: UVIndexService(),
+            uvBriefingService: SunclubUVBriefingService(),
+            healthKitService: SunclubHealthKitService.shared,
+            liveActivityCoordinator: SunclubLiveActivityCoordinator.shared
         )
     }
 
@@ -219,6 +239,9 @@ final class AppState {
             context: context,
             notificationManager: notificationManager,
             uvIndexService: UVIndexService(),
+            uvBriefingService: SunclubUVBriefingService(),
+            healthKitService: SunclubHealthKitService.shared,
+            liveActivityCoordinator: SunclubLiveActivityCoordinator.shared,
             homeExitReminderMonitor: homeExitReminderMonitor
         )
     }
@@ -227,10 +250,14 @@ final class AppState {
         context: ModelContext,
         notificationManager: NotificationScheduling,
         uvIndexService: UVIndexService,
+        uvBriefingService: SunclubUVBriefingService? = nil,
+        healthKitService: (any SunclubHealthKitServing)? = nil,
+        liveActivityCoordinator: (any SunclubLiveActivityCoordinating)? = nil,
         backupService: SunclubBackupService = SunclubBackupService(),
         historyService: SunclubHistoryService? = nil,
         cloudSyncCoordinator: CloudSyncControlling? = nil,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
+        growthFeatureStore: SunclubGrowthFeatureStoring = SunclubGrowthFeatureStore.shared,
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
         clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
@@ -244,11 +271,22 @@ final class AppState {
             ?? (RuntimeEnvironment.isRunningTests ? NoopHomeExitReminderMonitor() : HomeExitReminderMonitor.shared)
         self.homeExitReminderMonitor = resolvedHomeExitReminderMonitor
         self.uvIndexService = uvIndexService
+        self.uvBriefingService = uvBriefingService ?? SunclubUVBriefingService()
+        self.healthKitService = healthKitService ?? SunclubHealthKitService.shared
+        self.liveActivityCoordinator = liveActivityCoordinator ?? SunclubLiveActivityCoordinator.shared
         self.backupService = backupService
         try? resolvedHistoryService.bootstrapIfNeeded()
         self.widgetSnapshotStore = widgetSnapshotStore
+        if runtimeEnvironment.isRunningTests {
+            self.growthFeatureStore = SunclubGrowthFeatureStore(
+                userDefaults: UserDefaults(suiteName: UUID().uuidString)
+            )
+        } else {
+            self.growthFeatureStore = growthFeatureStore
+        }
         currentDate = clock
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
+        growthSettings = self.growthFeatureStore.load()
         if let cloudSyncCoordinator {
             self.cloudSyncCoordinator = cloudSyncCoordinator
         } else {
@@ -262,8 +300,14 @@ final class AppState {
         }
         refresh()
         refreshUVReadingIfNeeded()
+        refreshUVForecastIfNeeded()
         refreshNotificationHealth()
         refreshLeaveHomeReminderStatus()
+        refreshHealthKitStatus()
+        syncAchievementCelebration()
+        Task {
+            await self.liveActivityCoordinator.sync(using: self)
+        }
 
         if runtimeEnvironment.shouldStartCloudSyncOnLaunch {
             Task {
@@ -883,6 +927,205 @@ final class AppState {
         }
     }
 
+    var achievements: [SunclubAchievement] {
+        SunclubGrowthAnalytics.achievements(
+            records: records,
+            changeBatches: changeBatches,
+            now: currentDate(),
+            calendar: calendar
+        )
+    }
+
+    var seasonalChallenges: [SunclubSeasonalChallenge] {
+        SunclubGrowthAnalytics.challenges(
+            records: records,
+            now: currentDate(),
+            calendar: calendar
+        )
+    }
+
+    var friends: [SunclubFriendSnapshot] {
+        growthSettings.friends.sorted { lhs, rhs in
+            if lhs.hasLoggedToday != rhs.hasLoggedToday {
+                return lhs.hasLoggedToday && !rhs.hasLoggedToday
+            }
+            if lhs.currentStreak != rhs.currentStreak {
+                return lhs.currentStreak > rhs.currentStreak
+            }
+            return lhs.lastSharedAt > rhs.lastSharedAt
+        }
+    }
+
+    var localFriendSnapshot: SunclubFriendSnapshot {
+        SunclubGrowthAnalytics.localFriendSnapshot(
+            preferredName: growthSettings.preferredName,
+            records: records,
+            now: currentDate(),
+            calendar: calendar
+        )
+    }
+
+    var healthKitAvailable: Bool {
+        healthKitService.isAvailable
+    }
+
+    var preferredDisplayName: String {
+        growthSettings.preferredName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var unseenAchievementCount: Int {
+        achievements
+            .filter(\.isUnlocked)
+            .filter { !growthSettings.presentedAchievementIDs.contains($0.id.rawValue) }
+            .count
+    }
+
+    func updatePreferredDisplayName(_ name: String) {
+        growthSettings.preferredName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        persistGrowthSettings()
+    }
+
+    func updateHealthKitEnabled(_ enabled: Bool) {
+        if !enabled {
+            growthSettings.healthKit.isEnabled = false
+            persistGrowthSettings()
+            return
+        }
+
+        Task {
+            let granted = await healthKitService.requestAuthorizationIfNeeded()
+            growthSettings.healthKit.isEnabled = granted
+            if granted {
+                growthSettings.healthKit.importedSampleCount = await healthKitService.recentUVSampleCount(
+                    since: calendar.date(byAdding: .year, value: -1, to: currentDate()) ?? currentDate()
+                )
+            }
+            persistGrowthSettings()
+        }
+    }
+
+    func refreshHealthKitStatus() {
+        guard growthSettings.healthKit.isEnabled else { return }
+
+        Task {
+            growthSettings.healthKit.importedSampleCount = await healthKitService.recentUVSampleCount(
+                since: calendar.date(byAdding: .year, value: -1, to: currentDate()) ?? currentDate()
+            )
+            persistGrowthSettings()
+        }
+    }
+
+    func updateUVBriefingPreferences(
+        dailyBriefingEnabled: Bool? = nil,
+        extremeAlertEnabled: Bool? = nil
+    ) {
+        if let dailyBriefingEnabled {
+            growthSettings.uvBriefing.dailyBriefingEnabled = dailyBriefingEnabled
+        }
+        if let extremeAlertEnabled {
+            growthSettings.uvBriefing.extremeAlertEnabled = extremeAlertEnabled
+        }
+        persistGrowthSettings()
+        scheduleReminders()
+    }
+
+    func refreshUVForecastIfNeeded(allowPermissionPrompt: Bool = false) {
+        Task {
+            uvForecast = await uvBriefingService.forecast(
+                prefersLiveData: settings.usesLiveUV,
+                allowPermissionPrompt: allowPermissionPrompt,
+                referenceDate: currentDate(),
+                calendar: calendar
+            )
+            syncWidgetSnapshot()
+            reloadWidgetTimelines()
+            await liveActivityCoordinator.sync(using: self)
+        }
+    }
+
+    func clearFriendImportMessage() {
+        friendImportMessage = nil
+    }
+
+    func setManualLogPrefill(spfLevel: Int?, notes: String) {
+        manualLogPrefill = ManualLogPrefill(spfLevel: spfLevel, notes: notes)
+    }
+
+    func clearManualLogPrefill() {
+        manualLogPrefill = nil
+    }
+
+    func friendShareCode() throws -> String {
+        try SunclubFriendCodeCodec.encode(localFriendSnapshot)
+    }
+
+    func importFriendCode(_ code: String) throws {
+        let importedSnapshot = try SunclubFriendCodeCodec.decode(code)
+        if let existingIndex = growthSettings.friends.firstIndex(where: { $0.id == importedSnapshot.id || $0.name == importedSnapshot.name }) {
+            growthSettings.friends[existingIndex] = importedSnapshot
+        } else {
+            growthSettings.friends.append(importedSnapshot)
+        }
+        persistGrowthSettings()
+        friendImportMessage = importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil
+            ? "\(importedSnapshot.name) logged today. Have you?"
+            : "Imported \(importedSnapshot.name)."
+    }
+
+    func removeFriend(_ id: UUID) {
+        growthSettings.friends.removeAll { $0.id == id }
+        persistGrowthSettings()
+    }
+
+    func markAchievementCelebrationSeen() {
+        guard let achievementCelebration else { return }
+        if !growthSettings.presentedAchievementIDs.contains(achievementCelebration.id.rawValue) {
+            growthSettings.presentedAchievementIDs.append(achievementCelebration.id.rawValue)
+            persistGrowthSettings()
+        }
+        self.achievementCelebration = nil
+    }
+
+    func streakCardArtifact() throws -> SunclubShareArtifact {
+        try SunclubShareArtifactService.makeStreakCard(
+            currentStreak: currentStreak,
+            longestStreak: longestStreak,
+            recordedDays: recordedDays,
+            seasonStyle: SunclubGrowthAnalytics.seasonalStyle(for: currentDate(), calendar: calendar),
+            now: currentDate(),
+            calendar: calendar
+        )
+    }
+
+    func achievementArtifact(for achievement: SunclubAchievement) throws -> SunclubShareArtifact {
+        try SunclubShareArtifactService.makeAchievementCard(
+            achievement: achievement,
+            seasonStyle: SunclubGrowthAnalytics.seasonalStyle(for: currentDate(), calendar: calendar)
+        )
+    }
+
+    func challengeArtifact(for challenge: SunclubSeasonalChallenge) throws -> SunclubShareArtifact {
+        try SunclubShareArtifactService.makeChallengeCard(
+            challenge: challenge,
+            seasonStyle: SunclubGrowthAnalytics.seasonalStyle(for: currentDate(), calendar: calendar)
+        )
+    }
+
+    func skinHealthReportArtifact(for interval: DateInterval) throws -> SunclubShareArtifact {
+        try SunclubShareArtifactService.makeSkinHealthReport(
+            summary: SunclubGrowthAnalytics.reportSummary(
+                records: records,
+                interval: interval,
+                calendar: calendar
+            ),
+            preferredName: preferredDisplayName
+        )
+    }
+
+    func skinHealthReportSummary(for interval: DateInterval) -> SunclubSkinHealthReportSummary {
+        SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
+    }
+
     func nextDailyPhrase() -> String {
         nextPhrase(
             catalog: PhraseBank.dailyPhrases,
@@ -1066,16 +1309,19 @@ final class AppState {
         }
         finishDurableChange(batch, reschedulesReminders: false)
         refreshUVReadingIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
+        refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
     }
 
     func performLiveUVAction(_ action: LiveUVActionKind) {
         switch action {
         case .requestPermission:
             refreshUVReadingIfNeeded(allowPermissionPrompt: true)
+            refreshUVForecastIfNeeded(allowPermissionPrompt: true)
         case .openSettings:
             break
         case .refresh:
             refreshUVReadingIfNeeded()
+            refreshUVForecastIfNeeded()
         }
     }
 
@@ -1129,6 +1375,9 @@ final class AppState {
                 return
             }
             uvReading = uvIndexService.currentReading
+            syncWidgetSnapshot()
+            reloadWidgetTimelines()
+            await liveActivityCoordinator.sync(using: self)
         }
     }
 
@@ -1315,6 +1564,7 @@ final class AppState {
             )
         }
         finishDurableChange(batch, reschedulesReminders: false)
+        exportHealthKitLogIfNeeded(for: day)
     }
 
     private func defaultVerifiedAt(for day: Date) -> Date {
@@ -1339,6 +1589,11 @@ final class AppState {
         reschedulesReminders: Bool
     ) {
         refresh()
+        syncAchievementCelebration()
+        refreshUVForecastIfNeeded()
+        Task {
+            await liveActivityCoordinator.sync(using: self)
+        }
 
         if reschedulesReminders {
             scheduleReminders()
@@ -1354,6 +1609,38 @@ final class AppState {
 
         Task {
             await cloudSyncCoordinator.queueBatchIfNeeded(batch.id)
+        }
+    }
+
+    private func persistGrowthSettings() {
+        growthFeatureStore.save(growthSettings)
+    }
+
+    private func syncAchievementCelebration() {
+        guard achievementCelebration == nil else {
+            return
+        }
+
+        achievementCelebration = achievements.first(where: { achievement in
+            achievement.isUnlocked && !growthSettings.presentedAchievementIDs.contains(achievement.id.rawValue)
+        })
+    }
+
+    private func exportHealthKitLogIfNeeded(for day: Date) {
+        guard growthSettings.healthKit.isEnabled,
+              let record = record(for: day) else {
+            return
+        }
+
+        Task {
+            await healthKitService.exportLog(
+                recordDate: record.verifiedAt,
+                uvIndex: uvForecast?.peakHour?.index ?? uvReading?.index,
+                externalID: record.id,
+                spfLevel: record.spfLevel
+            )
+            growthSettings.healthKit.lastExportAt = currentDate()
+            persistGrowthSettings()
         }
     }
 
@@ -1380,12 +1667,14 @@ final class AppState {
     private func finalizeImportedBackup(importedBatchCount: Int) {
         clearVerificationSuccessPresentation()
         refresh()
+        syncAchievementCelebration()
         cancelReapplyRemindersIfNeeded()
         scheduleReminders()
         refreshStreakRiskReminder()
         refreshNotificationHealth()
         refreshLeaveHomeReminderStatus()
         refreshUVReadingIfNeeded()
+        refreshUVForecastIfNeeded()
         _ = importedBatchCount
         reloadWidgetTimelines()
     }
@@ -1394,10 +1683,13 @@ final class AppState {
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: settings,
             records: records,
+            uvReading: uvReading,
+            uvForecast: uvForecast,
             now: Date(),
             calendar: calendar
         )
         widgetSnapshotStore.save(snapshot)
+        SunclubWatchSyncCoordinator.shared.push(snapshot: snapshot)
     }
 
     private func reloadWidgetTimelines() {
