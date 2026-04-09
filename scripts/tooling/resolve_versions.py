@@ -67,7 +67,7 @@ def latest_reachable_release_tag(repo_root: Path = REPO_ROOT) -> str | None:
             capture_output=True,
             text=True,
         )
-    except FileNotFoundError, subprocess.CalledProcessError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         return None
 
     tag = result.stdout.strip()

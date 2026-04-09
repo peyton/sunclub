@@ -28,7 +28,7 @@ struct HistoryView: View {
 
                 weekdayHeader
 
-                let recordDates = appState.recordStartsForTesting()
+                let recordDates = appState.recordedDays
 
                 calendarGrid(recordDates: recordDates)
 
@@ -134,12 +134,12 @@ struct HistoryView: View {
     private func calendarGrid(recordDates: [Date]) -> some View {
         let days = appState.monthGrid(for: displayedMonth)
         let recordDateSet = Set(recordDates)
+        let today = calendar.startOfDay(for: Date())
 
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                 let isCurrentMonth = appState.isCurrentMonth(day, month: displayedMonth)
                 let dayStart = calendar.startOfDay(for: day)
-                let today = calendar.startOfDay(for: Date())
                 let hasRecord = recordDateSet.contains(dayStart)
                 let isToday = dayStart == today
                 let isFuture = dayStart > today
@@ -169,6 +169,7 @@ struct HistoryView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!isCurrentMonth || isFuture)
+                .accessibilityLabel(dayAccessibilityLabel(for: day, hasRecord: hasRecord, isToday: isToday))
                 .accessibilityIdentifier(dayAccessibilityIdentifier(for: dayStart))
             }
         }
@@ -362,6 +363,12 @@ struct HistoryView: View {
         }
     }
 
+    private func dayAccessibilityLabel(for day: Date, hasRecord: Bool, isToday: Bool) -> String {
+        let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        let status = hasRecord ? "Applied" : (isToday ? "Pending" : "No entry")
+        return "\(dateLabel), \(status)"
+    }
+
     private func dayAccessibilityIdentifier(for day: Date) -> String {
         "history.day.\(Self.dayIdentifierFormatter.string(from: day))"
     }
@@ -397,7 +404,6 @@ struct HistoryView: View {
             Text(value)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
-                .accessibilityIdentifier(accessibilityIdentifier)
 
             Text(detail)
                 .font(.system(size: 14))
