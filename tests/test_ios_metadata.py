@@ -80,6 +80,7 @@ def test_widget_extension_inherits_app_version_metadata() -> None:
     source = PROJECT_SWIFT.read_text()
 
     assert "func widgetTarget(for flavor: SunclubFlavor) -> Target {" in source
+    assert '"CFBundleDisplayName": "$(SUNCLUB_DISPLAY_NAME)"' in source
     assert '"CFBundleShortVersionString": "$(MARKETING_VERSION)"' in source
     assert '"CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)"' in source
 
@@ -147,6 +148,10 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '--api-key "$ASC_KEY_ID"' in script
     assert '--api-issuer "$ASC_ISSUER_ID"' in script
     assert '--p8-file-path "$ASC_KEY_FILE"' in script
+    assert "--wait \\" in script
+    assert "PIPESTATUS[0]" in script
+    assert "UPLOAD FAILED" in script
+    assert "App Store Connect upload failed" in script
     assert "xcrun iTMSTransporter" in script
     assert '-apiKey "$ASC_KEY_ID"' in script
     assert '-apiIssuer "$ASC_ISSUER_ID"' in script

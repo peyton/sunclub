@@ -94,6 +94,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
         bundleId: flavor.widgetBundleID,
         deploymentTargets: defaultDeploymentTarget,
         infoPlist: .extendingDefault(with: [
+            "CFBundleDisplayName": "$(SUNCLUB_DISPLAY_NAME)",
             "CFBundleShortVersionString": "$(MARKETING_VERSION)",
             "CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)",
             "SunclubAppGroupID": "$(SUNCLUB_APP_GROUP_ID)",

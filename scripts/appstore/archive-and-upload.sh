@@ -148,13 +148,25 @@ if [ "$UPLOAD_TESTFLIGHT" = true ]; then
 
   step "Uploading IPA to TestFlight"
   if xcrun --find altool >/dev/null 2>&1; then
+    ALTOOL_LOG_PATH="$(mktemp "${TMPDIR:-/tmp}/sunclub-altool.XXXXXX.log")"
+    trap 'rm -f "$ALTOOL_LOG_PATH"' EXIT
+
+    set +e
     xcrun altool \
       --upload-package "$IPA_FILE" \
       --api-key "$ASC_KEY_ID" \
       --api-issuer "$ASC_ISSUER_ID" \
       --p8-file-path "$ASC_KEY_FILE" \
       --show-progress \
-      --output-format normal
+      --wait \
+      --output-format normal 2>&1 | tee "$ALTOOL_LOG_PATH"
+    altool_status=${PIPESTATUS[0]}
+    set -e
+
+    if [ "$altool_status" -ne 0 ] ||
+      grep -Eq '(^|[[:space:]])ERROR:|UPLOAD FAILED|Validation failed \([0-9]+\)|STATE_ERROR\.' "$ALTOOL_LOG_PATH"; then
+      fail "App Store Connect upload failed"
+    fi
   else
     TRANSPORTER_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-transporter.XXXXXX")"
     trap 'rm -rf "$TRANSPORTER_TMP_DIR"' EXIT
