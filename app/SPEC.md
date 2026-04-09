@@ -191,6 +191,7 @@ Expected sequence:
 - Weekly reminders should open the weekly summary view.
 - Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
 - Reapply reminder timing and copy should get stronger on elevated UV days without changing the user's saved base interval.
+- Reapply reminders should not fire after sunset.
 
 ### Widgets
 

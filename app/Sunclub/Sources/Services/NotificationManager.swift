@@ -276,6 +276,9 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
+        guard plan.shouldScheduleNotification else {
+            return
+        }
 
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: TimeInterval(plan.intervalMinutes * 60),
