@@ -1,5 +1,27 @@
 import Foundation
 
+struct RuntimeEnvironmentSnapshot: Equatable {
+    let isRunningTests: Bool
+    let isPreviewing: Bool
+    let hasAppGroupContainer: Bool
+
+    static var current: Self {
+        Self(
+            isRunningTests: RuntimeEnvironment.isRunningTests,
+            isPreviewing: RuntimeEnvironment.isPreviewing,
+            hasAppGroupContainer: RuntimeEnvironment.hasAppGroupContainer
+        )
+    }
+
+    var shouldUseNoopCloudSyncCoordinator: Bool {
+        isRunningTests || isPreviewing
+    }
+
+    var shouldStartCloudSyncOnLaunch: Bool {
+        !shouldUseNoopCloudSyncCoordinator
+    }
+}
+
 enum RuntimeEnvironment {
     static var isUITesting: Bool {
         ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
@@ -7,6 +29,10 @@ enum RuntimeEnvironment {
 
     static var isRunningTests: Bool {
         isUITesting || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    static var isPreviewing: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
 
     static var hasAppGroupContainer: Bool {

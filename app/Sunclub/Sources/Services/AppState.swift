@@ -164,7 +164,8 @@ final class AppState {
         backupService: SunclubBackupService = SunclubBackupService(),
         historyService: SunclubHistoryService? = nil,
         cloudSyncCoordinator: CloudSyncControlling? = nil,
-        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore()
+        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
+        runtimeEnvironment: RuntimeEnvironmentSnapshot = .current
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
@@ -178,21 +179,33 @@ final class AppState {
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
         if let cloudSyncCoordinator {
             self.cloudSyncCoordinator = cloudSyncCoordinator
-        } else if RuntimeEnvironment.isRunningTests || !RuntimeEnvironment.hasAppGroupContainer {
-            self.cloudSyncCoordinator = NoopCloudSyncCoordinator(historyService: resolvedHistoryService)
         } else {
-            self.cloudSyncCoordinator = CloudSyncCoordinator(historyService: resolvedHistoryService)
+            self.cloudSyncCoordinator = Self.defaultCloudSyncCoordinator(
+                historyService: resolvedHistoryService,
+                runtimeEnvironment: runtimeEnvironment
+            )
         }
         refresh()
         refreshUVReadingIfNeeded()
         refreshNotificationHealth()
 
-        if !RuntimeEnvironment.isRunningTests {
+        if runtimeEnvironment.shouldStartCloudSyncOnLaunch {
             Task {
                 await self.cloudSyncCoordinator.start()
                 self.refresh()
             }
         }
+    }
+
+    static func defaultCloudSyncCoordinator(
+        historyService: SunclubHistoryService,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot = .current
+    ) -> CloudSyncControlling {
+        if runtimeEnvironment.shouldUseNoopCloudSyncCoordinator {
+            return NoopCloudSyncCoordinator(historyService: historyService)
+        }
+
+        return CloudSyncCoordinator(historyService: historyService)
     }
 
     func refresh() {
