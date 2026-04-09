@@ -65,7 +65,7 @@ It:
 2. validates App Store metadata
    - uses draft mode for TestFlight-only fields
 3. archives and exports the production IPA on pinned stable Xcode `26.3`
-4. uploads the IPA to TestFlight with Transporter and App Store Connect API key auth
+4. uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
 5. publishes the `.xcarchive` and exported IPA as workflow artifacts
 
 Required secrets:

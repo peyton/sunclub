@@ -130,7 +130,7 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     )
 
 
-def test_archive_script_uses_transporter_with_api_key_auth() -> None:
+def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     script = ARCHIVE_SCRIPT.read_text()
 
     assert "XCODEBUILD_AUTH_ARGS=(" in script
@@ -141,6 +141,12 @@ def test_archive_script_uses_transporter_with_api_key_auth() -> None:
     assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in script
     assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
     assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
+    assert "xcrun --find altool" in script
+    assert "xcrun altool \\" in script
+    assert '--upload-package "$IPA_FILE"' in script
+    assert '--api-key "$ASC_KEY_ID"' in script
+    assert '--api-issuer "$ASC_ISSUER_ID"' in script
+    assert '--p8-file-path "$ASC_KEY_FILE"' in script
     assert "xcrun iTMSTransporter" in script
     assert '-apiKey "$ASC_KEY_ID"' in script
     assert '-apiIssuer "$ASC_ISSUER_ID"' in script

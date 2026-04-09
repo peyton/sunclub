@@ -8,7 +8,7 @@ Sunclub treats `scripts/appstore/metadata.json` as the single submission manifes
 - `scripts/appstore/validate_metadata.py` runs the strict submission check. It fails until the support, marketing, and privacy URLs are live and the App Review contact is marked ready.
 - `scripts/appstore/capture-screenshots.sh` builds the real app, boots the simulator named in the manifest, and captures the manifest-defined iPhone screenshots through `UITEST_MODE` launch routes.
 - `scripts/appstore/create-app-store-listing.sh` only patches the App Store Connect fields that map cleanly to the manifest. It does not create the app record, upload screenshots, or answer App Privacy questionnaires.
-- `scripts/appstore/archive-and-upload.sh` validates the manifest, archives the signed release build, exports the IPA, and can upload to TestFlight with Transporter when App Store Connect API key credentials are available.
+- `scripts/appstore/archive-and-upload.sh` validates the manifest, archives the signed release build, exports the IPA, and can upload to TestFlight with `altool` when App Store Connect API key credentials are available.
 - `.github/workflows/release-testflight.yml` runs the same archive flow automatically for pushed `vX.Y.Z` tags, but passes `--allow-draft-metadata` so TestFlight uploads are not blocked by still-draft App Store listing URLs or App Review contact details.
 
 ## Commands
@@ -34,7 +34,7 @@ These steps still require real App Store Connect data and cannot be faked safely
 2. Replace the draft App Review contact information in `scripts/appstore/metadata.json`, then set `review.contact.ready` to `true`.
 3. Upload the generated 6.9-inch iPhone screenshots in App Store Connect.
 4. Complete App Privacy answers and export compliance answers in App Store Connect so they match the manifest.
-5. If you are not using the tag workflow, upload the exported IPA with Transporter or the App Store Connect web flow.
+5. If you are not using the tag workflow, upload the exported IPA with `xcrun altool` or the App Store Connect web flow.
 
 ## Review Notes
 

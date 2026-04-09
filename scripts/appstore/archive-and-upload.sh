@@ -147,22 +147,32 @@ if [ "$UPLOAD_TESTFLIGHT" = true ]; then
   [ -f "$ASC_KEY_FILE" ] || fail "App Store Connect key file not found: $ASC_KEY_FILE"
 
   step "Uploading IPA to TestFlight"
-  TRANSPORTER_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-transporter.XXXXXX")"
-  trap 'rm -rf "$TRANSPORTER_TMP_DIR"' EXIT
+  if xcrun --find altool >/dev/null 2>&1; then
+    xcrun altool \
+      --upload-package "$IPA_FILE" \
+      --api-key "$ASC_KEY_ID" \
+      --api-issuer "$ASC_ISSUER_ID" \
+      --p8-file-path "$ASC_KEY_FILE" \
+      --show-progress \
+      --output-format normal
+  else
+    TRANSPORTER_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-transporter.XXXXXX")"
+    trap 'rm -rf "$TRANSPORTER_TMP_DIR"' EXIT
 
-  mkdir -p "$TRANSPORTER_TMP_DIR/private_keys"
-  cp "$ASC_KEY_FILE" "$TRANSPORTER_TMP_DIR/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+    mkdir -p "$TRANSPORTER_TMP_DIR/private_keys"
+    cp "$ASC_KEY_FILE" "$TRANSPORTER_TMP_DIR/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
-  (
-    cd "$TRANSPORTER_TMP_DIR"
-    xcrun iTMSTransporter \
-      -m upload \
-      -assetFile "$IPA_FILE" \
-      -apiKey "$ASC_KEY_ID" \
-      -apiIssuer "$ASC_ISSUER_ID" \
-      -apiKeyType team \
-      -v informational
-  )
+    (
+      cd "$TRANSPORTER_TMP_DIR"
+      xcrun iTMSTransporter \
+        -m upload \
+        -assetFile "$IPA_FILE" \
+        -apiKey "$ASC_KEY_ID" \
+        -apiIssuer "$ASC_ISSUER_ID" \
+        -apiKeyType team \
+        -v informational
+    )
+  fi
 
   ok "Submitted IPA to App Store Connect"
 fi
