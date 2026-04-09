@@ -132,6 +132,12 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
 def test_archive_script_uses_transporter_with_api_key_auth() -> None:
     script = ARCHIVE_SCRIPT.read_text()
 
+    assert "XCODEBUILD_AUTH_ARGS=(" in script
+    assert "-allowProvisioningUpdates \\" in script
+    assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
+    assert '-authenticationKeyID "$ASC_KEY_ID"' in script
+    assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
+    assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
     assert "xcrun iTMSTransporter" in script
     assert '-apiKey "$ASC_KEY_ID"' in script
     assert '-apiIssuer "$ASC_ISSUER_ID"' in script

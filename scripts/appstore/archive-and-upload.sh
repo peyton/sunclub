@@ -44,6 +44,15 @@ for arg in "$@"; do
   esac
 done
 
+XCODEBUILD_AUTH_ARGS=()
+if has_app_store_connect_auth; then
+  XCODEBUILD_AUTH_ARGS=(
+    -authenticationKeyPath "$ASC_KEY_FILE"
+    -authenticationKeyID "$ASC_KEY_ID"
+    -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+  )
+fi
+
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
 ok() { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
 fail() {
@@ -79,32 +88,17 @@ if [ "$SKIP_ARCHIVE" = false ]; then
   step "Archiving the signed release build"
   rm -rf "$ARCHIVE_OUTPUT_PATH" "$ARCHIVE_DERIVED_DATA_PATH"
 
-  if has_app_store_connect_auth; then
-    xcodebuild archive \
-      -workspace "$WORKSPACE" \
-      -scheme "$SCHEME" \
-      -configuration Release \
-      -destination "generic/platform=iOS" \
-      -archivePath "$ARCHIVE_OUTPUT_PATH" \
-      -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH" \
-      -allowProvisioningUpdates \
-      -authenticationKeyPath "$ASC_KEY_FILE" \
-      -authenticationKeyID "$ASC_KEY_ID" \
-      -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-      DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-      CODE_SIGN_STYLE=Automatic
-  else
-    xcodebuild archive \
-      -workspace "$WORKSPACE" \
-      -scheme "$SCHEME" \
-      -configuration Release \
-      -destination "generic/platform=iOS" \
-      -archivePath "$ARCHIVE_OUTPUT_PATH" \
-      -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH" \
-      -allowProvisioningUpdates \
-      DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-      CODE_SIGN_STYLE=Automatic
-  fi
+  xcodebuild archive \
+    -workspace "$WORKSPACE" \
+    -scheme "$SCHEME" \
+    -configuration Release \
+    -destination "generic/platform=iOS" \
+    -archivePath "$ARCHIVE_OUTPUT_PATH" \
+    -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH" \
+    -allowProvisioningUpdates \
+    "${XCODEBUILD_AUTH_ARGS[@]}" \
+    DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+    CODE_SIGN_STYLE=Automatic
 
   ok "Archive created at $ARCHIVE_OUTPUT_PATH"
 else
@@ -121,7 +115,9 @@ if [ "$SKIP_EXPORT" = false ]; then
   xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_OUTPUT_PATH" \
     -exportOptionsPlist "$EXPORT_OPTIONS_PATHNAME" \
-    -exportPath "$EXPORT_OUTPUT_PATH"
+    -exportPath "$EXPORT_OUTPUT_PATH" \
+    -allowProvisioningUpdates \
+    "${XCODEBUILD_AUTH_ARGS[@]}"
 
   IPA_FILE="$(find "$EXPORT_OUTPUT_PATH" -name '*.ipa' -print -quit)"
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"
