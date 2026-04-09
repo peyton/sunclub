@@ -62,6 +62,7 @@ struct HomeView: View {
                 Image(systemName: greetingSymbol)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
+                    .accessibilityLabel(greetingSymbolAccessibilityLabel)
             }
 
             Spacer(minLength: 0)
@@ -144,11 +145,13 @@ struct HomeView: View {
                 Text("Day Streak")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("home.dayStreakLabel")
 
                 if appState.longestStreak > 0 {
                     Text("Best: \(appState.longestStreak)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
+                        .accessibilityIdentifier("home.longestStreak")
                 }
             }
 
@@ -350,6 +353,10 @@ struct HomeView: View {
         default:
             return "moon.stars"
         }
+    }
+
+    private var greetingSymbolAccessibilityLabel: String {
+        greetingSymbol == "sun.max" ? "Daytime" : "Nighttime"
     }
 }
 

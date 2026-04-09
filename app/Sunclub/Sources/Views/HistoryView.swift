@@ -7,6 +7,7 @@ struct HistoryView: View {
     @State private var displayedMonth: Date
     @State private var selectedDay: Date?
     @State private var editorPresentation: HistoryEditorPresentation?
+    @State private var dayPendingDeletion: Date?
 
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
@@ -28,13 +29,15 @@ struct HistoryView: View {
 
                 weekdayHeader
 
-                calendarGrid
+                let recordDates = appState.recordStartsForTesting()
+
+                calendarGrid(recordDates: recordDates)
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay)
                 }
 
-                statsSection
+                statsSection(recordDates: recordDates)
 
                 Spacer(minLength: 0)
             }
@@ -43,6 +46,24 @@ struct HistoryView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+        .confirmationDialog(
+            "Delete Entry",
+            isPresented: Binding(
+                get: { dayPendingDeletion != nil },
+                set: { if !$0 { dayPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let day = dayPendingDeletion {
+                    appState.deleteRecord(for: day)
+                    selectedDay = nil
+                }
+                dayPendingDeletion = nil
+            }
+        } message: {
+            Text("This will permanently remove this day's entry. This cannot be undone.")
+        }
         .sheet(item: $editorPresentation) { presentation in
             HistoryRecordEditorView(
                 day: presentation.day,
@@ -111,16 +132,16 @@ struct HistoryView: View {
         }
     }
 
-    private var calendarGrid: some View {
+    private func calendarGrid(recordDates: [Date]) -> some View {
         let days = appState.monthGrid(for: displayedMonth)
-        let recordDates = Set(appState.recordStartsForTesting())
+        let recordDateSet = Set(recordDates)
 
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                 let isCurrentMonth = appState.isCurrentMonth(day, month: displayedMonth)
                 let dayStart = calendar.startOfDay(for: day)
                 let today = calendar.startOfDay(for: Date())
-                let hasRecord = recordDates.contains(dayStart)
+                let hasRecord = recordDateSet.contains(dayStart)
                 let isToday = dayStart == today
                 let isFuture = dayStart > today
                 let isSelected = selectedDay.map { calendar.isDate($0, inSameDayAs: day) } ?? false
@@ -254,12 +275,11 @@ struct HistoryView: View {
         }
     }
 
-    private var statsSection: some View {
-        let recordDates = appState.recordStartsForTesting()
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
-        let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart)!
+    private func statsSection(recordDates: [Date]) -> some View {
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
+        let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
         let today = calendar.startOfDay(for: Date())
-        let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today)!)
+        let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? today)
         let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
         let monthlyInsights = appState.monthlyReviewInsights(for: displayedMonth)
 
@@ -329,8 +349,7 @@ struct HistoryView: View {
                 .accessibilityIdentifier("history.editRecord")
 
                 Button("Delete") {
-                    appState.deleteRecord(for: day)
-                    selectedDay = nil
+                    dayPendingDeletion = day
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
                 .accessibilityIdentifier("history.deleteRecord")
