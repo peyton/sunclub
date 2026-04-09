@@ -60,12 +60,28 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
+        XCTAssertTrue(app.switches["settings.leaveHomeToggle"].exists)
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
         XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
         XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
         XCTAssertTrue(app.switches["settings.liveUVToggle"].exists)
         XCTAssertTrue(app.buttons["settings.backup.export"].exists)
         XCTAssertTrue(app.buttons["settings.backup.import"].exists)
+    }
+
+    @MainActor
+    func testSettingsShowsLeaveHomeSetupActionWhenEnabledWithoutHome() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_LEAVE_HOME_ENABLED"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["settings.leaveHome.action"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
     }
 
     @MainActor
@@ -363,6 +379,7 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testHighUVReapplyReminderNoteUsesStrongerCopy() throws {
         let app = launchHome(additionalArguments: [
+            "UITEST_CURRENT_TIME=13:00",
             "UITEST_UV_INDEX=7",
             "UITEST_REAPPLY_ENABLED",
             "UITEST_REAPPLY_INTERVAL=120"

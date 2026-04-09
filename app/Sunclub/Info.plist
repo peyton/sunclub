@@ -61,7 +61,11 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Sunclub uses your location only when you turn on live UV data.</string>
+	<string>Sunclub uses your location to save Home for leave-home reminders and to fetch live UV when you turn it on.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Sunclub uses your location in the background only to catch the first time you leave Home for the day and send a reminder before you head out.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Sunclub uses your location in the background only to catch the first time you leave Home for the day and send a reminder before you head out.</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -87,6 +91,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
+		<string>location</string>
 		<string>remote-notification</string>
 	</array>
 	<key>UILaunchScreen</key>

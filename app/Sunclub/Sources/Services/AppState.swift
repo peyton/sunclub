@@ -30,17 +30,34 @@ struct ReapplyReminderPlan: Equatable {
     let notificationTitle: String
     let notificationBody: String
     let confirmationText: String
+    let confirmationSymbolName: String
+    let fireDate: Date?
     let isElevated: Bool
 
-    init(baseIntervalMinutes: Int, uvReading: UVReading?) {
+    var shouldScheduleNotification: Bool {
+        fireDate != nil
+    }
+
+    init(
+        baseIntervalMinutes: Int,
+        uvReading: UVReading?,
+        now: Date = Date(),
+        calendar: Calendar = Calendar.current
+    ) {
         let level = uvReading?.level ?? .unknown
         let adjustedInterval = max(30, baseIntervalMinutes - level.reapplyAdvanceMinutes)
         let isElevated = level.reapplyLabelPrefix != nil
+        let scheduledFireDate = ReminderPlanner.reapplyFireDate(
+            from: now,
+            intervalMinutes: adjustedInterval,
+            calendar: calendar
+        )
 
         self.baseIntervalMinutes = baseIntervalMinutes
         self.intervalMinutes = adjustedInterval
         self.isElevated = isElevated
         self.notificationTitle = isElevated ? "Reapply sooner today" : "Time to reapply"
+        self.fireDate = scheduledFireDate
 
         if let strongerMessage = level.strongerReapplyMessage {
             self.notificationBody = "\(strongerMessage) It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
@@ -48,10 +65,16 @@ struct ReapplyReminderPlan: Equatable {
             self.notificationBody = "It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
         }
 
-        if let prefix = level.reapplyLabelPrefix {
-            self.confirmationText = "\(prefix): reminder in \(Self.formattedInterval(adjustedInterval))"
+        if scheduledFireDate != nil {
+            if let prefix = level.reapplyLabelPrefix {
+                self.confirmationText = "\(prefix): reminder in \(Self.formattedInterval(adjustedInterval))"
+            } else {
+                self.confirmationText = "Reapply reminder in \(Self.formattedInterval(adjustedInterval))"
+            }
+            self.confirmationSymbolName = "timer"
         } else {
-            self.confirmationText = "Reapply reminder in \(Self.formattedInterval(adjustedInterval))"
+            self.confirmationText = "No reapply reminder today after sunset."
+            self.confirmationSymbolName = "moon.stars"
         }
     }
 
@@ -99,6 +122,27 @@ struct LiveUVStatusPresentation: Equatable {
     let actionKind: LiveUVActionKind?
 }
 
+enum LeaveHomeReminderActionKind: Equatable {
+    case setHomeFromCurrentLocation
+    case requestAlwaysAuthorization
+    case openSettings
+}
+
+enum LeaveHomeReminderTone: Equatable {
+    case neutral
+    case success
+    case warning
+}
+
+struct LeaveHomeReminderStatusPresentation: Equatable {
+    let title: String
+    let detail: String
+    let symbol: String
+    let tone: LeaveHomeReminderTone
+    let actionTitle: String?
+    let actionKind: LeaveHomeReminderActionKind?
+}
+
 struct CloudSyncStatusPresentation: Equatable {
     let title: String
     let detail: String
@@ -123,9 +167,11 @@ final class AppState {
     private let historyService: SunclubHistoryService
     private let cloudSyncCoordinator: CloudSyncControlling
     private let notificationManager: NotificationScheduling
+    private let homeExitReminderMonitor: HomeExitReminderMonitoring
     private let uvIndexService: UVIndexService
     private let backupService: SunclubBackupService
     private let widgetSnapshotStore: SunclubWidgetSnapshotStore
+    private let currentDate: () -> Date
     private(set) var records: [DailyRecord] = []
     private(set) var changeBatches: [SunclubChangeBatch] = []
     private(set) var importSessions: [SunclubImportSession] = []
@@ -133,10 +179,13 @@ final class AppState {
     private(set) var syncPreference: CloudSyncPreference?
     private(set) var uvReading: UVReading?
     private(set) var notificationHealthSnapshot: NotificationHealthSnapshot = .unknown
+    private(set) var leaveHomeAuthorizationState: LeaveHomeAuthorizationState = .notDetermined
+    private(set) var leaveHomeReminderErrorMessage: String?
 
     private let calendar = Calendar.current
     private var uvReadingOverride: UVReading?
     private var notificationHealthOverride: NotificationHealthSnapshot?
+    private var leaveHomeAuthorizationOverride: LeaveHomeAuthorizationState?
 
     convenience init(context: ModelContext) {
         self.init(
@@ -157,6 +206,19 @@ final class AppState {
         )
     }
 
+    convenience init(
+        context: ModelContext,
+        notificationManager: NotificationScheduling,
+        homeExitReminderMonitor: HomeExitReminderMonitoring?
+    ) {
+        self.init(
+            context: context,
+            notificationManager: notificationManager,
+            uvIndexService: UVIndexService(),
+            homeExitReminderMonitor: homeExitReminderMonitor
+        )
+    }
+
     init(
         context: ModelContext,
         notificationManager: NotificationScheduling,
@@ -165,17 +227,24 @@ final class AppState {
         historyService: SunclubHistoryService? = nil,
         cloudSyncCoordinator: CloudSyncControlling? = nil,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
-        runtimeEnvironment: RuntimeEnvironmentSnapshot = .current
+        runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
+        homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
+        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
+        clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
         let resolvedHistoryService = historyService ?? SunclubHistoryService(context: context)
         self.historyService = resolvedHistoryService
         self.notificationManager = notificationManager
+        let resolvedHomeExitReminderMonitor = homeExitReminderMonitor
+            ?? (RuntimeEnvironment.isRunningTests ? NoopHomeExitReminderMonitor() : HomeExitReminderMonitor.shared)
+        self.homeExitReminderMonitor = resolvedHomeExitReminderMonitor
         self.uvIndexService = uvIndexService
         self.backupService = backupService
         try? resolvedHistoryService.bootstrapIfNeeded()
         self.widgetSnapshotStore = widgetSnapshotStore
+        currentDate = clock
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
         if let cloudSyncCoordinator {
             self.cloudSyncCoordinator = cloudSyncCoordinator
@@ -185,9 +254,13 @@ final class AppState {
                 runtimeEnvironment: runtimeEnvironment
             )
         }
+        self.homeExitReminderMonitor.setStateProvider { [weak self] in
+            self
+        }
         refresh()
         refreshUVReadingIfNeeded()
         refreshNotificationHealth()
+        refreshLeaveHomeReminderStatus()
 
         if runtimeEnvironment.shouldStartCloudSyncOnLaunch {
             Task {
@@ -439,6 +512,60 @@ final class AppState {
         )
     }
 
+    func updateLeaveHomeReminderEnabled(enabled: Bool, allowPermissionPrompt: Bool = true) {
+        var reminderSettings = settings.smartReminderSettings
+        reminderSettings.leaveHomeReminder.isEnabled = enabled
+        leaveHomeReminderErrorMessage = nil
+        applyReminderSettingsChange(
+            reminderSettings,
+            summary: enabled
+                ? "Enabled leave-home reminders."
+                : "Disabled leave-home reminders."
+        )
+
+        if enabled {
+            refreshLeaveHomeReminderStatus(allowPermissionPrompt: allowPermissionPrompt)
+        }
+    }
+
+    func saveCurrentLocationAsHome() {
+        leaveHomeReminderErrorMessage = nil
+
+        Task {
+            do {
+                let homeLocation = try await homeExitReminderMonitor.saveHomeFromCurrentLocation()
+                var reminderSettings = settings.smartReminderSettings
+                reminderSettings.leaveHomeReminder.homeLocation = homeLocation
+                applyReminderSettingsChange(
+                    reminderSettings,
+                    summary: "Saved Home for leave-home reminders."
+                )
+                leaveHomeReminderErrorMessage = nil
+                refreshLeaveHomeReminderStatus(
+                    allowPermissionPrompt: reminderSettings.leaveHomeReminder.isEnabled
+                )
+            } catch {
+                leaveHomeReminderErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                leaveHomeAuthorizationState = homeExitReminderMonitor.authorizationState
+            }
+        }
+    }
+
+    func clearSavedHomeLocation() {
+        var reminderSettings = settings.smartReminderSettings
+        reminderSettings.leaveHomeReminder.homeLocation = nil
+        leaveHomeReminderErrorMessage = nil
+        applyReminderSettingsChange(
+            reminderSettings,
+            summary: "Cleared Home for leave-home reminders."
+        )
+    }
+
+    func requestLeaveHomeMonitoringPermission() {
+        leaveHomeReminderErrorMessage = nil
+        refreshLeaveHomeReminderStatus(allowPermissionPrompt: true)
+    }
+
     func updateWeeklyReminder(hour: Int, weekday: Int) {
         let batch = try? historyService.applySettingsChange(
             kind: .weeklyReminder,
@@ -546,7 +673,12 @@ final class AppState {
     }
 
     var reapplyReminderPlan: ReapplyReminderPlan {
-        ReapplyReminderPlan(baseIntervalMinutes: settings.reapplyIntervalMinutes, uvReading: uvReading)
+        ReapplyReminderPlan(
+            baseIntervalMinutes: settings.reapplyIntervalMinutes,
+            uvReading: uvReading,
+            now: currentDate(),
+            calendar: calendar
+        )
     }
 
     var homeRecoveryActions: [HomeRecoveryAction] {
@@ -620,6 +752,75 @@ final class AppState {
             from: notificationHealthSnapshot,
             onboardingComplete: settings.hasCompletedOnboarding
         )
+    }
+
+    var leaveHomeReminderStatusPresentation: LeaveHomeReminderStatusPresentation {
+        let leaveHomeReminder = settings.smartReminderSettings.leaveHomeReminder
+
+        if leaveHomeReminder.homeLocation == nil {
+            switch leaveHomeAuthorizationState {
+            case .denied, .restricted:
+                return LeaveHomeReminderStatusPresentation(
+                    title: "Location access is off",
+                    detail: "Open the system Settings app to let Sunclub save Home from your current location.",
+                    symbol: "location.slash",
+                    tone: .warning,
+                    actionTitle: "Open Settings",
+                    actionKind: .openSettings
+                )
+            default:
+                return LeaveHomeReminderStatusPresentation(
+                    title: "Home is not set",
+                    detail: leaveHomeReminderErrorMessage
+                        ?? "Save your current location as Home so Sunclub can watch for the first exit before your normal reminder time.",
+                    symbol: "house",
+                    tone: .neutral,
+                    actionTitle: "Use Current Location as Home",
+                    actionKind: .setHomeFromCurrentLocation
+                )
+            }
+        }
+
+        guard leaveHomeReminder.isEnabled else {
+            return LeaveHomeReminderStatusPresentation(
+                title: "Home is saved",
+                detail: "Turn this on when you want Sunclub to use your first home exit as the morning reminder trigger.",
+                symbol: "house.fill",
+                tone: .neutral,
+                actionTitle: nil,
+                actionKind: nil
+            )
+        }
+
+        switch leaveHomeAuthorizationState {
+        case .always:
+            return LeaveHomeReminderStatusPresentation(
+                title: "First exit is armed",
+                detail: "Sunclub will watch Home with a \(Int(leaveHomeReminder.radiusMeters)) m radius and send one reminder before your normal weekday or weekend reminder time if today is still open.",
+                symbol: "figure.walk.departure",
+                tone: .success,
+                actionTitle: nil,
+                actionKind: nil
+            )
+        case .notDetermined, .whenInUse, .unknown:
+            return LeaveHomeReminderStatusPresentation(
+                title: "Background location needed",
+                detail: "Leave-home reminders need Always location access so Sunclub can catch your first exit even when the app is not open.",
+                symbol: "location.fill",
+                tone: .warning,
+                actionTitle: "Allow Background Access",
+                actionKind: .requestAlwaysAuthorization
+            )
+        case .denied, .restricted:
+            return LeaveHomeReminderStatusPresentation(
+                title: "Location access is off",
+                detail: "Open the system Settings app to re-enable Always location access for leave-home reminders.",
+                symbol: "location.slash",
+                tone: .warning,
+                actionTitle: "Open Settings",
+                actionKind: .openSettings
+            )
+        }
     }
 
     var liveUVStatusPresentation: LiveUVStatusPresentation {
@@ -790,9 +991,16 @@ final class AppState {
 
     func scheduleReapplyReminder() {
         guard settings.reapplyReminderEnabled else { return }
+        let plan = reapplyReminderPlan
+
+        guard plan.shouldScheduleNotification else {
+            cancelReapplyRemindersIfNeeded()
+            return
+        }
+
         Task {
             await notificationManager.scheduleReapplyReminder(
-                plan: reapplyReminderPlan,
+                plan: plan,
                 route: preferredCheckInRoute
             )
         }
@@ -938,6 +1146,29 @@ final class AppState {
         notificationHealthSnapshot = snapshot ?? .unknown
     }
 
+    func refreshLeaveHomeReminderStatus(allowPermissionPrompt: Bool = false) {
+        if let leaveHomeAuthorizationOverride {
+            leaveHomeAuthorizationState = leaveHomeAuthorizationOverride
+            return
+        }
+
+        Task {
+            let state = await homeExitReminderMonitor.refreshMonitoring(
+                using: self,
+                allowPermissionPrompt: allowPermissionPrompt
+            )
+            guard leaveHomeAuthorizationOverride == nil else {
+                return
+            }
+            leaveHomeAuthorizationState = state
+        }
+    }
+
+    func setLeaveHomeAuthorizationStateForTesting(_ state: LeaveHomeAuthorizationState?) {
+        leaveHomeAuthorizationOverride = state
+        leaveHomeAuthorizationState = state ?? .notDetermined
+    }
+
     func repairReminderSchedule() {
         Task {
             _ = await notificationManager.requestAuthorizationIfNeeded()
@@ -996,6 +1227,10 @@ final class AppState {
         records.map { calendar.startOfDay(for: $0.startOfDay) }
     }
 
+    func shouldSuppressDailyReminder(on day: Date) -> Bool {
+        homeExitReminderMonitor.hasTriggeredReminder(on: day)
+    }
+
     private func applyReminderSettingsChange(
         _ reminderSettings: SmartReminderSettings,
         summary: String
@@ -1017,6 +1252,7 @@ final class AppState {
             snapshot.smartReminderSettingsData = encodedSettings
         }
         finishDurableChange(batch, reschedulesReminders: true)
+        refreshLeaveHomeReminderStatus()
     }
 
     private func upsertRecord(
@@ -1137,6 +1373,7 @@ final class AppState {
         scheduleReminders()
         refreshStreakRiskReminder()
         refreshNotificationHealth()
+        refreshLeaveHomeReminderStatus()
         refreshUVReadingIfNeeded()
         _ = importedBatchCount
         reloadWidgetTimelines()

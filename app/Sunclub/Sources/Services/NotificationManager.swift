@@ -17,6 +17,7 @@ private enum NotificationConstants {
     static let weeklyPrimaryPrefix = "sunscreen.weekly.primary."
     static let reapplyPrefix = "sunscreen.reapply."
     static let streakRiskPrefix = "sunscreen.streak-risk."
+    static let leaveHomePrefix = "sunscreen.leave-home."
 }
 
 @MainActor
@@ -25,6 +26,8 @@ protocol NotificationScheduling: AnyObject {
     func scheduleReminders(using state: AppState) async
     func refreshStreakRiskReminder(using state: AppState) async
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async
+    func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async
+    func cancelDailyReminder(for day: Date, using state: AppState) async
     func cancelReapplyReminders() async
     func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot
 }
@@ -103,6 +106,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         await clearPendingRequests(prefix: NotificationConstants.weeklyFallbackPrefix)
         await clearPendingRequests(prefix: NotificationConstants.weeklyPrimaryPrefix)
         await clearPendingRequests(prefix: NotificationConstants.streakRiskPrefix)
+        await clearPendingRequests(prefix: NotificationConstants.leaveHomePrefix)
 
         await addRequests(makeDailyReminderRequests(using: state))
         if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
@@ -131,6 +135,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
         for (offset, phrase) in phrases.enumerated() {
             guard let day = scheduleCalendar.date(byAdding: .day, value: offset, to: dayStart) else { continue }
+            guard !state.shouldSuppressDailyReminder(on: day) else { continue }
             let reminderTime = reminderSettings.time(for: day, calendar: scheduleCalendar)
             let components = ReminderPlanner.notificationComponents(
                 for: day,
@@ -142,7 +147,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             requests.append(
                 UNNotificationRequest(
-                    identifier: "\(NotificationConstants.dailyPrefix)\(Int(day.timeIntervalSince1970))",
+                    identifier: dailyReminderIdentifier(for: day, timeZone: timeZone),
                     content: makeContent(
                         title: "Sunclub check-in",
                         body: phrase,
@@ -157,6 +162,34 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
 
         return requests
+    }
+
+    func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async {
+        await clearPendingRequests(prefix: NotificationConstants.leaveHomePrefix)
+
+        let content = makeContent(
+            title: level.shouldShowBanner ? "Heading out? UV is up." : "Heading out?",
+            body: leaveHomeReminderBody(for: level),
+            categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+            route: notificationRoute(for: route),
+            type: "leave_home",
+            includeDefaultSound: true
+        )
+
+        let request = UNNotificationRequest(
+            identifier: "\(NotificationConstants.leaveHomePrefix)\(Int(Date().timeIntervalSince1970))",
+            content: content,
+            trigger: nil
+        )
+
+        try? await center.add(request)
+    }
+
+    func cancelDailyReminder(for day: Date, using state: AppState) async {
+        let timeZone = state.settings.smartReminderSettings.notificationTimeZone()
+        center.removePendingNotificationRequests(
+            withIdentifiers: [dailyReminderIdentifier(for: day, timeZone: timeZone)]
+        )
     }
 
     func refreshStreakRiskReminder(using state: AppState) async {
@@ -276,6 +309,9 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
+        guard plan.shouldScheduleNotification else {
+            return
+        }
 
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: TimeInterval(plan.intervalMinutes * 60),
@@ -388,6 +424,26 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             content.sound = .default
         }
         return content
+    }
+
+    private func dailyReminderIdentifier(for day: Date, timeZone: TimeZone) -> String {
+        var scheduleCalendar = calendar
+        scheduleCalendar.timeZone = timeZone
+        let normalizedDay = scheduleCalendar.startOfDay(for: day)
+        return "\(NotificationConstants.dailyPrefix)\(Int(normalizedDay.timeIntervalSince1970))"
+    }
+
+    private func leaveHomeReminderBody(for level: UVLevel) -> String {
+        switch level {
+        case .high:
+            return "UV is high today. Log sunscreen before you leave home."
+        case .veryHigh:
+            return "UV is very high today. Log sunscreen before you head out and stay covered."
+        case .extreme:
+            return "UV is extreme today. Log sunscreen before you leave and plan to reapply early."
+        default:
+            return "Log sunscreen before you head out so today stays covered."
+        }
     }
 
     private func notificationRoute(for route: AppRoute) -> String {

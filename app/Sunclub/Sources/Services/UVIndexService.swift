@@ -164,19 +164,13 @@ final class UVIndexService {
     private(set) var errorMessage: String?
     private(set) var liveUVAccessState: LiveUVAccessState = .disabled
 
-    private var locationProviderStorage: CurrentLocationProvider?
+    private let locationService: SharedLocationManaging
     #if canImport(WeatherKit)
     private let weatherService = WeatherService()
     #endif
 
-    private var locationProvider: CurrentLocationProvider {
-        if let locationProviderStorage {
-            return locationProviderStorage
-        }
-
-        let provider = CurrentLocationProvider()
-        locationProviderStorage = provider
-        return provider
+    init(locationService: SharedLocationManaging? = nil) {
+        self.locationService = locationService ?? SharedLocationManager.shared
     }
 
     func fetchUVIndex(
@@ -199,8 +193,8 @@ final class UVIndexService {
 
         if prefersLiveData {
             let authorizationStatus = allowPermissionPrompt
-                ? await locationProvider.requestAuthorizationIfNeeded()
-                : locationProvider.authorizationStatus()
+                ? await locationService.requestWhenInUseAuthorizationIfNeeded()
+                : locationService.authorizationStatus
 
             switch authorizationStatus {
             case .authorizedAlways, .authorizedWhenInUse:
@@ -239,7 +233,7 @@ final class UVIndexService {
 
     private func fetchWeatherKitReading() async throws -> UVReading {
         #if canImport(WeatherKit)
-        let location = try await locationProvider.currentLocation()
+        let location = try await locationService.currentLocation()
         let weather = try await weatherService.weather(for: location)
         return UVReading(
             index: weather.currentWeather.uvIndex.value,
@@ -251,10 +245,15 @@ final class UVIndexService {
     }
 
     private func estimateUVFromTimeAndSeason() -> Int {
-        let calendar = Calendar.current
-        let now = Date()
-        let hour = calendar.component(.hour, from: now)
-        let month = calendar.component(.month, from: now)
+        Self.estimatedUVIndex(at: Date())
+    }
+
+    static func estimatedUVIndex(
+        at date: Date,
+        calendar: Calendar = .current
+    ) -> Int {
+        let hour = calendar.component(.hour, from: date)
+        let month = calendar.component(.month, from: date)
 
         let seasonalBase: Int
         switch month {
@@ -302,75 +301,5 @@ private enum UVIndexServiceError: LocalizedError {
         case .locationUnavailable:
             return "Sunclub could not determine your location for live UV."
         }
-    }
-}
-
-@MainActor
-private final class CurrentLocationProvider: NSObject, @preconcurrency CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
-    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
-    private var locationContinuation: CheckedContinuation<CLLocation, Error>?
-
-    override init() {
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyKilometer
-    }
-
-    func authorizationStatus() -> CLAuthorizationStatus {
-        manager.authorizationStatus
-    }
-
-    func requestAuthorizationIfNeeded() async -> CLAuthorizationStatus {
-        guard CLLocationManager.locationServicesEnabled() else {
-            return .restricted
-        }
-
-        let status = manager.authorizationStatus
-        guard status == .notDetermined else {
-            return status
-        }
-
-        return await withCheckedContinuation { continuation in
-            authorizationContinuation = continuation
-            manager.requestWhenInUseAuthorization()
-        }
-    }
-
-    func currentLocation() async throws -> CLLocation {
-        guard CLLocationManager.locationServicesEnabled() else {
-            throw UVIndexServiceError.locationUnavailable
-        }
-
-        if let location = manager.location,
-           abs(location.timestamp.timeIntervalSinceNow) < 1800 {
-            return location
-        }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            locationContinuation = continuation
-            manager.requestLocation()
-        }
-    }
-
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationContinuation?.resume(returning: manager.authorizationStatus)
-        authorizationContinuation = nil
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else {
-            locationContinuation?.resume(throwing: UVIndexServiceError.locationUnavailable)
-            locationContinuation = nil
-            return
-        }
-
-        locationContinuation?.resume(returning: location)
-        locationContinuation = nil
-    }
-
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        locationContinuation?.resume(throwing: error)
-        locationContinuation = nil
     }
 }
