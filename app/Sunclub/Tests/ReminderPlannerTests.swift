@@ -3,6 +3,31 @@ import XCTest
 @testable import Sunclub
 
 final class ReminderPlannerTests: XCTestCase {
+    func testSmartReminderSettingsDecodesLegacyPayloadWithLeaveHomeReminderDisabled() throws {
+        struct LegacySmartReminderSettings: Codable {
+            let weekdayTime: ReminderTime
+            let weekendTime: ReminderTime
+            let followsTravelTimeZone: Bool
+            let anchoredTimeZoneIdentifier: String
+            let streakRiskEnabled: Bool
+        }
+
+        let payload = LegacySmartReminderSettings(
+            weekdayTime: ReminderTime(hour: 8, minute: 0),
+            weekendTime: ReminderTime(hour: 9, minute: 30),
+            followsTravelTimeZone: false,
+            anchoredTimeZoneIdentifier: "America/Los_Angeles",
+            streakRiskEnabled: true
+        )
+
+        let data = try JSONEncoder().encode(payload)
+        let decoded = try JSONDecoder().decode(SmartReminderSettings.self, from: data)
+
+        XCTAssertFalse(decoded.leaveHomeReminder.isEnabled)
+        XCTAssertNil(decoded.leaveHomeReminder.homeLocation)
+        XCTAssertEqual(decoded.leaveHomeReminder.radiusMeters, LeaveHomeReminderSettings.defaultRadiusMeters)
+    }
+
     func testScheduleKindUsesWeekendForSaturdayAndSunday() {
         let calendar = makeCalendar()
         let saturday = makeDate(year: 2026, month: 4, day: 4, hour: 9, minute: 0, calendar: calendar)

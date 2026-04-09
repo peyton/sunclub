@@ -187,6 +187,8 @@ Expected sequence:
 - Reminder copy should rotate so messaging does not feel overly repetitive.
 - Daily notifications should provide a quick path back into the app.
 - A `Log Today` notification action should route directly to manual logging.
+- Users may optionally save Home and let Sunclub use the first home exit of the local day as a smarter reminder trigger.
+- Leave-home reminders should stay optional and should fall back to the scheduled daily reminder if the user never leaves home before the normal reminder time.
 - If the user has an active streak and the relevant day is still open, the app should be able to send a same-day streak-risk nudge before the day ends.
 - Weekly reminders should open the weekly summary view.
 - Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
@@ -205,6 +207,7 @@ Expected sequence:
 ### Settings and Controls
 
 - Users should be able to change reminder timing and reminder behavior without repeating onboarding.
+- Users should be able to turn leave-home reminders on or off, save or reset Home, and understand when background location access is required.
 - Manual logging should always remain available as the primary check-in flow.
 - iCloud sync should default to on for supported devices, but the user must be able to pause it locally.
 - Control Center should expose quick actions for `Log Today`, `Summary`, and `History`.
@@ -223,6 +226,7 @@ Expected sequence:
 
 - Notification-denied users should still be able to use the full app.
 - Permission failures should surface as understandable states, not broken flows.
+- Location-denied users should still keep the normal weekday and weekend reminder schedule.
 
 ### Data and Persistence
 

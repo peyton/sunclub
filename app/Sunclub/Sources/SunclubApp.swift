@@ -101,6 +101,11 @@ struct SunclubApp: App {
             )
         }
 
+        if arguments.contains("UITEST_LEAVE_HOME_ENABLED") {
+            appState.updateLeaveHomeReminderEnabled(enabled: true, allowPermissionPrompt: false)
+            appState.setLeaveHomeAuthorizationStateForTesting(.notDetermined)
+        }
+
         applyUITestSeedData(from: arguments)
 
         if let requestedURL {
@@ -432,6 +437,7 @@ struct SunclubApp: App {
     private func refreshAppStateForForeground() {
         appState.refresh()
         appState.refreshNotificationHealth()
+        appState.refreshLeaveHomeReminderStatus()
         appState.refreshUVReadingIfNeeded()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
             router.open(route.appRoute)

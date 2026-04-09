@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 import SwiftData
 import XCTest
 @testable import Sunclub
@@ -8,8 +9,11 @@ final class MockNotificationManager: NotificationScheduling {
     private(set) var requestAuthorizationIfNeededCount = 0
     private(set) var scheduleRemindersCount = 0
     private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
+    private(set) var scheduleLeaveHomeReminderLevels: [UVLevel] = []
     private(set) var refreshStreakRiskReminderCount = 0
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
+    private(set) var scheduleLeaveHomeReminderRoutes: [AppRoute] = []
+    private(set) var cancelDailyReminderDays: [Date] = []
     private(set) var cancelReapplyRemindersCount = 0
     private(set) var notificationHealthSnapshotCount = 0
 
@@ -30,6 +34,15 @@ final class MockNotificationManager: NotificationScheduling {
         scheduleReapplyReminderRoutes.append(route)
     }
 
+    func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async {
+        scheduleLeaveHomeReminderLevels.append(level)
+        scheduleLeaveHomeReminderRoutes.append(route)
+    }
+
+    func cancelDailyReminder(for day: Date, using state: AppState) async {
+        cancelDailyReminderDays.append(day)
+    }
+
     func refreshStreakRiskReminder(using state: AppState) async {
         refreshStreakRiskReminderCount += 1
     }
@@ -41,6 +54,41 @@ final class MockNotificationManager: NotificationScheduling {
     func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot {
         notificationHealthSnapshotCount += 1
         return notificationHealthSnapshotResult
+    }
+}
+
+@MainActor
+final class MockHomeExitReminderMonitor: HomeExitReminderMonitoring {
+    private(set) var refreshMonitoringCalls: [(enabled: Bool, hasHome: Bool, allowPermissionPrompt: Bool)] = []
+    private(set) var saveHomeFromCurrentLocationCount = 0
+    private var stateProvider: (() -> AppState?)?
+
+    var authorizationState: LeaveHomeAuthorizationState = .notDetermined
+    var saveHomeResult: Result<HomeLocation, Error> = .success(
+        HomeLocation(latitude: 34.116, longitude: -118.150)
+    )
+    var hasTriggeredReminderResult = false
+
+    func setStateProvider(_ provider: @escaping () -> AppState?) {
+        stateProvider = provider
+    }
+
+    func refreshMonitoring(using state: AppState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState {
+        refreshMonitoringCalls.append((
+            enabled: state.settings.smartReminderSettings.leaveHomeReminder.isEnabled,
+            hasHome: state.settings.smartReminderSettings.leaveHomeReminder.homeLocation != nil,
+            allowPermissionPrompt: allowPermissionPrompt
+        ))
+        return authorizationState
+    }
+
+    func saveHomeFromCurrentLocation() async throws -> HomeLocation {
+        saveHomeFromCurrentLocationCount += 1
+        return try saveHomeResult.get()
+    }
+
+    func hasTriggeredReminder(on date: Date) -> Bool {
+        hasTriggeredReminderResult
     }
 }
 
@@ -192,6 +240,73 @@ final class SunclubTests: XCTestCase {
         await Task.yield()
         XCTAssertFalse(state.settings.smartReminderSettings.streakRiskEnabled)
         XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
+    }
+
+    @MainActor
+    func testUpdateLeaveHomeReminderEnabledPersistsAndRefreshesMonitor() async throws {
+        let notificationManager = MockNotificationManager()
+        let homeExitReminderMonitor = MockHomeExitReminderMonitor()
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            homeExitReminderMonitor: homeExitReminderMonitor
+        )
+
+        state.updateLeaveHomeReminderEnabled(enabled: true, allowPermissionPrompt: false)
+
+        await Task.yield()
+        XCTAssertTrue(state.settings.smartReminderSettings.leaveHomeReminder.isEnabled)
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
+        XCTAssertGreaterThanOrEqual(homeExitReminderMonitor.refreshMonitoringCalls.count, 2)
+        XCTAssertFalse(homeExitReminderMonitor.refreshMonitoringCalls.last?.hasHome ?? true)
+        XCTAssertFalse(homeExitReminderMonitor.refreshMonitoringCalls.last?.allowPermissionPrompt ?? true)
+    }
+
+    @MainActor
+    func testSaveCurrentLocationAsHomePersistsHomeCoordinate() async throws {
+        let homeExitReminderMonitor = MockHomeExitReminderMonitor()
+        let state = try makeAppState(homeExitReminderMonitor: homeExitReminderMonitor)
+
+        state.saveCurrentLocationAsHome()
+
+        await Task.yield()
+        await Task.yield()
+        XCTAssertEqual(homeExitReminderMonitor.saveHomeFromCurrentLocationCount, 1)
+        XCTAssertEqual(
+            state.settings.smartReminderSettings.leaveHomeReminder.homeLocation,
+            HomeLocation(latitude: 34.116, longitude: -118.150)
+        )
+        XCTAssertNil(state.leaveHomeReminderErrorMessage)
+    }
+
+    @MainActor
+    func testLeaveHomeReminderPresentationRequestsHomeWhenEnabledWithoutSavedHome() async throws {
+        let state = try makeAppState()
+
+        state.updateLeaveHomeReminderEnabled(enabled: true, allowPermissionPrompt: false)
+        state.setLeaveHomeAuthorizationStateForTesting(.notDetermined)
+
+        await Task.yield()
+        let presentation = state.leaveHomeReminderStatusPresentation
+        XCTAssertEqual(presentation.title, "Home is not set")
+        XCTAssertEqual(presentation.actionKind, .setHomeFromCurrentLocation)
+    }
+
+    @MainActor
+    func testLeaveHomeReminderPresentationRequestsAlwaysAccessWhenHomeIsSaved() throws {
+        let state = try makeAppState()
+
+        var reminderSettings = state.settings.smartReminderSettings
+        reminderSettings.leaveHomeReminder = LeaveHomeReminderSettings(
+            isEnabled: true,
+            homeLocation: HomeLocation(latitude: 34.0, longitude: -118.0)
+        )
+        state.settings.smartReminderSettings = reminderSettings
+        state.save()
+        state.setLeaveHomeAuthorizationStateForTesting(.whenInUse)
+
+        let presentation = state.leaveHomeReminderStatusPresentation
+        XCTAssertEqual(presentation.title, "Background location needed")
+        XCTAssertEqual(presentation.actionKind, .requestAlwaysAuthorization)
     }
 
     @MainActor
@@ -1025,12 +1140,14 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     private func makeAppState(
-        notificationManager: NotificationScheduling? = nil
+        notificationManager: NotificationScheduling? = nil,
+        homeExitReminderMonitor: HomeExitReminderMonitoring? = nil
     ) throws -> AppState {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()
         return AppState(
             context: ModelContext(container),
-            notificationManager: notificationManager ?? NotificationManager.shared
+            notificationManager: notificationManager ?? NotificationManager.shared,
+            homeExitReminderMonitor: homeExitReminderMonitor
         )
     }
 
