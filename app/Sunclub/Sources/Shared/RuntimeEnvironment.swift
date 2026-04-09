@@ -1,12 +1,71 @@
 import Foundation
 
+struct RuntimeEnvironmentSnapshot: Equatable {
+    let isRunningTests: Bool
+    let isPreviewing: Bool
+    let hasAppGroupContainer: Bool
+
+    static var current: Self {
+        Self(
+            isRunningTests: RuntimeEnvironment.isRunningTests,
+            isPreviewing: RuntimeEnvironment.isPreviewing,
+            hasAppGroupContainer: RuntimeEnvironment.hasAppGroupContainer
+        )
+    }
+
+    var shouldUseNoopCloudSyncCoordinator: Bool {
+        isRunningTests || isPreviewing
+    }
+
+    var shouldStartCloudSyncOnLaunch: Bool {
+        !shouldUseNoopCloudSyncCoordinator
+    }
+}
+
 enum RuntimeEnvironment {
     static var isUITesting: Bool {
         ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
     }
 
+    static var currentDateOverride: Date? {
+        guard isUITesting,
+              let rawTime = argumentValue(withPrefix: "UITEST_CURRENT_TIME=") else {
+            return nil
+        }
+
+        let components = rawTime
+            .split(separator: ":")
+            .compactMap { Int($0) }
+        guard components.count == 2 || components.count == 3 else {
+            return nil
+        }
+
+        let hour = components[0]
+        let minute = components[1]
+        let second = components.count == 3 ? components[2] : 0
+
+        guard (0..<24).contains(hour),
+              (0..<60).contains(minute),
+              (0..<60).contains(second) else {
+            return nil
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: second,
+            of: today
+        )
+    }
+
     static var isRunningTests: Bool {
         isUITesting || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    static var isPreviewing: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
 
     static var hasAppGroupContainer: Bool {

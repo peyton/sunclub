@@ -39,25 +39,56 @@ struct ReminderTime: Codable, Equatable {
     }
 }
 
+struct HomeLocation: Codable, Equatable {
+    var latitude: Double
+    var longitude: Double
+
+    init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
+
+struct LeaveHomeReminderSettings: Codable, Equatable {
+    static let defaultRadiusMeters = 150.0
+
+    var isEnabled: Bool
+    var homeLocation: HomeLocation?
+    var radiusMeters: Double
+
+    init(
+        isEnabled: Bool = false,
+        homeLocation: HomeLocation? = nil,
+        radiusMeters: Double = LeaveHomeReminderSettings.defaultRadiusMeters
+    ) {
+        self.isEnabled = isEnabled
+        self.homeLocation = homeLocation
+        self.radiusMeters = max(50, min(300, radiusMeters))
+    }
+}
+
 struct SmartReminderSettings: Codable, Equatable {
     var weekdayTime: ReminderTime
     var weekendTime: ReminderTime
     var followsTravelTimeZone: Bool
     var anchoredTimeZoneIdentifier: String
     var streakRiskEnabled: Bool
+    var leaveHomeReminder: LeaveHomeReminderSettings
 
     init(
         weekdayTime: ReminderTime,
         weekendTime: ReminderTime,
         followsTravelTimeZone: Bool = true,
         anchoredTimeZoneIdentifier: String = TimeZone.autoupdatingCurrent.identifier,
-        streakRiskEnabled: Bool = true
+        streakRiskEnabled: Bool = true,
+        leaveHomeReminder: LeaveHomeReminderSettings = LeaveHomeReminderSettings()
     ) {
         self.weekdayTime = weekdayTime
         self.weekendTime = weekendTime
         self.followsTravelTimeZone = followsTravelTimeZone
         self.anchoredTimeZoneIdentifier = anchoredTimeZoneIdentifier
         self.streakRiskEnabled = streakRiskEnabled
+        self.leaveHomeReminder = leaveHomeReminder
     }
 
     static func legacyDefault(
@@ -71,7 +102,8 @@ struct SmartReminderSettings: Codable, Equatable {
             weekendTime: time,
             followsTravelTimeZone: true,
             anchoredTimeZoneIdentifier: timeZoneIdentifier,
-            streakRiskEnabled: true
+            streakRiskEnabled: true,
+            leaveHomeReminder: LeaveHomeReminderSettings()
         )
     }
 
@@ -108,7 +140,8 @@ struct SmartReminderSettings: Codable, Equatable {
             weekendTime: weekendTime,
             followsTravelTimeZone: followsTravelTimeZone,
             anchoredTimeZoneIdentifier: resolvedTimeZoneIdentifier,
-            streakRiskEnabled: streakRiskEnabled
+            streakRiskEnabled: streakRiskEnabled,
+            leaveHomeReminder: leaveHomeReminder
         )
     }
 
@@ -118,6 +151,7 @@ struct SmartReminderSettings: Codable, Equatable {
         case followsTravelTimeZone
         case anchoredTimeZoneIdentifier
         case streakRiskEnabled
+        case leaveHomeReminder
     }
 
     init(from decoder: Decoder) throws {
@@ -129,6 +163,8 @@ struct SmartReminderSettings: Codable, Equatable {
         anchoredTimeZoneIdentifier = try container.decodeIfPresent(String.self, forKey: .anchoredTimeZoneIdentifier)
             ?? TimeZone.autoupdatingCurrent.identifier
         streakRiskEnabled = try container.decodeIfPresent(Bool.self, forKey: .streakRiskEnabled) ?? true
+        leaveHomeReminder = try container.decodeIfPresent(LeaveHomeReminderSettings.self, forKey: .leaveHomeReminder)
+            ?? LeaveHomeReminderSettings()
     }
 }
 

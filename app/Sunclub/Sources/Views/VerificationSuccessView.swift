@@ -66,7 +66,7 @@ struct VerificationSuccessView: View {
 
     private var reapplyConfirmation: some View {
         HStack(spacing: 10) {
-            Image(systemName: "timer")
+            Image(systemName: appState.reapplyReminderPlan.confirmationSymbolName)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(AppPalette.sun)
 

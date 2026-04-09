@@ -49,6 +49,40 @@ enum ReminderPlanner {
         return scheduleCalendar.date(from: notificationComponents(for: day, time: time, timeZone: timeZone, calendar: scheduleCalendar))
     }
 
+    // Approximate a local sunset cutoff without requiring location access or live weather data.
+    static func reapplyFireDate(
+        from startDate: Date,
+        intervalMinutes: Int,
+        calendar: Calendar = Calendar.current
+    ) -> Date? {
+        guard intervalMinutes > 0,
+              let fireDate = calendar.date(byAdding: .minute, value: intervalMinutes, to: startDate) else {
+            return nil
+        }
+
+        let sunset = estimatedSunset(for: startDate, calendar: calendar)
+        guard fireDate < sunset else {
+            return nil
+        }
+
+        return fireDate
+    }
+
+    static func estimatedSunset(
+        for day: Date,
+        calendar: Calendar = Calendar.current
+    ) -> Date {
+        let sunsetTime = estimatedSunsetTime(for: day, calendar: calendar)
+        let startOfDay = calendar.startOfDay(for: day)
+
+        return calendar.date(
+            bySettingHour: sunsetTime.hour,
+            minute: sunsetTime.minute,
+            second: 0,
+            of: startOfDay
+        ) ?? startOfDay
+    }
+
     static func streakRiskPlan(
         records: [Date],
         now: Date,
@@ -90,5 +124,25 @@ enum ReminderPlanner {
         guard clamped > reminderMinutes else { return nil }
 
         return ReminderTime(hour: clamped / 60, minute: clamped % 60)
+    }
+
+    private static func estimatedSunsetTime(
+        for day: Date,
+        calendar: Calendar
+    ) -> ReminderTime {
+        switch calendar.component(.month, from: day) {
+        case 12, 1:
+            return ReminderTime(hour: 17, minute: 0)
+        case 2, 11:
+            return ReminderTime(hour: 17, minute: 30)
+        case 3, 10:
+            return ReminderTime(hour: 18, minute: 15)
+        case 4, 9:
+            return ReminderTime(hour: 19, minute: 0)
+        case 5, 8:
+            return ReminderTime(hour: 19, minute: 45)
+        default:
+            return ReminderTime(hour: 20, minute: 15)
+        }
     }
 }
