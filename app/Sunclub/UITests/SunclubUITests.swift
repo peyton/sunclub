@@ -107,7 +107,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertEqual(stringValue(of: iCloudToggle), "1")
 
         iCloudToggle.tap()
-        XCTAssertTrue(app.staticTexts["iCloud sync is paused"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Saved only on this phone"].waitForExistence(timeout: 5))
         XCTAssertEqual(stringValue(of: iCloudToggle), "0")
 
         iCloudToggle.tap()
@@ -187,7 +187,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(
             waitForLabel(
-                "Imported 1 day from backup. iCloud stays unchanged until you publish these changes.",
+                "Imported 1 day from backup. iCloud stays unchanged until you send it.",
                 on: importApp.staticTexts["settings.backupStatus"]
             )
         )
@@ -311,7 +311,7 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Recovery"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Recovery & Changes"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.staticTexts["recovery.conflict.summary"], in: app))
         XCTAssertTrue(app.buttons["recovery.conflict.undo"].exists)
         XCTAssertTrue(app.buttons["recovery.conflict.resolve"].exists)
@@ -337,7 +337,7 @@ final class SunclubUITests: XCTestCase {
 
         let todayStatus = app.staticTexts["home.todayStatus"]
         XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Already logged today")
+        XCTAssertEqual(todayStatus.label, "Today's log is in")
 
         let streakValue = app.staticTexts["home.streakValue"]
         XCTAssertTrue(streakValue.waitForExistence(timeout: 5))
@@ -492,7 +492,7 @@ final class SunclubUITests: XCTestCase {
 
         let todayStatus = app.staticTexts["home.todayStatus"]
         XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Already logged today")
+        XCTAssertEqual(todayStatus.label, "Today's log is in")
     }
 
     @MainActor

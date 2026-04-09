@@ -180,7 +180,7 @@ enum SunclubSchemaV3: VersionedSchema {
         var verificationDuration: Double?
         var spfLevel: Int?
         var notes: String?
-        var reapplyCount: Int
+        var reapplyCount: Int = 0
         var lastReappliedAt: Date?
 
         init(
@@ -221,7 +221,7 @@ enum SunclubSchemaV3: VersionedSchema {
         var reapplyReminderEnabled: Bool
         var reapplyIntervalMinutes: Int
         var lastReminderScheduleAt: Date?
-        var usesLiveUV: Bool
+        var usesLiveUV: Bool = false
 
         init(
             id: UUID = UUID(),

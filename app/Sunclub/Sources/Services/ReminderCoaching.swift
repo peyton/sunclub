@@ -12,9 +12,9 @@ struct ReminderCoachingSuggestion: Equatable, Identifiable {
     var title: String {
         switch kind {
         case .weekday:
-            return "Weekday coaching"
+            return "Weekday reminder"
         case .weekend:
-            return "Weekend coaching"
+            return "Weekend reminder"
         }
     }
 
@@ -23,7 +23,7 @@ struct ReminderCoachingSuggestion: Equatable, Identifiable {
     }
 
     var detail: String {
-        "You usually log around \(typicalLogTime.displayText) on \(kind.shortTitle.lowercased()). Move reminders from \(currentTime.displayText) to \(suggestedTime.displayText)."
+        "You usually log around \(typicalLogTime.displayText) on \(kind.shortTitle.lowercased()). Move the reminder from \(currentTime.displayText) to \(suggestedTime.displayText)."
     }
 }
 

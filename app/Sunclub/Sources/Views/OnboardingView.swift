@@ -12,19 +12,18 @@ struct WelcomeView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 24) {
-                SunLogoMark(size: 120)
-                    .frame(maxWidth: .infinity)
-
-                VStack(spacing: 10) {
-                    Text("Sunclub")
-                        .font(.system(size: 38, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text("Your daily sunscreen companion")
-                        .font(.system(size: 17))
-                        .foregroundStyle(AppPalette.softInk)
-                }
+                SunBrandLockup(
+                    layout: .stacked,
+                    markSize: 120,
+                    subtitle: SunclubCopy.Brand.welcomeTitle
+                )
                 .frame(maxWidth: .infinity)
+
+                Text(SunclubCopy.Brand.welcomeDetail)
+                    .font(.system(size: 17))
+                    .foregroundStyle(AppPalette.softInk)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
 
                 Spacer(minLength: 0)
             }
@@ -48,8 +47,6 @@ struct EnableNotificationsView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 26) {
-                SunStepHeader(step: 1, total: 1, tint: AppPalette.softInk)
-
                 Circle()
                     .fill(AppPalette.warmGlow)
                     .frame(width: 120, height: 120)
@@ -60,7 +57,7 @@ struct EnableNotificationsView: View {
                     .frame(maxWidth: .infinity)
 
                 VStack(spacing: 14) {
-                    Text("Stay on Track")
+                    Text(SunclubCopy.Brand.reminderTitle)
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
@@ -68,6 +65,10 @@ struct EnableNotificationsView: View {
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
+
+                    Text("You can change reminder times later in Settings.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -76,7 +77,7 @@ struct EnableNotificationsView: View {
             .padding(.top, 24)
             .frame(maxWidth: .infinity)
         } footer: {
-            Button("Enable Notifications") {
+            Button("Turn On Reminders") {
                 Task {
                     if !appState.isUITesting {
                         _ = await NotificationManager.shared.configure()
@@ -94,7 +95,7 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        return "Get daily reminders that take you straight to today's sunscreen check-in."
+        SunclubCopy.Brand.reminderDetail
     }
 }
 

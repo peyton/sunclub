@@ -7,21 +7,38 @@ struct ManualLogView: View {
     @State private var notes: String = ""
     @State private var hasLoadedInitialState = false
 
+    private var existingRecord: DailyRecord? {
+        appState.record(for: Date())
+    }
+
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 26) {
-                SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
+                SunLightHeader(title: "Today's Log", showsBack: true, onBack: {
                     router.goBack()
                 })
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Manual Check-In")
+                    Text(existingRecord == nil ? "Log today" : "Update today's log")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
-                    Text("Confirm you've applied sunscreen today. Optionally log SPF level and a note.")
+                    Text(
+                        existingRecord == nil
+                            ? "Confirm today's sunscreen and add SPF or a note if you want."
+                            : "You're editing today's entry. Update the SPF or note below."
+                    )
                         .font(.system(size: 15))
                         .foregroundStyle(AppPalette.softInk)
+                }
+
+                if let existingRecord {
+                    SunStatusCard(
+                        title: "Logged at \(existingRecord.verifiedAt.formatted(date: .omitted, time: .shortened))",
+                        detail: "Sunclub keeps one entry for today. Save here to update it.",
+                        tint: AppPalette.success,
+                        symbol: "checkmark.circle.fill"
+                    )
                 }
 
                 SunManualLogFields(
@@ -57,7 +74,7 @@ struct ManualLogView: View {
     }
 
     private var primaryActionTitle: String {
-        appState.record(for: Date()) == nil ? "Log Today" : "Update Today"
+        existingRecord == nil ? "Log Today" : "Update Today"
     }
 
     private func syncInitialStateIfNeeded() {
@@ -67,7 +84,7 @@ struct ManualLogView: View {
 
         hasLoadedInitialState = true
 
-        if let existingRecord = appState.record(for: Date()) {
+        if let existingRecord {
             selectedSPF = existingRecord.spfLevel
             notes = existingRecord.notes ?? ""
             return

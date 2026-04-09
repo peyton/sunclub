@@ -71,6 +71,8 @@ jobs:
     name: Build iOS
     runs-on: macos-latest
     needs: lint
+    env:
+      SUNCLUB_FLAVOR: prod
     permissions:
       contents: read
       id-token: write

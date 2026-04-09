@@ -65,15 +65,15 @@ enum NotificationHealthEvaluator {
             return NotificationHealthPresentation(
                 state: .denied,
                 title: "Notifications are off",
-                detail: "Sunclub cannot send daily reminders until you re-enable notifications in the system Settings app.",
+                detail: "Turn notifications back on in Settings to get daily reminders again.",
                 actionTitle: "Open Settings"
             )
         case .authorized, .provisional, .ephemeral:
             if snapshot.pendingDailyReminderCount == 0 || snapshot.lastScheduledAt == nil {
                 return NotificationHealthPresentation(
                     state: .stale,
-                    title: "Reminder schedule needs a refresh",
-                    detail: "Sunclub could not find an active daily reminder schedule for this device. Rebuild reminders to repair the loop.",
+                    title: "Reminders need attention",
+                    detail: "Sunclub couldn't find an active daily reminder on this phone. Rebuild reminders to fix it.",
                     actionTitle: "Refresh Reminders"
                 )
             }

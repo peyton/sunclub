@@ -231,7 +231,7 @@ struct HistoryView: View {
 
                     if let conflict {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Auto-merged for review")
+                            Text("Merged for review")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(Color.red.opacity(0.8))
 
@@ -525,10 +525,10 @@ struct HistoryRecordEditorView: View {
 
     private var editorMessage: String {
         if existingRecord == nil {
-            return "Add a manual log for this day so your history reflects what actually happened."
+            return "Add a log for this day so your history stays complete."
         }
 
-        return "Update SPF or notes without changing the selected day."
+        return "Update the SPF or note for this day."
     }
 
     private var primaryActionTitle: String {
