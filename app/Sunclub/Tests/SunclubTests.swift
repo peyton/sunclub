@@ -205,7 +205,7 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.currentStreak, 2)
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 2)
-        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "You're on a 2-day streak.")
+        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "2 days in a row.")
     }
 
     @MainActor
@@ -320,7 +320,7 @@ final class SunclubTests: XCTestCase {
 
         await Task.yield()
         let presentation = state.leaveHomeReminderStatusPresentation
-        XCTAssertEqual(presentation.title, "Home is not set")
+        XCTAssertEqual(presentation.title, "Home isn't set")
         XCTAssertEqual(presentation.actionKind, .setHomeFromCurrentLocation)
     }
 
@@ -700,7 +700,7 @@ final class SunclubTests: XCTestCase {
         state.setUVReadingForTesting(UVReading(index: 7))
 
         let presentation = state.todayCardPresentation
-        XCTAssertEqual(presentation.title, "Ready to log today")
+        XCTAssertEqual(presentation.title, "Ready for today's log")
         XCTAssertEqual(presentation.uvHeadline, "UV is high today")
         XCTAssertEqual(presentation.uvSymbolName, UVLevel.high.symbolName)
         XCTAssertTrue(presentation.detail.contains("reapply sooner"))
@@ -714,7 +714,7 @@ final class SunclubTests: XCTestCase {
 
         let presentation = state.todayCardPresentation
         XCTAssertEqual(presentation.uvHeadline, "UV is moderate today")
-        XCTAssertEqual(presentation.detail, "Log today manually to keep your sunscreen routine moving.")
+        XCTAssertEqual(presentation.detail, "One quick check-in keeps the streak steady.")
     }
 
     @MainActor
@@ -821,7 +821,7 @@ final class SunclubTests: XCTestCase {
         await Task.yield()
 
         XCTAssertFalse(state.syncPreference?.isICloudSyncEnabled ?? true)
-        XCTAssertEqual(state.cloudSyncStatusPresentation.title, "iCloud sync is paused")
+        XCTAssertEqual(state.cloudSyncStatusPresentation.title, "Saved only on this phone")
 
         state.updateCloudSyncEnabled(true)
         await Task.yield()
@@ -888,7 +888,8 @@ final class SunclubTests: XCTestCase {
                 isRunningTests: false,
                 isPreviewing: false,
                 hasAppGroupContainer: false
-            )
+            ),
+            homeExitReminderMonitor: nil
         )
 
         await Task.yield()
@@ -1295,8 +1296,8 @@ final class SunclubTests: XCTestCase {
         return AppState(
             context: ModelContext(container),
             notificationManager: notificationManager ?? NotificationManager.shared,
-            homeExitReminderMonitor: homeExitReminderMonitor,
             uvIndexService: UVIndexService(),
+            homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock
         )
     }

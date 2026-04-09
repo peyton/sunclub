@@ -7,7 +7,7 @@ struct RecoveryView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Recovery", showsBack: true, onBack: {
+                SunLightHeader(title: "Recovery & Changes", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -32,7 +32,7 @@ struct RecoveryView: View {
 
     private var overviewSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Recovery & Changes")
+            Text("Status")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -64,13 +64,13 @@ struct RecoveryView: View {
                     .accessibilityIdentifier("recovery.importDetail")
 
                 if session.publishedAt == nil {
-                    Button("Publish to iCloud") {
+                    Button("Send to iCloud") {
                         appState.publishImportedChanges(for: session.id)
                     }
                     .buttonStyle(SunPrimaryButtonStyle())
                     .accessibilityIdentifier("recovery.import.publish")
 
-                    Button("Restore Pre-Import State") {
+                    Button("Undo Import") {
                         appState.restoreImportedChanges(for: session.id)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
@@ -84,7 +84,7 @@ struct RecoveryView: View {
 
     private var conflictsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Conflict Review")
+            Text("Needs Review")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -96,7 +96,7 @@ struct RecoveryView: View {
                             .foregroundStyle(AppPalette.ink)
                             .accessibilityIdentifier("recovery.conflict.summary")
 
-                        Text("Sunclub kept the visible result, recorded the merge, and left this decision undoable.")
+                        Text("Sunclub kept the visible result and saved the merge so you can review it here.")
                             .font(.system(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
@@ -128,7 +128,7 @@ struct RecoveryView: View {
             .prefix(12)
 
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Recent Changes")
+            Text("Recent Updates")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -185,11 +185,11 @@ struct RecoveryView: View {
         var lines: [String] = [appState.cloudSyncStatusPresentation.detail]
 
         if appState.pendingImportedBatchCount > 0 {
-            lines.append("\(appState.pendingImportedBatchCount) imported change(s) are still local-only.")
+            lines.append(SunclubCopy.Sync.savedOnlyOnThisPhone(appState.pendingImportedBatchCount))
         }
 
         if !appState.conflicts.isEmpty {
-            lines.append("\(appState.conflicts.count) auto-merged change(s) still need review.")
+            lines.append(SunclubCopy.Sync.mergedChangesNeedReview(appState.conflicts.count))
         }
 
         return lines.joined(separator: " ")
@@ -224,15 +224,15 @@ struct RecoveryView: View {
             return "Publishing to iCloud"
         }
 
-        return "Imported locally"
+        return "Saved on this phone"
     }
 
     private func importDetail(for session: SunclubImportSession) -> String {
         if session.publishedAt != nil {
-            return "This backup import was kept recoverable and is now part of your synced history."
+            return "This backup is now part of your synced history and can still be reviewed here."
         }
 
-        return "The imported backup changed only this device. iCloud stays unchanged until you explicitly publish the imported batches."
+        return "This backup changed only this phone. iCloud stays unchanged until you send it."
     }
 
     private func batchSymbol(for batch: SunclubChangeBatch) -> String {

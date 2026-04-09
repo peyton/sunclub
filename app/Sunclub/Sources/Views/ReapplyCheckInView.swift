@@ -37,8 +37,8 @@ struct ReapplyCheckInView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             SunStatusCard(
-                title: "Lightweight follow-through",
-                detail: "This only tracks whether you actually reapplied today. It does not create a second daily streak entry.",
+                title: "One day, one streak",
+                detail: "This tracks today's reapply without creating a second daily streak entry.",
                 tint: AppPalette.sun,
                 symbol: "arrow.clockwise.circle.fill"
             )
@@ -51,7 +51,7 @@ struct ReapplyCheckInView: View {
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
-            Text("Reapply check-ins only make sense after you have logged sunscreen for today. Log today first, then come back here later if you reapply.")
+            Text("Reapply works after you've logged sunscreen for today. Log today first, then come back if you reapply.")
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }

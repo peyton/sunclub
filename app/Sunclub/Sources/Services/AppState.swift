@@ -99,7 +99,7 @@ struct VerificationSuccessPresentation: Equatable {
     }
 
     var detail: String {
-        streak == 1 ? "You're on a 1-day streak." : "You're on a \(streak)-day streak."
+        SunclubCopy.Success.streakDetail(streak)
     }
 }
 
@@ -229,7 +229,6 @@ final class AppState {
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
-        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
     ) {
         modelContext = context
@@ -412,15 +411,15 @@ final class AppState {
         switch status {
         case .paused:
             return CloudSyncStatusPresentation(
-                title: "iCloud sync is paused",
-                detail: "This device keeps changes local until you turn iCloud sync back on.",
-                actionTitle: "Resume Sync",
+                title: "Saved only on this phone",
+                detail: "Turn iCloud sync back on to keep your history in sync.",
+                actionTitle: "Turn On iCloud Sync",
                 pendingImportedBatchCount: pendingImportedBatchCount
             )
         case .syncing:
             return CloudSyncStatusPresentation(
                 title: "Syncing with iCloud",
-                detail: "Sunclub is sending recent changes and checking for updates from your other devices.",
+                detail: "Sending recent changes and checking your other devices.",
                 actionTitle: nil,
                 pendingImportedBatchCount: pendingImportedBatchCount
             )
@@ -436,7 +435,7 @@ final class AppState {
             if let lastSyncAt = syncPreference?.lastSyncAt {
                 detail = "Last synced \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))."
             } else {
-                detail = "Sync is on and Sunclub will keep your history in iCloud."
+                detail = "Your history is syncing with iCloud."
             }
 
             return CloudSyncStatusPresentation(
@@ -640,10 +639,10 @@ final class AppState {
 
     var todayCardPresentation: HomeTodayCardPresentation {
         let hasLoggedToday = record(for: Date()) != nil
-        let title = hasLoggedToday ? "Already logged today" : "Ready to log today"
+        let title = hasLoggedToday ? "Today's log is in" : "Ready for today's log"
         let defaultDetail = hasLoggedToday
-            ? "You can update today's check-in any time. Sunclub will keep just one record for today."
-            : "Log today manually to keep your sunscreen routine moving."
+            ? "Update today's SPF or note any time."
+            : "One quick check-in keeps the streak steady."
 
         guard let level = uvReading?.level,
               let uvHeadline = level.homeHeadline else {
@@ -659,7 +658,7 @@ final class AppState {
         if reapplyReminderPlan.isElevated {
             detail = hasLoggedToday
                 ? "You've logged today. Reapply sooner if you're spending time outside."
-                : "Log today manually, then plan to reapply sooner while UV stays elevated."
+                : "Log now and plan to reapply sooner while UV stays high."
         } else {
             detail = defaultDetail
         }
@@ -688,8 +687,8 @@ final class AppState {
             actions.append(
                 HomeRecoveryAction(
                     kind: .logToday,
-                    title: "Today is still open",
-                    detail: "Log today from Home so the streak keeps moving.",
+                    title: "Today is open",
+                    detail: "Log now before the day gets away.",
                     buttonTitle: "Log Today"
                 )
             )
@@ -701,7 +700,7 @@ final class AppState {
                 HomeRecoveryAction(
                     kind: .backfillYesterday,
                     title: "Yesterday is missing",
-                    detail: "Backfill yesterday without digging into History first.",
+                    detail: "Add it now without opening your full history.",
                     buttonTitle: "Backfill Yesterday"
                 )
             )
@@ -719,21 +718,21 @@ final class AppState {
         if todayRecord.reapplyCount > 0 {
             let detail: String
             if let lastReappliedAt = todayRecord.lastReappliedAt {
-                detail = "Checked in \(todayRecord.reapplyCount)x today. Last reapply: \(lastReappliedAt.formatted(date: .omitted, time: .shortened))."
+                detail = "Checked in \(todayRecord.reapplyCount) \(todayRecord.reapplyCount == 1 ? "time" : "times") today. Last one at \(lastReappliedAt.formatted(date: .omitted, time: .shortened))."
             } else {
-                detail = "Checked in \(todayRecord.reapplyCount)x today."
+                detail = "Checked in \(todayRecord.reapplyCount) \(todayRecord.reapplyCount == 1 ? "time" : "times") today."
             }
 
             return ReapplyCheckInPresentation(
-                title: "Reapply follow-through",
+                title: "Reapply",
                 detail: detail,
                 actionTitle: "Log Another Reapply"
             )
         }
 
         return ReapplyCheckInPresentation(
-            title: "Reapply follow-through",
-            detail: "When you reapply, check it in here so the reminder loop reflects what actually happened.",
+            title: "Reapply",
+            detail: "Use this whenever you reapply so today's reminders stay in step.",
             actionTitle: "Log Reapply"
         )
     }
@@ -762,7 +761,7 @@ final class AppState {
             case .denied, .restricted:
                 return LeaveHomeReminderStatusPresentation(
                     title: "Location access is off",
-                    detail: "Open the system Settings app to let Sunclub save Home from your current location.",
+                    detail: "Open Settings so Sunclub can save your current location as Home.",
                     symbol: "location.slash",
                     tone: .warning,
                     actionTitle: "Open Settings",
@@ -770,9 +769,9 @@ final class AppState {
                 )
             default:
                 return LeaveHomeReminderStatusPresentation(
-                    title: "Home is not set",
+                    title: "Home isn't set",
                     detail: leaveHomeReminderErrorMessage
-                        ?? "Save your current location as Home so Sunclub can watch for the first exit before your normal reminder time.",
+                        ?? "Save your current location and Sunclub can remind you when you head out.",
                     symbol: "house",
                     tone: .neutral,
                     actionTitle: "Use Current Location as Home",
@@ -784,7 +783,7 @@ final class AppState {
         guard leaveHomeReminder.isEnabled else {
             return LeaveHomeReminderStatusPresentation(
                 title: "Home is saved",
-                detail: "Turn this on when you want Sunclub to use your first home exit as the morning reminder trigger.",
+                detail: "Turn this on to use your first trip out as the morning reminder.",
                 symbol: "house.fill",
                 tone: .neutral,
                 actionTitle: nil,
@@ -795,8 +794,8 @@ final class AppState {
         switch leaveHomeAuthorizationState {
         case .always:
             return LeaveHomeReminderStatusPresentation(
-                title: "First exit is armed",
-                detail: "Sunclub will watch Home with a \(Int(leaveHomeReminder.radiusMeters)) m radius and send one reminder before your normal weekday or weekend reminder time if today is still open.",
+                title: "First exit reminder is ready",
+                detail: "Sunclub will watch Home with a \(Int(leaveHomeReminder.radiusMeters)) m radius and send one reminder before your usual weekday or weekend time if today is still open.",
                 symbol: "figure.walk.departure",
                 tone: .success,
                 actionTitle: nil,
@@ -805,7 +804,7 @@ final class AppState {
         case .notDetermined, .whenInUse, .unknown:
             return LeaveHomeReminderStatusPresentation(
                 title: "Background location needed",
-                detail: "Leave-home reminders need Always location access so Sunclub can catch your first exit even when the app is not open.",
+                detail: "Allow Always location so Sunclub can catch your first exit even when the app isn't open.",
                 symbol: "location.fill",
                 tone: .warning,
                 actionTitle: "Allow Background Access",
@@ -814,7 +813,7 @@ final class AppState {
         case .denied, .restricted:
             return LeaveHomeReminderStatusPresentation(
                 title: "Location access is off",
-                detail: "Open the system Settings app to re-enable Always location access for leave-home reminders.",
+                detail: "Open Settings to re-enable Always location access for this reminder.",
                 symbol: "location.slash",
                 tone: .warning,
                 actionTitle: "Open Settings",
@@ -827,7 +826,7 @@ final class AppState {
         guard settings.usesLiveUV else {
             return LiveUVStatusPresentation(
                 title: "Estimated UV",
-                detail: "Sunclub is using a local UV estimate and stays fully offline.",
+                detail: "Using Sunclub's built-in UV estimate.",
                 actionTitle: nil,
                 actionKind: nil
             )
@@ -844,28 +843,28 @@ final class AppState {
         case .needsPermission:
             return LiveUVStatusPresentation(
                 title: "Location permission needed",
-                detail: "Turn on location access to use WeatherKit when live UV is available. Sunclub will keep using an estimate until then.",
+                detail: "Turn on location access to use live UV. Sunclub will use an estimate until then.",
                 actionTitle: "Allow Location",
                 actionKind: .requestPermission
             )
         case .denied:
             return LiveUVStatusPresentation(
                 title: "Location access is off",
-                detail: "Open the system Settings app to re-enable location access for live UV. Sunclub is using an estimate right now.",
+                detail: "Open Settings to turn location access back on for live UV.",
                 actionTitle: "Open Settings",
                 actionKind: .openSettings
             )
         case .unavailable:
             return LiveUVStatusPresentation(
                 title: "Using estimated UV",
-                detail: "WeatherKit or your current location was unavailable, so Sunclub fell back to the local estimate.",
+                detail: "Live UV wasn't available, so Sunclub fell back to its estimate.",
                 actionTitle: "Try Again",
                 actionKind: .refresh
             )
         case .disabled:
             return LiveUVStatusPresentation(
                 title: "Estimated UV",
-                detail: "Sunclub is using a local UV estimate and stays fully offline.",
+                detail: "Using Sunclub's built-in UV estimate.",
                 actionTitle: nil,
                 actionKind: nil
             )

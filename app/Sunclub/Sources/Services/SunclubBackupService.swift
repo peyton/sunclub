@@ -9,7 +9,7 @@ struct SunclubBackupImportSummary: Equatable {
 
     var statusMessage: String {
         let noun = restoredRecordCount == 1 ? "day" : "days"
-        return "Imported \(restoredRecordCount) \(noun) from backup. iCloud stays unchanged until you publish these changes."
+        return "Imported \(restoredRecordCount) \(noun) from backup. iCloud stays unchanged until you send it."
     }
 }
 

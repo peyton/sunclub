@@ -12,18 +12,25 @@ struct VerificationSuccessView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 28) {
-                Circle()
-                    .fill(AppPalette.success)
-                    .frame(width: 120, height: 120)
-                    .overlay {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 46, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .frame(maxWidth: .infinity)
+                ZStack(alignment: .bottomTrailing) {
+                    SunLogoMark(size: 128)
+
+                    Circle()
+                        .fill(AppPalette.success)
+                        .frame(width: 42, height: 42)
+                        .overlay {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .offset(x: 10, y: 8)
+                }
+                .frame(maxWidth: .infinity)
+
+                SunBrandLockup(layout: .inline, markSize: 28)
 
                 VStack(spacing: 10) {
-                    Text("Logged")
+                    Text(SunclubCopy.Success.title)
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("success.title")
@@ -44,6 +51,10 @@ struct VerificationSuccessView: View {
 
                 if appState.settings.reapplyReminderEnabled {
                     reapplyConfirmation
+                } else {
+                    Text("Home and History are already updated.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
                 }
 
                 Spacer(minLength: 0)
@@ -51,7 +62,7 @@ struct VerificationSuccessView: View {
             .padding(.top, 56)
             .frame(maxWidth: .infinity)
         } footer: {
-            Button("Done") {
+            Button(SunclubCopy.Success.actionTitle) {
                 appState.clearVerificationSuccessPresentation()
                 if appState.settings.reapplyReminderEnabled {
                     appState.scheduleReapplyReminder()
@@ -65,15 +76,21 @@ struct VerificationSuccessView: View {
     }
 
     private var reapplyConfirmation: some View {
-        HStack(spacing: 10) {
-            Image(systemName: appState.reapplyReminderPlan.confirmationSymbolName)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(AppPalette.sun)
-
-            Text(appState.reapplyReminderPlan.confirmationText)
-                .font(.system(size: 14, weight: .medium))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Next up")
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
-                .accessibilityIdentifier("success.reapplyMessage")
+
+            HStack(spacing: 10) {
+                Image(systemName: appState.reapplyReminderPlan.confirmationSymbolName)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(AppPalette.sun)
+
+                Text(appState.reapplyReminderPlan.confirmationText)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityIdentifier("success.reapplyMessage")
+            }
         }
         .padding(14)
         .background(

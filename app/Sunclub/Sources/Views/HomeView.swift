@@ -11,10 +11,6 @@ struct HomeView: View {
                 header
 
                 todayCard
-                notificationHealthCard
-                recoveryCard
-                syncRecoveryCard
-                reapplyCard
 
                 Button {
                     router.open(.weeklySummary)
@@ -23,6 +19,8 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("home.streakCard")
+
+                secondaryActionsSection
 
                 Button {
                     router.open(.history)
@@ -53,34 +51,42 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                SunBrandLockup(layout: .inline, markSize: 32)
+
+                Spacer(minLength: 0)
+
+                Button {
+                    router.open(.settings)
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.72))
+                        )
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.settingsButton")
+            }
+
             HStack(spacing: 8) {
                 Text(greeting)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
                 Image(systemName: greetingSymbol)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
             }
 
-            Spacer(minLength: 0)
-
-            Button {
-                router.open(.settings)
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(Color.white.opacity(0.72))
-                    )
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home.settingsButton")
+            Text(SunclubCopy.Brand.homeSubtitle)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
         }
     }
 
@@ -88,9 +94,19 @@ struct HomeView: View {
         let presentation = appState.todayCardPresentation
 
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Today")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
+            HStack {
+                Text("Today")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                Spacer(minLength: 0)
+
+                if appState.record(for: Date()) != nil {
+                    Label("Logged", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.success)
+                }
+            }
 
             Text(presentation.title)
                 .font(.system(size: 26, weight: .bold))
@@ -141,7 +157,7 @@ struct HomeView: View {
                 .accessibilityIdentifier("home.streakValue")
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Day Streak")
+                Text("Day streak")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
 
@@ -152,7 +168,7 @@ struct HomeView: View {
                 }
             }
 
-            Text("Tap to see your last 7 days.")
+            Text("Open your last 7 days.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
         }
@@ -194,28 +210,40 @@ struct HomeView: View {
     }
 
     @ViewBuilder
+    private var secondaryActionsSection: some View {
+        if hasSecondaryActions {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Up next")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                notificationHealthCard
+                recoveryCard
+                syncRecoveryCard
+                reapplyCard
+            }
+        }
+    }
+
+    @ViewBuilder
     private var notificationHealthCard: some View {
         if let presentation = appState.notificationHealthPresentation {
-            VStack(alignment: .leading, spacing: 12) {
-                SunStatusCard(
-                    title: presentation.title,
-                    detail: presentation.detail,
-                    tint: Color.red.opacity(0.75),
-                    symbol: "bell.badge.fill"
-                )
-
-                Button(presentation.actionTitle) {
-                    switch presentation.state {
-                    case .denied:
-                        router.open(.settings)
-                    case .stale:
-                        appState.repairReminderSchedule()
-                    case .healthy:
-                        break
-                    }
+            HomeBannerCard(
+                title: presentation.title,
+                detail: presentation.detail,
+                symbol: "bell.badge.fill",
+                tint: Color.red.opacity(0.75),
+                actionTitle: presentation.actionTitle,
+                accessibilityIdentifier: "home.notificationHealthAction"
+            ) {
+                switch presentation.state {
+                case .denied:
+                    router.open(.settings)
+                case .stale:
+                    appState.repairReminderSchedule()
+                case .healthy:
+                    break
                 }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityIdentifier("home.notificationHealthAction")
             }
         }
     }
@@ -223,34 +251,17 @@ struct HomeView: View {
     @ViewBuilder
     private var recoveryCard: some View {
         if !appState.homeRecoveryActions.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Catch Up")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-
-                VStack(spacing: 12) {
-                    ForEach(appState.homeRecoveryActions) { action in
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(action.title)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(AppPalette.ink)
-
-                            Text(action.detail)
-                                .font(.system(size: 14))
-                                .foregroundStyle(AppPalette.softInk)
-
-                            Button(action.buttonTitle) {
-                                performRecoveryAction(action)
-                            }
-                            .buttonStyle(SunSecondaryButtonStyle())
-                            .accessibilityIdentifier("home.recovery.\(action.kind.rawValue)")
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(18)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.white.opacity(0.72))
-                        )
+            VStack(spacing: 10) {
+                ForEach(appState.homeRecoveryActions) { action in
+                    HomeBannerCard(
+                        title: action.title,
+                        detail: action.detail,
+                        symbol: action.kind == .logToday ? "sun.max.fill" : "calendar.badge.exclamationmark",
+                        tint: AppPalette.sun,
+                        actionTitle: action.buttonTitle,
+                        accessibilityIdentifier: "home.recovery.\(action.kind.rawValue)"
+                    ) {
+                        performRecoveryAction(action)
                     }
                 }
             }
@@ -260,58 +271,54 @@ struct HomeView: View {
     @ViewBuilder
     private var reapplyCard: some View {
         if let presentation = appState.reapplyCheckInPresentation {
-            Button {
+            HomeBannerCard(
+                title: presentation.title,
+                detail: presentation.detail,
+                symbol: "arrow.clockwise.circle.fill",
+                tint: AppPalette.sun,
+                actionTitle: presentation.actionTitle,
+                accessibilityIdentifier: "home.reapplyCard"
+            ) {
                 router.open(.reapplyCheckIn)
-            } label: {
-                SunStatusCard(
-                    title: presentation.title,
-                    detail: presentation.detail,
-                    tint: AppPalette.sun,
-                    symbol: "arrow.clockwise.circle.fill"
-                )
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home.reapplyCard")
         }
     }
 
     @ViewBuilder
     private var syncRecoveryCard: some View {
         if appState.pendingImportedBatchCount > 0 || !appState.conflicts.isEmpty {
-            Button {
+            HomeBannerCard(
+                title: syncRecoveryTitle,
+                detail: syncRecoveryDetail,
+                symbol: !appState.conflicts.isEmpty
+                    ? "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
+                    : "icloud.and.arrow.up",
+                tint: !appState.conflicts.isEmpty ? Color.red.opacity(0.75) : AppPalette.sun,
+                actionTitle: "Review",
+                accessibilityIdentifier: "home.syncRecoveryCard"
+            ) {
                 router.open(.recovery)
-            } label: {
-                SunStatusCard(
-                    title: syncRecoveryTitle,
-                    detail: syncRecoveryDetail,
-                    tint: !appState.conflicts.isEmpty ? Color.red.opacity(0.75) : AppPalette.sun,
-                    symbol: !appState.conflicts.isEmpty
-                        ? "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
-                        : "icloud.and.arrow.up"
-                )
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home.syncRecoveryCard")
         }
     }
 
     private var syncRecoveryTitle: String {
         if !appState.conflicts.isEmpty {
-            return "Review merged changes"
+            return "Review changes"
         }
 
-        return "Imported changes are local-only"
+        return "Saved only on this phone"
     }
 
     private var syncRecoveryDetail: String {
         var parts: [String] = []
 
         if appState.pendingImportedBatchCount > 0 {
-            parts.append("\(appState.pendingImportedBatchCount) imported change(s) are waiting for an explicit publish to iCloud.")
+            parts.append(SunclubCopy.Sync.readyToSendToICloud(appState.pendingImportedBatchCount))
         }
 
         if !appState.conflicts.isEmpty {
-            parts.append("\(appState.conflicts.count) auto-merged change(s) should be reviewed.")
+            parts.append(SunclubCopy.Sync.mergedChangesNeedReview(appState.conflicts.count))
         }
 
         return parts.joined(separator: " ")
@@ -350,6 +357,83 @@ struct HomeView: View {
         default:
             return "moon.stars"
         }
+    }
+
+    private var hasSecondaryActions: Bool {
+        appState.notificationHealthPresentation != nil
+            || !appState.homeRecoveryActions.isEmpty
+            || appState.pendingImportedBatchCount > 0
+            || !appState.conflicts.isEmpty
+            || appState.reapplyCheckInPresentation != nil
+    }
+}
+
+private struct HomeBannerCard: View {
+    let title: String
+    let detail: String
+    let symbol: String
+    let tint: Color
+    let actionTitle: String
+    let accessibilityIdentifier: String
+    let action: () -> Void
+
+    init(
+        title: String,
+        detail: String,
+        symbol: String,
+        tint: Color,
+        actionTitle: String,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.detail = detail
+        self.symbol = symbol
+        self.tint = tint
+        self.actionTitle = actionTitle
+        self.accessibilityIdentifier = accessibilityIdentifier
+        self.action = action
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(tint, in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Button(actionTitle, action: action)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(AppPalette.warmGlow.opacity(0.5))
+                )
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(accessibilityIdentifier)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
     }
 }
 

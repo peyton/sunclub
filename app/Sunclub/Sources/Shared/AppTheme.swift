@@ -318,6 +318,61 @@ struct SunLogoMark: View {
     }
 }
 
+struct SunBrandLockup: View {
+    enum Layout {
+        case inline
+        case stacked
+    }
+
+    let layout: Layout
+    let markSize: CGFloat
+    let subtitle: String?
+
+    init(
+        layout: Layout = .inline,
+        markSize: CGFloat = 28,
+        subtitle: String? = nil
+    ) {
+        self.layout = layout
+        self.markSize = markSize
+        self.subtitle = subtitle
+    }
+
+    var body: some View {
+        Group {
+            switch layout {
+            case .inline:
+                HStack(spacing: 10) {
+                    SunLogoMark(size: markSize)
+
+                    textBlock(alignment: .leading)
+                }
+            case .stacked:
+                VStack(spacing: 12) {
+                    SunLogoMark(size: markSize)
+                    textBlock(alignment: .center)
+                }
+            }
+        }
+    }
+
+    private func textBlock(alignment: TextAlignment) -> some View {
+        VStack(spacing: 4) {
+            Text("sunclub")
+                .font(.system(size: layout == .inline ? 20 : 34, weight: .heavy))
+                .foregroundStyle(AppPalette.ink)
+                .tracking(-0.4)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .multilineTextAlignment(alignment)
+            }
+        }
+    }
+}
+
 struct SunSettingsRow: View {
     let title: String
     let action: () -> Void

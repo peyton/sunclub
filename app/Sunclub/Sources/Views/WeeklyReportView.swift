@@ -19,7 +19,7 @@ struct WeeklyReportView: View {
                         .foregroundStyle(Color(red: 0.870, green: 0.482, blue: 0.000))
                         .accessibilityIdentifier("weekly.summaryValue")
 
-                    Text("Days Applied This Week")
+                    Text("Days this week")
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.ink)
 
@@ -47,28 +47,57 @@ struct WeeklyReportView: View {
     }
 
     private var weeklyChart: some View {
-        VStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(AppPalette.muted)
-                .frame(width: 100, height: 100)
-                .overlay {
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(18), spacing: 6), count: 3), spacing: 6) {
-                        ForEach(Array(weekProgress.enumerated()), id: \.offset) { _, applied in
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(applied ? AppPalette.sun : Color.white.opacity(0.9))
-                                .frame(width: 18, height: 18)
-                        }
+        VStack(alignment: .leading, spacing: 16) {
+            Text("This week")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            HStack(spacing: 10) {
+                ForEach(weekEntries) { entry in
+                    VStack(spacing: 8) {
+                        Text(entry.date.formatted(.dateTime.weekday(.narrow)))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppPalette.softInk)
+
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(entry.applied ? AppPalette.sun : Color.white.opacity(0.9))
+                            .overlay {
+                                if entry.applied {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .overlay {
+                                if Calendar.current.isDateInToday(entry.date) {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(AppPalette.ink.opacity(0.18), lineWidth: 1)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+
+                        Text(entry.date.formatted(.dateTime.day()))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
                     }
                 }
+            }
 
-            Text(report.missedDays.isEmpty ? "Perfect week" : "Missed: \(report.missedDays.joined(separator: ", "))")
-                .font(.system(size: 14))
-                .foregroundStyle(AppPalette.softInk)
-                .multilineTextAlignment(.center)
+            Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Missed: \(report.missedDays.joined(separator: ", "))")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : Color.red.opacity(0.78))
+                .multilineTextAlignment(.leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
     }
 
-    private var weekProgress: [Bool] {
+    private var weekEntries: [WeeklyEntry] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: report.endDate)
         let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
@@ -78,7 +107,11 @@ struct WeeklyReportView: View {
             guard let day = calendar.date(byAdding: .day, value: offset, to: start) else {
                 return nil
             }
-            return records.contains(calendar.startOfDay(for: day))
+
+            return WeeklyEntry(
+                date: day,
+                applied: records.contains(calendar.startOfDay(for: day))
+            )
         }
     }
 
@@ -190,4 +223,11 @@ private struct WeeklyRecentNoteRow: View {
     SunclubPreviewHost {
         WeeklyReportView()
     }
+}
+
+private struct WeeklyEntry: Identifiable {
+    let date: Date
+    let applied: Bool
+
+    var id: Date { date }
 }

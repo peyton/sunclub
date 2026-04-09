@@ -90,7 +90,7 @@ struct SettingsView: View {
 
     private var smarterReminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Smarter Reminders")
+            Text("Daily Reminders")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -113,8 +113,8 @@ struct SettingsView: View {
             ReminderToggleCard(
                 title: "Follow local time when traveling",
                 detail: followsTravelTimeZone
-                    ? "Sunclub adjusts reminders to the time zone you are currently in."
-                    : "Sunclub keeps reminders pinned to \(anchoredTimeZoneLabel).",
+                    ? "Reminders follow the time zone you're currently in."
+                    : "Reminders stay on \(anchoredTimeZoneLabel).",
                 isOn: $followsTravelTimeZone,
                 accessibilityIdentifier: "settings.travelToggle"
             )
@@ -125,8 +125,8 @@ struct SettingsView: View {
             ReminderToggleCard(
                 title: "Streak at risk nudge",
                 detail: streakRiskEnabled
-                    ? "If you have an active streak, Sunclub sends an evening save-it reminder before the day closes."
-                    : "Sunclub only sends the main reminder schedule.",
+                    ? "If your streak is still open, Sunclub sends an evening reminder before the day ends."
+                    : "Sunclub only sends your main reminder.",
                 isOn: $streakRiskEnabled,
                 accessibilityIdentifier: "settings.streakRiskToggle"
             )
@@ -176,7 +176,7 @@ struct SettingsView: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             Toggle(isOn: $leaveHomeReminderEnabled) {
-                Text("Remind when I leave home")
+                Text("Remind me when I leave home")
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
             }
@@ -186,7 +186,7 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settings.leaveHomeToggle")
 
-            Text("Sunclub can catch the first home exit of the day and use it as a smarter reminder trigger.")
+            Text("Use your first trip out as the day's reminder.")
                 .font(.system(size: 14))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -221,7 +221,7 @@ struct SettingsView: View {
 
     private var reapplySection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Reapplication Reminder")
+            Text("Reapply Reminder")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -266,7 +266,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("Get a reminder to reapply sunscreen after your daily check-in.")
+                Text("Get a reminder to reapply after today's log.")
                     .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             }
@@ -279,7 +279,7 @@ struct SettingsView: View {
     private var reminderCoachingSection: some View {
         if !appState.reminderCoachingSuggestions.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Reminder Coaching")
+                Text("Suggested Times")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
@@ -333,7 +333,7 @@ struct SettingsView: View {
                 } else {
                     SunStatusCard(
                         title: "Notifications look healthy",
-                        detail: "Daily reminders are scheduled and ready to keep the sunscreen loop moving.",
+                        detail: "Daily reminders are scheduled on this phone.",
                         tint: AppPalette.success,
                         symbol: "bell.fill"
                     )
@@ -392,7 +392,7 @@ struct SettingsView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("Export a local backup file before you reinstall the app or move to a new device. Import restores this device first and keeps iCloud unchanged until you explicitly publish the imported changes.")
+                Text("Export a backup before you reinstall the app or move to a new device. Import restores this phone first and leaves iCloud unchanged until you send those changes.")
                     .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
 
@@ -410,7 +410,7 @@ struct SettingsView: View {
                     action: { isImportingBackup = true }
                 )
 
-                Text("Local import stays recoverable. Use Recovery & Changes if you want to undo it or publish it to iCloud later.")
+                Text("Imports stay reversible. Use Recovery & Changes if you want to undo one or send it to iCloud later.")
                     .font(.system(size: 13))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -445,10 +445,10 @@ struct SettingsView: View {
 
     private var reminderDescription: String {
         let travelLine = followsTravelTimeZone
-            ? "Travel mode keeps reminders on local time."
-            : "Travel mode is off, so reminders stay on \(anchoredTimeZoneLabel)."
+            ? "Follows local time while you travel."
+            : "Stays on \(anchoredTimeZoneLabel) while you travel."
         let streakLine = streakRiskEnabled
-            ? " Evening nudges rescue active streaks."
+            ? " Evening streak nudges are on."
             : " Evening streak nudges are off."
         return travelLine + streakLine
     }
@@ -514,19 +514,19 @@ struct SettingsView: View {
     @ViewBuilder
     private func pendingImportActions(for session: SunclubImportSession) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("\(appState.cloudSyncStatusPresentation.pendingImportedBatchCount) imported change(s) are still local-only.")
+            Text(SunclubCopy.Sync.savedOnlyOnThisPhone(appState.cloudSyncStatusPresentation.pendingImportedBatchCount))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings.icloud.pendingImports")
 
-            Button("Publish Imported Changes") {
+            Button("Send to iCloud") {
                 appState.publishImportedChanges(for: session.id)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("settings.icloud.publishImported")
 
-            Button("Restore Pre-Import State") {
+            Button("Undo Import") {
                 appState.restoreImportedChanges(for: session.id)
             }
             .buttonStyle(SunSecondaryButtonStyle())
