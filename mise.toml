@@ -1,5 +1,5 @@
 [tools]
-just = "1.48.1"
+just = "1.49.0"
 tuist = { version = "4.176.2", os = ["macos"] }
 hk = "latest"
 actionlint = "latest"
