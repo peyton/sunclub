@@ -165,6 +165,7 @@ final class UVIndexService {
     private(set) var liveUVAccessState: LiveUVAccessState = .disabled
 
     private let locationService: SharedLocationManaging
+    private var lastKnownLatitude: Double?
     #if canImport(WeatherKit)
     private let weatherService = WeatherService()
     #endif
@@ -234,6 +235,7 @@ final class UVIndexService {
     private func fetchWeatherKitReading() async throws -> UVReading {
         #if canImport(WeatherKit)
         let location = try await locationService.currentLocation()
+        lastKnownLatitude = location.coordinate.latitude
         let weather = try await weatherService.weather(for: location)
         return UVReading(
             index: weather.currentWeather.uvIndex.value,
@@ -245,15 +247,20 @@ final class UVIndexService {
     }
 
     private func estimateUVFromTimeAndSeason() -> Int {
-        Self.estimatedUVIndex(at: Date())
+        Self.estimatedUVIndex(at: Date(), latitude: lastKnownLatitude)
     }
 
     static func estimatedUVIndex(
         at date: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        latitude: Double? = nil
     ) -> Int {
         let hour = calendar.component(.hour, from: date)
-        let month = calendar.component(.month, from: date)
+        let rawMonth = calendar.component(.month, from: date)
+
+        // Shift months by 6 for Southern Hemisphere to invert seasonal mapping
+        let isSouthernHemisphere = latitude.map { $0 < 0 } ?? false
+        let month = isSouthernHemisphere ? ((rawMonth + 5) % 12) + 1 : rawMonth
 
         let seasonalBase: Int
         switch month {

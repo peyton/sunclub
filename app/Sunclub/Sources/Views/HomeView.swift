@@ -82,6 +82,7 @@ struct HomeView: View {
                 Image(systemName: greetingSymbol)
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
+                    .accessibilityLabel(greetingSymbolAccessibilityLabel)
             }
 
             Text(SunclubCopy.Brand.homeSubtitle)
@@ -160,11 +161,13 @@ struct HomeView: View {
                 Text("Day streak")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("home.dayStreakLabel")
 
                 if appState.longestStreak > 0 {
                     Text("Best: \(appState.longestStreak)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
+                        .accessibilityIdentifier("home.longestStreak")
                 }
             }
 
@@ -365,6 +368,9 @@ struct HomeView: View {
             || appState.pendingImportedBatchCount > 0
             || !appState.conflicts.isEmpty
             || appState.reapplyCheckInPresentation != nil
+    }
+    private var greetingSymbolAccessibilityLabel: String {
+        greetingSymbol == "sun.max" ? "Daytime" : "Nighttime"
     }
 }
 

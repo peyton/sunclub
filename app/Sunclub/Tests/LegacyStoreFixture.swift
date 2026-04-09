@@ -105,28 +105,29 @@ enum LegacyStoreFixture {
         let container = try ModelContainer(for: schema, configurations: [configuration])
         let context = ModelContext(container)
 
-        let settings = Settings()
-        settings.hasCompletedOnboarding = true
-        settings.reminderHour = 7
-        settings.reminderMinute = 45
-        settings.weeklyHour = 20
-        settings.weeklyWeekday = 6
-        settings.dailyPhraseState = Data("daily".utf8)
-        settings.weeklyPhraseState = Data("weekly".utf8)
-        settings.smartReminderSettingsData = try JSONEncoder().encode(
-            SmartReminderSettings(
-                weekdayTime: ReminderTime(hour: 7, minute: 45),
-                weekendTime: ReminderTime(hour: 8, minute: 30),
-                followsTravelTimeZone: false,
-                anchoredTimeZoneIdentifier: "America/Los_Angeles",
-                streakRiskEnabled: true
-            )
+        let settings = SunclubSchemaV3.Settings(
+            hasCompletedOnboarding: true,
+            reminderHour: 7,
+            reminderMinute: 45,
+            weeklyHour: 20,
+            weeklyWeekday: 6,
+            dailyPhraseState: Data("daily".utf8),
+            weeklyPhraseState: Data("weekly".utf8),
+            smartReminderSettingsData: try JSONEncoder().encode(
+                SmartReminderSettings(
+                    weekdayTime: ReminderTime(hour: 7, minute: 45),
+                    weekendTime: ReminderTime(hour: 8, minute: 30),
+                    followsTravelTimeZone: false,
+                    anchoredTimeZoneIdentifier: "America/Los_Angeles",
+                    streakRiskEnabled: true
+                )
+            ),
+            longestStreak: 4,
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90,
+            lastReminderScheduleAt: Date(timeIntervalSince1970: 1_743_199_200),
+            usesLiveUV: true
         )
-        settings.longestStreak = 4
-        settings.reapplyReminderEnabled = true
-        settings.reapplyIntervalMinutes = 90
-        settings.lastReminderScheduleAt = Date(timeIntervalSince1970: 1_743_199_200)
-        settings.usesLiveUV = true
 
         let calendar = Calendar.migrationTestCalendar
         let startOfDay = try XCTUnwrap(
@@ -136,10 +137,10 @@ enum LegacyStoreFixture {
             calendar.date(from: DateComponents(year: 2026, month: 4, day: 1, hour: 8, minute: 35, second: 0))
         )
 
-        let record = DailyRecord(
+        let record = SunclubSchemaV3.DailyRecord(
             startOfDay: startOfDay,
             verifiedAt: verifiedAt,
-            method: .manual,
+            methodRawValue: VerificationMethod.manual.rawValue,
             verificationDuration: nil,
             spfLevel: 50,
             notes: "Morning beach walk",
