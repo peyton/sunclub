@@ -30,6 +30,8 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
 struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let isOnboardingComplete: Bool
     let lastLoggedDay: Date?
+    let lastVerifiedAt: Date?
+    let lastReappliedAt: Date?
     let recordedDays: [Date]
     let currentStreak: Int
     let longestStreak: Int
@@ -37,17 +39,29 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let monthlyAppliedCount: Int
     let monthlyDayCount: Int
     let mostUsedSPF: Int?
+    let currentUVIndex: Int?
+    let peakUVIndex: Int?
+    let peakUVHour: Date?
+    let reapplyReminderEnabled: Bool
+    let reapplyIntervalMinutes: Int
 
     static let empty = SunclubWidgetSnapshot(
         isOnboardingComplete: false,
         lastLoggedDay: nil,
+        lastVerifiedAt: nil,
+        lastReappliedAt: nil,
         recordedDays: [],
         currentStreak: 0,
         longestStreak: 0,
         weeklyAppliedCount: 0,
         monthlyAppliedCount: 0,
         monthlyDayCount: 0,
-        mostUsedSPF: nil
+        mostUsedSPF: nil,
+        currentUVIndex: nil,
+        peakUVIndex: nil,
+        peakUVHour: nil,
+        reapplyReminderEnabled: false,
+        reapplyIntervalMinutes: 120
     )
 
     func hasLoggedToday(now: Date = Date(), calendar: Calendar = Calendar.current) -> Bool {
@@ -95,6 +109,15 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         }
     }
 
+    func reapplyDeadline(now: Date = Date(), calendar: Calendar = Calendar.current) -> Date? {
+        guard reapplyReminderEnabled,
+              let baseDate = lastReappliedAt ?? lastVerifiedAt else {
+            return nil
+        }
+
+        return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: baseDate)
+    }
+
     private func monthInterval(now: Date, calendar: Calendar) -> DateInterval {
         guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)),
               let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
@@ -112,12 +135,17 @@ enum SunclubWidgetSnapshotBuilder {
     static func make(
         settings: Settings,
         records: [DailyRecord],
+        uvReading: UVReading? = nil,
+        uvForecast: SunclubUVForecast? = nil,
         now: Date = Date(),
         calendar: Calendar = Calendar.current
     ) -> SunclubWidgetSnapshot {
         let normalizedRecordedDays = Set(records.map { calendar.startOfDay(for: $0.startOfDay) }).sorted()
         let weeklyAppliedCount = CalendarAnalytics.weeklyReport(records: normalizedRecordedDays, now: now, calendar: calendar).appliedCount
         let currentStreak = CalendarAnalytics.currentStreak(records: normalizedRecordedDays, now: now, calendar: calendar)
+        let latestRecord = records.max { lhs, rhs in
+            lhs.verifiedAt < rhs.verifiedAt
+        }
 
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
         let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? now
@@ -129,13 +157,20 @@ enum SunclubWidgetSnapshotBuilder {
         return SunclubWidgetSnapshot(
             isOnboardingComplete: settings.hasCompletedOnboarding,
             lastLoggedDay: normalizedRecordedDays.last,
+            lastVerifiedAt: latestRecord?.verifiedAt,
+            lastReappliedAt: latestRecord?.lastReappliedAt,
             recordedDays: normalizedRecordedDays,
             currentStreak: currentStreak,
             longestStreak: settings.longestStreak,
             weeklyAppliedCount: weeklyAppliedCount,
             monthlyAppliedCount: monthlyAppliedCount,
             monthlyDayCount: monthlyDayCount,
-            mostUsedSPF: SunscreenUsageAnalytics.mostUsedSPFInsight(from: records)?.level
+            mostUsedSPF: SunscreenUsageAnalytics.mostUsedSPFInsight(from: records)?.level,
+            currentUVIndex: uvReading?.index,
+            peakUVIndex: uvForecast?.peakHour?.index,
+            peakUVHour: uvForecast?.peakHour?.date,
+            reapplyReminderEnabled: settings.reapplyReminderEnabled,
+            reapplyIntervalMinutes: settings.reapplyIntervalMinutes
         )
     }
 }

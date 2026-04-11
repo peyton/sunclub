@@ -66,6 +66,14 @@
 	<string>Sunclub uses your location in the background only to catch the first time you leave Home for the day and send a reminder before you head out.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Sunclub uses your location in the background only to catch the first time you leave Home for the day and send a reminder before you head out.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Sunclub uses the camera to scan sunscreen bottles and detect SPF labels on-device.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Sunclub reads your UV exposure samples so it can show sunscreen logs alongside the rest of your health data.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Sunclub writes sunscreen-related UV exposure samples when you log so Apple Health can include them in your routine.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

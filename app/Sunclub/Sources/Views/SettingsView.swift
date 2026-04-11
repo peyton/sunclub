@@ -14,6 +14,9 @@ struct SettingsView: View {
     @State private var streakRiskEnabled = true
     @State private var leaveHomeReminderEnabled = false
     @State private var usesLiveUV = false
+    @State private var healthKitEnabled = false
+    @State private var dailyUVBriefingEnabled = true
+    @State private var extremeUVAlertsEnabled = false
     @State private var iCloudSyncEnabled = true
     @State private var backupDocument: SunclubBackupDocument?
     @State private var isExportingBackup = false
@@ -35,6 +38,8 @@ struct SettingsView: View {
                 notificationHealthSection
                 reapplySection
                 liveUVSection
+                healthKitSection
+                uvBriefingSection
                 iCloudSection
                 backupSection
 
@@ -83,6 +88,8 @@ struct SettingsView: View {
             appState.refreshNotificationHealth()
             appState.refreshLeaveHomeReminderStatus()
             appState.refreshUVReadingIfNeeded()
+            appState.refreshUVForecastIfNeeded()
+            appState.refreshHealthKitStatus()
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -432,6 +439,75 @@ struct SettingsView: View {
         }
     }
 
+    private var healthKitSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("HealthKit")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: $healthKitEnabled) {
+                    Text("Sync sunscreen logs to Apple Health")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(AppPalette.ink)
+                }
+                .tint(AppPalette.sun)
+                .onChange(of: healthKitEnabled) { _, newValue in
+                    appState.updateHealthKitEnabled(newValue)
+                }
+
+                let detail = appState.healthKitAvailable
+                    ? "Sunclub writes UV exposure samples when you log. Imported Health UV samples in the last year: \(appState.growthSettings.healthKit.importedSampleCount)."
+                    : "Health data is unavailable on this device."
+
+                SunStatusCard(
+                    title: healthKitEnabled ? "Health sync is on" : "Health sync is off",
+                    detail: detail,
+                    tint: AppPalette.sun,
+                    symbol: "heart.text.square.fill"
+                )
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
+    private var uvBriefingSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Daily UV Briefing")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                ReminderToggleCard(
+                    title: "Morning UV briefing",
+                    detail: dailyUVBriefingEnabled
+                        ? "Send a morning note with peak UV and protection advice."
+                        : "Only the standard sunscreen reminders stay on.",
+                    isOn: $dailyUVBriefingEnabled,
+                    accessibilityIdentifier: "settings.uvBriefingToggle"
+                )
+                .onChange(of: dailyUVBriefingEnabled) { _, newValue in
+                    appState.updateUVBriefingPreferences(dailyBriefingEnabled: newValue)
+                }
+
+                ReminderToggleCard(
+                    title: "Extreme UV alert",
+                    detail: extremeUVAlertsEnabled
+                        ? "Sunclub sends an extra heads-up on extreme UV days."
+                        : "No extra UV alert is sent even on extreme days.",
+                    isOn: $extremeUVAlertsEnabled,
+                    accessibilityIdentifier: "settings.extremeUVToggle"
+                )
+                .onChange(of: extremeUVAlertsEnabled) { _, newValue in
+                    appState.updateUVBriefingPreferences(extremeAlertEnabled: newValue)
+                }
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
     private var reminderHeadline: String {
         let weekday = formattedReminderTime(for: .weekday)
         let weekend = formattedReminderTime(for: .weekend)
@@ -601,6 +677,9 @@ struct SettingsView: View {
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
         usesLiveUV = appState.settings.usesLiveUV
+        healthKitEnabled = appState.growthSettings.healthKit.isEnabled
+        dailyUVBriefingEnabled = appState.growthSettings.uvBriefing.dailyBriefingEnabled
+        extremeUVAlertsEnabled = appState.growthSettings.uvBriefing.extremeAlertEnabled
         iCloudSyncEnabled = appState.syncPreference?.isICloudSyncEnabled ?? true
     }
 

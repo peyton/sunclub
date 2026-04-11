@@ -90,6 +90,13 @@ struct ManualLogView: View {
             return
         }
 
+        if let manualLogPrefill = appState.manualLogPrefill {
+            selectedSPF = manualLogPrefill.spfLevel
+            notes = manualLogPrefill.notes
+            appState.clearManualLogPrefill()
+            return
+        }
+
         let suggestions = appState.manualLogSuggestionState(for: Date())
         selectedSPF = suggestions.defaultSPF
     }
