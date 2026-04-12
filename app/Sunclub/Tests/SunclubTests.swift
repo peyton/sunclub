@@ -1,4 +1,5 @@
 import Foundation
+import CloudKit
 import CoreLocation
 import SwiftData
 import XCTest
@@ -126,6 +127,40 @@ private enum FakeAccountabilityError: Error {
 }
 
 @MainActor
+final class FakeAccountabilityDatabase: SunclubAccountabilityDatabase {
+    private(set) var fetchedRecordNames: [String] = []
+    private(set) var savedRecordNames: [String] = []
+    private(set) var savedSubscriptions: [CKSubscription] = []
+    private var recordsByName: [String: CKRecord] = [:]
+
+    func record(for recordID: CKRecord.ID) async throws -> CKRecord {
+        fetchedRecordNames.append(recordID.recordName)
+        if let record = recordsByName[recordID.recordName] {
+            return record
+        }
+
+        throw NSError(domain: CKErrorDomain, code: CKError.Code.unknownItem.rawValue)
+    }
+
+    func save(_ record: CKRecord) async throws -> CKRecord {
+        savedRecordNames.append(record.recordID.recordName)
+        recordsByName[record.recordID.recordName] = record
+        return record
+    }
+
+    func save(_ subscription: CKSubscription) async throws -> CKSubscription {
+        savedSubscriptions.append(subscription)
+        return subscription
+    }
+
+    func records(matching query: CKQuery, limit: Int) async throws -> [CKRecord] {
+        []
+    }
+
+    func deleteRecord(withID recordID: CKRecord.ID) async throws {}
+}
+
+@MainActor
 final class MockHomeExitReminderMonitor: HomeExitReminderMonitoring {
     private(set) var refreshMonitoringCalls: [(enabled: Bool, hasHome: Bool, allowPermissionPrompt: Bool)] = []
     private(set) var saveHomeFromCurrentLocationCount = 0
@@ -201,6 +236,54 @@ final class SunclubTests: XCTestCase {
         ]
 
         XCTAssertEqual(CalendarAnalytics.currentStreak(records: records, now: today, calendar: calendar), 3)
+    }
+
+    @MainActor
+    func testCurrentStreakDaysReturnsEmptyHistory() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        XCTAssertEqual(CalendarAnalytics.currentStreakDays(records: [], now: today, calendar: calendar), [])
+    }
+
+    @MainActor
+    func testCurrentStreakDaysIncludesTodayWhenLogged() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.currentStreakDays(records: [today, yesterday, twoDaysAgo], now: today, calendar: calendar),
+            [twoDaysAgo, yesterday, today]
+        )
+    }
+
+    @MainActor
+    func testCurrentStreakDaysFallsBackToYesterdayWhenTodayPending() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.currentStreakDays(records: [yesterday, twoDaysAgo], now: today, calendar: calendar),
+            [twoDaysAgo, yesterday]
+        )
+    }
+
+    @MainActor
+    func testCurrentStreakDaysStopsAtGap() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        let fourDaysAgo = calendar.date(byAdding: .day, value: -4, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.currentStreakDays(records: [today, yesterday, twoDaysAgo, fourDaysAgo], now: today, calendar: calendar),
+            [twoDaysAgo, yesterday, today]
+        )
     }
 
     @MainActor
@@ -745,6 +828,74 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testAccountabilityMessagingCatalogsAreVariedAndStatusAware() throws {
+        XCTAssertGreaterThanOrEqual(
+            SunclubAccountabilityMessaging.openDayPokeMessages.count
+                + SunclubAccountabilityMessaging.alreadyLoggedPokeMessages.count,
+            20
+        )
+
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let openBody = SunclubAccountabilityMessaging.incomingNotificationBody(
+            from: "Maya",
+            recipientHasLoggedToday: false,
+            recentPokes: [],
+            now: now
+        )
+        let loggedBody = SunclubAccountabilityMessaging.incomingNotificationBody(
+            from: "Maya",
+            recipientHasLoggedToday: true,
+            recentPokes: [],
+            now: now
+        )
+
+        XCTAssertNotEqual(openBody, loggedBody)
+        XCTAssertFalse(openBody.isEmpty)
+        XCTAssertFalse(loggedBody.isEmpty)
+    }
+
+    @MainActor
+    func testAccountabilityMessagingAvoidsRecentPokeRepeat() throws {
+        let profileID = UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID()
+        let friend = SunclubFriendSnapshot(
+            id: UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID(),
+            name: "Maya",
+            currentStreak: 2,
+            longestStreak: 5,
+            hasLoggedToday: false,
+            lastSharedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
+            seasonStyle: .summerGlow
+        )
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let firstMessage = SunclubAccountabilityMessaging.outgoingPokeMessage(
+            for: friend,
+            friendProfileID: profileID,
+            recentPokes: [],
+            now: now
+        )
+        let recentPokes = [
+            SunclubAccountabilityPoke(
+                friendProfileID: profileID,
+                friendName: friend.name,
+                direction: .sent,
+                channel: .direct,
+                status: .sent,
+                message: firstMessage,
+                createdAt: now
+            )
+        ]
+
+        let nextMessage = SunclubAccountabilityMessaging.outgoingPokeMessage(
+            for: friend,
+            friendProfileID: profileID,
+            recentPokes: recentPokes,
+            now: now
+        )
+
+        XCTAssertNotEqual(firstMessage, nextMessage)
+    }
+
+    @MainActor
     func testDirectPokeUsesServiceAndFailureLeavesShareFallback() async throws {
         let service = FakeAccountabilityService()
         let state = try makeAppState(accountabilityService: service)
@@ -757,7 +908,9 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(service.sentPokes.count, 1)
         XCTAssertEqual(service.sentPokes.first?.receiverProfileID, envelope.profileID)
+        XCTAssertNotEqual(service.sentPokes.first?.message, "Sunscreen check?")
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .sent)
+        XCTAssertEqual(state.friendImportMessage, "Poked Maya. SPF chaos delivered.")
 
         service.sendPokeError = FakeAccountabilityError.sendFailed
         state.sendDirectPoke(to: friendID)
@@ -765,8 +918,30 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .failed)
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.channel, .direct)
-        XCTAssertEqual(state.friendImportMessage, "Direct poke did not send. Use Share Poke instead.")
-        XCTAssertTrue(state.sharePokeText(for: try XCTUnwrap(state.friends.first)).contains("sunscreen check"))
+        XCTAssertEqual(state.friendImportMessage, "Direct poke did not send to Maya. Message poke is still available.")
+        XCTAssertTrue(state.sharePokeText(for: try XCTUnwrap(state.friends.first)).contains("SPF council"))
+    }
+
+    @MainActor
+    func testDirectPokeUnavailableShowsFreshInviteMessage() async throws {
+        let service = FakeAccountabilityService()
+        let state = try makeAppState(accountabilityService: service)
+        let legacyFriend = SunclubFriendSnapshot(
+            name: "Maya",
+            currentStreak: 1,
+            longestStreak: 2,
+            hasLoggedToday: false,
+            lastSharedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
+            seasonStyle: .summerGlow
+        )
+        try state.importFriendCode(SunclubFriendCodeCodec.encode(legacyFriend))
+        let friendID = try XCTUnwrap(state.friends.first?.id)
+
+        state.sendDirectPoke(to: friendID)
+        await waitForMainActorTasks()
+
+        XCTAssertTrue(service.sentPokes.isEmpty)
+        XCTAssertEqual(state.friendImportMessage, "Maya needs a fresh invite before direct pokes work.")
     }
 
     @MainActor
@@ -789,6 +964,8 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
         XCTAssertEqual(notificationManager.accountabilityPokeNotifications.first?.friendName, "Maya")
+        XCTAssertEqual(notificationManager.accountabilityPokeNotifications.first?.route, .friends)
+        XCTAssertNotEqual(notificationManager.accountabilityPokeNotifications.first?.message, "Sunscreen check?")
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .received)
 
         let invalidPoke = SunclubAccountabilityPokeEnvelope(
@@ -803,6 +980,114 @@ final class SunclubTests: XCTestCase {
         await waitForMainActorTasks()
 
         XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
+    }
+
+    @MainActor
+    func testIncomingPokeNotificationCopyChangesWhenRecipientAlreadyLogged() async throws {
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        let openNotificationManager = MockNotificationManager()
+        let openState = try makeAppState(
+            notificationManager: openNotificationManager,
+            clock: { Date(timeIntervalSinceReferenceDate: 800_000_000) }
+        )
+        openState.importAccountabilityInvite(envelope, sendsResponse: false)
+
+        let loggedNotificationManager = MockNotificationManager()
+        let loggedState = try makeAppState(
+            notificationManager: loggedNotificationManager,
+            clock: { Date(timeIntervalSinceReferenceDate: 800_000_000) }
+        )
+        loggedState.importAccountabilityInvite(envelope, sendsResponse: false)
+        loggedState.saveManualRecord(
+            for: Date(timeIntervalSinceReferenceDate: 800_000_000),
+            spfLevel: 50,
+            notes: "Already logged"
+        )
+
+        let poke = SunclubAccountabilityPokeEnvelope(
+            senderProfileID: envelope.profileID,
+            senderName: "Maya",
+            receiverProfileID: openState.growthSettings.accountability.localProfileID,
+            relationshipToken: envelope.relationshipToken,
+            message: "Incoming",
+            createdAt: Date(timeIntervalSinceReferenceDate: 800_000_000)
+        )
+        openState.handleIncomingPoke(poke)
+
+        let loggedPoke = SunclubAccountabilityPokeEnvelope(
+            senderProfileID: envelope.profileID,
+            senderName: "Maya",
+            receiverProfileID: loggedState.growthSettings.accountability.localProfileID,
+            relationshipToken: envelope.relationshipToken,
+            message: "Incoming",
+            createdAt: Date(timeIntervalSinceReferenceDate: 800_000_000)
+        )
+        loggedState.handleIncomingPoke(loggedPoke)
+        await waitForMainActorTasks()
+
+        XCTAssertNotEqual(
+            openNotificationManager.accountabilityPokeNotifications.first?.message,
+            loggedNotificationManager.accountabilityPokeNotifications.first?.message
+        )
+        XCTAssertEqual(loggedNotificationManager.accountabilityPokeNotifications.first?.route, .friends)
+    }
+
+    @MainActor
+    func testForegroundAccountabilityRefreshFetchesRemotePokes() async throws {
+        let notificationManager = MockNotificationManager()
+        let service = FakeAccountabilityService()
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            accountabilityService: service
+        )
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        state.importAccountabilityInvite(envelope, sendsResponse: false)
+        service.remoteEvents = SunclubAccountabilityRemoteEvents(
+            inviteResponses: [],
+            pokes: [
+                SunclubAccountabilityPokeEnvelope(
+                    senderProfileID: envelope.profileID,
+                    senderName: "Maya",
+                    receiverProfileID: state.growthSettings.accountability.localProfileID,
+                    relationshipToken: envelope.relationshipToken,
+                    message: "Remote poke",
+                    createdAt: Date(timeIntervalSinceReferenceDate: 800_000_000)
+                )
+            ]
+        )
+
+        let refreshTask = state.refreshAccountabilityForForeground()
+        await refreshTask?.value
+
+        XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
+        XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.message, "Remote poke")
+    }
+
+    @MainActor
+    func testCloudKitAccountabilityServiceFetchesBeforeSavingStableRecords() async throws {
+        let database = FakeAccountabilityDatabase()
+        let service = SunclubAccountabilityService(database: database)
+        let profileID = UUID(uuidString: "391D15FD-475F-4EE5-9A85-E68E27980EA8") ?? UUID()
+        let profile = SunclubAccountabilityProfile(
+            profileID: profileID,
+            displayName: "Peyton",
+            snapshot: SunclubFriendSnapshot(
+                name: "Peyton",
+                currentStreak: 3,
+                longestStreak: 5,
+                hasLoggedToday: true,
+                lastSharedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
+                seasonStyle: .summerGlow
+            ),
+            updatedAt: Date(timeIntervalSinceReferenceDate: 800_000_000)
+        )
+
+        try await service.publishProfile(profile)
+        try await service.publishProfile(profile)
+
+        let recordName = "profile-\(profileID.uuidString)"
+        XCTAssertEqual(database.fetchedRecordNames, [recordName, recordName])
+        XCTAssertEqual(database.savedRecordNames, [recordName, recordName])
     }
 
     @MainActor
@@ -1627,6 +1912,149 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testUVIndexServiceUsesLiveWeatherProviderWhenAuthorized() async throws {
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = UVIndexService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true)
+
+        XCTAssertEqual(service.currentReading?.index, 8)
+        XCTAssertEqual(service.currentReading?.source, .weatherKit)
+        XCTAssertEqual(service.liveUVAccessState, .live)
+        XCTAssertNil(service.errorMessage)
+    }
+
+    @MainActor
+    func testUVIndexServiceFallsBackWhenLocationPermissionIsMissing() async throws {
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .notDetermined,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = UVIndexService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true, allowPermissionPrompt: false)
+
+        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertEqual(service.liveUVAccessState, .needsPermission)
+        XCTAssertNil(service.errorMessage)
+    }
+
+    @MainActor
+    func testUVIndexServiceFallsBackWhenLiveProviderFails() async throws {
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: -33.8688, longitude: 151.2093)
+        )
+        let service = UVIndexService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(
+                currentIndex: 8,
+                peakIndex: 10,
+                shouldFail: true
+            )
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true)
+
+        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertEqual(service.liveUVAccessState, .unavailable)
+        XCTAssertEqual(service.errorMessage, "UITest live UV fixture is unavailable.")
+    }
+
+    @MainActor
+    func testUVBriefingServiceUsesLiveForecastWhenAvailable() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = SunclubUVBriefingService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+        )
+
+        let forecast = await service.forecast(
+            prefersLiveData: true,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(forecast.sourceLabel, "Live WeatherKit UV")
+        XCTAssertEqual(forecast.peakHour?.index, 10)
+        XCTAssertEqual(Set(forecast.hours.map(\.sourceLabel)), ["WeatherKit"])
+    }
+
+    @MainActor
+    func testUVBriefingServiceFallsBackWhenLiveForecastIsEmpty() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = SunclubUVBriefingService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(
+                currentIndex: 8,
+                peakIndex: 10,
+                shouldReturnEmptyForecast: true
+            )
+        )
+
+        let forecast = await service.forecast(
+            prefersLiveData: true,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(forecast.sourceLabel, "Estimated locally")
+        XCTAssertFalse(forecast.hours.isEmpty)
+    }
+
+    @MainActor
+    func testAppStateLiveUVIntegrationRefreshesReadingAndForecast() async throws {
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let weatherProvider = UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 11)
+        let state = try makeAppState(
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(
+                locationService: locationService,
+                weatherProvider: weatherProvider
+            ),
+            uvBriefingService: SunclubUVBriefingService(
+                locationService: locationService,
+                weatherProvider: weatherProvider
+            ),
+            clock: { referenceDate }
+        )
+
+        state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
+        await waitForMainActorTasks()
+
+        XCTAssertTrue(state.settings.usesLiveUV)
+        XCTAssertEqual(state.uvReading?.index, 8)
+        XCTAssertEqual(state.uvReading?.source, .weatherKit)
+        XCTAssertEqual(state.uvForecast?.sourceLabel, "Live WeatherKit UV")
+        XCTAssertEqual(state.uvForecast?.peakHour?.index, 11)
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "Live UV is on")
+        XCTAssertEqual(state.liveUVStatusPresentation.detail, "Live WeatherKit UV")
+    }
+
+    @MainActor
     func testWidgetLogTodayDeepLinkDoesNotLogBeforeOnboarding() throws {
         let state = try makeAppState()
         let router = AppRouter()
@@ -1643,6 +2071,8 @@ final class SunclubTests: XCTestCase {
     private func makeAppState(
         notificationManager: NotificationScheduling? = nil,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
+        uvIndexService: UVIndexService? = nil,
+        uvBriefingService: SunclubUVBriefingService? = nil,
         accountabilityService: SunclubAccountabilityServing? = nil,
         clock: @escaping () -> Date = Date.init
     ) throws -> AppState {
@@ -1650,7 +2080,8 @@ final class SunclubTests: XCTestCase {
         return AppState(
             context: ModelContext(container),
             notificationManager: notificationManager ?? NotificationManager.shared,
-            uvIndexService: UVIndexService(),
+            uvIndexService: uvIndexService ?? UVIndexService(),
+            uvBriefingService: uvBriefingService,
             accountabilityService: accountabilityService,
             homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock

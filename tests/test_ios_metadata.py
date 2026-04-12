@@ -5,8 +5,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
+APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 PRIVACY_MANIFEST = REPO_ROOT / "app" / "Sunclub" / "Resources" / "PrivacyInfo.xcprivacy"
 PROJECT_SWIFT = REPO_ROOT / "app" / "Sunclub" / "Project.swift"
+APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
@@ -14,6 +16,11 @@ ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
 
 def load_info_plist() -> dict:
     with INFO_PLIST.open("rb") as plist_file:
+        return plistlib.load(plist_file)
+
+
+def load_app_entitlements() -> dict:
+    with APP_ENTITLEMENTS.open("rb") as plist_file:
         return plistlib.load(plist_file)
 
 
@@ -44,6 +51,20 @@ def test_project_reads_versioning_from_tuist_manifest_environment() -> None:
         'let buildNumber = Environment.sunclubBuildNumber.getString(default: "1")'
         in source
     )
+
+
+def test_remote_notification_background_mode_has_push_entitlement() -> None:
+    info = load_info_plist()
+    entitlements = load_app_entitlements()
+    source = PROJECT_SWIFT.read_text()
+
+    assert "remote-notification" in info["UIBackgroundModes"]
+    assert entitlements["aps-environment"] == "$(SUNCLUB_APS_ENVIRONMENT)"
+    assert (
+        'let apsEnvironment = Environment.sunclubApsEnvironment.getString(default: "development")'
+        in source
+    )
+    assert '"SUNCLUB_APS_ENVIRONMENT": .string(apsEnvironment)' in source
 
 
 def test_info_plist_declares_background_task_and_backup_document_type() -> None:
@@ -95,6 +116,19 @@ def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
     )
     assert quick_action["UIApplicationShortcutItemTitle"] == "Log Today"
     assert quick_action["UIApplicationShortcutItemIconSymbolName"] == "sun.max.fill"
+
+
+def test_app_entitlements_enable_weatherkit_for_live_uv() -> None:
+    entitlements = load_app_entitlements()
+
+    assert entitlements["com.apple.developer.weatherkit"] is True
+
+
+def test_info_plist_explains_location_use_for_live_uv() -> None:
+    info = load_info_plist()
+
+    assert "NSLocationWhenInUseUsageDescription" in info
+    assert "live UV" in info["NSLocationWhenInUseUsageDescription"]
 
 
 def test_widget_extension_inherits_app_version_metadata() -> None:

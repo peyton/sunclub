@@ -1,0 +1,12 @@
+{
+  "account_id": "0e32ee7804b102bea6b9d3056d60f980",
+  "zone_id": "a004f01ed99de3582152debde5a96a08",
+  "zone_name": "peyton.app",
+  "destination_env": "SUNCLUB_FORWARD_TO",
+  "catch_all": {
+    "name": "Catch-all forwarding",
+    "enabled": true,
+    "action": "forward",
+    "matcher": "all"
+  }
+}

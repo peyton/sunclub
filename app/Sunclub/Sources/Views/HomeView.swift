@@ -24,6 +24,7 @@ struct HomeView: View {
                 .accessibilityHint("Opens your last 7 days.")
                 .accessibilityIdentifier("home.streakCard")
 
+                accountabilityHomeCard
                 accountabilityNudgeCard
                 uvBriefingSection
                 achievementCelebrationCard
@@ -167,6 +168,21 @@ struct HomeView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var accountabilityHomeCard: some View {
+        if let presentation = appState.homeAccountabilityPresentation {
+            HomeAccountabilityCard(
+                presentation: presentation,
+                onPrimaryAction: {
+                    performAccountabilityAction(presentation)
+                },
+                onOpenFriends: {
+                    router.open(.friends)
+                }
+            )
         }
     }
 
@@ -446,7 +462,7 @@ struct HomeView: View {
                 }
                 .accessibilityHidden(true)
 
-                Text("Open your last 7 days.")
+                Text("Open your weekly streak, then view full history.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
             }
@@ -692,6 +708,19 @@ struct HomeView: View {
         }
     }
 
+    private func performAccountabilityAction(_ presentation: HomeAccountabilityPresentation) {
+        switch presentation.primaryActionKind {
+        case .invite, .view:
+            router.open(.friends)
+        case .poke:
+            guard let friendID = presentation.primaryFriendID else {
+                router.open(.friends)
+                return
+            }
+            appState.sendDirectPoke(to: friendID)
+        }
+    }
+
     private var greeting: String {
         HomeGreetingFormatter.greeting(
             for: now,
@@ -876,6 +905,123 @@ private struct HomeBannerCard: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.62), lineWidth: 1)
         }
+    }
+}
+
+private struct HomeAccountabilityCard: View {
+    let presentation: HomeAccountabilityPresentation
+    let onPrimaryAction: () -> Void
+    let onOpenFriends: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(AppPalette.sun, in: Circle())
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Accountability")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    Text(presentation.title)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(presentation.openCountText)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                    Text(presentation.loggedCountText)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+            }
+
+            Text(presentation.detail)
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !presentation.friends.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(presentation.friends) { friend in
+                            HomeAccountabilityFriendChip(friend: friend)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("home.accountabilityFriendStrip")
+            }
+
+            if let latestPokeText = presentation.latestPokeText {
+                Label(latestPokeText, systemImage: "hand.tap.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("home.accountabilityLatestPoke")
+            }
+
+            HStack(spacing: 10) {
+                Button(presentation.primaryActionTitle, action: onPrimaryAction)
+                    .buttonStyle(SunPrimaryButtonStyle())
+                    .accessibilityIdentifier("home.accountabilityPoke")
+
+                Button("Open") {
+                    onOpenFriends()
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("home.accountabilityOpen")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home.accountabilityCard")
+    }
+}
+
+private struct HomeAccountabilityFriendChip: View {
+    let friend: HomeAccountabilityFriendPresentation
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(friend.hasLoggedToday ? AppPalette.success : AppPalette.sun)
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(friend.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .lineLimit(1)
+
+                Text("\(friend.status) · \(friend.streak)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.82))
+        )
     }
 }
 

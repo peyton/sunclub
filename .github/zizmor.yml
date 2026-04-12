@@ -7,3 +7,6 @@ rules:
       - release-testflight.yml:38
       - release-testflight.yml:61
       - release-testflight.yml:62
+  superfluous-actions:
+    ignore:
+      - release-web.yml:51

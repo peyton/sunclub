@@ -119,6 +119,8 @@ struct FriendsView: View {
     @State private var importCode = ""
     @State private var importErrorMessage: String?
     @State private var sheet: AccountabilitySheet?
+    @State private var isAddFriendsExpanded = false
+    @State private var friendPendingRemoval: SunclubFriendSnapshot?
 
     var body: some View {
         SunLightScreen {
@@ -134,10 +136,19 @@ struct FriendsView: View {
                 )
 
                 statusCard
-                addFriendsCard
-                inviteCard
-                importCard
-                friendsListSection
+                if appState.friends.isEmpty {
+                    addFriendsCard
+                    inviteCard
+                    importCard
+                    friendsListSection
+                } else {
+                    friendsListSection
+                    compactAddFriendsCard
+                    if isAddFriendsExpanded {
+                        inviteCard
+                        importCard
+                    }
+                }
 
                 Spacer(minLength: 0)
             }
@@ -149,6 +160,16 @@ struct FriendsView: View {
             case .nearby:
                 NearbyAccountabilitySheet()
             }
+        }
+        .alert(item: $friendPendingRemoval) { friend in
+            Alert(
+                title: Text("Remove \(friend.name)?"),
+                message: Text("They will leave your accountability list. You can add them again with a fresh invite."),
+                primaryButton: .destructive(Text("Remove")) {
+                    appState.removeFriend(friend.id)
+                },
+                secondaryButton: .cancel()
+            )
         }
         .onAppear {
             preferredName = appState.preferredDisplayName
@@ -225,38 +246,84 @@ struct FriendsView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
-            accountabilityAction(
-                title: "Nearby phones",
-                detail: "Both people open this and bring phones together.",
-                symbol: "wave.3.right.circle.fill"
-            ) {
-                appState.activateAccountability(displayName: preferredName)
-                sheet = .nearby
-            }
-            .accessibilityIdentifier("friends.add.nearby")
-
-            accountabilityAction(
-                title: "Messages or share sheet",
-                detail: "Send an invite link with a backup code.",
-                symbol: "message.fill"
-            ) {
-                appState.activateAccountability(displayName: preferredName)
-                appState.recordShareActionStarted()
-                sheet = .share([appState.accountabilityInviteShareText])
-            }
-            .accessibilityIdentifier("friends.add.share")
-
-            accountabilityAction(
-                title: "Paste a code",
-                detail: "Use the backup code from a friend's invite.",
-                symbol: "doc.on.clipboard.fill"
-            ) {
-                importCode = UIPasteboard.general.string ?? importCode
-            }
-            .accessibilityIdentifier("friends.add.paste")
+            addFriendActions
         }
         .padding(18)
         .background(cardBackground)
+    }
+
+    private var compactAddFriendsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isAddFriendsExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.badge.plus.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(AppPalette.sun)
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Add another friend")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text("Nearby, Messages, invite link, or backup code.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: isAddFriendsExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("friends.add.toggle")
+
+            if isAddFriendsExpanded {
+                addFriendActions
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    @ViewBuilder
+    private var addFriendActions: some View {
+        accountabilityAction(
+            title: "Nearby phones",
+            detail: "Both people open this and bring phones together.",
+            symbol: "wave.3.right.circle.fill"
+        ) {
+            appState.activateAccountability(displayName: preferredName)
+            sheet = .nearby
+        }
+        .accessibilityIdentifier("friends.add.nearby")
+
+        accountabilityAction(
+            title: "Messages or share sheet",
+            detail: "Send an invite link with a backup code.",
+            symbol: "message.fill"
+        ) {
+            appState.activateAccountability(displayName: preferredName)
+            appState.recordShareActionStarted()
+            sheet = .share([appState.accountabilityInviteShareText])
+        }
+        .accessibilityIdentifier("friends.add.share")
+
+        accountabilityAction(
+            title: "Paste a code",
+            detail: "Use the backup code from a friend's invite.",
+            symbol: "doc.on.clipboard.fill"
+        ) {
+            importCode = UIPasteboard.general.string ?? importCode
+        }
+        .accessibilityIdentifier("friends.add.paste")
     }
 
     private var inviteCard: some View {
@@ -381,7 +448,7 @@ struct FriendsView: View {
                             sheet = .share([appState.sharePokeText(for: friend)])
                         },
                         onRemove: {
-                            appState.removeFriend(friend.id)
+                            friendPendingRemoval = friend
                         }
                     )
                 }
@@ -520,11 +587,6 @@ private struct FriendAccountabilityRow: View {
                     friendActions
                 }
             }
-
-            Button("Remove") {
-                onRemove()
-            }
-            .buttonStyle(SunSecondaryButtonStyle())
         }
         .padding(18)
         .background(
@@ -539,23 +601,40 @@ private struct FriendAccountabilityRow: View {
 
     @ViewBuilder
     private var friendActions: some View {
-        Button("Refresh") {
-            onRefresh()
-        }
-        .buttonStyle(SunSecondaryButtonStyle())
-        .accessibilityIdentifier("friends.rowRefresh.\(friend.id.uuidString)")
-
         Button("Poke") {
             onPoke()
         }
         .buttonStyle(SunPrimaryButtonStyle())
         .accessibilityIdentifier("friends.poke.\(friend.id.uuidString)")
 
-        Button("Poke by Message") {
-            onSharePoke()
+        Button("Refresh") {
+            onRefresh()
         }
         .buttonStyle(SunSecondaryButtonStyle())
-        .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
+        .accessibilityIdentifier("friends.rowRefresh.\(friend.id.uuidString)")
+
+        Menu {
+            Button("Poke by Message") {
+                onSharePoke()
+            }
+            .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
+
+            Button("Remove Friend", role: .destructive) {
+                onRemove()
+            }
+            .accessibilityIdentifier("friends.remove.\(friend.id.uuidString)")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.72))
+                )
+        }
+        .accessibilityLabel("More actions for \(friend.name)")
+        .accessibilityIdentifier("friends.more.\(friend.id.uuidString)")
     }
 }
 

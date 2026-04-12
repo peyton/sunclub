@@ -87,6 +87,9 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.progress"].exists)
         XCTAssertTrue(app.buttons["settings.section.data"].exists)
         XCTAssertTrue(app.buttons["settings.section.advanced"].exists)
+        XCTAssertFalse(app.buttons["settings.weekdayReminderTime"].exists)
+
+        expandSettingsSection("reminders", in: app)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
@@ -105,6 +108,12 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.switches["settings.liveUVToggle"].exists)
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
+
+        XCTAssertTrue(scrollToElement(app.buttons["settings.section.help"], in: app))
+        expandSettingsSection("help", in: app)
+        XCTAssertTrue(scrollToElement(app.buttons["settings.support"], in: app))
+        XCTAssertTrue(app.buttons["settings.privacyPolicy"].exists)
+        XCTAssertTrue(app.buttons["settings.emailSupport"].exists)
     }
 
     @MainActor
@@ -162,6 +171,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
+        expandSettingsSection("reminders", in: app)
         let weekdayButton = app.buttons["settings.weekdayReminderTime"]
         XCTAssertTrue(weekdayButton.waitForExistence(timeout: 5))
 
@@ -176,7 +186,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
 
         performBackSwipe(in: app)
 
@@ -202,6 +212,7 @@ final class SunclubUITests: XCTestCase {
 
         expandSettingsSection("data", in: exportApp)
         XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"]))
+        expandSettingsSection("reminders", in: exportApp)
         let exportTravelToggle = exportApp.switches["settings.travelToggle"]
         XCTAssertTrue(scrollToElement(exportTravelToggle, in: exportApp))
         XCTAssertEqual(stringValue(of: exportTravelToggle), "1")
@@ -265,6 +276,29 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHomeShowsAccountabilityCardFrontAndCenterForFriends() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
+        ])
+
+        XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
+        XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
+    }
+
+    @MainActor
+    func testHomeShowsActiveAccountabilitySetupFrontAndCenter() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_ACCOUNTABILITY_ACTIVE"
+        ])
+
+        XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Bring in backup"].exists)
+        XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
+    }
+
+    @MainActor
     func testAccountabilityHubShowsAddInviteCodeAndPokeActions() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=friends",
@@ -272,13 +306,17 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
+        XCTAssertTrue(app.buttons["Refresh"].exists)
+        XCTAssertFalse(app.buttons["Poke by Message"].exists)
+        XCTAssertFalse(app.buttons["Remove Friend"].exists)
+
+        XCTAssertTrue(scrollToElement(app.buttons["friends.add.toggle"], in: app))
+        app.buttons["friends.add.toggle"].tap()
         XCTAssertTrue(app.buttons["friends.add.nearby"].exists)
         XCTAssertTrue(app.buttons["friends.add.share"].exists)
         XCTAssertTrue(app.buttons["friends.add.paste"].exists)
         XCTAssertTrue(scrollToElement(app.staticTexts["friends.backupCode"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
-        XCTAssertTrue(app.buttons["Poke by Message"].exists)
-        XCTAssertTrue(app.buttons["Refresh"].exists)
     }
 
     @MainActor
@@ -365,6 +403,65 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testWeeklySummaryOpensFullHistoryWithStreakContext() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_HISTORY=achievementProgress"
+        ])
+
+        app.buttons["home.streakCard"].tap()
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["weekly.viewFullHistory"].waitForExistence(timeout: 5))
+
+        app.buttons["weekly.viewFullHistory"].tap()
+        XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["history.streakContext"].exists)
+        XCTAssertTrue(app.staticTexts["history.currentStreakValue"].exists)
+
+        app.buttons["screen.back"].tap()
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHistoryCalendarSwipesToPreviousMonth() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=history",
+            "UITEST_SEED_HISTORY=monthlyReview"
+        ])
+
+        let monthTitle = app.staticTexts["history.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 5))
+        let initialMonth = monthTitle.label
+
+        let calendarGrid = app.otherElements["history.calendarGrid"]
+        XCTAssertTrue(calendarGrid.waitForExistence(timeout: 5))
+        calendarGrid.swipeRight()
+
+        XCTAssertTrue(waitForDifferentLabel(from: initialMonth, on: monthTitle))
+    }
+
+    @MainActor
+    func testHistoryCalendarSwipesForwardWithoutOpeningFutureMonth() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=history",
+            "UITEST_SEED_HISTORY=monthlyReview"
+        ])
+
+        let monthTitle = app.staticTexts["history.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 5))
+        let currentMonth = monthTitle.label
+
+        let calendarGrid = app.otherElements["history.calendarGrid"]
+        XCTAssertTrue(calendarGrid.waitForExistence(timeout: 5))
+        calendarGrid.swipeLeft()
+        XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle, timeout: 2))
+
+        calendarGrid.swipeRight()
+        XCTAssertTrue(waitForDifferentLabel(from: currentMonth, on: monthTitle))
+        calendarGrid.swipeLeft()
+        XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle))
+    }
+
+    @MainActor
     func testHistoryShowsMonthlyReviewInsights() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=history",
@@ -381,6 +478,42 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Best Day"].exists)
         XCTAssertTrue(app.staticTexts["Hardest Day"].exists)
         XCTAssertTrue(app.staticTexts["Most Used SPF"].exists)
+    }
+
+    @MainActor
+    func testWeeklySummaryAppliedDayOpensHistoryEditor() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=weeklySummary",
+            "UITEST_SEED_HISTORY=todayLogged"
+        ])
+
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        let todayButton = app.buttons["weekly.day.\(dayIdentifier())"]
+        XCTAssertTrue(todayButton.waitForExistence(timeout: 5))
+        todayButton.tap()
+
+        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHistoryDeletePreservesSelectionForBackfill() throws {
+        let app = launchHistoryWithSeededRecords(route: "history")
+        XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
+
+        let todayButton = app.buttons["history.day.\(dayIdentifier())"]
+        XCTAssertTrue(todayButton.waitForExistence(timeout: 5))
+        todayButton.tap()
+
+        XCTAssertTrue(app.staticTexts["history.statusTitle"].waitForExistence(timeout: 5))
+        let deleteButton = app.buttons["history.deleteRecord"]
+        XCTAssertTrue(scrollToElement(deleteButton, in: app))
+        deleteButton.tap()
+        let confirmDeleteButton = app.sheets.buttons["Delete"]
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 2))
+        confirmDeleteButton.tap()
+
+        XCTAssertTrue(scrollToElement(app.buttons["history.backfillRecord"], in: app))
+        XCTAssertTrue(app.staticTexts["history.statusTitle"].exists)
     }
 
     @MainActor
@@ -592,10 +725,42 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
+        expandSettingsSection("reminders", in: app)
         XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
         XCTAssertTrue(app.buttons["settings.notificationHealth.action"].exists)
         expandSettingsSection("advanced", in: app)
         XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
+    }
+
+    @MainActor
+    func testSettingsLiveUVToggleUsesMockedLiveWeatherDataEndToEnd() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_CURRENT_TIME=11:00",
+            "UITEST_LIVE_UV_INDEX=8",
+            "UITEST_LIVE_UV_PEAK_INDEX=11"
+        ]
+        app.launch()
+
+        expandSettingsSection("advanced", in: app)
+        let liveUVToggle = app.switches["settings.liveUVToggle"]
+        XCTAssertTrue(scrollToElement(liveUVToggle, in: app))
+        XCTAssertEqual(stringValue(of: liveUVToggle), "0")
+
+        liveUVToggle.tap()
+
+        XCTAssertTrue(app.staticTexts["Live UV is on"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Live WeatherKit UV"].waitForExistence(timeout: 5))
+
+        app.buttons["screen.back"].tap()
+
+        let uvHeadline = app.staticTexts["home.uvHeadline"]
+        XCTAssertTrue(uvHeadline.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvHeadline.label, "UV is very high today")
+        XCTAssertTrue(app.staticTexts["home.todayDetail"].label.contains("reapply sooner"))
     }
 
     @MainActor
@@ -725,8 +890,31 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    private func waitForDifferentLabel(from label: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "label != %@", label)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func dayIdentifier(offset: Int = 0) -> String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
+        return Self.dayIdentifierFormatter.string(from: day)
+    }
+
+    private static let dayIdentifierFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    @MainActor
     private func assertBackupImportRestoresHistoryAndSettings(in app: XCUIApplication) {
         XCTAssertTrue(waitForLabel("History entries: 0", on: app.staticTexts["settings.backupRecordCount"]))
+        expandSettingsSection("reminders", in: app)
         let travelToggle = app.switches["settings.travelToggle"]
         XCTAssertTrue(scrollToElement(travelToggle, in: app))
         XCTAssertEqual(stringValue(of: travelToggle), "1")

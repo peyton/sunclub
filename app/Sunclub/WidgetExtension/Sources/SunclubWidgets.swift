@@ -320,7 +320,7 @@ private struct SunclubAccountabilityWidgetView: View {
     let entry: SunclubSnapshotEntry
 
     var body: some View {
-        Button(intent: OpenSunclubRouteIntent(route: .accountability)) {
+        Link(destination: actionURL) {
             switch family {
             case .systemSmall:
                 SunclubAccountabilitySmallView(snapshot: entry.snapshot)
@@ -340,7 +340,34 @@ private struct SunclubAccountabilityWidgetView: View {
                 SunclubAccountabilityRectangularView(snapshot: entry.snapshot)
             }
         }
-        .buttonStyle(.plain)
+    }
+
+    private var actionURL: URL {
+        SunclubAccountabilityWidgetPresentation.make(
+            summary: entry.snapshot.accountabilitySummary,
+            family: presentationFamily
+        ).actionURL
+    }
+
+    private var presentationFamily: SunclubAccountabilityWidgetFamily {
+        switch family {
+        case .systemSmall:
+            return .systemSmall
+        case .systemMedium:
+            return .systemMedium
+        case .systemLarge:
+            return .systemLarge
+        case .systemExtraLarge:
+            return .systemExtraLarge
+        case .accessoryInline:
+            return .accessoryInline
+        case .accessoryCircular:
+            return .accessoryCircular
+        case .accessoryRectangular:
+            return .accessoryRectangular
+        default:
+            return .accessoryRectangular
+        }
     }
 }
 
@@ -471,7 +498,7 @@ private struct SunclubAccountabilityLargeView: View {
 
                         Text(friend.status)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(friend.status == "Logged" ? SunclubWidgetPalette.success : SunclubWidgetPalette.softInk)
+                            .foregroundStyle(friend.status == "Coated" ? SunclubWidgetPalette.success : SunclubWidgetPalette.softInk)
 
                         Text(friend.streak)
                             .font(.system(size: 12, weight: .bold))
@@ -485,6 +512,13 @@ private struct SunclubAccountabilityLargeView: View {
                         .foregroundStyle(SunclubWidgetPalette.softInk)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+            }
+
+            if !presentation.latestPokeText.isEmpty {
+                Text(presentation.latestPokeText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SunclubWidgetPalette.softInk)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 0)

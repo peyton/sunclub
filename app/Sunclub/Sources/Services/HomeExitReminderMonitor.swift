@@ -59,7 +59,7 @@ final class NoopHomeExitReminderMonitor: HomeExitReminderMonitoring {
 @MainActor
 final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
     static let shared = HomeExitReminderMonitor()
-    static let regionIdentifier = "sunclub.leave-home.home"
+    nonisolated static let regionIdentifier = "sunclub.leave-home.home"
 
     private let locationService: SharedLocationManaging
     private let notificationManager: NotificationScheduling

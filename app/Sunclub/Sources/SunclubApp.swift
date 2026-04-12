@@ -31,7 +31,29 @@ struct SunclubApp: App {
         NotificationManager.shared.configure(modelContainer: container)
         SunclubWatchSyncCoordinator.shared.activate()
 
-        let state = AppState(context: ModelContext(container), notificationManager: NotificationManager.shared)
+        let modelContext = ModelContext(container)
+        #if DEBUG
+        if let liveUVFixture = UITestLiveUVFixture.make(arguments: ProcessInfo.processInfo.arguments) {
+            let uvIndexService = UVIndexService(
+                locationService: liveUVFixture.locationService,
+                weatherProvider: liveUVFixture.weatherProvider
+            )
+            let uvBriefingService = SunclubUVBriefingService(
+                locationService: liveUVFixture.locationService,
+                weatherProvider: liveUVFixture.weatherProvider
+            )
+            let state = AppState(
+                context: modelContext,
+                notificationManager: NotificationManager.shared,
+                uvIndexService: uvIndexService,
+                uvBriefingService: uvBriefingService
+            )
+            _appState = State(initialValue: state)
+            return
+        }
+        #endif
+
+        let state = AppState(context: modelContext, notificationManager: NotificationManager.shared)
         _appState = State(initialValue: state)
     }
 
@@ -90,6 +112,26 @@ struct SunclubApp: App {
         let requestedUVIndex = requestedUITestUVIndex(from: arguments)
         let requestedReapplyInterval = requestedUITestReapplyInterval(from: arguments)
 
+        applyUITestFeatureConfiguration(
+            from: arguments,
+            requestedRoute: requestedRoute,
+            requestedUVIndex: requestedUVIndex,
+            requestedReapplyInterval: requestedReapplyInterval
+        )
+        applyUITestSeedData(from: arguments)
+        openUITestRequestedRoute(
+            url: requestedURL,
+            shortcutType: requestedShortcutType,
+            route: requestedRoute
+        )
+    }
+
+    private func applyUITestFeatureConfiguration(
+        from arguments: [String],
+        requestedRoute: AppRoute?,
+        requestedUVIndex: Int?,
+        requestedReapplyInterval: Int?
+    ) {
         if arguments.contains("UITEST_COMPLETE_ONBOARDING") || requestedRoute.map({ $0 != .welcome }) == true,
            !appState.settings.hasCompletedOnboarding {
             appState.completeOnboarding()
@@ -97,6 +139,10 @@ struct SunclubApp: App {
 
         if let requestedUVIndex {
             appState.setUVReadingForTesting(UVReading(index: requestedUVIndex))
+        }
+
+        if arguments.contains("UITEST_LIVE_UV_ENABLED") {
+            appState.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
         }
 
         if arguments.contains("UITEST_REAPPLY_ENABLED") {
@@ -110,22 +156,34 @@ struct SunclubApp: App {
             appState.updateLeaveHomeReminderEnabled(enabled: true, allowPermissionPrompt: false)
             appState.setLeaveHomeAuthorizationStateForTesting(.notDetermined)
         }
+    }
 
-        applyUITestSeedData(from: arguments)
-
-        if let requestedURL {
-            handleIncomingURL(requestedURL)
-        } else if let requestedShortcutType {
-            if SunclubHomeScreenQuickAction.handleShortcutType(requestedShortcutType),
-               let pendingRoute = SunclubWidgetSnapshotStore().takePendingRoute() {
-                openExternalRoute(pendingRoute)
-            }
-        } else if let requestedRoute {
-            if requestedRoute == .verifySuccess {
-                appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
-            }
-            router.open(requestedRoute)
+    private func openUITestRequestedRoute(
+        url: URL?,
+        shortcutType: String?,
+        route: AppRoute?
+    ) {
+        if let url {
+            handleIncomingURL(url)
+        } else if let shortcutType {
+            openUITestShortcut(type: shortcutType)
+        } else if let route {
+            openUITestRoute(route)
         }
+    }
+
+    private func openUITestShortcut(type: String) {
+        if SunclubHomeScreenQuickAction.handleShortcutType(type),
+           let pendingRoute = SunclubWidgetSnapshotStore().takePendingRoute() {
+            openExternalRoute(pendingRoute)
+        }
+    }
+
+    private func openUITestRoute(_ route: AppRoute) {
+        if route == .verifySuccess {
+            appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
+        }
+        router.open(route)
     }
 
     private func requestedUITestRoute(from arguments: [String]) -> AppRoute? {
@@ -187,6 +245,10 @@ struct SunclubApp: App {
         }
 
         seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
+
+        if arguments.contains("UITEST_SEED_ACCOUNTABILITY_ACTIVE") {
+            appState.activateAccountability(displayName: "Peyton")
+        }
 
         if arguments.contains("UITEST_SEED_ACCOUNTABILITY_FRIEND") {
             seedAccountabilityFriendScenario()
@@ -517,6 +579,7 @@ struct SunclubApp: App {
         appState.refreshNotificationHealth()
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshUVReadingIfNeeded()
+        appState.refreshAccountabilityForForeground()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
             openExternalRoute(route)
         }

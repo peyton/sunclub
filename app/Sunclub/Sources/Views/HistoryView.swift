@@ -25,12 +25,6 @@ struct HistoryView: View {
                     router.goBack()
                 })
 
-                SunAssetHero(
-                    asset: .illustrationHistoryCalendar,
-                    height: 146,
-                    glowColor: AppPalette.sun
-                )
-
                 monthNavigator
 
                 weekdayHeader
@@ -38,17 +32,27 @@ struct HistoryView: View {
 
                 let recordDates = appState.recordedDays
 
-                statsSection(recordDates: recordDates)
+                if let selectedDay = selectedDay {
+                    dayDetailCard(for: selectedDay)
+                }
 
                 calendarGrid(recordDates: recordDates)
                     .id(displayedMonth)
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
-                if let selectedDay = selectedDay {
-                    dayDetailCard(for: selectedDay)
-                } else {
+                if selectedDay == nil {
                     historyEmptyHint
                 }
+
+                statsSection(recordDates: recordDates)
+
+                streakContextCard
+
+                SunAssetHero(
+                    asset: .illustrationHistoryCalendar,
+                    height: 112,
+                    glowColor: AppPalette.sun
+                )
 
                 Spacer(minLength: 0)
             }
@@ -58,7 +62,7 @@ struct HistoryView: View {
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
         .confirmationDialog(
-            "Delete Entry",
+            deleteDialogTitle,
             isPresented: Binding(
                 get: { dayPendingDeletion != nil },
                 set: { if !$0 { dayPendingDeletion = nil } }
@@ -68,12 +72,12 @@ struct HistoryView: View {
             Button("Delete", role: .destructive) {
                 if let day = dayPendingDeletion {
                     appState.deleteRecord(for: day)
-                    selectedDay = nil
+                    selectedDay = calendar.startOfDay(for: day)
                 }
                 dayPendingDeletion = nil
             }
         } message: {
-            Text("This removes the visible entry for the selected day. You can undo recent changes in Recovery & Changes.")
+            Text(deleteDialogMessage)
         }
         .sheet(item: $editorPresentation) { presentation in
             HistoryRecordEditorView(
@@ -86,17 +90,16 @@ struct HistoryView: View {
     private var monthNavigator: some View {
         HStack {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    displayedMonth = calendar.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
-                    selectedDay = nil
-                }
+                changeMonth(by: -1)
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Previous month")
+            .accessibilityHint("Shows the previous month in history.")
             .accessibilityIdentifier("history.previousMonth")
 
             Spacer()
@@ -109,20 +112,107 @@ struct HistoryView: View {
             Spacer()
 
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    displayedMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
-                    selectedDay = nil
-                }
+                changeMonth(by: 1)
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(canGoForward ? AppPalette.ink : AppPalette.muted)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
             .disabled(!canGoForward)
+            .accessibilityLabel("Next month")
+            .accessibilityHint(canGoForward ? "Shows the next month in history." : "The next month is in the future.")
             .accessibilityIdentifier("history.nextMonth")
         }
+    }
+
+    private var streakContextCard: some View {
+        let streakDays = appState.currentStreakDays
+        let currentStreak = streakDays.count
+        let startText = streakDays.first.map {
+            "Started \($0.formatted(.dateTime.month(.abbreviated).day()))"
+        } ?? "Start by logging today"
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppPalette.sun)
+                    .frame(width: 30, height: 30)
+                    .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(currentStreak > 0 ? "Current Streak" : "No Current Streak")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    Text(currentStreak == 1 ? "1 day" : "\(currentStreak) days")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .accessibilityIdentifier("history.currentStreakValue")
+
+                    Text(startText)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                        .accessibilityIdentifier("history.currentStreakStart")
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 12) {
+                streakMetricPill(
+                    value: "\(appState.longestStreak)",
+                    label: appState.longestStreak == 1 ? "Best day" : "Best days",
+                    accessibilityIdentifier: "history.bestStreak"
+                )
+
+                Button("Jump to Today") {
+                    jumpToToday()
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(AppPalette.warmGlow.opacity(0.5))
+                )
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows and selects today in the calendar.")
+                .accessibilityIdentifier("history.todayMonth")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("history.streakContext")
+    }
+
+    private func streakMetricPill(
+        value: String,
+        label: String,
+        accessibilityIdentifier: String
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+
+            Text(label)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.76))
+        )
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private var canGoForward: Bool {
@@ -144,7 +234,15 @@ struct HistoryView: View {
     }
 
     private var historyLegend: some View {
-        HStack(spacing: 10) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+            if !appState.currentStreakDays.isEmpty {
+                historyLegendItem(
+                    title: "Streak",
+                    color: AppPalette.streakAccent,
+                    symbol: "flame.fill",
+                    accessibilityIdentifier: "history.legend.streak"
+                )
+            }
             historyLegendItem(
                 title: "Logged",
                 color: AppPalette.sun,
@@ -197,7 +295,7 @@ struct HistoryView: View {
     private var historyEmptyHint: some View {
         SunStatusCard(
             title: "Pick a day",
-            detail: "Tap a past day to edit an entry or backfill a log. Future days stay locked.",
+            detail: "Swipe the calendar to move between months. Tap a logged day to edit it or a missed day to backfill it.",
             tint: AppPalette.sun,
             symbol: "calendar.badge.plus"
         )
@@ -207,44 +305,120 @@ struct HistoryView: View {
     private func calendarGrid(recordDates: [Date]) -> some View {
         let days = appState.monthGrid(for: displayedMonth)
         let recordDateSet = Set(recordDates)
+        let streakDaySet = Set(appState.currentStreakDays)
         let today = calendar.startOfDay(for: Date())
 
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
-                let isCurrentMonth = appState.isCurrentMonth(day, month: displayedMonth)
-                let dayStart = calendar.startOfDay(for: day)
-                let hasRecord = recordDateSet.contains(dayStart)
-                let isToday = dayStart == today
-                let isFuture = dayStart > today
-                let isSelected = selectedDay.map { calendar.isDate($0, inSameDayAs: day) } ?? false
-
-                Button {
-                    if isCurrentMonth && !isFuture {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedDay = day
-                        }
-                    }
-                } label: {
-                    VStack(spacing: 2) {
-                        Text("\(calendar.component(.day, from: day))")
-                            .font(.system(size: 15, weight: isToday ? .bold : .regular))
-                            .foregroundStyle(dayTextColor(isCurrentMonth: isCurrentMonth, isFuture: isFuture, isSelected: isSelected))
-
-                        loggedDayDot(hasRecord: hasRecord && isCurrentMonth, isSelected: isSelected, isToday: isToday)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 38)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(isSelected ? AppPalette.warmGlow.opacity(0.5) : Color.clear)
+                calendarDayButton(
+                    day: day,
+                    state: dayCellState(
+                        for: day,
+                        recordDateSet: recordDateSet,
+                        streakDaySet: streakDaySet,
+                        today: today
                     )
-                }
-                .buttonStyle(.plain)
-                .disabled(!isCurrentMonth || isFuture)
-                .accessibilityLabel(dayAccessibilityLabel(for: day, hasRecord: hasRecord, isToday: isToday))
-                .accessibilityIdentifier(dayAccessibilityIdentifier(for: dayStart))
+                )
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded(handleCalendarSwipe)
+        )
+        .accessibilityAction(named: "Previous Month") {
+            changeMonth(by: -1)
+        }
+        .accessibilityAction(named: "Next Month") {
+            changeMonth(by: 1)
+        }
         .accessibilityIdentifier("history.calendarGrid")
+    }
+
+    private func dayCellState(
+        for day: Date,
+        recordDateSet: Set<Date>,
+        streakDaySet: Set<Date>,
+        today: Date
+    ) -> HistoryDayCellState {
+        let isCurrentMonth = appState.isCurrentMonth(day, month: displayedMonth)
+        let dayStart = calendar.startOfDay(for: day)
+        let hasRecord = recordDateSet.contains(dayStart)
+        let isToday = dayStart == today
+        let isFuture = dayStart > today
+        let isSelected = selectedDay.map { calendar.isDate($0, inSameDayAs: day) } ?? false
+
+        return HistoryDayCellState(
+            dayStart: dayStart,
+            status: CalendarAnalytics.status(for: dayStart, with: recordDateSet, now: today, calendar: calendar),
+            hasRecord: hasRecord,
+            isToday: isToday,
+            isFuture: isFuture,
+            isSelected: isSelected,
+            isCurrentMonth: isCurrentMonth,
+            isCurrentStreak: isCurrentMonth && streakDaySet.contains(dayStart)
+        )
+    }
+
+    private func calendarDayButton(day: Date, state: HistoryDayCellState) -> some View {
+        Button {
+            selectDay(day, state: state)
+        } label: {
+            calendarDayContent(day: day, state: state)
+        }
+        .buttonStyle(.plain)
+        .disabled(!state.isCurrentMonth || state.isFuture)
+        .accessibilityLabel(
+            dayAccessibilityLabel(
+                for: day,
+                hasRecord: state.hasRecord,
+                isToday: state.isToday,
+                isSelected: state.isSelected,
+                isCurrentStreak: state.isCurrentStreak
+            )
+        )
+        .accessibilityHint(
+            dayAccessibilityHint(hasRecord: state.hasRecord, isToday: state.isToday, isFuture: state.isFuture)
+        )
+        .accessibilityIdentifier(dayAccessibilityIdentifier(for: state.dayStart))
+    }
+
+    private func calendarDayContent(day: Date, state: HistoryDayCellState) -> some View {
+        VStack(spacing: 2) {
+            Text("\(calendar.component(.day, from: day))")
+                .font(.system(size: 15, weight: state.isToday ? .bold : .regular))
+                .foregroundStyle(
+                    dayTextColor(
+                        isCurrentMonth: state.isCurrentMonth,
+                        isFuture: state.isFuture,
+                        isSelected: state.isSelected
+                    )
+                )
+
+            Image(systemName: dayMarkerSymbol(for: state.status))
+                .font(.system(size: 7, weight: .semibold))
+                .foregroundStyle(state.isCurrentMonth ? dayMarkerColor(for: state.status) : Color.clear)
+                .frame(height: 8)
+        }
+        .frame(maxWidth: .infinity, minHeight: 46)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(dayBackgroundColor(isSelected: state.isSelected, isCurrentStreak: state.isCurrentStreak))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(
+                    dayBorderColor(isSelected: state.isSelected, isCurrentStreak: state.isCurrentStreak),
+                    lineWidth: state.isSelected ? 1.5 : 1
+                )
+        }
+    }
+
+    private func selectDay(_ day: Date, state: HistoryDayCellState) {
+        guard state.isCurrentMonth && !state.isFuture else { return }
+
+        withAnimation(.easeInOut(duration: 0.15)) {
+            selectedDay = day
+        }
     }
 
     private func dayTextColor(isCurrentMonth: Bool, isFuture: Bool, isSelected: Bool) -> Color {
@@ -254,17 +428,67 @@ struct HistoryView: View {
         return AppPalette.ink
     }
 
+    private func dayBackgroundColor(isSelected: Bool, isCurrentStreak: Bool) -> Color {
+        if isSelected {
+            return AppPalette.warmGlow.opacity(0.58)
+        }
+
+        if isCurrentStreak {
+            return AppPalette.sun.opacity(0.12)
+        }
+
+        return Color.clear
+    }
+
+    private func dayBorderColor(isSelected: Bool, isCurrentStreak: Bool) -> Color {
+        if isSelected {
+            return AppPalette.ink.opacity(0.28)
+        }
+
+        if isCurrentStreak {
+            return AppPalette.streakAccent.opacity(0.32)
+        }
+
+        return Color.clear
+    }
+
+    private func dayMarkerSymbol(for status: DayStatus) -> String {
+        switch status {
+        case .applied: return "checkmark.circle.fill"
+        case .todayPending: return "circle.dashed"
+        case .missed: return "xmark.circle"
+        case .future: return "circle"
+        }
+    }
+
+    private func dayMarkerColor(for status: DayStatus) -> Color {
+        switch status {
+        case .applied: return AppPalette.sun
+        case .todayPending: return AppPalette.sun.opacity(0.55)
+        case .missed: return Color.red.opacity(0.45)
+        case .future: return AppPalette.muted
+        }
+    }
+
     @ViewBuilder
     private func dayDetailCard(for day: Date) -> some View {
         let dayStart = calendar.startOfDay(for: day)
         let record = appState.record(for: dayStart)
         let status = appState.dayStatus(for: dayStart)
         let conflict = appState.conflict(for: dayStart)
+        let isCurrentStreak = Set(appState.currentStreakDays).contains(dayStart)
 
         VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
+
+            if isCurrentStreak {
+                Label("Part of your current streak", systemImage: "flame.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.streakAccent)
+                    .accessibilityIdentifier("history.currentStreakBadge")
+            }
 
             dayDetailBody(record: record, status: status, conflict: conflict)
         }
@@ -276,25 +500,6 @@ struct HistoryView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.62), lineWidth: 1)
-        }
-        .accessibilityIdentifier("history.dayDetail")
-    }
-
-    private func loggedDayDot(hasRecord: Bool, isSelected: Bool, isToday: Bool) -> some View {
-        ZStack {
-            if hasRecord {
-                Circle()
-                    .fill(AppPalette.sun.opacity(isSelected ? 0.95 : 0.78))
-                    .frame(width: isSelected ? 9 : 7, height: isSelected ? 9 : 7)
-
-                Circle()
-                    .stroke(AppPalette.sun.opacity(isToday ? 0.55 : 0.24), lineWidth: 1)
-                    .frame(width: isToday ? 15 : 11, height: isToday ? 15 : 11)
-            } else {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 9, height: 9)
-            }
         }
     }
 
@@ -382,9 +587,36 @@ struct HistoryView: View {
         if let selectedDay = selectedDay {
             let dayStart = calendar.startOfDay(for: selectedDay)
             let record = appState.record(for: dayStart)
+            let status = appState.dayStatus(for: dayStart)
 
-            actionButtons(for: dayStart, record: record)
-                .accessibilityIdentifier("history.actionFooter")
+            VStack(alignment: .leading, spacing: 10) {
+                footerStatusSummary(for: dayStart, status: status)
+                actionButtons(for: dayStart, record: record)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func footerStatusSummary(for day: Date, status: DayStatus) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: statusSymbol(for: status))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(statusColor(for: status))
+                .frame(width: 28, height: 28)
+                .background(Color.white.opacity(0.76), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(statusTitle(for: status))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("history.statusTitle")
+
+                Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+
+            Spacer(minLength: 0)
         }
     }
 
@@ -506,10 +738,93 @@ struct HistoryView: View {
         }
     }
 
-    private func dayAccessibilityLabel(for day: Date, hasRecord: Bool, isToday: Bool) -> String {
+    private var deleteDialogTitle: String {
+        guard let day = dayPendingDeletion else {
+            return "Delete Entry"
+        }
+
+        return "Delete \(day.formatted(.dateTime.month(.wide).day()))?"
+    }
+
+    private var deleteDialogMessage: String {
+        guard let day = dayPendingDeletion else {
+            return "This removes the visible entry. You can undo recent changes in Recovery & Changes."
+        }
+
+        let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        return "This removes the visible entry for \(dateLabel). You can undo recent changes in Recovery & Changes."
+    }
+
+    private func changeMonth(by offset: Int) {
+        guard offset != 0 else { return }
+        guard offset < 0 || canGoForward else { return }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            displayedMonth = calendar.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+            selectedDay = nil
+            isShowingMonthlyInsights = false
+        }
+    }
+
+    private func jumpToToday() {
+        let today = calendar.startOfDay(for: Date())
+        withAnimation(.easeInOut(duration: 0.2)) {
+            displayedMonth = today
+            selectedDay = today
+        }
+    }
+
+    private func handleCalendarSwipe(_ value: DragGesture.Value) {
+        let horizontalDistance = value.translation.width
+        let verticalDistance = value.translation.height
+        guard abs(horizontalDistance) > 44,
+              abs(horizontalDistance) > abs(verticalDistance) * 1.35 else {
+            return
+        }
+
+        if horizontalDistance < 0 {
+            changeMonth(by: 1)
+        } else {
+            changeMonth(by: -1)
+        }
+    }
+
+    private func dayAccessibilityLabel(
+        for day: Date,
+        hasRecord: Bool,
+        isToday: Bool,
+        isSelected: Bool,
+        isCurrentStreak: Bool
+    ) -> String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
         let status = hasRecord ? "Applied" : (isToday ? "Pending" : "No entry")
-        return "\(dateLabel), \(status)"
+        var parts = [dateLabel, status]
+
+        if isCurrentStreak {
+            parts.append("part of current streak")
+        }
+
+        if isSelected {
+            parts.append("selected")
+        }
+
+        return parts.joined(separator: ", ")
+    }
+
+    private func dayAccessibilityHint(hasRecord: Bool, isToday: Bool, isFuture: Bool) -> String {
+        if isFuture {
+            return "Future days cannot be edited."
+        }
+
+        if hasRecord {
+            return "Selects this day so you can edit or delete the entry."
+        }
+
+        if isToday {
+            return "Selects today so you can add a log."
+        }
+
+        return "Selects this missed day so you can backfill it."
     }
 
     private func dayAccessibilityIdentifier(for day: Date) -> String {
@@ -606,6 +921,17 @@ private struct HistoryEditorPresentation: Identifiable {
     let day: Date
 
     var id: Date { day }
+}
+
+private struct HistoryDayCellState {
+    let dayStart: Date
+    let status: DayStatus
+    let hasRecord: Bool
+    let isToday: Bool
+    let isFuture: Bool
+    let isSelected: Bool
+    let isCurrentMonth: Bool
+    let isCurrentStreak: Bool
 }
 
 struct HistoryRecordEditorView: View {
