@@ -1759,7 +1759,12 @@ final class AppState {
     }
 
     func record(for day: Date) -> DailyRecord? {
-        (try? verificationStore.record(for: day)).flatMap { $0 }
+        let target = calendar.startOfDay(for: day)
+        if let projectedRecord = records.first(where: { calendar.isDate($0.startOfDay, inSameDayAs: target) }) {
+            return projectedRecord
+        }
+
+        return (try? verificationStore.record(for: target)).flatMap { $0 }
     }
 
     func refreshUVReadingIfNeeded(allowPermissionPrompt: Bool = false) {
@@ -1854,6 +1859,10 @@ final class AppState {
 
     var currentStreak: Int {
         CalendarAnalytics.currentStreak(records: recordedDays, now: Date(), calendar: calendar)
+    }
+
+    var currentStreakDays: [Date] {
+        CalendarAnalytics.currentStreakDays(records: recordedDays, now: Date(), calendar: calendar)
     }
 
     func last7DaysReport() -> WeeklyReport {

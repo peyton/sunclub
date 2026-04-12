@@ -59,18 +59,22 @@ enum CalendarAnalytics {
     }
 
     static func currentStreak(records: [Date], now: Date, calendar: Calendar = Calendar.current) -> Int {
+        currentStreakDays(records: records, now: now, calendar: calendar).count
+    }
+
+    static func currentStreakDays(records: [Date], now: Date, calendar: Calendar = Calendar.current) -> [Date] {
         let byDay = normalizedDays(records, calendar: calendar)
         let today = calendar.startOfDay(for: now)
 
         var cursor = byDay.contains(today) ? today : calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        var streak = 0
+        var days: [Date] = []
 
         while byDay.contains(cursor) {
-            streak += 1
+            days.append(cursor)
             cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor
         }
 
-        return streak
+        return days.sorted()
     }
 
     static func longestStreak(records: [Date], calendar: Calendar = Calendar.current) -> Int {

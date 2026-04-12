@@ -5,7 +5,7 @@ struct WeeklyReportView: View {
     @Environment(AppRouter.self) private var router
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
     @State private var insights = SunscreenUsageInsights.empty
-    @State private var backfillPresentation: WeeklyBackfillPresentation?
+    @State private var editorPresentation: WeeklyEditorPresentation?
 
     var body: some View {
         SunLightScreen {
@@ -32,6 +32,8 @@ struct WeeklyReportView: View {
                     }
                 }
 
+                streakContextRow
+
                 weeklyChart
                     .frame(maxWidth: .infinity, alignment: .center)
 
@@ -39,8 +41,15 @@ struct WeeklyReportView: View {
 
                 Spacer(minLength: 0)
             }
+        } footer: {
+            Button("View Full History") {
+                router.push(.history)
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityHint("Opens your full calendar history with your current streak highlighted.")
+            .accessibilityIdentifier("weekly.viewFullHistory")
         }
-        .sheet(item: $backfillPresentation) { presentation in
+        .sheet(item: $editorPresentation, onDismiss: refreshReport) { presentation in
             HistoryRecordEditorView(
                 day: presentation.day,
                 existingRecord: appState.record(for: presentation.day)
@@ -53,6 +62,24 @@ struct WeeklyReportView: View {
         .interactivePopGestureEnabled()
     }
 
+    private var streakContextRow: some View {
+        HStack(spacing: 12) {
+            WeeklyMetricPill(
+                value: "\(appState.currentStreak)",
+                label: appState.currentStreak == 1 ? "Current day" : "Current days",
+                accessibilityIdentifier: "weekly.currentStreak"
+            )
+
+            WeeklyMetricPill(
+                value: "\(appState.longestStreak)",
+                label: appState.longestStreak == 1 ? "Best day" : "Best days",
+                accessibilityIdentifier: "weekly.bestStreak"
+            )
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Current streak \(appState.currentStreak) days, best streak \(appState.longestStreak) days")
+    }
+
     private var weeklyChart: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("This week")
@@ -61,33 +88,42 @@ struct WeeklyReportView: View {
 
             HStack(spacing: 10) {
                 ForEach(weekEntries) { entry in
-                    VStack(spacing: 8) {
-                        Text(entry.date.formatted(.dateTime.weekday(.narrow)))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(AppPalette.softInk)
+                    Button {
+                        handleWeekEntryTap(entry)
+                    } label: {
+                        VStack(spacing: 8) {
+                            Text(entry.date.formatted(.dateTime.weekday(.narrow)))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AppPalette.softInk)
 
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(entry.applied ? AppPalette.sun : Color.white.opacity(0.9))
-                            .overlay {
-                                if entry.applied {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.white)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(entry.applied ? AppPalette.sun : Color.white.opacity(0.9))
+                                .overlay {
+                                    if entry.applied {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(.white)
+                                    }
                                 }
-                            }
-                            .overlay {
-                                if Calendar.current.isDateInToday(entry.date) {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(AppPalette.ink.opacity(0.18), lineWidth: 1)
+                                .overlay {
+                                    if Calendar.current.isDateInToday(entry.date) {
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(AppPalette.ink.opacity(0.18), lineWidth: 1)
+                                    }
                                 }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 46)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 46)
 
-                        Text(entry.date.formatted(.dateTime.day()))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppPalette.softInk)
+                            Text(entry.date.formatted(.dateTime.day()))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(AppPalette.softInk)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .disabled(entry.isFuture)
+                    .accessibilityLabel(weekEntryAccessibilityLabel(entry))
+                    .accessibilityHint(weekEntryAccessibilityHint(entry))
+                    .accessibilityIdentifier("weekly.day.\(Self.dayIdentifierFormatter.string(from: entry.date))")
                 }
             }
 
@@ -147,7 +183,8 @@ struct WeeklyReportView: View {
 
             return WeeklyEntry(
                 date: day,
-                applied: records.contains(calendar.startOfDay(for: day))
+                applied: records.contains(calendar.startOfDay(for: day)),
+                isFuture: calendar.startOfDay(for: day) > today
             )
         }
     }
@@ -204,11 +241,19 @@ struct WeeklyReportView: View {
         insights = appState.sunscreenUsageInsights()
     }
 
+    private func handleWeekEntryTap(_ entry: WeeklyEntry) {
+        if entry.applied {
+            editorPresentation = WeeklyEditorPresentation(day: entry.date)
+        } else {
+            openBackfill(for: entry.date)
+        }
+    }
+
     private func openBackfill(for day: Date) {
         if Calendar.current.isDateInToday(day) {
             router.open(.manualLog)
         } else {
-            backfillPresentation = WeeklyBackfillPresentation(day: day)
+            editorPresentation = WeeklyEditorPresentation(day: day)
         }
     }
 
@@ -218,6 +263,24 @@ struct WeeklyReportView: View {
         }
 
         return "Backfill \(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
+    }
+
+    private func weekEntryAccessibilityLabel(_ entry: WeeklyEntry) -> String {
+        let dateLabel = entry.date.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        let status = entry.applied ? "logged" : "not logged"
+        return "\(dateLabel), \(status)"
+    }
+
+    private func weekEntryAccessibilityHint(_ entry: WeeklyEntry) -> String {
+        if entry.applied {
+            return "Opens this entry for editing."
+        }
+
+        if Calendar.current.isDateInToday(entry.date) {
+            return "Opens today's log."
+        }
+
+        return "Opens this missed day for backfill."
     }
 
     private static let dayIdentifierFormatter: DateFormatter = {
@@ -284,6 +347,32 @@ private struct WeeklyRecentNoteRow: View {
     }
 }
 
+private struct WeeklyMetricPill: View {
+    let value: String
+    let label: String
+    let accessibilityIdentifier: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(value)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+
+            Text(label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+}
+
 #Preview {
     SunclubPreviewHost {
         WeeklyReportView()
@@ -293,11 +382,12 @@ private struct WeeklyRecentNoteRow: View {
 private struct WeeklyEntry: Identifiable {
     let date: Date
     let applied: Bool
+    let isFuture: Bool
 
     var id: Date { date }
 }
 
-private struct WeeklyBackfillPresentation: Identifiable {
+private struct WeeklyEditorPresentation: Identifiable {
     let day: Date
 
     var id: Date { day }

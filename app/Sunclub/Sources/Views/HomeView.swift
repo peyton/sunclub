@@ -393,7 +393,7 @@ struct HomeView: View {
                 }
             }
 
-            Text("Open your last 7 days.")
+            Text("Open your weekly streak, then view full history.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
         }
