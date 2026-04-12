@@ -370,6 +370,22 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testWidgetUpdateRouteShowsUpdateTodayWhenAlreadyLogged() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_SEED_HISTORY=todayLogged",
+            "UITEST_URL=\(widgetURL(path: "open/updateToday"))"
+        ]
+        app.launch()
+
+        let logButton = app.buttons["manualLog.logToday"]
+        XCTAssertTrue(logButton.waitForExistence(timeout: 5))
+        XCTAssertEqual(logButton.label, "Update Today")
+    }
+
+    @MainActor
     func testReapplyCheckInFlowLogsCompletionAndReturnsHome() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=reapplyCheckIn",

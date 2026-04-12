@@ -6,6 +6,104 @@ import XCTest
 
 @MainActor
 final class SunclubWidgetTests: XCTestCase {
+    func testLogTodayPresentationSupportsEveryWidgetFamily() {
+        XCTAssertEqual(
+            SunclubLogTodayWidgetFamily.allCases.map(\.rawValue),
+            [
+                "systemSmall",
+                "systemMedium",
+                "systemLarge",
+                "systemExtraLarge",
+                "accessoryInline",
+                "accessoryCircular",
+                "accessoryRectangular"
+            ]
+        )
+    }
+
+    func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [1, 2, 3],
+            longestStreak: 9,
+            now: now,
+            calendar: calendar,
+            currentUVIndex: 7,
+            peakUVIndex: 9
+        )
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemSmall,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.state, .open)
+        XCTAssertEqual(presentation.iconName, "sun.max.fill")
+        XCTAssertEqual(presentation.title, "Log")
+        XCTAssertEqual(presentation.subtitle, "Peak UV 9")
+        XCTAssertEqual(presentation.actionText, "Tap")
+        XCTAssertFalse(presentation.title.contains("Today"))
+        XCTAssertLessThanOrEqual(presentation.title.count, 4)
+    }
+
+    func testLogTodayMediumPresentationAddsHabitMetrics() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [1, 2, 3],
+            longestStreak: 9,
+            now: now,
+            calendar: calendar,
+            currentUVIndex: 7,
+            peakUVIndex: 9,
+            mostUsedSPF: 50
+        )
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemMedium,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.title, "Log sunscreen")
+        XCTAssertEqual(presentation.detail, "Usual SPF 50")
+        XCTAssertEqual(presentation.metrics.map(\.title), ["Streak", "Week", "Month", "UV"])
+        XCTAssertEqual(presentation.metrics.map(\.value), ["3d", "3/7", "3/15", "9"])
+    }
+
+    func testLogTodayLargeLoggedPresentationShowsUpdateStateAndReapply() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 11)
+        let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2, 3],
+            longestStreak: 9,
+            now: now,
+            calendar: calendar,
+            lastReappliedAt: lastReappliedAt,
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90
+        )
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemLarge,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.state, .logged)
+        XCTAssertEqual(presentation.iconName, "checkmark.seal.fill")
+        XCTAssertEqual(presentation.title, "Logged today")
+        XCTAssertEqual(presentation.subtitle, "4d streak")
+        XCTAssertEqual(presentation.actionText, "Update")
+        XCTAssertTrue(presentation.detail.hasPrefix("Reapply "))
+    }
+
     func testSnapshotShowsTodayOpenWhenLatestRecordIsYesterday() {
         let snapshot = makeSnapshot(dayOffsets: [1, 2, 3], longestStreak: 7)
 
@@ -163,6 +261,60 @@ final class SunclubWidgetTests: XCTestCase {
             verifiedAt: verifiedAt,
             method: .manual,
             spfLevel: spfLevel
+        )
+    }
+
+    private func makeWidgetSnapshot(
+        dayOffsets: [Int],
+        longestStreak: Int,
+        now: Date,
+        calendar: Calendar,
+        isOnboardingComplete: Bool = true,
+        currentUVIndex: Int? = nil,
+        peakUVIndex: Int? = nil,
+        mostUsedSPF: Int? = nil,
+        lastReappliedAt: Date? = nil,
+        reapplyReminderEnabled: Bool = false,
+        reapplyIntervalMinutes: Int = 120
+    ) -> SunclubWidgetSnapshot {
+        let today = calendar.startOfDay(for: now)
+        let recordedDays = dayOffsets.compactMap { offset in
+            calendar.date(byAdding: .day, value: -offset, to: today)
+        }.sorted()
+        let lastLoggedDay = recordedDays.last
+
+        return SunclubWidgetSnapshot(
+            isOnboardingComplete: isOnboardingComplete,
+            lastLoggedDay: lastLoggedDay,
+            lastVerifiedAt: lastLoggedDay.flatMap {
+                calendar.date(byAdding: .hour, value: 9, to: $0)
+            },
+            lastReappliedAt: lastReappliedAt,
+            recordedDays: recordedDays,
+            currentStreak: 0,
+            longestStreak: longestStreak,
+            weeklyAppliedCount: 0,
+            monthlyAppliedCount: 0,
+            monthlyDayCount: 0,
+            mostUsedSPF: mostUsedSPF,
+            currentUVIndex: currentUVIndex,
+            peakUVIndex: peakUVIndex,
+            peakUVHour: peakUVIndex == nil ? nil : calendar.date(byAdding: .hour, value: 13, to: today),
+            reapplyReminderEnabled: reapplyReminderEnabled,
+            reapplyIntervalMinutes: reapplyIntervalMinutes
+        )
+    }
+
+    private func fixedCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        calendar.firstWeekday = 1
+        return calendar
+    }
+
+    private func fixedDate(calendar: Calendar, hour: Int = 12) throws -> Date {
+        try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: hour))
         )
     }
 

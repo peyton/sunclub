@@ -15,7 +15,9 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-04-02) Updated app-side state mutations and foreground refresh paths to rewrite widget snapshots and reload widget timelines.
 - [x] (2026-04-02) Reworked the widget extension into a multi-widget bundle covering Home Screen, Lock Screen, and Control Center surfaces.
 - [x] (2026-04-02) Added unit coverage for snapshot rollover behavior and widget deep-link routes.
-- [ ] Run the UI suite to completion and capture the final result.
+- [x] (2026-04-12) Reworked `Log Today` into an icon-led layout with compact copy and added medium, large, and extra-large Home Screen variants.
+- [x] (2026-04-12) Added presentation unit coverage for every `Log Today` family and UI coverage for the logged-state widget update route.
+- [x] (2026-04-12) Ran the unit, lint, and UI validation suites to completion.
 - [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
@@ -44,7 +46,7 @@ The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.code
 
 Supported widget families:
 
-- `Log Today`: `systemSmall`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
+- `Log Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
 - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
 - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
 - `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
@@ -57,7 +59,7 @@ Supported Control Center controls:
 
 Out of scope:
 
-- iPad or `systemExtraLarge` widget layouts
+- iPad-specific widget behavior beyond the shared `systemExtraLarge` layout
 - Moving the main database into the app group
 - New dedicated summary/history screens created only for widgets
 
@@ -82,11 +84,11 @@ Out of scope:
 ## Outcomes & Retrospective
 
 - Outcome: Shared snapshot-backed widget suite implemented with Home Screen, Lock Screen, and Control Center coverage.
+- Outcome: `Log Today` now uses an icon-led compact small layout, expands into metrics/history on larger Home Screen sizes, and keeps Lock Screen copy short enough for accessory families.
 - Verification:
-  - `just generate`
-  - `just test-unit`
-  - `just lint`
-  - `xcodebuild -workspace app/Sunclub.xcworkspace -scheme Sunclub -configuration Debug -destination 'platform=iOS Simulator,name=Sunclub Test iPhone 17 Pro' build`
-  - `just test-ui` pending final completion at time of update
+  - `just generate` passed
+  - `just test-unit` passed
+  - `just lint` passed with existing warnings
+  - `just test-ui` passed
 - Follow-up:
   - Manually add each widget/control in Simulator and confirm the visible state and tap behavior match the supported-family matrix above.
