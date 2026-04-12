@@ -92,6 +92,7 @@ final class FakeAccountabilityService: SunclubAccountabilityServing {
     var profilesByID: [UUID: SunclubAccountabilityProfile] = [:]
     var remoteEvents = SunclubAccountabilityRemoteEvents(inviteResponses: [], pokes: [])
     var sendPokeError: Error?
+    var installSubscriptionsError: Error?
 
     func publishProfile(_ profile: SunclubAccountabilityProfile) async throws {
         publishedProfiles.append(profile)
@@ -118,6 +119,9 @@ final class FakeAccountabilityService: SunclubAccountabilityServing {
     }
 
     func installSubscriptions(for profileID: UUID) async throws {
+        if let installSubscriptionsError {
+            throw installSubscriptionsError
+        }
         installedSubscriptionProfileIDs.append(profileID)
     }
 }
@@ -852,6 +856,17 @@ final class SunclubTests: XCTestCase {
         XCTAssertNotEqual(openBody, loggedBody)
         XCTAssertFalse(openBody.isEmpty)
         XCTAssertFalse(loggedBody.isEmpty)
+
+        let accountabilityCopy = (
+            SunclubAccountabilityMessaging.openDayPokeMessages
+                + SunclubAccountabilityMessaging.alreadyLoggedPokeMessages
+                + SunclubAccountabilityMessaging.incomingOpenNotificationBodies
+                + SunclubAccountabilityMessaging.incomingLoggedNotificationBodies
+        )
+        .joined(separator: " ")
+        .lowercased()
+        XCTAssertFalse(accountabilityCopy.contains("coated"))
+        XCTAssertFalse(accountabilityCopy.contains("coating"))
     }
 
     @MainActor
@@ -910,7 +925,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(service.sentPokes.first?.receiverProfileID, envelope.profileID)
         XCTAssertNotEqual(service.sentPokes.first?.message, "Sunscreen check?")
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .sent)
-        XCTAssertEqual(state.friendImportMessage, "Poked Maya. SPF chaos delivered.")
+        XCTAssertEqual(state.friendImportMessage, "Sent Maya a sunscreen nudge.")
 
         service.sendPokeError = FakeAccountabilityError.sendFailed
         state.sendDirectPoke(to: friendID)
@@ -918,8 +933,48 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .failed)
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.channel, .direct)
-        XCTAssertEqual(state.friendImportMessage, "Direct poke did not send to Maya. Message poke is still available.")
-        XCTAssertTrue(state.sharePokeText(for: try XCTUnwrap(state.friends.first)).contains("SPF council"))
+        XCTAssertEqual(state.friendImportMessage, "Direct poke did not send to Maya. Use Message instead.")
+        XCTAssertTrue(state.sharePokeText(for: try XCTUnwrap(state.friends.first)).contains("Time to log sunscreen"))
+    }
+
+    @MainActor
+    func testDirectPokeUsesSenderTokenAndReceiverAcceptsReciprocalPokes() async throws {
+        let peytonService = FakeAccountabilityService()
+        let mayaService = FakeAccountabilityService()
+        let peytonNotifications = MockNotificationManager()
+        let mayaNotifications = MockNotificationManager()
+        let peytonState = try makeAppState(
+            notificationManager: peytonNotifications,
+            accountabilityService: peytonService
+        )
+        let mayaState = try makeAppState(
+            notificationManager: mayaNotifications,
+            accountabilityService: mayaService
+        )
+
+        peytonState.activateAccountability(displayName: "Peyton")
+        mayaState.activateAccountability(displayName: "Maya")
+        let peytonEnvelope = peytonState.preparedAccountabilityInviteEnvelope()
+        let mayaEnvelope = mayaState.preparedAccountabilityInviteEnvelope()
+        mayaState.importAccountabilityInvite(peytonEnvelope, sendsResponse: false)
+        peytonState.importAccountabilityInvite(mayaEnvelope, sendsResponse: false)
+
+        peytonState.sendDirectPoke(to: try XCTUnwrap(peytonState.friends.first?.id))
+        mayaState.sendDirectPoke(to: try XCTUnwrap(mayaState.friends.first?.id))
+        await waitForMainActorTasks()
+
+        let pokeToMaya = try XCTUnwrap(peytonService.sentPokes.first)
+        XCTAssertEqual(pokeToMaya.relationshipToken, peytonEnvelope.relationshipToken)
+        let pokeToPeyton = try XCTUnwrap(mayaService.sentPokes.first)
+        XCTAssertEqual(pokeToPeyton.relationshipToken, mayaEnvelope.relationshipToken)
+
+        await mayaState.handleIncomingPoke(pokeToMaya)?.value
+        await peytonState.handleIncomingPoke(pokeToPeyton)?.value
+
+        XCTAssertEqual(mayaNotifications.accountabilityPokeNotifications.count, 1)
+        XCTAssertEqual(mayaNotifications.accountabilityPokeNotifications.first?.friendName, "Peyton")
+        XCTAssertEqual(peytonNotifications.accountabilityPokeNotifications.count, 1)
+        XCTAssertEqual(peytonNotifications.accountabilityPokeNotifications.first?.friendName, "Maya")
     }
 
     @MainActor
@@ -941,7 +996,7 @@ final class SunclubTests: XCTestCase {
         await waitForMainActorTasks()
 
         XCTAssertTrue(service.sentPokes.isEmpty)
-        XCTAssertEqual(state.friendImportMessage, "Maya needs a fresh invite before direct pokes work.")
+        XCTAssertEqual(state.friendImportMessage, "Add Maya again before direct pokes work.")
     }
 
     @MainActor
@@ -1059,6 +1114,62 @@ final class SunclubTests: XCTestCase {
         let refreshTask = state.refreshAccountabilityForForeground()
         await refreshTask?.value
 
+        XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
+        XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.message, "Remote poke")
+    }
+
+    @MainActor
+    func testAccountabilitySubscriptionsRetryUntilInstallSucceeds() async throws {
+        let service = FakeAccountabilityService()
+        service.installSubscriptionsError = FakeAccountabilityError.sendFailed
+        let state = try makeAppState(accountabilityService: service)
+
+        state.activateAccountability(displayName: "Peyton")
+        await waitForMainActorTasks()
+
+        XCTAssertNil(state.growthSettings.accountability.subscriptionsInstalledAt)
+        XCTAssertEqual(state.growthSettings.accountability.subscriptionInstallVersion, 0)
+
+        service.installSubscriptionsError = nil
+        state.refreshAccountabilityFriends()
+        await waitForMainActorTasks()
+
+        XCTAssertNotNil(state.growthSettings.accountability.subscriptionsInstalledAt)
+        XCTAssertEqual(state.growthSettings.accountability.subscriptionInstallVersion, 2)
+        XCTAssertGreaterThanOrEqual(service.installedSubscriptionProfileIDs.count, 1)
+    }
+
+    @MainActor
+    func testRemoteNotificationBridgeWaitsForAccountabilityProcessing() async throws {
+        let service = FakeAccountabilityService()
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            accountabilityService: service
+        )
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        state.importAccountabilityInvite(envelope, sendsResponse: false)
+        service.remoteEvents = SunclubAccountabilityRemoteEvents(
+            inviteResponses: [],
+            pokes: [
+                SunclubAccountabilityPokeEnvelope(
+                    senderProfileID: envelope.profileID,
+                    senderName: "Maya",
+                    receiverProfileID: state.growthSettings.accountability.localProfileID,
+                    relationshipToken: envelope.relationshipToken,
+                    message: "Remote poke",
+                    createdAt: Date(timeIntervalSinceReferenceDate: 800_000_000)
+                )
+            ]
+        )
+        SunclubRemoteNotificationBridge.shared.setHandler { _ in
+            let didProcessEvent = await state.processRemoteAccountabilityEventsNow()
+            return didProcessEvent ? .newData : .noData
+        }
+
+        let result = await SunclubRemoteNotificationBridge.shared.handle([:])
+
+        XCTAssertEqual(result, .newData)
         XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.message, "Remote poke")
     }

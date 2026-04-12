@@ -55,7 +55,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             SunclubAccountabilityWidgetFriend(
                 id: friend.id,
                 name: friend.name,
-                status: friend.hasLoggedToday ? "Coated" : "Needs SPF",
+                status: friend.hasLoggedToday ? "Logged" : "Needs SPF",
                 streak: "\(friend.currentStreak)d"
             )
         }
@@ -104,14 +104,14 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
         if let topOpenFriend = summary.topFriends.first(where: { !$0.hasLoggedToday }) {
             return Content(
                 title: family == .systemSmall ? "Poke" : "Poke \(topOpenFriend.name)",
-                subtitle: "\(summary.openCount) SPF fugitive\(summary.openCount == 1 ? "" : "s")",
-                detail: "\(topOpenFriend.name) has not joined the shiny side.",
+                subtitle: "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")",
+                detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
                 actionText: summary.primaryPokeFriendID == nil ? "Open" : "Poke",
                 iconName: "hand.tap.fill"
             )
         }
         return Content(
-            title: family == .systemSmall ? "Coated" : "All coated",
+            title: family == .systemSmall ? "Logged" : "All logged",
             subtitle: "\(summary.loggedCount)/\(summary.friendCount) logged",
             detail: "The circle is suspiciously responsible today.",
             actionText: "View",
@@ -127,9 +127,9 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             return "Invite a Sunclub friend"
         }
         if summary.openCount > 0 {
-            return "\(summary.openCount) SPF fugitive\(summary.openCount == 1 ? "" : "s")"
+            return "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")"
         }
-        return "All friends coated"
+        return "All friends logged"
     }
 
     private static func actionURL(summary: SunclubAccountabilitySummary) -> URL {

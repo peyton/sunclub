@@ -239,6 +239,7 @@ final class AppState {
     private(set) var lastRefreshError: String?
 
     private static let logger = Logger(subsystem: "com.sunclub", category: "AppState")
+    private static let accountabilitySubscriptionInstallVersion = 2
     private let calendar = Calendar.current
     private var uvReadingOverride: UVReading?
     private var notificationHealthOverride: NotificationHealthSnapshot?
@@ -1100,13 +1101,13 @@ final class AppState {
 
         if let topOpenFriend {
             title = "Poke \(topOpenFriend.name)"
-            detail = "\(topOpenFriend.name) still has an open sunscreen day. One tap sends a cheeky nudge."
+            detail = "\(topOpenFriend.name) still has an open sunscreen day. One tap sends a quick nudge."
             actionTitle = "Poke"
             actionKind = .poke
             actionFriendID = topOpenFriend.id
         } else {
-            title = "All coated"
-            detail = "Everyone in your circle logged today. The sun has been politely outnumbered."
+            title = "Everyone logged"
+            detail = "Everyone in your circle logged today. Nice work from the whole crew."
             actionTitle = "View Friends"
             actionKind = .view
             actionFriendID = nil
@@ -1125,7 +1126,7 @@ final class AppState {
                 HomeAccountabilityFriendPresentation(
                     id: friend.id,
                     name: friend.name,
-                    status: friend.hasLoggedToday ? "Coated" : "Needs SPF",
+                    status: friend.hasLoggedToday ? "Logged" : "Needs SPF",
                     streak: "\(friend.currentStreak)d",
                     hasLoggedToday: friend.hasLoggedToday
                 )
@@ -1455,7 +1456,7 @@ final class AppState {
                 syncWidgetSnapshot()
                 reloadWidgetTimelines()
             } catch {
-                friendImportMessage = "Could not refresh friends. You can still share or poke by message."
+                friendImportMessage = "Accountability updates did not sync yet. You can still use Message."
             }
         }
     }
@@ -1479,11 +1480,14 @@ final class AppState {
             now: now,
             calendar: calendar
         )
+        let senderToken = growthSettings.accountability.ensureInviteToken(now: now)
+        persistGrowthSettings()
+
         let envelope = SunclubAccountabilityPokeEnvelope(
             senderProfileID: growthSettings.accountability.localProfileID,
             senderName: resolvedAccountabilityDisplayName,
             receiverProfileID: connection.friendProfileID,
-            relationshipToken: connection.relationshipToken,
+            relationshipToken: senderToken.token,
             message: message,
             createdAt: now
         )
@@ -1531,28 +1535,39 @@ final class AppState {
         )
     }
 
+    func processRemoteAccountabilityEventsNow() async -> Bool {
+        guard growthSettings.accountability.isActive else { return false }
+
+        do {
+            let events = try await accountabilityService.fetchRemoteEvents(for: growthSettings.accountability.localProfileID)
+            var didProcessEvent = false
+            for response in events.inviteResponses {
+                importAccountabilityInvite(response.envelope, sendsResponse: false)
+                didProcessEvent = true
+            }
+            var notificationTasks: [Task<Void, Never>] = []
+            for poke in events.pokes {
+                if let notificationTask = handleIncomingPoke(poke) {
+                    notificationTasks.append(notificationTask)
+                    didProcessEvent = true
+                }
+            }
+            for notificationTask in notificationTasks {
+                await notificationTask.value
+            }
+            return didProcessEvent
+        } catch {
+            friendImportMessage = "Accountability updates did not sync yet."
+            return false
+        }
+    }
+
     @discardableResult
     func processRemoteAccountabilityEvents() -> Task<Void, Never>? {
         guard growthSettings.accountability.isActive else { return nil }
 
         return Task {
-            do {
-                let events = try await accountabilityService.fetchRemoteEvents(for: growthSettings.accountability.localProfileID)
-                for response in events.inviteResponses {
-                    importAccountabilityInvite(response.envelope, sendsResponse: false)
-                }
-                var notificationTasks: [Task<Void, Never>] = []
-                for poke in events.pokes {
-                    if let notificationTask = handleIncomingPoke(poke) {
-                        notificationTasks.append(notificationTask)
-                    }
-                }
-                for notificationTask in notificationTasks {
-                    await notificationTask.value
-                }
-            } catch {
-                friendImportMessage = "Could not refresh accountability updates."
-            }
+            _ = await processRemoteAccountabilityEventsNow()
         }
     }
 
@@ -1569,8 +1584,11 @@ final class AppState {
     func handleIncomingPoke(_ envelope: SunclubAccountabilityPokeEnvelope) -> Task<Void, Never>? {
         guard envelope.receiverProfileID == growthSettings.accountability.localProfileID,
               let connection = growthSettings.accountability.connections.first(where: {
-                $0.friendProfileID == envelope.senderProfileID && $0.relationshipToken == envelope.relationshipToken
+                $0.friendProfileID == envelope.senderProfileID
               }) else {
+            return nil
+        }
+        guard isValidRelationshipToken(envelope.relationshipToken, for: connection) else {
             return nil
         }
 
@@ -2207,6 +2225,12 @@ final class AppState {
         update(&growthSettings.accountability.connections[index])
     }
 
+    private func isValidRelationshipToken(_ token: String, for connection: SunclubFriendConnection) -> Bool {
+        connection.relationshipToken == token || growthSettings.accountability.inviteTokens.contains { inviteToken in
+            inviteToken.token == token
+        }
+    }
+
     private func applyAccountabilityProfile(_ profile: SunclubAccountabilityProfile) {
         guard let connection = growthSettings.accountability.connections.first(where: { $0.friendProfileID == profile.profileID }) else {
             return
@@ -2251,10 +2275,16 @@ final class AppState {
 
         Task {
             try? await accountabilityService.publishProfile(profile)
-            if growthSettings.accountability.subscriptionsInstalledAt == nil {
-                try? await accountabilityService.installSubscriptions(for: growthSettings.accountability.localProfileID)
-                growthSettings.accountability.subscriptionsInstalledAt = currentDate()
-                persistGrowthSettings()
+            if growthSettings.accountability.subscriptionInstallVersion < Self.accountabilitySubscriptionInstallVersion {
+                do {
+                    try await accountabilityService.installSubscriptions(for: growthSettings.accountability.localProfileID)
+                    growthSettings.accountability.subscriptionsInstalledAt = currentDate()
+                    growthSettings.accountability.subscriptionInstallVersion = Self.accountabilitySubscriptionInstallVersion
+                    persistGrowthSettings()
+                } catch {
+                    growthSettings.accountability.subscriptionsInstalledAt = nil
+                    persistGrowthSettings()
+                }
             }
         }
     }

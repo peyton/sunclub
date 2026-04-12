@@ -49,12 +49,14 @@ struct SunclubApp: App {
                 uvBriefingService: uvBriefingService
             )
             _appState = State(initialValue: state)
+            Self.registerRemoteNotificationHandler(for: state)
             return
         }
         #endif
 
         let state = AppState(context: modelContext, notificationManager: NotificationManager.shared)
         _appState = State(initialValue: state)
+        Self.registerRemoteNotificationHandler(for: state)
     }
 
     var body: some Scene {
@@ -607,6 +609,35 @@ struct SunclubApp: App {
 
         router.open(route)
     }
+
+    private static func registerRemoteNotificationHandler(for state: AppState) {
+        SunclubRemoteNotificationBridge.shared.setHandler { _ in
+            let didProcessEvent = await state.processRemoteAccountabilityEventsNow()
+            return didProcessEvent ? .newData : .noData
+        }
+    }
+}
+
+@MainActor
+final class SunclubRemoteNotificationBridge {
+    static let shared = SunclubRemoteNotificationBridge()
+
+    private var handler: (([AnyHashable: Any]) async -> UIBackgroundFetchResult)?
+
+    private init() {}
+
+    func setHandler(_ handler: @escaping ([AnyHashable: Any]) async -> UIBackgroundFetchResult) {
+        self.handler = handler
+    }
+
+    func handle(_ userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        guard let handler else {
+            NotificationCenter.default.post(name: .sunclubRemoteNotificationReceived, object: userInfo)
+            return .noData
+        }
+
+        return await handler(userInfo)
+    }
 }
 
 @MainActor
@@ -641,8 +672,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
-        NotificationCenter.default.post(name: .sunclubRemoteNotificationReceived, object: userInfo)
-        completionHandler(.newData)
+        Task { @MainActor in
+            let result = await SunclubRemoteNotificationBridge.shared.handle(userInfo)
+            completionHandler(result)
+        }
     }
 }
 

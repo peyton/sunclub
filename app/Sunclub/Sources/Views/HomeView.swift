@@ -915,73 +915,81 @@ private struct HomeAccountabilityCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 34, height: 34)
-                    .background(AppPalette.sun, in: Circle())
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(AppPalette.sun, in: Circle())
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Accountability")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Accountability")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AppPalette.softInk)
 
-                    Text(presentation.title)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(presentation.openCountText)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-                    Text(presentation.loggedCountText)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-                }
-            }
-
-            Text(presentation.detail)
-                .font(.system(size: 14))
-                .foregroundStyle(AppPalette.softInk)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !presentation.friends.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(presentation.friends) { friend in
-                            HomeAccountabilityFriendChip(friend: friend)
-                        }
+                        Text(presentation.title)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(AppPalette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.vertical, 2)
+
+                    Spacer(minLength: 0)
+
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(presentation.openCountText)
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(AppPalette.ink)
+                            Text(presentation.loggedCountText)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AppPalette.softInk)
+                        }
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(AppPalette.softInk)
+                            .padding(.top, 2)
+                    }
                 }
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("home.accountabilityFriendStrip")
-            }
 
-            if let latestPokeText = presentation.latestPokeText {
-                Label(latestPokeText, systemImage: "hand.tap.fill")
-                    .font(.system(size: 13, weight: .medium))
+                Text(presentation.detail)
+                    .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("home.accountabilityLatestPoke")
-            }
 
-            HStack(spacing: 10) {
+                if !presentation.friends.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(presentation.friends) { friend in
+                                HomeAccountabilityFriendChip(friend: friend)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("home.accountabilityFriendStrip")
+                }
+
+                if let latestPokeText = presentation.latestPokeText {
+                    Label(latestPokeText, systemImage: "hand.tap.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("home.accountabilityLatestPoke")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onOpenFriends)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("home.accountabilityOpen")
+
+            if presentation.primaryActionKind != .view {
                 Button(presentation.primaryActionTitle, action: onPrimaryAction)
                     .buttonStyle(SunPrimaryButtonStyle())
                     .accessibilityIdentifier("home.accountabilityPoke")
-
-                Button("Open") {
-                    onOpenFriends()
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityIdentifier("home.accountabilityOpen")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

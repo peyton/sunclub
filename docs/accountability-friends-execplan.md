@@ -18,6 +18,9 @@ Sunclub should make accountability easy to find after the user has started build
 - [x] (2026-04-12) Added unit/UI tests and ran repo validation.
 - [x] (2026-04-12) Audited accountability usability and poke delivery; found Home surfacing, notification route/category, CloudKit upsert, APS entitlement, and friend-row affordance issues.
 - [x] (2026-04-12) Added varied one-tap poke messaging, status-aware incoming notifications, Home accountability card, less-prominent removal, direct-poke widget deep links, and focused regression tests.
+- [x] (2026-04-12T08:06Z) Re-audited direct poke, accountability friend tiles, Home accountability card actions, and accountability copy after screenshot/user report.
+- [x] (2026-04-12T08:06Z) Fixed reciprocal direct-poke token validation, background push handling, subscription retry state, friend-tile actions, name-save feedback, press feedback, and "coated" language.
+- [x] (2026-04-12T08:34Z) Ran focused unit tests, Home accountability UI coverage, copy scan, and repo lint for the accountability changes.
 
 ## Surprises & Discoveries
 
@@ -39,6 +42,15 @@ Sunclub should make accountability easy to find after the user has started build
 - Observation: Users with friends should not have to expand Explore to use accountability.
   Evidence: The previous Home accountability entry was only a feature tile inside the collapsed Explore grid unless the setup nudge was visible.
 
+- Observation: Reciprocal direct pokes were rejected because each side stored the other person's invite token, while the sender sent the receiver's token back.
+  Evidence: `sendDirectPoke(to:)` used `connection.relationshipToken`, and `handleIncomingPoke(_:)` required the sender's `friendProfileID` and that exact token on the receiver's connection. In a two-way invite exchange, those tokens are intentionally opposite.
+
+- Observation: Silent CloudKit push handling returned the background fetch completion before accountability events were fetched and local poke notifications were scheduled.
+  Evidence: `AppDelegate.application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` posted a notification and immediately called `completionHandler(.newData)`, leaving `AppState.processRemoteAccountabilityEvents()` to run later through the SwiftUI scene observer.
+
+- Observation: Subscription install failures could be persisted as successful installs.
+  Evidence: `publishAccountabilityProfileIfNeeded()` used `try?` for `installSubscriptions(for:)` and then set `subscriptionsInstalledAt` unconditionally, so transient CloudKit failures would not retry on later launches.
+
 ## Decision Log
 
 - Decision: Store accountability activation, profile ID, invite metadata, friend connection metadata, and poke history inside growth JSON rather than SwiftData.
@@ -59,6 +71,18 @@ Sunclub should make accountability easy to find after the user has started build
 
 - Decision: Make CloudKit poke subscriptions silent/content-available and use local accountability notifications for final poke copy.
   Rationale: The recipient app can choose copy based on local logged-today state and route the tap to Accountability instead of Manual Log.
+  Date/Author: 2026-04-12 / Codex
+
+- Decision: Direct pokes now send the sender's active invite token, and receivers accept either the sender token stored on the connection or their own local invite token for backward compatibility.
+  Rationale: The sender's token is the proof the receiver imported when the friendship was created. Accepting the local token keeps pokes from older builds from being dropped while both users update.
+  Date/Author: 2026-04-12 / Codex
+
+- Decision: The Home accountability card opens Accountability when tapped and uses a disclosure chevron; the secondary `Open` button is removed.
+  Rationale: `View Friends` and `Open` were redundant. A tappable card is faster and leaves one button only when there is a concrete action such as `Poke` or `Add Friend`.
+  Date/Author: 2026-04-12 / Codex
+
+- Decision: Friend tiles no longer expose manual refresh, and the message fallback is a main-row `Message` button.
+  Rationale: Friend state should update from publish/foreground/push paths, while message fallback must stay obvious when direct delivery is unavailable.
   Date/Author: 2026-04-12 / Codex
 
 ## Context And Orientation
@@ -104,7 +128,7 @@ Upgrade behavior:
 11. Remove is hidden in an overflow menu.
 12. Remove requires confirmation.
 13. Primary friend messaging remains one tap with "Poke".
-14. Message fallback moved into overflow.
+14. Message fallback is a visible `Message` button on each friend tile.
 15. Poke copy has more than 20 open/logged variants.
 16. Recent poke copy avoids immediate repeats.
 17. Outgoing poke copy uses the friend status snapshot.
@@ -115,6 +139,12 @@ Upgrade behavior:
 22. CloudKit poke subscription alert copy is silent/content-available.
 23. Stable CloudKit profile/invite records fetch before saving to avoid create-only conflicts.
 24. Accountability widgets show friend status, cheekier copy, latest poke text, and direct-poke deep links when safe.
+25. Direct reciprocal pokes validate against the sender's invite token.
+26. Background push completion waits for accountability event processing.
+27. Subscription install is versioned and only marked installed after success.
+28. Accountability action copy avoids "coated" and "coating".
+29. Saving the display name shows immediate feedback.
+30. Tappable accountability rows/cards provide press feedback.
 
 ## Validation And Acceptance
 
@@ -128,12 +158,13 @@ Upgrade behavior:
 8. CloudKit profile saves fetch existing records before saving. Covered by unit test through a fake accountability database.
 9. App background remote-notification mode has a matching APS entitlement. Covered by Python metadata test.
 10. `just generate` passed.
-11. `TEST_SIMULATOR_NAME='Sunclub ca9a Unit iPhone 17 Pro' just test-unit` passed: 150 tests, 0 failures.
+11. `just test-unit` passed after the accountability audit changes: 163 tests, 0 failures.
 12. `just test-python` passed: 53 tests, 0 failures.
-13. `just lint` passed after final edits. It still reports existing non-serious SwiftLint warnings, including one new AppState function-length warning from the accountability foreground refresh path.
-14. `TEST_SIMULATOR_NAME='Sunclub ca9a UI iPhone 17 Pro' just test-ui` executed all 42 UI tests; 41 passed and 1 failed on a test-side `home.accountabilityFriendStrip` element-type assertion after the product card and setup case were already discoverable.
-15. The `home.accountabilityFriendStrip` assertion was patched to query the identifier across XCTest element types. Subsequent full and focused UI reruns built successfully but failed before test execution with CoreSimulator Mach `-308` while launching `app.peyton.sunclub.dev.UITests.xctrunner`; sibling worktree `xcodebuild test` jobs were active at the same time.
-16. Earlier implementation validation also covered `just build`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema` against the development container.
+13. `just lint` passed after final edits. It still reports non-serious SwiftLint warnings, including one AppState function-length warning from the accountability remote-event path.
+14. Focused `SunclubUITests/testHomeShowsAccountabilityCardFrontAndCenterForFriends` passed after the Home accountability tile became tappable and kept the friend strip accessible.
+15. A full `just test-ui` run before the final Home accessibility fix exposed the `home.accountabilityFriendStrip` regression. Later full UI reruns were blocked before app assertions by CoreSimulator/xctrunner launch failures, so the full UI suite was not completed again in this session.
+16. Accountability copy scan passed for the audited phrases: no production "coated", "coating", "Poke by Message", "SPF fugitive", "shiny side", or "SPF chaos" strings remain.
+17. Earlier implementation validation also covered `just build`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema` against the development container.
 
 ## Outcomes & Retrospective
 
