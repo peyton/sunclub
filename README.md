@@ -20,6 +20,12 @@ Common setup from the repo root:
 - `just web-check`
 - `just web-fmt`
 - `just web-build`
+- `just cloudflare-status`
+- `just cloudflare-pages-setup`
+- `just cloudflare-pages-status`
+- `just cloudflare-email-setup`
+- `just cloudflare-email-status`
+- `just cloudflare-check`
 - `just cloudkit-save-token`
 - `just cloudkit-doctor`
 - `just cloudkit-ensure-container`
@@ -50,6 +56,8 @@ Common setup from the repo root:
 Sunclub stays local-first, but the app now ships with default-on iCloud sync for revision history plus local backup export/import. Local imports stay recoverable on-device and do not change iCloud until the user explicitly publishes the imported batches from `Recovery & Changes`.
 
 The static public web presence lives in [web/](web). It is provider-neutral: publish the `web/` directory as static files with no build command, or run `just web-build` to copy the checked site into `.build/web/`. Local preview uses `just web-serve`.
+
+Cloudflare Pages and Email Routing setup is tracked in [infra/cloudflare/](infra/cloudflare/) and documented in [docs/cloudflare-deployment-execplan.md](docs/cloudflare-deployment-execplan.md). Local status commands are safe without credentials; setup commands require `CLOUDFLARE_API_TOKEN`, and email setup also requires `SUNCLUB_FORWARD_TO`.
 
 CloudKit setup is documented in [docs/cloudkit-setup.md](docs/cloudkit-setup.md). `just cloudkit-doctor` validates that the saved token is a management token for the configured team, checks whether a signed build actually carries the expected CloudKit entitlements, and retries `cktool` schema access. `just cloudkit-ensure-container` runs the same validation and opens the relevant Apple setup pages if the container or App ID configuration is still missing.
 

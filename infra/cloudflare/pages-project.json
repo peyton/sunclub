@@ -1,0 +1,27 @@
+{
+  "account_id": "0e32ee7804b102bea6b9d3056d60f980",
+  "zone_id": "a004f01ed99de3582152debde5a96a08",
+  "project_name": "sunclub",
+  "production_branch": "master",
+  "custom_domain": "sunclub.peyton.app",
+  "build_config": {
+    "build_command": "exit 0",
+    "destination_dir": "web",
+    "root_dir": "/"
+  },
+  "source": {
+    "type": "github",
+    "owner": "peyton",
+    "repo_name": "sunclub",
+    "production_deployments_enabled": true,
+    "preview_deployment_setting": "all",
+    "pr_comments_enabled": true,
+    "path_includes": [
+      "web/*",
+      "scripts/web/*",
+      "infra/cloudflare/*",
+      "justfile"
+    ],
+    "path_excludes": []
+  }
+}
