@@ -67,7 +67,8 @@ enum SunclubShareArtifactService {
         seasonStyle: SunclubSeasonStyle
     ) throws -> SunclubShareArtifact {
         let image = renderAchievementCard(achievement: achievement, seasonStyle: seasonStyle)
-        let shareText = "\(achievement.shareBlurb) Build your sunscreen streak: \(appShareURLString)"
+        // Keep this as display text so Messages does not replace the PNG with a rich link preview.
+        let shareText = "\(achievement.shareBlurb) Build your sunscreen streak: \(appLinkDisplay)"
 
         let fileURL = try writeImage(image, named: "sunclub-achievement-\(achievement.id.rawValue).png")
         return SunclubShareArtifact(
