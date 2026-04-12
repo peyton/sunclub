@@ -1133,6 +1133,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(state.records.count, 1)
         XCTAssertEqual(state.record(for: Date())?.method, .manual)
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
+        XCTAssertEqual(state.verificationSuccessPresentation?.canAddDetails, true)
         XCTAssertEqual(router.path, [.verifySuccess])
     }
 
@@ -1244,10 +1245,24 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testHomeRecoveryActionsShowTodayAndYesterdayWhenMissing() throws {
+    func testHomeRecoveryActionsStayQuietForNewUsers() throws {
         let state = try makeAppState()
 
-        XCTAssertEqual(state.homeRecoveryActions.map(\.kind), [.logToday, .backfillYesterday])
+        XCTAssertTrue(state.homeRecoveryActions.isEmpty)
+    }
+
+    @MainActor
+    func testHomeRecoveryActionsOfferYesterdayBackfillAfterHabitExists() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        for offset in [2, 3, 4] {
+            let day = try XCTUnwrap(calendar.date(byAdding: .day, value: -offset, to: today))
+            state.saveManualRecord(for: day, spfLevel: 50, notes: nil)
+        }
+
+        XCTAssertEqual(state.homeRecoveryActions.map(\.kind), [.backfillYesterday])
     }
 
     @MainActor

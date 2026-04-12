@@ -32,7 +32,7 @@ struct AchievementsView: View {
     private var achievementsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Unlock Your Sun Shield")
+                Text("Progress Badges")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
@@ -59,7 +59,7 @@ struct AchievementsView: View {
 
     private var challengesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Seasonal Challenges")
+            Text("Challenges")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 

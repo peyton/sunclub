@@ -11,6 +11,7 @@ struct ProductScannerView: View {
     @State private var isShowingCamera = false
     @State private var errorMessage: String?
     @State private var isScanning = false
+    @State private var scanResultPendingUse: SunclubProductScanResult?
 
     var body: some View {
         SunLightScreen {
@@ -78,6 +79,27 @@ struct ProductScannerView: View {
                 await loadPhoto(from: newValue)
             }
         }
+        .confirmationDialog(
+            "Use scanned SPF?",
+            isPresented: Binding(
+                get: { scanResultPendingUse != nil },
+                set: { if !$0 { scanResultPendingUse = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let scanResultPendingUse {
+                Button(confirmUseTitle(for: scanResultPendingUse)) {
+                    useScanInTodaysLog(scanResultPendingUse)
+                    self.scanResultPendingUse = nil
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                scanResultPendingUse = nil
+            }
+        } message: {
+            Text("Sunclub will add this SPF to today's optional details. You can still edit it before logging.")
+        }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -118,11 +140,8 @@ struct ProductScannerView: View {
                     .lineLimit(6)
             }
 
-            Button("Use In Today's Log") {
-                let note = result.expirationText.map { "Bottle expiry: \($0)" } ?? ""
-                appState.setManualLogPrefill(spfLevel: result.spfLevel, notes: note)
-                appState.recordProductScanUsedForLog(spfLevel: result.spfLevel)
-                router.open(.manualLog)
+            Button(result.spfLevel == nil ? "No SPF Found" : "Use in Today's Log") {
+                scanResultPendingUse = result
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .disabled(result.spfLevel == nil)
@@ -163,6 +182,21 @@ struct ProductScannerView: View {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
         }
+    }
+
+    private func confirmUseTitle(for result: SunclubProductScanResult) -> String {
+        guard let spfLevel = result.spfLevel else {
+            return "Use Scan"
+        }
+
+        return "Use SPF \(spfLevel)"
+    }
+
+    private func useScanInTodaysLog(_ result: SunclubProductScanResult) {
+        let note = result.expirationText.map { "Bottle expiry: \($0)" } ?? ""
+        appState.setManualLogPrefill(spfLevel: result.spfLevel, notes: note)
+        appState.recordProductScanUsedForLog(spfLevel: result.spfLevel)
+        router.open(.manualLog)
     }
 }
 

@@ -3,9 +3,11 @@ import SwiftUI
 struct SunManualLogFields: View {
     @Binding var selectedSPF: Int?
     @Binding var notes: String
+    @State private var isShowingDetails: Bool
 
     let accessibilityPrefix: String
     let suggestions: ManualLogSuggestionState
+    let showsOptionalDisclosure: Bool
 
     private let commonSPFLevels = [15, 30, 50, 70, 100]
 
@@ -13,26 +15,113 @@ struct SunManualLogFields: View {
         selectedSPF: Binding<Int?>,
         notes: Binding<String>,
         accessibilityPrefix: String,
-        suggestions: ManualLogSuggestionState = .empty
+        suggestions: ManualLogSuggestionState = .empty,
+        showsOptionalDisclosure: Bool = true,
+        detailsInitiallyExpanded: Bool = false
     ) {
         _selectedSPF = selectedSPF
         _notes = notes
+        _isShowingDetails = State(initialValue: detailsInitiallyExpanded)
         self.accessibilityPrefix = accessibilityPrefix
         self.suggestions = suggestions
+        self.showsOptionalDisclosure = showsOptionalDisclosure
     }
 
     var body: some View {
+        if showsOptionalDisclosure {
+            optionalDetailsDisclosure
+        } else {
+            detailsFields
+        }
+    }
+
+    private var optionalDetailsDisclosure: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isShowingDetails.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Add details")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text(detailsSummary)
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppPalette.softInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: isShowingDetails ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.72))
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows optional SPF and note fields.")
+            .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
+
+            if isShowingDetails {
+                detailsFields
+            }
+        }
+    }
+
+    private var detailsFields: some View {
         VStack(alignment: .leading, spacing: 26) {
             spfSelector
             notesField
         }
     }
 
+    private var detailsSummary: String {
+        var parts: [String] = []
+
+        if let selectedSPF {
+            parts.append("SPF \(selectedSPF)")
+        } else {
+            parts.append("No SPF selected")
+        }
+
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedNotes.isEmpty {
+            parts.append("Note added")
+        }
+
+        return "\(parts.joined(separator: " · ")). Optional."
+    }
+
     private var spfSelector: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("SPF Level")
+            Text("SPF (optional)")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
+
+            HStack(spacing: 10) {
+                Text(selectedSPF.map { "SPF \($0) selected" } ?? "No SPF selected")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityIdentifier("\(accessibilityPrefix).spfState")
+
+                if selectedSPF != nil {
+                    Button("Clear SPF") {
+                        selectedSPF = nil
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("\(accessibilityPrefix).clearSPF")
+                }
+            }
 
             if let sameAsLastTime = suggestions.sameAsLastTime {
                 Button {
@@ -127,7 +216,7 @@ struct SunManualLogFields: View {
 
     private var notesField: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Notes")
+            Text("Notes (optional)")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 

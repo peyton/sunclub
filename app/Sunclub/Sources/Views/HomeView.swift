@@ -4,6 +4,8 @@ struct HomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @State private var now = Date()
+    @State private var isExploreExpanded = false
+    @State private var isUVExpanded = false
 
     var body: some View {
         SunLightScreen {
@@ -11,9 +13,6 @@ struct HomeView: View {
                 header
 
                 todayCard
-                uvBriefingCard
-                achievementCelebrationCard
-                growthLinksGrid
 
                 Button {
                     router.open(.weeklySummary)
@@ -21,8 +20,11 @@ struct HomeView: View {
                     streakCard
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("Opens your last 7 days.")
                 .accessibilityIdentifier("home.streakCard")
 
+                uvBriefingSection
+                achievementCelebrationCard
                 secondaryActionsSection
 
                 Button {
@@ -31,22 +33,18 @@ struct HomeView: View {
                     historyCard
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("Opens your full calendar history.")
                 .accessibilityIdentifier("home.historyCard")
+
+                exploreSection
 
                 Spacer(minLength: 0)
             }
         } footer: {
-            VStack(spacing: 12) {
-                Button(primaryActionTitle) {
-                    router.open(.manualLog)
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .accessibilityIdentifier("home.logManually")
-            }
+            footerActions
         }
         .onAppear {
             now = Date()
-            appState.clearVerificationSuccessPresentation()
             appState.refreshUVReadingIfNeeded()
             appState.refreshUVForecastIfNeeded()
             appState.refreshNotificationHealth()
@@ -155,11 +153,11 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private var uvBriefingCard: some View {
+    private var uvBriefingSection: some View {
         if let uvForecast = appState.uvForecast {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Skin's Weather Report")
+                    Text("UV Today")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
 
@@ -176,7 +174,7 @@ struct HomeView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
-                if !uvForecast.hours.isEmpty {
+                if shouldShowExpandedUVForecast(uvForecast), !uvForecast.hours.isEmpty {
                     HStack(alignment: .bottom, spacing: 8) {
                         ForEach(Array(uvForecast.hours.prefix(8))) { hour in
                             VStack(spacing: 6) {
@@ -193,9 +191,21 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                Text(uvForecast.recommendation)
-                    .font(.system(size: 14))
-                    .foregroundStyle(AppPalette.softInk)
+                if shouldShowExpandedUVForecast(uvForecast) {
+                    Text(uvForecast.recommendation)
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+
+                Button(isUVExpanded ? "Show Less" : "Show More") {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isUVExpanded.toggle()
+                    }
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.uvBriefingToggle")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
@@ -240,40 +250,77 @@ struct HomeView: View {
         }
     }
 
-    private var growthLinksGrid: some View {
+    private var exploreSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("More Sunclub")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExploreExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "sparkle.magnifyingglass")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(AppPalette.sun)
+                        .frame(width: 28, height: 28)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                homeFeatureButton(
-                    title: "Achievements",
-                    detail: appState.unseenAchievementCount > 0 ? "\(appState.unseenAchievementCount) new" : "Badges and challenges",
-                    symbol: "rosette",
-                    route: .achievements
-                )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Explore")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
 
-                homeFeatureButton(
-                    title: "Friends",
-                    detail: appState.friends.isEmpty ? "Invite someone" : "\(appState.friends.count) synced",
-                    symbol: "person.2.fill",
-                    route: .friends
-                )
+                        Text("Optional tools for badges, accountability, reports, and scanning.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppPalette.softInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-                homeFeatureButton(
-                    title: "Skin Report",
-                    detail: "PDF and streak share",
-                    symbol: "doc.richtext.fill",
-                    route: .skinHealthReport
-                )
+                    Spacer(minLength: 0)
 
-                homeFeatureButton(
-                    title: "Scanner",
-                    detail: "Read SPF from a bottle",
-                    symbol: "camera.viewfinder",
-                    route: .productScanner
+                    Image(systemName: isExploreExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.72))
                 )
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows optional Sunclub tools.")
+            .accessibilityIdentifier("home.exploreToggle")
+
+            if isExploreExpanded {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                    homeFeatureButton(
+                        title: "Achievements",
+                        detail: appState.unseenAchievementCount > 0 ? "\(appState.unseenAchievementCount) new" : "Progress badges",
+                        symbol: "rosette",
+                        route: .achievements
+                    )
+
+                    homeFeatureButton(
+                        title: "Accountability",
+                        detail: appState.friends.isEmpty ? "Share a streak code" : "\(appState.friends.count) saved",
+                        symbol: "person.2.fill",
+                        route: .friends
+                    )
+
+                    homeFeatureButton(
+                        title: "Health Report",
+                        detail: "Export a PDF",
+                        symbol: "doc.richtext.fill",
+                        route: .skinHealthReport
+                    )
+
+                    homeFeatureButton(
+                        title: "SPF Scanner",
+                        detail: "Read a bottle label",
+                        symbol: "camera.viewfinder",
+                        route: .productScanner
+                    )
+                }
+                .accessibilityIdentifier("home.exploreGrid")
             }
         }
     }
@@ -371,6 +418,8 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityHint("Opens \(title).")
+        .accessibilityIdentifier("home.feature.\(route.rawValue)")
     }
 
     private func barColor(for level: UVLevel) -> Color {
@@ -401,7 +450,6 @@ struct HomeView: View {
                 notificationHealthCard
                 recoveryCard
                 syncRecoveryCard
-                reapplyCard
             }
         }
     }
@@ -450,22 +498,6 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private var reapplyCard: some View {
-        if let presentation = appState.reapplyCheckInPresentation {
-            HomeBannerCard(
-                title: presentation.title,
-                detail: presentation.detail,
-                symbol: "arrow.clockwise.circle.fill",
-                tint: AppPalette.sun,
-                actionTitle: presentation.actionTitle,
-                accessibilityIdentifier: "home.reapplyCard"
-            ) {
-                router.open(.reapplyCheckIn)
-            }
-        }
-    }
-
-    @ViewBuilder
     private var syncRecoveryCard: some View {
         if appState.pendingImportedBatchCount > 0 || !appState.conflicts.isEmpty {
             HomeBannerCard(
@@ -505,8 +537,37 @@ struct HomeView: View {
         return parts.joined(separator: " ")
     }
 
-    private var primaryActionTitle: String {
-        appState.record(for: Date()) == nil ? "Log Today" : "Update Today"
+    @ViewBuilder
+    private var footerActions: some View {
+        if appState.record(for: Date()) == nil {
+            Button("Log Today") {
+                router.open(.manualLog)
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("home.logManually")
+        } else {
+            VStack(spacing: 10) {
+                Button(loggedPrimaryActionTitle) {
+                    if appState.reapplyCheckInPresentation != nil {
+                        router.open(.reapplyCheckIn)
+                    } else {
+                        router.open(.weeklySummary)
+                    }
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("home.loggedPrimaryAction")
+
+                Button("Edit Today's Log") {
+                    router.open(.manualLog)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("home.editToday")
+            }
+        }
+    }
+
+    private var loggedPrimaryActionTitle: String {
+        appState.reapplyCheckInPresentation?.actionTitle ?? "View Progress"
     }
 
     private func performRecoveryAction(_ action: HomeRecoveryAction) {
@@ -540,8 +601,21 @@ struct HomeView: View {
             || !appState.homeRecoveryActions.isEmpty
             || appState.pendingImportedBatchCount > 0
             || !appState.conflicts.isEmpty
-            || appState.reapplyCheckInPresentation != nil
     }
+
+    private func shouldShowExpandedUVForecast(_ forecast: SunclubUVForecast) -> Bool {
+        isUVExpanded || isElevatedUVLevel(forecast.peakHour?.level)
+    }
+
+    private func isElevatedUVLevel(_ level: UVLevel?) -> Bool {
+        switch level {
+        case .high, .veryHigh, .extreme:
+            return true
+        default:
+            return false
+        }
+    }
+
     private var greetingSymbolAccessibilityLabel: String {
         greetingSymbol == "sun.max" ? "Daytime" : "Nighttime"
     }

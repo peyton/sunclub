@@ -52,9 +52,10 @@ struct VerificationSuccessView: View {
                 if appState.settings.reapplyReminderEnabled {
                     reapplyConfirmation
                 } else {
-                    Text("Home and History are already updated.")
+                    Text(successProgressNote)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
+                        .multilineTextAlignment(.center)
                 }
 
                 Spacer(minLength: 0)
@@ -62,17 +63,36 @@ struct VerificationSuccessView: View {
             .padding(.top, 56)
             .frame(maxWidth: .infinity)
         } footer: {
-            Button(SunclubCopy.Success.actionTitle) {
-                appState.clearVerificationSuccessPresentation()
-                if appState.settings.reapplyReminderEnabled {
-                    appState.scheduleReapplyReminder()
+            VStack(spacing: 10) {
+                Button(SunclubCopy.Success.actionTitle) {
+                    appState.clearVerificationSuccessPresentation()
+                    if appState.settings.reapplyReminderEnabled {
+                        appState.scheduleReapplyReminder()
+                    }
+                    router.goHome()
                 }
-                router.goHome()
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("success.done")
+
+                if presentation.canAddDetails {
+                    Button("Add SPF or Note") {
+                        appState.clearVerificationSuccessPresentation()
+                        router.open(.manualLog)
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("success.addDetails")
+                }
             }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("success.done")
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var successProgressNote: String {
+        if presentation.canAddDetails {
+            return "Your streak is saved. Add SPF or a note if you want more detail."
+        }
+
+        return "Your streak and progress are saved."
     }
 
     private var reapplyConfirmation: some View {

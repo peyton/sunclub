@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var isImportingBackup = false
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
+    @State private var expandedSections: Set<SettingsSection> = [.reminders]
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 
@@ -33,15 +34,25 @@ struct SettingsView: View {
                     router.goBack()
                 })
 
-                smarterReminderSection
-                reminderCoachingSection
-                notificationHealthSection
-                reapplySection
-                liveUVSection
-                healthKitSection
-                uvBriefingSection
-                iCloudSection
-                backupSection
+                settingsGroup(.reminders) {
+                    smarterReminderSection
+                    reminderCoachingSection
+                    notificationHealthSection
+                }
+
+                settingsGroup(.progress) {
+                    reapplySection
+                }
+
+                settingsGroup(.data) {
+                    iCloudSection
+                    backupSection
+                }
+
+                settingsGroup(.advanced) {
+                    leaveHomeReminderSection
+                    uvAndHealthSection
+                }
 
                 Spacer(minLength: 0)
             }
@@ -95,6 +106,52 @@ struct SettingsView: View {
         .interactivePopGestureEnabled()
     }
 
+    private func settingsGroup<Content: View>(
+        _ section: SettingsSection,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    toggleSection(section)
+                }
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: section.symbolName)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(AppPalette.sun)
+                        .frame(width: 28, height: 28)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(section.title)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text(section.detail)
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppPalette.softInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: isSectionExpanded(section) ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+                .padding(18)
+                .background(cardBackground)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows \(section.title) settings.")
+            .accessibilityIdentifier("settings.section.\(section.rawValue)")
+
+            if isSectionExpanded(section) {
+                content()
+            }
+        }
+    }
+
     private var smarterReminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Daily Reminders")
@@ -114,8 +171,6 @@ struct SettingsView: View {
                 reminderCard(for: .weekday, detail: "Used Monday through Friday")
                 reminderCard(for: .weekend, detail: "Used Saturday and Sunday")
             }
-
-            leaveHomeReminderCard
 
             ReminderToggleCard(
                 title: "Follow local time when traveling",
@@ -197,16 +252,19 @@ struct SettingsView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(AppPalette.softInk)
 
-            SunStatusCard(
-                title: presentation.title,
-                detail: presentation.detail,
-                tint: leaveHomeReminderTint(for: presentation.tone),
-                symbol: presentation.symbol
-            )
-            .accessibilityIdentifier("settings.leaveHome.status")
+            if leaveHomeReminderEnabled || appState.settings.smartReminderSettings.leaveHomeReminder.homeLocation != nil {
+                SunStatusCard(
+                    title: presentation.title,
+                    detail: presentation.detail,
+                    tint: leaveHomeReminderTint(for: presentation.tone),
+                    symbol: presentation.symbol
+                )
+                .accessibilityIdentifier("settings.leaveHome.status")
+            }
 
             if let actionTitle = presentation.actionTitle,
-               let actionKind = presentation.actionKind {
+               let actionKind = presentation.actionKind,
+               leaveHomeReminderEnabled || appState.settings.smartReminderSettings.leaveHomeReminder.homeLocation != nil {
                 Button(actionTitle) {
                     handleLeaveHomeReminderAction(actionKind)
                 }
@@ -224,6 +282,20 @@ struct SettingsView: View {
         }
         .padding(18)
         .background(cardBackground)
+    }
+
+    private var leaveHomeReminderSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Leave-Home Reminder")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            Text("Optional. Use this only if you want Sunclub to remind you when you first head out.")
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+
+            leaveHomeReminderCard
+        }
     }
 
     private var reapplySection: some View {
@@ -318,16 +390,17 @@ struct SettingsView: View {
     }
 
     private var notificationHealthSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Notification Health")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
+        Group {
+            if let presentation = appState.notificationHealthPresentation {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Notification Help")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
 
-            VStack(alignment: .leading, spacing: 14) {
-                if let presentation = appState.notificationHealthPresentation {
-                    SunStatusCard(
-                        title: presentation.title,
-                        detail: presentation.detail,
+                    VStack(alignment: .leading, spacing: 14) {
+                        SunStatusCard(
+                            title: presentation.title,
+                            detail: presentation.detail,
                         tint: Color.red.opacity(0.72),
                         symbol: "bell.badge.fill"
                     )
@@ -337,17 +410,11 @@ struct SettingsView: View {
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
                     .accessibilityIdentifier("settings.notificationHealth.action")
-                } else {
-                    SunStatusCard(
-                        title: "Notifications look healthy",
-                        detail: "Daily reminders are scheduled on this phone.",
-                        tint: AppPalette.success,
-                        symbol: "bell.fill"
-                    )
+                    }
+                    .padding(18)
+                    .background(cardBackground)
                 }
             }
-            .padding(18)
-            .background(cardBackground)
         }
     }
 
@@ -505,6 +572,18 @@ struct SettingsView: View {
             }
             .padding(18)
             .background(cardBackground)
+        }
+    }
+
+    private var uvAndHealthSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("UV & Health")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            liveUVSection
+            uvBriefingSection
+            healthKitSection
         }
     }
 
@@ -666,6 +745,18 @@ struct SettingsView: View {
             return AppPalette.success
         case .warning:
             return Color.red.opacity(0.72)
+        }
+    }
+
+    private func isSectionExpanded(_ section: SettingsSection) -> Bool {
+        expandedSections.contains(section)
+    }
+
+    private func toggleSection(_ section: SettingsSection) {
+        if expandedSections.contains(section) {
+            expandedSections.remove(section)
+        } else {
+            expandedSections.insert(section)
         }
     }
 
@@ -863,6 +954,52 @@ struct SettingsView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
                 .accessibilityIdentifier("settings.backupRecordCount")
+        }
+    }
+}
+
+private enum SettingsSection: String, Hashable {
+    case reminders
+    case progress
+    case data
+    case advanced
+
+    var title: String {
+        switch self {
+        case .reminders:
+            return "Reminders"
+        case .progress:
+            return "Progress"
+        case .data:
+            return "Data & Sync"
+        case .advanced:
+            return "Advanced"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .reminders:
+            return "Daily times and travel behavior."
+        case .progress:
+            return "Reapply reminders and progress helpers."
+        case .data:
+            return "iCloud, backup, import, and recovery."
+        case .advanced:
+            return "Location, UV data, and Health settings."
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .reminders:
+            return "bell.fill"
+        case .progress:
+            return "chart.line.uptrend.xyaxis"
+        case .data:
+            return "icloud.fill"
+        case .advanced:
+            return "slider.horizontal.3"
         }
     }
 }

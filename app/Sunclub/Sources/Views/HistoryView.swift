@@ -7,6 +7,7 @@ struct HistoryView: View {
     @State private var selectedDay: Date?
     @State private var editorPresentation: HistoryEditorPresentation?
     @State private var dayPendingDeletion: Date?
+    @State private var isShowingMonthlyInsights = false
 
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
@@ -27,16 +28,19 @@ struct HistoryView: View {
                 monthNavigator
 
                 weekdayHeader
+                historyLegend
 
                 let recordDates = appState.recordedDays
+
+                statsSection(recordDates: recordDates)
 
                 calendarGrid(recordDates: recordDates)
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay)
+                } else {
+                    historyEmptyHint
                 }
-
-                statsSection(recordDates: recordDates)
 
                 Spacer(minLength: 0)
             }
@@ -61,7 +65,7 @@ struct HistoryView: View {
                 dayPendingDeletion = nil
             }
         } message: {
-            Text("This will permanently remove this day's entry. This cannot be undone.")
+            Text("This removes the visible entry for the selected day. You can undo recent changes in Recovery & Changes.")
         }
         .sheet(item: $editorPresentation) { presentation in
             HistoryRecordEditorView(
@@ -131,6 +135,67 @@ struct HistoryView: View {
         }
     }
 
+    private var historyLegend: some View {
+        HStack(spacing: 10) {
+            historyLegendItem(
+                title: "Logged",
+                color: AppPalette.sun,
+                symbol: "checkmark.circle.fill",
+                accessibilityIdentifier: "history.legend.logged"
+            )
+            historyLegendItem(
+                title: "Today",
+                color: AppPalette.sun.opacity(0.45),
+                symbol: "circle.dashed",
+                accessibilityIdentifier: "history.legend.today"
+            )
+            historyLegendItem(
+                title: "Not logged",
+                color: Color.red.opacity(0.45),
+                symbol: "xmark.circle",
+                accessibilityIdentifier: "history.legend.notLogged"
+            )
+            historyLegendItem(
+                title: "Future",
+                color: AppPalette.muted,
+                symbol: "circle",
+                accessibilityIdentifier: "history.legend.future"
+            )
+        }
+        .accessibilityIdentifier("history.legend")
+    }
+
+    private func historyLegendItem(
+        title: String,
+        color: Color,
+        symbol: String,
+        accessibilityIdentifier: String
+    ) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(color)
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .accessibilityIdentifier(accessibilityIdentifier)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var historyEmptyHint: some View {
+        SunStatusCard(
+            title: "Pick a day",
+            detail: "Tap a past day to edit an entry or backfill a log. Future days stay locked.",
+            tint: AppPalette.sun,
+            symbol: "calendar.badge.plus"
+        )
+        .accessibilityIdentifier("history.emptyHint")
+    }
+
     private func calendarGrid(recordDates: [Date]) -> some View {
         let days = appState.monthGrid(for: displayedMonth)
         let recordDateSet = Set(recordDates)
@@ -195,66 +260,7 @@ struct HistoryView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            HStack(spacing: 10) {
-                Image(systemName: statusSymbol(for: status))
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(statusColor(for: status))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(statusTitle(for: status))
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-                        .accessibilityIdentifier("history.statusTitle")
-
-                    if let record {
-                        Text("Verified via \(record.method.displayName) at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppPalette.softInk)
-                    } else {
-                        Text("No entry for this day yet.")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-
-                    if let spf = record?.spfLevel {
-                        Text("SPF \(spf)")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(AppPalette.sun)
-                    }
-
-                    if let notes = record?.trimmedNotes {
-                        Text(notes)
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppPalette.softInk)
-                            .lineLimit(3)
-                            .accessibilityIdentifier("history.dayNote")
-                    }
-
-                    if let conflict {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Merged for review")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.red.opacity(0.8))
-
-                            Text(conflict.summary)
-                                .font(.system(size: 13))
-                                .foregroundStyle(AppPalette.softInk)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Button("Review Recovery & Changes") {
-                                router.open(.recovery)
-                            }
-                            .buttonStyle(SunSecondaryButtonStyle())
-                            .accessibilityIdentifier("history.conflict.review")
-                        }
-                        .padding(.top, 6)
-                        .accessibilityIdentifier("history.conflictBanner")
-                    }
-                }
-
-                Spacer()
-            }
-
+            dayDetailBody(record: record, status: status, conflict: conflict)
         }
         .padding(18)
         .background(
@@ -262,6 +268,85 @@ struct HistoryView: View {
                 .fill(Color.white.opacity(0.72))
         )
         .accessibilityIdentifier("history.dayDetail")
+    }
+
+    private func dayDetailBody(
+        record: DailyRecord?,
+        status: DayStatus,
+        conflict: SunclubConflictItem?
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: statusSymbol(for: status))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(statusColor(for: status))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(statusTitle(for: status))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("history.statusTitle")
+
+                dayRecordMetadata(record)
+                dayRecordDetails(record)
+                conflictBanner(conflict)
+            }
+
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func dayRecordMetadata(_ record: DailyRecord?) -> some View {
+        if let record {
+            Text("Verified via \(record.method.displayName) at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+        } else {
+            Text("No entry for this day yet.")
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+        }
+    }
+
+    @ViewBuilder
+    private func dayRecordDetails(_ record: DailyRecord?) -> some View {
+        if let spf = record?.spfLevel {
+            Text("SPF \(spf)")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(AppPalette.sun)
+        }
+
+        if let notes = record?.trimmedNotes {
+            Text(notes)
+                .font(.system(size: 13))
+                .foregroundStyle(AppPalette.softInk)
+                .lineLimit(3)
+                .accessibilityIdentifier("history.dayNote")
+        }
+    }
+
+    @ViewBuilder
+    private func conflictBanner(_ conflict: SunclubConflictItem?) -> some View {
+        if let conflict {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Merged for review")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.red.opacity(0.8))
+
+                Text(conflict.summary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Review Recovery & Changes") {
+                    router.push(.recovery)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("history.conflict.review")
+            }
+            .padding(.top, 6)
+            .accessibilityIdentifier("history.conflictBanner")
+        }
     }
 
     @ViewBuilder
@@ -276,22 +361,7 @@ struct HistoryView: View {
     }
 
     private func statsSection(recordDates: [Date]) -> some View {
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
-        let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
-        let today = calendar.startOfDay(for: Date())
-        let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? today)
-        let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
-        let monthlyInsights = appState.monthlyReviewInsights(for: displayedMonth)
-
-        let daysInRange: Int = {
-            if monthEnd <= today {
-                return calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
-            } else {
-                return calendar.dateComponents([.day], from: monthStart, to: effectiveEnd).day ?? 0
-            }
-        }()
-
-        let rate = daysInRange > 0 ? Int(Double(monthRecords.count) / Double(daysInRange) * 100) : 0
+        let stats = monthStats(recordDates: recordDates)
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Month Stats")
@@ -299,43 +369,88 @@ struct HistoryView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             HStack(spacing: 20) {
-                statBubble(value: "\(monthRecords.count)", label: "Applied")
-                statBubble(value: "\(max(daysInRange - monthRecords.count, 0))", label: "Missed")
-                statBubble(value: "\(rate)%", label: "Rate")
+                statBubble(value: "\(stats.appliedCount)", label: "Applied")
+                statBubble(value: "\(stats.openCount)", label: "Open")
+                statBubble(value: "\(stats.rate)", label: "Rate")
             }
 
-            if monthlyInsights.hasContent {
-                VStack(spacing: 12) {
-                    if let bestWeekday = monthlyInsights.bestWeekday {
-                        monthInsightCard(
-                            title: "Best Weekday",
-                            value: bestWeekday.title,
-                            detail: bestWeekday.detail,
-                            accessibilityIdentifier: "history.bestWeekday"
-                        )
-                    }
-
-                    if let hardestWeekday = monthlyInsights.hardestWeekday {
-                        monthInsightCard(
-                            title: "Hardest Weekday",
-                            value: hardestWeekday.title,
-                            detail: hardestWeekday.detail,
-                            accessibilityIdentifier: "history.hardestWeekday"
-                        )
-                    }
-
-                    if let mostCommonSPF = monthlyInsights.mostCommonSPF {
-                        monthInsightCard(
-                            title: "Most Common SPF",
-                            value: mostCommonSPF.title,
-                            detail: mostCommonSPF.detail,
-                            accessibilityIdentifier: "history.mostCommonSPF"
-                        )
-                    }
-                }
-            }
+            monthlyInsightDisclosure(stats.insights)
         }
         .accessibilityIdentifier("history.monthStats")
+    }
+
+    private func monthStats(recordDates: [Date]) -> HistoryMonthStats {
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
+        let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+        let today = calendar.startOfDay(for: Date())
+        let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? today)
+        let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
+        let daysInRange = daysInCurrentMonthRange(monthEnd: monthEnd, monthStart: monthStart, effectiveEnd: effectiveEnd)
+        let rate = daysInRange > 0 ? Int(Double(monthRecords.count) / Double(daysInRange) * 100) : 0
+
+        return HistoryMonthStats(
+            appliedCount: monthRecords.count,
+            openCount: max(daysInRange - monthRecords.count, 0),
+            rate: "\(rate)%",
+            insights: appState.monthlyReviewInsights(for: displayedMonth)
+        )
+    }
+
+    private func daysInCurrentMonthRange(monthEnd: Date, monthStart: Date, effectiveEnd: Date) -> Int {
+        let today = calendar.startOfDay(for: Date())
+        if monthEnd <= today {
+            return calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
+        }
+
+        return calendar.dateComponents([.day], from: monthStart, to: effectiveEnd).day ?? 0
+    }
+
+    @ViewBuilder
+    private func monthlyInsightDisclosure(_ insights: MonthlyReviewInsights) -> some View {
+        if insights.hasContent {
+            Button(isShowingMonthlyInsights ? "Hide Patterns" : "Show Patterns") {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isShowingMonthlyInsights.toggle()
+                }
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("history.monthPatternsToggle")
+
+            if isShowingMonthlyInsights {
+                monthlyInsightCards(insights)
+            }
+        }
+    }
+
+    private func monthlyInsightCards(_ insights: MonthlyReviewInsights) -> some View {
+        VStack(spacing: 12) {
+            if let bestWeekday = insights.bestWeekday {
+                monthInsightCard(
+                    title: "Best Day",
+                    value: bestWeekday.title,
+                    detail: bestWeekday.detail,
+                    accessibilityIdentifier: "history.bestWeekday"
+                )
+            }
+
+            if let hardestWeekday = insights.hardestWeekday {
+                monthInsightCard(
+                    title: "Hardest Day",
+                    value: hardestWeekday.title,
+                    detail: hardestWeekday.detail,
+                    accessibilityIdentifier: "history.hardestWeekday"
+                )
+            }
+
+            if let mostCommonSPF = insights.mostCommonSPF {
+                monthInsightCard(
+                    title: "Most Used SPF",
+                    value: mostCommonSPF.title,
+                    detail: mostCommonSPF.detail,
+                    accessibilityIdentifier: "history.mostCommonSPF"
+                )
+            }
+        }
     }
 
     @ViewBuilder
@@ -441,7 +556,7 @@ struct HistoryView: View {
         switch status {
         case .applied: return "Applied"
         case .todayPending: return "Pending"
-        case .missed: return "Missed"
+        case .missed: return "Not logged"
         case .future: return "Future"
         }
     }
@@ -504,7 +619,8 @@ struct HistoryRecordEditorView: View {
                     selectedSPF: $selectedSPF,
                     notes: $notes,
                     accessibilityPrefix: "historyEditor",
-                    suggestions: appState.manualLogSuggestionState(for: day)
+                    suggestions: appState.manualLogSuggestionState(for: day),
+                    showsOptionalDisclosure: false
                 )
             }
         } footer: {
@@ -605,6 +721,13 @@ struct HistoryEditorTestHarnessView: View {
         let dayStart = Calendar.current.startOfDay(for: day)
         return appState.records.first { Calendar.current.isDate($0.startOfDay, inSameDayAs: dayStart) }
     }
+}
+
+private struct HistoryMonthStats {
+    let appliedCount: Int
+    let openCount: Int
+    let rate: String
+    let insights: MonthlyReviewInsights
 }
 
 #Preview {

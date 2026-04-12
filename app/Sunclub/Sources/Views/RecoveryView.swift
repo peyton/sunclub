@@ -13,15 +13,21 @@ struct RecoveryView: View {
 
                 overviewSection
 
-                if let session = appState.recentImportSession {
-                    importSection(for: session)
-                }
+                if hasRecoveryTasks {
+                    if !appState.conflicts.isEmpty {
+                        conflictsSection
+                    }
 
-                if !appState.conflicts.isEmpty {
-                    conflictsSection
-                }
+                    if let session = appState.recentImportSession {
+                        importSection(for: session)
+                    }
 
-                changesSection
+                    if !visibleChangeBatches.isEmpty {
+                        changesSection
+                    }
+                } else {
+                    recoveryEmptyState
+                }
 
                 Spacer(minLength: 0)
             }
@@ -44,6 +50,16 @@ struct RecoveryView: View {
             )
             .accessibilityIdentifier("recovery.overview")
         }
+    }
+
+    private var recoveryEmptyState: some View {
+        SunStatusCard(
+            title: "No changes need review",
+            detail: "Recent edits, imports, and iCloud merge reviews will appear here when there is something to check.",
+            tint: AppPalette.success,
+            symbol: "checkmark.circle.fill"
+        )
+        .accessibilityIdentifier("recovery.emptyState")
     }
 
     private func importSection(for session: SunclubImportSession) -> some View {
@@ -123,17 +139,13 @@ struct RecoveryView: View {
     }
 
     private var changesSection: some View {
-        let visibleBatches = appState.changeBatches
-            .filter { $0.kind != .migrationSeed }
-            .prefix(12)
-
-        return VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Recent Updates")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(spacing: 12) {
-                ForEach(Array(visibleBatches.enumerated()), id: \.element.id) { index, batch in
+                ForEach(Array(visibleChangeBatches.enumerated()), id: \.element.id) { index, batch in
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: batchSymbol(for: batch))
@@ -179,6 +191,20 @@ struct RecoveryView: View {
                 }
             }
         }
+    }
+
+    private var hasRecoveryTasks: Bool {
+        appState.recentImportSession != nil
+            || !appState.conflicts.isEmpty
+            || !visibleChangeBatches.isEmpty
+    }
+
+    private var visibleChangeBatches: [SunclubChangeBatch] {
+        Array(
+            appState.changeBatches
+                .filter { $0.kind != .migrationSeed }
+                .prefix(12)
+        )
     }
 
     private var overviewDetail: String {
