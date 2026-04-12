@@ -1,10 +1,13 @@
 import plistlib
+import re
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
+PRIVACY_MANIFEST = REPO_ROOT / "app" / "Sunclub" / "Resources" / "PrivacyInfo.xcprivacy"
 PROJECT_SWIFT = REPO_ROOT / "app" / "Sunclub" / "Project.swift"
+SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
 
@@ -174,3 +177,102 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '-apiKey "$ASC_KEY_ID"' in script
     assert '-apiIssuer "$ASC_ISSUER_ID"' in script
     assert "AuthKey_${ASC_KEY_ID}.p8" in script
+
+
+# ---------------------------------------------------------------------------
+# Privacy manifest (PrivacyInfo.xcprivacy)
+# ---------------------------------------------------------------------------
+
+
+def load_privacy_manifest() -> dict:
+    with PRIVACY_MANIFEST.open("rb") as f:
+        return plistlib.load(f)
+
+
+def test_privacy_manifest_exists() -> None:
+    assert PRIVACY_MANIFEST.exists(), (
+        "PrivacyInfo.xcprivacy is missing — Apple rejects apps without a privacy manifest"
+    )
+
+
+def test_privacy_manifest_declares_no_tracking() -> None:
+    manifest = load_privacy_manifest()
+
+    assert manifest["NSPrivacyTracking"] is False
+
+
+def test_privacy_manifest_declares_no_collected_data_types() -> None:
+    manifest = load_privacy_manifest()
+
+    assert manifest["NSPrivacyCollectedDataTypes"] == []
+
+
+def test_privacy_manifest_declares_no_tracking_domains() -> None:
+    manifest = load_privacy_manifest()
+
+    assert manifest["NSPrivacyTrackingDomains"] == []
+
+
+def test_privacy_manifest_declares_user_defaults_required_reason_api() -> None:
+    manifest = load_privacy_manifest()
+
+    api_types = manifest["NSPrivacyAccessedAPITypes"]
+    user_defaults_entry = next(
+        (
+            entry
+            for entry in api_types
+            if entry["NSPrivacyAccessedAPIType"]
+            == "NSPrivacyAccessedAPICategoryUserDefaults"
+        ),
+        None,
+    )
+    assert user_defaults_entry is not None, (
+        "Privacy manifest must declare UserDefaults as a Required Reason API"
+    )
+    assert "CA92.1" in user_defaults_entry["NSPrivacyAccessedAPITypeReasons"]
+
+
+def test_privacy_manifest_covers_all_source_user_defaults_usage() -> None:
+    """If source code uses UserDefaults, the privacy manifest must declare it."""
+    pattern = re.compile(r"\bUserDefaults\b")
+    files_using_defaults = [
+        p.relative_to(REPO_ROOT)
+        for p in SOURCES_DIR.rglob("*.swift")
+        if pattern.search(p.read_text())
+    ]
+
+    assert len(files_using_defaults) > 0, "Sanity: expected at least one file"
+
+    manifest = load_privacy_manifest()
+    declared_apis = {
+        entry["NSPrivacyAccessedAPIType"]
+        for entry in manifest["NSPrivacyAccessedAPITypes"]
+    }
+    assert "NSPrivacyAccessedAPICategoryUserDefaults" in declared_apis, (
+        f"Source files use UserDefaults ({files_using_defaults}) but the privacy "
+        "manifest does not declare NSPrivacyAccessedAPICategoryUserDefaults"
+    )
+
+
+def test_privacy_manifest_included_in_app_resources_glob() -> None:
+    source = PROJECT_SWIFT.read_text()
+
+    assert '"Resources/**"' in source, (
+        "App target must include Resources/** so PrivacyInfo.xcprivacy is bundled"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Info.plist: no empty or invalid string values
+# ---------------------------------------------------------------------------
+
+
+def test_info_plist_has_no_empty_string_values() -> None:
+    info = load_info_plist()
+
+    empty_keys = [
+        key for key, value in info.items() if isinstance(value, str) and value == ""
+    ]
+    assert empty_keys == [], (
+        f"Info.plist has empty string values for keys: {empty_keys}"
+    )
