@@ -1051,6 +1051,18 @@ final class AppState {
         manualLogPrefill = ManualLogPrefill(spfLevel: spfLevel, notes: notes)
     }
 
+    func rememberScannedSPF(_ spfLevel: Int?) {
+        guard let spfLevel else {
+            return
+        }
+
+        let normalizedLevel = SunclubGrowthSettings.normalizedSPFLevels([spfLevel]).first ?? spfLevel
+        var scannedLevels = growthSettings.scannedSPFLevels.filter { $0 != normalizedLevel }
+        scannedLevels.insert(normalizedLevel, at: 0)
+        growthSettings.scannedSPFLevels = Array(scannedLevels.prefix(6))
+        persistGrowthSettings()
+    }
+
     func clearManualLogPrefill() {
         manualLogPrefill = nil
     }
@@ -1466,7 +1478,8 @@ final class AppState {
         ManualLogSuggestionEngine.suggestions(
             from: records,
             excluding: day,
-            calendar: calendar
+            calendar: calendar,
+            scannedSPFLevels: growthSettings.scannedSPFLevels
         )
     }
 

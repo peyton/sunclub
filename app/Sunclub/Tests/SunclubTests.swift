@@ -468,6 +468,71 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testManualLogSuggestionStatePrefillsMostRecentSPFEvenAfterNoteOnlyLog() {
+        let records = [
+            makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: nil, notes: "Hat day"),
+            makeDailyRecord(dayOffset: 2, hour: 8, spfLevel: 45, notes: nil)
+        ]
+
+        let suggestions = ManualLogSuggestionEngine.suggestions(
+            from: records,
+            excluding: Date(),
+            calendar: Calendar.current
+        )
+
+        XCTAssertEqual(suggestions.defaultSPF, 45)
+        XCTAssertNil(suggestions.sameAsLastTime?.spfLevel)
+        XCTAssertEqual(suggestions.sameAsLastTime?.note, "Hat day")
+    }
+
+    @MainActor
+    func testManualLogSuggestionStateIncludesScannedSPFLevels() {
+        let suggestions = ManualLogSuggestionEngine.suggestions(
+            from: [],
+            scannedSPFLevels: [45, 80, 45]
+        )
+
+        XCTAssertEqual(suggestions.scannedSPFLevels, [45, 80])
+    }
+
+    @MainActor
+    func testRememberScannedSPFStoresMostRecentLevels() throws {
+        let state = try makeAppState()
+
+        state.rememberScannedSPF(45)
+        state.rememberScannedSPF(80)
+        state.rememberScannedSPF(45)
+
+        XCTAssertEqual(state.growthSettings.scannedSPFLevels, [45, 80])
+        XCTAssertEqual(state.manualLogSuggestionState(for: Date()).scannedSPFLevels, [45, 80])
+    }
+
+    func testGrowthSettingsDecodesOlderPayloadWithoutScannedSPFLevels() throws {
+        let data = Data("""
+        {
+            "preferredName": "Peyton",
+            "healthKit": {
+                "isEnabled": false,
+                "importedSampleCount": 0
+            },
+            "uvBriefing": {
+                "dailyBriefingEnabled": true,
+                "extremeAlertEnabled": false,
+                "morningHour": 8,
+                "morningMinute": 0
+            },
+            "friends": [],
+            "presentedAchievementIDs": []
+        }
+        """.utf8)
+
+        let settings = try JSONDecoder().decode(SunclubGrowthSettings.self, from: data)
+
+        XCTAssertEqual(settings.preferredName, "Peyton")
+        XCTAssertEqual(settings.scannedSPFLevels, [])
+    }
+
+    @MainActor
     func testSunscreenUsageInsightsReturnsMostUsedSPF() {
         let records = [
             makeDailyRecord(dayOffset: 0, spfLevel: 50),

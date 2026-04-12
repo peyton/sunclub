@@ -15,7 +15,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
    - Requests local notification permission.
    - Onboarding completes whether permission is allowed or denied.
 4. `Home Dashboard`
-   - Shows the greeting, current streak card, manual logging, and a gear button for Settings.
+   - Shows the greeting, current streak card, manual logging, product scanner, and a gear button for Settings.
 5. `Verify Success`
    - Confirms the verification and shows the updated streak.
 6. `Weekly Summary`
@@ -31,6 +31,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 ## What Still Works
 
 - Daily logging records a `DailyRecord`.
+- Scanned SPF values stay available as separate manual-log options, and fresh logs preselect the most recent logged SPF.
 - Reminder scheduling still uses `UNUserNotificationCenter` and the existing weekly background refresh path.
 - Streaks and weekly summaries still come from local `CalendarAnalytics`.
 - Optional SPF and notes metadata now feed a lightweight recap inside `Weekly Summary` and day detail in `History`.
