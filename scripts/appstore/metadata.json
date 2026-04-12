@@ -99,6 +99,6 @@
   },
   "submission": {
     "copyright": "2026 Peyton Randolph",
-    "manual_steps": ["Replace draft support, marketing, and privacy URLs with live pages and mark them ready.", "Replace the draft App Review contact details and mark them ready.", "Answer App Privacy and export compliance questions in App Store Connect to match this manifest.", "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."]
+    "manual_steps": ["Replace draft support, marketing, and privacy URLs with live pages and mark them ready.", "Replace the draft App Review contact details and mark them ready.", "Answer App Privacy questions in App Store Connect to match this manifest.", "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."]
   }
 }

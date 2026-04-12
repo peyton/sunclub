@@ -76,6 +76,12 @@ def test_info_plist_declares_explicit_file_opening_behavior() -> None:
     assert info["LSSupportsOpeningDocumentsInPlace"] is False
 
 
+def test_info_plist_declares_no_non_exempt_encryption() -> None:
+    info = load_info_plist()
+
+    assert info["ITSAppUsesNonExemptEncryption"] is False
+
+
 def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
     info = load_info_plist()
 
