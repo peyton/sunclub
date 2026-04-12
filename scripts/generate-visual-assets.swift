@@ -59,6 +59,12 @@ private func fill(_ context: CGContext, _ color: RGBA, in rect: CGRect) {
     context.fill(rect)
 }
 
+private func fillPath(_ context: CGContext, _ color: RGBA, path: CGPath) {
+    context.setFillColor(color.cgColor)
+    context.addPath(path)
+    context.fillPath()
+}
+
 private func stroke(_ context: CGContext, _ color: RGBA, path: CGPath, width: CGFloat) {
     context.setStrokeColor(color.cgColor)
     context.setLineWidth(width)
@@ -167,19 +173,38 @@ private func drawBottle(_ context: CGContext, center: CGPoint, scale: CGFloat, l
 }
 
 private func drawPhone(_ context: CGContext, rect: CGRect, accent: RGBA = Palette.pool) {
-    fill(context, Palette.ink, in: rect)
-    fill(context, Palette.pearl, in: rect.insetBy(dx: 9, dy: 11))
+    fillPath(context, Palette.ink, path: roundedRect(rect, radius: rect.width * 0.16))
+    fillPath(context, Palette.pearl, path: roundedRect(rect.insetBy(dx: 9, dy: 11), radius: rect.width * 0.12))
     let notification = CGRect(x: rect.minX + 24, y: rect.minY + 64, width: rect.width - 48, height: 72)
     context.addPath(roundedRect(notification, radius: 18))
     context.clip()
     gradient(context, colors: [RGBA(1, 1, 1, 0.96), RGBA(1, 0.93, 0.76, 0.96)], start: notification.origin, end: CGPoint(x: notification.maxX, y: notification.maxY))
     context.resetClip()
-    fill(context, accent, in: CGRect(x: notification.minX + 16, y: notification.minY + 22, width: 28, height: 28))
+    context.setFillColor(accent.cgColor)
+    context.fillEllipse(in: CGRect(x: notification.minX + 16, y: notification.minY + 22, width: 28, height: 28))
     fill(context, RGBA(0.13, 0.11, 0.10, 0.18), in: CGRect(x: notification.minX + 56, y: notification.minY + 22, width: notification.width - 78, height: 8))
     fill(context, RGBA(0.13, 0.11, 0.10, 0.10), in: CGRect(x: notification.minX + 56, y: notification.minY + 38, width: notification.width - 112, height: 8))
 }
 
-private func drawShield(_ context: CGContext, center: CGPoint, scale: CGFloat, tint: RGBA = Palette.aloe) {
+private func drawTiltedPhone(
+    _ context: CGContext,
+    center: CGPoint,
+    size: CGSize,
+    rotation: CGFloat,
+    accent: RGBA
+) {
+    context.saveGState()
+    context.translateBy(x: center.x, y: center.y)
+    context.rotate(by: rotation)
+    drawPhone(
+        context,
+        rect: CGRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height),
+        accent: accent
+    )
+    context.restoreGState()
+}
+
+private func shieldPath(center: CGPoint, scale: CGFloat) -> CGPath {
     let path = CGMutablePath()
     path.move(to: CGPoint(x: center.x, y: center.y - 105 * scale))
     path.addCurve(to: CGPoint(x: center.x + 92 * scale, y: center.y - 58 * scale), control1: CGPoint(x: center.x + 34 * scale, y: center.y - 98 * scale), control2: CGPoint(x: center.x + 66 * scale, y: center.y - 82 * scale))
@@ -189,6 +214,11 @@ private func drawShield(_ context: CGContext, center: CGPoint, scale: CGFloat, t
     path.addCurve(to: CGPoint(x: center.x - 92 * scale, y: center.y - 58 * scale), control1: CGPoint(x: center.x - 78 * scale, y: center.y + 62 * scale), control2: CGPoint(x: center.x - 92 * scale, y: center.y + 26 * scale))
     path.addCurve(to: CGPoint(x: center.x, y: center.y - 105 * scale), control1: CGPoint(x: center.x - 66 * scale, y: center.y - 82 * scale), control2: CGPoint(x: center.x - 34 * scale, y: center.y - 98 * scale))
     path.closeSubpath()
+    return path
+}
+
+private func drawShield(_ context: CGContext, center: CGPoint, scale: CGFloat, tint: RGBA = Palette.aloe) {
+    let path = shieldPath(center: center, scale: scale)
 
     context.saveGState()
     context.addPath(path)
@@ -204,7 +234,8 @@ private func drawSunRing(_ context: CGContext, center: CGPoint, radius: CGFloat,
         let alpha = 0.32 - CGFloat(index) * 0.06
         stroke(context, RGBA(tint.r, tint.g, tint.b, alpha), path: CGPath(ellipseIn: CGRect(x: center.x - radius + inset, y: center.y - radius + inset, width: (radius - inset) * 2, height: (radius - inset) * 2), transform: nil), width: max(2, radius * 0.035))
     }
-    fill(context, RGBA(tint.r, tint.g, tint.b, 0.92), in: CGRect(x: center.x - radius * 0.24, y: center.y - radius * 0.24, width: radius * 0.48, height: radius * 0.48))
+    context.setFillColor(RGBA(tint.r, tint.g, tint.b, 0.92).cgColor)
+    context.fillEllipse(in: CGRect(x: center.x - radius * 0.24, y: center.y - radius * 0.24, width: radius * 0.48, height: radius * 0.48))
 }
 
 private func drawHeroWelcome(_ context: CGContext, size: CGSize) {
@@ -248,43 +279,131 @@ private func drawAchievementShelf(_ context: CGContext, size: CGSize) {
 }
 
 private func drawBadge(_ context: CGContext, center: CGPoint, scale: CGFloat, tint: RGBA, accent: RGBA) {
-    let radius = 104 * scale
-    radial(context, colors: [RGBA(tint.r, tint.g, tint.b, 0.25), RGBA(tint.r, tint.g, tint.b, 0)], center: center, endRadius: radius * 1.55)
+    let shieldScale = 1.72 * scale
+    let path = shieldPath(center: CGPoint(x: center.x, y: center.y + 8 * scale), scale: shieldScale)
 
-    let outer = CGRect(
-        x: center.x - radius,
-        y: center.y - radius,
-        width: radius * 2,
-        height: radius * 2
+    radial(
+        context,
+        colors: [RGBA(tint.r, tint.g, tint.b, 0.22), RGBA(tint.r, tint.g, tint.b, 0)],
+        center: center,
+        endRadius: 188 * scale
     )
+
     context.saveGState()
-    context.addEllipse(in: outer)
+    context.setShadow(
+        offset: CGSize(width: 0, height: 18 * scale),
+        blur: 26 * scale,
+        color: RGBA(tint.r, tint.g, tint.b, 0.20).cgColor
+    )
+    context.addPath(path)
     context.clip()
     gradient(
         context,
         colors: [
-            RGBA(1, 0.98, 0.90, 1),
             tint,
-            RGBA(max(tint.r - 0.10, 0), max(tint.g - 0.10, 0), max(tint.b - 0.10, 0), 1)
+            RGBA(
+                max((tint.r + accent.r) / 2 - 0.02, 0),
+                max((tint.g + accent.g) / 2 - 0.02, 0),
+                max((tint.b + accent.b) / 2 - 0.02, 0),
+                1
+            )
         ],
-        start: CGPoint(x: outer.minX, y: outer.minY),
-        end: CGPoint(x: outer.maxX, y: outer.maxY)
+        start: CGPoint(x: center.x - 130 * scale, y: center.y - 172 * scale),
+        end: CGPoint(x: center.x + 130 * scale, y: center.y + 172 * scale)
     )
     radial(
         context,
-        colors: [RGBA(1, 1, 1, 0.42), RGBA(1, 1, 1, 0)],
-        center: CGPoint(x: center.x - radius * 0.34, y: center.y - radius * 0.36),
-        endRadius: radius * 0.82
+        colors: [RGBA(1, 1, 1, 0.34), RGBA(1, 1, 1, 0)],
+        center: CGPoint(x: center.x - 64 * scale, y: center.y - 96 * scale),
+        endRadius: 142 * scale
     )
     context.restoreGState()
 
-    stroke(context, RGBA(1, 1, 1, 0.72), path: CGPath(ellipseIn: outer.insetBy(dx: 10 * scale, dy: 10 * scale), transform: nil), width: 7 * scale)
-    stroke(context, RGBA(accent.r, accent.g, accent.b, 0.58), path: CGPath(ellipseIn: outer.insetBy(dx: 31 * scale, dy: 31 * scale), transform: nil), width: 5 * scale)
+    stroke(context, RGBA(1, 1, 1, 0.78), path: path, width: 9 * scale)
 
-    drawShield(context, center: CGPoint(x: center.x, y: center.y + 8 * scale), scale: 0.64 * scale, tint: accent)
-    drawSunRing(context, center: CGPoint(x: center.x + 48 * scale, y: center.y - 48 * scale), radius: 30 * scale, tint: Palette.warmGlow)
+    let sunCenter = CGPoint(x: center.x, y: center.y - 18 * scale)
+    context.setStrokeColor(RGBA(1, 1, 1, 0.78).cgColor)
+    context.setLineWidth(9 * scale)
+    context.setLineCap(.round)
+    for index in 0..<8 {
+        let angle = CGFloat(index) * .pi / 4
+        let start = CGPoint(
+            x: sunCenter.x + cos(angle) * 54 * scale,
+            y: sunCenter.y + sin(angle) * 54 * scale
+        )
+        let end = CGPoint(
+            x: sunCenter.x + cos(angle) * 74 * scale,
+            y: sunCenter.y + sin(angle) * 74 * scale
+        )
+        context.move(to: start)
+        context.addLine(to: end)
+        context.strokePath()
+    }
+    context.setFillColor(RGBA(1, 1, 1, 0.92).cgColor)
+    context.fillEllipse(in: CGRect(x: sunCenter.x - 40 * scale, y: sunCenter.y - 40 * scale, width: 80 * scale, height: 80 * scale))
+}
 
-    fill(context, RGBA(1, 1, 1, 0.28), in: CGRect(x: center.x - radius * 0.42, y: center.y - radius * 0.50, width: radius * 0.48, height: radius * 0.12))
+private func strokeLine(_ context: CGContext, _ color: RGBA, from start: CGPoint, to end: CGPoint, width: CGFloat) {
+    context.setStrokeColor(color.cgColor)
+    context.setLineWidth(width)
+    context.setLineCap(.round)
+    context.move(to: start)
+    context.addLine(to: end)
+    context.strokePath()
+}
+
+private func drawPerson(
+    _ context: CGContext,
+    headCenter: CGPoint,
+    torso: CGRect,
+    shirt: RGBA,
+    skin: RGBA
+) {
+    context.setFillColor(skin.cgColor)
+    context.fillEllipse(in: CGRect(x: headCenter.x - 34, y: headCenter.y - 34, width: 68, height: 68))
+    fillPath(
+        context,
+        skin,
+        path: roundedRect(CGRect(x: headCenter.x - 17, y: torso.maxY - 10, width: 34, height: 34), radius: 12)
+    )
+    fillPath(context, shirt, path: roundedRect(torso, radius: 46))
+    stroke(context, RGBA(1, 1, 1, 0.34), path: roundedRect(torso.insetBy(dx: 2, dy: 2), radius: 44), width: 3)
+}
+
+private func drawFriendsPair(_ context: CGContext, size: CGSize) {
+    radial(context, colors: [RGBA(0.26, 0.65, 0.85, 0.20), RGBA(0.26, 0.65, 0.85, 0)], center: CGPoint(x: 300, y: 148), endRadius: 250)
+    radial(context, colors: [RGBA(0.98, 0.64, 0.01, 0.20), RGBA(0.98, 0.64, 0.01, 0)], center: CGPoint(x: 300, y: 222), endRadius: 225)
+    context.setFillColor(RGBA(0.13, 0.11, 0.10, 0.07).cgColor)
+    context.fillEllipse(in: CGRect(x: 86, y: 36, width: size.width - 172, height: 42))
+
+    let skin = RGBA(0.95, 0.73, 0.56)
+    drawPerson(
+        context,
+        headCenter: CGPoint(x: 142, y: 294),
+        torso: CGRect(x: 66, y: 72, width: 152, height: 174),
+        shirt: Palette.sun,
+        skin: skin
+    )
+    drawPerson(
+        context,
+        headCenter: CGPoint(x: 458, y: 294),
+        torso: CGRect(x: 382, y: 72, width: 152, height: 174),
+        shirt: Palette.aloe,
+        skin: RGBA(0.80, 0.58, 0.44)
+    )
+
+    strokeLine(context, skin, from: CGPoint(x: 184, y: 204), to: CGPoint(x: 264, y: 218), width: 24)
+    strokeLine(context, RGBA(0.80, 0.58, 0.44), from: CGPoint(x: 416, y: 204), to: CGPoint(x: 336, y: 218), width: 24)
+    context.setFillColor(skin.cgColor)
+    context.fillEllipse(in: CGRect(x: 251, y: 204, width: 28, height: 28))
+    context.setFillColor(RGBA(0.80, 0.58, 0.44).cgColor)
+    context.fillEllipse(in: CGRect(x: 321, y: 204, width: 28, height: 28))
+
+    drawTiltedPhone(context, center: CGPoint(x: 282, y: 210), size: CGSize(width: 72, height: 120), rotation: -0.12, accent: Palette.sun)
+    drawTiltedPhone(context, center: CGPoint(x: 318, y: 210), size: CGSize(width: 72, height: 120), rotation: 0.12, accent: Palette.aloe)
+
+    drawSunRing(context, center: CGPoint(x: 300, y: 204), radius: 30, tint: Palette.warmGlow)
+    strokeLine(context, Palette.pool, from: CGPoint(x: 288, y: 142), to: CGPoint(x: 312, y: 142), width: 6)
 }
 
 private func drawReport(_ context: CGContext, rect: CGRect) {
@@ -397,10 +516,8 @@ private func specs() -> [AssetSpec] {
         AssetSpec(name: "IllustrationAchievementsShelf", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, size in
             drawAchievementShelf(context, size: size)
         },
-        AssetSpec(name: "IllustrationFriendsPair", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, _ in
-            drawPhone(context, rect: CGRect(x: 160, y: 100, width: 138, height: 224), accent: Palette.sun)
-            drawPhone(context, rect: CGRect(x: 302, y: 82, width: 138, height: 224), accent: Palette.aloe)
-            stroke(context, RGBA(0.98, 0.64, 0.01, 0.46), path: CGPath(ellipseIn: CGRect(x: 260, y: 190, width: 84, height: 84), transform: nil), width: 5)
+        AssetSpec(name: "IllustrationFriendsPair", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, size in
+            drawFriendsPair(context, size: size)
         },
         AssetSpec(name: "IllustrationSkinReport", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, _ in
             drawReport(context, rect: CGRect(x: 172, y: 66, width: 256, height: 308))

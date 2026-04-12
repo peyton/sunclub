@@ -651,14 +651,10 @@ struct SunclubBadgeMedallion: View {
             Circle()
                 .stroke(Color.white.opacity(isLocked ? 0.46 : 0.72), lineWidth: max(1, size * 0.035))
 
-            Circle()
-                .stroke(tint.opacity(isLocked ? 0.16 : 0.34), lineWidth: max(1, size * 0.018))
-                .padding(size * 0.13)
-
             asset.image
                 .resizable()
                 .scaledToFit()
-                .frame(width: size * 0.64, height: size * 0.64)
+                .frame(width: size * 0.90, height: size * 0.90)
                 .saturation(isLocked ? 0.02 : 1)
                 .opacity(isLocked ? 0.42 : 1)
 
@@ -685,9 +681,9 @@ struct SunclubBadgeMedallion: View {
         }
 
         return [
-            Color.white.opacity(0.96),
-            AppPalette.warmGlow.opacity(0.72),
-            tint.opacity(0.18)
+            Color.white.opacity(0.98),
+            AppPalette.warmGlow.opacity(0.50),
+            tint.opacity(0.22)
         ]
     }
 }
