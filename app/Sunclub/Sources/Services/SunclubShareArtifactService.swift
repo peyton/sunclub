@@ -2,6 +2,26 @@ import Foundation
 import UIKit
 
 enum SunclubShareArtifactService {
+    static let appLinkDisplay = "sunclub.peyton.app"
+    static let appShareURLString = "https://sunclub.peyton.app"
+
+    private struct ShareTextStyle {
+        var maximumFontSize: CGFloat
+        var minimumFontSize: CGFloat
+        var weight: UIFont.Weight
+        var color: UIColor
+        var alignment: NSTextAlignment
+        var letterSpacing: CGFloat = 0
+    }
+
+    private struct CardRenderSpec {
+        var seasonStyle: SunclubSeasonStyle
+        var title: String
+        var subtitle: String
+        var heroValue: String
+        var footer: String
+    }
+
     static func makeStreakCard(
         currentStreak: Int,
         longestStreak: Int,
@@ -15,11 +35,13 @@ enum SunclubShareArtifactService {
         let heatmapDays = recentHeatmapDays(now: now, calendar: calendar)
         let recordedSet = Set(recordedDays.map { calendar.startOfDay(for: $0) })
         let image = renderCard(
-            seasonStyle: seasonStyle,
-            title: title,
-            subtitle: subtitle,
-            heroValue: "Best \(longestStreak)",
-            footer: "sunclub"
+            CardRenderSpec(
+                seasonStyle: seasonStyle,
+                title: title,
+                subtitle: subtitle,
+                heroValue: "Best \(longestStreak)",
+                footer: "sunclub"
+            )
         ) { context, bounds in
             drawHeatmap(
                 in: CGRect(x: 40, y: 190, width: bounds.width - 80, height: 120),
@@ -44,30 +66,15 @@ enum SunclubShareArtifactService {
         achievement: SunclubAchievement,
         seasonStyle: SunclubSeasonStyle
     ) throws -> SunclubShareArtifact {
-        let image = renderCard(
-            seasonStyle: seasonStyle,
-            title: achievement.title,
-            subtitle: "Achievement unlocked",
-            heroValue: achievement.isUnlocked ? "Unlocked" : "\(achievement.currentValue)/\(achievement.targetValue)",
-            footer: "sunclub"
-        ) { _, bounds in
-            drawBodyCopy(
-                achievement.detail,
-                in: CGRect(x: 40, y: 220, width: bounds.width - 80, height: 110),
-                font: .systemFont(ofSize: 22, weight: .medium),
-                color: .white
-            )
-            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 82, weight: .bold)
-            let symbol = UIImage(systemName: achievement.symbolName, withConfiguration: symbolConfig)?
-                .withTintColor(.white, renderingMode: .alwaysOriginal)
-            symbol?.draw(in: CGRect(x: bounds.width - 150, y: 48, width: 88, height: 88))
-        }
+        let image = renderAchievementCard(achievement: achievement, seasonStyle: seasonStyle)
+        let shareText = "\(achievement.shareBlurb) Build your sunscreen streak: \(appShareURLString)"
 
         let fileURL = try writeImage(image, named: "sunclub-achievement-\(achievement.id.rawValue).png")
         return SunclubShareArtifact(
             title: achievement.title,
             subtitle: achievement.shareBlurb,
-            fileURL: fileURL
+            fileURL: fileURL,
+            shareText: shareText
         )
     }
 
@@ -76,11 +83,13 @@ enum SunclubShareArtifactService {
         seasonStyle: SunclubSeasonStyle
     ) throws -> SunclubShareArtifact {
         let image = renderCard(
-            seasonStyle: seasonStyle,
-            title: challenge.title,
-            subtitle: challenge.isComplete ? "Challenge complete" : "Challenge in progress",
-            heroValue: "\(challenge.currentValue)/\(challenge.targetValue)",
-            footer: "sunclub"
+            CardRenderSpec(
+                seasonStyle: seasonStyle,
+                title: challenge.title,
+                subtitle: challenge.isComplete ? "Challenge complete" : "Challenge in progress",
+                heroValue: "\(challenge.currentValue)/\(challenge.targetValue)",
+                footer: "sunclub"
+            )
         ) { context, bounds in
             drawProgressBar(
                 in: CGRect(x: 40, y: 220, width: bounds.width - 80, height: 18),
@@ -155,12 +164,68 @@ enum SunclubShareArtifactService {
         return SunclubShareArtifact(title: title, subtitle: subtitle, fileURL: fileURL)
     }
 
+    private static func renderAchievementCard(
+        achievement: SunclubAchievement,
+        seasonStyle: SunclubSeasonStyle
+    ) -> UIImage {
+        let bounds = CGRect(x: 0, y: 0, width: 1080, height: 1350)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
+
+        return renderer.image { rendererContext in
+            let context = rendererContext.cgContext
+            drawAchievementBackground(in: bounds, context: context)
+            drawAchievementPanel(in: CGRect(x: 96, y: 112, width: 888, height: 1126), context: context)
+            drawAchievementSymbol(
+                achievement.symbolName,
+                seasonStyle: seasonStyle,
+                in: CGRect(x: 396, y: 342, width: 288, height: 288),
+                context: context
+            )
+            drawAchievementText(achievement, context: context)
+        }
+    }
+
+    private static func drawAchievementText(
+        _ achievement: SunclubAchievement,
+        context: CGContext
+    ) {
+        drawFittedText(
+            "SUNCLUB",
+            in: CGRect(x: 156, y: 190, width: 768, height: 42),
+            style: achievementBrandTextStyle
+        )
+        drawCapsuleLabel(
+            "Achievement unlocked",
+            in: CGRect(x: 318, y: 258, width: 444, height: 72),
+            context: context
+        )
+        drawFittedText(
+            achievement.title,
+            in: CGRect(x: 156, y: 690, width: 768, height: 128),
+            style: achievementTitleTextStyle
+        )
+        drawFittedText(
+            achievementStatusLine(for: achievement),
+            in: CGRect(x: 186, y: 842, width: 708, height: 50),
+            style: achievementStatusTextStyle
+        )
+        drawWrappedText(
+            achievement.detail,
+            in: CGRect(x: 188, y: 936, width: 704, height: 96),
+            style: achievementDetailTextStyle,
+            maximumLines: 2
+        )
+        drawFittedText(
+            appLinkDisplay,
+            in: CGRect(x: 156, y: 1116, width: 768, height: 42),
+            style: achievementLinkTextStyle
+        )
+    }
+
     private static func renderCard(
-        seasonStyle: SunclubSeasonStyle,
-        title: String,
-        subtitle: String,
-        heroValue: String,
-        footer: String,
+        _ spec: CardRenderSpec,
         drawContent: (CGContext, CGRect) -> Void
     ) -> UIImage {
         let bounds = CGRect(x: 0, y: 0, width: 1080, height: 1350)
@@ -168,26 +233,223 @@ enum SunclubShareArtifactService {
 
         return renderer.image { rendererContext in
             let context = rendererContext.cgContext
-            drawBackground(in: bounds, seasonStyle: seasonStyle, context: context)
+            drawBackground(in: bounds, seasonStyle: spec.seasonStyle, context: context)
             drawTitle(
-                title,
-                subtitle: subtitle,
+                spec.title,
+                subtitle: spec.subtitle,
                 in: CGRect(x: 40, y: 44, width: bounds.width - 80, height: 120),
                 titleColor: .white,
                 subtitleColor: UIColor.white.withAlphaComponent(0.84)
             )
             drawHeroValue(
-                heroValue,
+                spec.heroValue,
                 in: CGRect(x: 40, y: 126, width: bounds.width - 80, height: 70),
                 color: .white
             )
             drawContent(context, bounds)
             drawBodyCopy(
-                footer.uppercased(),
+                spec.footer.uppercased(),
                 in: CGRect(x: 40, y: bounds.height - 70, width: 240, height: 24),
                 font: .systemFont(ofSize: 18, weight: .bold),
                 color: UIColor.white.withAlphaComponent(0.9)
             )
+        }
+    }
+
+    private static var achievementInk: UIColor {
+        UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 1)
+    }
+
+    private static var achievementSoftInk: UIColor {
+        UIColor(red: 0.39, green: 0.31, blue: 0.25, alpha: 1)
+    }
+
+    private static var achievementAccent: UIColor {
+        UIColor(red: 0.78, green: 0.31, blue: 0.11, alpha: 1)
+    }
+
+    private static var achievementCream: UIColor {
+        UIColor(red: 1.00, green: 0.96, blue: 0.84, alpha: 1)
+    }
+
+    private static var achievementBrandTextStyle: ShareTextStyle {
+        ShareTextStyle(
+            maximumFontSize: 31,
+            minimumFontSize: 25,
+            weight: .bold,
+            color: achievementInk,
+            alignment: .center,
+            letterSpacing: 2.8
+        )
+    }
+
+    private static var achievementTitleTextStyle: ShareTextStyle {
+        ShareTextStyle(
+            maximumFontSize: 76,
+            minimumFontSize: 44,
+            weight: .bold,
+            color: achievementInk,
+            alignment: .center
+        )
+    }
+
+    private static var achievementStatusTextStyle: ShareTextStyle {
+        ShareTextStyle(
+            maximumFontSize: 34,
+            minimumFontSize: 26,
+            weight: .semibold,
+            color: achievementAccent,
+            alignment: .center
+        )
+    }
+
+    private static var achievementDetailTextStyle: ShareTextStyle {
+        ShareTextStyle(
+            maximumFontSize: 30,
+            minimumFontSize: 24,
+            weight: .medium,
+            color: achievementSoftInk,
+            alignment: .center
+        )
+    }
+
+    private static var achievementLinkTextStyle: ShareTextStyle {
+        ShareTextStyle(
+            maximumFontSize: 30,
+            minimumFontSize: 24,
+            weight: .semibold,
+            color: achievementInk,
+            alignment: .center
+        )
+    }
+
+    private static func drawAchievementBackground(
+        in bounds: CGRect,
+        context: CGContext
+    ) {
+        let colors = [
+            UIColor(red: 1.00, green: 0.72, blue: 0.16, alpha: 1),
+            UIColor(red: 0.98, green: 0.50, blue: 0.12, alpha: 1),
+            UIColor(red: 0.92, green: 0.24, blue: 0.18, alpha: 1)
+        ]
+        let cgColors = colors.map(\.cgColor) as CFArray
+        let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: cgColors,
+            locations: [0, 0.55, 1]
+        )!
+        context.drawLinearGradient(
+            gradient,
+            start: CGPoint(x: 0, y: 0),
+            end: CGPoint(x: bounds.width, y: bounds.height),
+            options: []
+        )
+
+        UIColor.white.withAlphaComponent(0.18).setFill()
+        context.fillEllipse(in: CGRect(x: bounds.width - 292, y: 86, width: 252, height: 252))
+        context.fillEllipse(in: CGRect(x: -86, y: bounds.height - 276, width: 330, height: 330))
+    }
+
+    private static func drawAchievementPanel(
+        in rect: CGRect,
+        context: CGContext
+    ) {
+        context.saveGState()
+        context.setShadow(
+            offset: CGSize(width: 0, height: 22),
+            blur: 48,
+            color: UIColor(red: 0.41, green: 0.16, blue: 0.07, alpha: 0.18).cgColor
+        )
+        achievementCream.setFill()
+        UIBezierPath(roundedRect: rect, cornerRadius: 62).fill()
+        context.restoreGState()
+
+        UIColor.white.withAlphaComponent(0.58).setStroke()
+        let strokeRect = rect.insetBy(dx: 1.5, dy: 1.5)
+        UIBezierPath(roundedRect: strokeRect, cornerRadius: 60).stroke()
+    }
+
+    private static func drawAchievementSymbol(
+        _ symbolName: String,
+        seasonStyle: SunclubSeasonStyle,
+        in rect: CGRect,
+        context: CGContext
+    ) {
+        let badgeColors: [UIColor]
+        switch seasonStyle {
+        case .summerGlow:
+            badgeColors = [
+                UIColor(red: 1.00, green: 0.78, blue: 0.20, alpha: 1),
+                UIColor(red: 0.95, green: 0.35, blue: 0.17, alpha: 1)
+            ]
+        case .winterShield:
+            badgeColors = [
+                UIColor(red: 0.48, green: 0.73, blue: 0.93, alpha: 1),
+                UIColor(red: 0.13, green: 0.33, blue: 0.56, alpha: 1)
+            ]
+        }
+
+        context.saveGState()
+        let path = UIBezierPath(ovalIn: rect)
+        path.addClip()
+        let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: badgeColors.map(\.cgColor) as CFArray,
+            locations: [0, 1]
+        )!
+        context.drawLinearGradient(
+            gradient,
+            start: CGPoint(x: rect.minX, y: rect.minY),
+            end: CGPoint(x: rect.maxX, y: rect.maxY),
+            options: []
+        )
+        context.restoreGState()
+
+        UIColor.white.withAlphaComponent(0.32).setStroke()
+        UIBezierPath(ovalIn: rect.insetBy(dx: 8, dy: 8)).stroke()
+
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 132, weight: .bold)
+        let symbol = UIImage(systemName: symbolName, withConfiguration: symbolConfig)?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
+        let symbolSize = CGSize(width: 154, height: 154)
+        symbol?.draw(in: CGRect(
+            x: rect.midX - symbolSize.width / 2,
+            y: rect.midY - symbolSize.height / 2,
+            width: symbolSize.width,
+            height: symbolSize.height
+        ))
+    }
+
+    private static func drawCapsuleLabel(
+        _ text: String,
+        in rect: CGRect,
+        context: CGContext
+    ) {
+        UIColor.white.withAlphaComponent(0.76).setFill()
+        UIBezierPath(roundedRect: rect, cornerRadius: rect.height / 2).fill()
+        UIColor(red: 0.78, green: 0.31, blue: 0.11, alpha: 0.16).setStroke()
+        UIBezierPath(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: (rect.height - 2) / 2).stroke()
+
+        drawFittedText(
+            text,
+            in: rect.insetBy(dx: 30, dy: 15),
+            style: ShareTextStyle(
+                maximumFontSize: 28,
+                minimumFontSize: 22,
+                weight: .semibold,
+                color: achievementAccent,
+                alignment: .center
+            )
+        )
+    }
+
+    private static func achievementStatusLine(for achievement: SunclubAchievement) -> String {
+        switch achievement.id {
+        case .streak7, .streak30, .streak100, .streak365:
+            let dayLabel = achievement.currentValue == 1 ? "day" : "days"
+            return "Longest streak: \(achievement.currentValue) \(dayLabel)"
+        case .firstReapply, .firstBackfill, .summerSurvivor, .winterWarrior:
+            return achievement.isUnlocked ? "Unlocked" : "\(achievement.currentValue)/\(achievement.targetValue)"
         }
     }
 
@@ -430,6 +692,138 @@ enum SunclubShareArtifactService {
             .paragraphStyle: paragraph
         ]
         (text as NSString).draw(in: rect, withAttributes: attributes)
+    }
+
+    private static func drawFittedText(
+        _ text: String,
+        in rect: CGRect,
+        style: ShareTextStyle
+    ) {
+        var fontSize = style.maximumFontSize
+        var attributes = fittedTextAttributes(
+            fontSize: fontSize,
+            style: style,
+            lineBreakMode: .byClipping
+        )
+
+        while fontSize > style.minimumFontSize && !singleLineText(text, with: attributes, fits: rect.size) {
+            fontSize -= 1
+            attributes = fittedTextAttributes(
+                fontSize: fontSize,
+                style: style,
+                lineBreakMode: .byClipping
+            )
+        }
+
+        let measuredSize = (text as NSString).size(withAttributes: attributes)
+        let drawRect = CGRect(
+            x: rect.minX,
+            y: rect.minY + max(0, (rect.height - measuredSize.height) / 2),
+            width: rect.width,
+            height: min(rect.height, ceil(measuredSize.height))
+        )
+        (text as NSString).draw(in: drawRect, withAttributes: attributes)
+    }
+
+    private static func drawWrappedText(
+        _ text: String,
+        in rect: CGRect,
+        style: ShareTextStyle,
+        maximumLines: Int
+    ) {
+        var fontSize = style.maximumFontSize
+        var attributes = wrappedTextAttributes(
+            fontSize: fontSize,
+            style: style
+        )
+        var measuredHeight = wrappedTextHeight(text, width: rect.width, attributes: attributes)
+        var maximumHeight = maximumWrappedHeight(fontSize: fontSize, weight: style.weight, maximumLines: maximumLines)
+
+        while fontSize > style.minimumFontSize && measuredHeight > min(rect.height, maximumHeight) {
+            fontSize -= 1
+            attributes = wrappedTextAttributes(
+                fontSize: fontSize,
+                style: style
+            )
+            measuredHeight = wrappedTextHeight(text, width: rect.width, attributes: attributes)
+            maximumHeight = maximumWrappedHeight(
+                fontSize: fontSize,
+                weight: style.weight,
+                maximumLines: maximumLines
+            )
+        }
+
+        let drawHeight = min(rect.height, maximumHeight)
+        let drawRect = CGRect(
+            x: rect.minX,
+            y: rect.minY + max(0, (rect.height - min(measuredHeight, drawHeight)) / 2),
+            width: rect.width,
+            height: drawHeight
+        )
+        (text as NSString).draw(in: drawRect, withAttributes: attributes)
+    }
+
+    private static func fittedTextAttributes(
+        fontSize: CGFloat,
+        style: ShareTextStyle,
+        lineBreakMode: NSLineBreakMode
+    ) -> [NSAttributedString.Key: Any] {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = style.alignment
+        paragraph.lineBreakMode = lineBreakMode
+        return [
+            .font: UIFont.systemFont(ofSize: fontSize, weight: style.weight),
+            .foregroundColor: style.color,
+            .kern: style.letterSpacing,
+            .paragraphStyle: paragraph
+        ]
+    }
+
+    private static func wrappedTextAttributes(
+        fontSize: CGFloat,
+        style: ShareTextStyle
+    ) -> [NSAttributedString.Key: Any] {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = style.alignment
+        paragraph.lineBreakMode = .byWordWrapping
+        paragraph.lineSpacing = 4
+        return [
+            .font: UIFont.systemFont(ofSize: fontSize, weight: style.weight),
+            .foregroundColor: style.color,
+            .paragraphStyle: paragraph
+        ]
+    }
+
+    private static func singleLineText(
+        _ text: String,
+        with attributes: [NSAttributedString.Key: Any],
+        fits size: CGSize
+    ) -> Bool {
+        let measuredSize = (text as NSString).size(withAttributes: attributes)
+        return measuredSize.width <= size.width && measuredSize.height <= size.height
+    }
+
+    private static func wrappedTextHeight(
+        _ text: String,
+        width: CGFloat,
+        attributes: [NSAttributedString.Key: Any]
+    ) -> CGFloat {
+        let bounds = (text as NSString).boundingRect(
+            with: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attributes,
+            context: nil
+        )
+        return ceil(bounds.height)
+    }
+
+    private static func maximumWrappedHeight(
+        fontSize: CGFloat,
+        weight: UIFont.Weight,
+        maximumLines: Int
+    ) -> CGFloat {
+        let font = UIFont.systemFont(ofSize: fontSize, weight: weight)
+        return ceil(font.lineHeight * CGFloat(maximumLines) + 4 * CGFloat(max(0, maximumLines - 1)))
     }
 
     private static func recentHeatmapDays(

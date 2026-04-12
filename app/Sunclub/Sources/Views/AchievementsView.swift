@@ -165,7 +165,11 @@ struct AchievementsView: View {
         guard let artifact = try? appState.achievementArtifact(for: achievement) else {
             return
         }
-        shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
+        var items: [Any] = [artifact.fileURL]
+        if let shareText = artifact.shareText {
+            items.append(shareText)
+        }
+        shareSheetItem = ShareSheetItem(items: items)
     }
 
     private func shareChallenge(_ challenge: SunclubSeasonalChallenge) {
