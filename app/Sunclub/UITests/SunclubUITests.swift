@@ -40,6 +40,26 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testAchievementsShowClearProgressMeters() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=achievements",
+            "UITEST_SEED_HISTORY=achievementProgress"
+        ])
+
+        let morningSummary = app.staticTexts["achievement.progress.morningGlow.summary"]
+        XCTAssertTrue(scrollToElement(morningSummary, in: app, attempts: 10))
+        XCTAssertTrue(morningSummary.label.contains("80%"))
+        XCTAssertTrue(morningSummary.label.contains("4/5"))
+
+        let morningStatus = app.staticTexts["achievement.progress.morningGlow.status"]
+        XCTAssertTrue(waitForLabel("1 left", on: morningStatus))
+
+        let firstReapplyStatus = app.staticTexts["achievement.progress.firstReapply.status"]
+        XCTAssertTrue(scrollToElement(firstReapplyStatus, in: app, attempts: 10))
+        XCTAssertEqual(firstReapplyStatus.label, "Unlocked")
+    }
+
+    @MainActor
     func testManualLogSuccessReturnsHome() throws {
         let app = launchHome()
 

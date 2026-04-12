@@ -121,6 +121,7 @@ struct ProductScannerView: View {
             Button("Use In Today's Log") {
                 let note = result.expirationText.map { "Bottle expiry: \($0)" } ?? ""
                 appState.setManualLogPrefill(spfLevel: result.spfLevel, notes: note)
+                appState.recordProductScanUsedForLog(spfLevel: result.spfLevel)
                 router.open(.manualLog)
             }
             .buttonStyle(SunPrimaryButtonStyle())

@@ -4,73 +4,20 @@ enum SunclubGrowthAnalytics {
     static func achievements(
         records: [DailyRecord],
         changeBatches: [SunclubChangeBatch],
+        settings: Settings? = nil,
+        growthSettings: SunclubGrowthSettings = SunclubGrowthSettings(),
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> [SunclubAchievement] {
-        let longestStreak = CalendarAnalytics.longestStreak(
-            records: records.map(\.startOfDay),
+        let context = achievementProgressContext(
+            records: records,
+            changeBatches: changeBatches,
+            settings: settings,
+            growthSettings: growthSettings,
+            now: now,
             calendar: calendar
         )
-        let hasReapplied = records.contains(where: \.hasReapplied)
-        let hasBackfilled = changeBatches.contains { $0.kind == .historyBackfill }
-        let summerLoggedDays = loggedDays(in: seasonalInterval(.summer, around: now, calendar: calendar), records: records, calendar: calendar).count
-        let winterLoggedDays = loggedDays(in: seasonalInterval(.winter, around: now, calendar: calendar), records: records, calendar: calendar).count
-
-        return SunclubAchievementID.allCases.map { id in
-            let currentValue: Int
-            let isUnlocked: Bool
-            let detail: String
-            let shareBlurb: String
-
-            switch id {
-            case .streak7, .streak30, .streak100, .streak365:
-                currentValue = longestStreak
-                isUnlocked = longestStreak >= id.targetValue
-                detail = isUnlocked
-                    ? "Your longest streak reached \(longestStreak) days."
-                    : "Reach a \(id.targetValue)-day streak to unlock this badge."
-                shareBlurb = "I unlocked \(id.title) in Sunclub."
-            case .firstReapply:
-                currentValue = hasReapplied ? 1 : 0
-                isUnlocked = hasReapplied
-                detail = isUnlocked
-                    ? "You logged your first reapply check-in."
-                    : "Log a reapply to unlock this badge."
-                shareBlurb = "I unlocked \(id.title) in Sunclub."
-            case .firstBackfill:
-                currentValue = hasBackfilled ? 1 : 0
-                isUnlocked = hasBackfilled
-                detail = isUnlocked
-                    ? "You repaired your history with a backfill."
-                    : "Backfill a missing day to unlock this badge."
-                shareBlurb = "I unlocked \(id.title) in Sunclub."
-            case .summerSurvivor:
-                currentValue = summerLoggedDays
-                isUnlocked = summerLoggedDays >= id.targetValue
-                detail = isUnlocked
-                    ? "You stayed protected through \(summerLoggedDays) summer days."
-                    : "Log \(id.targetValue) days during June through August."
-                shareBlurb = "I unlocked \(id.title) in Sunclub."
-            case .winterWarrior:
-                currentValue = winterLoggedDays
-                isUnlocked = winterLoggedDays >= id.targetValue
-                detail = isUnlocked
-                    ? "You kept winter protection going for \(winterLoggedDays) days."
-                    : "Log \(id.targetValue) days during December through February."
-                shareBlurb = "I unlocked \(id.title) in Sunclub."
-            }
-
-            return SunclubAchievement(
-                id: id,
-                title: id.title,
-                detail: detail,
-                symbolName: id.symbolName,
-                currentValue: currentValue,
-                targetValue: id.targetValue,
-                isUnlocked: isUnlocked,
-                shareBlurb: shareBlurb
-            )
-        }
+        return SunclubAchievementID.allCases.map { achievement(for: $0, context: context) }
     }
 
     static func challenges(
@@ -167,6 +114,198 @@ enum SunclubGrowthAnalytics {
         default:
             return .summerGlow
         }
+    }
+
+    private struct AchievementProgressContext {
+        let longestStreak: Int
+        let hasReapplied: Bool
+        let hasBackfilled: Bool
+        let summerLoggedDays: Int
+        let winterLoggedDays: Int
+        let morningLogCount: Int
+        let completedWeekendCount: Int
+        let distinctSPFCount: Int
+        let notedLogCount: Int
+        let maxReapplyCount: Int
+        let highUVProtectedDays: Int
+        let hasHomeBase: Bool
+        let hasLiveSignal: Bool
+        let productScanUseCount: Int
+        let hasSocialSpark: Bool
+    }
+
+    private static func achievementProgressContext(
+        records: [DailyRecord],
+        changeBatches: [SunclubChangeBatch],
+        settings: Settings?,
+        growthSettings: SunclubGrowthSettings,
+        now: Date,
+        calendar: Calendar
+    ) -> AchievementProgressContext {
+        let leaveHomeReminder = settings?.smartReminderSettings.leaveHomeReminder
+
+        return AchievementProgressContext(
+            longestStreak: CalendarAnalytics.longestStreak(records: records.map(\.startOfDay), calendar: calendar),
+            hasReapplied: records.contains(where: \.hasReapplied),
+            hasBackfilled: changeBatches.contains { $0.kind == .historyBackfill },
+            summerLoggedDays: seasonalLoggedDayCount(.summer, records: records, around: now, calendar: calendar),
+            winterLoggedDays: seasonalLoggedDayCount(.winter, records: records, around: now, calendar: calendar),
+            morningLogCount: records.filter { calendar.component(.hour, from: $0.verifiedAt) < 10 }.count,
+            completedWeekendCount: completedWeekendCount(records: records, calendar: calendar),
+            distinctSPFCount: Set(records.compactMap(\.spfLevel)).count,
+            notedLogCount: records.filter { $0.trimmedNotes != nil }.count,
+            maxReapplyCount: records.map(\.reapplyCount).max() ?? 0,
+            highUVProtectedDays: highUVProtectedDayCount(records: records, calendar: calendar),
+            hasHomeBase: leaveHomeReminder?.isEnabled == true && leaveHomeReminder?.homeLocation != nil,
+            hasLiveSignal: settings?.usesLiveUV == true,
+            productScanUseCount: growthSettings.telemetry.productScanUseCount,
+            hasSocialSpark: growthSettings.telemetry.shareActionCount > 0 || !growthSettings.friends.isEmpty
+        )
+    }
+
+    private static func achievement(
+        for id: SunclubAchievementID,
+        context: AchievementProgressContext
+    ) -> SunclubAchievement {
+        let rawCurrentValue = rawCurrentValue(for: id, context: context)
+        let isUnlocked = rawCurrentValue >= id.targetValue
+        let currentValue = cappedCurrentValue(rawCurrentValue, targetValue: id.targetValue)
+
+        return SunclubAchievement(
+            id: id,
+            title: id.title,
+            detail: achievementDetail(for: id, value: rawCurrentValue, isUnlocked: isUnlocked),
+            symbolName: id.symbolName,
+            currentValue: currentValue,
+            targetValue: id.targetValue,
+            isUnlocked: isUnlocked,
+            shareBlurb: "I unlocked \(id.title) in Sunclub."
+        )
+    }
+
+    private static func rawCurrentValue(
+        for id: SunclubAchievementID,
+        context: AchievementProgressContext
+    ) -> Int {
+        switch id {
+        case .streak7, .streak30, .streak100, .streak365:
+            return context.longestStreak
+        case .firstReapply:
+            return context.hasReapplied ? 1 : 0
+        case .firstBackfill:
+            return context.hasBackfilled ? 1 : 0
+        case .summerSurvivor:
+            return context.summerLoggedDays
+        case .winterWarrior:
+            return context.winterLoggedDays
+        case .morningGlow:
+            return context.morningLogCount
+        case .weekendCanopy:
+            return context.completedWeekendCount
+        case .spfSampler:
+            return context.distinctSPFCount
+        case .noteTaker:
+            return context.notedLogCount
+        case .reapplyRelay:
+            return context.maxReapplyCount
+        case .highUVHero:
+            return context.highUVProtectedDays
+        case .homeBase:
+            return context.hasHomeBase ? 1 : 0
+        case .liveSignal:
+            return context.hasLiveSignal ? 1 : 0
+        case .bottleDetective:
+            return context.productScanUseCount
+        case .socialSpark:
+            return context.hasSocialSpark ? 1 : 0
+        }
+    }
+
+    private static func achievementDetail(
+        for id: SunclubAchievementID,
+        value: Int,
+        isUnlocked: Bool
+    ) -> String {
+        switch id {
+        case .streak7, .streak30, .streak100, .streak365:
+            return isUnlocked ? "Your longest streak reached \(value) days." : "Reach a \(id.targetValue)-day streak to unlock this badge."
+        case .firstReapply:
+            return isUnlocked ? "You logged your first reapply check-in." : "Log a reapply to unlock this badge."
+        case .firstBackfill:
+            return isUnlocked ? "You repaired your history with a backfill." : "Backfill a missing day to unlock this badge."
+        case .summerSurvivor:
+            return isUnlocked ? "You stayed protected through \(value) summer days." : "Log \(id.targetValue) days during June through August."
+        case .winterWarrior:
+            return isUnlocked ? "You kept winter protection going for \(value) days." : "Log \(id.targetValue) days during December through February."
+        case .morningGlow:
+            return isUnlocked ? "You logged sunscreen before 10 AM on \(value) mornings." : "Log sunscreen before 10 AM on \(id.targetValue) mornings."
+        case .weekendCanopy:
+            return isUnlocked ? "You covered both weekend days \(value) times." : "Log both Saturday and Sunday across \(id.targetValue) weekends."
+        case .spfSampler:
+            return isUnlocked ? "Your history includes \(value) different SPF levels." : "Log \(id.targetValue) different SPF levels."
+        case .noteTaker:
+            return isUnlocked ? "You added notes to \(value) sunscreen logs." : "Add notes to \(id.targetValue) sunscreen logs."
+        case .reapplyRelay:
+            return isUnlocked ? "You checked in \(value) reapplications in one day." : "Log \(id.targetValue) reapply check-ins on one day."
+        case .highUVHero:
+            return isUnlocked ? "You were protected on \(value) higher-UV days." : "Log protection on \(id.targetValue) days with high estimated UV."
+        case .homeBase:
+            return isUnlocked ? "Your leave-home reminder has a saved home base." : "Turn on leave-home reminders and save your home base."
+        case .liveSignal:
+            return isUnlocked ? "Live UV is turned on for more local guidance." : "Turn on live UV in Settings."
+        case .bottleDetective:
+            return isUnlocked ? "You used the product scanner to prefill an SPF log." : "Scan a sunscreen bottle and use the SPF in a log."
+        case .socialSpark:
+            return isUnlocked ? "You shared Sunclub progress or imported a friend." : "Share a Sunclub card or import a friend code."
+        }
+    }
+
+    private static func seasonalLoggedDayCount(
+        _ window: SeasonalWindow,
+        records: [DailyRecord],
+        around now: Date,
+        calendar: Calendar
+    ) -> Int {
+        loggedDays(in: seasonalInterval(window, around: now, calendar: calendar), records: records, calendar: calendar).count
+    }
+
+    private static func highUVProtectedDayCount(records: [DailyRecord], calendar: Calendar) -> Int {
+        records.reduce(into: 0) { result, record in
+            guard middayUVLevel(for: record.startOfDay, calendar: calendar).rawValue >= UVLevel.high.rawValue else {
+                return
+            }
+            result += 1
+        }
+    }
+
+    private static func cappedCurrentValue(_ value: Int, targetValue: Int) -> Int {
+        max(0, min(value, targetValue))
+    }
+
+    private static func completedWeekendCount(
+        records: [DailyRecord],
+        calendar: Calendar
+    ) -> Int {
+        var weekdaysBySaturday: [Date: Set<Int>] = [:]
+
+        for record in records {
+            let day = calendar.startOfDay(for: record.startOfDay)
+            let weekday = calendar.component(.weekday, from: day)
+
+            switch weekday {
+            case 7:
+                weekdaysBySaturday[day, default: []].insert(7)
+            case 1:
+                let saturday = calendar.date(byAdding: .day, value: -1, to: day) ?? day
+                weekdaysBySaturday[calendar.startOfDay(for: saturday), default: []].insert(1)
+            default:
+                continue
+            }
+        }
+
+        return weekdaysBySaturday.values.filter { weekdays in
+            weekdays.contains(7) && weekdays.contains(1)
+        }.count
     }
 
     private enum SeasonalWindow {

@@ -931,6 +931,8 @@ final class AppState {
         SunclubGrowthAnalytics.achievements(
             records: records,
             changeBatches: changeBatches,
+            settings: settings,
+            growthSettings: growthSettings,
             now: currentDate(),
             calendar: calendar
         )
@@ -983,6 +985,19 @@ final class AppState {
     func updatePreferredDisplayName(_ name: String) {
         growthSettings.preferredName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         persistGrowthSettings()
+    }
+
+    func recordShareActionStarted() {
+        growthSettings.telemetry.recordShare(at: currentDate())
+        persistGrowthSettings()
+        syncAchievementCelebration()
+    }
+
+    func recordProductScanUsedForLog(spfLevel: Int?) {
+        guard spfLevel != nil else { return }
+        growthSettings.telemetry.recordProductScanUse(at: currentDate())
+        persistGrowthSettings()
+        syncAchievementCelebration()
     }
 
     func updateHealthKitEnabled(_ enabled: Bool) {

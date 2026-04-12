@@ -158,6 +158,7 @@ struct SkinHealthReportView: View {
         guard let artifact = try? appState.skinHealthReportArtifact(for: interval) else {
             return
         }
+        appState.recordShareActionStarted()
         shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
     }
 
@@ -165,6 +166,7 @@ struct SkinHealthReportView: View {
         guard let artifact = try? appState.streakCardArtifact() else {
             return
         }
+        appState.recordShareActionStarted()
         shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
     }
 

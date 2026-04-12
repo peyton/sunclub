@@ -6,19 +6,73 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var uvBriefing: SunclubUVBriefingPreferences
     var friends: [SunclubFriendSnapshot]
     var presentedAchievementIDs: [String]
+    var telemetry: SunclubGrowthTelemetry
 
     init(
         preferredName: String = "",
         healthKit: SunclubHealthKitPreferences = SunclubHealthKitPreferences(),
         uvBriefing: SunclubUVBriefingPreferences = SunclubUVBriefingPreferences(),
         friends: [SunclubFriendSnapshot] = [],
-        presentedAchievementIDs: [String] = []
+        presentedAchievementIDs: [String] = [],
+        telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry()
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
         self.uvBriefing = uvBriefing
         self.friends = friends
         self.presentedAchievementIDs = presentedAchievementIDs
+        self.telemetry = telemetry
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case preferredName
+        case healthKit
+        case uvBriefing
+        case friends
+        case presentedAchievementIDs
+        case telemetry
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName) ?? ""
+        healthKit = try container.decodeIfPresent(SunclubHealthKitPreferences.self, forKey: .healthKit)
+            ?? SunclubHealthKitPreferences()
+        uvBriefing = try container.decodeIfPresent(SunclubUVBriefingPreferences.self, forKey: .uvBriefing)
+            ?? SunclubUVBriefingPreferences()
+        friends = try container.decodeIfPresent([SunclubFriendSnapshot].self, forKey: .friends) ?? []
+        presentedAchievementIDs = try container.decodeIfPresent([String].self, forKey: .presentedAchievementIDs) ?? []
+        telemetry = try container.decodeIfPresent(SunclubGrowthTelemetry.self, forKey: .telemetry)
+            ?? SunclubGrowthTelemetry()
+    }
+}
+
+struct SunclubGrowthTelemetry: Codable, Equatable, Sendable {
+    var shareActionCount: Int
+    var productScanUseCount: Int
+    var lastSharedAt: Date?
+    var lastProductScanUsedAt: Date?
+
+    init(
+        shareActionCount: Int = 0,
+        productScanUseCount: Int = 0,
+        lastSharedAt: Date? = nil,
+        lastProductScanUsedAt: Date? = nil
+    ) {
+        self.shareActionCount = max(0, shareActionCount)
+        self.productScanUseCount = max(0, productScanUseCount)
+        self.lastSharedAt = lastSharedAt
+        self.lastProductScanUsedAt = lastProductScanUsedAt
+    }
+
+    mutating func recordShare(at date: Date) {
+        shareActionCount += 1
+        lastSharedAt = date
+    }
+
+    mutating func recordProductScanUse(at date: Date) {
+        productScanUseCount += 1
+        lastProductScanUsedAt = date
     }
 }
 
@@ -103,6 +157,16 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
     case firstBackfill
     case summerSurvivor
     case winterWarrior
+    case morningGlow
+    case weekendCanopy
+    case spfSampler
+    case noteTaker
+    case reapplyRelay
+    case highUVHero
+    case homeBase
+    case liveSignal
+    case bottleDetective
+    case socialSpark
 
     var id: String { rawValue }
 
@@ -124,6 +188,26 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return "Summer Survivor"
         case .winterWarrior:
             return "Winter Warrior"
+        case .morningGlow:
+            return "Morning Glow"
+        case .weekendCanopy:
+            return "Weekend Canopy"
+        case .spfSampler:
+            return "SPF Sampler"
+        case .noteTaker:
+            return "Field Notes"
+        case .reapplyRelay:
+            return "Reapply Relay"
+        case .highUVHero:
+            return "High-UV Hero"
+        case .homeBase:
+            return "Home Base"
+        case .liveSignal:
+            return "Live Signal"
+        case .bottleDetective:
+            return "Bottle Detective"
+        case .socialSpark:
+            return "Social Spark"
         }
     }
 
@@ -145,6 +229,26 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return "sun.haze.fill"
         case .winterWarrior:
             return "snowflake"
+        case .morningGlow:
+            return "sunrise.fill"
+        case .weekendCanopy:
+            return "calendar.circle.fill"
+        case .spfSampler:
+            return "number.circle.fill"
+        case .noteTaker:
+            return "note.text"
+        case .reapplyRelay:
+            return "arrow.triangle.2.circlepath.circle.fill"
+        case .highUVHero:
+            return "shield.lefthalf.filled"
+        case .homeBase:
+            return "house.fill"
+        case .liveSignal:
+            return "antenna.radiowaves.left.and.right"
+        case .bottleDetective:
+            return "magnifyingglass.circle.fill"
+        case .socialSpark:
+            return "person.2.fill"
         }
     }
 
@@ -162,6 +266,20 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return 1
         case .summerSurvivor, .winterWarrior:
             return 30
+        case .morningGlow:
+            return 5
+        case .weekendCanopy:
+            return 4
+        case .spfSampler:
+            return 5
+        case .noteTaker:
+            return 10
+        case .reapplyRelay:
+            return 3
+        case .highUVHero:
+            return 10
+        case .homeBase, .liveSignal, .bottleDetective, .socialSpark:
+            return 1
         }
     }
 }

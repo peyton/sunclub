@@ -74,6 +74,26 @@ final class ShareArtifactTests: XCTestCase {
             return "You stayed protected through \(currentValue) summer days."
         case .winterWarrior:
             return "You kept winter protection going for \(currentValue) days."
+        case .morningGlow:
+            return "You logged sunscreen before 10 AM on \(currentValue) mornings."
+        case .weekendCanopy:
+            return "You covered both weekend days \(currentValue) times."
+        case .spfSampler:
+            return "Your history includes \(currentValue) different SPF levels."
+        case .noteTaker:
+            return "You added notes to \(currentValue) sunscreen logs."
+        case .reapplyRelay:
+            return "You checked in \(currentValue) reapplications in one day."
+        case .highUVHero:
+            return "You were protected on \(currentValue) higher-UV days."
+        case .homeBase:
+            return "Your leave-home reminder has a saved home base."
+        case .liveSignal:
+            return "Live UV is turned on for more local guidance."
+        case .bottleDetective:
+            return "You used the product scanner to prefill an SPF log."
+        case .socialSpark:
+            return "You shared Sunclub progress or imported a friend."
         }
     }
 }
