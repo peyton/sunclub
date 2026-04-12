@@ -88,7 +88,10 @@ func targetSettings(for flavor: SunclubFlavor) -> Settings {
         base[key] = value
     }
 
-    return .settings(base: base)
+    return .settings(
+        base: base,
+        defaultSettings: .recommended(excluding: ["CODE_SIGN_IDENTITY"])
+    )
 }
 
 func appTarget(for flavor: SunclubFlavor) -> Target {
