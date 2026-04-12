@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Build and export a signed App Store archive after validating the submission
-# manifest. Optionally upload the exported IPA to TestFlight.
+# Build an unsigned archive, export it as a signed App Store package, and
+# optionally upload the exported IPA to TestFlight.
 #
 # Usage:
 #   ./scripts/appstore/archive-and-upload.sh [--allow-draft-metadata] [--skip-generate] [--skip-archive] [--skip-export] [--upload-testflight]
@@ -22,7 +22,6 @@ ARCHIVE_OUTPUT_PATH="$ARCHIVE_PATH"
 EXPORT_OUTPUT_PATH="$EXPORT_PATH"
 EXPORT_OPTIONS_PATHNAME="$ROOT_DIR/$EXPORT_OPTIONS_PATH"
 ARCHIVE_DERIVED_DATA_PATH="$ROOT_DIR/$ARCHIVE_DERIVED_DATA"
-APPLE_TEAM_ID="$TEAM_ID"
 APP_BUNDLE_PATH="$ARCHIVE_OUTPUT_PATH/Products/Applications/$RELEASE_APP_PRODUCT_NAME.app"
 
 SKIP_GENERATE=false
@@ -67,9 +66,9 @@ if should_disable_swift_compile_cache; then
   )
 fi
 
-XCODEBUILD_SIGNING_ARGS=(
-  DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
-  CODE_SIGN_STYLE=Automatic
+XCODEBUILD_ARCHIVE_SIGNING_ARGS=(
+  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGNING_REQUIRED=NO
 )
 
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
@@ -104,7 +103,7 @@ else
 fi
 
 if [ "$SKIP_ARCHIVE" = false ]; then
-  step "Archiving the signed release build"
+  step "Archiving the unsigned release build"
   rm -rf "$ARCHIVE_OUTPUT_PATH" "$ARCHIVE_DERIVED_DATA_PATH"
 
   xcodebuild archive \
@@ -114,10 +113,8 @@ if [ "$SKIP_ARCHIVE" = false ]; then
     -destination "generic/platform=iOS" \
     -archivePath "$ARCHIVE_OUTPUT_PATH" \
     -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH" \
-    -allowProvisioningUpdates \
-    "${XCODEBUILD_AUTH_ARGS[@]}" \
     "${XCODEBUILD_COMPILE_CACHE_ARGS[@]}" \
-    "${XCODEBUILD_SIGNING_ARGS[@]}"
+    "${XCODEBUILD_ARCHIVE_SIGNING_ARGS[@]}"
 
   ok "Archive created at $ARCHIVE_OUTPUT_PATH"
 else

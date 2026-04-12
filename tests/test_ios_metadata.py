@@ -199,16 +199,29 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
 
 def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     script = ARCHIVE_SCRIPT.read_text()
+    archive_step = script.split('step "Archiving the unsigned release build"', 1)[
+        1
+    ].split('ok "Archive created', 1)[0]
+    export_step = script.split("xcodebuild -exportArchive", 1)[1].split(
+        'IPA_FILE="',
+        1,
+    )[0]
 
     assert "XCODEBUILD_AUTH_ARGS=(" in script
-    assert "-allowProvisioningUpdates \\" in script
+    assert "-allowProvisioningUpdates \\" not in archive_step
+    assert '"${XCODEBUILD_AUTH_ARGS[@]}"' not in archive_step
+    assert "XCODEBUILD_ARCHIVE_SIGNING_ARGS=(" in script
+    assert "CODE_SIGNING_ALLOWED=NO" in script
+    assert "CODE_SIGNING_REQUIRED=NO" in script
+    assert "-allowProvisioningUpdates \\" in export_step
+    assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in export_step
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
     assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in script
     assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
-    assert "XCODEBUILD_SIGNING_ARGS=(" in script
-    assert "CODE_SIGN_STYLE=Automatic" in script
+    assert "APPLE_TEAM_ID" not in script
+    assert "CODE_SIGN_STYLE=Automatic" not in script
     assert "CODE_SIGN_IDENTITY" not in script
     assert ': "${SUNCLUB_APS_ENVIRONMENT:=production}"' in script
     assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
