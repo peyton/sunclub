@@ -22,6 +22,25 @@ appstore-validate:
 appstore-screenshots:
     bash scripts/appstore/capture-screenshots.sh
 
+[group('web')]
+web-serve PORT='8000':
+    port="{{PORT}}"; port="${port#PORT=}"; cd web && uv run python -m http.server "$port"
+
+[group('web')]
+web-check:
+    mise exec -- prettier --check "web/**/*.{html,css}"
+    uv run python -m scripts.web.validate_static_site web
+
+[group('web')]
+web-fmt:
+    mise exec -- prettier --write "web/**/*.{html,css}"
+
+[group('web')]
+web-build: web-check
+    rm -rf .build/web
+    mkdir -p .build/web
+    cp -R web/. .build/web/
+
 [group('app')]
 appstore-archive:
     bash scripts/appstore/archive-and-upload.sh
@@ -93,10 +112,10 @@ test-python:
 
 test: test-unit test-ui test-python
 
-lint:
+lint: web-check
     bash scripts/tooling/lint.sh
 
-fmt:
+fmt: web-fmt
     bash scripts/tooling/fmt.sh
 
 ci-lint: lint

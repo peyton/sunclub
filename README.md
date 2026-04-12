@@ -16,6 +16,10 @@ Common setup from the repo root:
 - `just generate`
 - `just build`
 - `just run`
+- `just web-serve`
+- `just web-check`
+- `just web-fmt`
+- `just web-build`
 - `just cloudkit-save-token`
 - `just cloudkit-doctor`
 - `just cloudkit-ensure-container`
@@ -44,6 +48,8 @@ Common setup from the repo root:
 `just bootstrap` installs repo-local tooling into `.mise/`, syncs the Python environment into `.venv/`, and prepares repo-local caches under `.cache/`.
 
 Sunclub stays local-first, but the app now ships with default-on iCloud sync for revision history plus local backup export/import. Local imports stay recoverable on-device and do not change iCloud until the user explicitly publishes the imported batches from `Recovery & Changes`.
+
+The static public web presence lives in [web/](web). It is provider-neutral: publish the `web/` directory as static files with no build command, or run `just web-build` to copy the checked site into `.build/web/`. Local preview uses `just web-serve`.
 
 CloudKit setup is documented in [docs/cloudkit-setup.md](docs/cloudkit-setup.md). `just cloudkit-doctor` validates that the saved token is a management token for the configured team, checks whether a signed build actually carries the expected CloudKit entitlements, and retries `cktool` schema access. `just cloudkit-ensure-container` runs the same validation and opens the relevant Apple setup pages if the container or App ID configuration is still missing.
 

@@ -78,6 +78,10 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - `just generate`
 - `just build`
 - `just run`
+- `just web-serve`
+- `just web-check`
+- `just web-fmt`
+- `just web-build`
 - `just cloudkit-save-token`
 - `just cloudkit-export-schema`
 - `just cloudkit-validate-schema`

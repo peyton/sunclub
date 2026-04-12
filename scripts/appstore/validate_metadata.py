@@ -30,6 +30,16 @@ FORBIDDEN_FREE_COPY = (
     "subscriptions",
     "premium",
 )
+FORBIDDEN_STALE_COPY = (
+    "ai-powered",
+    "ai powered",
+    "ai confirms",
+    "ai validation",
+    "camera verification",
+    "camera verify",
+    "fully offline",
+    "no cloud",
+)
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -159,6 +169,11 @@ def validate_manifest(
     ):
         errors.append(
             "Metadata mentions subscriptions, premium access, or freemium copy while the release is free-only."
+        )
+
+    if any(phrase in lowered_copy for phrase in FORBIDDEN_STALE_COPY):
+        errors.append(
+            "Metadata contains stale AI, camera verification, fully-offline, or no-cloud copy."
         )
 
     urls = manifest.get("urls")
