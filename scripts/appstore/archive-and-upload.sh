@@ -70,7 +70,6 @@ fi
 XCODEBUILD_SIGNING_ARGS=(
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
   CODE_SIGN_STYLE=Automatic
-  CODE_SIGN_IDENTITY="Apple Distribution"
 )
 
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
