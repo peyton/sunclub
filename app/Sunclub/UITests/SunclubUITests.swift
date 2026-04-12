@@ -87,6 +87,9 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.progress"].exists)
         XCTAssertTrue(app.buttons["settings.section.data"].exists)
         XCTAssertTrue(app.buttons["settings.section.advanced"].exists)
+        XCTAssertFalse(app.buttons["settings.weekdayReminderTime"].exists)
+
+        expandSettingsSection("reminders", in: app)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
@@ -168,6 +171,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
+        expandSettingsSection("reminders", in: app)
         let weekdayButton = app.buttons["settings.weekdayReminderTime"]
         XCTAssertTrue(weekdayButton.waitForExistence(timeout: 5))
 
@@ -182,7 +186,7 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
 
         performBackSwipe(in: app)
 
@@ -208,6 +212,7 @@ final class SunclubUITests: XCTestCase {
 
         expandSettingsSection("data", in: exportApp)
         XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"]))
+        expandSettingsSection("reminders", in: exportApp)
         let exportTravelToggle = exportApp.switches["settings.travelToggle"]
         XCTAssertTrue(scrollToElement(exportTravelToggle, in: exportApp))
         XCTAssertEqual(stringValue(of: exportTravelToggle), "1")
@@ -598,6 +603,7 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
+        expandSettingsSection("reminders", in: app)
         XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
         XCTAssertTrue(app.buttons["settings.notificationHealth.action"].exists)
         expandSettingsSection("advanced", in: app)
@@ -733,6 +739,7 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     private func assertBackupImportRestoresHistoryAndSettings(in app: XCUIApplication) {
         XCTAssertTrue(waitForLabel("History entries: 0", on: app.staticTexts["settings.backupRecordCount"]))
+        expandSettingsSection("reminders", in: app)
         let travelToggle = app.switches["settings.travelToggle"]
         XCTAssertTrue(scrollToElement(travelToggle, in: app))
         XCTAssertEqual(stringValue(of: travelToggle), "1")

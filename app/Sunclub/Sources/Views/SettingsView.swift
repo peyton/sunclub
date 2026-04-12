@@ -23,7 +23,7 @@ struct SettingsView: View {
     @State private var isImportingBackup = false
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
-    @State private var expandedSections: Set<SettingsSection> = [.reminders]
+    @State private var expandedSections: Set<SettingsSection> = []
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 
