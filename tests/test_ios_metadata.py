@@ -153,24 +153,19 @@ def test_project_declares_prod_and_dev_flavors() -> None:
 
     assert 'bundleID: "app.peyton.sunclub"' in source
     assert 'widgetBundleID: "app.peyton.sunclub.widgets"' in source
-    assert "usesAppStoreReleaseSigning: true" in source
     assert 'bundleID: "app.peyton.sunclub.dev"' in source
     assert 'widgetBundleID: "app.peyton.sunclub.dev.widgets"' in source
     assert 'appGroupID: "group.app.peyton.sunclub.dev"' in source
     assert 'cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev"' in source
-    assert "usesAppStoreReleaseSigning: false" in source
 
 
-def test_production_release_targets_use_distribution_signing() -> None:
+def test_targets_do_not_override_automatic_signing_identity() -> None:
     source = PROJECT_SWIFT.read_text()
 
-    assert (
-        "return .settings(base: base, release: releaseSigningSettings(for: flavor))"
-        in source
-    )
-    assert "func releaseSigningSettings(for flavor: SunclubFlavor)" in source
-    assert "guard flavor.usesAppStoreReleaseSigning else { return [:] }" in source
-    assert '.codeSignIdentity("Apple Distribution")' in source
+    assert ".automaticCodeSigning(devTeam: signingTeam)" in source
+    assert "releaseSigningSettings" not in source
+    assert "codeSignIdentity" not in source
+    assert "CODE_SIGN_IDENTITY" not in source
 
 
 def test_project_test_targets_follow_production_flavor_contract() -> None:
