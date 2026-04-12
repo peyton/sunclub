@@ -9,7 +9,7 @@ from scripts.cloudflare.common import (
     CloudflareClient,
     ConfigError,
     cloudflare_client_from_env,
-    git_integration_help,
+    direct_upload_help,
     load_pages_config,
     optional_env,
     print_lines,
@@ -23,16 +23,35 @@ def build_pages_project_payload(
     config: JsonObject,
     github_repo_id: str | None = None,
 ) -> JsonObject:
-    source = config["source"]
+    del github_repo_id
+    return {
+        "name": config["project_name"],
+        "production_branch": config["production_branch"],
+        "build_config": dict(config["build_config"]),
+    }
+
+
+def project_has_git_source(project: JsonObject | None) -> bool:
+    if not isinstance(project, dict):
+        return False
+    source = project.get("source")
+    if not isinstance(source, dict):
+        return False
+    return source.get("type") in {"github", "gitlab"}
+
+
+def build_disabled_source_control_payload(
+    config: JsonObject,
+    github_repo_id: str | None = None,
+) -> JsonObject:
+    source = config["source_control"]
     source_config: JsonObject = {
         "owner": source["owner"],
         "repo_name": source["repo_name"],
         "production_branch": config["production_branch"],
-        "production_deployments_enabled": source.get(
-            "production_deployments_enabled", True
-        ),
-        "preview_deployment_setting": source.get("preview_deployment_setting", "all"),
-        "pr_comments_enabled": source.get("pr_comments_enabled", True),
+        "production_deployments_enabled": False,
+        "preview_deployment_setting": "none",
+        "pr_comments_enabled": False,
         "path_includes": source.get("path_includes", []),
         "path_excludes": source.get("path_excludes", []),
     }
@@ -40,22 +59,23 @@ def build_pages_project_payload(
         source_config["repo_id"] = github_repo_id
 
     return {
-        "name": config["project_name"],
-        "production_branch": config["production_branch"],
-        "build_config": dict(config["build_config"]),
-        "source": {
-            "type": source.get("type", "github"),
-            "config": source_config,
-        },
+        "type": source.get("type", "github"),
+        "config": source_config,
     }
 
 
 def build_pages_project_update_payload(
     config: JsonObject,
+    project: JsonObject | None = None,
     github_repo_id: str | None = None,
 ) -> JsonObject:
     payload = build_pages_project_payload(config, github_repo_id)
     payload.pop("name", None)
+    if project_has_git_source(project):
+        payload["source"] = build_disabled_source_control_payload(
+            config,
+            github_repo_id=github_repo_id,
+        )
     return payload
 
 
@@ -74,7 +94,7 @@ def ensure_pages_project(
             )
         except CloudflareAPIError as error:
             raise ConfigError(
-                f"{error}\n{git_integration_help(str(config['account_id']))}"
+                f"{error}\n{direct_upload_help(str(config['account_id']))}"
             ) from error
         return {"action": "created", "project": created}
 
@@ -84,7 +104,7 @@ def ensure_pages_project(
             f"/accounts/{config['account_id']}/pages/projects/"
             f"{quote(config['project_name'], safe='')}"
         ),
-        body=build_pages_project_update_payload(config, github_repo_id),
+        body=build_pages_project_update_payload(config, project, github_repo_id),
     )
     return {"action": "updated", "project": updated}
 
@@ -148,9 +168,12 @@ def pages_status_lines(
 ) -> list[str]:
     lines = [
         f"Pages project: {config['project_name']}",
+        f"Deployment mode: {config['deployment']['mode']}",
         f"Production branch: {config['production_branch']}",
         f"Build command: {config['build_config']['build_command']}",
         f"Build output: {config['build_config']['destination_dir']}",
+        "GitHub Actions secrets: "
+        + ", ".join(config["deployment"]["required_secrets"]),
         f"Custom domain: {config['custom_domain']}",
     ]
 
@@ -163,10 +186,22 @@ def pages_status_lines(
     project = get_pages_project(client, config)
     if project is None:
         lines.append("Remote Pages project: missing")
-        lines.append(git_integration_help(str(config["account_id"])))
+        lines.append(direct_upload_help(str(config["account_id"])))
         return lines
 
     lines.append("Remote Pages project: present")
+    if project_has_git_source(project):
+        source_config = project.get("source", {}).get("config", {})
+        if (
+            source_config.get("production_deployments_enabled") is False
+            and source_config.get("preview_deployment_setting") == "none"
+        ):
+            lines.append("Remote Git integration: automatic deployments disabled")
+        else:
+            lines.append("Remote Git integration: automatic deployments still enabled")
+    else:
+        lines.append("Remote deployment source: Direct Upload")
+
     domains = list_pages_domains(client, config)
     domain_names = sorted(str(domain.get("name", "")) for domain in domains)
     if config["custom_domain"] in domain_names:
