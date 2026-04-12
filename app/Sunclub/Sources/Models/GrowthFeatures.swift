@@ -6,19 +6,59 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var uvBriefing: SunclubUVBriefingPreferences
     var friends: [SunclubFriendSnapshot]
     var presentedAchievementIDs: [String]
+    var scannedSPFLevels: [Int]
 
     init(
         preferredName: String = "",
         healthKit: SunclubHealthKitPreferences = SunclubHealthKitPreferences(),
         uvBriefing: SunclubUVBriefingPreferences = SunclubUVBriefingPreferences(),
         friends: [SunclubFriendSnapshot] = [],
-        presentedAchievementIDs: [String] = []
+        presentedAchievementIDs: [String] = [],
+        scannedSPFLevels: [Int] = []
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
         self.uvBriefing = uvBriefing
         self.friends = friends
         self.presentedAchievementIDs = presentedAchievementIDs
+        self.scannedSPFLevels = Self.normalizedSPFLevels(scannedSPFLevels)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case preferredName
+        case healthKit
+        case uvBriefing
+        case friends
+        case presentedAchievementIDs
+        case scannedSPFLevels
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName) ?? ""
+        healthKit = try container.decodeIfPresent(SunclubHealthKitPreferences.self, forKey: .healthKit)
+            ?? SunclubHealthKitPreferences()
+        uvBriefing = try container.decodeIfPresent(SunclubUVBriefingPreferences.self, forKey: .uvBriefing)
+            ?? SunclubUVBriefingPreferences()
+        friends = try container.decodeIfPresent([SunclubFriendSnapshot].self, forKey: .friends) ?? []
+        presentedAchievementIDs = try container.decodeIfPresent([String].self, forKey: .presentedAchievementIDs) ?? []
+        scannedSPFLevels = Self.normalizedSPFLevels(
+            try container.decodeIfPresent([Int].self, forKey: .scannedSPFLevels) ?? []
+        )
+    }
+
+    static func normalizedSPFLevels(_ levels: [Int]) -> [Int] {
+        var seenLevels = Set<Int>()
+
+        return levels.compactMap { level in
+            let normalizedLevel = max(1, min(level, 100))
+            guard seenLevels.insert(normalizedLevel).inserted else {
+                return nil
+            }
+
+            return normalizedLevel
+        }
     }
 }
 

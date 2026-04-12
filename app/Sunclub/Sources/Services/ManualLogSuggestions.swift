@@ -39,8 +39,14 @@ struct ManualLogSuggestionState: Equatable {
     let defaultSPF: Int?
     let sameAsLastTime: ManualLogReuseSuggestion?
     let noteSnippets: [String]
+    let scannedSPFLevels: [Int]
 
-    static let empty = ManualLogSuggestionState(defaultSPF: nil, sameAsLastTime: nil, noteSnippets: [])
+    static let empty = ManualLogSuggestionState(
+        defaultSPF: nil,
+        sameAsLastTime: nil,
+        noteSnippets: [],
+        scannedSPFLevels: []
+    )
 }
 
 enum ManualLogSuggestionEngine {
@@ -48,7 +54,8 @@ enum ManualLogSuggestionEngine {
         from records: [DailyRecord],
         excluding day: Date? = nil,
         calendar: Calendar = Calendar.current,
-        noteLimit: Int = 3
+        noteLimit: Int = 3,
+        scannedSPFLevels: [Int] = []
     ) -> ManualLogSuggestionState {
         let filteredRecords = records.filter { record in
             guard let day else {
@@ -68,6 +75,9 @@ enum ManualLogSuggestionEngine {
 
         let mostRecentReusableRecord = sortedRecords.first {
             $0.spfLevel != nil || $0.trimmedNotes != nil
+        }
+        let mostRecentSPFRecord = sortedRecords.first {
+            $0.spfLevel != nil
         }
 
         let sameAsLastTime = mostRecentReusableRecord.map {
@@ -92,9 +102,10 @@ enum ManualLogSuggestionEngine {
         }
 
         return ManualLogSuggestionState(
-            defaultSPF: mostRecentReusableRecord?.spfLevel,
+            defaultSPF: mostRecentSPFRecord?.spfLevel,
             sameAsLastTime: sameAsLastTime?.hasContent == true ? sameAsLastTime : nil,
-            noteSnippets: noteSnippets
+            noteSnippets: noteSnippets,
+            scannedSPFLevels: SunclubGrowthSettings.normalizedSPFLevels(scannedSPFLevels)
         )
     }
 }

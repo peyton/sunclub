@@ -57,32 +57,72 @@ struct SunManualLogFields: View {
                 .accessibilityIdentifier("\(accessibilityPrefix).sameAsLastTime")
             }
 
-            HStack(spacing: 10) {
-                ForEach(commonSPFLevels, id: \.self) { level in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedSPF = selectedSPF == level ? nil : level
-                        }
-                    } label: {
-                        Text("\(level)")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(selectedSPF == level ? .white : AppPalette.ink)
-                            .frame(width: 48, height: 40)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(selectedSPF == level ? AppPalette.sun : Color.white.opacity(0.72))
-                            )
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(selectedSPF == level ? Color.clear : Color.black.opacity(0.06), lineWidth: 1)
-                            }
+            spfOptionSection(
+                title: "Presets",
+                levels: commonSPFLevels,
+                accessibilityName: "spf",
+                showsSPFPrefix: false
+            )
+
+            if !suggestions.scannedSPFLevels.isEmpty {
+                spfOptionSection(
+                    title: "From scans",
+                    levels: suggestions.scannedSPFLevels,
+                    accessibilityName: "scannedSPF",
+                    showsSPFPrefix: true
+                )
+            }
+        }
+    }
+
+    private func spfOptionSection(
+        title: String,
+        levels: [Int],
+        accessibilityName: String,
+        showsSPFPrefix: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk.opacity(0.85))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(levels, id: \.self) { level in
+                        spfButton(
+                            level: level,
+                            title: showsSPFPrefix ? "SPF \(level)" : "\(level)",
+                            accessibilityIdentifier: "\(accessibilityPrefix).\(accessibilityName).\(level)"
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("\(accessibilityPrefix).spf.\(level)")
                 }
             }
-            .accessibilityIdentifier("\(accessibilityPrefix).spfSelector")
+            .accessibilityIdentifier("\(accessibilityPrefix).\(accessibilityName)Selector")
         }
+    }
+
+    private func spfButton(level: Int, title: String, accessibilityIdentifier: String) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selectedSPF = selectedSPF == level ? nil : level
+            }
+        } label: {
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(selectedSPF == level ? .white : AppPalette.ink)
+                .frame(minWidth: 48, minHeight: 40)
+                .padding(.horizontal, title.count > 3 ? 12 : 0)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(selectedSPF == level ? AppPalette.sun : Color.white.opacity(0.72))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(selectedSPF == level ? Color.clear : Color.black.opacity(0.06), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private var notesField: some View {
