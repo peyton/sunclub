@@ -56,7 +56,7 @@ enum SunclubCopy {
             "A steady week starts with today's check-in.",
             "Keep your sunscreen where you can see it.",
             "If the routine feels easy, it's working.",
-            "Missed a day? Start again today.",
+            "Open day? Start again today.",
             "Less friction, more consistency.",
             "The goal is coverage, not perfection.",
             "Use the bottle you'll actually reach for.",

@@ -5,6 +5,7 @@ struct WeeklyReportView: View {
     @Environment(AppRouter.self) private var router
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
     @State private var insights = SunscreenUsageInsights.empty
+    @State private var backfillPresentation: WeeklyBackfillPresentation?
 
     var body: some View {
         SunLightScreen {
@@ -19,7 +20,7 @@ struct WeeklyReportView: View {
                         .foregroundStyle(AppPalette.streakAccent)
                         .accessibilityIdentifier("weekly.summaryValue")
 
-                    Text("Days this week")
+                    Text("Last 7 days")
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.ink)
 
@@ -38,6 +39,12 @@ struct WeeklyReportView: View {
 
                 Spacer(minLength: 0)
             }
+        }
+        .sheet(item: $backfillPresentation) { presentation in
+            HistoryRecordEditorView(
+                day: presentation.day,
+                existingRecord: appState.record(for: presentation.day)
+            )
         }
         .onAppear {
             refreshReport()
@@ -84,10 +91,40 @@ struct WeeklyReportView: View {
                 }
             }
 
-            Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Missed: \(report.missedDays.joined(separator: ", "))")
+            Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Not logged: \(report.missedDays.joined(separator: ", "))")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : Color.red.opacity(0.78))
                 .multilineTextAlignment(.leading)
+
+            if !notLoggedEntries.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(notLoggedEntries) { entry in
+                        Button {
+                            openBackfill(for: entry.date)
+                        } label: {
+                            HStack {
+                                Text(backfillTitle(for: entry.date))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AppPalette.ink)
+
+                                Spacer(minLength: 0)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(AppPalette.softInk)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.white.opacity(0.72))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("weekly.backfill.\(Self.dayIdentifierFormatter.string(from: entry.date))")
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
@@ -113,6 +150,10 @@ struct WeeklyReportView: View {
                 applied: records.contains(calendar.startOfDay(for: day))
             )
         }
+    }
+
+    private var notLoggedEntries: [WeeklyEntry] {
+        weekEntries.filter { !$0.applied }
     }
 
     private var usageInsightsSection: some View {
@@ -162,6 +203,30 @@ struct WeeklyReportView: View {
         report = appState.last7DaysReport()
         insights = appState.sunscreenUsageInsights()
     }
+
+    private func openBackfill(for day: Date) {
+        if Calendar.current.isDateInToday(day) {
+            router.open(.manualLog)
+        } else {
+            backfillPresentation = WeeklyBackfillPresentation(day: day)
+        }
+    }
+
+    private func backfillTitle(for day: Date) -> String {
+        if Calendar.current.isDateInToday(day) {
+            return "Log Today"
+        }
+
+        return "Backfill \(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
+    }
+
+    private static let dayIdentifierFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 private struct WeeklyInsightCard: View {
@@ -230,4 +295,10 @@ private struct WeeklyEntry: Identifiable {
     let applied: Bool
 
     var id: Date { date }
+}
+
+private struct WeeklyBackfillPresentation: Identifiable {
+    let day: Date
+
+    var id: Date { day }
 }

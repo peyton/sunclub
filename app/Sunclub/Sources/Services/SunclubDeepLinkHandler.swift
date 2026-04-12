@@ -22,6 +22,13 @@ enum SunclubDeepLinkHandler {
             }
 
             appState.recordVerificationSuccess(method: .manual)
+            if let presentation = appState.verificationSuccessPresentation {
+                appState.verificationSuccessPresentation = VerificationSuccessPresentation(
+                    streak: presentation.streak,
+                    isPersonalBest: presentation.isPersonalBest,
+                    canAddDetails: true
+                )
+            }
             if appState.settings.reapplyReminderEnabled {
                 appState.scheduleReapplyReminder()
             }

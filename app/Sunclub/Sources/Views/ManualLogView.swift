@@ -25,7 +25,7 @@ struct ManualLogView: View {
 
                     Text(
                         existingRecord == nil
-                            ? "Confirm today's sunscreen and add SPF or a note if you want."
+                            ? "Tap Log Today now, or add optional SPF and notes first."
                             : "You're editing today's entry. Update the SPF or note below."
                     )
                         .font(.system(size: 15))
@@ -41,11 +41,14 @@ struct ManualLogView: View {
                     )
                 }
 
+                scanSPFButton
+
                 SunManualLogFields(
                     selectedSPF: $selectedSPF,
                     notes: $notes,
                     accessibilityPrefix: "manualLog",
-                    suggestions: appState.manualLogSuggestionState(for: Date())
+                    suggestions: appState.manualLogSuggestionState(for: Date()),
+                    detailsInitiallyExpanded: existingRecord != nil || appState.manualLogPrefill != nil
                 )
 
                 Spacer(minLength: 0)
@@ -77,6 +80,43 @@ struct ManualLogView: View {
         existingRecord == nil ? "Log Today" : "Update Today"
     }
 
+    private var scanSPFButton: some View {
+        Button {
+            router.push(.productScanner)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.sun)
+                    .frame(width: 24, height: 24)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Scan SPF")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text("Optional. Read a bottle label and confirm before using it.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens the SPF scanner.")
+        .accessibilityIdentifier("manualLog.scanSPF")
+    }
+
     private func syncInitialStateIfNeeded() {
         guard !hasLoadedInitialState else {
             return
@@ -96,9 +136,6 @@ struct ManualLogView: View {
             appState.clearManualLogPrefill()
             return
         }
-
-        let suggestions = appState.manualLogSuggestionState(for: Date())
-        selectedSPF = suggestions.defaultSPF
     }
 }
 

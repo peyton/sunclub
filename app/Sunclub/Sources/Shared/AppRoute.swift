@@ -39,6 +39,18 @@ final class AppRouter {
         }
     }
 
+    func push(_ route: AppRoute) {
+        if route == .home || route == .welcome {
+            path.removeAll()
+        } else {
+            path.append(route)
+        }
+    }
+
+    func replace(with route: AppRoute) {
+        open(route)
+    }
+
     func goBack() {
         guard !path.isEmpty else {
             return

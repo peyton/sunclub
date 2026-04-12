@@ -351,7 +351,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 content: makeContent(
                     title: "Sunclub weekly report",
                     body: "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
-                        + (report.missedDays.isEmpty ? "No misses this week. " : "Missed: \(report.missedDays.joined(separator: ", ")). ")
+                        + (report.missedDays.isEmpty ? "All 7 days are logged. " : "Not logged: \(report.missedDays.joined(separator: ", ")). ")
                         + phrase.0,
                     categoryIdentifier: NotificationConstants.dailyManualCategoryID,
                     route: NotificationConstants.weeklyRoute,

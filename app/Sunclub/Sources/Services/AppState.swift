@@ -93,10 +93,12 @@ struct ReapplyReminderPlan: Equatable {
 struct VerificationSuccessPresentation: Equatable {
     let streak: Int
     let isPersonalBest: Bool
+    let canAddDetails: Bool
 
-    init(streak: Int, isPersonalBest: Bool = false) {
+    init(streak: Int, isPersonalBest: Bool = false, canAddDetails: Bool = false) {
         self.streak = streak
         self.isPersonalBest = isPersonalBest
+        self.canAddDetails = canAddDetails
     }
 
     var detail: String {
@@ -739,19 +741,8 @@ final class AppState {
     var homeRecoveryActions: [HomeRecoveryAction] {
         var actions: [HomeRecoveryAction] = []
 
-        if record(for: Date()) == nil {
-            actions.append(
-                HomeRecoveryAction(
-                    kind: .logToday,
-                    title: "Today is open",
-                    detail: "Log now before the day gets away.",
-                    buttonTitle: "Log Today"
-                )
-            )
-        }
-
         let yesterday = calendar.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-        if record(for: yesterday) == nil {
+        if records.count >= 3, record(for: yesterday) == nil {
             actions.append(
                 HomeRecoveryAction(
                     kind: .backfillYesterday,
@@ -1237,7 +1228,8 @@ final class AppState {
         )
         verificationSuccessPresentation = VerificationSuccessPresentation(
             streak: currentStreak,
-            isPersonalBest: currentStreak > previousLongestStreak
+            isPersonalBest: currentStreak > previousLongestStreak,
+            canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil
         )
     }
 

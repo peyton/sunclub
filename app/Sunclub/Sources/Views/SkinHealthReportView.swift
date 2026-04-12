@@ -31,17 +31,7 @@ struct SkinHealthReportView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            VStack(spacing: 12) {
-                Button("Export PDF Report") {
-                    exportPDFReport()
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-
-                Button("Share Streak Card") {
-                    shareStreakCard()
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
-            }
+            footerActions
         }
         .sheet(item: $shareSheetItem) { item in
             ActivityShareSheet(items: item.items)
@@ -151,6 +141,28 @@ struct SkinHealthReportView: View {
             Text(value)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
+        }
+    }
+
+    @ViewBuilder
+    private var footerActions: some View {
+        if appState.records.isEmpty {
+            Text("Log at least one day before exporting or sharing a report.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppPalette.softInk)
+                .multilineTextAlignment(.center)
+        } else {
+            VStack(spacing: 12) {
+                Button("Export PDF Report") {
+                    exportPDFReport()
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+
+                Button("Share Streak Card") {
+                    shareStreakCard()
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+            }
         }
     }
 

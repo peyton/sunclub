@@ -5,12 +5,13 @@ struct FriendsView: View {
     @Environment(AppRouter.self) private var router
     @State private var preferredName = ""
     @State private var importCode = ""
+    @State private var importErrorMessage: String?
     @State private var shareSheetItem: ShareSheetItem?
 
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Friends", showsBack: true, onBack: {
+                SunLightHeader(title: "Accountability", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -68,18 +69,24 @@ struct FriendsView: View {
 
     private var inviteCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Invite a friend")
+            Text("Share accountability")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            Text("Send your lightweight streak snapshot through iMessage or any share sheet.")
+            Text("Send a lightweight streak snapshot through iMessage or any share sheet.")
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
 
-            Button("Share My Status") {
-                shareLocalStatus()
+            if appState.records.isEmpty {
+                Text("Log at least one day before sharing your status.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            } else {
+                Button("Share My Status") {
+                    shareLocalStatus()
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
             }
-            .buttonStyle(SunPrimaryButtonStyle())
         }
         .padding(18)
         .background(cardBackground)
@@ -103,12 +110,18 @@ struct FriendsView: View {
                         .stroke(AppPalette.ink.opacity(0.08), lineWidth: 1)
                 )
 
+            if let importErrorMessage {
+                SunStatusCard(
+                    title: "Code not imported",
+                    detail: importErrorMessage,
+                    tint: Color.red.opacity(0.72),
+                    symbol: "exclamationmark.triangle.fill"
+                )
+                .accessibilityIdentifier("friends.importError")
+            }
+
             Button("Import Friend") {
-                guard !importCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    return
-                }
-                try? appState.importFriendCode(importCode)
-                importCode = ""
+                importFriend()
             }
             .buttonStyle(SunPrimaryButtonStyle())
         }
@@ -118,7 +131,7 @@ struct FriendsView: View {
 
     private var friendsListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Protect together")
+            Text("Shared streaks")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -170,9 +183,25 @@ struct FriendsView: View {
         guard let shareCode = try? appState.friendShareCode() else {
             return
         }
-        let intro = "Join me on Sunclub. Import this friend code in Friends:\n\n\(shareCode)"
+        let intro = "Join me on Sunclub. Import this accountability code:\n\n\(shareCode)"
         appState.recordShareActionStarted()
         shareSheetItem = ShareSheetItem(items: [intro])
+    }
+
+    private func importFriend() {
+        let trimmedCode = importCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCode.isEmpty else {
+            importErrorMessage = "Paste a friend code first."
+            return
+        }
+
+        do {
+            try appState.importFriendCode(trimmedCode)
+            importCode = ""
+            importErrorMessage = nil
+        } catch {
+            importErrorMessage = (error as? LocalizedError)?.errorDescription ?? "That friend code could not be read."
+        }
     }
 
     private var cardBackground: some View {
