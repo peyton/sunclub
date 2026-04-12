@@ -6,6 +6,8 @@ struct FriendsView: View {
     @State private var preferredName = ""
     @State private var importCode = ""
     @State private var shareSheetItem: ShareSheetItem?
+    @State private var showsMissingNamePrompt = false
+    @FocusState private var isPreferredNameFocused: Bool
 
     var body: some View {
         SunLightScreen {
@@ -53,12 +55,30 @@ struct FriendsView: View {
 
             TextField("Name friends see", text: $preferredName)
                 .textFieldStyle(.roundedBorder)
+                .focused($isPreferredNameFocused)
+                .accessibilityIdentifier("friends.preferredNameField")
                 .onSubmit {
-                    appState.updatePreferredDisplayName(preferredName)
+                    savePreferredName()
+                }
+                .onChange(of: preferredName) { _, newValue in
+                    if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        showsMissingNamePrompt = false
+                    }
                 }
 
+            Text("This name appears in shared status and your Home greeting.")
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+
+            if showsMissingNamePrompt {
+                Text("Add a name so friends recognize your streak, or tap Share Without Name to continue.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.sun)
+                    .accessibilityIdentifier("friends.missingNamePrompt")
+            }
+
             Button("Save Name") {
-                appState.updatePreferredDisplayName(preferredName)
+                savePreferredName()
             }
             .buttonStyle(SunSecondaryButtonStyle())
         }
@@ -76,7 +96,7 @@ struct FriendsView: View {
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
 
-            Button("Share My Status") {
+            Button(shareStatusButtonTitle) {
                 shareLocalStatus()
             }
             .buttonStyle(SunPrimaryButtonStyle())
@@ -167,11 +187,33 @@ struct FriendsView: View {
     }
 
     private func shareLocalStatus() {
+        let trimmedName = preferredName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedName.isEmpty && !showsMissingNamePrompt {
+            showsMissingNamePrompt = true
+            isPreferredNameFocused = true
+            return
+        }
+
+        if trimmedName != appState.preferredDisplayName {
+            appState.updatePreferredDisplayName(trimmedName)
+        }
+
         guard let shareCode = try? appState.friendShareCode() else {
             return
         }
         let intro = "Join me on Sunclub. Import this friend code in Friends:\n\n\(shareCode)"
         shareSheetItem = ShareSheetItem(items: [intro])
+    }
+
+    private var shareStatusButtonTitle: String {
+        preferredName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && showsMissingNamePrompt
+            ? "Share Without Name"
+            : "Share My Status"
+    }
+
+    private func savePreferredName() {
+        appState.updatePreferredDisplayName(preferredName)
+        showsMissingNamePrompt = false
     }
 
     private var cardBackground: some View {
