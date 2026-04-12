@@ -183,6 +183,7 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
 # Privacy manifest (PrivacyInfo.xcprivacy)
 # ---------------------------------------------------------------------------
 
+
 def load_privacy_manifest() -> dict:
     with PRIVACY_MANIFEST.open("rb") as f:
         return plistlib.load(f)
@@ -264,6 +265,7 @@ def test_privacy_manifest_included_in_app_resources_glob() -> None:
 # ---------------------------------------------------------------------------
 # Info.plist: no empty or invalid string values
 # ---------------------------------------------------------------------------
+
 
 def test_info_plist_has_no_empty_string_values() -> None:
     info = load_info_plist()
