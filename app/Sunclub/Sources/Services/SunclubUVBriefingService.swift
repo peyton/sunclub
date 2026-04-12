@@ -1,18 +1,17 @@
 import CoreLocation
 import Foundation
-#if canImport(WeatherKit)
-import WeatherKit
-#endif
 
 @MainActor
 final class SunclubUVBriefingService {
     private let locationService: SharedLocationManaging
-    #if canImport(WeatherKit)
-    private let weatherService = WeatherService()
-    #endif
+    private let weatherProvider: any LiveUVWeatherProviding
 
-    init(locationService: SharedLocationManaging? = nil) {
+    init(
+        locationService: SharedLocationManaging? = nil,
+        weatherProvider: (any LiveUVWeatherProviding)? = nil
+    ) {
         self.locationService = locationService ?? SharedLocationManager.shared
+        self.weatherProvider = weatherProvider ?? WeatherKitLiveUVWeatherProvider()
     }
 
     func forecast(
@@ -58,12 +57,10 @@ final class SunclubUVBriefingService {
             )
         }
 
-        return SunclubUVForecast(
+        return makeForecast(
             generatedAt: referenceDate,
             sourceLabel: "Estimated locally",
-            hours: hours,
-            peakHour: hours.max(by: { $0.index < $1.index }),
-            recommendation: recommendation(for: hours.max(by: { $0.index < $1.index })?.level ?? .unknown)
+            hours: hours
         )
     }
 
@@ -74,38 +71,45 @@ final class SunclubUVBriefingService {
         }
     }
 
-    #if canImport(WeatherKit)
     private func liveForecast(
         referenceDate: Date,
         calendar: Calendar
     ) async -> SunclubUVForecast? {
         do {
             let location = try await locationService.currentLocation()
-            let weather = try await weatherService.weather(for: location)
-            let dayStart = calendar.startOfDay(for: referenceDate)
-            let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-            let hours = weather.hourlyForecast.forecast
-                .filter { $0.date >= dayStart && $0.date < nextDay && $0.isDaylight }
-                .map {
-                    SunclubUVHourForecast(
-                        date: $0.date,
-                        index: $0.uvIndex.value,
-                        sourceLabel: "WeatherKit"
-                    )
-                }
+            let hours = try await weatherProvider.hourlyUVForecast(
+                for: location,
+                referenceDate: referenceDate,
+                calendar: calendar
+            )
+            guard !hours.isEmpty else {
+                return nil
+            }
 
-            return SunclubUVForecast(
+            return makeForecast(
                 generatedAt: referenceDate,
                 sourceLabel: "Live WeatherKit UV",
-                hours: hours,
-                peakHour: hours.max(by: { $0.index < $1.index }),
-                recommendation: recommendation(for: hours.max(by: { $0.index < $1.index })?.level ?? .unknown)
+                hours: hours
             )
         } catch {
             return nil
         }
     }
-    #endif
+
+    private func makeForecast(
+        generatedAt: Date,
+        sourceLabel: String,
+        hours: [SunclubUVHourForecast]
+    ) -> SunclubUVForecast {
+        let peakHour = hours.max(by: { $0.index < $1.index })
+        return SunclubUVForecast(
+            generatedAt: generatedAt,
+            sourceLabel: sourceLabel,
+            hours: hours,
+            peakHour: peakHour,
+            recommendation: recommendation(for: peakHour?.level ?? .unknown)
+        )
+    }
 
     private func recommendation(for level: UVLevel) -> String {
         switch level {

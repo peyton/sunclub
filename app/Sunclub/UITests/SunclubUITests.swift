@@ -599,6 +599,37 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsLiveUVToggleUsesMockedLiveWeatherDataEndToEnd() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_CURRENT_TIME=11:00",
+            "UITEST_LIVE_UV_INDEX=8",
+            "UITEST_LIVE_UV_PEAK_INDEX=11"
+        ]
+        app.launch()
+
+        expandSettingsSection("advanced", in: app)
+        let liveUVToggle = app.switches["settings.liveUVToggle"]
+        XCTAssertTrue(scrollToElement(liveUVToggle, in: app))
+        XCTAssertEqual(stringValue(of: liveUVToggle), "0")
+
+        liveUVToggle.tap()
+
+        XCTAssertTrue(app.staticTexts["Live UV is on"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Live WeatherKit UV"].waitForExistence(timeout: 5))
+
+        app.buttons["screen.back"].tap()
+
+        let uvHeadline = app.staticTexts["home.uvHeadline"]
+        XCTAssertTrue(uvHeadline.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvHeadline.label, "UV is very high today")
+        XCTAssertTrue(app.staticTexts["home.todayDetail"].label.contains("reapply sooner"))
+    }
+
+    @MainActor
     func testWidgetLogTodayURLShowsSuccessAndUpdatesHome() throws {
         let app = XCUIApplication()
         app.launchArguments += [

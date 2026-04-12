@@ -1627,6 +1627,149 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testUVIndexServiceUsesLiveWeatherProviderWhenAuthorized() async throws {
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = UVIndexService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true)
+
+        XCTAssertEqual(service.currentReading?.index, 8)
+        XCTAssertEqual(service.currentReading?.source, .weatherKit)
+        XCTAssertEqual(service.liveUVAccessState, .live)
+        XCTAssertNil(service.errorMessage)
+    }
+
+    @MainActor
+    func testUVIndexServiceFallsBackWhenLocationPermissionIsMissing() async throws {
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .notDetermined,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = UVIndexService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true, allowPermissionPrompt: false)
+
+        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertEqual(service.liveUVAccessState, .needsPermission)
+        XCTAssertNil(service.errorMessage)
+    }
+
+    @MainActor
+    func testUVIndexServiceFallsBackWhenLiveProviderFails() async throws {
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: -33.8688, longitude: 151.2093)
+        )
+        let service = UVIndexService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(
+                currentIndex: 8,
+                peakIndex: 10,
+                shouldFail: true
+            )
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true)
+
+        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertEqual(service.liveUVAccessState, .unavailable)
+        XCTAssertEqual(service.errorMessage, "UITest live UV fixture is unavailable.")
+    }
+
+    @MainActor
+    func testUVBriefingServiceUsesLiveForecastWhenAvailable() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = SunclubUVBriefingService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+        )
+
+        let forecast = await service.forecast(
+            prefersLiveData: true,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(forecast.sourceLabel, "Live WeatherKit UV")
+        XCTAssertEqual(forecast.peakHour?.index, 10)
+        XCTAssertEqual(Set(forecast.hours.map(\.sourceLabel)), ["WeatherKit"])
+    }
+
+    @MainActor
+    func testUVBriefingServiceFallsBackWhenLiveForecastIsEmpty() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let service = SunclubUVBriefingService(
+            locationService: locationService,
+            weatherProvider: UITestLiveUVWeatherProvider(
+                currentIndex: 8,
+                peakIndex: 10,
+                shouldReturnEmptyForecast: true
+            )
+        )
+
+        let forecast = await service.forecast(
+            prefersLiveData: true,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(forecast.sourceLabel, "Estimated locally")
+        XCTAssertFalse(forecast.hours.isEmpty)
+    }
+
+    @MainActor
+    func testAppStateLiveUVIntegrationRefreshesReadingAndForecast() async throws {
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let weatherProvider = UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 11)
+        let state = try makeAppState(
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(
+                locationService: locationService,
+                weatherProvider: weatherProvider
+            ),
+            uvBriefingService: SunclubUVBriefingService(
+                locationService: locationService,
+                weatherProvider: weatherProvider
+            ),
+            clock: { referenceDate }
+        )
+
+        state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
+        await waitForMainActorTasks()
+
+        XCTAssertTrue(state.settings.usesLiveUV)
+        XCTAssertEqual(state.uvReading?.index, 8)
+        XCTAssertEqual(state.uvReading?.source, .weatherKit)
+        XCTAssertEqual(state.uvForecast?.sourceLabel, "Live WeatherKit UV")
+        XCTAssertEqual(state.uvForecast?.peakHour?.index, 11)
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "Live UV is on")
+        XCTAssertEqual(state.liveUVStatusPresentation.detail, "Live WeatherKit UV")
+    }
+
+    @MainActor
     func testWidgetLogTodayDeepLinkDoesNotLogBeforeOnboarding() throws {
         let state = try makeAppState()
         let router = AppRouter()
@@ -1643,6 +1786,8 @@ final class SunclubTests: XCTestCase {
     private func makeAppState(
         notificationManager: NotificationScheduling? = nil,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
+        uvIndexService: UVIndexService? = nil,
+        uvBriefingService: SunclubUVBriefingService? = nil,
         accountabilityService: SunclubAccountabilityServing? = nil,
         clock: @escaping () -> Date = Date.init
     ) throws -> AppState {
@@ -1650,7 +1795,8 @@ final class SunclubTests: XCTestCase {
         return AppState(
             context: ModelContext(container),
             notificationManager: notificationManager ?? NotificationManager.shared,
-            uvIndexService: UVIndexService(),
+            uvIndexService: uvIndexService ?? UVIndexService(),
+            uvBriefingService: uvBriefingService,
             accountabilityService: accountabilityService,
             homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock
