@@ -54,6 +54,10 @@ struct SettingsView: View {
                     uvAndHealthSection
                 }
 
+                settingsGroup(.help) {
+                    helpAndLegalSection
+                }
+
                 Spacer(minLength: 0)
             }
         }
@@ -587,6 +591,45 @@ struct SettingsView: View {
         }
     }
 
+    private var helpAndLegalSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Support")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 12) {
+                webLinkButton(
+                    title: "Support",
+                    detail: "Open Sunclub support in your browser.",
+                    symbolName: "questionmark.circle.fill",
+                    url: SunclubWebLinks.support,
+                    accessibilityIdentifier: "settings.support"
+                )
+
+                webLinkButton(
+                    title: "Privacy Policy",
+                    detail: "Read how Sunclub handles app data and optional Apple features.",
+                    symbolName: "lock.shield.fill",
+                    url: SunclubWebLinks.privacy,
+                    accessibilityIdentifier: "settings.privacyPolicy"
+                )
+
+                webLinkButton(
+                    title: "Email Support",
+                    detail: "Send an email to sunclub@peyton.app.",
+                    symbolName: "envelope.fill",
+                    url: SunclubWebLinks.supportEmail,
+                    accessibilityIdentifier: "settings.emailSupport"
+                )
+            }
+
+            Text("Sunclub is a habit tracker, not medical advice.")
+                .font(.system(size: 13))
+                .foregroundStyle(AppPalette.softInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var reminderHeadline: String {
         let weekday = formattedReminderTime(for: .weekday)
         let weekend = formattedReminderTime(for: .weekend)
@@ -923,6 +966,46 @@ struct SettingsView: View {
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
+    private func webLinkButton(
+        title: String,
+        detail: String,
+        symbolName: String,
+        url: URL,
+        accessibilityIdentifier: String
+    ) -> some View {
+        Button {
+            openURL(url)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: symbolName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.sun)
+                    .frame(width: 24, height: 24)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "arrow.up.forward")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
     @ViewBuilder
     private var backupHarnessSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -963,6 +1046,7 @@ private enum SettingsSection: String, Hashable {
     case progress
     case data
     case advanced
+    case help
 
     var title: String {
         switch self {
@@ -974,6 +1058,8 @@ private enum SettingsSection: String, Hashable {
             return "Data & Sync"
         case .advanced:
             return "Advanced"
+        case .help:
+            return "Help & Legal"
         }
     }
 
@@ -987,6 +1073,8 @@ private enum SettingsSection: String, Hashable {
             return "iCloud, backup, import, and recovery."
         case .advanced:
             return "Location, UV data, and Health settings."
+        case .help:
+            return "Support, privacy, and contact links."
         }
     }
 
@@ -1000,6 +1088,8 @@ private enum SettingsSection: String, Hashable {
             return "icloud.fill"
         case .advanced:
             return "slider.horizontal.3"
+        case .help:
+            return "questionmark.circle.fill"
         }
     }
 }

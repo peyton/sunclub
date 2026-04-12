@@ -41,6 +41,33 @@ web-build: web-check
     mkdir -p .build/web
     cp -R web/. .build/web/
 
+[group('cloudflare')]
+cloudflare-status:
+    uv run python -m scripts.cloudflare.pages status
+    uv run python -m scripts.cloudflare.email status
+
+[group('cloudflare')]
+cloudflare-pages-setup:
+    uv run python -m scripts.cloudflare.pages setup
+
+[group('cloudflare')]
+cloudflare-pages-status:
+    uv run python -m scripts.cloudflare.pages status
+
+[group('cloudflare')]
+cloudflare-email-setup:
+    uv run python -m scripts.cloudflare.email setup
+
+[group('cloudflare')]
+cloudflare-email-status:
+    uv run python -m scripts.cloudflare.email status
+
+[group('cloudflare')]
+cloudflare-check: web-check
+    uv run python -m scripts.cloudflare.common check
+    uv run python -m scripts.cloudflare.pages status
+    uv run python -m scripts.cloudflare.email status
+
 [group('app')]
 appstore-archive:
     bash scripts/appstore/archive-and-upload.sh

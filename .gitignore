@@ -12,6 +12,9 @@ data/processed/cache/
 # Local logs
 *.log
 
+# Local Cloudflare secrets
+infra/cloudflare/.env
+
 # Local Codex state
 .codex/environments/
 .codex/config.toml

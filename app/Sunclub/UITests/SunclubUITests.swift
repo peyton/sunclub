@@ -108,6 +108,12 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.switches["settings.liveUVToggle"].exists)
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
+
+        XCTAssertTrue(scrollToElement(app.buttons["settings.section.help"], in: app))
+        expandSettingsSection("help", in: app)
+        XCTAssertTrue(scrollToElement(app.buttons["settings.support"], in: app))
+        XCTAssertTrue(app.buttons["settings.privacyPolicy"].exists)
+        XCTAssertTrue(app.buttons["settings.emailSupport"].exists)
     }
 
     @MainActor
