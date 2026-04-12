@@ -199,7 +199,7 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in script
     assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
     assert "XCODEBUILD_SIGNING_ARGS=(" in script
-    assert 'CODE_SIGN_IDENTITY="Apple Distribution"' in script
+    assert "CODE_SIGN_STYLE=Automatic" in script
     assert ': "${SUNCLUB_APS_ENVIRONMENT:=production}"' in script
     assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
     assert "xcrun --find altool" in script
