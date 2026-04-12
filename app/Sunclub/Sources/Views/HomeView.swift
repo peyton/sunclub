@@ -580,15 +580,10 @@ struct HomeView: View {
     }
 
     private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: now)
-        switch hour {
-        case 5..<12:
-            return "Good morning"
-        case 12..<17:
-            return "Good afternoon"
-        default:
-            return "Good evening"
-        }
+        HomeGreetingFormatter.greeting(
+            for: now,
+            preferredDisplayName: appState.preferredDisplayName
+        )
     }
 
     private var greetingSymbol: String {
@@ -623,6 +618,35 @@ struct HomeView: View {
 
     private var greetingSymbolAccessibilityLabel: String {
         greetingSymbol == "sun.max" ? "Daytime" : "Nighttime"
+    }
+}
+
+enum HomeGreetingFormatter {
+    static func greeting(
+        for date: Date,
+        preferredDisplayName: String,
+        calendar: Calendar = .current
+    ) -> String {
+        let baseGreeting = baseGreeting(for: date, calendar: calendar)
+        let displayName = preferredDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !displayName.isEmpty else {
+            return baseGreeting
+        }
+
+        return "\(baseGreeting), \(displayName)"
+    }
+
+    private static func baseGreeting(for date: Date, calendar: Calendar) -> String {
+        let hour = calendar.component(.hour, from: date)
+        switch hour {
+        case 5..<12:
+            return "Good morning"
+        case 12..<17:
+            return "Good afternoon"
+        default:
+            return "Good evening"
+        }
     }
 }
 
