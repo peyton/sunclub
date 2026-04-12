@@ -250,10 +250,41 @@ private func drawAchievementShelf(_ context: CGContext, size: CGSize) {
 private func drawBadge(_ context: CGContext, center: CGPoint, scale: CGFloat, tint: RGBA, accent: RGBA) {
     let radius = 104 * scale
     radial(context, colors: [RGBA(tint.r, tint.g, tint.b, 0.25), RGBA(tint.r, tint.g, tint.b, 0)], center: center, endRadius: radius * 1.55)
-    fill(context, tint, in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
-    stroke(context, RGBA(1, 1, 1, 0.68), path: CGPath(ellipseIn: CGRect(x: center.x - radius + 12 * scale, y: center.y - radius + 12 * scale, width: (radius - 12 * scale) * 2, height: (radius - 12 * scale) * 2), transform: nil), width: 7 * scale)
-    drawShield(context, center: center, scale: 0.45 * scale, tint: accent)
-    drawSunRing(context, center: CGPoint(x: center.x + 34 * scale, y: center.y - 34 * scale), radius: 24 * scale, tint: Palette.warmGlow)
+
+    let outer = CGRect(
+        x: center.x - radius,
+        y: center.y - radius,
+        width: radius * 2,
+        height: radius * 2
+    )
+    context.saveGState()
+    context.addEllipse(in: outer)
+    context.clip()
+    gradient(
+        context,
+        colors: [
+            RGBA(1, 0.98, 0.90, 1),
+            tint,
+            RGBA(max(tint.r - 0.10, 0), max(tint.g - 0.10, 0), max(tint.b - 0.10, 0), 1)
+        ],
+        start: CGPoint(x: outer.minX, y: outer.minY),
+        end: CGPoint(x: outer.maxX, y: outer.maxY)
+    )
+    radial(
+        context,
+        colors: [RGBA(1, 1, 1, 0.42), RGBA(1, 1, 1, 0)],
+        center: CGPoint(x: center.x - radius * 0.34, y: center.y - radius * 0.36),
+        endRadius: radius * 0.82
+    )
+    context.restoreGState()
+
+    stroke(context, RGBA(1, 1, 1, 0.72), path: CGPath(ellipseIn: outer.insetBy(dx: 10 * scale, dy: 10 * scale), transform: nil), width: 7 * scale)
+    stroke(context, RGBA(accent.r, accent.g, accent.b, 0.58), path: CGPath(ellipseIn: outer.insetBy(dx: 31 * scale, dy: 31 * scale), transform: nil), width: 5 * scale)
+
+    drawShield(context, center: CGPoint(x: center.x, y: center.y + 8 * scale), scale: 0.64 * scale, tint: accent)
+    drawSunRing(context, center: CGPoint(x: center.x + 48 * scale, y: center.y - 48 * scale), radius: 30 * scale, tint: Palette.warmGlow)
+
+    fill(context, RGBA(1, 1, 1, 0.28), in: CGRect(x: center.x - radius * 0.42, y: center.y - radius * 0.50, width: radius * 0.48, height: radius * 0.12))
 }
 
 private func drawReport(_ context: CGContext, rect: CGRect) {

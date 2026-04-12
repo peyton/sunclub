@@ -8,7 +8,7 @@ struct AchievementsView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "Achievements", showsBack: true, onBack: {
                     router.goBack()
                 })
@@ -17,11 +17,7 @@ struct AchievementsView: View {
                     celebrationCard(for: achievementCelebration)
                 }
 
-                SunAssetHero(
-                    asset: .illustrationAchievementsShelf,
-                    height: 156,
-                    glowColor: AppPalette.coral
-                )
+                badgeOverviewCard
 
                 achievementsSection
                 challengesSection
@@ -79,39 +75,42 @@ struct AchievementsView: View {
         }
     }
 
-    private func celebrationCard(for achievement: SunclubAchievement) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("New Badge", systemImage: "sparkles")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppPalette.sun)
+    private var badgeOverviewCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 16) {
+                BadgeShelfPreview()
 
-                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Your badge shelf")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
 
-                Button("Dismiss") {
-                    feedbackTrigger += 1
-                    appState.markAchievementCelebrationSeen()
+                    Text("Keep logging to turn quiet silhouettes into full-color medals.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(AppPalette.softInk)
             }
 
-            Text(achievement.title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-
-            Text(achievement.detail)
-                .font(.system(size: 15))
-                .foregroundStyle(AppPalette.softInk)
+            HStack(spacing: 10) {
+                BadgeCountPill(
+                    title: "Unlocked",
+                    value: "\(appState.achievements.filter(\.isUnlocked).count)"
+                )
+                BadgeCountPill(
+                    title: "Total",
+                    value: "\(appState.achievements.count)"
+                )
+            }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(AppPalette.warmGlow.opacity(0.45))
-        )
-        .overlay(alignment: .topTrailing) {
-            SunclubVisualBadge(asset: achievement.id.visualAsset, size: 66)
-                .offset(x: -14, y: 14)
+        .sunGlassCard(cornerRadius: 22, fillOpacity: 0.70)
+    }
+
+    private func celebrationCard(for achievement: SunclubAchievement) -> some View {
+        AchievementCelebrationCard(achievement: achievement) {
+            feedbackTrigger += 1
+            appState.markAchievementCelebrationSeen()
         }
     }
 
@@ -149,37 +148,151 @@ struct AchievementsView: View {
     }
 }
 
+private struct AchievementCelebrationCard: View {
+    let achievement: SunclubAchievement
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            SunclubBadgeMedallion(
+                asset: achievement.id.visualAsset,
+                size: 82,
+                tint: achievement.id.badgeTint
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                title
+                detail
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(18)
+        .background { celebrationBackground }
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.64), lineWidth: 1)
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Label("New Badge", systemImage: "sparkles")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(AppPalette.streakAccent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppPalette.warmGlow.opacity(0.68), in: Capsule())
+
+            Spacer(minLength: 0)
+
+            Button("Dismiss", action: onDismiss)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+                .buttonStyle(.plain)
+        }
+    }
+
+    private var title: some View {
+        Text(achievement.title)
+            .font(.system(size: 23, weight: .bold))
+            .foregroundStyle(AppPalette.ink)
+            .lineLimit(2)
+            .minimumScaleFactor(0.86)
+    }
+
+    private var detail: some View {
+        Text(achievement.detail)
+            .font(.system(size: 14))
+            .foregroundStyle(AppPalette.softInk)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var celebrationBackground: some View {
+        ZStack(alignment: .bottomTrailing) {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(AppPalette.warmGlow.opacity(0.48))
+
+            SunclubVisualAsset.motifSunRing.image
+                .resizable()
+                .scaledToFit()
+                .frame(width: 128, height: 128)
+                .opacity(0.16)
+                .offset(x: 34, y: 38)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+private struct BadgeShelfPreview: View {
+    private let badges: [(SunclubVisualAsset, Color)] = [
+        (.badgeSevenDay, AppPalette.pool),
+        (.badgeRecovery, AppPalette.aloe),
+        (.badgeHighUV, AppPalette.uvExtreme)
+    ]
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(AppPalette.warmGlow.opacity(0.34))
+                .frame(width: 104, height: 78)
+
+            HStack(spacing: -14) {
+                ForEach(Array(badges.enumerated()), id: \.offset) { _, badge in
+                    SunclubBadgeMedallion(asset: badge.0, size: 52, tint: badge.1)
+                }
+            }
+        }
+        .frame(width: 112, height: 88)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct BadgeCountPill: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(value)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.70), in: Capsule())
+    }
+}
+
 private struct AchievementCard: View {
     let achievement: SunclubAchievement
     let onShare: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                SunclubVisualBadge(
+            HStack(alignment: .top, spacing: 16) {
+                SunclubBadgeMedallion(
                     asset: achievement.id.visualAsset,
-                    size: 52,
-                    isLocked: !achievement.isUnlocked
+                    size: 68,
+                    isLocked: !achievement.isUnlocked,
+                    tint: achievement.id.badgeTint
                 )
 
                 VStack(alignment: .leading, spacing: 7) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
                         Text(achievement.title)
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(AppPalette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         Spacer(minLength: 0)
 
                         if achievement.isUnlocked {
-                            Text("Unlocked")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 5)
-                                .background(
-                                    Capsule()
-                                        .fill(AppPalette.success)
-                                )
+                            AchievementStatusPill(text: "Unlocked", tint: AppPalette.success)
                                 .accessibilityIdentifier("achievement.status.\(achievement.id.rawValue)")
                         }
                     }
@@ -222,7 +335,7 @@ private struct AchievementCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.38) : Color.white.opacity(0.78))
+                .fill(achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.34) : Color.white.opacity(0.78))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -240,24 +353,33 @@ private struct ChallengeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .top, spacing: 16) {
+                SunclubBadgeMedallion(
+                    asset: challenge.id.visualAsset,
+                    size: 68,
+                    isLocked: !challenge.isComplete,
+                    tint: challenge.id.badgeTint
+                )
+
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(challenge.title)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(challenge.title)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(AppPalette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 0)
+
+                        if challenge.isComplete {
+                            AchievementStatusPill(text: "Complete", tint: AppPalette.success)
+                        }
+                    }
 
                     Text(challenge.detail)
                         .font(.system(size: 14))
                         .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Spacer(minLength: 0)
-
-                SunclubVisualBadge(
-                    asset: challenge.id.visualAsset,
-                    size: 50,
-                    isLocked: !challenge.isComplete
-                )
             }
 
             MilestoneProgressMeter(
@@ -285,12 +407,28 @@ private struct ChallengeCard: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(challenge.isComplete ? AppPalette.warmGlow.opacity(0.34) : Color.white.opacity(0.76))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(challenge.isComplete ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
+        }
     }
+}
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.76))
+private struct AchievementStatusPill: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.12), in: Capsule())
     }
 }
 
@@ -348,29 +486,23 @@ private struct MilestoneProgressMeter: View {
                         .frame(width: filledWidth(in: proxy.size.width))
                 }
             }
-            .frame(height: 14)
+            .frame(height: 10)
             .overlay {
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(AppPalette.ink.opacity(0.22), lineWidth: 1)
+                    .stroke(AppPalette.ink.opacity(0.10), lineWidth: 1)
             }
             .accessibilityHidden(true)
 
-            HStack(spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(summaryLabel)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule()
-                            .fill(AppPalette.ink)
-                    )
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
                     .accessibilityIdentifier("\(accessibilityID).summary")
 
                 Spacer(minLength: 0)
 
                 Text(statusLabel)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(isComplete ? AppPalette.success : AppPalette.streakAccent)
                     .accessibilityIdentifier("\(accessibilityID).status")
             }
@@ -382,5 +514,35 @@ private struct MilestoneProgressMeter: View {
     private func filledWidth(in totalWidth: CGFloat) -> CGFloat {
         guard normalizedProgress > 0 else { return 0 }
         return max(10, totalWidth * normalizedProgress)
+    }
+}
+
+private extension SunclubAchievementID {
+    var badgeTint: Color {
+        switch self {
+        case .highUVHero:
+            return AppPalette.uvExtreme
+        case .streak7, .streak30, .streak100, .streak365:
+            return AppPalette.pool
+        case .firstBackfill, .winterWarrior:
+            return AppPalette.aloe
+        case .summerSurvivor, .morningGlow, .weekendCanopy:
+            return AppPalette.coral
+        default:
+            return AppPalette.sun
+        }
+    }
+}
+
+private extension SunclubChallengeID {
+    var badgeTint: Color {
+        switch self {
+        case .summerShield:
+            return AppPalette.coral
+        case .uvAwarenessWeek:
+            return AppPalette.uvExtreme
+        case .winterSkin:
+            return AppPalette.aloe
+        }
     }
 }

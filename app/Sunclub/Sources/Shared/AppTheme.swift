@@ -481,7 +481,7 @@ struct SunBrandLockup: View {
             Text("sunclub")
                 .font(.system(size: layout == .inline ? 20 : 34, weight: .heavy))
                 .foregroundStyle(AppPalette.ink)
-                .tracking(-0.4)
+                .tracking(0)
 
             if let subtitle {
                 Text(subtitle)
@@ -628,6 +628,67 @@ struct SunclubVisualBadge: View {
             .saturation(isLocked ? 0.1 : 1)
             .opacity(isLocked ? 0.54 : 1)
             .accessibilityHidden(true)
+    }
+}
+
+struct SunclubBadgeMedallion: View {
+    let asset: SunclubVisualAsset
+    var size: CGFloat = 64
+    var isLocked = false
+    var tint: Color = AppPalette.sun
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: medallionFill,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Circle()
+                .stroke(Color.white.opacity(isLocked ? 0.46 : 0.72), lineWidth: max(1, size * 0.035))
+
+            Circle()
+                .stroke(tint.opacity(isLocked ? 0.16 : 0.34), lineWidth: max(1, size * 0.018))
+                .padding(size * 0.13)
+
+            asset.image
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.64, height: size * 0.64)
+                .saturation(isLocked ? 0.02 : 1)
+                .opacity(isLocked ? 0.42 : 1)
+
+            if isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: max(10, size * 0.18), weight: .bold))
+                    .foregroundStyle(AppPalette.softInk.opacity(0.82))
+                    .frame(width: size * 0.34, height: size * 0.34)
+                    .background(Color.white.opacity(0.72), in: Circle())
+                    .offset(x: size * 0.27, y: size * 0.27)
+            }
+        }
+        .frame(width: size, height: size)
+        .shadow(color: tint.opacity(isLocked ? 0.04 : 0.18), radius: isLocked ? 4 : 14, x: 0, y: isLocked ? 2 : 8)
+        .accessibilityHidden(true)
+    }
+
+    private var medallionFill: [Color] {
+        if isLocked {
+            return [
+                Color.white.opacity(0.84),
+                AppPalette.muted.opacity(0.44)
+            ]
+        }
+
+        return [
+            Color.white.opacity(0.96),
+            AppPalette.warmGlow.opacity(0.72),
+            tint.opacity(0.18)
+        ]
     }
 }
 

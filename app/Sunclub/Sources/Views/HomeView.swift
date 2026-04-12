@@ -14,7 +14,6 @@ struct HomeView: View {
                 header
 
                 todayCard
-                accountabilityNudgeCard
 
                 Button {
                     router.open(.weeklySummary)
@@ -25,6 +24,7 @@ struct HomeView: View {
                 .accessibilityHint("Opens your last 7 days.")
                 .accessibilityIdentifier("home.streakCard")
 
+                accountabilityNudgeCard
                 uvBriefingSection
                 achievementCelebrationCard
                 secondaryActionsSection
@@ -287,9 +287,11 @@ struct HomeView: View {
     private var achievementCelebrationCard: some View {
         if let achievement = appState.achievementCelebration {
             HStack(spacing: 14) {
-                Image(systemName: achievement.symbolName)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(AppPalette.sun)
+                SunclubBadgeMedallion(
+                    asset: achievement.id.visualAsset,
+                    size: 58,
+                    tint: AppPalette.sun
+                )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Unlocked: \(achievement.title)")
@@ -315,9 +317,9 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.5))
             )
-            .overlay(alignment: .topTrailing) {
-                SunclubVisualBadge(asset: .badgePerfectWeek, size: 60)
-                    .offset(x: -12, y: 12)
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
             }
         }
     }
@@ -331,7 +333,7 @@ struct HomeView: View {
                 }
             } label: {
                 HStack(spacing: 14) {
-                Image(systemName: "sparkle.magnifyingglass")
+                    Image(systemName: "sparkle.magnifyingglass")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(AppPalette.sun)
                         .frame(width: 28, height: 28)

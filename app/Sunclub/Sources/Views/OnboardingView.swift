@@ -13,19 +13,13 @@ struct WelcomeView: View {
     var body: some View {
         SunLightScreen {
             VStack(spacing: 22) {
-                SunAssetHero(
-                    asset: .heroWelcomeMorningKit,
-                    height: 238,
-                    glowColor: AppPalette.sun
-                )
-                .padding(.top, 8)
-
                 SunBrandLockup(
                     layout: .stacked,
-                    markSize: 82,
+                    markSize: 104,
                     subtitle: SunclubCopy.Brand.welcomeTitle
                 )
                 .frame(maxWidth: .infinity)
+                .padding(.top, 72)
 
                 Text(SunclubCopy.Brand.welcomeDetail)
                     .font(.system(size: 17))

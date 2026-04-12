@@ -55,7 +55,7 @@ generate:
 
 [group('app')]
 visual-assets:
-    swift scripts/generate-visual-assets.swift
+    xcrun swift scripts/generate-visual-assets.swift
 
 [group('app')]
 build:
