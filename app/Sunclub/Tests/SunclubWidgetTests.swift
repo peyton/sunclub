@@ -21,6 +21,32 @@ final class SunclubWidgetTests: XCTestCase {
         )
     }
 
+    func testAccountabilityPresentationSupportsEveryWidgetFamily() {
+        XCTAssertEqual(
+            SunclubAccountabilityWidgetFamily.allCases.map(\.rawValue),
+            [
+                "systemSmall",
+                "systemMedium",
+                "systemLarge",
+                "systemExtraLarge",
+                "accessoryInline",
+                "accessoryCircular",
+                "accessoryRectangular"
+            ]
+        )
+
+        for family in SunclubAccountabilityWidgetFamily.allCases {
+            let presentation = SunclubAccountabilityWidgetPresentation.make(
+                summary: makeAccountabilitySummary(),
+                family: family
+            )
+
+            XCTAssertEqual(presentation.family, family)
+            XCTAssertFalse(presentation.title.isEmpty)
+            XCTAssertFalse(presentation.actionText.isEmpty)
+        }
+    }
+
     func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
@@ -139,6 +165,106 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.monthlyAppliedValue(now: today, calendar: calendar), 1)
         XCTAssertGreaterThanOrEqual(snapshot.monthlyDayValue(now: today, calendar: calendar), 1)
         XCTAssertEqual(snapshot.mostUsedSPF, 50)
+    }
+
+    func testWidgetSnapshotDecodesLegacyPayloadWithoutAccountabilitySummary() throws {
+        let data = Data("""
+        {
+            "isOnboardingComplete": true,
+            "lastLoggedDay": null,
+            "lastVerifiedAt": null,
+            "lastReappliedAt": null,
+            "recordedDays": [],
+            "currentStreak": 0,
+            "longestStreak": 3,
+            "weeklyAppliedCount": 0,
+            "monthlyAppliedCount": 0,
+            "monthlyDayCount": 0,
+            "mostUsedSPF": null,
+            "currentUVIndex": null,
+            "peakUVIndex": null,
+            "peakUVHour": null,
+            "reapplyReminderEnabled": false,
+            "reapplyIntervalMinutes": 120
+        }
+        """.utf8)
+
+        let snapshot = try JSONDecoder().decode(SunclubWidgetSnapshot.self, from: data)
+
+        XCTAssertEqual(snapshot.longestStreak, 3)
+        XCTAssertEqual(snapshot.accountabilitySummary, .empty)
+    }
+
+    func testWidgetSnapshotDecodesPartialAccountabilitySummaryWithDefaults() throws {
+        let data = Data("""
+        {
+            "isOnboardingComplete": true,
+            "lastLoggedDay": null,
+            "lastVerifiedAt": null,
+            "lastReappliedAt": null,
+            "recordedDays": [],
+            "currentStreak": 0,
+            "longestStreak": 3,
+            "weeklyAppliedCount": 0,
+            "monthlyAppliedCount": 0,
+            "monthlyDayCount": 0,
+            "mostUsedSPF": null,
+            "currentUVIndex": null,
+            "peakUVIndex": null,
+            "peakUVHour": null,
+            "reapplyReminderEnabled": false,
+            "reapplyIntervalMinutes": 120,
+            "accountabilitySummary": {
+                "isActive": true,
+                "friendCount": 2
+            }
+        }
+        """.utf8)
+
+        let snapshot = try JSONDecoder().decode(SunclubWidgetSnapshot.self, from: data)
+
+        XCTAssertTrue(snapshot.accountabilitySummary.isActive)
+        XCTAssertEqual(snapshot.accountabilitySummary.friendCount, 2)
+        XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 0)
+        XCTAssertTrue(snapshot.accountabilitySummary.topFriends.isEmpty)
+        XCTAssertNil(snapshot.accountabilitySummary.latestPoke)
+    }
+
+    func testWidgetSnapshotBuilderIncludesAccountabilitySummary() {
+        let settings = Settings()
+        settings.hasCompletedOnboarding = true
+        let openFriend = SunclubFriendSnapshot(
+            name: "Maya",
+            currentStreak: 2,
+            longestStreak: 5,
+            hasLoggedToday: false,
+            lastSharedAt: Date(),
+            seasonStyle: .summerGlow
+        )
+        let loggedFriend = SunclubFriendSnapshot(
+            name: "Rae",
+            currentStreak: 4,
+            longestStreak: 9,
+            hasLoggedToday: true,
+            lastSharedAt: Date(),
+            seasonStyle: .summerGlow
+        )
+        let growthSettings = SunclubGrowthSettings(
+            friends: [loggedFriend, openFriend],
+            accountability: SunclubAccountabilitySettings(activatedAt: Date())
+        )
+
+        let snapshot = SunclubWidgetSnapshotBuilder.make(
+            settings: settings,
+            records: [],
+            growthSettings: growthSettings
+        )
+
+        XCTAssertTrue(snapshot.accountabilitySummary.isActive)
+        XCTAssertEqual(snapshot.accountabilitySummary.friendCount, 2)
+        XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 1)
+        XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
+        XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
     }
 
     func testSnapshotDayStatusUsesStoredCalendarHistory() {
@@ -302,6 +428,26 @@ final class SunclubWidgetTests: XCTestCase {
             peakUVHour: peakUVIndex == nil ? nil : calendar.date(byAdding: .hour, value: 13, to: today),
             reapplyReminderEnabled: reapplyReminderEnabled,
             reapplyIntervalMinutes: reapplyIntervalMinutes
+        )
+    }
+
+    private func makeAccountabilitySummary() -> SunclubAccountabilitySummary {
+        SunclubAccountabilitySummary(
+            isActive: true,
+            friendCount: 1,
+            loggedCount: 0,
+            openCount: 1,
+            topFriends: [
+                SunclubFriendSnapshot(
+                    name: "Maya",
+                    currentStreak: 2,
+                    longestStreak: 5,
+                    hasLoggedToday: false,
+                    lastSharedAt: Date(),
+                    seasonStyle: .summerGlow
+                )
+            ],
+            latestPoke: nil
         )
     }
 

@@ -13,6 +13,7 @@ struct HomeView: View {
                 header
 
                 todayCard
+                accountabilityNudgeCard
 
                 Button {
                     router.open(.weeklySummary)
@@ -150,6 +151,52 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+    }
+
+    @ViewBuilder
+    private var accountabilityNudgeCard: some View {
+        if appState.shouldShowAccountabilityNudge {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(AppPalette.sun)
+                        .frame(width: 30)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Add sunscreen accountability")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text("Invite a friend after your first few logs. They only see streak status and whether today is done.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppPalette.softInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: 10) {
+                    Button("Set Up") {
+                        router.open(.accountabilityOnboarding)
+                    }
+                    .buttonStyle(SunPrimaryButtonStyle())
+                    .accessibilityIdentifier("home.accountabilityNudge.setup")
+
+                    Button("Not Now") {
+                        appState.dismissAccountabilityNudge()
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("home.accountabilityNudge.dismiss")
+                }
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+            )
+        }
     }
 
     @ViewBuilder
@@ -301,7 +348,7 @@ struct HomeView: View {
 
                     homeFeatureButton(
                         title: "Accountability",
-                        detail: appState.friends.isEmpty ? "Share a streak code" : "\(appState.friends.count) saved",
+                        detail: appState.friends.isEmpty ? "Invite or add nearby" : "\(appState.friends.count) saved",
                         symbol: "person.2.fill",
                         route: .friends
                     )

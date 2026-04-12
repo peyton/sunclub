@@ -67,6 +67,8 @@ struct RootView: View {
             AchievementsView()
         case .friends:
             FriendsView()
+        case .accountabilityOnboarding:
+            AccountabilityOnboardingView()
         case .skinHealthReport:
             SkinHealthReportView()
         case .productScanner:

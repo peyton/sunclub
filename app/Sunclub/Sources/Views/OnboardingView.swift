@@ -84,7 +84,11 @@ struct EnableNotificationsView: View {
                         await NotificationManager.shared.scheduleReminders(using: appState)
                     }
                     appState.completeOnboarding()
-                    router.goHome()
+                    if appState.importPendingAccountabilityInvitesIfNeeded() {
+                        router.open(.friends)
+                    } else {
+                        router.goHome()
+                    }
                 }
             }
             .buttonStyle(SunPrimaryButtonStyle())

@@ -8,6 +8,7 @@ struct SunclubWidgetsBundle: WidgetBundle {
         SunclubStreakWidget()
         SunclubStatsWidget()
         SunclubCalendarWidget()
+        SunclubAccountabilityWidget()
         SunclubLogTodayControl()
         SunclubSummaryControl()
         SunclubHistoryControl()

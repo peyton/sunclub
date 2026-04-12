@@ -10,6 +10,7 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
     case summary
     case history
     case updateToday
+    case accountability
 
     var appRoute: AppRoute {
         switch self {
@@ -19,6 +20,8 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
             return .history
         case .updateToday:
             return .manualLog
+        case .accountability:
+            return .friends
         }
     }
 
@@ -44,6 +47,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let peakUVHour: Date?
     let reapplyReminderEnabled: Bool
     let reapplyIntervalMinutes: Int
+    let accountabilitySummary: SunclubAccountabilitySummary
 
     static let empty = SunclubWidgetSnapshot(
         isOnboardingComplete: false,
@@ -61,8 +65,88 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         peakUVIndex: nil,
         peakUVHour: nil,
         reapplyReminderEnabled: false,
-        reapplyIntervalMinutes: 120
+        reapplyIntervalMinutes: 120,
+        accountabilitySummary: .empty
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case isOnboardingComplete
+        case lastLoggedDay
+        case lastVerifiedAt
+        case lastReappliedAt
+        case recordedDays
+        case currentStreak
+        case longestStreak
+        case weeklyAppliedCount
+        case monthlyAppliedCount
+        case monthlyDayCount
+        case mostUsedSPF
+        case currentUVIndex
+        case peakUVIndex
+        case peakUVHour
+        case reapplyReminderEnabled
+        case reapplyIntervalMinutes
+        case accountabilitySummary
+    }
+
+    init(
+        isOnboardingComplete: Bool,
+        lastLoggedDay: Date?,
+        lastVerifiedAt: Date?,
+        lastReappliedAt: Date?,
+        recordedDays: [Date],
+        currentStreak: Int,
+        longestStreak: Int,
+        weeklyAppliedCount: Int,
+        monthlyAppliedCount: Int,
+        monthlyDayCount: Int,
+        mostUsedSPF: Int?,
+        currentUVIndex: Int?,
+        peakUVIndex: Int?,
+        peakUVHour: Date?,
+        reapplyReminderEnabled: Bool,
+        reapplyIntervalMinutes: Int,
+        accountabilitySummary: SunclubAccountabilitySummary = .empty
+    ) {
+        self.isOnboardingComplete = isOnboardingComplete
+        self.lastLoggedDay = lastLoggedDay
+        self.lastVerifiedAt = lastVerifiedAt
+        self.lastReappliedAt = lastReappliedAt
+        self.recordedDays = recordedDays
+        self.currentStreak = currentStreak
+        self.longestStreak = longestStreak
+        self.weeklyAppliedCount = weeklyAppliedCount
+        self.monthlyAppliedCount = monthlyAppliedCount
+        self.monthlyDayCount = monthlyDayCount
+        self.mostUsedSPF = mostUsedSPF
+        self.currentUVIndex = currentUVIndex
+        self.peakUVIndex = peakUVIndex
+        self.peakUVHour = peakUVHour
+        self.reapplyReminderEnabled = reapplyReminderEnabled
+        self.reapplyIntervalMinutes = reapplyIntervalMinutes
+        self.accountabilitySummary = accountabilitySummary
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isOnboardingComplete = try container.decode(Bool.self, forKey: .isOnboardingComplete)
+        lastLoggedDay = try container.decodeIfPresent(Date.self, forKey: .lastLoggedDay)
+        lastVerifiedAt = try container.decodeIfPresent(Date.self, forKey: .lastVerifiedAt)
+        lastReappliedAt = try container.decodeIfPresent(Date.self, forKey: .lastReappliedAt)
+        recordedDays = try container.decode([Date].self, forKey: .recordedDays)
+        currentStreak = try container.decode(Int.self, forKey: .currentStreak)
+        longestStreak = try container.decode(Int.self, forKey: .longestStreak)
+        weeklyAppliedCount = try container.decode(Int.self, forKey: .weeklyAppliedCount)
+        monthlyAppliedCount = try container.decode(Int.self, forKey: .monthlyAppliedCount)
+        monthlyDayCount = try container.decode(Int.self, forKey: .monthlyDayCount)
+        mostUsedSPF = try container.decodeIfPresent(Int.self, forKey: .mostUsedSPF)
+        currentUVIndex = try container.decodeIfPresent(Int.self, forKey: .currentUVIndex)
+        peakUVIndex = try container.decodeIfPresent(Int.self, forKey: .peakUVIndex)
+        peakUVHour = try container.decodeIfPresent(Date.self, forKey: .peakUVHour)
+        reapplyReminderEnabled = try container.decode(Bool.self, forKey: .reapplyReminderEnabled)
+        reapplyIntervalMinutes = try container.decode(Int.self, forKey: .reapplyIntervalMinutes)
+        accountabilitySummary = try container.decodeIfPresent(SunclubAccountabilitySummary.self, forKey: .accountabilitySummary) ?? .empty
+    }
 
     func hasLoggedToday(now: Date = Date(), calendar: Calendar = Calendar.current) -> Bool {
         let today = calendar.startOfDay(for: now)
@@ -135,6 +219,7 @@ enum SunclubWidgetSnapshotBuilder {
     static func make(
         settings: Settings,
         records: [DailyRecord],
+        growthSettings: SunclubGrowthSettings = SunclubGrowthSettings(),
         uvReading: UVReading? = nil,
         uvForecast: SunclubUVForecast? = nil,
         now: Date = Date(),
@@ -170,7 +255,29 @@ enum SunclubWidgetSnapshotBuilder {
             peakUVIndex: uvForecast?.peakHour?.index,
             peakUVHour: uvForecast?.peakHour?.date,
             reapplyReminderEnabled: settings.reapplyReminderEnabled,
-            reapplyIntervalMinutes: settings.reapplyIntervalMinutes
+            reapplyIntervalMinutes: settings.reapplyIntervalMinutes,
+            accountabilitySummary: accountabilitySummary(from: growthSettings)
+        )
+    }
+
+    private static func accountabilitySummary(from settings: SunclubGrowthSettings) -> SunclubAccountabilitySummary {
+        let friends = settings.friends.sorted { lhs, rhs in
+            if lhs.hasLoggedToday != rhs.hasLoggedToday {
+                return !lhs.hasLoggedToday && rhs.hasLoggedToday
+            }
+            if lhs.currentStreak != rhs.currentStreak {
+                return lhs.currentStreak > rhs.currentStreak
+            }
+            return lhs.lastSharedAt > rhs.lastSharedAt
+        }
+        let latestPoke = settings.accountability.pokeHistory.sorted { $0.createdAt > $1.createdAt }.first
+        return SunclubAccountabilitySummary(
+            isActive: settings.accountability.isActive,
+            friendCount: friends.count,
+            loggedCount: friends.filter(\.hasLoggedToday).count,
+            openCount: friends.filter { !$0.hasLoggedToday }.count,
+            topFriends: Array(friends.prefix(4)),
+            latestPoke: latestPoke
         )
     }
 }
