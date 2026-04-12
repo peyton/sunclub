@@ -28,6 +28,10 @@ html {
   overflow-x: clip;
 }
 
+[id] {
+  scroll-margin-top: 88px;
+}
+
 body {
   margin: 0;
   color: var(--ink);
@@ -43,10 +47,33 @@ svg {
   max-width: 100%;
 }
 
+img {
+  height: auto;
+}
+
 a {
   color: inherit;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
+  touch-action: manipulation;
+}
+
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 100;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--deep);
+  background: var(--sun);
+  font-weight: 800;
+  text-decoration: none;
+  transform: translateY(-140%);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 a:focus-visible,
@@ -333,8 +360,11 @@ button:focus-visible {
 }
 
 .screen-figure img {
+  width: 100%;
+  aspect-ratio: 560 / 1216;
   border: 1px solid var(--line);
   border-radius: 28px;
+  object-fit: contain;
   box-shadow: 0 20px 48px rgba(23, 20, 18, 0.16);
 }
 
