@@ -88,7 +88,7 @@ enum SunclubAccountabilityMessaging {
         "The sun is doing side quests. Please equip SPF.",
         "This is your official lotion summons.",
         "The streak auditors are circling. Log today and scare them off.",
-        "Your face called. It would like a defensive coating.",
+        "Your face called. It would like SPF backup.",
         "SPF roll call. You are currently marked mysteriously absent.",
         "A polite poke from the sunscreen desk: clock in, shine less.",
         "The bottle is emotionally available. Are you?",
@@ -101,11 +101,11 @@ enum SunclubAccountabilityMessaging {
         "You are on the SPF board today. Consider this a tiny victory poke.",
         "Logged already. Show-off behavior detected.",
         "Your sunscreen paperwork is in order. The committee applauds, quietly.",
-        "Covered today. If you are still outside, the bottle wants an encore.",
+        "Logged today. If you are still outside, the bottle wants an encore.",
         "You logged. The sun has been informed and is taking it poorly.",
         "SPF elite status confirmed. Reapply if the day keeps day-ing.",
         "Your streak is behaving. Very mature. Almost alarming.",
-        "The friend audit says you are coated. Carry on, glossy citizen.",
+        "The friend audit says your SPF is logged. Carry on.",
         "You beat the poke. This poke is now ceremonial.",
         "Logged today. Please accept this unnecessary but affectionate SPF ping.",
         "The bottle says nice work and also maybe do not abandon it.",
@@ -122,7 +122,7 @@ enum SunclubAccountabilityMessaging {
         "%@ has requested one logged day, extra SPF.",
         "%@ is tapping the sunscreen sign.",
         "%@ says your streak auditors are restless.",
-        "%@ would like you coated and accounted for.",
+        "%@ would like one sunscreen log on the board.",
         "%@ sent a friendly poke from the shade."
     ]
 
@@ -130,13 +130,13 @@ enum SunclubAccountabilityMessaging {
         "%@ poked you anyway. Your logged day is causing envy.",
         "%@ sent a ceremonial poke. You already did the SPF thing.",
         "%@ says nice log. Reapply if the sun is still loitering.",
-        "%@ noticed you are covered and chose applause by notification.",
+        "%@ noticed your log and chose applause by notification.",
         "%@ says your sunscreen paperwork is suspiciously tidy.",
         "%@ sent a victory tap for your already-logged day.",
         "%@ says the SPF committee has no notes.",
         "%@ poked the overachiever. That is you.",
         "%@ says your streak looks smug today.",
-        "%@ approves this coated behavior."
+        "%@ approves this sunscreen discipline."
     ]
 
     static func outgoingPokeMessage(
@@ -179,24 +179,24 @@ enum SunclubAccountabilityMessaging {
         let sender = resolvedName(senderName, fallback: "A Sunclub friend")
         let friend = resolvedName(friendName, fallback: "friend")
         let nudge = hasLoggedToday
-            ? "You already logged, which is suspiciously responsible. Reapply if the sun is still loitering."
-            : "The SPF council requests your presence. Log today before the sun gets smug."
+            ? "Nice log today. Reapply if the sun is still loitering."
+            : "Time to log sunscreen in Sunclub."
         return "\(sender) says to \(friend): \(nudge) Open Sunclub: \(SunclubShareArtifactService.appLinkDisplay)"
     }
 
     static func directPokeSuccessMessage(friendName: String, hasLoggedToday: Bool) -> String {
         let friend = resolvedName(friendName, fallback: "your friend")
         return hasLoggedToday
-            ? "Sent \(friend) a victory SPF tap."
-            : "Poked \(friend). SPF chaos delivered."
+            ? "Sent \(friend) a nice-work tap."
+            : "Sent \(friend) a sunscreen nudge."
     }
 
     static func directPokeFailureMessage(friendName: String) -> String {
-        "Direct poke did not send to \(resolvedName(friendName, fallback: "your friend")). Message poke is still available."
+        "Direct poke did not send to \(resolvedName(friendName, fallback: "your friend")). Use Message instead."
     }
 
     static func directPokeUnavailableMessage(friendName: String) -> String {
-        "\(resolvedName(friendName, fallback: "This friend")) needs a fresh invite before direct pokes work."
+        "Add \(resolvedName(friendName, fallback: "this friend")) again before direct pokes work."
     }
 
     static func latestPokeText(_ poke: SunclubAccountabilityPoke?) -> String? {

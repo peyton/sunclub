@@ -11,6 +11,7 @@ struct SunclubAccountabilitySettings: Codable, Equatable, Sendable {
     var pokeHistory: [SunclubAccountabilityPoke]
     var lastPublishedAt: Date?
     var subscriptionsInstalledAt: Date?
+    var subscriptionInstallVersion: Int
 
     init(
         localProfileID: UUID = UUID(),
@@ -22,7 +23,8 @@ struct SunclubAccountabilitySettings: Codable, Equatable, Sendable {
         connections: [SunclubFriendConnection] = [],
         pokeHistory: [SunclubAccountabilityPoke] = [],
         lastPublishedAt: Date? = nil,
-        subscriptionsInstalledAt: Date? = nil
+        subscriptionsInstalledAt: Date? = nil,
+        subscriptionInstallVersion: Int = 0
     ) {
         self.localProfileID = localProfileID
         self.displayName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -34,6 +36,7 @@ struct SunclubAccountabilitySettings: Codable, Equatable, Sendable {
         self.pokeHistory = Array(pokeHistory.sorted { $0.createdAt > $1.createdAt }.prefix(50))
         self.lastPublishedAt = lastPublishedAt
         self.subscriptionsInstalledAt = subscriptionsInstalledAt
+        self.subscriptionInstallVersion = max(0, subscriptionInstallVersion)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -47,6 +50,7 @@ struct SunclubAccountabilitySettings: Codable, Equatable, Sendable {
         case pokeHistory
         case lastPublishedAt
         case subscriptionsInstalledAt
+        case subscriptionInstallVersion
     }
 
     init(from decoder: Decoder) throws {
@@ -66,6 +70,10 @@ struct SunclubAccountabilitySettings: Codable, Equatable, Sendable {
         pokeHistory = Array(decodedPokes.sorted { $0.createdAt > $1.createdAt }.prefix(50))
         lastPublishedAt = try container.decodeIfPresent(Date.self, forKey: .lastPublishedAt)
         subscriptionsInstalledAt = try container.decodeIfPresent(Date.self, forKey: .subscriptionsInstalledAt)
+        subscriptionInstallVersion = max(
+            0,
+            try container.decodeIfPresent(Int.self, forKey: .subscriptionInstallVersion) ?? 0
+        )
     }
 
     var isActive: Bool {
