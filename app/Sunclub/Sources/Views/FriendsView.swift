@@ -171,6 +171,7 @@ struct FriendsView: View {
             return
         }
         let intro = "Join me on Sunclub. Import this friend code in Friends:\n\n\(shareCode)"
+        appState.recordShareActionStarted()
         shareSheetItem = ShareSheetItem(items: [intro])
     }
 

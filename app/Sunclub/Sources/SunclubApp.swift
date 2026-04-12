@@ -187,6 +187,8 @@ struct SunclubApp: App {
                 seedDayConflictScenario()
             case "undoDeleteToday":
                 seedUndoDeleteTodayScenario()
+            case "achievementProgress":
+                seedAchievementProgressScenario()
             default:
                 break
             }
@@ -350,6 +352,31 @@ struct SunclubApp: App {
         insertSeedRecord(day: yesterday, hour: 8, minute: 30, spfLevel: 50, notes: "Yesterday")
         insertSeedRecord(day: today, hour: 9, minute: 0, spfLevel: 30, notes: "Today")
         appState.deleteRecord(for: today)
+        appState.refresh()
+    }
+
+    private func seedAchievementProgressScenario() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        for offset in 0..<4 {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else {
+                continue
+            }
+
+            let lastReappliedAt = calendar.date(bySettingHour: 11, minute: 0, second: 0, of: day)
+            insertSeedRecord(
+                day: day,
+                hour: 8,
+                minute: 30,
+                spfLevel: 30,
+                notes: offset == 0 ? "Achievement seed" : nil,
+                reapplyCount: offset == 0 ? 1 : 0,
+                lastReappliedAt: lastReappliedAt
+            )
+        }
+
+        appState.save()
         appState.refresh()
     }
 
