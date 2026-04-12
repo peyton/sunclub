@@ -285,6 +285,11 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
         XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
+
+        let accountabilityTile = app.descendants(matching: .any)["home.accountabilityOpen"]
+        XCTAssertTrue(accountabilityTile.exists)
+        accountabilityTile.tap()
+        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -307,7 +312,8 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
-        XCTAssertTrue(app.buttons["Refresh"].exists)
+        XCTAssertTrue(app.buttons["Message"].exists)
+        XCTAssertFalse(app.buttons["Refresh"].exists)
         XCTAssertFalse(app.buttons["Poke by Message"].exists)
         XCTAssertFalse(app.buttons["Remove Friend"].exists)
 

@@ -121,6 +121,7 @@ struct FriendsView: View {
     @State private var sheet: AccountabilitySheet?
     @State private var isAddFriendsExpanded = false
     @State private var friendPendingRemoval: SunclubFriendSnapshot?
+    @State private var localFeedbackMessage: String?
 
     var body: some View {
         SunLightScreen {
@@ -172,6 +173,7 @@ struct FriendsView: View {
         }
         .onDisappear {
             appState.clearFriendImportMessage()
+            localFeedbackMessage = nil
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -206,25 +208,17 @@ struct FriendsView: View {
                     savePreferredName()
                 }
 
-            HStack(spacing: 10) {
-                Button(appState.growthSettings.accountability.isActive ? "Save Name" : "Turn On") {
-                    appState.activateAccountability(displayName: preferredName)
-                    savePreferredName()
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .accessibilityIdentifier("friends.activate")
-
-                Button("Refresh") {
-                    appState.refreshAccountabilityFriends()
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityIdentifier("friends.refresh")
+            Button(appState.growthSettings.accountability.isActive ? "Save Name" : "Turn On") {
+                appState.activateAccountability(displayName: preferredName)
+                savePreferredName()
             }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("friends.activate")
 
-            if let friendImportMessage = appState.friendImportMessage {
+            if let statusMessage = localFeedbackMessage ?? appState.friendImportMessage {
                 SunStatusCard(
                     title: "Accountability",
-                    detail: friendImportMessage,
+                    detail: statusMessage,
                     tint: AppPalette.sun,
                     symbol: "person.2.fill"
                 )
@@ -276,7 +270,7 @@ struct FriendsView: View {
                         .foregroundStyle(AppPalette.softInk)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AccountabilityCardButtonStyle())
             .accessibilityIdentifier("friends.add.toggle")
 
             if isAddFriendsExpanded {
@@ -315,7 +309,14 @@ struct FriendsView: View {
             detail: "Use the backup code from a friend's invite.",
             symbol: "doc.on.clipboard.fill"
         ) {
-            importCode = UIPasteboard.general.string ?? importCode
+            appState.clearFriendImportMessage()
+            let pastedCode = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let pastedCode, !pastedCode.isEmpty else {
+                localFeedbackMessage = "Clipboard is empty."
+                return
+            }
+            importCode = pastedCode
+            localFeedbackMessage = "Code pasted."
         }
         .accessibilityIdentifier("friends.add.paste")
     }
@@ -348,7 +349,9 @@ struct FriendsView: View {
 
             HStack(spacing: 10) {
                 Button("Copy") {
+                    appState.clearFriendImportMessage()
                     UIPasteboard.general.string = appState.accountabilityInviteShareText
+                    localFeedbackMessage = "Invite copied."
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
                 .accessibilityIdentifier("friends.copyInvite")
@@ -422,13 +425,12 @@ struct FriendsView: View {
                 ForEach(appState.friends) { friend in
                     FriendAccountabilityRow(
                         friend: friend,
-                        onRefresh: {
-                            appState.refreshAccountabilityFriends()
-                        },
                         onPoke: {
+                            localFeedbackMessage = nil
                             appState.sendDirectPoke(to: friend.id)
                         },
                         onSharePoke: {
+                            localFeedbackMessage = nil
                             appState.recordShareActionStarted()
                             sheet = .share([appState.sharePokeText(for: friend)])
                         },
@@ -442,10 +444,13 @@ struct FriendsView: View {
     }
 
     private func savePreferredName() {
+        appState.clearFriendImportMessage()
         appState.updatePreferredDisplayName(preferredName)
+        localFeedbackMessage = "Name saved."
     }
 
     private func importFriend() {
+        localFeedbackMessage = nil
         let trimmedCode = importCode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCode.isEmpty else {
             importErrorMessage = "Paste an invite or backup code first."
@@ -502,7 +507,7 @@ struct FriendsView: View {
                     .fill(Color.white.opacity(0.72))
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AccountabilityCardButtonStyle())
     }
 
     private var cardBackground: some View {
@@ -527,7 +532,6 @@ private enum AccountabilitySheet: Identifiable {
 
 private struct FriendAccountabilityRow: View {
     let friend: SunclubFriendSnapshot
-    let onRefresh: () -> Void
     let onPoke: () -> Void
     let onSharePoke: () -> Void
     let onRemove: () -> Void
@@ -581,18 +585,13 @@ private struct FriendAccountabilityRow: View {
         .buttonStyle(SunPrimaryButtonStyle())
         .accessibilityIdentifier("friends.poke.\(friend.id.uuidString)")
 
-        Button("Refresh") {
-            onRefresh()
+        Button("Message") {
+            onSharePoke()
         }
         .buttonStyle(SunSecondaryButtonStyle())
-        .accessibilityIdentifier("friends.rowRefresh.\(friend.id.uuidString)")
+        .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
 
         Menu {
-            Button("Poke by Message") {
-                onSharePoke()
-            }
-            .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
-
             Button("Remove Friend", role: .destructive) {
                 onRemove()
             }
@@ -609,6 +608,15 @@ private struct FriendAccountabilityRow: View {
         }
         .accessibilityLabel("More actions for \(friend.name)")
         .accessibilityIdentifier("friends.more.\(friend.id.uuidString)")
+    }
+}
+
+private struct AccountabilityCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
