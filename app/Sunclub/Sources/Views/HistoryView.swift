@@ -25,8 +25,6 @@ struct HistoryView: View {
                     router.goBack()
                 })
 
-                streakContextCard
-
                 monthNavigator
 
                 weekdayHeader
@@ -34,20 +32,32 @@ struct HistoryView: View {
 
                 let recordDates = appState.recordedDays
 
-                statsSection(recordDates: recordDates)
-
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay)
                 }
 
                 calendarGrid(recordDates: recordDates)
+                    .id(displayedMonth)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
                 if selectedDay == nil {
                     historyEmptyHint
                 }
 
+                statsSection(recordDates: recordDates)
+
+                streakContextCard
+
+                SunAssetHero(
+                    asset: .illustrationHistoryCalendar,
+                    height: 112,
+                    glowColor: AppPalette.sun
+                )
+
                 Spacer(minLength: 0)
             }
+        } footer: {
+            historyActionFooter
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -481,15 +491,16 @@ struct HistoryView: View {
             }
 
             dayDetailBody(record: record, status: status, conflict: conflict)
-
-            actionButtons(for: dayStart, record: record)
-                .padding(.top, 6)
         }
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
     }
 
     private func dayDetailBody(
@@ -568,6 +579,44 @@ struct HistoryView: View {
             }
             .padding(.top, 6)
             .accessibilityIdentifier("history.conflictBanner")
+        }
+    }
+
+    @ViewBuilder
+    private var historyActionFooter: some View {
+        if let selectedDay = selectedDay {
+            let dayStart = calendar.startOfDay(for: selectedDay)
+            let record = appState.record(for: dayStart)
+            let status = appState.dayStatus(for: dayStart)
+
+            VStack(alignment: .leading, spacing: 10) {
+                footerStatusSummary(for: dayStart, status: status)
+                actionButtons(for: dayStart, record: record)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func footerStatusSummary(for day: Date, status: DayStatus) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: statusSymbol(for: status))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(statusColor(for: status))
+                .frame(width: 28, height: 28)
+                .background(Color.white.opacity(0.76), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(statusTitle(for: status))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("history.statusTitle")
+
+                Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+
+            Spacer(minLength: 0)
         }
     }
 
@@ -797,6 +846,10 @@ struct HistoryView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
     }
 
     private func monthInsightCard(

@@ -89,6 +89,10 @@ generate:
     bash scripts/tooling/generate.sh
 
 [group('app')]
+visual-assets:
+    xcrun swift scripts/generate-visual-assets.swift
+
+[group('app')]
 build:
     bash scripts/tooling/build.sh
 

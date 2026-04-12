@@ -145,6 +145,9 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Shared/SunclubRuntimeConfiguration.swift",
             "Sources/WidgetSupport/**"
         ],
+        resources: [
+            "Resources/Assets.xcassets"
+        ],
         entitlements: "SunclubWidgetsExtension.entitlements",
         settings: targetSettings(for: flavor)
     )

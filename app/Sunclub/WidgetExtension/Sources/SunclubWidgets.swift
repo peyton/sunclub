@@ -4,6 +4,9 @@ import WidgetKit
 
 private enum SunclubWidgetPalette {
     static let sun = Color(red: 0.980, green: 0.643, blue: 0.012)
+    static let coral = Color(red: 0.960, green: 0.365, blue: 0.255)
+    static let aloe = Color(red: 0.365, green: 0.720, blue: 0.510)
+    static let pool = Color(red: 0.260, green: 0.655, blue: 0.850)
     static let ink = Color(red: 0.129, green: 0.114, blue: 0.102)
     static let softInk = Color(red: 0.463, green: 0.404, blue: 0.369)
     static let warm = Color(red: 0.992, green: 0.965, blue: 0.914)
@@ -608,30 +611,39 @@ private struct SunclubLogSmallView: View {
             family: .systemSmall
         )
 
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .center) {
-                SunclubLogIconBadge(presentation: presentation, size: 32)
+        ZStack(alignment: .topTrailing) {
+            Image(presentation.state == .logged ? "MotifShieldGlow" : "MotifSunRing")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 86, height: 86)
+                .opacity(0.20)
+                .offset(x: 22, y: -20)
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .center) {
+                    SunclubLogIconBadge(presentation: presentation, size: 32)
+                    Spacer(minLength: 0)
+                    Text(presentation.eyebrow)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(SunclubWidgetPalette.softInk)
+                }
+
                 Spacer(minLength: 0)
-                Text(presentation.eyebrow)
-                    .font(.system(size: 11, weight: .semibold))
+
+                Text(presentation.title)
+                    .font(.system(size: 31, weight: .black, design: .rounded))
+                    .foregroundStyle(SunclubWidgetPalette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.74)
+
+                Text(presentation.subtitle)
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                SunclubLogActionPill(presentation: presentation, compact: true)
             }
-
-            Spacer(minLength: 0)
-
-            Text(presentation.title)
-                .font(.system(size: 31, weight: .black, design: .rounded))
-                .foregroundStyle(SunclubWidgetPalette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.74)
-
-            Text(presentation.subtitle)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(SunclubWidgetPalette.softInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            SunclubLogActionPill(presentation: presentation, compact: true)
         }
         .padding(16)
         .accessibilityLabel(presentation.accessibilityLabel)
@@ -982,20 +994,29 @@ private struct SunclubStreakSmallView: View {
     let now: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Sunclub Streak")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SunclubWidgetPalette.softInk)
+        ZStack(alignment: .topTrailing) {
+            Image("MotifSunRing")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 108, height: 108)
+                .opacity(0.22)
+                .offset(x: 30, y: -28)
 
-            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Sunclub Streak")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SunclubWidgetPalette.softInk)
 
-            Text("\(snapshot.streakValue(now: now))d")
-                .font(.system(size: 42, weight: .bold))
-                .foregroundStyle(SunclubWidgetPalette.ink)
+                Spacer(minLength: 0)
 
-            Text("Best \(max(snapshot.longestStreak, snapshot.streakValue(now: now)))d")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(SunclubWidgetPalette.softInk)
+                Text("\(snapshot.streakValue(now: now))d")
+                    .font(.system(size: 42, weight: .bold))
+                    .foregroundStyle(SunclubWidgetPalette.ink)
+
+                Text("Best \(max(snapshot.longestStreak, snapshot.streakValue(now: now)))d")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SunclubWidgetPalette.softInk)
+            }
         }
         .padding(18)
     }
@@ -1340,11 +1361,18 @@ private struct SunclubWidgetBackground: View {
     let style: Style
 
     var body: some View {
-        LinearGradient(
-            colors: colors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        ZStack {
+            Image(textureName)
+                .resizable()
+                .scaledToFill()
+
+            LinearGradient(
+                colors: colors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .opacity(0.52)
+        }
     }
 
     private var colors: [Color] {
@@ -1355,6 +1383,15 @@ private struct SunclubWidgetBackground: View {
             return [SunclubWidgetPalette.warmStrong, SunclubWidgetPalette.warm]
         case .cool:
             return [SunclubWidgetPalette.cool, .white]
+        }
+    }
+
+    private var textureName: String {
+        switch style {
+        case .warm, .warmStrong:
+            return "WidgetTextureWarm"
+        case .cool:
+            return "WidgetTextureCool"
         }
     }
 }

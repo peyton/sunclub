@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 protocol HomeExitReminderStateStoring: AnyObject {
     func hasObservedInside(on date: Date, calendar: Calendar) -> Bool
     func markObservedInside(on date: Date, calendar: Calendar)
@@ -8,6 +9,7 @@ protocol HomeExitReminderStateStoring: AnyObject {
     func markFired(on date: Date, calendar: Calendar)
 }
 
+@MainActor
 final class HomeExitReminderStateStore: HomeExitReminderStateStoring {
     private enum Key {
         static let observedInsideDay = "sunclub.home-exit.observed-inside-day"

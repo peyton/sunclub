@@ -8,16 +8,18 @@ struct OnboardingView: View {
 
 struct WelcomeView: View {
     @Environment(AppRouter.self) private var router
+    @State private var startFeedbackTrigger = 0
 
     var body: some View {
         SunLightScreen {
-            VStack(spacing: 24) {
+            VStack(spacing: 22) {
                 SunBrandLockup(
                     layout: .stacked,
-                    markSize: 120,
+                    markSize: 104,
                     subtitle: SunclubCopy.Brand.welcomeTitle
                 )
                 .frame(maxWidth: .infinity)
+                .padding(.top, 72)
 
                 Text(SunclubCopy.Brand.welcomeDetail)
                     .font(.system(size: 17))
@@ -31,11 +33,13 @@ struct WelcomeView: View {
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Get Started") {
+                startFeedbackTrigger += 1
                 router.open(.enableNotifications)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
         }
+        .sensoryFeedback(.selection, trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
 }
@@ -43,18 +47,26 @@ struct WelcomeView: View {
 struct EnableNotificationsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @State private var completionFeedbackTrigger = 0
 
     var body: some View {
         SunLightScreen {
-            VStack(spacing: 26) {
-                Circle()
-                    .fill(AppPalette.warmGlow)
-                    .frame(width: 120, height: 120)
-                    .overlay {
-                        Image(systemName: "bell.badge.fill")
-                            .font(.system(size: 48))
-                    }
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 24) {
+                SunAssetHero(
+                    asset: .heroNotificationNudge,
+                    height: 232,
+                    glowColor: AppPalette.pool
+                )
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 58, height: 58)
+                        .background(AppPalette.sun, in: Circle())
+                        .shadow(color: AppPalette.sun.opacity(0.28), radius: 16, x: 0, y: 8)
+                        .offset(x: -18, y: 18)
+                        .accessibilityHidden(true)
+                }
 
                 VStack(spacing: 14) {
                     Text(SunclubCopy.Brand.reminderTitle)
@@ -78,6 +90,7 @@ struct EnableNotificationsView: View {
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Turn On Reminders") {
+                completionFeedbackTrigger += 1
                 Task {
                     if !appState.isUITesting {
                         _ = await NotificationManager.shared.configure()
@@ -94,6 +107,7 @@ struct EnableNotificationsView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("onboarding.enableNotifications")
         }
+        .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }

@@ -3,6 +3,7 @@ import SwiftUI
 struct VerificationSuccessView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @State private var completionFeedbackTrigger = 0
 
     private var presentation: VerificationSuccessPresentation {
         appState.verificationSuccessPresentation
@@ -13,7 +14,7 @@ struct VerificationSuccessView: View {
         SunLightScreen {
             VStack(spacing: 28) {
                 ZStack(alignment: .bottomTrailing) {
-                    SunLogoMark(size: 128)
+                    SunSuccessBurst(size: 186)
 
                     Circle()
                         .fill(AppPalette.success)
@@ -84,6 +85,10 @@ struct VerificationSuccessView: View {
                 }
             }
         }
+        .onAppear {
+            completionFeedbackTrigger += 1
+        }
+        .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
 

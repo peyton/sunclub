@@ -12,6 +12,8 @@ struct ProductScannerView: View {
     @State private var errorMessage: String?
     @State private var isScanning = false
     @State private var scanResultPendingUse: SunclubProductScanResult?
+    @State private var scanSheenActive = false
+    @State private var feedbackTrigger = 0
 
     var body: some View {
         SunLightScreen {
@@ -30,14 +32,18 @@ struct ProductScannerView: View {
                         .foregroundStyle(AppPalette.softInk)
                 }
 
+                if previewImage == nil {
+                    SunAssetHero(
+                        asset: .illustrationScannerLabel,
+                        height: 178,
+                        glowColor: AppPalette.pool
+                    )
+                }
+
                 actionRow
 
                 if let previewImage {
-                    Image(uiImage: previewImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    scanPreview(for: previewImage)
                 }
 
                 if isScanning {
@@ -79,6 +85,7 @@ struct ProductScannerView: View {
                 await loadPhoto(from: newValue)
             }
         }
+        .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .confirmationDialog(
             "Use scanned SPF?",
             isPresented: Binding(
@@ -108,6 +115,7 @@ struct ProductScannerView: View {
         HStack(spacing: 12) {
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 Button("Use Camera") {
+                    feedbackTrigger += 1
                     isShowingCamera = true
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
@@ -141,16 +149,50 @@ struct ProductScannerView: View {
             }
 
             Button(result.spfLevel == nil ? "No SPF Found" : "Use in Today's Log") {
+                feedbackTrigger += 1
                 scanResultPendingUse = result
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .disabled(result.spfLevel == nil)
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.72))
-        )
+        .sunGlassCard(cornerRadius: 20)
+    }
+
+    private func scanPreview(for image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(AppPalette.sun.opacity(0.64), lineWidth: 2)
+            }
+            .overlay {
+                SunclubVisualAsset.motifScanSheen.image
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(isScanning ? 0.42 : 0.16)
+                    .offset(x: scanSheenActive ? 220 : -220)
+                    .animation(.easeInOut(duration: 1.45).repeatForever(autoreverses: false), value: scanSheenActive)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .accessibilityHidden(true)
+            }
+            .overlay(alignment: .topLeading) {
+                SunCameraOverlayLabel(title: "SPF scan", tint: AppPalette.pool)
+                    .padding(14)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                VStack(alignment: .trailing, spacing: 6) {
+                    SunCameraOverlayLabel(title: "Label", tint: AppPalette.sun)
+                    SunCameraOverlayLabel(title: "Expiry", tint: AppPalette.aloe)
+                }
+                .padding(14)
+            }
+            .onAppear {
+                scanSheenActive = true
+            }
     }
 
     private func loadPhoto(from item: PhotosPickerItem) async {
@@ -167,6 +209,7 @@ struct ProductScannerView: View {
     }
 
     private func handleImage(_ image: UIImage) {
+        feedbackTrigger += 1
         previewImage = image
         scanResult = nil
         errorMessage = nil

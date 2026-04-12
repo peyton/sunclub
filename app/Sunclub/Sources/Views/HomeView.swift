@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var now = Date()
     @State private var isExploreExpanded = false
     @State private var isUVExpanded = false
+    @State private var feedbackTrigger = 0
 
     var body: some View {
         SunLightScreen {
@@ -13,8 +14,6 @@ struct HomeView: View {
                 header
 
                 todayCard
-                accountabilityHomeCard
-                accountabilityNudgeCard
 
                 Button {
                     router.open(.weeklySummary)
@@ -25,6 +24,8 @@ struct HomeView: View {
                 .accessibilityHint("Opens your last 7 days.")
                 .accessibilityIdentifier("home.streakCard")
 
+                accountabilityHomeCard
+                accountabilityNudgeCard
                 uvBriefingSection
                 achievementCelebrationCard
                 secondaryActionsSection
@@ -51,6 +52,7 @@ struct HomeView: View {
             appState.refreshUVForecastIfNeeded()
             appState.refreshNotificationHealth()
         }
+        .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
 
@@ -149,9 +151,24 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(22)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+            ZStack(alignment: .bottomTrailing) {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+
+                if appState.record(for: Date()) != nil {
+                    SunclubVisualAsset.motifShieldGlow.image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 116, height: 116)
+                        .opacity(0.20)
+                        .offset(x: 28, y: 30)
+                }
+            }
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
     }
 
     @ViewBuilder
@@ -208,10 +225,7 @@ struct HomeView: View {
                 }
             }
             .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
-            )
+            .sunGlassCard(cornerRadius: 18)
         }
     }
 
@@ -252,6 +266,14 @@ struct HomeView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background {
+                        SunclubVisualAsset.backgroundUVBands.image
+                            .resizable()
+                            .scaledToFill()
+                            .opacity(0.24)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
                 }
 
                 if shouldShowExpandedUVForecast(uvForecast) {
@@ -261,6 +283,7 @@ struct HomeView: View {
                 }
 
                 Button(isUVExpanded ? "Show Less" : "Show More") {
+                    feedbackTrigger += 1
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isUVExpanded.toggle()
                     }
@@ -272,10 +295,7 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
-            )
+            .sunGlassCard(cornerRadius: 22)
         }
     }
 
@@ -283,9 +303,11 @@ struct HomeView: View {
     private var achievementCelebrationCard: some View {
         if let achievement = appState.achievementCelebration {
             HStack(spacing: 14) {
-                Image(systemName: achievement.symbolName)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(AppPalette.sun)
+                SunclubBadgeMedallion(
+                    asset: achievement.id.visualAsset,
+                    size: 58,
+                    tint: AppPalette.sun
+                )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Unlocked: \(achievement.title)")
@@ -301,6 +323,7 @@ struct HomeView: View {
                 Spacer(minLength: 0)
 
                 Button("View") {
+                    feedbackTrigger += 1
                     router.open(.achievements)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
@@ -308,14 +331,19 @@ struct HomeView: View {
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(AppPalette.warmGlow.opacity(0.5))
+                .fill(AppPalette.warmGlow.opacity(0.5))
             )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+            }
         }
     }
 
     private var exploreSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
+                feedbackTrigger += 1
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExploreExpanded.toggle()
                 }
@@ -344,10 +372,7 @@ struct HomeView: View {
                         .foregroundStyle(AppPalette.softInk)
                 }
                 .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.72))
-                )
+                .sunGlassCard(cornerRadius: 18)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Shows optional Sunclub tools.")
@@ -389,29 +414,58 @@ struct HomeView: View {
     }
 
     private var streakCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("\(appState.currentStreak)")
-                .font(.system(size: 60, weight: .bold))
-                .foregroundStyle(AppPalette.streakAccent)
-                .accessibilityIdentifier("home.streakValue")
+        ZStack(alignment: .topTrailing) {
+            SunclubVisualAsset.motifSunRing.image
+                .resizable()
+                .scaledToFit()
+                .frame(width: 190, height: 190)
+                .opacity(0.24)
+                .offset(x: 38, y: -36)
 
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Day streak")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(AppPalette.ink)
-                    .accessibilityIdentifier("home.dayStreakLabel")
+            VStack(alignment: .leading, spacing: 12) {
+                Text("\(appState.currentStreak)")
+                    .font(.system(size: 64, weight: .heavy))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AppPalette.streakAccent, AppPalette.coral],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .accessibilityIdentifier("home.streakValue")
 
-                if appState.longestStreak > 0 {
-                    Text("Best: \(appState.longestStreak)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                        .accessibilityIdentifier("home.longestStreak")
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Day streak")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+                        .accessibilityIdentifier("home.dayStreakLabel")
+
+                    if appState.longestStreak > 0 {
+                        Text("Best: \(appState.longestStreak)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                            .accessibilityIdentifier("home.longestStreak")
+                    }
                 }
-            }
 
-            Text("Open your weekly streak, then view full history.")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(AppPalette.softInk)
+                HStack(spacing: 6) {
+                    ForEach(Array(recentDayTrack.enumerated()), id: \.offset) { _, isLogged in
+                        Capsule()
+                            .fill(isLogged ? AppPalette.sun : Color.white.opacity(0.68))
+                            .overlay {
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.60), lineWidth: 1)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 9)
+                    }
+                }
+                .accessibilityHidden(true)
+
+                Text("Open your weekly streak, then view full history.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 158, alignment: .topLeading)
         .padding(24)
@@ -457,28 +511,37 @@ struct HomeView: View {
         route: AppRoute
     ) -> some View {
         Button {
+            feedbackTrigger += 1
             router.open(route)
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(AppPalette.sun)
+            ZStack(alignment: .topTrailing) {
+                featureAsset(for: route).image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 72, height: 72)
+                    .opacity(0.24)
+                    .offset(x: 14, y: -10)
+                    .accessibilityHidden(true)
 
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
+                VStack(alignment: .leading, spacing: 10) {
+                    Image(systemName: symbol)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(featureTint(for: route))
 
-                Text(detail)
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppPalette.softInk)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppPalette.softInk)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
             .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
-            )
+            .sunGlassCard(cornerRadius: 18)
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens \(title).")
@@ -488,15 +551,15 @@ struct HomeView: View {
     private func barColor(for level: UVLevel) -> Color {
         switch level {
         case .low:
-            return AppPalette.success
+            return AppPalette.aloe
         case .moderate:
             return AppPalette.sun
         case .high:
-            return Color.orange
+            return AppPalette.coral
         case .veryHigh:
-            return Color.red.opacity(0.75)
+            return Color.red.opacity(0.78)
         case .extreme:
-            return Color.pink.opacity(0.8)
+            return AppPalette.uvExtreme
         case .unknown:
             return AppPalette.muted
         }
@@ -604,6 +667,7 @@ struct HomeView: View {
     private var footerActions: some View {
         if appState.record(for: Date()) == nil {
             Button("Log Today") {
+                feedbackTrigger += 1
                 router.open(.manualLog)
             }
             .buttonStyle(SunPrimaryButtonStyle())
@@ -611,6 +675,7 @@ struct HomeView: View {
         } else {
             VStack(spacing: 10) {
                 Button(loggedPrimaryActionTitle) {
+                    feedbackTrigger += 1
                     if appState.reapplyCheckInPresentation != nil {
                         router.open(.reapplyCheckIn)
                     } else {
@@ -621,6 +686,7 @@ struct HomeView: View {
                 .accessibilityIdentifier("home.loggedPrimaryAction")
 
                 Button("Edit Today's Log") {
+                    feedbackTrigger += 1
                     router.open(.manualLog)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
@@ -694,6 +760,49 @@ struct HomeView: View {
 
     private var greetingSymbolAccessibilityLabel: String {
         greetingSymbol == "sun.max" ? "Daytime" : "Nighttime"
+    }
+
+    private var recentDayTrack: [Bool] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let recorded = Set(appState.recordedDays.map { calendar.startOfDay(for: $0) })
+
+        return (0..<7).compactMap { offset in
+            guard let day = calendar.date(byAdding: .day, value: offset - 6, to: today) else {
+                return nil
+            }
+            return recorded.contains(day)
+        }
+    }
+
+    private func featureAsset(for route: AppRoute) -> SunclubVisualAsset {
+        switch route {
+        case .achievements:
+            return .illustrationAchievementsShelf
+        case .friends:
+            return .illustrationFriendsPair
+        case .skinHealthReport:
+            return .illustrationSkinReport
+        case .productScanner:
+            return .illustrationScannerLabel
+        default:
+            return .motifShieldGlow
+        }
+    }
+
+    private func featureTint(for route: AppRoute) -> Color {
+        switch route {
+        case .achievements:
+            return AppPalette.coral
+        case .friends:
+            return AppPalette.pool
+        case .skinHealthReport:
+            return AppPalette.aloe
+        case .productScanner:
+            return AppPalette.sun
+        default:
+            return AppPalette.sun
+        }
     }
 }
 
@@ -792,6 +901,10 @@ private struct HomeBannerCard: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
     }
 }
 

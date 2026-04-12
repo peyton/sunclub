@@ -130,6 +130,12 @@ struct FriendsView: View {
                     router.goBack()
                 })
 
+                SunAssetHero(
+                    asset: .illustrationFriendsPair,
+                    height: 154,
+                    glowColor: AppPalette.pool
+                )
+
                 statusCard
                 if appState.friends.isEmpty {
                     addFriendsCard
@@ -414,13 +420,22 @@ struct FriendsView: View {
                 .foregroundStyle(AppPalette.ink)
 
             if appState.friends.isEmpty {
-                Text("Add a friend to see who has logged today and who needs a sunscreen poke.")
-                    .font(.system(size: 15))
-                    .foregroundStyle(AppPalette.softInk)
-                    .padding(18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(cardBackground)
-                    .accessibilityIdentifier("friends.empty")
+                VStack(alignment: .leading, spacing: 12) {
+                    SunclubVisualAsset.illustrationFriendsPair.image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 104)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .accessibilityHidden(true)
+
+                    Text("Add a friend to see who has logged today and who needs a sunscreen poke.")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardBackground)
+                .accessibilityIdentifier("friends.empty")
             } else {
                 ForEach(appState.friends) { friend in
                     FriendAccountabilityRow(
@@ -513,6 +528,11 @@ struct FriendsView: View {
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(Color.white.opacity(0.72))
+            .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+            }
     }
 }
 
@@ -539,6 +559,8 @@ private struct FriendAccountabilityRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
+                FriendAvatar(name: friend.name, isLogged: friend.hasLoggedToday)
+
                 VStack(alignment: .leading, spacing: 5) {
                     Text(friend.name)
                         .font(.system(size: 18, weight: .semibold))
@@ -575,6 +597,10 @@ private struct FriendAccountabilityRow: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
     }
 
     @ViewBuilder
@@ -608,6 +634,43 @@ private struct FriendAccountabilityRow: View {
         }
         .accessibilityLabel("More actions for \(friend.name)")
         .accessibilityIdentifier("friends.more.\(friend.id.uuidString)")
+    }
+}
+
+private struct FriendAvatar: View {
+    let name: String
+    let isLogged: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: isLogged
+                            ? [AppPalette.aloe, AppPalette.sun]
+                            : [AppPalette.pool.opacity(0.8), AppPalette.warmGlow],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Text(initial)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+
+            if isLogged {
+                SunclubVisualAsset.motifShieldGlow.image
+                    .resizable()
+                    .scaledToFit()
+                    .opacity(0.28)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .accessibilityHidden(true)
+    }
+
+    private var initial: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? "S"
     }
 }
 
