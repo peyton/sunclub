@@ -269,11 +269,13 @@ source scripts/tooling/common.sh
 export SUNCLUB_SKIP_VERSION_RESOLUTION=1
 export SUNCLUB_MARKETING_VERSION=2.3.4
 export SUNCLUB_BUILD_NUMBER=20260402.201417.0
+export SUNCLUB_APS_ENVIRONMENT=production
 export TEAM_ID=TEAM123
 setup_local_tooling_env
 printf 'flavor=%s\\n' "$TUIST_SUNCLUB_FLAVOR"
 printf 'marketing=%s\\n' "$TUIST_SUNCLUB_MARKETING_VERSION"
 printf 'build=%s\\n' "$TUIST_SUNCLUB_BUILD_NUMBER"
+printf 'aps=%s\\n' "$TUIST_SUNCLUB_APS_ENVIRONMENT"
 printf 'team=%s\\n' "$TUIST_TEAM_ID"
 """,
         ],
@@ -286,6 +288,7 @@ printf 'team=%s\\n' "$TUIST_TEAM_ID"
     assert "flavor=dev" in result.stdout
     assert "marketing=2.3.4" in result.stdout
     assert "build=20260402.201417.0" in result.stdout
+    assert "aps=production" in result.stdout
     assert "team=TEAM123" in result.stdout
 
 

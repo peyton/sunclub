@@ -179,6 +179,8 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
 
     assert '- "v*.*.*"' in workflow
     assert 'xcode-version: "26.3"' in workflow
+    assert "environment: testflight" in workflow
+    assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight"
@@ -196,6 +198,9 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
     assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in script
     assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
+    assert "XCODEBUILD_SIGNING_ARGS=(" in script
+    assert 'CODE_SIGN_IDENTITY="Apple Distribution"' in script
+    assert ': "${SUNCLUB_APS_ENVIRONMENT:=production}"' in script
     assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
     assert "xcrun --find altool" in script
     assert "xcrun altool \\" in script

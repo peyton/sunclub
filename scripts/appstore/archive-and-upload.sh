@@ -13,6 +13,7 @@ ROOT_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 source "$ROOT_DIR/scripts/tooling/common.sh"
 
 : "${SUNCLUB_FLAVOR:=prod}"
+: "${SUNCLUB_APS_ENVIRONMENT:=production}"
 setup_local_tooling_env
 
 WORKSPACE="$ROOT_DIR/$APP_WORKSPACE"
@@ -66,6 +67,12 @@ if should_disable_swift_compile_cache; then
   )
 fi
 
+XCODEBUILD_SIGNING_ARGS=(
+  DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+  CODE_SIGN_STYLE=Automatic
+  CODE_SIGN_IDENTITY="Apple Distribution"
+)
+
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
 ok() { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
 fail() {
@@ -111,8 +118,7 @@ if [ "$SKIP_ARCHIVE" = false ]; then
     -allowProvisioningUpdates \
     "${XCODEBUILD_AUTH_ARGS[@]}" \
     "${XCODEBUILD_COMPILE_CACHE_ARGS[@]}" \
-    DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-    CODE_SIGN_STYLE=Automatic
+    "${XCODEBUILD_SIGNING_ARGS[@]}"
 
   ok "Archive created at $ARCHIVE_OUTPUT_PATH"
 else

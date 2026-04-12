@@ -24,10 +24,12 @@
   - `SUNCLUB_MARKETING_VERSION`
   - `SUNCLUB_BUILD_NUMBER`
   - `SUNCLUB_FLAVOR`
+  - `SUNCLUB_APS_ENVIRONMENT`
 - Tooling mirrors those values into `TUIST_*` variables before `tuist generate` because Tuist manifests only read `TUIST_`-prefixed environment variables.
 - `CFBundleShortVersionString` comes from `MARKETING_VERSION`.
 - `CFBundleVersion` comes from `SUNCLUB_BUILD_NUMBER`.
 - `CURRENT_PROJECT_VERSION` uses the digits-only projection of `SUNCLUB_BUILD_NUMBER` because Tuist/Xcode collapses dotted values like `20260402.201943.0` back to `1`.
+- App Store archives force `SUNCLUB_APS_ENVIRONMENT=production` before generation so the signed archive uses production push entitlements.
 
 Resolved values:
 
