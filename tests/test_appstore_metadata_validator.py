@@ -104,10 +104,12 @@ def test_validator_allows_current_manifest_in_draft_mode() -> None:
     manifest = validator.load_manifest(
         REPO_ROOT / "scripts" / "appstore" / "metadata.json"
     )
+    manual_steps = manifest["submission"]["manual_steps"]
 
     errors, warnings = validator.validate_manifest(manifest, allow_draft=True)
 
     assert errors == []
+    assert not any("export compliance" in step.lower() for step in manual_steps)
     assert (
         "urls.support is still marked as not ready for App Store submission."
         in warnings

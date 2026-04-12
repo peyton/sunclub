@@ -170,7 +170,7 @@ Patched the App Store Connect fields supported by this script.
 Still manual in App Store Connect:
 1. Upload screenshots from the manifest-defined capture set.
 2. Enter App Review contact details and review notes.
-3. Complete App Privacy answers and export compliance answers.
+3. Complete App Privacy answers.
 4. Set pricing and availability if they differ from the current app record.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
