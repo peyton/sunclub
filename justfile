@@ -41,6 +41,14 @@ web-build: web-check
     mkdir -p .build/web
     cp -R web/. .build/web/
 
+[group('web')]
+web-package VERSION='local':
+    version="{{VERSION}}"; version="${version#VERSION=}"; uv run python -m scripts.web.package_static_site --version "$version"
+
+[group('web')]
+web-release-tag VERSION:
+    VERSION={{VERSION}} bash scripts/web/release-tag.sh
+
 [group('cloudflare')]
 cloudflare-status:
     uv run python -m scripts.cloudflare.pages status

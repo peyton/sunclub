@@ -228,16 +228,54 @@ def validate_pages_config(config: JsonObject) -> list[str]:
                     f"pages-project.json build_config.{key} must be a string."
                 )
 
-    source = config.get("source")
-    if not isinstance(source, dict):
-        errors.append("pages-project.json missing object 'source'.")
+    deployment = config.get("deployment")
+    if not isinstance(deployment, dict):
+        errors.append("pages-project.json missing object 'deployment'.")
+    else:
+        if deployment.get("mode") != "github_actions_direct_upload":
+            errors.append(
+                "pages-project.json deployment.mode must be "
+                "'github_actions_direct_upload'."
+            )
+        for key in ("workflow", "build_output"):
+            if not isinstance(deployment.get(key), str) or not deployment[key].strip():
+                errors.append(f"pages-project.json deployment.{key} must be a string.")
+        if not _is_string_list(deployment.get("required_secrets")):
+            errors.append(
+                "pages-project.json deployment.required_secrets must be a string list."
+            )
+
+    source_control = config.get("source_control")
+    if not isinstance(source_control, dict):
+        errors.append("pages-project.json missing object 'source_control'.")
     else:
         for key in ("type", "owner", "repo_name"):
-            if not isinstance(source.get(key), str) or not source[key].strip():
-                errors.append(f"pages-project.json source.{key} must be a string.")
+            if (
+                not isinstance(source_control.get(key), str)
+                or not source_control[key].strip()
+            ):
+                errors.append(
+                    f"pages-project.json source_control.{key} must be a string."
+                )
+        if source_control.get("production_deployments_enabled") is not False:
+            errors.append(
+                "pages-project.json source_control.production_deployments_enabled "
+                "must be false."
+            )
+        if source_control.get("preview_deployment_setting") != "none":
+            errors.append(
+                "pages-project.json source_control.preview_deployment_setting "
+                "must be 'none'."
+            )
+        if source_control.get("pr_comments_enabled") is not False:
+            errors.append(
+                "pages-project.json source_control.pr_comments_enabled must be false."
+            )
         for key in ("path_includes", "path_excludes"):
-            if not _is_string_list(source.get(key)):
-                errors.append(f"pages-project.json source.{key} must be a string list.")
+            if not _is_string_list(source_control.get(key)):
+                errors.append(
+                    f"pages-project.json source_control.{key} must be a string list."
+                )
 
     return errors
 
@@ -275,13 +313,13 @@ def print_lines(lines: list[str]) -> None:
         print(line)
 
 
-def git_integration_help(account_id: str) -> str:
+def direct_upload_help(account_id: str) -> str:
     return (
-        "Cloudflare may need one-time GitHub authorization before it can create "
-        "the Git-integrated Pages project. Open "
+        "Create or keep the Pages project as a Direct Upload project. GitHub "
+        "Actions deploys the built web artifact with Wrangler, so Cloudflare-side "
+        "Git automatic builds should stay disabled. Open "
         f"https://dash.cloudflare.com/{account_id}/workers-and-pages/create/pages "
-        "and choose Pages > Connect to Git for peyton/sunclub, then rerun "
-        "`just cloudflare-pages-setup`."
+        "only if the Pages project must be created manually."
     )
 
 

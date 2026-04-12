@@ -6,15 +6,16 @@ Run all human and CI automation from the repo root with `just`.
 
 - Setup: `just bootstrap`
 - App: `just icons`, `just generate`, `just build`, `just run`
+- Web: `just web-serve`, `just web-check`, `just web-fmt`, `just web-build`, `just web-package`, `just web-release-tag`
 - Verification: `just lint`, `just fmt`, `just test-python`, `just test-unit`, `just test-ui`, `just test`
 - CI shards: `just ci-lint`, `just ci-python`, `just ci-build`, `just ci`
-- Release-adjacent: `just appstore-validate`, `just appstore-screenshots`, `just appstore-archive`
+- Release-adjacent: `just appstore-validate`, `just appstore-screenshots`, `just appstore-archive`, `just release-tag`, `just web-release-tag`
 
 ## Ownership
 
 - Root `just` recipes are the canonical interface.
 - Shared wrappers live in `scripts/tooling/`.
-- GitHub Actions calls only the root CI shard recipes.
+- GitHub Actions calls only the root CI shard and web recipes.
 - Xcode Cloud scripts stay in `app/ci_scripts/`, but only as provider glue that delegates back to `scripts/tooling/`.
 
 ## Environment

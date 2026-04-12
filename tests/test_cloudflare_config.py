@@ -38,7 +38,7 @@ def test_cloudflare_config_files_are_valid() -> None:
     assert email_config["zone_name"] == "peyton.app"
 
 
-def test_pages_project_payload_matches_git_integration_plan() -> None:
+def test_pages_project_payload_matches_github_actions_direct_upload_plan() -> None:
     config = common.load_pages_config()
 
     payload = pages.build_pages_project_payload(config, github_repo_id="123456")
@@ -46,20 +46,73 @@ def test_pages_project_payload_matches_git_integration_plan() -> None:
     assert payload["name"] == "sunclub"
     assert payload["production_branch"] == "master"
     assert payload["build_config"] == {
-        "build_command": "exit 0",
-        "destination_dir": "web",
+        "build_command": "just web-build",
+        "destination_dir": ".build/web",
         "root_dir": "/",
     }
-    assert payload["source"]["type"] == "github"
-    assert payload["source"]["config"]["owner"] == "peyton"
-    assert payload["source"]["config"]["repo_name"] == "sunclub"
-    assert payload["source"]["config"]["repo_id"] == "123456"
-    assert payload["source"]["config"]["path_includes"] == [
-        "web/*",
-        "scripts/web/*",
-        "infra/cloudflare/*",
-        "justfile",
-    ]
+    assert "source" not in payload
+    assert config["deployment"] == {
+        "mode": "github_actions_direct_upload",
+        "workflow": ".github/workflows/deploy-web-cloudflare.yml",
+        "build_output": ".build/web",
+        "required_secrets": [
+            "CLOUDFLARE_API_TOKEN",
+            "CLOUDFLARE_ACCOUNT_ID",
+        ],
+    }
+    assert config["source_control"]["production_deployments_enabled"] is False
+    assert config["source_control"]["preview_deployment_setting"] == "none"
+
+
+def test_pages_project_update_disables_existing_git_automatic_deployments() -> None:
+    config = common.load_pages_config()
+    existing_project = {
+        "source": {
+            "type": "github",
+            "config": {
+                "owner": "peyton",
+                "repo_name": "sunclub",
+                "production_deployments_enabled": True,
+                "preview_deployment_setting": "all",
+            },
+        }
+    }
+
+    payload = pages.build_pages_project_update_payload(
+        config,
+        existing_project,
+        github_repo_id="123456",
+    )
+
+    assert payload["source"] == {
+        "type": "github",
+        "config": {
+            "owner": "peyton",
+            "repo_name": "sunclub",
+            "production_branch": "master",
+            "production_deployments_enabled": False,
+            "preview_deployment_setting": "none",
+            "pr_comments_enabled": False,
+            "path_includes": [],
+            "path_excludes": [],
+            "repo_id": "123456",
+        },
+    }
+
+
+def test_pages_project_update_keeps_direct_upload_project_source_free() -> None:
+    config = common.load_pages_config()
+
+    payload = pages.build_pages_project_update_payload(config, {"name": "sunclub"})
+
+    assert payload == {
+        "production_branch": "master",
+        "build_config": {
+            "build_command": "just web-build",
+            "destination_dir": ".build/web",
+            "root_dir": "/",
+        },
+    }
 
 
 def test_email_catch_all_payload_uses_env_destination(

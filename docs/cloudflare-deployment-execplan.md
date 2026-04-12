@@ -18,6 +18,7 @@ Sunclub needs a public website and working support email surface that are stable
 - [x] (2026-04-12T00:00-07:00) Added Help & Legal links to the iOS Settings screen.
 - [x] (2026-04-12T00:00-07:00) Added Python and UI test coverage.
 - [x] (2026-04-12T00:00-07:00) Ran validation commands and recorded results.
+- [x] (2026-04-12T00:00-07:00) Switched web deployment ownership from Cloudflare Git integration to GitHub Actions Direct Upload.
 
 ## Surprises & Discoveries
 
@@ -35,8 +36,12 @@ Sunclub needs a public website and working support email surface that are stable
 
 ## Decision Log
 
-- Decision: Use Cloudflare Pages Git integration rather than Direct Upload.
-  Rationale: The user chose Git integration. Cloudflare documents that Git integration automatically builds and deploys on pushes, and also warns that a Git-integrated Pages project cannot later switch to Direct Upload.
+- Decision: Initially use Cloudflare Pages Git integration rather than Direct Upload.
+  Rationale: This was the original deployment direction, but it has since been superseded by GitHub Actions Direct Upload to keep web and iOS monorepo releases separate.
+  Date/Author: 2026-04-12 / Codex
+
+- Decision: Supersede Cloudflare-side Git automatic builds with GitHub Actions Direct Upload for web deploys.
+  Rationale: Web and iOS release trains need separate monorepo workflows. GitHub Actions can path-filter `web/**`, package rollback artifacts, and deploy through Wrangler while the iOS tag workflow remains isolated.
   Date/Author: 2026-04-12 / Codex
 
 - Decision: Keep the forwarding destination out of tracked files and read it from `SUNCLUB_FORWARD_TO`.
@@ -49,7 +54,7 @@ Sunclub needs a public website and working support email surface that are stable
 
 ## Outcomes & Retrospective
 
-Implemented repo-root Cloudflare deployment tooling, tracked Cloudflare configuration, Settings links for App Store review, and tests for the new Python configuration helpers. Remote Cloudflare state was not mutated in this session because no usable `CLOUDFLARE_API_TOKEN` and `SUNCLUB_FORWARD_TO` were present.
+Implemented repo-root Cloudflare deployment tooling, tracked Cloudflare configuration, Settings links for App Store review, and tests for the new Python configuration helpers. Web deployment is now owned by GitHub Actions Direct Upload; any existing Cloudflare Git integration should have automatic production and preview builds disabled. Remote Cloudflare state was not mutated in this session because no usable `CLOUDFLARE_API_TOKEN` and `SUNCLUB_FORWARD_TO` were present.
 
 Validation results:
 
@@ -70,13 +75,13 @@ The public static site lives under `web/`. It already contains `index.html`, `su
 
 The iOS app lives under `app/`. The Settings screen is implemented in `app/Sunclub/Sources/Views/SettingsView.swift`. The app target in `app/Sunclub/Project.swift` includes every file under `app/Sunclub/Sources/**`, so a new shared Swift file under `app/Sunclub/Sources/Shared/` is automatically compiled into the app target.
 
-Cloudflare Pages is the Cloudflare static-hosting product used here. Git integration means Cloudflare connects to GitHub and deploys whenever the production branch receives changes. Cloudflare Email Routing is the Cloudflare inbound-mail forwarding product. A catch-all rule means any address at `peyton.app`, such as `sunclub@peyton.app` or `support@peyton.app`, forwards to the configured destination.
+Cloudflare Pages is the Cloudflare static-hosting product used here. GitHub Actions deploys the static site with Wrangler Direct Upload whenever `web/**` changes land on `master`; Cloudflare-side Git automatic builds should stay disabled. Cloudflare Email Routing is the Cloudflare inbound-mail forwarding product. A catch-all rule means any address at `peyton.app`, such as `sunclub@peyton.app` or `support@peyton.app`, forwards to the configured destination.
 
 The Cloudflare account is `0e32ee7804b102bea6b9d3056d60f980` named Personal. The `peyton.app` zone is `a004f01ed99de3582152debde5a96a08` and is active. The GitHub repository is `peyton/sunclub`, and `origin/HEAD` points to `master`.
 
 ## Plan of Work
 
-Create `infra/cloudflare/` as the tracked source of truth for Cloudflare setup. `pages-project.json` will describe the Pages project named `sunclub`, production branch `master`, custom domain `sunclub.peyton.app`, build command `exit 0`, output directory `web`, and build watch paths limited to web and Cloudflare-related files. `email-routing.json` will describe a catch-all forwarding rule for `peyton.app`, with its destination read from `SUNCLUB_FORWARD_TO`. `infra/cloudflare/.env.example` will document the required local environment variables, while the real `.env` remains ignored.
+Create `infra/cloudflare/` as the tracked source of truth for Cloudflare setup. `pages-project.json` describes the Pages project named `sunclub`, production branch `master`, custom domain `sunclub.peyton.app`, GitHub Actions Direct Upload mode, build command `just web-build`, output directory `.build/web`, and required GitHub Actions secrets. `email-routing.json` describes a catch-all forwarding rule for `peyton.app`, with its destination read from `SUNCLUB_FORWARD_TO`. `infra/cloudflare/.env.example` documents the required local environment variables, while the real `.env` remains ignored.
 
 Create `scripts/cloudflare/` with Python modules that use only the standard library. `common.py` will load config, validate environment variables, call Cloudflare's REST API, and expose idempotent helpers. `pages.py` will inspect or set up the Pages project and custom domain. `email.py` will inspect or set up destination addresses, Email Routing DNS, Email Routing enablement, and the catch-all rule.
 
@@ -104,7 +109,7 @@ If credentials are available, run:
     CLOUDFLARE_API_TOKEN=... just cloudflare-pages-setup
     CLOUDFLARE_API_TOKEN=... SUNCLUB_FORWARD_TO=owner@example.com just cloudflare-email-setup
 
-If Cloudflare has not yet been authorized to access the GitHub repository, Pages setup should print the dashboard URL and instructions for the one-time Connect to Git flow. After that authorization is complete, rerun `just cloudflare-pages-setup`.
+If an existing Pages project is still connected to Cloudflare's Git integration, Pages setup should disable automatic production and preview deployments so GitHub Actions remains the deployment source.
 
 ## Validation and Acceptance
 
@@ -112,11 +117,11 @@ Local acceptance requires `just web-check`, `just web-build`, `just cloudflare-s
 
 App acceptance requires the Settings UI test to find the section button `settings.section.help` and the buttons `settings.support`, `settings.privacyPolicy`, and `settings.emailSupport`.
 
-Remote acceptance, when credentials and GitHub authorization are available, requires `just cloudflare-pages-setup` to create or update a Pages project named `sunclub`, attach `sunclub.peyton.app`, and report the project/domain status. It also requires `just cloudflare-email-setup` to ensure Email Routing is enabled and the catch-all rule forwards to the verified `SUNCLUB_FORWARD_TO` address.
+Remote acceptance, when credentials are available, requires `just cloudflare-pages-setup` to create or update a Pages project named `sunclub`, attach `sunclub.peyton.app`, keep Cloudflare-side Git automatic builds disabled when source control is present, and report the project/domain status. It also requires `just cloudflare-email-setup` to ensure Email Routing is enabled and the catch-all rule forwards to the verified `SUNCLUB_FORWARD_TO` address.
 
 ## Idempotence and Recovery
 
-The setup scripts must be safe to rerun. If the Pages project already exists, update its build configuration and source configuration instead of creating a duplicate. If the custom domain already exists, leave it in place. If the forwarding destination already exists, reuse it. If the destination exists but is not verified, tell the operator to verify it and rerun the setup command. If Email Routing is already enabled, leave it enabled and update the catch-all rule to the desired state.
+The setup scripts must be safe to rerun. If the Pages project already exists, update its build configuration and disable Cloudflare-side Git automatic deployments when a source configuration is present instead of creating a duplicate. If the custom domain already exists, leave it in place. If the forwarding destination already exists, reuse it. If the destination exists but is not verified, tell the operator to verify it and rerun the setup command. If Email Routing is already enabled, leave it enabled and update the catch-all rule to the desired state.
 
 No script should store secrets in tracked files. A local `infra/cloudflare/.env` file may be used by shell users, but it must stay ignored by git.
 

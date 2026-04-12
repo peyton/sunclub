@@ -4,24 +4,28 @@
   "project_name": "sunclub",
   "production_branch": "master",
   "custom_domain": "sunclub.peyton.app",
+  "deployment": {
+    "mode": "github_actions_direct_upload",
+    "workflow": ".github/workflows/deploy-web-cloudflare.yml",
+    "build_output": ".build/web",
+    "required_secrets": [
+      "CLOUDFLARE_API_TOKEN",
+      "CLOUDFLARE_ACCOUNT_ID"
+    ]
+  },
   "build_config": {
-    "build_command": "exit 0",
-    "destination_dir": "web",
+    "build_command": "just web-build",
+    "destination_dir": ".build/web",
     "root_dir": "/"
   },
-  "source": {
+  "source_control": {
     "type": "github",
     "owner": "peyton",
     "repo_name": "sunclub",
-    "production_deployments_enabled": true,
-    "preview_deployment_setting": "all",
-    "pr_comments_enabled": true,
-    "path_includes": [
-      "web/*",
-      "scripts/web/*",
-      "infra/cloudflare/*",
-      "justfile"
-    ],
+    "production_deployments_enabled": false,
+    "preview_deployment_setting": "none",
+    "pr_comments_enabled": false,
+    "path_includes": [],
     "path_excludes": []
   }
 }
