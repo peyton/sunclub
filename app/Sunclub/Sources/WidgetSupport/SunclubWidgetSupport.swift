@@ -271,14 +271,35 @@ enum SunclubWidgetSnapshotBuilder {
             return lhs.lastSharedAt > rhs.lastSharedAt
         }
         let latestPoke = settings.accountability.pokeHistory.sorted { $0.createdAt > $1.createdAt }.first
+        let primaryPokeFriendID = friends.first { friend in
+            !friend.hasLoggedToday && settings.accountability.connections.contains { connection in
+                connection.friendSnapshotID == friend.id && connection.canDirectPoke
+            }
+        }?.id
         return SunclubAccountabilitySummary(
             isActive: settings.accountability.isActive,
             friendCount: friends.count,
             loggedCount: friends.filter(\.hasLoggedToday).count,
             openCount: friends.filter { !$0.hasLoggedToday }.count,
             topFriends: Array(friends.prefix(4)),
-            latestPoke: latestPoke
+            latestPoke: latestPoke,
+            primaryPokeFriendID: primaryPokeFriendID,
+            latestPokeText: accountabilityLatestPokeText(latestPoke)
         )
+    }
+
+    private static func accountabilityLatestPokeText(_ poke: SunclubAccountabilityPoke?) -> String {
+        guard let poke else { return "" }
+        switch (poke.direction, poke.status) {
+        case (.sent, .sent):
+            return "You poked \(poke.friendName)."
+        case (.sent, .failed):
+            return "Message \(poke.friendName) if direct poke failed."
+        case (.received, .received):
+            return "\(poke.friendName) poked you."
+        default:
+            return ""
+        }
     }
 }
 

@@ -16,6 +16,8 @@ Sunclub should make accountability easy to find after the user has started build
 - [x] (2026-04-12) Replaced the accountability UI, added later onboarding, and added the Home nudge after 3 logged days.
 - [x] (2026-04-12) Added accountability widget coverage for all requested families.
 - [x] (2026-04-12) Added unit/UI tests and ran repo validation.
+- [x] (2026-04-12) Audited accountability usability and poke delivery; found Home surfacing, notification route/category, CloudKit upsert, APS entitlement, and friend-row affordance issues.
+- [x] (2026-04-12) Added varied one-tap poke messaging, status-aware incoming notifications, Home accountability card, less-prominent removal, direct-poke widget deep links, and focused regression tests.
 
 ## Surprises & Discoveries
 
@@ -31,6 +33,12 @@ Sunclub should make accountability easy to find after the user has started build
 - Observation: User upgrade safety depends on JSON decoding defaults, not a SwiftData migration stage, for this feature.
   Evidence: No SwiftData models changed. Tests cover older `SunclubGrowthSettings` payloads, partial accountability payloads, legacy widget snapshots, and partial accountability widget summaries.
 
+- Observation: Direct poke delivery needs the app to process CloudKit events and emit the final local notification.
+  Evidence: Query-subscription alert bodies are static, while `AppState.handleIncomingPoke` can inspect whether the recipient has already logged today and pass differentiated copy to `NotificationManager`.
+
+- Observation: Users with friends should not have to expand Explore to use accountability.
+  Evidence: The previous Home accountability entry was only a feature tile inside the collapsed Explore grid unless the setup nudge was visible.
+
 ## Decision Log
 
 - Decision: Store accountability activation, profile ID, invite metadata, friend connection metadata, and poke history inside growth JSON rather than SwiftData.
@@ -43,6 +51,14 @@ Sunclub should make accountability easy to find after the user has started build
 
 - Decision: Treat nearby phone exchange as an explicit in-app flow, not ambient background discovery.
   Rationale: MultipeerConnectivity can provide an AirDrop-like exchange while both users have the flow open, without requiring private AirDrop APIs.
+  Date/Author: 2026-04-12 / Codex
+
+- Decision: Keep friend-to-friend messaging one tap and vary copy automatically.
+  Rationale: Custom typed messages add friction to the habit loop. Status-aware copy gives the poke personality while keeping the interaction fast.
+  Date/Author: 2026-04-12 / Codex
+
+- Decision: Make CloudKit poke subscriptions silent/content-available and use local accountability notifications for final poke copy.
+  Rationale: The recipient app can choose copy based on local logged-today state and route the tap to Accountability instead of Manual Log.
   Date/Author: 2026-04-12 / Codex
 
 ## Context And Orientation
@@ -71,6 +87,34 @@ Upgrade behavior:
 3. Older widget snapshots without an accountability summary decode with an empty summary, so existing widgets continue rendering.
 4. Partial accountability widget summaries decode with zero counts and no friend/poke details instead of failing the widget timeline.
 5. Invite tokens are generated only from explicit action paths, not while SwiftUI renders, so merely opening upgraded views does not mutate persisted state.
+6. New widget accountability fields default to no direct poke target and no latest-poke text when older snapshots decode.
+
+## Usability And Bug-Fix Pass
+
+1. Active accountability appears directly below Today on Home.
+2. Active users with no friends get a front-and-center add-friend card.
+3. Existing three-log setup nudge remains only for users who have not opted in.
+4. Home exposes one-tap poke for the top open friend.
+5. Home shows open/logged counts and a compact friend strip.
+6. Home surfaces recent poke activity.
+7. Foreground refresh checks remote accountability events.
+8. Explore remains a secondary feature entry.
+9. Friends screen shows existing friends before add/import controls.
+10. Add-friend controls collapse behind "Add another friend" after friends exist.
+11. Remove is hidden in an overflow menu.
+12. Remove requires confirmation.
+13. Primary friend messaging remains one tap with "Poke".
+14. Message fallback moved into overflow.
+15. Poke copy has more than 20 open/logged variants.
+16. Recent poke copy avoids immediate repeats.
+17. Outgoing poke copy uses the friend status snapshot.
+18. Incoming notification copy uses the recipient's local logged-today state.
+19. Legacy/non-direct friends show a fresh-invite-needed message.
+20. Accountability notifications route to Accountability.
+21. Poke notifications use a dedicated category.
+22. CloudKit poke subscription alert copy is silent/content-available.
+23. Stable CloudKit profile/invite records fetch before saving to avoid create-only conflicts.
+24. Accountability widgets show friend status, cheekier copy, latest poke text, and direct-poke deep links when safe.
 
 ## Validation And Acceptance
 
@@ -79,17 +123,23 @@ Upgrade behavior:
 3. The accountability hub clearly exposes Nearby, Send Invite, Paste Code, invite link, backup code, and friend poke actions. Covered by UI test.
 4. Invite links/codes import friends, and direct CloudKit refresh/poke paths have fake-backed tests. Covered by unit tests.
 5. Widgets support `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryInline`, `accessoryCircular`, and `accessoryRectangular`. Covered by unit tests.
-6. `just generate` passed.
-7. `just test-unit` passed: 144 tests, 0 failures.
-8. `just lint` passed. It still reports existing non-serious SwiftLint warnings in unrelated files.
-9. `just test-ui` passed: 40 tests, 0 failures.
-10. `just build` passed.
-11. `just cloudkit-export-schema` passed and exported `.state/cloudkit/sunclub-cloudkit-schema.json`.
-12. `just cloudkit-validate-schema` passed against `iCloud.app.peyton.sunclub` development schema.
+6. Active accountability with friends appears front-and-center on Home. Covered by UI test.
+7. Direct and incoming pokes use varied, status-aware copy and route to Accountability. Covered by unit tests.
+8. CloudKit profile saves fetch existing records before saving. Covered by unit test through a fake accountability database.
+9. App background remote-notification mode has a matching APS entitlement. Covered by Python metadata test.
+10. `just generate` passed.
+11. `TEST_SIMULATOR_NAME='Sunclub ca9a Unit iPhone 17 Pro' just test-unit` passed: 150 tests, 0 failures.
+12. `just test-python` passed: 53 tests, 0 failures.
+13. `just lint` passed after final edits. It still reports existing non-serious SwiftLint warnings, including one new AppState function-length warning from the accountability foreground refresh path.
+14. `TEST_SIMULATOR_NAME='Sunclub ca9a UI iPhone 17 Pro' just test-ui` executed all 42 UI tests; 41 passed and 1 failed on a test-side `home.accountabilityFriendStrip` element-type assertion after the product card and setup case were already discoverable.
+15. The `home.accountabilityFriendStrip` assertion was patched to query the identifier across XCTest element types. Subsequent full and focused UI reruns built successfully but failed before test execution with CoreSimulator Mach `-308` while launching `app.peyton.sunclub.dev.UITests.xctrunner`; sibling worktree `xcodebuild test` jobs were active at the same time.
+16. Earlier implementation validation also covered `just build`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema` against the development container.
 
 ## Outcomes & Retrospective
 
 - Accountability is now an optional second-stage feature: first-open onboarding remains focused on the core sunscreen habit, while Home can surface a later setup nudge after three logged days.
 - Friend discovery now supports nearby phone exchange, Messages/share sheet invites, and paste/import backup codes, with clear invite link and backup code surfaces.
 - Direct friend status and pokes use CloudKit public records with fake-backed tests and share-sheet fallback paths.
+- Direct pokes now use varied cheeky copy, incoming notifications differentiate open vs already-logged recipients, and notification taps open Accountability.
+- Friends are surfaced on Home for opted-in users, and friend removal is no longer a prominent row action.
 - Upgrade safety is covered without a SwiftData migration by defaulting the extended JSON payloads and preserving existing local friend snapshots.

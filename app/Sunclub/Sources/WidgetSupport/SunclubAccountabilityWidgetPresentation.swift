@@ -29,6 +29,9 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
     let loggedCountText: String
     let inlineText: String
     let circularText: String
+    let actionURL: URL
+    let latestPokeText: String
+    let primaryPokeFriendID: UUID?
     let friends: [SunclubAccountabilityWidgetFriend]
 
     private struct Content {
@@ -52,7 +55,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             SunclubAccountabilityWidgetFriend(
                 id: friend.id,
                 name: friend.name,
-                status: friend.hasLoggedToday ? "Logged" : "Open",
+                status: friend.hasLoggedToday ? "Coated" : "Needs SPF",
                 streak: "\(friend.currentStreak)d"
             )
         }
@@ -69,6 +72,9 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             loggedCountText: "\(summary.loggedCount)",
             inlineText: inlineText(summary: summary),
             circularText: summary.openCount > 0 ? "\(summary.openCount)" : "\(summary.loggedCount)",
+            actionURL: actionURL(summary: summary),
+            latestPokeText: summary.latestPokeText,
+            primaryPokeFriendID: summary.primaryPokeFriendID,
             friends: friends
         )
     }
@@ -81,7 +87,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             return Content(
                 title: family == .systemSmall ? "Invite" : "Add accountability",
                 subtitle: "Optional",
-                detail: "Share an invite when you're ready.",
+                detail: "Share an invite when you want SPF witnesses.",
                 actionText: "Set up",
                 iconName: "person.badge.plus.fill"
             )
@@ -90,7 +96,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             return Content(
                 title: family == .systemSmall ? "Add" : "Add a friend",
                 subtitle: "No friends yet",
-                detail: "Nearby, Messages, or backup code.",
+                detail: "Recruit one SPF accomplice.",
                 actionText: "Invite",
                 iconName: "person.badge.plus.fill"
             )
@@ -98,16 +104,16 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
         if let topOpenFriend = summary.topFriends.first(where: { !$0.hasLoggedToday }) {
             return Content(
                 title: family == .systemSmall ? "Poke" : "Poke \(topOpenFriend.name)",
-                subtitle: "\(summary.openCount) open",
-                detail: "\(topOpenFriend.name) has not logged today.",
-                actionText: "Open",
+                subtitle: "\(summary.openCount) SPF fugitive\(summary.openCount == 1 ? "" : "s")",
+                detail: "\(topOpenFriend.name) has not joined the shiny side.",
+                actionText: summary.primaryPokeFriendID == nil ? "Open" : "Poke",
                 iconName: "hand.tap.fill"
             )
         }
         return Content(
-            title: family == .systemSmall ? "Done" : "Everyone logged",
+            title: family == .systemSmall ? "Coated" : "All coated",
             subtitle: "\(summary.loggedCount)/\(summary.friendCount) logged",
-            detail: "Your accountability circle is covered today.",
+            detail: "The circle is suspiciously responsible today.",
             actionText: "View",
             iconName: "checkmark.seal.fill"
         )
@@ -121,8 +127,16 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             return "Invite a Sunclub friend"
         }
         if summary.openCount > 0 {
-            return "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") open"
+            return "\(summary.openCount) SPF fugitive\(summary.openCount == 1 ? "" : "s")"
         }
-        return "All friends logged"
+        return "All friends coated"
+    }
+
+    private static func actionURL(summary: SunclubAccountabilitySummary) -> URL {
+        if let primaryPokeFriendID = summary.primaryPokeFriendID {
+            return SunclubDeepLink.accountabilityPoke(primaryPokeFriendID).url
+        }
+
+        return SunclubWidgetRoute.accountability.url
     }
 }

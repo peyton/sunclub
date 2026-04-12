@@ -21,7 +21,7 @@ final class SunclubWidgetTests: XCTestCase {
         )
     }
 
-    func testAccountabilityPresentationSupportsEveryWidgetFamily() {
+    func testAccountabilityPresentationSupportsEveryWidgetFamily() throws {
         XCTAssertEqual(
             SunclubAccountabilityWidgetFamily.allCases.map(\.rawValue),
             [
@@ -44,6 +44,9 @@ final class SunclubWidgetTests: XCTestCase {
             XCTAssertEqual(presentation.family, family)
             XCTAssertFalse(presentation.title.isEmpty)
             XCTAssertFalse(presentation.actionText.isEmpty)
+            XCTAssertFalse(presentation.detail.isEmpty)
+            XCTAssertNotNil(presentation.primaryPokeFriendID)
+            XCTAssertEqual(presentation.actionURL, SunclubDeepLink.accountabilityPoke(try XCTUnwrap(presentation.primaryPokeFriendID)).url)
         }
     }
 
@@ -228,12 +231,15 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 0)
         XCTAssertTrue(snapshot.accountabilitySummary.topFriends.isEmpty)
         XCTAssertNil(snapshot.accountabilitySummary.latestPoke)
+        XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
+        XCTAssertTrue(snapshot.accountabilitySummary.latestPokeText.isEmpty)
     }
 
     func testWidgetSnapshotBuilderIncludesAccountabilitySummary() {
         let settings = Settings()
         settings.hasCompletedOnboarding = true
         let openFriend = SunclubFriendSnapshot(
+            id: UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID(),
             name: "Maya",
             currentStreak: 2,
             longestStreak: 5,
@@ -251,7 +257,29 @@ final class SunclubWidgetTests: XCTestCase {
         )
         let growthSettings = SunclubGrowthSettings(
             friends: [loggedFriend, openFriend],
-            accountability: SunclubAccountabilitySettings(activatedAt: Date())
+            accountability: SunclubAccountabilitySettings(
+                activatedAt: Date(),
+                connections: [
+                    SunclubFriendConnection(
+                        friendProfileID: UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID(),
+                        friendSnapshotID: openFriend.id,
+                        friendDisplayName: "Maya",
+                        relationshipToken: "widget-token",
+                        acceptedAt: Date()
+                    )
+                ],
+                pokeHistory: [
+                    SunclubAccountabilityPoke(
+                        friendProfileID: UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID(),
+                        friendName: "Maya",
+                        direction: .sent,
+                        channel: .direct,
+                        status: .sent,
+                        message: "Widget poke",
+                        createdAt: Date()
+                    )
+                ]
+            )
         )
 
         let snapshot = SunclubWidgetSnapshotBuilder.make(
@@ -265,6 +293,8 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
+        XCTAssertEqual(snapshot.accountabilitySummary.primaryPokeFriendID, openFriend.id)
+        XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You poked Maya.")
     }
 
     func testSnapshotDayStatusUsesStoredCalendarHistory() {
@@ -432,13 +462,15 @@ final class SunclubWidgetTests: XCTestCase {
     }
 
     private func makeAccountabilitySummary() -> SunclubAccountabilitySummary {
-        SunclubAccountabilitySummary(
+        let friendID = UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID()
+        return SunclubAccountabilitySummary(
             isActive: true,
             friendCount: 1,
             loggedCount: 0,
             openCount: 1,
             topFriends: [
                 SunclubFriendSnapshot(
+                    id: friendID,
                     name: "Maya",
                     currentStreak: 2,
                     longestStreak: 5,
@@ -447,7 +479,9 @@ final class SunclubWidgetTests: XCTestCase {
                     seasonStyle: .summerGlow
                 )
             ],
-            latestPoke: nil
+            latestPoke: nil,
+            primaryPokeFriendID: friendID,
+            latestPokeText: "You poked Maya."
         )
     }
 

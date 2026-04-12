@@ -158,6 +158,32 @@ struct ManualLogPrefill: Equatable {
     let notes: String
 }
 
+enum HomeAccountabilityActionKind: Equatable {
+    case invite
+    case poke
+    case view
+}
+
+struct HomeAccountabilityFriendPresentation: Equatable, Identifiable {
+    let id: UUID
+    let name: String
+    let status: String
+    let streak: String
+    let hasLoggedToday: Bool
+}
+
+struct HomeAccountabilityPresentation: Equatable {
+    let title: String
+    let detail: String
+    let openCountText: String
+    let loggedCountText: String
+    let primaryActionTitle: String
+    let primaryActionKind: HomeAccountabilityActionKind
+    let primaryFriendID: UUID?
+    let latestPokeText: String?
+    let friends: [HomeAccountabilityFriendPresentation]
+}
+
 @MainActor
 @Observable
 final class AppState {
@@ -1008,7 +1034,7 @@ final class AppState {
     var friends: [SunclubFriendSnapshot] {
         growthSettings.friends.sorted { lhs, rhs in
             if lhs.hasLoggedToday != rhs.hasLoggedToday {
-                return lhs.hasLoggedToday && !rhs.hasLoggedToday
+                return !lhs.hasLoggedToday && rhs.hasLoggedToday
             }
             if lhs.currentStreak != rhs.currentStreak {
                 return lhs.currentStreak > rhs.currentStreak
@@ -1036,6 +1062,75 @@ final class AppState {
             now: currentDate(),
             calendar: calendar
         ).accountabilitySummary
+    }
+
+    var homeAccountabilityPresentation: HomeAccountabilityPresentation? {
+        guard settings.hasCompletedOnboarding,
+              growthSettings.accountability.isActive else {
+            return nil
+        }
+
+        let prioritizedFriends = friends
+        let openCount = prioritizedFriends.filter { !$0.hasLoggedToday }.count
+        let loggedCount = prioritizedFriends.filter(\.hasLoggedToday).count
+        let latestPokeText = SunclubAccountabilityMessaging.latestPokeText(
+            growthSettings.accountability.pokeHistory.sorted { $0.createdAt > $1.createdAt }.first
+        )
+
+        guard !prioritizedFriends.isEmpty else {
+            return HomeAccountabilityPresentation(
+                title: "Bring in backup",
+                detail: "Accountability is on. Add one sunscreen accomplice to start the gentle poking.",
+                openCountText: "0 open",
+                loggedCountText: "0 logged",
+                primaryActionTitle: "Add Friend",
+                primaryActionKind: .invite,
+                primaryFriendID: nil,
+                latestPokeText: latestPokeText,
+                friends: []
+            )
+        }
+
+        let topOpenFriend = prioritizedFriends.first { !$0.hasLoggedToday }
+        let title: String
+        let detail: String
+        let actionTitle: String
+        let actionKind: HomeAccountabilityActionKind
+        let actionFriendID: UUID?
+
+        if let topOpenFriend {
+            title = "Poke \(topOpenFriend.name)"
+            detail = "\(topOpenFriend.name) still has an open sunscreen day. One tap sends a cheeky nudge."
+            actionTitle = "Poke"
+            actionKind = .poke
+            actionFriendID = topOpenFriend.id
+        } else {
+            title = "All coated"
+            detail = "Everyone in your circle logged today. The sun has been politely outnumbered."
+            actionTitle = "View Friends"
+            actionKind = .view
+            actionFriendID = nil
+        }
+
+        return HomeAccountabilityPresentation(
+            title: title,
+            detail: detail,
+            openCountText: "\(openCount) open",
+            loggedCountText: "\(loggedCount) logged",
+            primaryActionTitle: actionTitle,
+            primaryActionKind: actionKind,
+            primaryFriendID: actionFriendID,
+            latestPokeText: latestPokeText,
+            friends: prioritizedFriends.prefix(4).map { friend in
+                HomeAccountabilityFriendPresentation(
+                    id: friend.id,
+                    name: friend.name,
+                    status: friend.hasLoggedToday ? "Coated" : "Needs SPF",
+                    streak: "\(friend.currentStreak)d",
+                    hasLoggedToday: friend.hasLoggedToday
+                )
+            }
+        )
     }
 
     var shouldShowAccountabilityNudge: Bool {
@@ -1366,13 +1461,24 @@ final class AppState {
     }
 
     func sendDirectPoke(to friendID: UUID) {
-        guard let friend = friends.first(where: { $0.id == friendID }),
-              let connection = growthSettings.accountability.connections.first(where: { $0.friendSnapshotID == friendID }) else {
+        guard let friend = friends.first(where: { $0.id == friendID }) else {
+            return
+        }
+
+        guard let connection = growthSettings.accountability.connections.first(where: { $0.friendSnapshotID == friendID }),
+              connection.canDirectPoke else {
+            friendImportMessage = SunclubAccountabilityMessaging.directPokeUnavailableMessage(friendName: friend.name)
             return
         }
 
         let now = currentDate()
-        let message = "Sunscreen check?"
+        let message = SunclubAccountabilityMessaging.outgoingPokeMessage(
+            for: friend,
+            friendProfileID: connection.friendProfileID,
+            recentPokes: growthSettings.accountability.pokeHistory,
+            now: now,
+            calendar: calendar
+        )
         let envelope = SunclubAccountabilityPokeEnvelope(
             senderProfileID: growthSettings.accountability.localProfileID,
             senderName: resolvedAccountabilityDisplayName,
@@ -1396,7 +1502,10 @@ final class AppState {
                         createdAt: now
                     )
                 )
-                friendImportMessage = "Poked \(friend.name)."
+                friendImportMessage = SunclubAccountabilityMessaging.directPokeSuccessMessage(
+                    friendName: friend.name,
+                    hasLoggedToday: friend.hasLoggedToday
+                )
             } catch {
                 recordPoke(
                     SunclubAccountabilityPoke(
@@ -1409,7 +1518,7 @@ final class AppState {
                         createdAt: now
                     )
                 )
-                friendImportMessage = "Direct poke did not send. Use Share Poke instead."
+                friendImportMessage = SunclubAccountabilityMessaging.directPokeFailureMessage(friendName: friend.name)
             }
         }
     }
@@ -1417,21 +1526,29 @@ final class AppState {
     func sharePokeText(for friend: SunclubFriendSnapshot) -> String {
         SunclubAccountabilityCodec.pokeShareText(
             from: resolvedAccountabilityDisplayName,
-            to: friend.name
+            to: friend.name,
+            hasLoggedToday: friend.hasLoggedToday
         )
     }
 
-    func processRemoteAccountabilityEvents() {
-        guard growthSettings.accountability.isActive else { return }
+    @discardableResult
+    func processRemoteAccountabilityEvents() -> Task<Void, Never>? {
+        guard growthSettings.accountability.isActive else { return nil }
 
-        Task {
+        return Task {
             do {
                 let events = try await accountabilityService.fetchRemoteEvents(for: growthSettings.accountability.localProfileID)
                 for response in events.inviteResponses {
                     importAccountabilityInvite(response.envelope, sendsResponse: false)
                 }
+                var notificationTasks: [Task<Void, Never>] = []
                 for poke in events.pokes {
-                    handleIncomingPoke(poke)
+                    if let notificationTask = handleIncomingPoke(poke) {
+                        notificationTasks.append(notificationTask)
+                    }
+                }
+                for notificationTask in notificationTasks {
+                    await notificationTask.value
                 }
             } catch {
                 friendImportMessage = "Could not refresh accountability updates."
@@ -1439,12 +1556,22 @@ final class AppState {
         }
     }
 
-    func handleIncomingPoke(_ envelope: SunclubAccountabilityPokeEnvelope) {
+    @discardableResult
+    func refreshAccountabilityForForeground() -> Task<Void, Never>? {
+        guard growthSettings.accountability.isActive else { return nil }
+
+        let remoteRefreshTask = processRemoteAccountabilityEvents()
+        refreshAccountabilityFriends()
+        return remoteRefreshTask
+    }
+
+    @discardableResult
+    func handleIncomingPoke(_ envelope: SunclubAccountabilityPokeEnvelope) -> Task<Void, Never>? {
         guard envelope.receiverProfileID == growthSettings.accountability.localProfileID,
               let connection = growthSettings.accountability.connections.first(where: {
-                  $0.friendProfileID == envelope.senderProfileID && $0.relationshipToken == envelope.relationshipToken
+                $0.friendProfileID == envelope.senderProfileID && $0.relationshipToken == envelope.relationshipToken
               }) else {
-            return
+            return nil
         }
 
         recordPoke(
@@ -1465,11 +1592,19 @@ final class AppState {
         syncWidgetSnapshot()
         reloadWidgetTimelines()
 
-        Task {
+        let notificationMessage = SunclubAccountabilityMessaging.incomingNotificationBody(
+            from: envelope.senderName,
+            recipientHasLoggedToday: record(for: currentDate()) != nil,
+            recentPokes: growthSettings.accountability.pokeHistory,
+            now: currentDate(),
+            calendar: calendar
+        )
+
+        return Task {
             await notificationManager.scheduleAccountabilityPokeNotification(
                 friendName: envelope.senderName,
-                message: envelope.message,
-                route: .manualLog
+                message: notificationMessage,
+                route: .friends
             )
         }
     }
