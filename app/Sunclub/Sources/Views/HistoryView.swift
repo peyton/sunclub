@@ -25,6 +25,12 @@ struct HistoryView: View {
                     router.goBack()
                 })
 
+                SunAssetHero(
+                    asset: .illustrationHistoryCalendar,
+                    height: 146,
+                    glowColor: AppPalette.sun
+                )
+
                 monthNavigator
 
                 weekdayHeader
@@ -35,6 +41,8 @@ struct HistoryView: View {
                 statsSection(recordDates: recordDates)
 
                 calendarGrid(recordDates: recordDates)
+                    .id(displayedMonth)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay)
@@ -222,9 +230,7 @@ struct HistoryView: View {
                             .font(.system(size: 15, weight: isToday ? .bold : .regular))
                             .foregroundStyle(dayTextColor(isCurrentMonth: isCurrentMonth, isFuture: isFuture, isSelected: isSelected))
 
-                        Circle()
-                            .fill(hasRecord && isCurrentMonth ? AppPalette.sun : Color.clear)
-                            .frame(width: 6, height: 6)
+                        loggedDayDot(hasRecord: hasRecord && isCurrentMonth, isSelected: isSelected, isToday: isToday)
                     }
                     .frame(maxWidth: .infinity, minHeight: 38)
                     .background(
@@ -267,7 +273,29 @@ struct HistoryView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
         .accessibilityIdentifier("history.dayDetail")
+    }
+
+    private func loggedDayDot(hasRecord: Bool, isSelected: Bool, isToday: Bool) -> some View {
+        ZStack {
+            if hasRecord {
+                Circle()
+                    .fill(AppPalette.sun.opacity(isSelected ? 0.95 : 0.78))
+                    .frame(width: isSelected ? 9 : 7, height: isSelected ? 9 : 7)
+
+                Circle()
+                    .stroke(AppPalette.sun.opacity(isToday ? 0.55 : 0.24), lineWidth: 1)
+                    .frame(width: isToday ? 15 : 11, height: isToday ? 15 : 11)
+            } else {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 9, height: 9)
+            }
+        }
     }
 
     private func dayDetailBody(
@@ -503,6 +531,10 @@ struct HistoryView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.72))
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
     }
 
     private func monthInsightCard(

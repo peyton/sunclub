@@ -4,6 +4,7 @@ struct AchievementsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @State private var shareSheetItem: ShareSheetItem?
+    @State private var feedbackTrigger = 0
 
     var body: some View {
         SunLightScreen {
@@ -16,6 +17,12 @@ struct AchievementsView: View {
                     celebrationCard(for: achievementCelebration)
                 }
 
+                SunAssetHero(
+                    asset: .illustrationAchievementsShelf,
+                    height: 156,
+                    glowColor: AppPalette.coral
+                )
+
                 achievementsSection
                 challengesSection
 
@@ -25,6 +32,7 @@ struct AchievementsView: View {
         .sheet(item: $shareSheetItem) { item in
             ActivityShareSheet(items: item.items)
         }
+        .sensoryFeedback(.success, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -81,6 +89,7 @@ struct AchievementsView: View {
                 Spacer(minLength: 0)
 
                 Button("Dismiss") {
+                    feedbackTrigger += 1
                     appState.markAchievementCelebrationSeen()
                 }
                 .buttonStyle(.plain)
@@ -100,12 +109,17 @@ struct AchievementsView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.45))
         )
+        .overlay(alignment: .topTrailing) {
+            SunclubVisualBadge(asset: achievement.id.visualAsset, size: 66)
+                .offset(x: -14, y: 14)
+        }
     }
 
     private func shareAchievement(_ achievement: SunclubAchievement) {
         guard let artifact = try? appState.achievementArtifact(for: achievement) else {
             return
         }
+        feedbackTrigger += 1
         var items: [Any] = [artifact.fileURL]
         if let shareText = artifact.shareText {
             items.append(shareText)
@@ -118,6 +132,7 @@ struct AchievementsView: View {
         guard let artifact = try? appState.challengeArtifact(for: challenge) else {
             return
         }
+        feedbackTrigger += 1
         appState.recordShareActionStarted()
         shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
     }
@@ -141,15 +156,11 @@ private struct AchievementCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(achievement.isUnlocked ? AppPalette.sun.opacity(0.18) : AppPalette.ink.opacity(0.08))
-
-                    Image(systemName: achievement.symbolName)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(achievement.isUnlocked ? AppPalette.sun : AppPalette.ink.opacity(0.62))
-                }
-                .frame(width: 46, height: 46)
+                SunclubVisualBadge(
+                    asset: achievement.id.visualAsset,
+                    size: 52,
+                    isLocked: !achievement.isUnlocked
+                )
 
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -217,6 +228,7 @@ private struct AchievementCard: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(achievement.isUnlocked ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
         }
+        .symbolEffect(.bounce, value: achievement.isUnlocked)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("achievement.card.\(achievement.id.rawValue)")
     }
@@ -241,14 +253,11 @@ private struct ChallengeCard: View {
 
                 Spacer(minLength: 0)
 
-                Image(systemName: challenge.symbolName)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(challenge.isComplete ? AppPalette.sun : AppPalette.ink.opacity(0.55))
-                    .frame(width: 42, height: 42)
-                    .background(
-                        Circle()
-                            .fill(challenge.isComplete ? AppPalette.sun.opacity(0.18) : AppPalette.ink.opacity(0.08))
-                    )
+                SunclubVisualBadge(
+                    asset: challenge.id.visualAsset,
+                    size: 50,
+                    isLocked: !challenge.isComplete
+                )
             }
 
             MilestoneProgressMeter(

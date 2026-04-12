@@ -22,6 +22,12 @@ struct SkinHealthReportView: View {
                     router.goBack()
                 })
 
+                SunAssetHero(
+                    asset: .illustrationSkinReport,
+                    height: 156,
+                    glowColor: AppPalette.aloe
+                )
+
                 introCard
                 dateRangeCard
                 metricsCard
@@ -185,6 +191,11 @@ struct SkinHealthReportView: View {
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(Color.white.opacity(0.72))
+            .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+            }
     }
 }
 

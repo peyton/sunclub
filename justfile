@@ -54,6 +54,10 @@ generate:
     bash scripts/tooling/generate.sh
 
 [group('app')]
+visual-assets:
+    swift scripts/generate-visual-assets.swift
+
+[group('app')]
 build:
     bash scripts/tooling/build.sh
 

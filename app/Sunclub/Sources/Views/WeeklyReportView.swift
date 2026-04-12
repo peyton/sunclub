@@ -14,23 +14,7 @@ struct WeeklyReportView: View {
                     router.goBack()
                 })
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(report.appliedSummaryText)
-                        .font(.system(size: 54, weight: .light))
-                        .foregroundStyle(AppPalette.streakAccent)
-                        .accessibilityIdentifier("weekly.summaryValue")
-
-                    Text("Last 7 days")
-                        .font(.system(size: 17))
-                        .foregroundStyle(AppPalette.ink)
-
-                    if appState.longestStreak > 0 {
-                        Text("Longest streak: \(appState.longestStreak) days")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(AppPalette.softInk)
-                            .accessibilityIdentifier("weekly.longestStreak")
-                    }
-                }
+                weeklyPostcard
 
                 weeklyChart
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -128,10 +112,52 @@ struct WeeklyReportView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.72))
-        )
+        .sunGlassCard(cornerRadius: 20)
+    }
+
+    private var weeklyPostcard: some View {
+        ZStack(alignment: .bottomTrailing) {
+            SunclubVisualAsset.motifSunRing.image
+                .resizable()
+                .scaledToFit()
+                .frame(width: 190, height: 190)
+                .opacity(0.24)
+                .offset(x: 40, y: 30)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(report.appliedSummaryText)
+                    .font(.system(size: 58, weight: .light))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AppPalette.streakAccent, AppPalette.coral],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .accessibilityIdentifier("weekly.summaryValue")
+
+                Text("Last 7 days")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                if appState.longestStreak > 0 {
+                    Text("Longest streak: \(appState.longestStreak) days")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                        .accessibilityIdentifier("weekly.longestStreak")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(22)
+        .background {
+            SunclubVisualAsset.shareCardBackdropWarm.image
+                .resizable()
+                .scaledToFill()
+                .opacity(0.36)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .sunGlassCard(cornerRadius: 24, fillOpacity: 0.52)
     }
 
     private var weekEntries: [WeeklyEntry] {

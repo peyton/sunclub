@@ -179,7 +179,7 @@ enum SunclubShareArtifactService {
             drawAchievementBackground(in: bounds, context: context)
             drawAchievementPanel(in: CGRect(x: 96, y: 112, width: 888, height: 1126), context: context)
             drawAchievementSymbol(
-                achievement.symbolName,
+                achievement,
                 seasonStyle: seasonStyle,
                 in: CGRect(x: 396, y: 342, width: 288, height: 288),
                 context: context
@@ -328,6 +328,10 @@ enum SunclubShareArtifactService {
         in bounds: CGRect,
         context: CGContext
     ) {
+        if drawAssetBackdrop(SunclubVisualAsset.shareCardBackdropAchievement.rawValue, in: bounds) {
+            return
+        }
+
         let colors = [
             UIColor(red: 1.00, green: 0.72, blue: 0.16, alpha: 1),
             UIColor(red: 0.98, green: 0.50, blue: 0.12, alpha: 1),
@@ -371,11 +375,16 @@ enum SunclubShareArtifactService {
     }
 
     private static func drawAchievementSymbol(
-        _ symbolName: String,
+        _ achievement: SunclubAchievement,
         seasonStyle: SunclubSeasonStyle,
         in rect: CGRect,
         context: CGContext
     ) {
+        if let badge = UIImage(named: achievement.id.visualAsset.rawValue) {
+            badge.draw(in: rect.insetBy(dx: -10, dy: -10))
+            return
+        }
+
         let badgeColors: [UIColor]
         switch seasonStyle {
         case .summerGlow:
@@ -410,7 +419,7 @@ enum SunclubShareArtifactService {
         UIBezierPath(ovalIn: rect.insetBy(dx: 8, dy: 8)).stroke()
 
         let symbolConfig = UIImage.SymbolConfiguration(pointSize: 132, weight: .bold)
-        let symbol = UIImage(systemName: symbolName, withConfiguration: symbolConfig)?
+        let symbol = UIImage(systemName: achievement.symbolName, withConfiguration: symbolConfig)?
             .withTintColor(.white, renderingMode: .alwaysOriginal)
         let symbolSize = CGSize(width: 154, height: 154)
         symbol?.draw(in: CGRect(
@@ -461,6 +470,16 @@ enum SunclubShareArtifactService {
         seasonStyle: SunclubSeasonStyle,
         context: CGContext
     ) {
+        let assetName: String = switch seasonStyle {
+        case .summerGlow:
+            SunclubVisualAsset.shareCardBackdropWarm.rawValue
+        case .winterShield:
+            SunclubVisualAsset.shareCardBackdropCool.rawValue
+        }
+        if drawAssetBackdrop(assetName, in: bounds) {
+            return
+        }
+
         let colors: [UIColor]
         switch seasonStyle {
         case .summerGlow:
@@ -484,6 +503,18 @@ enum SunclubShareArtifactService {
         UIColor.white.withAlphaComponent(0.12).setFill()
         context.fillEllipse(in: CGRect(x: bounds.width - 280, y: 80, width: 220, height: 220))
         context.fillEllipse(in: CGRect(x: -60, y: bounds.height - 240, width: 280, height: 280))
+    }
+
+    @discardableResult
+    private static func drawAssetBackdrop(_ name: String, in bounds: CGRect) -> Bool {
+        guard let image = UIImage(named: name) else {
+            return false
+        }
+
+        image.draw(in: bounds)
+        UIColor.white.withAlphaComponent(0.08).setFill()
+        UIBezierPath(rect: bounds).fill()
+        return true
     }
 
     private static func drawTitle(

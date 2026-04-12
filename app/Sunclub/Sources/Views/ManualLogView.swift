@@ -6,6 +6,7 @@ struct ManualLogView: View {
     @State private var selectedSPF: Int?
     @State private var notes: String = ""
     @State private var hasLoadedInitialState = false
+    @State private var feedbackTrigger = 0
 
     private var existingRecord: DailyRecord? {
         appState.record(for: Date())
@@ -31,6 +32,13 @@ struct ManualLogView: View {
                         .font(.system(size: 15))
                         .foregroundStyle(AppPalette.softInk)
                 }
+
+                SunAssetHero(
+                    asset: .illustrationLogBottle,
+                    height: 154,
+                    glowColor: AppPalette.aloe
+                )
+                .accessibilityLabel("Sunscreen bottle")
 
                 if let existingRecord {
                     SunStatusCard(
@@ -59,11 +67,13 @@ struct ManualLogView: View {
                 .accessibilityIdentifier("manualLog.logToday")
         }
         .onAppear(perform: syncInitialStateIfNeeded)
+        .sensoryFeedback(.success, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
 
     private func logToday() {
+        feedbackTrigger += 1
         appState.recordVerificationSuccess(
             method: .manual,
             verificationDuration: nil,
@@ -82,9 +92,16 @@ struct ManualLogView: View {
 
     private var scanSPFButton: some View {
         Button {
+            feedbackTrigger += 1
             router.push(.productScanner)
         } label: {
             HStack(spacing: 12) {
+                SunclubVisualAsset.illustrationScannerLabel.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50, height: 50)
+                    .accessibilityHidden(true)
+
                 Image(systemName: "camera.viewfinder")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
@@ -107,10 +124,7 @@ struct ManualLogView: View {
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
-            )
+            .sunGlassCard(cornerRadius: 18)
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the SPF scanner.")
