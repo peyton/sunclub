@@ -52,6 +52,13 @@ def run_logged(
         raise subprocess.CalledProcessError(result.returncode, command)
 
 
+def screenshot_build_environment() -> dict[str, str]:
+    env = {**os.environ, "SUNCLUB_FLAVOR": "prod", "SUNCLUB_TUIST_SHARE": "0"}
+    for key in ("APP_SCHEME", "APP_IDENTIFIER", "RUN_APP_PATH"):
+        env.pop(key, None)
+    return env
+
+
 def main() -> int:
     with METADATA_PATH.open() as handle:
         manifest = json.load(handle)
@@ -97,9 +104,10 @@ def main() -> int:
             f"id={simulator_udid}",
             "--derived-data-path",
             str(DERIVED_DATA),
+            "--skip-share",
         ],
         cwd=REPO_ROOT,
-        env={**os.environ, "SUNCLUB_FLAVOR": "prod"},
+        env=screenshot_build_environment(),
     )
 
     if not APP_PATH.is_dir():

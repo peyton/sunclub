@@ -95,6 +95,10 @@ def test_validator_rejects_legacy_submission_problems() -> None:
         in errors
     )
     assert (
+        "Metadata contains stale AI, camera verification, fully-offline, or no-cloud copy."
+        in errors
+    )
+    assert (
         "urls.support is still marked as not ready for App Store submission." in errors
     )
     assert "review.contact is still marked as not ready for submission." in errors
@@ -112,8 +116,9 @@ def test_validator_allows_current_manifest_in_draft_mode() -> None:
     assert not any("export compliance" in step.lower() for step in manual_steps)
     assert (
         "urls.support is still marked as not ready for App Store submission."
-        in warnings
+        not in warnings
     )
+    assert not any(warning.startswith("urls.") for warning in warnings)
     assert "review.contact is still marked as not ready for submission." in warnings
 
 

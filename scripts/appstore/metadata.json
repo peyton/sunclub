@@ -14,7 +14,7 @@
   },
   "localizations": {
     "en-US": {
-      "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nLog today in a few taps, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No accounts, no cloud sync, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
+      "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nLog today in a few taps, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
       "keywords": ["sunscreen", "spf", "uv", "habit", "streak", "daily", "reminder", "skincare", "sun care"],
       "promotional_text": "Build a steady sunscreen routine with quick logging, streaks, and reminders.",
       "whats_new": "Initial release. Log sunscreen use quickly, keep your streak on track, and stay consistent with reminders."
@@ -22,16 +22,16 @@
   },
   "urls": {
     "support": {
-      "value": "https://sunclub.app/support",
-      "ready": false
+      "value": "https://sunclub.peyton.app/support",
+      "ready": true
     },
     "marketing": {
-      "value": "https://sunclub.app",
-      "ready": false
+      "value": "https://sunclub.peyton.app",
+      "ready": true
     },
     "privacy_policy": {
-      "value": "https://sunclub.app/privacy",
-      "ready": false
+      "value": "https://sunclub.peyton.app/privacy",
+      "ready": true
     }
   },
   "review": {
@@ -43,7 +43,7 @@
       "ready": false
     },
     "demo_account_required": false,
-    "demo_account_notes": "No account required. All user data stays on device.",
+    "demo_account_notes": "No account required. App data is stored on device and can sync through the user's private iCloud database when iCloud sync is enabled.",
     "notes": "Sunclub does not require an account. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.",
     "attachments": []
   },
@@ -99,6 +99,6 @@
   },
   "submission": {
     "copyright": "2026 Peyton Randolph",
-    "manual_steps": ["Replace draft support, marketing, and privacy URLs with live pages and mark them ready.", "Replace the draft App Review contact details and mark them ready.", "Answer App Privacy questions in App Store Connect to match this manifest.", "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."]
+    "manual_steps": ["Replace the draft App Review contact details and mark them ready.", "Answer App Privacy questions in App Store Connect to match this manifest.", "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."]
   }
 }
