@@ -496,17 +496,24 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(manual.displayName, "Manual Log")
         XCTAssertEqual(manual.symbolName, "hand.tap")
         XCTAssertEqual(manual.rawValue, 1)
+
+        let quickLog = VerificationMethod.quickLog
+        XCTAssertEqual(quickLog.title, "quick log")
+        XCTAssertEqual(quickLog.displayName, "Quick Log")
+        XCTAssertEqual(quickLog.symbolName, "bolt.fill")
+        XCTAssertEqual(quickLog.rawValue, 2)
     }
 
     @MainActor
     func testVerificationMethodCaseIterable() {
         let allCases = VerificationMethod.allCases
-        XCTAssertEqual(allCases, [.manual])
+        XCTAssertEqual(allCases, [.manual, .quickLog])
     }
 
     @MainActor
     func testVerificationMethodRoundTripsThroughRawValue() {
         XCTAssertEqual(VerificationMethod(rawValue: VerificationMethod.manual.rawValue), .manual)
+        XCTAssertEqual(VerificationMethod(rawValue: VerificationMethod.quickLog.rawValue), .quickLog)
     }
 
     @MainActor
@@ -1452,6 +1459,87 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testTodayCardPresentationShowsReapplyCountBadge() throws {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let oneReapplyState = try makeAppState()
+        oneReapplyState.modelContext.insert(
+            DailyRecord(
+                startOfDay: today,
+                verifiedAt: today,
+                method: .manual,
+                reapplyCount: 1
+            )
+        )
+        oneReapplyState.refresh()
+
+        XCTAssertEqual(oneReapplyState.todayCardPresentation.logBadgeText, "Applied + 1 reapply")
+
+        let multipleReapplyState = try makeAppState()
+        multipleReapplyState.modelContext.insert(
+            DailyRecord(
+                startOfDay: today,
+                verifiedAt: today,
+                method: .manual,
+                reapplyCount: 3
+            )
+        )
+        multipleReapplyState.refresh()
+
+        XCTAssertEqual(multipleReapplyState.todayCardPresentation.logBadgeText, "Applied + 3 reapplies")
+    }
+
+    @MainActor
+    func testTodayCardPresentationShowsStreakRiskOnlyAfterSixWhenUnlogged() throws {
+        let calendar = Calendar.current
+        let evening = try XCTUnwrap(
+            calendar.date(bySettingHour: 18, minute: 30, second: 0, of: Date())
+        )
+        let beforeRiskWindow = try XCTUnwrap(
+            calendar.date(bySettingHour: 17, minute: 59, second: 0, of: Date())
+        )
+        let yesterday = try XCTUnwrap(
+            calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: evening))
+        )
+
+        let atRiskState = try makeAppState(clock: { evening })
+        atRiskState.modelContext.insert(
+            DailyRecord(
+                startOfDay: yesterday,
+                verifiedAt: yesterday,
+                method: .manual
+            )
+        )
+        atRiskState.refresh()
+
+        XCTAssertEqual(atRiskState.todayCardPresentation.streakRiskBadgeText, "Streak at risk")
+
+        let earlyState = try makeAppState(clock: { beforeRiskWindow })
+        earlyState.modelContext.insert(
+            DailyRecord(
+                startOfDay: yesterday,
+                verifiedAt: yesterday,
+                method: .manual
+            )
+        )
+        earlyState.refresh()
+
+        XCTAssertNil(earlyState.todayCardPresentation.streakRiskBadgeText)
+
+        let loggedState = try makeAppState(clock: { evening })
+        loggedState.modelContext.insert(
+            DailyRecord(
+                startOfDay: calendar.startOfDay(for: evening),
+                verifiedAt: evening,
+                method: .manual
+            )
+        )
+        loggedState.refresh()
+
+        XCTAssertNil(loggedState.todayCardPresentation.streakRiskBadgeText)
+    }
+
+    @MainActor
     func testReapplyReminderPlanShortensIntervalOnHighUV() throws {
         let daytime = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
@@ -1643,6 +1731,10 @@ final class SunclubTests: XCTestCase {
         XCTAssertNil(record.lastReappliedAt)
         XCTAssertFalse(record.hasReapplied)
 
+        record.method = .quickLog
+        XCTAssertEqual(record.method, .quickLog)
+        XCTAssertEqual(record.methodRawValue, 2)
+
         record.methodRawValue = 999
         XCTAssertEqual(record.method, .manual)
     }
@@ -1743,9 +1835,24 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertTrue(handled)
         XCTAssertEqual(state.records.count, 1)
-        XCTAssertEqual(state.record(for: Date())?.method, .manual)
+        XCTAssertEqual(state.record(for: Date())?.method, .quickLog)
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 1)
         XCTAssertEqual(state.verificationSuccessPresentation?.canAddDetails, true)
+        XCTAssertEqual(router.path, [.verifySuccess])
+    }
+
+    @MainActor
+    func testWidgetLogTodayDeepLinkUpdatesExistingRecordAsQuickLog() throws {
+        let state = try makeAppState()
+        let router = AppRouter()
+        state.completeOnboarding()
+        state.markAppliedToday(method: .manual)
+
+        let handled = SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router)
+
+        XCTAssertTrue(handled)
+        XCTAssertEqual(state.records.count, 1)
+        XCTAssertEqual(state.record(for: Date())?.method, .quickLog)
         XCTAssertEqual(router.path, [.verifySuccess])
     }
 

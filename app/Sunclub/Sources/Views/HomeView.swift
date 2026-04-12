@@ -47,10 +47,10 @@ struct HomeView: View {
             footerActions
         }
         .onAppear {
-            now = Date()
-            appState.refreshUVReadingIfNeeded()
-            appState.refreshUVForecastIfNeeded()
-            appState.refreshNotificationHealth()
+            refreshHomeOnAppear()
+        }
+        .refreshable {
+            refreshHome()
         }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
@@ -108,11 +108,7 @@ struct HomeView: View {
 
                 Spacer(minLength: 0)
 
-                if appState.record(for: Date()) != nil {
-                    Label("Logged", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.success)
-                }
+                todayBadges(presentation)
             }
 
             Text(presentation.title)
@@ -155,7 +151,7 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(Color.white.opacity(0.72))
 
-                if appState.record(for: Date()) != nil {
+                if presentation.logBadgeText != nil {
                     SunclubVisualAsset.motifShieldGlow.image
                         .resizable()
                         .scaledToFit()
@@ -168,6 +164,48 @@ struct HomeView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(Color.white.opacity(0.62), lineWidth: 1)
+        }
+    }
+
+    private func refreshHomeOnAppear() {
+        now = Date()
+        refreshHomeLiveData()
+    }
+
+    private func refreshHome() {
+        now = Date()
+        appState.refresh()
+        refreshHomeLiveData()
+    }
+
+    private func refreshHomeLiveData() {
+        appState.refreshUVReadingIfNeeded()
+        appState.refreshUVForecastIfNeeded()
+        appState.refreshNotificationHealth()
+    }
+
+    @ViewBuilder
+    private func todayBadges(_ presentation: HomeTodayCardPresentation) -> some View {
+        HStack(spacing: 8) {
+            if let logBadgeText = presentation.logBadgeText {
+                Label(logBadgeText, systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.success)
+                    .accessibilityIdentifier("home.todayLogBadge")
+            }
+
+            if let streakRiskBadgeText = presentation.streakRiskBadgeText {
+                Label(streakRiskBadgeText, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(AppPalette.sun.opacity(0.32))
+                    )
+                    .accessibilityIdentifier("home.streakRiskBadge")
+            }
         }
     }
 
@@ -1008,9 +1046,12 @@ private struct HomeAccountabilityFriendChip: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            Circle()
-                .fill(friend.hasLoggedToday ? AppPalette.success : AppPalette.sun)
-                .frame(width: 8, height: 8)
+            Text(initial)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 26, height: 26)
+                .background(avatarColor, in: Circle())
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(friend.name)
@@ -1030,6 +1071,26 @@ private struct HomeAccountabilityFriendChip: View {
             Capsule()
                 .fill(Color.white.opacity(0.82))
         )
+    }
+
+    private var initial: String {
+        guard let firstCharacter = friend.name.trimmingCharacters(in: .whitespacesAndNewlines).first else {
+            return "?"
+        }
+
+        return String(firstCharacter).uppercased()
+    }
+
+    private var avatarColor: Color {
+        let palette = [
+            AppPalette.sun,
+            AppPalette.coral,
+            AppPalette.aloe,
+            AppPalette.pool,
+            AppPalette.ink
+        ]
+        let index = Int(friend.id.uuid.0) % palette.count
+        return palette[index]
     }
 }
 

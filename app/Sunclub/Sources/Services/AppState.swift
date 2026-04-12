@@ -7,6 +7,8 @@ import WidgetKit
 struct HomeTodayCardPresentation: Equatable {
     let title: String
     let detail: String
+    let logBadgeText: String?
+    let streakRiskBadgeText: String?
     let uvHeadline: String?
     let uvSymbolName: String?
 }
@@ -791,17 +793,23 @@ final class AppState {
     }
 
     var todayCardPresentation: HomeTodayCardPresentation {
-        let hasLoggedToday = record(for: Date()) != nil
+        let now = currentDate()
+        let todayRecord = record(for: now)
+        let hasLoggedToday = todayRecord != nil
         let title = hasLoggedToday ? "Today's log is in" : "Ready for today's log"
         let defaultDetail = hasLoggedToday
             ? "Update today's SPF or note any time."
             : "One quick check-in keeps the streak steady."
+        let logBadgeText = todayRecord.map { Self.logBadgeText(for: $0) }
+        let streakRiskBadgeText = streakRiskBadgeText(now: now, hasLoggedToday: hasLoggedToday)
 
         guard let level = uvReading?.level,
               let uvHeadline = level.homeHeadline else {
             return HomeTodayCardPresentation(
                 title: title,
                 detail: defaultDetail,
+                logBadgeText: logBadgeText,
+                streakRiskBadgeText: streakRiskBadgeText,
                 uvHeadline: nil,
                 uvSymbolName: nil
             )
@@ -819,9 +827,38 @@ final class AppState {
         return HomeTodayCardPresentation(
             title: title,
             detail: detail,
+            logBadgeText: logBadgeText,
+            streakRiskBadgeText: streakRiskBadgeText,
             uvHeadline: uvHeadline,
             uvSymbolName: level.symbolName
         )
+    }
+
+    private static func logBadgeText(for record: DailyRecord) -> String {
+        guard record.reapplyCount > 0 else {
+            return "Logged"
+        }
+
+        let noun = record.reapplyCount == 1 ? "reapply" : "reapplies"
+        return "Applied + \(record.reapplyCount) \(noun)"
+    }
+
+    private func streakRiskBadgeText(now: Date, hasLoggedToday: Bool) -> String? {
+        guard !hasLoggedToday else {
+            return nil
+        }
+
+        let hour = calendar.component(.hour, from: now)
+        guard hour >= 18 else {
+            return nil
+        }
+
+        let activeStreak = CalendarAnalytics.currentStreak(
+            records: recordedDays,
+            now: now,
+            calendar: calendar
+        )
+        return activeStreak > 0 ? "Streak at risk" : nil
     }
 
     var reapplyReminderPlan: ReapplyReminderPlan {

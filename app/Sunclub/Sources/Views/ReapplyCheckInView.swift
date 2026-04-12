@@ -3,6 +3,7 @@ import SwiftUI
 struct ReapplyCheckInView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @State private var successFeedbackTrigger = 0
 
     var body: some View {
         SunLightScreen {
@@ -24,6 +25,7 @@ struct ReapplyCheckInView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+        .sensoryFeedback(.success, trigger: successFeedbackTrigger)
     }
 
     private func reapplyContent(presentation: ReapplyCheckInPresentation) -> some View {
@@ -62,6 +64,7 @@ struct ReapplyCheckInView: View {
         if let presentation = appState.reapplyCheckInPresentation {
             Button(presentation.actionTitle) {
                 appState.recordReapplication()
+                successFeedbackTrigger += 1
                 router.goHome()
             }
             .buttonStyle(SunPrimaryButtonStyle())

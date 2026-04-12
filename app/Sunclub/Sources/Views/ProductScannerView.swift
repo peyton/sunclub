@@ -1,3 +1,4 @@
+import AVFoundation
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -5,15 +6,23 @@ import UIKit
 struct ProductScannerView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.openURL) private var openURL
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var scanResult: SunclubProductScanResult?
     @State private var isShowingCamera = false
+    @State private var cameraAuthorizationState = ProductScannerView.initialCameraAuthorizationState()
     @State private var errorMessage: String?
     @State private var isScanning = false
     @State private var scanResultPendingUse: SunclubProductScanResult?
     @State private var scanSheenActive = false
     @State private var feedbackTrigger = 0
+
+    private enum CameraAuthorizationState {
+        case notDetermined
+        case authorized
+        case denied
+    }
 
     var body: some View {
         SunLightScreen {
@@ -41,6 +50,10 @@ struct ProductScannerView: View {
                 }
 
                 actionRow
+
+                if cameraAuthorizationState == .denied {
+                    cameraAccessDeniedCard
+                }
 
                 if let previewImage {
                     scanPreview(for: previewImage)
@@ -113,12 +126,12 @@ struct ProductScannerView: View {
 
     private var actionRow: some View {
         HStack(spacing: 12) {
-            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            if Self.isCameraSourceAvailable {
                 Button("Use Camera") {
-                    feedbackTrigger += 1
-                    isShowingCamera = true
+                    requestCameraAccess()
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("productScanner.useCamera")
             }
 
             PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
@@ -126,6 +139,75 @@ struct ProductScannerView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("productScanner.pickPhoto")
+        }
+    }
+
+    private static var isCameraSourceAvailable: Bool {
+        RuntimeEnvironment.cameraAuthorizationOverride != nil || UIImagePickerController.isSourceTypeAvailable(.camera)
+    }
+
+    private static func initialCameraAuthorizationState() -> CameraAuthorizationState {
+        switch RuntimeEnvironment.cameraAuthorizationOverride {
+        case "authorized":
+            return .authorized
+        case "denied", "restricted":
+            return .denied
+        default:
+            break
+        }
+
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .notDetermined:
+            return .notDetermined
+        case .authorized:
+            return .authorized
+        case .denied, .restricted:
+            return .denied
+        @unknown default:
+            return .denied
+        }
+    }
+
+    private func requestCameraAccess() {
+        feedbackTrigger += 1
+
+        switch cameraAuthorizationState {
+        case .authorized:
+            isShowingCamera = true
+        case .denied:
+            errorMessage = nil
+        case .notDetermined:
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                await MainActor.run {
+                    cameraAuthorizationState = granted ? .authorized : .denied
+                    if granted {
+                        isShowingCamera = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var cameraAccessDeniedCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SunStatusCard(
+                title: "Camera access denied",
+                detail: "Turn on camera access in Settings to scan sunscreen labels. You can still pick a photo.",
+                tint: Color.red.opacity(0.8),
+                symbol: "camera.fill"
+            )
+            .accessibilityIdentifier("productScanner.cameraDenied")
+
+            Button("Open Settings") {
+                guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+                    return
+                }
+                openURL(settingsURL)
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("productScanner.openSettings")
         }
     }
 

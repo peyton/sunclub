@@ -60,6 +60,14 @@ enum RuntimeEnvironment {
         )
     }
 
+    static var cameraAuthorizationOverride: String? {
+        guard isUITesting else {
+            return nil
+        }
+
+        return argumentValue(withPrefix: "UITEST_CAMERA_AUTH=")?.lowercased()
+    }
+
     static var isRunningTests: Bool {
         isUITesting || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }

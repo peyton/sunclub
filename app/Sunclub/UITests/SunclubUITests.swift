@@ -265,6 +265,20 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testProductScannerShowsCameraDeniedCardAndKeepsPhotoPicker() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=productScanner",
+            "UITEST_CAMERA_AUTH=denied"
+        ])
+
+        XCTAssertTrue(app.staticTexts["Camera access denied"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["productScanner.openSettings"].exists)
+        let pickerByIdentifier = app.buttons["productScanner.pickPhoto"]
+        let pickerByLabel = app.buttons["Pick Photo"]
+        XCTAssertTrue(pickerByIdentifier.exists || pickerByLabel.exists)
+    }
+
+    @MainActor
     func testHomeShowsOptionalAccountabilityNudgeAfterThreeLoggedDays() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_RESET_ACCOUNTABILITY",

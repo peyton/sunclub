@@ -35,19 +35,7 @@ enum SunclubQuickLogAction {
                 throw SunclubQuickLogError.onboardingRequired
             }
 
-            if let existingRecord = try record(for: today, in: context) {
-                existingRecord.verifiedAt = now
-                existingRecord.method = .manual
-                existingRecord.verificationDuration = nil
-            } else {
-                context.insert(
-                    DailyRecord(
-                        startOfDay: today,
-                        verifiedAt: now,
-                        method: .manual
-                    )
-                )
-            }
+            try upsertQuickLogRecord(for: today, verifiedAt: now, in: context)
 
             let records = try fetchRecords(in: context)
             let currentStreak = CalendarAnalytics.currentStreak(
@@ -98,6 +86,16 @@ enum SunclubQuickLogAction {
             sortBy: [SortDescriptor(\.startOfDay, order: .reverse)]
         )
         return try context.fetch(descriptor)
+    }
+
+    private static func upsertQuickLogRecord(for day: Date, verifiedAt: Date, in context: ModelContext) throws {
+        if let existingRecord = try record(for: day, in: context) {
+            existingRecord.verifiedAt = verifiedAt
+            existingRecord.method = .quickLog
+            existingRecord.verificationDuration = nil
+        } else {
+            context.insert(DailyRecord(startOfDay: day, verifiedAt: verifiedAt, method: .quickLog))
+        }
     }
 
     private static func record(for day: Date, in context: ModelContext) throws -> DailyRecord? {

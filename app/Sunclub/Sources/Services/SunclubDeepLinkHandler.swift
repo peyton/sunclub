@@ -33,7 +33,7 @@ enum SunclubDeepLinkHandler {
             return true
         }
 
-        appState.recordVerificationSuccess(method: .manual)
+        appState.recordVerificationSuccess(method: .quickLog)
         if let presentation = appState.verificationSuccessPresentation {
             appState.verificationSuccessPresentation = VerificationSuccessPresentation(
                 streak: presentation.streak,
