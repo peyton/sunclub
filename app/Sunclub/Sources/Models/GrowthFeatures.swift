@@ -289,4 +289,17 @@ struct SunclubShareArtifact: Equatable {
     let title: String
     let subtitle: String
     let fileURL: URL
+    let shareText: String?
+
+    init(
+        title: String,
+        subtitle: String,
+        fileURL: URL,
+        shareText: String? = nil
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.fileURL = fileURL
+        self.shareText = shareText
+    }
 }
