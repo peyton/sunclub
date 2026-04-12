@@ -56,6 +56,7 @@ just release-tag 1.2.3
 `just release-tag 1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
+The production flavor uses automatic signing with an Apple Distribution identity for Release builds. Development flavors keep development signing so local installs and tests continue to use dev profiles.
 
 ## GitHub Automation
 

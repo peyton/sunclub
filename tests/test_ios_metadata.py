@@ -153,10 +153,24 @@ def test_project_declares_prod_and_dev_flavors() -> None:
 
     assert 'bundleID: "app.peyton.sunclub"' in source
     assert 'widgetBundleID: "app.peyton.sunclub.widgets"' in source
+    assert "usesAppStoreReleaseSigning: true" in source
     assert 'bundleID: "app.peyton.sunclub.dev"' in source
     assert 'widgetBundleID: "app.peyton.sunclub.dev.widgets"' in source
     assert 'appGroupID: "group.app.peyton.sunclub.dev"' in source
     assert 'cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev"' in source
+    assert "usesAppStoreReleaseSigning: false" in source
+
+
+def test_production_release_targets_use_distribution_signing() -> None:
+    source = PROJECT_SWIFT.read_text()
+
+    assert (
+        "return .settings(base: base, release: releaseSigningSettings(for: flavor))"
+        in source
+    )
+    assert "func releaseSigningSettings(for flavor: SunclubFlavor)" in source
+    assert "guard flavor.usesAppStoreReleaseSigning else { return [:] }" in source
+    assert '.codeSignIdentity("Apple Distribution")' in source
 
 
 def test_project_test_targets_follow_production_flavor_contract() -> None:
@@ -200,6 +214,7 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
     assert "XCODEBUILD_SIGNING_ARGS=(" in script
     assert "CODE_SIGN_STYLE=Automatic" in script
+    assert "CODE_SIGN_IDENTITY" not in script
     assert ': "${SUNCLUB_APS_ENVIRONMENT:=production}"' in script
     assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
     assert "xcrun --find altool" in script

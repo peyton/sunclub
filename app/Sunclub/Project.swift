@@ -28,6 +28,7 @@ struct SunclubFlavor {
     let cloudKitContainerIdentifier: String
     let displayName: String
     let urlScheme: String
+    let usesAppStoreReleaseSigning: Bool
 
     var appPathName: String { appTargetName }
 }
@@ -48,7 +49,8 @@ let productionFlavor = SunclubFlavor(
     appGroupID: "group.app.peyton.sunclub",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub",
     displayName: "Sunclub",
-    urlScheme: "sunclub"
+    urlScheme: "sunclub",
+    usesAppStoreReleaseSigning: true
 )
 
 let developmentFlavor = SunclubFlavor(
@@ -67,7 +69,8 @@ let developmentFlavor = SunclubFlavor(
     appGroupID: "group.app.peyton.sunclub.dev",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev",
     displayName: "Sunclub Dev",
-    urlScheme: "sunclub-dev"
+    urlScheme: "sunclub-dev",
+    usesAppStoreReleaseSigning: false
 )
 
 func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
@@ -88,7 +91,14 @@ func targetSettings(for flavor: SunclubFlavor) -> Settings {
         base[key] = value
     }
 
-    return .settings(base: base)
+    return .settings(base: base, release: releaseSigningSettings(for: flavor))
+}
+
+func releaseSigningSettings(for flavor: SunclubFlavor) -> SettingsDictionary {
+    guard flavor.usesAppStoreReleaseSigning else { return [:] }
+
+    return SettingsDictionary()
+        .codeSignIdentity("Apple Distribution")
 }
 
 func appTarget(for flavor: SunclubFlavor) -> Target {
