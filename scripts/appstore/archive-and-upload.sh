@@ -202,6 +202,6 @@ Next manual steps:
 1. Replace the draft URLs and review contact fields in scripts/appstore/metadata.json.
 2. Capture the 6.9-inch iPhone screenshots with scripts/appstore/capture-screenshots.sh.
 3. Upload the screenshots in App Store Connect.
-4. Complete App Privacy and export compliance answers in App Store Connect.
+4. Complete App Privacy answers in App Store Connect.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF

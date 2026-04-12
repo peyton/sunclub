@@ -156,7 +156,9 @@ struct ProductScannerView: View {
         Task {
             defer { isScanning = false }
             do {
-                scanResult = try await SunclubProductScannerService.scan(image: image)
+                let result = try await SunclubProductScannerService.scan(image: image)
+                scanResult = result
+                appState.rememberScannedSPF(result.spfLevel)
             } catch {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }

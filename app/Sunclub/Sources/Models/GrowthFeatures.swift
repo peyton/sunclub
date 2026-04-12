@@ -7,6 +7,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var friends: [SunclubFriendSnapshot]
     var presentedAchievementIDs: [String]
     var telemetry: SunclubGrowthTelemetry
+    var scannedSPFLevels: [Int]
 
     init(
         preferredName: String = "",
@@ -14,7 +15,8 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         uvBriefing: SunclubUVBriefingPreferences = SunclubUVBriefingPreferences(),
         friends: [SunclubFriendSnapshot] = [],
         presentedAchievementIDs: [String] = [],
-        telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry()
+        telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry(),
+        scannedSPFLevels: [Int] = []
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
@@ -22,6 +24,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         self.friends = friends
         self.presentedAchievementIDs = presentedAchievementIDs
         self.telemetry = telemetry
+        self.scannedSPFLevels = Self.normalizedSPFLevels(scannedSPFLevels)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -31,10 +34,12 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         case friends
         case presentedAchievementIDs
         case telemetry
+        case scannedSPFLevels
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+
         preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName) ?? ""
         healthKit = try container.decodeIfPresent(SunclubHealthKitPreferences.self, forKey: .healthKit)
             ?? SunclubHealthKitPreferences()
@@ -44,6 +49,22 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         presentedAchievementIDs = try container.decodeIfPresent([String].self, forKey: .presentedAchievementIDs) ?? []
         telemetry = try container.decodeIfPresent(SunclubGrowthTelemetry.self, forKey: .telemetry)
             ?? SunclubGrowthTelemetry()
+        scannedSPFLevels = Self.normalizedSPFLevels(
+            try container.decodeIfPresent([Int].self, forKey: .scannedSPFLevels) ?? []
+        )
+    }
+
+    static func normalizedSPFLevels(_ levels: [Int]) -> [Int] {
+        var seenLevels = Set<Int>()
+
+        return levels.compactMap { level in
+            let normalizedLevel = max(1, min(level, 100))
+            guard seenLevels.insert(normalizedLevel).inserted else {
+                return nil
+            }
+
+            return normalizedLevel
+        }
     }
 }
 

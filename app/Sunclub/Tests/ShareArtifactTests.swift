@@ -29,8 +29,9 @@ final class ShareArtifactTests: XCTestCase {
         XCTAssertEqual(SunclubShareArtifactService.appLinkDisplay, "sunclub.peyton.app")
         XCTAssertEqual(
             artifact.shareText,
-            "I unlocked 7-Day Shield in Sunclub. Build your sunscreen streak: https://sunclub.peyton.app"
+            "I unlocked 7-Day Shield in Sunclub. Build your sunscreen streak: sunclub.peyton.app"
         )
+        XCTAssertFalse(try XCTUnwrap(artifact.shareText).contains("https://"))
     }
 
     func testAchievementShareCardsRenderForEveryAchievementTitle() throws {
@@ -55,7 +56,8 @@ final class ShareArtifactTests: XCTestCase {
 
             XCTAssertEqual(image.size.width, 1080, accuracy: 0.1)
             XCTAssertEqual(image.size.height, 1350, accuracy: 0.1)
-            XCTAssertTrue(artifact.shareText?.contains(SunclubShareArtifactService.appShareURLString) == true)
+            XCTAssertTrue(artifact.shareText?.contains(SunclubShareArtifactService.appLinkDisplay) == true)
+            XCTAssertFalse(artifact.shareText?.contains(SunclubShareArtifactService.appShareURLString) == true)
         }
     }
 
