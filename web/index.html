@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="brand" href="/" aria-label="Sunclub home">
@@ -39,7 +40,7 @@
       </nav>
     </header>
 
-    <main>
+    <main id="main">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-inner">
           <div>
@@ -51,9 +52,11 @@
               to apply or reapply.
             </p>
             <div class="actions" aria-label="Sunclub links">
-              <a class="button primary" href="/support/">Get support</a>
-              <a class="button secondary" href="/privacy/"
-                >Read the privacy policy</a
+              <a class="button primary" href="#release-title"
+                >App Store Download Coming Soon</a
+              >
+              <a class="button secondary" href="mailto:sunclub@peyton.app"
+                >Email Sunclub Support</a
               >
             </div>
           </div>
@@ -65,8 +68,9 @@
                   class="phone-shot"
                   src="/assets/screenshots/home.jpg"
                   width="560"
-                  height="1217"
+                  height="1216"
                   alt="Sunclub home screen with current streak, daily progress, and manual logging."
+                  fetchpriority="high"
                 />
               </div>
             </div>
@@ -154,8 +158,9 @@
               <img
                 src="/assets/screenshots/weekly-summary.jpg"
                 width="560"
-                height="1217"
+                height="1216"
                 alt="Sunclub weekly summary showing sunscreen consistency over the last seven days."
+                loading="lazy"
               />
               <figcaption>
                 Weekly summary keeps the last seven days readable.
