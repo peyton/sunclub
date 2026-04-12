@@ -35,12 +35,14 @@ enum SunclubWidgetRouteIntentValue: String, AppEnum {
     case summary
     case history
     case updateToday
+    case accountability
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Sunclub Route")
     static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
         .summary: "Summary",
         .history: "History",
-        .updateToday: "Update Today"
+        .updateToday: "Update Today",
+        .accountability: "Accountability"
     ]
 
     var route: SunclubWidgetRoute {

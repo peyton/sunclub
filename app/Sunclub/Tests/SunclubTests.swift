@@ -10,6 +10,7 @@ final class MockNotificationManager: NotificationScheduling {
     private(set) var scheduleRemindersCount = 0
     private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
     private(set) var scheduleLeaveHomeReminderLevels: [UVLevel] = []
+    private(set) var accountabilityPokeNotifications: [(friendName: String, message: String, route: AppRoute)] = []
     private(set) var refreshStreakRiskReminderCount = 0
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var scheduleLeaveHomeReminderRoutes: [AppRoute] = []
@@ -37,6 +38,10 @@ final class MockNotificationManager: NotificationScheduling {
     func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async {
         scheduleLeaveHomeReminderLevels.append(level)
         scheduleLeaveHomeReminderRoutes.append(route)
+    }
+
+    func scheduleAccountabilityPokeNotification(friendName: String, message: String, route: AppRoute) async {
+        accountabilityPokeNotifications.append((friendName, message, route))
     }
 
     func cancelDailyReminder(for day: Date, using state: AppState) async {
@@ -74,6 +79,50 @@ final class ProbeCloudSyncCoordinator: CloudSyncControlling {
     func publishImportedSession(_ sessionID: UUID) async throws -> CloudPublishResult {
         CloudPublishResult(importSessionID: sessionID, publishedBatchCount: 0)
     }
+}
+
+@MainActor
+final class FakeAccountabilityService: SunclubAccountabilityServing {
+    private(set) var publishedProfiles: [SunclubAccountabilityProfile] = []
+    private(set) var fetchedProfileRequests: [[UUID]] = []
+    private(set) var sentInviteResponses: [SunclubAccountabilityInviteResponse] = []
+    private(set) var sentPokes: [SunclubAccountabilityPokeEnvelope] = []
+    private(set) var installedSubscriptionProfileIDs: [UUID] = []
+    var profilesByID: [UUID: SunclubAccountabilityProfile] = [:]
+    var remoteEvents = SunclubAccountabilityRemoteEvents(inviteResponses: [], pokes: [])
+    var sendPokeError: Error?
+
+    func publishProfile(_ profile: SunclubAccountabilityProfile) async throws {
+        publishedProfiles.append(profile)
+    }
+
+    func fetchProfiles(profileIDs: [UUID]) async throws -> [SunclubAccountabilityProfile] {
+        fetchedProfileRequests.append(profileIDs)
+        return profileIDs.compactMap { profilesByID[$0] }
+    }
+
+    func sendInviteResponse(_ response: SunclubAccountabilityInviteResponse) async throws {
+        sentInviteResponses.append(response)
+    }
+
+    func sendPoke(_ poke: SunclubAccountabilityPokeEnvelope) async throws {
+        if let sendPokeError {
+            throw sendPokeError
+        }
+        sentPokes.append(poke)
+    }
+
+    func fetchRemoteEvents(for profileID: UUID) async throws -> SunclubAccountabilityRemoteEvents {
+        remoteEvents
+    }
+
+    func installSubscriptions(for profileID: UUID) async throws {
+        installedSubscriptionProfileIDs.append(profileID)
+    }
+}
+
+private enum FakeAccountabilityError: Error {
+    case sendFailed
 }
 
 @MainActor
@@ -521,7 +570,17 @@ final class SunclubTests: XCTestCase {
                 "morningHour": 8,
                 "morningMinute": 0
             },
-            "friends": [],
+            "friends": [
+                {
+                    "id": "9C9E0C71-0C6B-46C2-8AC0-32E3AC1EE0E5",
+                    "name": "Maya",
+                    "currentStreak": 4,
+                    "longestStreak": 9,
+                    "hasLoggedToday": true,
+                    "lastSharedAt": 800000000,
+                    "seasonStyleRawValue": "summerGlow"
+                }
+            ],
             "presentedAchievementIDs": []
         }
         """.utf8)
@@ -529,7 +588,33 @@ final class SunclubTests: XCTestCase {
         let settings = try JSONDecoder().decode(SunclubGrowthSettings.self, from: data)
 
         XCTAssertEqual(settings.preferredName, "Peyton")
+        XCTAssertEqual(settings.friends.first?.name, "Maya")
+        XCTAssertEqual(settings.friends.first?.currentStreak, 4)
         XCTAssertEqual(settings.scannedSPFLevels, [])
+        XCTAssertFalse(settings.accountability.isActive)
+        XCTAssertTrue(settings.accountability.connections.isEmpty)
+    }
+
+    func testGrowthSettingsDecodesPartialAccountabilityPayloadWithDefaults() throws {
+        let data = Data("""
+        {
+            "preferredName": "Peyton",
+            "accountability": {
+                "displayName": " Peyton ",
+                "activatedAt": 800000000
+            }
+        }
+        """.utf8)
+
+        let settings = try JSONDecoder().decode(SunclubGrowthSettings.self, from: data)
+
+        XCTAssertEqual(settings.preferredName, "Peyton")
+        XCTAssertEqual(settings.accountability.displayName, "Peyton")
+        XCTAssertTrue(settings.accountability.isActive)
+        XCTAssertTrue(settings.accountability.inviteTokens.isEmpty)
+        XCTAssertTrue(settings.accountability.pendingInvites.isEmpty)
+        XCTAssertTrue(settings.accountability.connections.isEmpty)
+        XCTAssertTrue(settings.accountability.pokeHistory.isEmpty)
     }
 
     func testHomeGreetingFormatterUsesPreferredDisplayNameWhenPresent() throws {
@@ -587,6 +672,137 @@ final class SunclubTests: XCTestCase {
         let snapshot = try SunclubFriendCodeCodec.decode(shareCode)
 
         XCTAssertEqual(snapshot.name, "Peyton Appleseed")
+    }
+
+    @MainActor
+    func testAccountabilityInviteCodeRoundTripsAndDeepLinkParses() throws {
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        let code = try SunclubAccountabilityCodec.backupCode(for: envelope)
+        let decoded = try SunclubAccountabilityCodec.envelope(from: code)
+        let inviteURL = try SunclubAccountabilityCodec.inviteURL(for: envelope)
+
+        XCTAssertEqual(decoded, envelope)
+        guard case let .accountabilityInvite(parsedCode) = SunclubDeepLink(url: inviteURL) else {
+            return XCTFail("Expected accountability invite deep link.")
+        }
+        XCTAssertEqual(try SunclubAccountabilityCodec.envelope(from: parsedCode), envelope)
+        XCTAssertThrowsError(try SunclubAccountabilityCodec.envelope(from: "not-a-sunclub-code"))
+    }
+
+    @MainActor
+    func testQueuedAccountabilityInviteImportsAfterOnboarding() throws {
+        let state = try makeAppState()
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        let code = try SunclubAccountabilityCodec.backupCode(for: envelope)
+
+        try state.queuePendingAccountabilityInviteCode(code)
+
+        XCTAssertFalse(state.growthSettings.accountability.isActive)
+        XCTAssertTrue(state.friends.isEmpty)
+
+        state.completeOnboarding()
+        XCTAssertTrue(state.importPendingAccountabilityInvitesIfNeeded())
+
+        XCTAssertTrue(state.growthSettings.accountability.isActive)
+        XCTAssertEqual(state.friends.map(\.name), ["Maya"])
+        XCTAssertTrue(state.growthSettings.accountability.pendingInvites.isEmpty)
+    }
+
+    @MainActor
+    func testAddingByInviteStoresFriendSendsResponseAndUpdatesByProfileID() async throws {
+        let service = FakeAccountabilityService()
+        let state = try makeAppState(accountabilityService: service)
+        let profileID = UUID(uuidString: "391D15FD-475F-4EE5-9A85-E68E27980EA8") ?? UUID()
+        let initialEnvelope = makeAccountabilityInviteEnvelope(
+            profileID: profileID,
+            snapshotID: UUID(uuidString: "9C9E0C71-0C6B-46C2-8AC0-32E3AC1EE0E5") ?? UUID(),
+            displayName: "Maya",
+            currentStreak: 1
+        )
+
+        state.importAccountabilityInvite(initialEnvelope)
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(state.friends.count, 1)
+        XCTAssertEqual(state.friends.first?.name, "Maya")
+        XCTAssertEqual(state.growthSettings.accountability.connections.first?.friendProfileID, profileID)
+        XCTAssertEqual(service.sentInviteResponses.count, 1)
+        XCTAssertEqual(service.sentInviteResponses.first?.recipientProfileID, profileID)
+
+        let existingFriendID = try XCTUnwrap(state.friends.first?.id)
+        let updatedEnvelope = makeAccountabilityInviteEnvelope(
+            profileID: profileID,
+            snapshotID: UUID(uuidString: "1EDBD356-6014-4B58-B2B4-ED4F6258E2F7") ?? UUID(),
+            displayName: "Maya",
+            currentStreak: 4
+        )
+
+        state.importAccountabilityInvite(updatedEnvelope, sendsResponse: false)
+
+        XCTAssertEqual(state.friends.count, 1)
+        XCTAssertEqual(state.friends.first?.id, existingFriendID)
+        XCTAssertEqual(state.friends.first?.currentStreak, 4)
+    }
+
+    @MainActor
+    func testDirectPokeUsesServiceAndFailureLeavesShareFallback() async throws {
+        let service = FakeAccountabilityService()
+        let state = try makeAppState(accountabilityService: service)
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        state.importAccountabilityInvite(envelope, sendsResponse: false)
+        let friendID = try XCTUnwrap(state.friends.first?.id)
+
+        state.sendDirectPoke(to: friendID)
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(service.sentPokes.count, 1)
+        XCTAssertEqual(service.sentPokes.first?.receiverProfileID, envelope.profileID)
+        XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .sent)
+
+        service.sendPokeError = FakeAccountabilityError.sendFailed
+        state.sendDirectPoke(to: friendID)
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .failed)
+        XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.channel, .direct)
+        XCTAssertEqual(state.friendImportMessage, "Direct poke did not send. Use Share Poke instead.")
+        XCTAssertTrue(state.sharePokeText(for: try XCTUnwrap(state.friends.first)).contains("sunscreen check"))
+    }
+
+    @MainActor
+    func testIncomingPokeValidatesRelationshipBeforeNotifying() async throws {
+        let notificationManager = MockNotificationManager()
+        let state = try makeAppState(notificationManager: notificationManager)
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+        state.importAccountabilityInvite(envelope, sendsResponse: false)
+
+        let validPoke = SunclubAccountabilityPokeEnvelope(
+            senderProfileID: envelope.profileID,
+            senderName: "Maya",
+            receiverProfileID: state.growthSettings.accountability.localProfileID,
+            relationshipToken: envelope.relationshipToken,
+            message: "Sunscreen check?",
+            createdAt: Date()
+        )
+        state.handleIncomingPoke(validPoke)
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
+        XCTAssertEqual(notificationManager.accountabilityPokeNotifications.first?.friendName, "Maya")
+        XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .received)
+
+        let invalidPoke = SunclubAccountabilityPokeEnvelope(
+            senderProfileID: envelope.profileID,
+            senderName: "Maya",
+            receiverProfileID: state.growthSettings.accountability.localProfileID,
+            relationshipToken: "wrong-token",
+            message: "Sunscreen check?",
+            createdAt: Date()
+        )
+        state.handleIncomingPoke(invalidPoke)
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(notificationManager.accountabilityPokeNotifications.count, 1)
     }
 
     @MainActor
@@ -1427,6 +1643,7 @@ final class SunclubTests: XCTestCase {
     private func makeAppState(
         notificationManager: NotificationScheduling? = nil,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
+        accountabilityService: SunclubAccountabilityServing? = nil,
         clock: @escaping () -> Date = Date.init
     ) throws -> AppState {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()
@@ -1434,8 +1651,39 @@ final class SunclubTests: XCTestCase {
             context: ModelContext(container),
             notificationManager: notificationManager ?? NotificationManager.shared,
             uvIndexService: UVIndexService(),
+            accountabilityService: accountabilityService,
             homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock
+        )
+    }
+
+    private func waitForMainActorTasks() async {
+        await Task.yield()
+        await Task.yield()
+        await Task.yield()
+    }
+
+    private func makeAccountabilityInviteEnvelope(
+        profileID: UUID = UUID(uuidString: "391D15FD-475F-4EE5-9A85-E68E27980EA8") ?? UUID(),
+        snapshotID: UUID = UUID(uuidString: "9C9E0C71-0C6B-46C2-8AC0-32E3AC1EE0E5") ?? UUID(),
+        displayName: String,
+        currentStreak: Int = 2,
+        hasLoggedToday: Bool = false
+    ) -> SunclubAccountabilityInviteEnvelope {
+        SunclubAccountabilityInviteEnvelope(
+            profileID: profileID,
+            displayName: displayName,
+            relationshipToken: "test-relationship-token",
+            issuedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
+            snapshot: SunclubFriendSnapshot(
+                id: snapshotID,
+                name: displayName,
+                currentStreak: currentStreak,
+                longestStreak: 7,
+                hasLoggedToday: hasLoggedToday,
+                lastSharedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
+                seasonStyle: .summerGlow
+            )
         )
     }
 

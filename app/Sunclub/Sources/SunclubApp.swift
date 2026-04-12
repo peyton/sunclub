@@ -73,6 +73,9 @@ struct SunclubApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
                     refreshAppStateForForeground()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .sunclubRemoteNotificationReceived)) { _ in
+                    appState.processRemoteAccountabilityEvents()
+                }
         }
     }
 
@@ -168,30 +171,13 @@ struct SunclubApp: App {
     }
 
     private func applyUITestSeedData(from arguments: [String]) {
+        if arguments.contains("UITEST_RESET_ACCOUNTABILITY") {
+            appState.resetAccountabilityForTesting()
+        }
+
         if let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) {
             let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
-            switch scenario {
-            case "editBackfill":
-                seedHistoryEditBackfillScenario()
-            case "manualSuggestions":
-                seedManualSuggestionsScenario()
-            case "todayLogged":
-                seedTodayLoggedScenario()
-            case "reapplyToday":
-                seedReapplyTodayScenario()
-            case "reminderCoaching":
-                seedReminderCoachingScenario()
-            case "monthlyReview":
-                seedCurrentMonthReviewScenario()
-            case "conflictDay":
-                seedDayConflictScenario()
-            case "undoDeleteToday":
-                seedUndoDeleteTodayScenario()
-            case "achievementProgress":
-                seedAchievementProgressScenario()
-            default:
-                break
-            }
+            applyUITestHistorySeed(scenario)
         }
 
         if let notificationHealth = requestedUITestNotificationHealth(from: arguments) {
@@ -201,6 +187,35 @@ struct SunclubApp: App {
         }
 
         seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
+
+        if arguments.contains("UITEST_SEED_ACCOUNTABILITY_FRIEND") {
+            seedAccountabilityFriendScenario()
+        }
+    }
+
+    private func applyUITestHistorySeed(_ scenario: String) {
+        switch scenario {
+        case "editBackfill":
+            seedHistoryEditBackfillScenario()
+        case "manualSuggestions":
+            seedManualSuggestionsScenario()
+        case "todayLogged":
+            seedTodayLoggedScenario()
+        case "reapplyToday":
+            seedReapplyTodayScenario()
+        case "reminderCoaching":
+            seedReminderCoachingScenario()
+        case "monthlyReview":
+            seedCurrentMonthReviewScenario()
+        case "conflictDay":
+            seedDayConflictScenario()
+        case "undoDeleteToday":
+            seedUndoDeleteTodayScenario()
+        case "achievementProgress":
+            seedAchievementProgressScenario()
+        default:
+            break
+        }
     }
 
     private func seedHistoryEditBackfillScenario() {
@@ -412,6 +427,27 @@ struct SunclubApp: App {
         appState.refresh()
     }
 
+    private func seedAccountabilityFriendScenario() {
+        appState.activateAccountability(displayName: "Peyton")
+        let friendSnapshot = SunclubFriendSnapshot(
+            id: UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID(),
+            name: "Maya",
+            currentStreak: 2,
+            longestStreak: 5,
+            hasLoggedToday: false,
+            lastSharedAt: Date(),
+            seasonStyle: .summerGlow
+        )
+        let envelope = SunclubAccountabilityInviteEnvelope(
+            profileID: UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID(),
+            displayName: "Maya",
+            relationshipToken: "uitest-accountability-token",
+            issuedAt: Date(),
+            snapshot: friendSnapshot
+        )
+        appState.importAccountabilityInvite(envelope, sendsResponse: false)
+    }
+
     private func insertSeedRecord(
         day: Date,
         hour: Int,
@@ -515,6 +551,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = NotificationManager.shared
         NotificationManager.shared.registerBackgroundTaskIfNeeded()
+        application.registerForRemoteNotifications()
         return true
     }
 
@@ -535,6 +572,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) {
         completionHandler(SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem))
     }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        NotificationCenter.default.post(name: .sunclubRemoteNotificationReceived, object: userInfo)
+        completionHandler(.newData)
+    }
+}
+
+extension Notification.Name {
+    static let sunclubRemoteNotificationReceived = Notification.Name("sunclub.remoteNotificationReceived")
 }
 
 final class SunclubSceneDelegate: NSObject, UIWindowSceneDelegate {

@@ -168,6 +168,16 @@ final class AppState {
         notes: String?
     )
 
+    private struct RecordUpsertRequest {
+        let day: Date
+        let verifiedAt: Date
+        let verificationValues: VerificationValues
+        let replaceOptionalFields: Bool
+        let preserveExistingDuration: Bool
+        let kind: SunclubChangeKind
+        let summary: String
+    }
+
     let modelContext: ModelContext
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
@@ -183,6 +193,7 @@ final class AppState {
     private let backupService: SunclubBackupService
     private let widgetSnapshotStore: SunclubWidgetSnapshotStore
     private let growthFeatureStore: SunclubGrowthFeatureStoring
+    private let accountabilityService: SunclubAccountabilityServing
     private let currentDate: () -> Date
     private(set) var records: [DailyRecord] = []
     private(set) var changeBatches: [SunclubChangeBatch] = []
@@ -260,6 +271,7 @@ final class AppState {
         cloudSyncCoordinator: CloudSyncControlling? = nil,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         growthFeatureStore: SunclubGrowthFeatureStoring = SunclubGrowthFeatureStore.shared,
+        accountabilityService: SunclubAccountabilityServing? = nil,
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
         clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
@@ -279,24 +291,22 @@ final class AppState {
         self.backupService = backupService
         try? resolvedHistoryService.bootstrapIfNeeded()
         self.widgetSnapshotStore = widgetSnapshotStore
-        if runtimeEnvironment.isRunningTests {
-            self.growthFeatureStore = SunclubGrowthFeatureStore(
-                userDefaults: UserDefaults(suiteName: UUID().uuidString)
-            )
-        } else {
-            self.growthFeatureStore = growthFeatureStore
-        }
+        self.growthFeatureStore = Self.defaultGrowthFeatureStore(
+            growthFeatureStore,
+            runtimeEnvironment: runtimeEnvironment
+        )
+        self.accountabilityService = Self.defaultAccountabilityService(
+            accountabilityService,
+            runtimeEnvironment: runtimeEnvironment
+        )
         currentDate = clock
         settings = (try? resolvedHistoryService.settings()) ?? Self.loadOrCreateSettings(from: context)
         growthSettings = self.growthFeatureStore.load()
-        if let cloudSyncCoordinator {
-            self.cloudSyncCoordinator = cloudSyncCoordinator
-        } else {
-            self.cloudSyncCoordinator = Self.defaultCloudSyncCoordinator(
-                historyService: resolvedHistoryService,
-                runtimeEnvironment: runtimeEnvironment
-            )
-        }
+        self.cloudSyncCoordinator = Self.defaultCloudSyncCoordinator(
+            cloudSyncCoordinator,
+            historyService: resolvedHistoryService,
+            runtimeEnvironment: runtimeEnvironment
+        )
         self.homeExitReminderMonitor.setStateProvider { [weak self] in
             self
         }
@@ -328,6 +338,46 @@ final class AppState {
         }
 
         return CloudSyncCoordinator(historyService: historyService)
+    }
+
+    private static func defaultCloudSyncCoordinator(
+        _ coordinator: CloudSyncControlling?,
+        historyService: SunclubHistoryService,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot
+    ) -> CloudSyncControlling {
+        if let coordinator {
+            return coordinator
+        }
+
+        return defaultCloudSyncCoordinator(
+            historyService: historyService,
+            runtimeEnvironment: runtimeEnvironment
+        )
+    }
+
+    private static func defaultGrowthFeatureStore(
+        _ store: SunclubGrowthFeatureStoring,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot
+    ) -> SunclubGrowthFeatureStoring {
+        if runtimeEnvironment.isRunningTests {
+            return SunclubGrowthFeatureStore(userDefaults: UserDefaults(suiteName: UUID().uuidString))
+        }
+
+        return store
+    }
+
+    private static func defaultAccountabilityService(
+        _ service: SunclubAccountabilityServing?,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot
+    ) -> SunclubAccountabilityServing {
+        if let service {
+            return service
+        }
+        if runtimeEnvironment.isRunningTests || runtimeEnvironment.isPreviewing {
+            return NoopSunclubAccountabilityService()
+        }
+
+        return SunclubAccountabilityService()
     }
 
     func refresh() {
@@ -518,6 +568,24 @@ final class AppState {
             snapshot.hasCompletedOnboarding = true
         }
         finishDurableChange(batch, reschedulesReminders: false)
+    }
+
+    @discardableResult
+    func importPendingAccountabilityInvitesIfNeeded() -> Bool {
+        guard settings.hasCompletedOnboarding,
+              !growthSettings.accountability.pendingInvites.isEmpty else {
+            return false
+        }
+
+        let pendingInvites = growthSettings.accountability.pendingInvites.sorted { $0.receivedAt < $1.receivedAt }
+        growthSettings.accountability.pendingInvites.removeAll()
+        persistGrowthSettings()
+
+        for pendingInvite in pendingInvites {
+            importAccountabilityInvite(pendingInvite.envelope)
+        }
+
+        return true
     }
 
     func updateDailyReminder(hour: Int, minute: Int) {
@@ -958,6 +1026,65 @@ final class AppState {
         )
     }
 
+    var accountabilitySummary: SunclubAccountabilitySummary {
+        SunclubWidgetSnapshotBuilder.make(
+            settings: settings,
+            records: records,
+            growthSettings: growthSettings,
+            uvReading: uvReading,
+            uvForecast: uvForecast,
+            now: currentDate(),
+            calendar: calendar
+        ).accountabilitySummary
+    }
+
+    var shouldShowAccountabilityNudge: Bool {
+        settings.hasCompletedOnboarding
+            && recordedDays.count >= 3
+            && !growthSettings.accountability.isActive
+            && growthSettings.accountability.dismissedAt == nil
+    }
+
+    var accountabilityInviteEnvelope: SunclubAccountabilityInviteEnvelope? {
+        guard let token = growthSettings.accountability.activeInviteToken else {
+            return nil
+        }
+
+        let displayName = resolvedAccountabilityDisplayName
+        return SunclubAccountabilityInviteEnvelope(
+            profileID: growthSettings.accountability.localProfileID,
+            displayName: displayName,
+            relationshipToken: token.token,
+            issuedAt: token.createdAt,
+            snapshot: localFriendSnapshot
+        )
+    }
+
+    var accountabilityInviteCode: String {
+        guard let envelope = accountabilityInviteEnvelope else {
+            return ""
+        }
+
+        return (try? SunclubAccountabilityCodec.backupCode(for: envelope)) ?? ""
+    }
+
+    var accountabilityInviteURL: URL? {
+        guard let envelope = accountabilityInviteEnvelope else {
+            return nil
+        }
+
+        return try? SunclubAccountabilityCodec.inviteURL(for: envelope)
+    }
+
+    var accountabilityInviteShareText: String {
+        guard let envelope = accountabilityInviteEnvelope else {
+            return "Add me on Sunclub for sunscreen accountability."
+        }
+
+        return (try? SunclubAccountabilityCodec.inviteShareText(envelope: envelope))
+            ?? "Add me on Sunclub for sunscreen accountability."
+    }
+
     var healthKitAvailable: Bool {
         healthKitService.isAvailable
     }
@@ -975,7 +1102,51 @@ final class AppState {
 
     func updatePreferredDisplayName(_ name: String) {
         growthSettings.preferredName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !growthSettings.accountability.displayName.isEmpty {
+            growthSettings.accountability.displayName = growthSettings.preferredName
+        }
         persistGrowthSettings()
+    }
+
+    func activateAccountability(displayName: String? = nil) {
+        let now = currentDate()
+        let resolvedName = (displayName ?? preferredDisplayName).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !resolvedName.isEmpty {
+            growthSettings.preferredName = resolvedName
+            growthSettings.accountability.displayName = resolvedName
+        } else if growthSettings.accountability.displayName.isEmpty {
+            growthSettings.accountability.displayName = "Sunclub Friend"
+        }
+        growthSettings.accountability.activatedAt = growthSettings.accountability.activatedAt ?? now
+        _ = growthSettings.accountability.ensureInviteToken(now: now)
+        persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+        publishAccountabilityProfileIfNeeded()
+    }
+
+    func dismissAccountabilityNudge() {
+        growthSettings.accountability.dismissedAt = currentDate()
+        persistGrowthSettings()
+    }
+
+    func prepareAccountabilityInvite() {
+        _ = growthSettings.accountability.ensureInviteToken(now: currentDate())
+        persistGrowthSettings()
+    }
+
+    func preparedAccountabilityInviteEnvelope() -> SunclubAccountabilityInviteEnvelope {
+        let now = currentDate()
+        let token = growthSettings.accountability.ensureInviteToken(now: now)
+        persistGrowthSettings()
+        let displayName = resolvedAccountabilityDisplayName
+        return SunclubAccountabilityInviteEnvelope(
+            profileID: growthSettings.accountability.localProfileID,
+            displayName: displayName,
+            relationshipToken: token.token,
+            issuedAt: token.createdAt,
+            snapshot: localFriendSnapshot
+        )
     }
 
     func recordShareActionStarted() {
@@ -1053,6 +1224,15 @@ final class AppState {
         friendImportMessage = nil
     }
 
+    func resetAccountabilityForTesting() {
+        growthSettings.friends = []
+        growthSettings.accountability = SunclubAccountabilitySettings()
+        friendImportMessage = nil
+        persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+    }
+
     func setManualLogPrefill(spfLevel: Int?, notes: String) {
         manualLogPrefill = ManualLogPrefill(spfLevel: spfLevel, notes: notes)
     }
@@ -1078,21 +1258,220 @@ final class AppState {
     }
 
     func importFriendCode(_ code: String) throws {
-        let importedSnapshot = try SunclubFriendCodeCodec.decode(code)
-        if let existingIndex = growthSettings.friends.firstIndex(where: { $0.id == importedSnapshot.id || $0.name == importedSnapshot.name }) {
-            growthSettings.friends[existingIndex] = importedSnapshot
-        } else {
-            growthSettings.friends.append(importedSnapshot)
+        if let envelope = try? SunclubAccountabilityCodec.envelope(from: code) {
+            importAccountabilityInvite(envelope)
+            return
         }
-        persistGrowthSettings()
-        friendImportMessage = importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil
-            ? "\(importedSnapshot.name) logged today. Have you?"
-            : "Imported \(importedSnapshot.name)."
+
+        importLegacyFriendSnapshot(try SunclubFriendCodeCodec.decode(code))
     }
 
     func removeFriend(_ id: UUID) {
         growthSettings.friends.removeAll { $0.id == id }
+        growthSettings.accountability.connections.removeAll { $0.friendSnapshotID == id }
         persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+    }
+
+    func importAccountabilityInviteCode(_ code: String) throws {
+        let envelope = try SunclubAccountabilityCodec.envelope(from: code)
+        importAccountabilityInvite(envelope)
+    }
+
+    func queuePendingAccountabilityInviteCode(_ code: String) throws {
+        let envelope = try SunclubAccountabilityCodec.envelope(from: code)
+        guard envelope.profileID != growthSettings.accountability.localProfileID else {
+            friendImportMessage = "That invite is yours. Share it with a friend instead."
+            return
+        }
+
+        growthSettings.accountability.pendingInvites.removeAll { pendingInvite in
+            pendingInvite.envelope.profileID == envelope.profileID
+        }
+        growthSettings.accountability.pendingInvites.append(
+            SunclubAccountabilityPendingInvite(
+                envelope: envelope,
+                receivedAt: currentDate()
+            )
+        )
+        persistGrowthSettings()
+    }
+
+    func importAccountabilityInvite(_ envelope: SunclubAccountabilityInviteEnvelope, sendsResponse: Bool = true) {
+        guard envelope.profileID != growthSettings.accountability.localProfileID else {
+            friendImportMessage = "That invite is yours. Share it with a friend instead."
+            return
+        }
+
+        if !growthSettings.accountability.isActive {
+            activateAccountability(displayName: preferredDisplayName)
+        }
+
+        var importedSnapshot = envelope.snapshot
+        importedSnapshot.name = envelope.displayName.isEmpty ? importedSnapshot.name : envelope.displayName
+        if let existingConnection = growthSettings.accountability.connections.first(where: { $0.friendProfileID == envelope.profileID }) {
+            importedSnapshot.id = existingConnection.friendSnapshotID
+        }
+
+        upsertFriendSnapshot(importedSnapshot)
+        upsertConnection(
+            SunclubFriendConnection(
+                friendProfileID: envelope.profileID,
+                friendSnapshotID: importedSnapshot.id,
+                friendDisplayName: importedSnapshot.name,
+                relationshipToken: envelope.relationshipToken,
+                acceptedAt: currentDate()
+            )
+        )
+        persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+        friendImportMessage = importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil
+            ? "\(importedSnapshot.name) logged today. Have you?"
+            : "Added \(importedSnapshot.name)."
+
+        if sendsResponse {
+            let response = SunclubAccountabilityInviteResponse(
+                recipientProfileID: envelope.profileID,
+                envelope: preparedAccountabilityInviteEnvelope()
+            )
+            Task {
+                try? await accountabilityService.sendInviteResponse(response)
+                publishAccountabilityProfileIfNeeded()
+            }
+        }
+    }
+
+    func refreshAccountabilityFriends() {
+        guard growthSettings.accountability.isActive else {
+            return
+        }
+
+        publishAccountabilityProfileIfNeeded()
+        Task {
+            do {
+                let profileIDs = growthSettings.accountability.connections.map(\.friendProfileID)
+                let profiles = try await accountabilityService.fetchProfiles(profileIDs: profileIDs)
+                for profile in profiles {
+                    applyAccountabilityProfile(profile)
+                }
+                persistGrowthSettings()
+                syncWidgetSnapshot()
+                reloadWidgetTimelines()
+            } catch {
+                friendImportMessage = "Could not refresh friends. You can still share or poke by message."
+            }
+        }
+    }
+
+    func sendDirectPoke(to friendID: UUID) {
+        guard let friend = friends.first(where: { $0.id == friendID }),
+              let connection = growthSettings.accountability.connections.first(where: { $0.friendSnapshotID == friendID }) else {
+            return
+        }
+
+        let now = currentDate()
+        let message = "Sunscreen check?"
+        let envelope = SunclubAccountabilityPokeEnvelope(
+            senderProfileID: growthSettings.accountability.localProfileID,
+            senderName: resolvedAccountabilityDisplayName,
+            receiverProfileID: connection.friendProfileID,
+            relationshipToken: connection.relationshipToken,
+            message: message,
+            createdAt: now
+        )
+
+        Task {
+            do {
+                try await accountabilityService.sendPoke(envelope)
+                recordPoke(
+                    SunclubAccountabilityPoke(
+                        friendProfileID: connection.friendProfileID,
+                        friendName: friend.name,
+                        direction: .sent,
+                        channel: .direct,
+                        status: .sent,
+                        message: message,
+                        createdAt: now
+                    )
+                )
+                friendImportMessage = "Poked \(friend.name)."
+            } catch {
+                recordPoke(
+                    SunclubAccountabilityPoke(
+                        friendProfileID: connection.friendProfileID,
+                        friendName: friend.name,
+                        direction: .sent,
+                        channel: .direct,
+                        status: .failed,
+                        message: message,
+                        createdAt: now
+                    )
+                )
+                friendImportMessage = "Direct poke did not send. Use Share Poke instead."
+            }
+        }
+    }
+
+    func sharePokeText(for friend: SunclubFriendSnapshot) -> String {
+        SunclubAccountabilityCodec.pokeShareText(
+            from: resolvedAccountabilityDisplayName,
+            to: friend.name
+        )
+    }
+
+    func processRemoteAccountabilityEvents() {
+        guard growthSettings.accountability.isActive else { return }
+
+        Task {
+            do {
+                let events = try await accountabilityService.fetchRemoteEvents(for: growthSettings.accountability.localProfileID)
+                for response in events.inviteResponses {
+                    importAccountabilityInvite(response.envelope, sendsResponse: false)
+                }
+                for poke in events.pokes {
+                    handleIncomingPoke(poke)
+                }
+            } catch {
+                friendImportMessage = "Could not refresh accountability updates."
+            }
+        }
+    }
+
+    func handleIncomingPoke(_ envelope: SunclubAccountabilityPokeEnvelope) {
+        guard envelope.receiverProfileID == growthSettings.accountability.localProfileID,
+              let connection = growthSettings.accountability.connections.first(where: {
+                  $0.friendProfileID == envelope.senderProfileID && $0.relationshipToken == envelope.relationshipToken
+              }) else {
+            return
+        }
+
+        recordPoke(
+            SunclubAccountabilityPoke(
+                friendProfileID: envelope.senderProfileID,
+                friendName: envelope.senderName,
+                direction: .received,
+                channel: .direct,
+                status: .received,
+                message: envelope.message,
+                createdAt: envelope.createdAt
+            )
+        )
+        updateConnection(connection.friendProfileID) { connection in
+            connection.lastPokeReceivedAt = envelope.createdAt
+        }
+        persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+
+        Task {
+            await notificationManager.scheduleAccountabilityPokeNotification(
+                friendName: envelope.senderName,
+                message: envelope.message,
+                route: .manualLog
+            )
+        }
     }
 
     func markAchievementCelebrationSeen() {
@@ -1180,13 +1559,15 @@ final class AppState {
     ) {
         let now = Date()
         upsertRecord(
-            for: now,
-            verifiedAt: now,
-            verificationValues: (method, verificationDuration, spfLevel, notes),
-            replaceOptionalFields: false,
-            preserveExistingDuration: false,
-            kind: .manualLog,
-            summary: "Logged sunscreen for today."
+            RecordUpsertRequest(
+                day: now,
+                verifiedAt: now,
+                verificationValues: (method, verificationDuration, spfLevel, notes),
+                replaceOptionalFields: false,
+                preserveExistingDuration: false,
+                kind: .manualLog,
+                summary: "Logged sunscreen for today."
+            )
         )
     }
 
@@ -1203,13 +1584,15 @@ final class AppState {
             ? "Backfilled \(calendar.startOfDay(for: day).formatted(.dateTime.month().day()))."
             : "Edited \(calendar.startOfDay(for: day).formatted(.dateTime.month().day()))."
         upsertRecord(
-            for: day,
-            verifiedAt: timestamp,
-            verificationValues: (.manual, nil, spfLevel, notes),
-            replaceOptionalFields: true,
-            preserveExistingDuration: true,
-            kind: kind,
-            summary: summary
+            RecordUpsertRequest(
+                day: day,
+                verifiedAt: timestamp,
+                verificationValues: (.manual, nil, spfLevel, notes),
+                replaceOptionalFields: true,
+                preserveExistingDuration: true,
+                kind: kind,
+                summary: summary
+            )
         )
     }
 
@@ -1535,34 +1918,26 @@ final class AppState {
         refreshLeaveHomeReminderStatus()
     }
 
-    private func upsertRecord(
-        for day: Date,
-        verifiedAt: Date,
-        verificationValues: VerificationValues,
-        replaceOptionalFields: Bool,
-        preserveExistingDuration: Bool,
-        kind: SunclubChangeKind,
-        summary: String
-    ) {
+    private func upsertRecord(_ request: RecordUpsertRequest) {
         let batch = try? historyService.applyDayChange(
-            for: day,
-            kind: kind,
-            summary: summary,
+            for: request.day,
+            kind: request.kind,
+            summary: request.summary,
             changedFields: [.verifiedAt, .methodRawValue, .verificationDuration, .spfLevel, .notes]
         ) { existingSnapshot in
-            let normalizedNotes = Self.normalizedNotes(verificationValues.notes)
+            let normalizedNotes = Self.normalizedNotes(request.verificationValues.notes)
             if var snapshot = existingSnapshot {
-                snapshot.verifiedAt = verifiedAt
-                snapshot.methodRawValue = verificationValues.method.rawValue
-                snapshot.verificationDuration = preserveExistingDuration
-                    ? (verificationValues.duration ?? snapshot.verificationDuration)
-                    : verificationValues.duration
+                snapshot.verifiedAt = request.verifiedAt
+                snapshot.methodRawValue = request.verificationValues.method.rawValue
+                snapshot.verificationDuration = request.preserveExistingDuration
+                    ? (request.verificationValues.duration ?? snapshot.verificationDuration)
+                    : request.verificationValues.duration
 
-                if replaceOptionalFields {
-                    snapshot.spfLevel = verificationValues.spfLevel
+                if request.replaceOptionalFields {
+                    snapshot.spfLevel = request.verificationValues.spfLevel
                     snapshot.notes = normalizedNotes
                 } else {
-                    if let spfLevel = verificationValues.spfLevel {
+                    if let spfLevel = request.verificationValues.spfLevel {
                         snapshot.spfLevel = spfLevel
                     }
                     if let normalizedNotes {
@@ -1573,18 +1948,18 @@ final class AppState {
             }
 
             return DailyRecordProjectionSnapshot(
-                startOfDay: self.calendar.startOfDay(for: day),
-                verifiedAt: verifiedAt,
-                methodRawValue: verificationValues.method.rawValue,
-                verificationDuration: verificationValues.duration,
-                spfLevel: verificationValues.spfLevel,
+                startOfDay: self.calendar.startOfDay(for: request.day),
+                verifiedAt: request.verifiedAt,
+                methodRawValue: request.verificationValues.method.rawValue,
+                verificationDuration: request.verificationValues.duration,
+                spfLevel: request.verificationValues.spfLevel,
                 notes: normalizedNotes,
                 reapplyCount: 0,
                 lastReappliedAt: nil
             )
         }
         finishDurableChange(batch, reschedulesReminders: false)
-        exportHealthKitLogIfNeeded(for: day)
+        exportHealthKitLogIfNeeded(for: request.day)
     }
 
     private func defaultVerifiedAt(for day: Date) -> Date {
@@ -1611,6 +1986,7 @@ final class AppState {
         refresh()
         syncAchievementCelebration()
         refreshUVForecastIfNeeded()
+        publishAccountabilityProfileIfNeeded()
         Task {
             await liveActivityCoordinator.sync(using: self)
         }
@@ -1634,6 +2010,109 @@ final class AppState {
 
     private func persistGrowthSettings() {
         growthFeatureStore.save(growthSettings)
+    }
+
+    private var resolvedAccountabilityDisplayName: String {
+        let accountabilityName = growthSettings.accountability.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !accountabilityName.isEmpty {
+            return accountabilityName
+        }
+
+        let preferredName = preferredDisplayName
+        return preferredName.isEmpty ? "Sunclub Friend" : preferredName
+    }
+
+    private func importLegacyFriendSnapshot(_ importedSnapshot: SunclubFriendSnapshot) {
+        upsertFriendSnapshot(importedSnapshot)
+        persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+        friendImportMessage = importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil
+            ? "\(importedSnapshot.name) logged today. Have you?"
+            : "Imported \(importedSnapshot.name)."
+    }
+
+    private func upsertFriendSnapshot(_ snapshot: SunclubFriendSnapshot) {
+        if let existingIndex = growthSettings.friends.firstIndex(where: { $0.id == snapshot.id || $0.name == snapshot.name }) {
+            growthSettings.friends[existingIndex] = snapshot
+        } else {
+            growthSettings.friends.append(snapshot)
+        }
+    }
+
+    private func upsertConnection(_ connection: SunclubFriendConnection) {
+        if let existingIndex = growthSettings.accountability.connections.firstIndex(where: { $0.friendProfileID == connection.friendProfileID }) {
+            var existing = growthSettings.accountability.connections[existingIndex]
+            existing.friendSnapshotID = connection.friendSnapshotID
+            existing.friendDisplayName = connection.friendDisplayName
+            existing.relationshipToken = connection.relationshipToken
+            existing.canDirectPoke = connection.canDirectPoke
+            growthSettings.accountability.connections[existingIndex] = existing
+        } else {
+            growthSettings.accountability.connections.append(connection)
+        }
+    }
+
+    private func updateConnection(
+        _ friendProfileID: UUID,
+        update: (inout SunclubFriendConnection) -> Void
+    ) {
+        guard let index = growthSettings.accountability.connections.firstIndex(where: { $0.friendProfileID == friendProfileID }) else {
+            return
+        }
+        update(&growthSettings.accountability.connections[index])
+    }
+
+    private func applyAccountabilityProfile(_ profile: SunclubAccountabilityProfile) {
+        guard let connection = growthSettings.accountability.connections.first(where: { $0.friendProfileID == profile.profileID }) else {
+            return
+        }
+        var snapshot = profile.snapshot
+        snapshot.id = connection.friendSnapshotID
+        snapshot.name = profile.displayName
+        upsertFriendSnapshot(snapshot)
+        updateConnection(profile.profileID) { connection in
+            connection.friendDisplayName = profile.displayName
+            connection.lastStatusRefreshAt = profile.updatedAt
+        }
+    }
+
+    private func recordPoke(_ poke: SunclubAccountabilityPoke) {
+        growthSettings.accountability.pokeHistory.insert(poke, at: 0)
+        growthSettings.accountability.pokeHistory = Array(growthSettings.accountability.pokeHistory.prefix(50))
+        if poke.direction == .sent {
+            updateConnection(poke.friendProfileID) { connection in
+                connection.lastPokeSentAt = poke.createdAt
+            }
+        }
+        persistGrowthSettings()
+        syncWidgetSnapshot()
+        reloadWidgetTimelines()
+    }
+
+    private func publishAccountabilityProfileIfNeeded() {
+        guard growthSettings.accountability.isActive else {
+            return
+        }
+
+        let now = currentDate()
+        let profile = SunclubAccountabilityProfile(
+            profileID: growthSettings.accountability.localProfileID,
+            displayName: resolvedAccountabilityDisplayName,
+            snapshot: localFriendSnapshot,
+            updatedAt: now
+        )
+        growthSettings.accountability.lastPublishedAt = now
+        persistGrowthSettings()
+
+        Task {
+            try? await accountabilityService.publishProfile(profile)
+            if growthSettings.accountability.subscriptionsInstalledAt == nil {
+                try? await accountabilityService.installSubscriptions(for: growthSettings.accountability.localProfileID)
+                growthSettings.accountability.subscriptionsInstalledAt = currentDate()
+                persistGrowthSettings()
+            }
+        }
     }
 
     private func syncAchievementCelebration() {
@@ -1703,6 +2182,7 @@ final class AppState {
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: settings,
             records: records,
+            growthSettings: growthSettings,
             uvReading: uvReading,
             uvForecast: uvForecast,
             now: Date(),

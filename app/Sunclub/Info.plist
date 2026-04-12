@@ -64,6 +64,12 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Sunclub uses your location to save Home for leave-home reminders and to fetch live UV when you turn it on.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Sunclub uses the local network only while Nearby Add is open so two friends can exchange accountability invites.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_sunclub-peer._tcp</string>
+	</array>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Sunclub uses your location in the background only to catch the first time you leave Home for the day and send a reminder before you head out.</string>
 	<key>NSLocationAlwaysUsageDescription</key>

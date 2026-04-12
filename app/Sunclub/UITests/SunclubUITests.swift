@@ -22,6 +22,8 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.buttons["home.verifyNow"].exists)
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
         XCTAssertTrue(app.staticTexts["home.todayStatus"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["accountabilityOnboarding.next"].exists)
+        XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
     }
 
     @MainActor
@@ -249,6 +251,53 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.feature.friends"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["home.feature.skinHealthReport"], in: app))
         XCTAssertTrue(scrollToElement(app.buttons["home.feature.productScanner"], in: app))
+    }
+
+    @MainActor
+    func testHomeShowsOptionalAccountabilityNudgeAfterThreeLoggedDays() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_RESET_ACCOUNTABILITY",
+            "UITEST_SEED_HISTORY=achievementProgress"
+        ])
+
+        XCTAssertTrue(scrollToElement(app.buttons["home.accountabilityNudge.setup"], in: app))
+        XCTAssertTrue(app.buttons["home.accountabilityNudge.dismiss"].exists)
+    }
+
+    @MainActor
+    func testAccountabilityHubShowsAddInviteCodeAndPokeActions() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=friends",
+            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
+        ])
+
+        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["friends.add.nearby"].exists)
+        XCTAssertTrue(app.buttons["friends.add.share"].exists)
+        XCTAssertTrue(app.buttons["friends.add.paste"].exists)
+        XCTAssertTrue(scrollToElement(app.staticTexts["friends.backupCode"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
+        XCTAssertTrue(app.buttons["Poke by Message"].exists)
+        XCTAssertTrue(app.buttons["Refresh"].exists)
+    }
+
+    @MainActor
+    func testInviteDeepLinkImportsAfterFirstOpenOnboarding() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_URL=\(try accountabilityInviteURL(displayName: "Maya"))"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
+        app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.enableNotifications"].tap()
+
+        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Maya"], in: app))
+        XCTAssertTrue(app.buttons["Poke"].exists)
     }
 
     @MainActor
@@ -623,6 +672,31 @@ final class SunclubUITests: XCTestCase {
     private func widgetURL(path: String) -> String {
         let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub"
         return "\(scheme)://widget/\(path)"
+    }
+
+    private func accountabilityInviteURL(displayName: String) throws -> String {
+        let envelope: [String: Any] = [
+            "profileID": "391D15FD-475F-4EE5-9A85-E68E27980EA8",
+            "displayName": displayName,
+            "relationshipToken": "uitest-relationship-token",
+            "issuedAt": 800_000_000,
+            "snapshot": [
+                "id": "9C9E0C71-0C6B-46C2-8AC0-32E3AC1EE0E5",
+                "name": displayName,
+                "currentStreak": 2,
+                "longestStreak": 7,
+                "hasLoggedToday": false,
+                "lastSharedAt": 800_000_000,
+                "seasonStyleRawValue": "summerGlow"
+            ]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: envelope)
+        let code = "SUNCLUB-ACCOUNTABILITY-\(data.base64EncodedString())"
+        var allowedCharacters = CharacterSet.urlQueryAllowed
+        allowedCharacters.remove(charactersIn: "+=&")
+        let encodedCode = try XCTUnwrap(code.addingPercentEncoding(withAllowedCharacters: allowedCharacters))
+        let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub"
+        return "\(scheme)://accountability/invite?code=\(encodedCode)"
     }
 
     @discardableResult

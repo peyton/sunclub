@@ -20,6 +20,7 @@ private enum NotificationConstants {
     static let leaveHomePrefix = "sunscreen.leave-home."
     static let uvBriefingPrefix = "sunscreen.uv-briefing."
     static let extremeUVPrefix = "sunscreen.uv-extreme."
+    static let accountabilityPokePrefix = "sunscreen.accountability-poke."
 }
 
 @MainActor
@@ -29,6 +30,7 @@ protocol NotificationScheduling: AnyObject {
     func refreshStreakRiskReminder(using state: AppState) async
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async
     func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async
+    func scheduleAccountabilityPokeNotification(friendName: String, message: String, route: AppRoute) async
     func cancelDailyReminder(for day: Date, using state: AppState) async
     func cancelReapplyReminders() async
     func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot
@@ -268,6 +270,23 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             trigger: nil
         )
 
+        try? await center.add(request)
+    }
+
+    func scheduleAccountabilityPokeNotification(friendName: String, message: String, route: AppRoute) async {
+        let content = makeContent(
+            title: "\(friendName) poked you",
+            body: message.isEmpty ? "Sunscreen check?" : message,
+            categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+            route: notificationRoute(for: route),
+            type: "accountability_poke",
+            includeDefaultSound: true
+        )
+        let request = UNNotificationRequest(
+            identifier: "\(NotificationConstants.accountabilityPokePrefix)\(Int(Date().timeIntervalSince1970))",
+            content: content,
+            trigger: nil
+        )
         try? await center.add(request)
     }
 

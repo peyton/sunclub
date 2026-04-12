@@ -17,6 +17,7 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case manualLog
     case achievements
     case friends
+    case accountabilityOnboarding
     case skinHealthReport
     case productScanner
 

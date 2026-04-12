@@ -118,6 +118,30 @@ struct SunclubCalendarWidget: Widget {
     }
 }
 
+struct SunclubAccountabilityWidget: Widget {
+    private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubAccountabilityWidget")
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: SunclubSnapshotProvider()) { entry in
+            SunclubAccountabilityWidgetView(entry: entry)
+                .containerBackground(for: .widget) {
+                    SunclubWidgetBackground(style: .cool)
+                }
+        }
+        .configurationDisplayName("Sunclub Accountability")
+        .description("Friend sunscreen accountability and pokes.")
+        .supportedFamilies([
+            .systemSmall,
+            .systemMedium,
+            .systemLarge,
+            .systemExtraLarge,
+            .accessoryInline,
+            .accessoryCircular,
+            .accessoryRectangular
+        ])
+    }
+}
+
 struct SunclubLogTodayControl: ControlWidget {
     private let kind = SunclubRuntimeConfiguration.widgetKind("SunclubLogTodayControl")
 
@@ -285,6 +309,257 @@ private struct SunclubCalendarWidgetView: View {
                 SunclubCalendarRectangularView(snapshot: entry.snapshot, now: entry.date)
             }
         }
+    }
+}
+
+private struct SunclubAccountabilityWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: SunclubSnapshotEntry
+
+    var body: some View {
+        Button(intent: OpenSunclubRouteIntent(route: .accountability)) {
+            switch family {
+            case .systemSmall:
+                SunclubAccountabilitySmallView(snapshot: entry.snapshot)
+            case .systemMedium:
+                SunclubAccountabilityMediumView(snapshot: entry.snapshot)
+            case .systemLarge:
+                SunclubAccountabilityLargeView(snapshot: entry.snapshot, maxFriends: 3)
+            case .systemExtraLarge:
+                SunclubAccountabilityLargeView(snapshot: entry.snapshot, maxFriends: 4)
+            case .accessoryInline:
+                SunclubAccountabilityInlineView(snapshot: entry.snapshot)
+            case .accessoryCircular:
+                SunclubAccountabilityCircularView(snapshot: entry.snapshot)
+            case .accessoryRectangular:
+                SunclubAccountabilityRectangularView(snapshot: entry.snapshot)
+            default:
+                SunclubAccountabilityRectangularView(snapshot: entry.snapshot)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SunclubAccountabilitySmallView: View {
+    let snapshot: SunclubWidgetSnapshot
+
+    var body: some View {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: snapshot.accountabilitySummary,
+            family: .systemSmall
+        )
+
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: presentation.iconName)
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(SunclubWidgetPalette.sun)
+
+            Spacer(minLength: 0)
+
+            Text(presentation.title)
+                .font(.system(size: 28, weight: .black, design: .rounded))
+                .foregroundStyle(SunclubWidgetPalette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(presentation.subtitle)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SunclubWidgetPalette.softInk)
+                .lineLimit(1)
+
+            Text(presentation.actionText)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(SunclubWidgetPalette.sun))
+        }
+        .padding(16)
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct SunclubAccountabilityMediumView: View {
+    let snapshot: SunclubWidgetSnapshot
+
+    var body: some View {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: snapshot.accountabilitySummary,
+            family: .systemMedium
+        )
+
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: presentation.iconName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(SunclubWidgetPalette.sun)
+
+                Text(presentation.title)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(SunclubWidgetPalette.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.76)
+
+                Text(presentation.detail)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SunclubWidgetPalette.softInk)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 9) {
+                SunclubAccountabilityMetric(value: presentation.openCountText, label: "open")
+                SunclubAccountabilityMetric(value: presentation.loggedCountText, label: "logged")
+                SunclubAccountabilityMetric(value: presentation.friendCountText, label: "friends")
+            }
+            .frame(width: 82, alignment: .leading)
+        }
+        .padding(18)
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct SunclubAccountabilityLargeView: View {
+    let snapshot: SunclubWidgetSnapshot
+    let maxFriends: Int
+
+    var body: some View {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: snapshot.accountabilitySummary,
+            family: maxFriends > 3 ? .systemExtraLarge : .systemLarge
+        )
+
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Accountability")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(SunclubWidgetPalette.softInk)
+
+                    Text(presentation.title)
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundStyle(SunclubWidgetPalette.ink)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: presentation.iconName)
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(SunclubWidgetPalette.sun)
+            }
+
+            HStack(spacing: 10) {
+                SunclubAccountabilityMetric(value: presentation.openCountText, label: "open")
+                SunclubAccountabilityMetric(value: presentation.loggedCountText, label: "logged")
+                SunclubAccountabilityMetric(value: presentation.friendCountText, label: "friends")
+            }
+
+            VStack(spacing: 8) {
+                ForEach(Array(presentation.friends.prefix(maxFriends))) { friend in
+                    HStack {
+                        Text(friend.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SunclubWidgetPalette.ink)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 0)
+
+                        Text(friend.status)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(friend.status == "Logged" ? SunclubWidgetPalette.success : SunclubWidgetPalette.softInk)
+
+                        Text(friend.streak)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(SunclubWidgetPalette.sun)
+                    }
+                }
+
+                if presentation.friends.isEmpty {
+                    Text(presentation.detail)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(SunclubWidgetPalette.softInk)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct SunclubAccountabilityInlineView: View {
+    let snapshot: SunclubWidgetSnapshot
+
+    var body: some View {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: snapshot.accountabilitySummary,
+            family: .accessoryInline
+        )
+        Label(presentation.inlineText, systemImage: presentation.iconName)
+    }
+}
+
+private struct SunclubAccountabilityCircularView: View {
+    let snapshot: SunclubWidgetSnapshot
+
+    var body: some View {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: snapshot.accountabilitySummary,
+            family: .accessoryCircular
+        )
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 1) {
+                Image(systemName: presentation.iconName)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(presentation.circularText)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+            }
+        }
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct SunclubAccountabilityRectangularView: View {
+    let snapshot: SunclubWidgetSnapshot
+
+    var body: some View {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: snapshot.accountabilitySummary,
+            family: .accessoryRectangular
+        )
+        VStack(alignment: .leading, spacing: 2) {
+            Label("Accountability", systemImage: presentation.iconName)
+                .font(.system(size: 12, weight: .semibold))
+            Text(presentation.inlineText)
+                .font(.system(size: 14, weight: .bold))
+                .lineLimit(1)
+            Text(presentation.detail)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+        }
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+}
+
+private struct SunclubAccountabilityMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(SunclubWidgetPalette.ink)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(SunclubWidgetPalette.softInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
