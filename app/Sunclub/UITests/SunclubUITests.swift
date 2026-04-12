@@ -365,6 +365,65 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testWeeklySummaryOpensFullHistoryWithStreakContext() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_HISTORY=achievementProgress"
+        ])
+
+        app.buttons["home.streakCard"].tap()
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["weekly.viewFullHistory"].waitForExistence(timeout: 5))
+
+        app.buttons["weekly.viewFullHistory"].tap()
+        XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["history.streakContext"].exists)
+        XCTAssertTrue(app.staticTexts["history.currentStreakValue"].exists)
+
+        app.buttons["screen.back"].tap()
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHistoryCalendarSwipesToPreviousMonth() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=history",
+            "UITEST_SEED_HISTORY=monthlyReview"
+        ])
+
+        let monthTitle = app.staticTexts["history.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 5))
+        let initialMonth = monthTitle.label
+
+        let calendarGrid = app.otherElements["history.calendarGrid"]
+        XCTAssertTrue(calendarGrid.waitForExistence(timeout: 5))
+        calendarGrid.swipeRight()
+
+        XCTAssertTrue(waitForDifferentLabel(from: initialMonth, on: monthTitle))
+    }
+
+    @MainActor
+    func testHistoryCalendarSwipesForwardWithoutOpeningFutureMonth() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=history",
+            "UITEST_SEED_HISTORY=monthlyReview"
+        ])
+
+        let monthTitle = app.staticTexts["history.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 5))
+        let currentMonth = monthTitle.label
+
+        let calendarGrid = app.otherElements["history.calendarGrid"]
+        XCTAssertTrue(calendarGrid.waitForExistence(timeout: 5))
+        calendarGrid.swipeLeft()
+        XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle, timeout: 2))
+
+        calendarGrid.swipeRight()
+        XCTAssertTrue(waitForDifferentLabel(from: currentMonth, on: monthTitle))
+        calendarGrid.swipeLeft()
+        XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle))
+    }
+
+    @MainActor
     func testHistoryShowsMonthlyReviewInsights() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=history",
@@ -381,6 +440,42 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Best Day"].exists)
         XCTAssertTrue(app.staticTexts["Hardest Day"].exists)
         XCTAssertTrue(app.staticTexts["Most Used SPF"].exists)
+    }
+
+    @MainActor
+    func testWeeklySummaryAppliedDayOpensHistoryEditor() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=weeklySummary",
+            "UITEST_SEED_HISTORY=todayLogged"
+        ])
+
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        let todayButton = app.buttons["weekly.day.\(dayIdentifier())"]
+        XCTAssertTrue(todayButton.waitForExistence(timeout: 5))
+        todayButton.tap()
+
+        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHistoryDeletePreservesSelectionForBackfill() throws {
+        let app = launchHistoryWithSeededRecords(route: "history")
+        XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
+
+        let todayButton = app.buttons["history.day.\(dayIdentifier())"]
+        XCTAssertTrue(todayButton.waitForExistence(timeout: 5))
+        todayButton.tap()
+
+        XCTAssertTrue(app.staticTexts["history.statusTitle"].waitForExistence(timeout: 5))
+        let deleteButton = app.buttons["history.deleteRecord"]
+        XCTAssertTrue(scrollToElement(deleteButton, in: app))
+        deleteButton.tap()
+        let confirmDeleteButton = app.sheets.buttons["Delete"]
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 2))
+        confirmDeleteButton.tap()
+
+        XCTAssertTrue(scrollToElement(app.buttons["history.backfillRecord"], in: app))
+        XCTAssertTrue(app.staticTexts["history.statusTitle"].exists)
     }
 
     @MainActor
@@ -723,6 +818,28 @@ final class SunclubUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
+
+    @MainActor
+    private func waitForDifferentLabel(from label: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "label != %@", label)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func dayIdentifier(offset: Int = 0) -> String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
+        return Self.dayIdentifierFormatter.string(from: day)
+    }
+
+    private static let dayIdentifierFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     @MainActor
     private func assertBackupImportRestoresHistoryAndSettings(in app: XCUIApplication) {

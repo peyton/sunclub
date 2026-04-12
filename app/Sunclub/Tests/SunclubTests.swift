@@ -204,6 +204,54 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testCurrentStreakDaysReturnsEmptyHistory() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        XCTAssertEqual(CalendarAnalytics.currentStreakDays(records: [], now: today, calendar: calendar), [])
+    }
+
+    @MainActor
+    func testCurrentStreakDaysIncludesTodayWhenLogged() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.currentStreakDays(records: [today, yesterday, twoDaysAgo], now: today, calendar: calendar),
+            [twoDaysAgo, yesterday, today]
+        )
+    }
+
+    @MainActor
+    func testCurrentStreakDaysFallsBackToYesterdayWhenTodayPending() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.currentStreakDays(records: [yesterday, twoDaysAgo], now: today, calendar: calendar),
+            [twoDaysAgo, yesterday]
+        )
+    }
+
+    @MainActor
+    func testCurrentStreakDaysStopsAtGap() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        let fourDaysAgo = calendar.date(byAdding: .day, value: -4, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.currentStreakDays(records: [today, yesterday, twoDaysAgo, fourDaysAgo], now: today, calendar: calendar),
+            [twoDaysAgo, yesterday, today]
+        )
+    }
+
+    @MainActor
     func testPhraseShuffleBagDoesNotRepeatUntilExhaustion() {
         let phrases = ["a", "b", "c", "d"]
         var state = Data()
