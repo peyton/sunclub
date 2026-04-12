@@ -230,6 +230,8 @@ struct SunclubAccountabilitySummary: Codable, Equatable, Sendable {
     var openCount: Int
     var topFriends: [SunclubFriendSnapshot]
     var latestPoke: SunclubAccountabilityPoke?
+    var primaryPokeFriendID: UUID?
+    var latestPokeText: String
 
     init(
         isActive: Bool = false,
@@ -237,7 +239,9 @@ struct SunclubAccountabilitySummary: Codable, Equatable, Sendable {
         loggedCount: Int = 0,
         openCount: Int = 0,
         topFriends: [SunclubFriendSnapshot] = [],
-        latestPoke: SunclubAccountabilityPoke? = nil
+        latestPoke: SunclubAccountabilityPoke? = nil,
+        primaryPokeFriendID: UUID? = nil,
+        latestPokeText: String = ""
     ) {
         self.isActive = isActive
         self.friendCount = max(0, friendCount)
@@ -245,6 +249,8 @@ struct SunclubAccountabilitySummary: Codable, Equatable, Sendable {
         self.openCount = max(0, openCount)
         self.topFriends = topFriends
         self.latestPoke = latestPoke
+        self.primaryPokeFriendID = primaryPokeFriendID
+        self.latestPokeText = latestPokeText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static let empty = SunclubAccountabilitySummary(
@@ -253,7 +259,9 @@ struct SunclubAccountabilitySummary: Codable, Equatable, Sendable {
         loggedCount: 0,
         openCount: 0,
         topFriends: [],
-        latestPoke: nil
+        latestPoke: nil,
+        primaryPokeFriendID: nil,
+        latestPokeText: ""
     )
 
     private enum CodingKeys: String, CodingKey {
@@ -263,6 +271,8 @@ struct SunclubAccountabilitySummary: Codable, Equatable, Sendable {
         case openCount
         case topFriends
         case latestPoke
+        case primaryPokeFriendID
+        case latestPokeText
     }
 
     init(from decoder: Decoder) throws {
@@ -273,7 +283,9 @@ struct SunclubAccountabilitySummary: Codable, Equatable, Sendable {
             loggedCount: try container.decodeIfPresent(Int.self, forKey: .loggedCount) ?? 0,
             openCount: try container.decodeIfPresent(Int.self, forKey: .openCount) ?? 0,
             topFriends: try container.decodeIfPresent([SunclubFriendSnapshot].self, forKey: .topFriends) ?? [],
-            latestPoke: try container.decodeIfPresent(SunclubAccountabilityPoke.self, forKey: .latestPoke)
+            latestPoke: try container.decodeIfPresent(SunclubAccountabilityPoke.self, forKey: .latestPoke),
+            primaryPokeFriendID: try container.decodeIfPresent(UUID.self, forKey: .primaryPokeFriendID),
+            latestPokeText: try container.decodeIfPresent(String.self, forKey: .latestPokeText) ?? ""
         )
     }
 }

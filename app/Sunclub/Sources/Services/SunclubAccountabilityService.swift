@@ -29,6 +29,47 @@ protocol SunclubAccountabilityServing: AnyObject {
 }
 
 @MainActor
+protocol SunclubAccountabilityDatabase: AnyObject {
+    func record(for recordID: CKRecord.ID) async throws -> CKRecord
+    func save(_ record: CKRecord) async throws -> CKRecord
+    func save(_ subscription: CKSubscription) async throws -> CKSubscription
+    func records(matching query: CKQuery, limit: Int) async throws -> [CKRecord]
+    func deleteRecord(withID recordID: CKRecord.ID) async throws
+}
+
+@MainActor
+final class CloudKitAccountabilityDatabase: SunclubAccountabilityDatabase {
+    private let database: CKDatabase
+
+    init(containerIdentifier: String) {
+        database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+    }
+
+    func record(for recordID: CKRecord.ID) async throws -> CKRecord {
+        try await database.record(for: recordID)
+    }
+
+    func save(_ record: CKRecord) async throws -> CKRecord {
+        try await database.save(record)
+    }
+
+    func save(_ subscription: CKSubscription) async throws -> CKSubscription {
+        try await database.save(subscription)
+    }
+
+    func records(matching query: CKQuery, limit: Int) async throws -> [CKRecord] {
+        let response = try await database.records(matching: query, resultsLimit: limit)
+        return try response.matchResults.map { _, result in
+            try result.get()
+        }
+    }
+
+    func deleteRecord(withID recordID: CKRecord.ID) async throws {
+        _ = try await database.deleteRecord(withID: recordID)
+    }
+}
+
+@MainActor
 final class NoopSunclubAccountabilityService: SunclubAccountabilityServing {
     func publishProfile(_ profile: SunclubAccountabilityProfile) async throws {}
     func fetchProfiles(profileIDs: [UUID]) async throws -> [SunclubAccountabilityProfile] { [] }
@@ -78,15 +119,19 @@ final class SunclubAccountabilityService: SunclubAccountabilityServing {
         static let createdAt = "createdAt"
     }
 
-    private let database: CKDatabase
+    private let database: SunclubAccountabilityDatabase
 
     init(containerIdentifier: String = SunclubRuntimeConfiguration.cloudKitContainerIdentifier) {
-        database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+        database = CloudKitAccountabilityDatabase(containerIdentifier: containerIdentifier)
+    }
+
+    init(database: SunclubAccountabilityDatabase) {
+        self.database = database
     }
 
     func publishProfile(_ profile: SunclubAccountabilityProfile) async throws {
         let recordID = CKRecord.ID(recordName: profileRecordName(profile.profileID))
-        let record = CKRecord(recordType: RecordType.profile, recordID: recordID)
+        let record = try await mutableRecord(recordType: RecordType.profile, recordID: recordID)
         apply(profile: profile, to: record)
         _ = try await database.save(record)
     }
@@ -105,7 +150,7 @@ final class SunclubAccountabilityService: SunclubAccountabilityServing {
         let recordID = CKRecord.ID(
             recordName: "invite-\(response.recipientProfileID.uuidString)-\(response.envelope.profileID.uuidString)"
         )
-        let record = CKRecord(recordType: RecordType.inviteResponse, recordID: recordID)
+        let record = try await mutableRecord(recordType: RecordType.inviteResponse, recordID: recordID)
         record[Field.recipientProfileID] = response.recipientProfileID.uuidString as CKRecordValue
         apply(envelope: response.envelope, to: record)
         _ = try await database.save(record)
@@ -152,8 +197,9 @@ final class SunclubAccountabilityService: SunclubAccountabilityServing {
             options: [.firesOnRecordCreation]
         )
         pokeSubscription.notificationInfo = notificationInfo(
-            title: "Sunclub accountability",
-            body: "A friend sent a sunscreen poke."
+            title: nil,
+            body: nil,
+            isSilent: true
         )
 
         _ = try await database.save(inviteSubscription)
@@ -186,15 +232,23 @@ final class SunclubAccountabilityService: SunclubAccountabilityServing {
     }
 
     private func records(matching query: CKQuery, limit: Int) async throws -> [CKRecord] {
-        let response = try await database.records(matching: query, resultsLimit: limit)
-        return try response.matchResults.map { _, result in
-            try result.get()
-        }
+        try await database.records(matching: query, limit: limit)
     }
 
     private func delete(_ records: [CKRecord]) async {
         for record in records {
-            _ = try? await database.deleteRecord(withID: record.recordID)
+            try? await database.deleteRecord(withID: record.recordID)
+        }
+    }
+
+    private func mutableRecord(recordType: String, recordID: CKRecord.ID) async throws -> CKRecord {
+        do {
+            return try await database.record(for: recordID)
+        } catch {
+            if isUnknownItem(error) {
+                return CKRecord(recordType: recordType, recordID: recordID)
+            }
+            throw error
         }
     }
 
@@ -295,16 +349,31 @@ final class SunclubAccountabilityService: SunclubAccountabilityServing {
         return UUID(uuidString: string)
     }
 
-    private func notificationInfo(title: String, body: String) -> CKSubscription.NotificationInfo {
+    private func notificationInfo(
+        title: String?,
+        body: String?,
+        isSilent: Bool = false
+    ) -> CKSubscription.NotificationInfo {
         let info = CKSubscription.NotificationInfo()
         info.title = title
         info.alertBody = body
         info.shouldSendContentAvailable = true
-        info.soundName = "default"
+        if !isSilent {
+            info.soundName = "default"
+        }
         return info
     }
 
     private func profileRecordName(_ profileID: UUID) -> String {
         "profile-\(profileID.uuidString)"
+    }
+
+    private func isUnknownItem(_ error: Error) -> Bool {
+        if let cloudKitError = error as? CKError {
+            return cloudKitError.code == .unknownItem
+        }
+
+        let nsError = error as NSError
+        return nsError.domain == CKErrorDomain && nsError.code == CKError.Code.unknownItem.rawValue
     }
 }

@@ -7,11 +7,13 @@ private enum NotificationConstants {
     static let backgroundTaskID = "com.peyton.sunclub.weekly-report"
     static let dailyManualCategoryID = "SUNSCREEN_DAILY_MANUAL"
     static let reapplyCategoryID = "SUNSCREEN_REAPPLY"
+    static let accountabilityCategoryID = "SUNSCREEN_ACCOUNTABILITY"
     static let actionManualID = "LOG_TODAY_ACTION"
     static let routeKey = "targetRoute"
     static let manualRoute = "manual"
     static let weeklyRoute = "weekly"
     static let reapplyRoute = "reapply"
+    static let accountabilityRoute = "accountability"
     static let dailyPrefix = "sunscreen.daily."
     static let weeklyFallbackPrefix = "sunscreen.weekly.fallback."
     static let weeklyPrimaryPrefix = "sunscreen.weekly.primary."
@@ -87,8 +89,13 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 actions: [],
                 intentIdentifiers: []
             )
+            let accountabilityCategory = UNNotificationCategory(
+                identifier: NotificationConstants.accountabilityCategoryID,
+                actions: [],
+                intentIdentifiers: []
+            )
 
-            center.setNotificationCategories([dailyManualCategory, reapplyCategory])
+            center.setNotificationCategories([dailyManualCategory, reapplyCategory, accountabilityCategory])
             center.delegate = self
         }
 
@@ -277,7 +284,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         let content = makeContent(
             title: "\(friendName) poked you",
             body: message.isEmpty ? "Sunscreen check?" : message,
-            categoryIdentifier: NotificationConstants.dailyManualCategoryID,
+            categoryIdentifier: NotificationConstants.accountabilityCategoryID,
             route: notificationRoute(for: route),
             type: "accountability_poke",
             includeDefaultSound: true
@@ -559,6 +566,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             return NotificationConstants.reapplyRoute
         case .weeklySummary:
             return NotificationConstants.weeklyRoute
+        case .friends, .accountabilityOnboarding:
+            return NotificationConstants.accountabilityRoute
         default:
             return NotificationConstants.manualRoute
         }
@@ -591,6 +600,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     routeHandler(.weeklySummary)
                 } else if targetRoute == NotificationConstants.reapplyRoute {
                     routeHandler(.reapplyCheckIn)
+                } else if targetRoute == NotificationConstants.accountabilityRoute {
+                    routeHandler(.friends)
                 } else if targetRoute == NotificationConstants.manualRoute {
                     routeHandler(.manualLog)
                 } else {

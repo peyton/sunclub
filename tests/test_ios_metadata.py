@@ -8,6 +8,7 @@ INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
 APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 PRIVACY_MANIFEST = REPO_ROOT / "app" / "Sunclub" / "Resources" / "PrivacyInfo.xcprivacy"
 PROJECT_SWIFT = REPO_ROOT / "app" / "Sunclub" / "Project.swift"
+APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
@@ -50,6 +51,20 @@ def test_project_reads_versioning_from_tuist_manifest_environment() -> None:
         'let buildNumber = Environment.sunclubBuildNumber.getString(default: "1")'
         in source
     )
+
+
+def test_remote_notification_background_mode_has_push_entitlement() -> None:
+    info = load_info_plist()
+    entitlements = load_app_entitlements()
+    source = PROJECT_SWIFT.read_text()
+
+    assert "remote-notification" in info["UIBackgroundModes"]
+    assert entitlements["aps-environment"] == "$(SUNCLUB_APS_ENVIRONMENT)"
+    assert (
+        'let apsEnvironment = Environment.sunclubApsEnvironment.getString(default: "development")'
+        in source
+    )
+    assert '"SUNCLUB_APS_ENVIRONMENT": .string(apsEnvironment)' in source
 
 
 def test_info_plist_declares_background_task_and_backup_document_type() -> None:

@@ -276,6 +276,29 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHomeShowsAccountabilityCardFrontAndCenterForFriends() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
+        ])
+
+        XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
+        XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
+    }
+
+    @MainActor
+    func testHomeShowsActiveAccountabilitySetupFrontAndCenter() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_ACCOUNTABILITY_ACTIVE"
+        ])
+
+        XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Bring in backup"].exists)
+        XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
+    }
+
+    @MainActor
     func testAccountabilityHubShowsAddInviteCodeAndPokeActions() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=friends",
@@ -283,13 +306,17 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
+        XCTAssertTrue(app.buttons["Refresh"].exists)
+        XCTAssertFalse(app.buttons["Poke by Message"].exists)
+        XCTAssertFalse(app.buttons["Remove Friend"].exists)
+
+        XCTAssertTrue(scrollToElement(app.buttons["friends.add.toggle"], in: app))
+        app.buttons["friends.add.toggle"].tap()
         XCTAssertTrue(app.buttons["friends.add.nearby"].exists)
         XCTAssertTrue(app.buttons["friends.add.share"].exists)
         XCTAssertTrue(app.buttons["friends.add.paste"].exists)
         XCTAssertTrue(scrollToElement(app.staticTexts["friends.backupCode"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
-        XCTAssertTrue(app.buttons["Poke by Message"].exists)
-        XCTAssertTrue(app.buttons["Refresh"].exists)
     }
 
     @MainActor

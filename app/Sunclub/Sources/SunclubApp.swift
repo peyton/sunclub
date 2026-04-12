@@ -246,6 +246,10 @@ struct SunclubApp: App {
 
         seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
 
+        if arguments.contains("UITEST_SEED_ACCOUNTABILITY_ACTIVE") {
+            appState.activateAccountability(displayName: "Peyton")
+        }
+
         if arguments.contains("UITEST_SEED_ACCOUNTABILITY_FRIEND") {
             seedAccountabilityFriendScenario()
         }
@@ -575,6 +579,7 @@ struct SunclubApp: App {
         appState.refreshNotificationHealth()
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshUVReadingIfNeeded()
+        appState.refreshAccountabilityForForeground()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
             openExternalRoute(route)
         }
