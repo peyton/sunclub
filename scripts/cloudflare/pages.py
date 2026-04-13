@@ -148,6 +148,109 @@ def ensure_pages_domain(client: CloudflareClient, config: JsonObject) -> JsonObj
     return {"action": "created", "domain": created}
 
 
+def pages_dns_permissions_help(config: JsonObject) -> str:
+    zone_name = _zone_name_for_dns(config)
+    return "\n".join(
+        [
+            "Cloudflare Pages DNS setup needs a token with:",
+            "- Account permission: Cloudflare Pages Edit",
+            f"- Zone {zone_name} permission: DNS Write",
+            "The deploy-only Pages token may not be enough for this setup command.",
+        ]
+    )
+
+
+def build_pages_dns_record_payload(config: JsonObject) -> JsonObject:
+    dns = config["dns"]
+    return {
+        "type": dns["type"],
+        "name": dns["name"],
+        "content": dns["content"],
+        "proxied": dns["proxied"],
+        "ttl": dns["ttl"],
+        "comment": "Sunclub Cloudflare Pages custom domain",
+    }
+
+
+def list_pages_dns_records(
+    client: CloudflareClient,
+    config: JsonObject,
+) -> list[JsonObject]:
+    result = client.request(
+        "GET",
+        f"/zones/{config['zone_id']}/dns_records",
+        query={"name.exact": config["dns"]["name"], "per_page": 20},
+    )
+    if isinstance(result, list):
+        return [item for item in result if isinstance(item, dict)]
+    return []
+
+
+def ensure_pages_dns_record(
+    client: CloudflareClient,
+    config: JsonObject,
+) -> JsonObject:
+    records = list_pages_dns_records(client, config)
+    payload = build_pages_dns_record_payload(config)
+    if not records:
+        created = client.request(
+            "POST",
+            f"/zones/{config['zone_id']}/dns_records",
+            body=payload,
+        )
+        return {"action": "created", "record": created}
+
+    if len(records) > 1:
+        raise ConfigError(
+            f"Found multiple DNS records for {config['dns']['name']}; "
+            "resolve the conflict in Cloudflare before rerunning setup."
+        )
+
+    record = records[0]
+    if str(record.get("type", "")).upper() != payload["type"]:
+        raise ConfigError(
+            f"Found {record.get('type', 'unknown')} record for {config['dns']['name']}; "
+            f"expected {payload['type']} to {payload['content']}."
+        )
+
+    if _dns_record_matches(record, payload):
+        return {"action": "exists", "record": record}
+
+    record_id = record.get("id")
+    if not isinstance(record_id, str) or not record_id:
+        raise ConfigError(
+            f"Cloudflare DNS record for {config['dns']['name']} has no id."
+        )
+
+    updated = client.request(
+        "PATCH",
+        f"/zones/{config['zone_id']}/dns_records/{quote(record_id, safe='')}",
+        body=payload,
+    )
+    return {"action": "updated", "record": updated}
+
+
+def _dns_record_matches(record: JsonObject, payload: JsonObject) -> bool:
+    return (
+        str(record.get("type", "")).upper() == str(payload["type"]).upper()
+        and _normalize_hostname(str(record.get("name", "")))
+        == _normalize_hostname(str(payload["name"]))
+        and _normalize_hostname(str(record.get("content", "")))
+        == _normalize_hostname(str(payload["content"]))
+        and bool(record.get("proxied")) == bool(payload["proxied"])
+    )
+
+
+def _normalize_hostname(value: str) -> str:
+    return value.strip().rstrip(".").lower()
+
+
+def _zone_name_for_dns(config: JsonObject) -> str:
+    domain = str(config["custom_domain"])
+    parts = domain.split(".", 1)
+    return parts[1] if len(parts) == 2 else domain
+
+
 def list_pages_domains(
     client: CloudflareClient, config: JsonObject
 ) -> list[JsonObject]:
@@ -170,11 +273,17 @@ def pages_status_lines(
         f"Pages project: {config['project_name']}",
         f"Deployment mode: {config['deployment']['mode']}",
         f"Production branch: {config['production_branch']}",
+        f"GitHub deployment environment: {config['deployment']['github_environment']}",
         f"Build command: {config['build_config']['build_command']}",
         f"Build output: {config['build_config']['destination_dir']}",
         "GitHub Actions secrets: "
         + ", ".join(config["deployment"]["required_secrets"]),
         f"Custom domain: {config['custom_domain']}",
+        (
+            "DNS target: "
+            f"{config['dns']['type']} {config['dns']['name']} -> "
+            f"{config['dns']['content']}"
+        ),
     ]
 
     if client is None:
@@ -205,9 +314,38 @@ def pages_status_lines(
     domains = list_pages_domains(client, config)
     domain_names = sorted(str(domain.get("name", "")) for domain in domains)
     if config["custom_domain"] in domain_names:
-        lines.append(f"Remote custom domain: present ({config['custom_domain']})")
+        matching_domain = next(
+            domain
+            for domain in domains
+            if str(domain.get("name", "")) == config["custom_domain"]
+        )
+        status = matching_domain.get("status", "unknown")
+        lines.append(
+            f"Remote custom domain: present ({config['custom_domain']}, {status})"
+        )
     else:
         lines.append(f"Remote custom domain: missing ({config['custom_domain']})")
+
+    try:
+        dns_records = list_pages_dns_records(client, config)
+    except CloudflareAPIError as error:
+        if error.status in {401, 403}:
+            lines.append("Remote DNS record: unavailable with current token")
+            lines.append(pages_dns_permissions_help(config))
+            return lines
+        raise
+
+    payload = build_pages_dns_record_payload(config)
+    matching_record = next(
+        (record for record in dns_records if _dns_record_matches(record, payload)),
+        None,
+    )
+    if matching_record is not None:
+        lines.append("Remote DNS record: configured")
+    elif not dns_records:
+        lines.append("Remote DNS record: missing")
+    else:
+        lines.append("Remote DNS record: present but does not match config")
     return lines
 
 
@@ -239,8 +377,32 @@ def run_setup() -> int:
     github_repo_id = optional_env("GITHUB_REPO_ID")
     project_result = ensure_pages_project(client, config, github_repo_id)
     domain_result = ensure_pages_domain(client, config)
+    dns_result = ensure_pages_dns_record(client, config)
     print(f"Pages project {project_result['action']}: {config['project_name']}")
     print(f"Pages custom domain {domain_result['action']}: {config['custom_domain']}")
+    print(
+        f"Pages DNS record {dns_result['action']}: "
+        f"{config['dns']['name']} -> {config['dns']['content']}"
+    )
+    return 0
+
+
+def run_setup_dns() -> int:
+    config = load_pages_config()
+    errors = validate_pages_config(config)
+    if errors:
+        print("Cloudflare Pages config validation failed:")
+        for error in errors:
+            print(f"- ERROR: {error}")
+        return 1
+
+    client = cloudflare_client_from_env(required=True)
+    assert client is not None
+    dns_result = ensure_pages_dns_record(client, config)
+    print(
+        f"Pages DNS record {dns_result['action']}: "
+        f"{config['dns']['name']} -> {config['dns']['content']}"
+    )
     return 0
 
 
@@ -251,6 +413,9 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser(
         "setup", help="Create or update the Pages project and domain."
     )
+    subparsers.add_parser(
+        "setup-dns", help="Create or update the Pages custom-domain DNS record."
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -258,8 +423,16 @@ def main(argv: list[str] | None = None) -> int:
             return run_status()
         if args.command == "setup":
             return run_setup()
+        if args.command == "setup-dns":
+            return run_setup_dns()
     except ConfigError as error:
         print(f"ERROR: {error}")
+        return 2
+    except CloudflareAPIError as error:
+        print(f"ERROR: {error}")
+        if error.status in {401, 403}:
+            config = load_pages_config()
+            print(pages_dns_permissions_help(config))
         return 2
 
     parser.error(f"Unknown command: {args.command}")

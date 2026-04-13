@@ -59,7 +59,10 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
     errors = validate_site(site_root)
 
     assert any("placeholder link" in error for error in errors)
+    assert any("missing public contact email" in error for error in errors)
     assert any("missing public support email" in error for error in errors)
+    assert any("missing public privacy email" in error for error in errors)
+    assert any("missing public security email" in error for error in errors)
     assert any("download on the app store" in error for error in errors)
     assert any("broken internal" in error for error in errors)
 

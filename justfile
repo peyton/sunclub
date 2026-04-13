@@ -42,7 +42,7 @@ web-build: web-check
     cp -R web/. .build/web/
 
 [group('web')]
-web-package VERSION='local':
+web-package VERSION='local': web-build
     version="{{VERSION}}"; version="${version#VERSION=}"; uv run python -m scripts.web.package_static_site --version "$version"
 
 [group('web')]
@@ -57,6 +57,10 @@ cloudflare-status:
 [group('cloudflare')]
 cloudflare-pages-setup:
     uv run python -m scripts.cloudflare.pages setup
+
+[group('cloudflare')]
+cloudflare-pages-dns:
+    uv run python -m scripts.cloudflare.pages setup-dns
 
 [group('cloudflare')]
 cloudflare-pages-deploy BRANCH='master': web-build

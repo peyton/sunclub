@@ -39,25 +39,30 @@ protocol SunclubAccountabilityDatabase: AnyObject {
 
 @MainActor
 final class CloudKitAccountabilityDatabase: SunclubAccountabilityDatabase {
-    private let database: CKDatabase
+    private let containerIdentifier: String
+    private var database: CKDatabase?
 
     init(containerIdentifier: String) {
-        database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+        self.containerIdentifier = containerIdentifier
     }
 
     func record(for recordID: CKRecord.ID) async throws -> CKRecord {
-        try await database.record(for: recordID)
+        let database = try configuredDatabase()
+        return try await database.record(for: recordID)
     }
 
     func save(_ record: CKRecord) async throws -> CKRecord {
-        try await database.save(record)
+        let database = try configuredDatabase()
+        return try await database.save(record)
     }
 
     func save(_ subscription: CKSubscription) async throws -> CKSubscription {
-        try await database.save(subscription)
+        let database = try configuredDatabase()
+        return try await database.save(subscription)
     }
 
     func records(matching query: CKQuery, limit: Int) async throws -> [CKRecord] {
+        let database = try configuredDatabase()
         let response = try await database.records(matching: query, resultsLimit: limit)
         return try response.matchResults.map { _, result in
             try result.get()
@@ -65,7 +70,19 @@ final class CloudKitAccountabilityDatabase: SunclubAccountabilityDatabase {
     }
 
     func deleteRecord(withID recordID: CKRecord.ID) async throws {
+        let database = try configuredDatabase()
         _ = try await database.deleteRecord(withID: recordID)
+    }
+
+    private func configuredDatabase() throws -> CKDatabase {
+        if let database {
+            return database
+        }
+
+        try SunclubCloudKitAvailability.validate(containerIdentifier: containerIdentifier)
+        let database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+        self.database = database
+        return database
     }
 }
 

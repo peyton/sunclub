@@ -1209,6 +1209,46 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testCloudKitAvailabilityAcceptsValidContainerIdentifier() throws {
+        XCTAssertNoThrow(
+            try SunclubCloudKitAvailability.validate(
+                containerIdentifier: "iCloud.app.peyton.sunclub"
+            )
+        )
+    }
+
+    @MainActor
+    func testCloudKitAvailabilityRejectsUnsafeLaunchConfiguration() {
+        XCTAssertThrowsError(
+            try SunclubCloudKitAvailability.validate(
+                containerIdentifier: "$(SUNCLUB_ICLOUD_CONTAINER)"
+            )
+        ) { error in
+            XCTAssertEqual(error as? SunclubCloudKitConfigurationError, .invalidContainerIdentifier)
+        }
+    }
+
+    @MainActor
+    func testCloudSyncCoordinatorRecordsConfigurationErrorForInvalidContainerIdentifier() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        try historyService.bootstrapIfNeeded()
+        let coordinator = CloudSyncCoordinator(
+            historyService: historyService,
+            containerIdentifier: "$(SUNCLUB_ICLOUD_CONTAINER)"
+        )
+
+        await coordinator.start()
+
+        let preference = try historyService.syncPreference()
+        XCTAssertEqual(preference.status, .error)
+        XCTAssertEqual(
+            preference.lastSyncErrorDescription,
+            SunclubCloudKitConfigurationError.invalidContainerIdentifier.errorDescription
+        )
+    }
+
+    @MainActor
     func testSunscreenUsageInsightsReturnsMostUsedSPF() {
         let records = [
             makeDailyRecord(dayOffset: 0, spfLevel: 50),

@@ -36,28 +36,30 @@ final class ShareArtifactTests: XCTestCase {
 
     func testAchievementShareCardsRenderForEveryAchievementTitle() throws {
         for (index, id) in SunclubAchievementID.allCases.enumerated() {
-            let achievement = SunclubAchievement(
-                id: id,
-                title: id.title,
-                detail: unlockedDetail(for: id, currentValue: id.targetValue + index),
-                symbolName: id.symbolName,
-                currentValue: id.targetValue + index,
-                targetValue: id.targetValue,
-                isUnlocked: true,
-                shareBlurb: "I unlocked \(id.title) in Sunclub."
-            )
-            let style: SunclubSeasonStyle = index.isMultiple(of: 2) ? .summerGlow : .winterShield
+            try autoreleasepool {
+                let achievement = SunclubAchievement(
+                    id: id,
+                    title: id.title,
+                    detail: unlockedDetail(for: id, currentValue: id.targetValue + index),
+                    symbolName: id.symbolName,
+                    currentValue: id.targetValue + index,
+                    targetValue: id.targetValue,
+                    isUnlocked: true,
+                    shareBlurb: "I unlocked \(id.title) in Sunclub."
+                )
+                let style: SunclubSeasonStyle = index.isMultiple(of: 2) ? .summerGlow : .winterShield
 
-            let artifact = try SunclubShareArtifactService.makeAchievementCard(
-                achievement: achievement,
-                seasonStyle: style
-            )
-            let image = try XCTUnwrap(UIImage(contentsOfFile: artifact.fileURL.path))
+                let artifact = try SunclubShareArtifactService.makeAchievementCard(
+                    achievement: achievement,
+                    seasonStyle: style
+                )
+                let image = try XCTUnwrap(UIImage(contentsOfFile: artifact.fileURL.path))
 
-            XCTAssertEqual(image.size.width, 1080, accuracy: 0.1)
-            XCTAssertEqual(image.size.height, 1350, accuracy: 0.1)
-            XCTAssertTrue(artifact.shareText?.contains(SunclubShareArtifactService.appLinkDisplay) == true)
-            XCTAssertFalse(artifact.shareText?.contains(SunclubShareArtifactService.appShareURLString) == true)
+                XCTAssertEqual(image.size.width, 1080, accuracy: 0.1)
+                XCTAssertEqual(image.size.height, 1350, accuracy: 0.1)
+                XCTAssertTrue(artifact.shareText?.contains(SunclubShareArtifactService.appLinkDisplay) == true)
+                XCTAssertFalse(artifact.shareText?.contains(SunclubShareArtifactService.appShareURLString) == true)
+            }
         }
     }
 

@@ -6,6 +6,7 @@ let signingTeam = Environment.teamId.getString(default: "3VDQ4656LX")
 let marketingVersion = Environment.sunclubMarketingVersion.getString(default: "1.0.0")
 let buildNumber = Environment.sunclubBuildNumber.getString(default: "1")
 let apsEnvironment = Environment.sunclubApsEnvironment.getString(default: "development")
+let cloudKitEnvironment = apsEnvironment == "production" ? "Production" : "Development"
 let currentProjectVersion = {
     let digits = buildNumber.filter(\.isNumber)
     return digits.isEmpty ? "1" : digits
@@ -75,6 +76,7 @@ func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
         "SUNCLUB_APP_GROUP_ID": .string(flavor.appGroupID),
         "SUNCLUB_APS_ENVIRONMENT": .string(apsEnvironment),
         "SUNCLUB_ICLOUD_CONTAINER": .string(flavor.cloudKitContainerIdentifier),
+        "SUNCLUB_ICLOUD_ENVIRONMENT": .string(cloudKitEnvironment),
         "SUNCLUB_URL_SCHEME": .string(flavor.urlScheme),
         "SUNCLUB_DISPLAY_NAME": .string(flavor.displayName)
     ]
