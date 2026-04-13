@@ -240,10 +240,35 @@ def validate_pages_config(config: JsonObject) -> list[str]:
         for key in ("workflow", "build_output"):
             if not isinstance(deployment.get(key), str) or not deployment[key].strip():
                 errors.append(f"pages-project.json deployment.{key} must be a string.")
+        if (
+            not isinstance(deployment.get("github_environment"), str)
+            or not deployment["github_environment"].strip()
+        ):
+            errors.append(
+                "pages-project.json deployment.github_environment must be a string."
+            )
         if not _is_string_list(deployment.get("required_secrets")):
             errors.append(
                 "pages-project.json deployment.required_secrets must be a string list."
             )
+
+    dns = config.get("dns")
+    if not isinstance(dns, dict):
+        errors.append("pages-project.json missing object 'dns'.")
+    else:
+        for key in ("type", "name", "content"):
+            if not isinstance(dns.get(key), str) or not dns[key].strip():
+                errors.append(f"pages-project.json dns.{key} must be a string.")
+        if dns.get("type") != "CNAME":
+            errors.append("pages-project.json dns.type must be 'CNAME'.")
+        if isinstance(dns.get("name"), str) and dns.get("name") != config.get(
+            "custom_domain"
+        ):
+            errors.append("pages-project.json dns.name must match custom_domain.")
+        if not isinstance(dns.get("proxied"), bool):
+            errors.append("pages-project.json dns.proxied must be a boolean.")
+        if not isinstance(dns.get("ttl"), int):
+            errors.append("pages-project.json dns.ttl must be an integer.")
 
     source_control = config.get("source_control")
     if not isinstance(source_control, dict):

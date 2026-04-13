@@ -54,6 +54,8 @@ def test_manual_cloudflare_pages_deploy_is_exposed_through_just() -> None:
         'uv run python -m scripts.cloudflare.pages_deploy --branch "{{BRANCH}}"'
         in justfile
     )
+    assert "cloudflare-pages-dns:" in justfile
+    assert "uv run python -m scripts.cloudflare.pages setup-dns" in justfile
 
 
 def test_web_and_ios_release_tags_are_separate() -> None:
@@ -94,12 +96,24 @@ def test_web_workflow_permissions_are_minimal() -> None:
         deploy_workflow,
     )
     assert re.search(
-        r"deploy:\n(?:.*\n)*?    permissions:\n      contents: read\n      deployments: write\n",
+        r"deploy:\n(?:.*\n)*?    permissions:\n      contents: read\n",
         deploy_workflow,
     )
+    assert "deployments: write" not in deploy_workflow
     assert "deployments: write" not in release_workflow
     assert "permissions:\n  contents: write\n" in release_workflow
-    assert "permissions:\n  contents: read\n  deployments: write\n" in rollback_workflow
+    assert "permissions:\n  contents: read\n" in rollback_workflow
+    assert "deployments: write" not in rollback_workflow
+
+
+def test_cloudflare_web_workflows_use_single_github_deployment_environment() -> None:
+    deploy_workflow = workflow_text(DEPLOY_WEB_WORKFLOW)
+    rollback_workflow = workflow_text(ROLLBACK_WEB_WORKFLOW)
+    combined = f"{deploy_workflow}\n{rollback_workflow}"
+
+    assert combined.count("name: cloudflare-production") == 2
+    assert combined.count("url: https://sunclub.peyton.app") == 2
+    assert "gitHubToken:" not in combined
 
 
 def test_web_rollback_is_manual_and_uses_release_assets() -> None:

@@ -61,10 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: ${{ github.event_name == 'push' }}
-    environment: cloudflare-production
+    environment:
+      name: cloudflare-production
+      url: https://sunclub.peyton.app
     permissions:
       contents: read
-      deployments: write
     steps:
       - name: Download web rollback artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -88,4 +89,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy .build/web --project-name=sunclub --branch=master --commit-hash=${{ github.sha }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

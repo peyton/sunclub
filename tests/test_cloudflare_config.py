@@ -14,6 +14,7 @@ class FakeCloudflareClient:
     def __init__(self, responses: dict[tuple[str, str], Any]) -> None:
         self.responses = responses
         self.calls: list[tuple[str, str, JsonObject | None]] = []
+        self.queries: list[tuple[str, str, JsonObject | None]] = []
 
     def request(
         self,
@@ -22,9 +23,9 @@ class FakeCloudflareClient:
         body: JsonObject | None = None,
         query: JsonObject | None = None,
     ) -> Any:
-        del query
         method = method.upper()
         self.calls.append((method, path, body))
+        self.queries.append((method, path, query))
         return self.responses[(method, path)]
 
 
@@ -53,6 +54,7 @@ def test_pages_project_payload_matches_github_actions_direct_upload_plan() -> No
     assert "source" not in payload
     assert config["deployment"] == {
         "mode": "github_actions_direct_upload",
+        "github_environment": "cloudflare-production",
         "workflow": ".github/workflows/deploy-web-cloudflare.yml",
         "build_output": ".build/web",
         "required_secrets": [
@@ -62,6 +64,13 @@ def test_pages_project_payload_matches_github_actions_direct_upload_plan() -> No
     }
     assert config["source_control"]["production_deployments_enabled"] is False
     assert config["source_control"]["preview_deployment_setting"] == "none"
+    assert config["dns"] == {
+        "type": "CNAME",
+        "name": "sunclub.peyton.app",
+        "content": "sunclub.pages.dev",
+        "proxied": True,
+        "ttl": 1,
+    }
 
 
 def test_pages_project_update_disables_existing_git_automatic_deployments() -> None:
@@ -131,6 +140,116 @@ def test_manual_pages_deploy_command_matches_cloudflare_pages_config() -> None:
         "--project-name=sunclub",
         "--branch=preview",
     ]
+
+
+def test_pages_dns_payload_matches_custom_domain_config() -> None:
+    config = common.load_pages_config()
+
+    payload = pages.build_pages_dns_record_payload(config)
+
+    assert payload == {
+        "type": "CNAME",
+        "name": "sunclub.peyton.app",
+        "content": "sunclub.pages.dev",
+        "proxied": True,
+        "ttl": 1,
+        "comment": "Sunclub Cloudflare Pages custom domain",
+    }
+
+
+def test_pages_dns_setup_creates_missing_cname() -> None:
+    config = common.load_pages_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    client = FakeCloudflareClient(
+        {
+            ("GET", dns_path): [],
+            ("POST", dns_path): {"id": "record-id"},
+        }
+    )
+
+    result = pages.ensure_pages_dns_record(client, config)
+
+    assert result["action"] == "created"
+    assert client.calls == [
+        ("GET", dns_path, None),
+        (
+            "POST",
+            dns_path,
+            {
+                "type": "CNAME",
+                "name": "sunclub.peyton.app",
+                "content": "sunclub.pages.dev",
+                "proxied": True,
+                "ttl": 1,
+                "comment": "Sunclub Cloudflare Pages custom domain",
+            },
+        ),
+    ]
+    assert client.queries == [
+        (
+            "GET",
+            dns_path,
+            {"name.exact": "sunclub.peyton.app", "per_page": 20},
+        ),
+        ("POST", dns_path, None),
+    ]
+
+
+def test_pages_dns_setup_updates_mismatched_cname() -> None:
+    config = common.load_pages_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    record_path = f"{dns_path}/record-id"
+    client = FakeCloudflareClient(
+        {
+            ("GET", dns_path): [
+                {
+                    "id": "record-id",
+                    "type": "CNAME",
+                    "name": "sunclub.peyton.app",
+                    "content": "old.pages.dev",
+                    "proxied": False,
+                }
+            ],
+            ("PATCH", record_path): {"id": "record-id"},
+        }
+    )
+
+    result = pages.ensure_pages_dns_record(client, config)
+
+    assert result["action"] == "updated"
+    assert client.calls[-1] == (
+        "PATCH",
+        record_path,
+        {
+            "type": "CNAME",
+            "name": "sunclub.peyton.app",
+            "content": "sunclub.pages.dev",
+            "proxied": True,
+            "ttl": 1,
+            "comment": "Sunclub Cloudflare Pages custom domain",
+        },
+    )
+
+
+def test_pages_dns_setup_rejects_non_cname_conflict() -> None:
+    config = common.load_pages_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    client = FakeCloudflareClient(
+        {
+            ("GET", dns_path): [
+                {
+                    "id": "record-id",
+                    "type": "A",
+                    "name": "sunclub.peyton.app",
+                    "content": "192.0.2.10",
+                    "proxied": True,
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(common.ConfigError):
+        pages.ensure_pages_dns_record(client, config)
 
 
 def test_manual_pages_deploy_env_uses_config_account_id() -> None:
