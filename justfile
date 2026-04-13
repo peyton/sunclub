@@ -59,6 +59,10 @@ cloudflare-pages-setup:
     uv run python -m scripts.cloudflare.pages setup
 
 [group('cloudflare')]
+cloudflare-pages-deploy BRANCH='master': web-build
+    uv run python -m scripts.cloudflare.pages_deploy --branch "{{BRANCH}}"
+
+[group('cloudflare')]
 cloudflare-pages-status:
     uv run python -m scripts.cloudflare.pages status
 
