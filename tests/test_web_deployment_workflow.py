@@ -9,6 +9,7 @@ DEPLOY_WEB_WORKFLOW = WORKFLOWS_DIR / "deploy-web-cloudflare.yml"
 RELEASE_WEB_WORKFLOW = WORKFLOWS_DIR / "release-web.yml"
 ROLLBACK_WEB_WORKFLOW = WORKFLOWS_DIR / "rollback-web-cloudflare.yml"
 RELEASE_TESTFLIGHT_WORKFLOW = WORKFLOWS_DIR / "release-testflight.yml"
+JUSTFILE = REPO_ROOT / "justfile"
 
 WEB_WORKFLOWS = (
     DEPLOY_WEB_WORKFLOW,
@@ -43,6 +44,16 @@ def test_web_deploy_to_cloudflare_is_push_only() -> None:
         "pages deploy .build/web --project-name=sunclub --branch=master "
         "--commit-hash=${{ github.sha }}"
     ) in workflow
+
+
+def test_manual_cloudflare_pages_deploy_is_exposed_through_just() -> None:
+    justfile = workflow_text(JUSTFILE)
+
+    assert "cloudflare-pages-deploy BRANCH='master': web-build" in justfile
+    assert (
+        'uv run python -m scripts.cloudflare.pages_deploy --branch "{{BRANCH}}"'
+        in justfile
+    )
 
 
 def test_web_and_ios_release_tags_are_separate() -> None:

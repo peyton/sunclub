@@ -18,6 +18,18 @@ from scripts.cloudflare.common import (
 JsonObject = dict[str, Any]
 
 
+def email_setup_permissions_help(config: JsonObject) -> str:
+    return "\n".join(
+        [
+            "Cloudflare Email Routing setup needs a token with:",
+            "- Account permission: Email Routing Addresses Edit/Write",
+            f"- Zone {config['zone_name']} permission: DNS Write",
+            f"- Zone {config['zone_name']} permission: Email Routing Rules Edit/Write",
+            "The deploy-only Pages token is not enough for this setup command.",
+        ]
+    )
+
+
 def destination_address(config: JsonObject) -> str:
     return require_env(
         str(config["destination_env"]),
@@ -269,6 +281,12 @@ def main(argv: list[str] | None = None) -> int:
             return run_setup()
     except ConfigError as error:
         print(f"ERROR: {error}")
+        return 2
+    except CloudflareAPIError as error:
+        print(f"ERROR: {error}")
+        if error.status == 403:
+            config = load_email_config()
+            print(email_setup_permissions_help(config))
         return 2
 
     parser.error(f"Unknown command: {args.command}")
