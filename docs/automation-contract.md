@@ -9,7 +9,7 @@ Run all human and CI automation from the repo root with `just`.
 - Web: `just web-serve`, `just web-check`, `just web-fmt`, `just web-build`, `just web-package`, `just web-release-tag`, `just cloudflare-pages-deploy`
 - Verification: `just lint`, `just fmt`, `just test-python`, `just test-unit`, `just test-ui`, `just test`
 - CI shards: `just ci-lint`, `just ci-python`, `just ci-build`, `just ci`
-- Release-adjacent: `just appstore-validate`, `just appstore-screenshots`, `just appstore-archive`, `just release-tag`, `just web-release-tag`
+- Release-adjacent: `just appstore-validate`, `just appstore-screenshots`, `just appstore-archive`, `just appstore-submit-dry-run`, `just appstore-submit-review`, `just release-tag`, `just web-release-tag`
 
 ## Ownership
 

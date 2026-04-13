@@ -85,6 +85,14 @@ appstore-archive:
     bash scripts/appstore/archive-and-upload.sh
 
 [group('app')]
+appstore-submit-dry-run:
+    bash scripts/appstore/submit-review.sh --dry-run
+
+[group('app')]
+appstore-submit-review:
+    bash scripts/appstore/submit-review.sh --submit
+
+[group('app')]
 release-tag VERSION:
     VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
 

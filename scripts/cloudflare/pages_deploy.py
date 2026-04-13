@@ -67,7 +67,9 @@ def pages_deploy_environment(
 def ensure_build_output_exists(config: JsonObject, repo_root: Path = REPO_ROOT) -> None:
     output_dir = repo_root / str(config["deployment"]["build_output"])
     if not output_dir.is_dir():
-        raise ConfigError(f"Missing build output {output_dir}. Run just web-build first.")
+        raise ConfigError(
+            f"Missing build output {output_dir}. Run just web-build first."
+        )
 
 
 def run_pages_deploy(

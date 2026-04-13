@@ -1,4 +1,18 @@
+from pathlib import Path
+
 from scripts.tooling.config import CONFIG, _resolve_shell_default
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_justfile_exposes_app_review_submission_commands() -> None:
+    justfile = (REPO_ROOT / "justfile").read_text()
+
+    assert "appstore-submit-dry-run:" in justfile
+    assert "bash scripts/appstore/submit-review.sh --dry-run" in justfile
+    assert "appstore-submit-review:" in justfile
+    assert "bash scripts/appstore/submit-review.sh --submit" in justfile
 
 
 def test_tooling_config_matches_repo_contract() -> None:

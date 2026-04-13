@@ -53,6 +53,7 @@ def test_validator_rejects_legacy_submission_problems() -> None:
           "privacy": {
             "tracking": false,
             "data_collection": "none",
+            "app_store_connect_completed": false,
             "notifications_usage_description": "Notifications remind the user to apply sunscreen."
           },
           "export_compliance": {
@@ -65,6 +66,7 @@ def test_validator_rejects_legacy_submission_problems() -> None:
             "screenshots": {
               "capture_device": "iPhone 17 Pro Max",
               "required_size_class": "6.9-inch iPhone",
+              "display_type": "APP_IPHONE_67",
               "output_directory": ".build/appstore-screenshots",
               "screens": [
                 {
@@ -102,6 +104,10 @@ def test_validator_rejects_legacy_submission_problems() -> None:
         "urls.support is still marked as not ready for App Store submission." in errors
     )
     assert "review.contact is still marked as not ready for submission." in errors
+    assert (
+        "privacy.app_store_connect_completed must be true after the App Privacy questionnaire is completed in App Store Connect."
+        in errors
+    )
 
 
 def test_validator_allows_current_manifest_in_draft_mode() -> None:
@@ -120,6 +126,10 @@ def test_validator_allows_current_manifest_in_draft_mode() -> None:
     )
     assert not any(warning.startswith("urls.") for warning in warnings)
     assert "review.contact is still marked as not ready for submission." in warnings
+    assert (
+        "privacy.app_store_connect_completed must be true after the App Privacy questionnaire is completed in App Store Connect."
+        in warnings
+    )
 
 
 def test_validator_accepts_submission_ready_manifest() -> None:
@@ -168,6 +178,7 @@ def test_validator_accepts_submission_ready_manifest() -> None:
           "privacy": {
             "tracking": false,
             "data_collection": "none",
+            "app_store_connect_completed": true,
             "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
           },
           "export_compliance": {
@@ -180,6 +191,7 @@ def test_validator_accepts_submission_ready_manifest() -> None:
             "screenshots": {
               "capture_device": "iPhone 17 Pro Max",
               "required_size_class": "6.9-inch iPhone",
+              "display_type": "APP_IPHONE_67",
               "output_directory": ".build/appstore-screenshots",
               "screens": [
                 {
@@ -191,8 +203,23 @@ def test_validator_accepts_submission_ready_manifest() -> None:
               ]
             }
           },
+          "accessibility": {
+            "iphone": {
+              "ready": true,
+              "supports_audio_descriptions": false,
+              "supports_captions": false,
+              "supports_dark_interface": true,
+              "supports_differentiate_without_color_alone": true,
+              "supports_larger_text": true,
+              "supports_reduced_motion": true,
+              "supports_sufficient_contrast": true,
+              "supports_voice_control": false,
+              "supports_voiceover": true
+            }
+          },
           "submission": {
             "copyright": "2026 Peyton Randolph",
+            "release_type": "MANUAL",
             "manual_steps": ["Upload screenshots in App Store Connect."]
           }
         }
@@ -202,4 +229,34 @@ def test_validator_accepts_submission_ready_manifest() -> None:
     errors, warnings = validator.validate_manifest(manifest, allow_draft=False)
 
     assert errors == []
+    assert warnings == []
+
+
+def test_validator_rejects_submission_automation_shape_errors() -> None:
+    manifest = validator.load_manifest(
+        REPO_ROOT / "scripts" / "appstore" / "metadata.json"
+    )
+    manifest["privacy"]["app_store_connect_completed"] = "yes"
+    manifest["assets"]["screenshots"]["display_type"] = "APP_IPHONE_65"
+    manifest["submission"]["release_type"] = "AUTO"
+    manifest["accessibility"]["iphone"]["ready"] = True
+    del manifest["accessibility"]["iphone"]["supports_voiceover"]
+    manifest["accessibility"]["iphone"]["supports_larger_text"] = "sometimes"
+
+    errors, warnings = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert (
+        "privacy.app_store_connect_completed must be true after the App Privacy questionnaire is completed in App Store Connect."
+        in errors
+    )
+    assert "assets.screenshots.display_type must be one of ['APP_IPHONE_67']." in errors
+    assert (
+        "submission.release_type must be one of ['AFTER_APPROVAL', 'MANUAL', 'SCHEDULED']."
+        in errors
+    )
+    assert "accessibility.iphone.supports_larger_text must be a boolean." in errors
+    assert (
+        "accessibility.iphone.supports_voiceover is required when accessibility.iphone.ready is true."
+        in errors
+    )
     assert warnings == []

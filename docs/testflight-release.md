@@ -50,12 +50,14 @@ From the repo root:
 just appstore-validate
 just appstore-screenshots
 just appstore-archive
+just appstore-submit-dry-run
 just release-tag 1.2.3
 ```
 
 `just release-tag 1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
+Use `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1 just appstore-submit-review` only after strict metadata, App Privacy, screenshots, and App Review contact details are ready.
 The production flavor archives unsigned in CI; the App Store export options let Xcode select distribution signing for the IPA. Development flavors keep development signing so local installs and tests continue to use dev profiles.
 
 ## GitHub Automation
@@ -70,6 +72,8 @@ It:
 3. archives and exports the production IPA on pinned stable Xcode `26.3`
 4. uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
 5. publishes the `.xcarchive` and exported IPA as workflow artifacts
+
+`.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review.
 
 Required secrets:
 

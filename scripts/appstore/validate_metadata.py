@@ -24,6 +24,19 @@ VALID_ROUTES = {
     "history",
     "manualLog",
 }
+VALID_RELEASE_TYPES = {"MANUAL", "AFTER_APPROVAL", "SCHEDULED"}
+VALID_SCREENSHOT_DISPLAY_TYPES = {"APP_IPHONE_67"}
+ACCESSIBILITY_FIELDS = {
+    "supports_audio_descriptions",
+    "supports_captions",
+    "supports_dark_interface",
+    "supports_differentiate_without_color_alone",
+    "supports_larger_text",
+    "supports_reduced_motion",
+    "supports_sufficient_contrast",
+    "supports_voice_control",
+    "supports_voiceover",
+}
 FORBIDDEN_FREE_COPY = (
     "freemium",
     "subscription",
@@ -231,6 +244,15 @@ def validate_manifest(
             errors.append("privacy.tracking must be a boolean.")
         if not str(privacy.get("notifications_usage_description", "")).strip():
             errors.append("privacy.notifications_usage_description is required.")
+        if privacy.get("app_store_connect_completed") is not True:
+            message = (
+                "privacy.app_store_connect_completed must be true after the App "
+                "Privacy questionnaire is completed in App Store Connect."
+            )
+            if allow_draft:
+                warnings.append(message)
+            else:
+                errors.append(message)
 
     export_compliance = manifest.get("export_compliance")
     if not isinstance(export_compliance, dict):
@@ -253,6 +275,12 @@ def validate_manifest(
                 errors.append("assets.screenshots.capture_device is required.")
             if not str(screenshots.get("required_size_class", "")).strip():
                 errors.append("assets.screenshots.required_size_class is required.")
+            display_type = str(screenshots.get("display_type", "")).strip()
+            if display_type not in VALID_SCREENSHOT_DISPLAY_TYPES:
+                errors.append(
+                    "assets.screenshots.display_type must be one of "
+                    f"{sorted(VALID_SCREENSHOT_DISPLAY_TYPES)}."
+                )
 
             screens = screenshots.get("screens")
             if not isinstance(screens, list) or not screens:
@@ -284,16 +312,53 @@ def validate_manifest(
                             f"assets.screenshots.screens[{index}].route must be one of {sorted(VALID_ROUTES)}."
                         )
 
+    accessibility = manifest.get("accessibility")
+    if accessibility is not None:
+        if not isinstance(accessibility, dict):
+            errors.append("accessibility must be an object when provided.")
+        else:
+            iphone_accessibility = accessibility.get("iphone")
+            if iphone_accessibility is not None:
+                if not isinstance(iphone_accessibility, dict):
+                    errors.append("accessibility.iphone must be an object.")
+                else:
+                    ready = iphone_accessibility.get("ready", False)
+                    if ready not in (True, False):
+                        errors.append("accessibility.iphone.ready must be a boolean.")
+                    for field, value in iphone_accessibility.items():
+                        if field == "ready":
+                            continue
+                        if field not in ACCESSIBILITY_FIELDS:
+                            errors.append(
+                                f"accessibility.iphone.{field} is not a supported accessibility declaration field."
+                            )
+                        elif value not in (True, False):
+                            errors.append(
+                                f"accessibility.iphone.{field} must be a boolean."
+                            )
+                    if ready is True:
+                        for field in sorted(ACCESSIBILITY_FIELDS):
+                            if field not in iphone_accessibility:
+                                errors.append(
+                                    f"accessibility.iphone.{field} is required when accessibility.iphone.ready is true."
+                                )
+
     submission = manifest.get("submission")
     if not isinstance(submission, dict):
         errors.append("Missing required object: submission.")
-    elif (
-        not isinstance(submission.get("manual_steps"), list)
-        or not submission["manual_steps"]
-    ):
-        warnings.append(
-            "submission.manual_steps should document the remaining App Store Connect work."
-        )
+    else:
+        release_type = str(submission.get("release_type", "MANUAL"))
+        if release_type not in VALID_RELEASE_TYPES:
+            errors.append(
+                f"submission.release_type must be one of {sorted(VALID_RELEASE_TYPES)}."
+            )
+        if (
+            not isinstance(submission.get("manual_steps"), list)
+            or not submission["manual_steps"]
+        ):
+            warnings.append(
+                "submission.manual_steps should document the remaining App Store Connect work."
+            )
 
     return errors, warnings
 

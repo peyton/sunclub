@@ -50,6 +50,8 @@ Common setup from the repo root:
 - `just appstore-validate`
 - `just appstore-screenshots`
 - `just appstore-archive`
+- `just appstore-submit-dry-run`
+- `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1 just appstore-submit-review`
 - `just release-tag 1.2.3`
 - `just ci`
 
@@ -63,6 +65,6 @@ Cloudflare Pages and Email Routing setup is tracked in [infra/cloudflare/](infra
 
 CloudKit setup is documented in [docs/cloudkit-setup.md](docs/cloudkit-setup.md). `just cloudkit-doctor` validates that the saved token is a management token for the configured team, checks whether a signed build actually carries the expected CloudKit entitlements, and retries `cktool` schema access. `just cloudkit-ensure-container` runs the same validation and opens the relevant Apple setup pages if the container or App ID configuration is still missing.
 
-Release automation and the dev/prod flavor split are documented in [docs/testflight-release.md](docs/testflight-release.md). In short: local `just build` / `just run` use the `SunclubDev` flavor, `just appstore-archive` uses the production `Sunclub` flavor, and pushing a `vX.Y.Z` tag through `just release-tag` triggers the TestFlight workflow. Web releases are separate: pushing `web/vX.Y.Z` through `just web-release-tag` creates a web GitHub Release and does not trigger the iOS release workflow.
+Release automation and the dev/prod flavor split are documented in [docs/testflight-release.md](docs/testflight-release.md). In short: local `just build` / `just run` use the `SunclubDev` flavor, `just appstore-archive` uses the production `Sunclub` flavor, and pushing a `vX.Y.Z` tag through `just release-tag` triggers the TestFlight workflow. App Review submission is documented in [docs/app-store-submission.md](docs/app-store-submission.md) and is guarded by strict metadata plus `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1`. Web releases are separate: pushing `web/vX.Y.Z` through `just web-release-tag` creates a web GitHub Release and does not trigger the iOS release workflow.
 
 `just clean-build` removes repo-local build artifacts and the generated workspace, `just clean-generated` additionally removes repo-local caches and environments such as `.venv`, `.mise`, `.cache`, `.config`, `.state`, and `__pycache__`, and `just clean` runs the full cleanup chain.

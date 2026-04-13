@@ -5,12 +5,15 @@ Sunclub treats `scripts/appstore/metadata.json` as the single submission manifes
 ## Current Status
 
 - The public web presence lives in `web/` and is published as static files at `https://sunclub.peyton.app`. The App Store marketing, support, and privacy URLs in the manifest now point to that host.
-- `scripts/appstore/validate_metadata.py --allow-draft` checks the manifest shape, Apple text limits, route inventory, and marketing-copy contradictions without requiring final URLs or final App Review contact details.
-- `scripts/appstore/validate_metadata.py` runs the strict submission check. It fails until the App Review contact is marked ready.
+- `scripts/appstore/validate_metadata.py --allow-draft` checks the manifest shape, Apple text limits, route inventory, accessibility declarations, screenshot display type, release type, and marketing-copy contradictions without requiring final App Review contact details or the App Privacy completion gate.
+- `scripts/appstore/validate_metadata.py` runs the strict submission check. It fails until the App Review contact is marked ready and `privacy.app_store_connect_completed` is `true`.
 - `scripts/appstore/capture-screenshots.sh` builds the real app, boots the simulator named in the manifest, and captures the manifest-defined iPhone screenshots through `UITEST_MODE` launch routes.
-- `scripts/appstore/create-app-store-listing.sh` only patches the App Store Connect fields that map cleanly to the manifest. It does not create the app record, upload screenshots, or answer App Privacy questionnaires.
+- `scripts/appstore/submit-review.sh --dry-run` prints the App Store Connect mutation plan and local blockers without network writes.
+- `scripts/appstore/submit-review.sh --submit` captures screenshots, uploads the build, uploads screenshots, patches metadata, creates the review submission, and submits it for App Review. It refuses to run without `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1` or `--confirm-submit`.
+- `scripts/appstore/create-app-store-listing.sh` is superseded by the Python review-submission workflow. Keep it only for narrow listing-only patching if needed.
 - `scripts/appstore/archive-and-upload.sh` validates the manifest, archives the signed release build, exports the IPA, and can upload to TestFlight with `altool` when App Store Connect API key credentials are available.
 - `.github/workflows/release-testflight.yml` runs the same archive flow automatically for pushed `vX.Y.Z` tags, but passes `--allow-draft-metadata` so TestFlight uploads are not blocked by still-draft App Review contact details.
+- `.github/workflows/submit-app-review.yml` is a manual workflow that checks out a release tag, captures screenshots, uploads the build, and runs the same final review-submission command behind an explicit confirmation input.
 - Export compliance is declared by `export_compliance.uses_encryption: false` in the manifest and `ITSAppUsesNonExemptEncryption=false` in `app/Sunclub/Info.plist`.
 
 ## Commands
@@ -19,11 +22,12 @@ From the repo root:
 
 ```bash
 just appstore-validate
+just appstore-submit-dry-run
 just web-check
 just web-build
-bash scripts/appstore/capture-screenshots.sh
-bash scripts/appstore/create-app-store-listing.sh
-bash scripts/appstore/archive-and-upload.sh
+just appstore-screenshots
+just appstore-archive
+SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1 just appstore-submit-review
 just release-tag 1.2.3
 ```
 
@@ -35,9 +39,8 @@ Use the default strict archive path when you are preparing the actual App Store 
 These steps still require real App Store Connect data and cannot be faked safely inside the repo:
 
 1. Replace the draft App Review contact information in `scripts/appstore/metadata.json`, then set `review.contact.ready` to `true`.
-2. Upload the generated 6.9-inch iPhone screenshots in App Store Connect.
-3. Complete App Privacy answers in App Store Connect so they match the manifest.
-4. If you are not using the tag workflow, upload the exported IPA with `xcrun altool` or the App Store Connect web flow.
+2. Complete App Privacy answers in App Store Connect so they match the manifest, then set `privacy.app_store_connect_completed` to `true`.
+3. Audit the Accessibility Nutrition Label answers before setting `accessibility.iphone.ready` to `true`; otherwise the automation leaves the label undeclared.
 
 ## Review Notes
 
