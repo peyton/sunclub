@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from scripts.cloudflare import common, email, pages
+from scripts.cloudflare import common, email, pages, pages_deploy
 
 JsonObject = dict[str, Any]
 
@@ -115,6 +115,56 @@ def test_pages_project_update_keeps_direct_upload_project_source_free() -> None:
     }
 
 
+def test_manual_pages_deploy_command_matches_cloudflare_pages_config() -> None:
+    config = common.load_pages_config()
+
+    command = pages_deploy.build_pages_deploy_command(config, "BRANCH=preview")
+
+    assert command == [
+        "mise",
+        "exec",
+        "--",
+        "wrangler",
+        "pages",
+        "deploy",
+        ".build/web",
+        "--project-name=sunclub",
+        "--branch=preview",
+    ]
+
+
+def test_manual_pages_deploy_env_uses_config_account_id() -> None:
+    config = common.load_pages_config()
+
+    env = pages_deploy.pages_deploy_environment(
+        config,
+        {"CLOUDFLARE_API_TOKEN": "token"},
+    )
+
+    assert env["CLOUDFLARE_API_TOKEN"] == "token"
+    assert env["CLOUDFLARE_ACCOUNT_ID"] == "0e32ee7804b102bea6b9d3056d60f980"
+
+
+def test_manual_pages_deploy_requires_token() -> None:
+    config = common.load_pages_config()
+
+    with pytest.raises(common.MissingEnvironmentError):
+        pages_deploy.pages_deploy_environment(config, {})
+
+
+def test_manual_pages_deploy_rejects_wrong_account_id() -> None:
+    config = common.load_pages_config()
+
+    with pytest.raises(common.ConfigError):
+        pages_deploy.pages_deploy_environment(
+            config,
+            {
+                "CLOUDFLARE_API_TOKEN": "token",
+                "CLOUDFLARE_ACCOUNT_ID": "wrong-account",
+            },
+        )
+
+
 def test_email_catch_all_payload_uses_env_destination(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -143,6 +193,17 @@ def test_email_destination_env_is_required(
 
     with pytest.raises(common.MissingEnvironmentError):
         email.destination_address(config)
+
+
+def test_email_setup_permissions_help_names_required_cloudflare_permissions() -> None:
+    config = common.load_email_config()
+
+    message = email.email_setup_permissions_help(config)
+
+    assert "Email Routing Addresses" in message
+    assert "DNS Write" in message
+    assert "Email Routing Rules" in message
+    assert "peyton.app" in message
 
 
 def test_pages_domain_setup_reuses_existing_domain() -> None:

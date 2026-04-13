@@ -36,6 +36,19 @@ just web-package VERSION=test
 just web-release-tag 1.2.3
 ```
 
+Manual Cloudflare Pages deploys use the same build output as CI. Set
+`CLOUDFLARE_API_TOKEN` to a token with Cloudflare Pages Edit access, then run:
+
+```bash
+just cloudflare-pages-deploy
+```
+
+To deploy a preview branch instead of production:
+
+```bash
+just cloudflare-pages-deploy preview-branch
+```
+
 `just web-package VERSION=1.2.3` writes:
 
 - `.build/releases/sunclub-web-1.2.3.tar.gz`
