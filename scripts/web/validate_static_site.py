@@ -8,7 +8,37 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-SUPPORT_EMAIL = "sunclub@peyton.app"
+CONTACT_EMAIL = "contact@sunclub.peyton.app"
+SUPPORT_EMAIL = "support@sunclub.peyton.app"
+PRIVACY_EMAIL = "privacy@sunclub.peyton.app"
+SECURITY_EMAIL = "security@sunclub.peyton.app"
+EMAIL_LABELS = {
+    CONTACT_EMAIL: "contact",
+    SUPPORT_EMAIL: "support",
+    PRIVACY_EMAIL: "privacy",
+    SECURITY_EMAIL: "security",
+}
+REQUIRED_EMAILS_BY_FILE = {
+    Path("index.html"): (
+        CONTACT_EMAIL,
+        SUPPORT_EMAIL,
+        PRIVACY_EMAIL,
+        SECURITY_EMAIL,
+    ),
+    Path("support/index.html"): (
+        CONTACT_EMAIL,
+        SUPPORT_EMAIL,
+        PRIVACY_EMAIL,
+        SECURITY_EMAIL,
+    ),
+    Path("privacy/index.html"): (
+        CONTACT_EMAIL,
+        SUPPORT_EMAIL,
+        PRIVACY_EMAIL,
+        SECURITY_EMAIL,
+    ),
+    Path("404.html"): (CONTACT_EMAIL, SUPPORT_EMAIL),
+}
 REQUIRED_FILES = (
     "index.html",
     "support/index.html",
@@ -159,8 +189,10 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
         errors.append(f"{relative}: must not contain noindex.")
     if "http://" in lowered:
         errors.append(f"{relative}: must not contain insecure http:// URLs.")
-    if SUPPORT_EMAIL not in raw:
-        errors.append(f"{relative}: missing public support email {SUPPORT_EMAIL}.")
+    for email in REQUIRED_EMAILS_BY_FILE.get(relative, (CONTACT_EMAIL,)):
+        if email not in raw:
+            label = EMAIL_LABELS[email]
+            errors.append(f"{relative}: missing public {label} email {email}.")
     if not parsed.title:
         errors.append(f"{relative}: missing non-empty <title>.")
     if not parsed.meta_description:
