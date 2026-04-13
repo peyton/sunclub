@@ -60,7 +60,7 @@ jobs:
     name: Deploy Web to Cloudflare Pages
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
     environment: cloudflare-production
     permissions:
       contents: read

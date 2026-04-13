@@ -42,7 +42,7 @@ web-build: web-check
     cp -R web/. .build/web/
 
 [group('web')]
-web-package VERSION='local':
+web-package VERSION='local': web-build
     version="{{VERSION}}"; version="${version#VERSION=}"; uv run python -m scripts.web.package_static_site --version "$version"
 
 [group('web')]

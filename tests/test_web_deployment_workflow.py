@@ -38,11 +38,20 @@ def test_web_deploy_workflow_runs_only_for_web_directory_changes() -> None:
 def test_web_deploy_to_cloudflare_is_push_only() -> None:
     workflow = workflow_text(DEPLOY_WEB_WORKFLOW)
 
-    assert "if: ${{ github.event_name == 'push' }}" in workflow
+    assert (
+        "if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}"
+        in workflow
+    )
     assert (
         "pages deploy .build/web --project-name=sunclub --branch=master "
         "--commit-hash=${{ github.sha }}"
     ) in workflow
+
+
+def test_web_package_builds_before_packaging() -> None:
+    justfile = (REPO_ROOT / "justfile").read_text(encoding="utf-8")
+
+    assert re.search(r"^web-package VERSION='local': web-build$", justfile, re.M)
 
 
 def test_web_and_ios_release_tags_are_separate() -> None:
