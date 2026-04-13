@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Build an unsigned archive, export it as a signed App Store package, and
+# Build a signed archive, export it as a signed App Store package, and
 # optionally upload the exported IPA to TestFlight.
 #
 # Usage:
-#   ./scripts/appstore/archive-and-upload.sh [--allow-draft-metadata] [--skip-generate] [--skip-archive] [--skip-export] [--upload-testflight]
+#   ./scripts/appstore/archive-and-upload.sh [--allow-draft-metadata] [--skip-generate] [--skip-archive] [--skip-export] [--unsigned-archive] [--upload-testflight]
 #
 set -euo pipefail
 
@@ -29,6 +29,7 @@ SKIP_ARCHIVE=false
 SKIP_EXPORT=false
 UPLOAD_TESTFLIGHT=false
 ALLOW_DRAFT_METADATA=false
+UNSIGNED_ARCHIVE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -36,6 +37,7 @@ for arg in "$@"; do
   --skip-generate) SKIP_GENERATE=true ;;
   --skip-archive) SKIP_ARCHIVE=true ;;
   --skip-export) SKIP_EXPORT=true ;;
+  --unsigned-archive) UNSIGNED_ARCHIVE=true ;;
   --upload-testflight) UPLOAD_TESTFLIGHT=true ;;
   *)
     printf 'Unknown argument: %s\n' "$arg" >&2
@@ -45,7 +47,9 @@ for arg in "$@"; do
 done
 
 XCODEBUILD_AUTH_ARGS=()
+HAS_APP_STORE_CONNECT_AUTH=false
 if has_app_store_connect_auth; then
+  HAS_APP_STORE_CONNECT_AUTH=true
   XCODEBUILD_AUTH_ARGS=(
     -authenticationKeyPath "$ASC_KEY_FILE"
     -authenticationKeyID "$ASC_KEY_ID"
@@ -54,7 +58,9 @@ if has_app_store_connect_auth; then
 fi
 
 XCODEBUILD_COMPILE_CACHE_ARGS=()
+DISABLE_SWIFT_COMPILE_CACHE=false
 if should_disable_swift_compile_cache; then
+  DISABLE_SWIFT_COMPILE_CACHE=true
   printf 'Disabling compiler caches for this archive build.\n'
   XCODEBUILD_COMPILE_CACHE_ARGS=(
     SWIFT_ENABLE_COMPILE_CACHE=NO
@@ -66,10 +72,21 @@ if should_disable_swift_compile_cache; then
   )
 fi
 
-XCODEBUILD_ARCHIVE_SIGNING_ARGS=(
-  CODE_SIGNING_ALLOWED=NO
-  CODE_SIGNING_REQUIRED=NO
-)
+XCODEBUILD_ARCHIVE_PROVISIONING_ARGS=()
+XCODEBUILD_ARCHIVE_SIGNING_ARGS=()
+if [ "$UNSIGNED_ARCHIVE" = true ]; then
+  XCODEBUILD_ARCHIVE_SIGNING_ARGS=(
+    CODE_SIGNING_ALLOWED=NO
+    CODE_SIGNING_REQUIRED=NO
+  )
+else
+  XCODEBUILD_ARCHIVE_PROVISIONING_ARGS=(
+    -allowProvisioningUpdates
+  )
+  if [ "$HAS_APP_STORE_CONNECT_AUTH" = true ]; then
+    XCODEBUILD_ARCHIVE_PROVISIONING_ARGS+=("${XCODEBUILD_AUTH_ARGS[@]}")
+  fi
+fi
 
 step() { printf '\n\033[1;33m→ %s\033[0m\n' "$1"; }
 ok() { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
@@ -152,6 +169,10 @@ if [ "$UPLOAD_TESTFLIGHT" = true ] && [ "$SKIP_EXPORT" = true ]; then
   fail "--upload-testflight requires IPA export"
 fi
 
+if [ "$UNSIGNED_ARCHIVE" = true ] && [ "$SKIP_EXPORT" = false ]; then
+  fail "--unsigned-archive can only be used with --skip-export; App Store export validation requires a signed archive with entitlements"
+fi
+
 step "Validating App Store metadata"
 metadata_args=("scripts/appstore/metadata.json")
 if [ "$ALLOW_DRAFT_METADATA" = true ]; then
@@ -169,18 +190,33 @@ else
 fi
 
 if [ "$SKIP_ARCHIVE" = false ]; then
-  step "Archiving the unsigned release build"
+  if [ "$UNSIGNED_ARCHIVE" = true ]; then
+    step "Archiving the unsigned release build"
+  else
+    step "Archiving the signed release build"
+  fi
   rm -rf "$ARCHIVE_OUTPUT_PATH" "$ARCHIVE_DERIVED_DATA_PATH"
 
-  xcodebuild archive \
-    -workspace "$WORKSPACE" \
-    -scheme "$SCHEME" \
-    -configuration Release \
-    -destination "generic/platform=iOS" \
-    -archivePath "$ARCHIVE_OUTPUT_PATH" \
-    -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH" \
-    "${XCODEBUILD_COMPILE_CACHE_ARGS[@]}" \
-    "${XCODEBUILD_ARCHIVE_SIGNING_ARGS[@]}"
+  xcodebuild_archive_args=(
+    archive
+    -workspace "$WORKSPACE"
+    -scheme "$SCHEME"
+    -configuration Release
+    -destination "generic/platform=iOS"
+    -archivePath "$ARCHIVE_OUTPUT_PATH"
+    -derivedDataPath "$ARCHIVE_DERIVED_DATA_PATH"
+  )
+  if [ "$UNSIGNED_ARCHIVE" = false ]; then
+    xcodebuild_archive_args+=("${XCODEBUILD_ARCHIVE_PROVISIONING_ARGS[@]}")
+  fi
+  if [ "$DISABLE_SWIFT_COMPILE_CACHE" = true ]; then
+    xcodebuild_archive_args+=("${XCODEBUILD_COMPILE_CACHE_ARGS[@]}")
+  fi
+  if [ "$UNSIGNED_ARCHIVE" = true ]; then
+    xcodebuild_archive_args+=("${XCODEBUILD_ARCHIVE_SIGNING_ARGS[@]}")
+  fi
+
+  xcodebuild "${xcodebuild_archive_args[@]}"
 
   ok "Archive created at $ARCHIVE_OUTPUT_PATH"
 else
@@ -194,12 +230,18 @@ if [ "$SKIP_EXPORT" = false ]; then
   step "Exporting the App Store package"
   rm -rf "$EXPORT_OUTPUT_PATH"
 
-  xcodebuild -exportArchive \
-    -archivePath "$ARCHIVE_OUTPUT_PATH" \
-    -exportOptionsPlist "$EXPORT_OPTIONS_PATHNAME" \
-    -exportPath "$EXPORT_OUTPUT_PATH" \
-    -allowProvisioningUpdates \
-    "${XCODEBUILD_AUTH_ARGS[@]}"
+  xcodebuild_export_args=(
+    -exportArchive
+    -archivePath "$ARCHIVE_OUTPUT_PATH"
+    -exportOptionsPlist "$EXPORT_OPTIONS_PATHNAME"
+    -exportPath "$EXPORT_OUTPUT_PATH"
+    -allowProvisioningUpdates
+  )
+  if [ "$HAS_APP_STORE_CONNECT_AUTH" = true ]; then
+    xcodebuild_export_args+=("${XCODEBUILD_AUTH_ARGS[@]}")
+  fi
+
+  xcodebuild "${xcodebuild_export_args[@]}"
 
   IPA_FILE="$(find "$EXPORT_OUTPUT_PATH" -name '*.ipa' -print -quit)"
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"
