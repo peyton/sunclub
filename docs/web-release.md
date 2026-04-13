@@ -11,6 +11,10 @@ to `master` only when files under `web/` change.
 - Pull requests run `just web-package` and upload a rollback artifact.
 - Pushes to `master` run the same packaging step, then deploy `.build/web` to
   the Cloudflare Pages project `sunclub`.
+- GitHub deployment tracking is owned by the `cloudflare-production`
+  environment on the deploy job. The Wrangler action does not receive
+  `GITHUB_TOKEN`, so it must not create a second GitHub Deployment named
+  `production`.
 - Cloudflare-side Git automatic builds should stay disabled; GitHub Actions is
   the deployment source.
 
@@ -41,6 +45,26 @@ Manual Cloudflare Pages deploys use the same build output as CI. Set
 
 ```bash
 just cloudflare-pages-deploy
+```
+
+One-time Pages project and custom-domain setup also configures DNS. Use a
+Cloudflare token with Cloudflare Pages Edit plus DNS Write for the `peyton.app`
+zone, then run:
+
+```bash
+just cloudflare-pages-setup
+```
+
+To repair only the custom-domain DNS record:
+
+```bash
+just cloudflare-pages-dns
+```
+
+The expected record is a proxied CNAME:
+
+```text
+sunclub.peyton.app -> sunclub.pages.dev
 ```
 
 To deploy a preview branch instead of production:

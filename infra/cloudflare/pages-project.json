@@ -6,12 +6,20 @@
   "custom_domain": "sunclub.peyton.app",
   "deployment": {
     "mode": "github_actions_direct_upload",
+    "github_environment": "cloudflare-production",
     "workflow": ".github/workflows/deploy-web-cloudflare.yml",
     "build_output": ".build/web",
     "required_secrets": [
       "CLOUDFLARE_API_TOKEN",
       "CLOUDFLARE_ACCOUNT_ID"
     ]
+  },
+  "dns": {
+    "type": "CNAME",
+    "name": "sunclub.peyton.app",
+    "content": "sunclub.pages.dev",
+    "proxied": true,
+    "ttl": 1
   },
   "build_config": {
     "build_command": "just web-build",
