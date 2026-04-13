@@ -29,6 +29,7 @@ enum SunclubRuntimeConfiguration {
 
     private static func stringValue(for key: String, fallback: String) -> String {
         (bundle.object(forInfoDictionaryKey: key) as? String)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .flatMap { $0.isEmpty ? nil : $0 } ?? fallback
     }
 }

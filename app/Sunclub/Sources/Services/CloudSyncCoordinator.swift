@@ -232,6 +232,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
             return
         }
 
+        try SunclubCloudKitAvailability.validate(containerIdentifier: containerIdentifier)
         let database = CKContainer(identifier: containerIdentifier).privateCloudDatabase
         let configuration = CKSyncEngine.Configuration(
             database: database,

@@ -78,6 +78,72 @@ fail() {
   exit 1
 }
 
+assert_plist_string() {
+  local plist_path="$1"
+  local key="$2"
+  local expected="$3"
+  local actual
+
+  if ! actual="$(/usr/libexec/PlistBuddy -c "Print :$key" "$plist_path" 2>/dev/null)"; then
+    fail "Signed app is missing entitlement: $key"
+  fi
+  if [ "$actual" != "$expected" ]; then
+    fail "Signed app entitlement $key is '$actual', expected '$expected'"
+  fi
+}
+
+assert_plist_array_contains() {
+  local plist_path="$1"
+  local key="$2"
+  local expected="$3"
+
+  if ! /usr/libexec/PlistBuddy -c "Print :$key" "$plist_path" 2>/dev/null |
+    sed 's/^[[:space:]]*//' |
+    grep -Fxq "$expected"; then
+    fail "Signed app entitlement $key does not contain '$expected'"
+  fi
+}
+
+validate_signed_ipa_entitlements() {
+  local ipa_file="$1"
+  local temp_dir
+  local signed_app_path
+  local entitlements_path
+  local expected_container
+  local expected_app_group
+
+  command -v codesign >/dev/null || fail "codesign is required."
+  command -v unzip >/dev/null || fail "unzip is required."
+  [ -x /usr/libexec/PlistBuddy ] || fail "PlistBuddy is required."
+
+  temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-ipa.XXXXXX")"
+  unzip -q "$ipa_file" -d "$temp_dir"
+  signed_app_path="$(find "$temp_dir/Payload" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME.app" -type d -print -quit)"
+  [ -n "$signed_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME.app"
+
+  entitlements_path="$temp_dir/entitlements.plist"
+  if ! codesign -d --entitlements :- "$signed_app_path" >"$entitlements_path" 2>"$temp_dir/codesign.log"; then
+    cat "$temp_dir/codesign.log" >&2
+    fail "Could not read signed app entitlements"
+  fi
+
+  expected_container="iCloud.$RELEASE_APP_IDENTIFIER"
+  expected_app_group="group.$RELEASE_APP_IDENTIFIER"
+  assert_plist_string "$entitlements_path" "aps-environment" "$SUNCLUB_APS_ENVIRONMENT"
+  assert_plist_string "$entitlements_path" "com.apple.developer.icloud-container-environment" "Production"
+  assert_plist_array_contains "$entitlements_path" "com.apple.developer.icloud-services" "CloudKit"
+  assert_plist_array_contains \
+    "$entitlements_path" \
+    "com.apple.developer.icloud-container-identifiers" \
+    "$expected_container"
+  assert_plist_array_contains \
+    "$entitlements_path" \
+    "com.apple.security.application-groups" \
+    "$expected_app_group"
+
+  rm -rf "$temp_dir"
+}
+
 [ -f "$EXPORT_OPTIONS_PATHNAME" ] || fail "Missing export options: $EXPORT_OPTIONS_PATHNAME"
 command -v xcodebuild >/dev/null || fail "xcodebuild is required."
 command -v xcrun >/dev/null || fail "xcrun is required."
@@ -138,6 +204,10 @@ if [ "$SKIP_EXPORT" = false ]; then
   IPA_FILE="$(find "$EXPORT_OUTPUT_PATH" -name '*.ipa' -print -quit)"
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"
   ok "Exported IPA: $IPA_FILE"
+
+  step "Validating signed app entitlements"
+  validate_signed_ipa_entitlements "$IPA_FILE"
+  ok "Signed app entitlements are valid"
 else
   ok "Skipping IPA export"
 fi
