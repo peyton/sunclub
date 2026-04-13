@@ -56,7 +56,8 @@ just release-tag 1.2.3
 `just release-tag 1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
-The production flavor archives unsigned in CI; the App Store export options let Xcode select distribution signing for the IPA. Development flavors keep development signing so local installs and tests continue to use dev profiles.
+The production flavor archives signed in CI with App Store Connect API key auth, then exports the IPA with the App Store export options. This keeps the archive's requested entitlements, including the production `aps-environment`, available to Xcode before export signing. Development flavors keep development signing so local installs and tests continue to use dev profiles.
+Use `--unsigned-archive --skip-export` only for local compile-only archive checks; unsigned archives cannot be exported for TestFlight because the signed IPA entitlement validator requires the archive entitlement context.
 
 ## GitHub Automation
 

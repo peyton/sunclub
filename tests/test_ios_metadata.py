@@ -195,26 +195,34 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight"
         in workflow
     )
+    assert "--unsigned-archive" not in workflow
 
 
 def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     script = ARCHIVE_SCRIPT.read_text()
-    archive_step = script.split('step "Archiving the unsigned release build"', 1)[
+    archive_step = script.split('step "Archiving the signed release build"', 1)[
         1
     ].split('ok "Archive created', 1)[0]
-    export_step = script.split("xcodebuild -exportArchive", 1)[1].split(
+    export_step = script.split('step "Exporting the App Store package"', 1)[1].split(
         'IPA_FILE="',
         1,
     )[0]
 
     assert "XCODEBUILD_AUTH_ARGS=(" in script
-    assert "-allowProvisioningUpdates \\" not in archive_step
-    assert '"${XCODEBUILD_AUTH_ARGS[@]}"' not in archive_step
+    assert "XCODEBUILD_ARCHIVE_PROVISIONING_ARGS=(" in script
+    assert "-allowProvisioningUpdates" in script
+    assert '"${XCODEBUILD_ARCHIVE_PROVISIONING_ARGS[@]}"' in archive_step
+    assert 'xcodebuild "${xcodebuild_archive_args[@]}"' in archive_step
+    assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in script
     assert "XCODEBUILD_ARCHIVE_SIGNING_ARGS=(" in script
+    assert "--unsigned-archive can only be used with --skip-export" in script
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script
-    assert "-allowProvisioningUpdates \\" in export_step
+    assert "xcodebuild_export_args=(" in export_step
+    assert "-exportArchive" in export_step
+    assert "-allowProvisioningUpdates" in export_step
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in export_step
+    assert 'xcodebuild "${xcodebuild_export_args[@]}"' in export_step
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
@@ -224,7 +232,7 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "CODE_SIGN_STYLE=Automatic" not in script
     assert "CODE_SIGN_IDENTITY" not in script
     assert ': "${SUNCLUB_APS_ENVIRONMENT:=production}"' in script
-    assert '-exportPath "$EXPORT_OUTPUT_PATH" \\' in script
+    assert '-exportPath "$EXPORT_OUTPUT_PATH"' in script
     assert "xcrun --find altool" in script
     assert "xcrun altool \\" in script
     assert '--upload-package "$IPA_FILE"' in script
