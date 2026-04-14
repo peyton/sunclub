@@ -9,6 +9,7 @@ struct ManualLogView: View {
     @State private var notes: String = ""
     @State private var hasLoadedInitialState = false
     @State private var feedbackTrigger = 0
+    @State private var navigationFeedbackTrigger = 0
 
     private var existingRecord: DailyRecord? {
         appState.record(for: referenceDate)
@@ -73,6 +74,7 @@ struct ManualLogView: View {
             syncInitialStateIfNeeded()
         }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
+        .sensoryFeedback(.impact(.light), trigger: navigationFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -101,7 +103,7 @@ struct ManualLogView: View {
 
     private var scanSPFButton: some View {
         Button {
-            feedbackTrigger += 1
+            navigationFeedbackTrigger += 1
             router.push(.productScanner)
         } label: {
             HStack(spacing: 12) {

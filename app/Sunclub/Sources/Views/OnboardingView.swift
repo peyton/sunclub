@@ -39,7 +39,7 @@ struct WelcomeView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
         }
-        .sensoryFeedback(.selection, trigger: startFeedbackTrigger)
+        .sensoryFeedback(.impact(.medium), trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
 }

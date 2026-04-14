@@ -26,7 +26,7 @@ struct SettingsView: View {
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
     @State private var automationFeedback = "Ready"
-    @State private var expandedSections: Set<SettingsSection> = []
+    @State private var expandedSections: Set<SettingsSection> = [.reminders]
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 

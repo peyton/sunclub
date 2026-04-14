@@ -127,6 +127,11 @@ struct HomeView: View {
             Text(presentation.title)
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
+                .contentTransition(.numericText())
+                .animation(
+                    SunMotion.easeInOut(duration: 0.3, reduceMotion: reduceMotion),
+                    value: presentation.title
+                )
                 .accessibilityIdentifier("home.todayStatus")
 
             if let uvHeadline = presentation.uvHeadline,
@@ -216,6 +221,7 @@ struct HomeView: View {
                 Label(logBadgeText, systemImage: "checkmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.success)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.8)))
                     .accessibilityIdentifier("home.todayLogBadge")
             }
 
@@ -232,6 +238,7 @@ struct HomeView: View {
                     .accessibilityIdentifier("home.streakRiskBadge")
             }
         }
+        .animation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion), value: presentation.logBadgeText)
     }
 
     @ViewBuilder
@@ -549,10 +556,18 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.dayStreakLabel")
 
                     if appState.longestStreak > 0 {
-                        Text("Best: \(appState.longestStreak)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(AppPalette.softInk)
-                            .accessibilityIdentifier("home.longestStreak")
+                        let isPersonalBest = appState.currentStreak >= appState.longestStreak && appState.currentStreak > 1
+                        HStack(spacing: 4) {
+                            if isPersonalBest {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(AppPalette.sun)
+                            }
+                            Text(isPersonalBest ? "Best ever!" : "Best: \(appState.longestStreak)")
+                                .font(.system(size: 14, weight: isPersonalBest ? .semibold : .medium))
+                                .foregroundStyle(isPersonalBest ? AppPalette.sun : AppPalette.softInk)
+                        }
+                        .accessibilityIdentifier("home.longestStreak")
                     }
                 }
 
