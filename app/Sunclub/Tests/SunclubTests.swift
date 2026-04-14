@@ -1665,6 +1665,92 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testTodayCardPresentationShowsLoggedMetadataRows() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 10, minute: 0))
+        )
+        let peakDate = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 13, minute: 0))
+        )
+        let peakHour = SunclubUVHourForecast(date: peakDate, index: 7, sourceLabel: "Estimated")
+        let state = try makeAppState(clock: { now })
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.setUVReadingForTesting(UVReading(index: 7, timestamp: now))
+        state.setUVForecastForTesting(
+            SunclubUVForecast(
+                generatedAt: now,
+                sourceLabel: "Estimated locally",
+                hours: [peakHour],
+                peakHour: peakHour,
+                recommendation: "High UV today."
+            )
+        )
+        state.modelContext.insert(
+            DailyRecord(
+                startOfDay: calendar.startOfDay(for: now),
+                verifiedAt: now,
+                method: .manual,
+                spfLevel: 50,
+                notes: "Beach bag"
+            )
+        )
+        state.refresh()
+
+        let presentation = state.todayCardPresentation
+        let rows = Dictionary(uniqueKeysWithValues: presentation.metadataRows.map { ($0.id, $0) })
+
+        XCTAssertEqual(presentation.metadataRows.map(\.id), ["logged", "spf", "notes", "reapply", "uvPeak", "uvSource"])
+        XCTAssertEqual(rows["spf"]?.value, "SPF 50")
+        XCTAssertEqual(rows["notes"]?.value, "Saved")
+        XCTAssertEqual(rows["reapply"]?.value, "1h 30m, UV-adjusted")
+        XCTAssertEqual(rows["uvSource"]?.value, "Estimated locally")
+        XCTAssertTrue(presentation.accessibilityValue.contains("SPF: SPF 50"))
+    }
+
+    @MainActor
+    func testTodayCardPresentationShowsOpenDayReminderStreakAndForecastRows() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 9, minute: 0))
+        )
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)))
+        let peakDate = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 12, minute: 0))
+        )
+        let peakHour = SunclubUVHourForecast(date: peakDate, index: 5, sourceLabel: "Estimated")
+        let state = try makeAppState(clock: { now })
+        state.updateReminderTime(for: .weekday, hour: 8, minute: 30)
+        state.updateReapplySettings(enabled: true, intervalMinutes: 120)
+        state.setUVForecastForTesting(
+            SunclubUVForecast(
+                generatedAt: now,
+                sourceLabel: "Estimated locally",
+                hours: [peakHour],
+                peakHour: peakHour,
+                recommendation: "Moderate UV today."
+            )
+        )
+        state.modelContext.insert(
+            DailyRecord(
+                startOfDay: yesterday,
+                verifiedAt: yesterday,
+                method: .manual
+            )
+        )
+        state.refresh()
+
+        let presentation = state.todayCardPresentation
+        let rows = Dictionary(uniqueKeysWithValues: presentation.metadataRows.map { ($0.id, $0) })
+
+        XCTAssertEqual(presentation.metadataRows.map(\.id), ["reminder", "streak", "reapply", "uvPeak", "uvSource"])
+        XCTAssertTrue(rows["reminder"]?.value.contains("Weekdays") == true)
+        XCTAssertEqual(rows["streak"]?.value, "1 day open")
+        XCTAssertEqual(rows["reapply"]?.value, "After today's log")
+        XCTAssertEqual(rows["uvSource"]?.value, "Estimated locally")
+    }
+
+    @MainActor
     func testTodayCardPresentationShowsReapplyCountBadge() throws {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -1718,7 +1804,7 @@ final class SunclubTests: XCTestCase {
         )
         atRiskState.refresh()
 
-        XCTAssertEqual(atRiskState.todayCardPresentation.streakRiskBadgeText, "Streak at risk")
+        XCTAssertEqual(atRiskState.todayCardPresentation.streakRiskBadgeText, "1-day streak at risk")
 
         let earlyState = try makeAppState(clock: { beforeRiskWindow })
         earlyState.modelContext.insert(

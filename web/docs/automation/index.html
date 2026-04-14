@@ -61,12 +61,16 @@
         <li>Log Reapply.</li>
         <li>Get Sunclub Status.</li>
         <li>Open Sunclub to a supported screen.</li>
-        <li>Set reminder times and supported toggles.</li>
+        <li>Set reminder times, reapply reminders, and supported toggles.</li>
         <li>
           Export a backup, create a skin health report, or create a streak card.
         </li>
         <li>Import a friend invite or open Friends for a message nudge.</li>
       </ul>
+      <p>
+        File-producing actions return files through Shortcuts and appear
+        separately from URL examples in the in-app Automation catalog.
+      </p>
 
       <h2>URL Actions</h2>
       <p>
@@ -92,10 +96,22 @@
         </li>
         <li>
           <code
+            >sunclub://automation/set-reapply?enabled=true&amp;interval=90</code
+          >
+        </li>
+        <li>
+          <code
             >sunclub://automation/set-toggle?name=dailyUVBriefing&amp;enabled=true</code
           >
         </li>
+        <li>
+          <code>sunclub://automation/import-friend?code=PASTE_INVITE_CODE</code>
+        </li>
+        <li>
+          <code>sunclub://automation/poke-friend?id=FRIEND_UUID</code>
+        </li>
         <li><code>sunclub://automation/open?route=automation</code></li>
+        <li><code>sunclub://automation/open?route=settings</code></li>
       </ul>
 
       <h2>x-callback-url</h2>

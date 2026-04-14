@@ -25,12 +25,19 @@
 - `Get Sunclub Status`: returns today logged state, streak, weekly applied count, and message.
 - `Open Sunclub`: opens a supported app route.
 - `Set Sunclub Reminder`: updates weekday or weekend reminder time.
+- `Set Sunclub Reapply Reminder`: turns reapply reminders on or off and can update the interval.
 - `Set Sunclub Toggle`: updates travel timezone, streak-risk, live UV, daily UV briefing, extreme UV alert, iCloud sync, or HealthKit.
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Create Skin Health Report`: returns an `IntentFile`.
 - `Create Streak Card`: returns an `IntentFile`.
 - `Import Friend Invite`: imports a Sunclub friend invite code.
 - `Poke Friend`: uses a friend `AppEntity` query. First-review builds do not send a direct CloudKit poke; they return a Friends route so the user can message locally.
+
+## App Shortcuts
+
+- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Open Automation, Export Backup, Create Skin Health Report, and Create Streak Card.
+- File-producing App Intents return files through Shortcuts and are shown separately from URL examples in the in-app Automation catalog.
+- The in-app catalog intentionally disables the Test button for URL examples that need a real friend invite code or saved friend UUID.
 
 ## URL Scheme
 

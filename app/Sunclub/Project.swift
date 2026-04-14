@@ -292,6 +292,41 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
     )
 }
 
+func appScheme(for flavor: SunclubFlavor, includesTests: Bool) -> Scheme {
+    let appTarget = TargetReference.target(flavor.appTargetName)
+    let testTargets: [TestableTarget] = includesTests
+        ? [
+            .testableTarget(target: .target("SunclubTests"), parallelization: .disabled),
+            .testableTarget(target: .target("SunclubUITests"), parallelization: .disabled)
+        ]
+        : []
+
+    return .scheme(
+        name: flavor.appTargetName,
+        shared: true,
+        buildAction: .buildAction(targets: [appTarget]),
+        testAction: includesTests
+            ? .targets(
+                testTargets,
+                configuration: .debug,
+                attachDebugger: false,
+                expandVariableFromTarget: appTarget
+            )
+            : nil,
+        runAction: .runAction(
+            configuration: .debug,
+            attachDebugger: true,
+            executable: appTarget
+        ),
+        archiveAction: .archiveAction(configuration: .release),
+        profileAction: .profileAction(
+            configuration: .release,
+            executable: appTarget
+        ),
+        analyzeAction: .analyzeAction(configuration: .debug)
+    )
+}
+
 let project = Project(
     name: "Sunclub",
     settings: {
@@ -342,5 +377,9 @@ let project = Project(
             ],
             settings: .settings(base: flavorBuildSettings(productionFlavor))
         )
+    ],
+    schemes: [
+        appScheme(for: productionFlavor, includesTests: true),
+        appScheme(for: developmentFlavor, includesTests: false)
     ]
 )

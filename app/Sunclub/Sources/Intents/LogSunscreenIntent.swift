@@ -703,5 +703,23 @@ struct SunclubAppShortcuts: AppShortcutsProvider {
             shortTitle: "Export Backup",
             systemImageName: "externaldrive.fill"
         )
+        AppShortcut(
+            intent: CreateSkinHealthReportIntent(),
+            phrases: [
+                "Create \(.applicationName) skin report",
+                "Make a skin health report in \(.applicationName)"
+            ],
+            shortTitle: "Skin Report",
+            systemImageName: "doc.richtext.fill"
+        )
+        AppShortcut(
+            intent: CreateStreakCardIntent(),
+            phrases: [
+                "Create \(.applicationName) streak card",
+                "Make a streak card in \(.applicationName)"
+            ],
+            shortTitle: "Streak Card",
+            systemImageName: "photo.fill"
+        )
     }
 }
