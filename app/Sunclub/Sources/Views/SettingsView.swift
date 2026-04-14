@@ -26,7 +26,7 @@ struct SettingsView: View {
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
     @State private var automationFeedback = "Ready"
-    @State private var expandedSections: Set<SettingsSection> = []
+    @State private var expandedSections: Set<SettingsSection> = [.reminders]
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 
@@ -695,6 +695,18 @@ struct SettingsView: View {
                     appState.updateCloudSyncEnabled(newValue)
                 }
                 .accessibilityIdentifier("settings.icloudToggle")
+
+                if iCloudSyncEnabled {
+                    if let lastSyncAt = appState.syncPreference?.lastSyncAt {
+                        Text("Last synced \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                    } else {
+                        Text("iCloud sync is on")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+                }
 
                 SunStatusCard(
                     title: presentation.title,

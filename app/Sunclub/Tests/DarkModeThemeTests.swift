@@ -18,6 +18,20 @@ final class DarkModeThemeTests: XCTestCase {
         assertContrast(AppPalette.ink, against: AppPalette.streakBackground, style: .light, minimum: 4.5)
     }
 
+    func testUVPillTextHasSufficientContrastAgainstWarmGlow() {
+        assertContrast(AppPalette.ink, against: AppPalette.warmGlow, style: .light, minimum: 3.0)
+        assertContrast(AppPalette.ink, against: AppPalette.warmGlow, style: .dark, minimum: 3.0)
+    }
+
+    func testElevatedCardFillContrastInDarkMode() {
+        assertContrast(AppPalette.ink, against: AppPalette.elevatedCardFill, style: .dark, minimum: 4.5)
+        assertContrast(AppPalette.softInk, against: AppPalette.elevatedCardFill, style: .dark, minimum: 3.0)
+    }
+
+    func testControlFillContrastInDarkMode() {
+        assertContrast(AppPalette.ink, against: AppPalette.controlFill, style: .dark, minimum: 4.5)
+    }
+
     func testAccentForegroundMaintainsContrastAcrossAppearances() {
         let accentFills = [
             AppPalette.sun,

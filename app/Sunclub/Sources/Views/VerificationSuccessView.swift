@@ -14,7 +14,10 @@ struct VerificationSuccessView: View {
         SunLightScreen {
             VStack(spacing: 28) {
                 ZStack(alignment: .bottomTrailing) {
-                    SunSuccessBurst(size: 186)
+                    SunSuccessBurst(
+                        size: 186,
+                        milestone: SunSuccessBurst.milestoneLevel(for: presentation.streak)
+                    )
 
                     Circle()
                         .fill(AppPalette.success)
@@ -30,7 +33,7 @@ struct VerificationSuccessView: View {
                 .accessibilityHidden(true)
 
                 VStack(spacing: 10) {
-                    Text(SunclubCopy.Success.title)
+                    Text(presentation.title)
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("success.title")

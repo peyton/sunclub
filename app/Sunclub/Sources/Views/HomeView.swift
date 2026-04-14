@@ -9,15 +9,32 @@ struct HomeView: View {
     @State private var now = Date()
     @State private var isExploreExpanded = false
     @State private var isUVExpanded = false
+    @State private var isTodayDetailExpanded = false
     @State private var feedbackTrigger = 0
+    @State private var midnightTimer: Timer?
 
     var body: some View {
         SunLightScreen {
             VStack(spacing: 26) {
                 header
 
-                todayCard
-                dailyPlanCard
+                if appState.currentStreak == 0 && appState.records.isEmpty {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Your first day starts now")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text("Log sunscreen once and your streak begins.")
+                            .font(.system(size: 15))
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(22)
+                    .sunGlassCard(cornerRadius: 22)
+                } else {
+                    todayCard
+                    dailyPlanCard
+                }
 
                 secondaryActionsSection
                 uvBriefingSection
@@ -53,9 +70,13 @@ struct HomeView: View {
         }
         .onAppear {
             refreshHomeOnAppear()
+            scheduleMidnightRefresh()
+        }
+        .onDisappear {
+            midnightTimer?.invalidate()
         }
         .refreshable {
-            refreshHome()
+            await refreshHomeAsync()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else {
@@ -127,6 +148,11 @@ struct HomeView: View {
             Text(presentation.title)
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
+                .contentTransition(.numericText())
+                .animation(
+                    SunMotion.easeInOut(duration: 0.3, reduceMotion: reduceMotion),
+                    value: presentation.title
+                )
                 .accessibilityIdentifier("home.todayStatus")
 
             if let uvHeadline = presentation.uvHeadline,
@@ -136,7 +162,7 @@ struct HomeView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.sun)
 
-                    Text(uvHeadline)
+                    Text(presentation.uvIsEstimated ? "\(uvHeadline) (est.)" : uvHeadline)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("home.uvHeadline")
@@ -148,7 +174,7 @@ struct HomeView: View {
                         .fill(AppPalette.warmGlow.opacity(0.45))
                 )
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(uvHeadline)
+                .accessibilityLabel(presentation.uvIsEstimated ? "\(uvHeadline), estimated" : uvHeadline)
                 .accessibilityIdentifier("home.uvStatus")
             }
 
@@ -165,6 +191,43 @@ struct HomeView: View {
                 }
                 .padding(.top, 4)
                 .accessibilityIdentifier("home.todayMetadata")
+            }
+
+            if presentation.logBadgeText != nil,
+               let record = existingTodayRecord,
+               (record.spfLevel != nil || record.trimmedNotes != nil) {
+                Button {
+                    feedbackTrigger += 1
+                    withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+                        isTodayDetailExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(isTodayDetailExpanded ? "Hide details" : "Show details")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+                        Image(systemName: isTodayDetailExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if isTodayDetailExpanded {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let spf = record.spfLevel {
+                            Text("SPF \(spf)")
+                                .font(AppTypography.metric)
+                                .foregroundStyle(AppPalette.ink)
+                        }
+                        if let notes = record.trimmedNotes {
+                            Text(notes)
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppPalette.softInk)
+                        }
+                    }
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,6 +266,25 @@ struct HomeView: View {
         refreshHomeLiveData()
     }
 
+    private func refreshHomeAsync() async {
+        refreshHome()
+        try? await Task.sleep(for: .milliseconds(400))
+    }
+
+    private func scheduleMidnightRefresh() {
+        midnightTimer?.invalidate()
+        let calendar = Calendar.current
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) else { return }
+        let interval = tomorrow.timeIntervalSinceNow
+        guard interval > 0 else { return }
+        midnightTimer = Timer.scheduledTimer(withTimeInterval: interval + 1, repeats: false) { _ in
+            Task { @MainActor in
+                refreshHomeOnAppear()
+                scheduleMidnightRefresh()
+            }
+        }
+    }
+
     private func refreshHomeLiveData() {
         appState.refreshUVReadingIfNeeded()
         appState.refreshUVForecastIfNeeded()
@@ -216,6 +298,7 @@ struct HomeView: View {
                 Label(logBadgeText, systemImage: "checkmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.success)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.8)))
                     .accessibilityIdentifier("home.todayLogBadge")
             }
 
@@ -232,6 +315,7 @@ struct HomeView: View {
                     .accessibilityIdentifier("home.streakRiskBadge")
             }
         }
+        .animation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion), value: presentation.logBadgeText)
     }
 
     @ViewBuilder
@@ -496,6 +580,13 @@ struct HomeView: View {
                         symbol: "camera.viewfinder",
                         route: .productScanner
                     )
+
+                    homeFeatureButton(
+                        title: "Year in Review",
+                        detail: "Annual summary",
+                        symbol: "chart.bar.fill",
+                        route: .yearInReview
+                    )
                 }
                 .accessibilityIdentifier("home.exploreGrid")
             }
@@ -535,6 +626,11 @@ struct HomeView: View {
                             endPoint: .bottomTrailing
                         )
                     )
+                    .contentTransition(.numericText())
+                    .animation(
+                        SunMotion.easeOut(duration: 0.4, reduceMotion: reduceMotion),
+                        value: appState.currentStreak
+                    )
                     .accessibilityIdentifier("home.streakValue")
 
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -544,10 +640,18 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.dayStreakLabel")
 
                     if appState.longestStreak > 0 {
-                        Text("Best: \(appState.longestStreak)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(AppPalette.softInk)
-                            .accessibilityIdentifier("home.longestStreak")
+                        let isPersonalBest = appState.currentStreak >= appState.longestStreak && appState.currentStreak > 1
+                        HStack(spacing: 4) {
+                            if isPersonalBest {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(AppPalette.sun)
+                            }
+                            Text(isPersonalBest ? "Best ever!" : "Best: \(appState.longestStreak)")
+                                .font(.system(size: 14, weight: isPersonalBest ? .semibold : .medium))
+                                .foregroundStyle(isPersonalBest ? AppPalette.sun : AppPalette.softInk)
+                        }
+                        .accessibilityIdentifier("home.longestStreak")
                     }
                 }
 
@@ -889,6 +993,10 @@ struct HomeView: View {
             }
             appState.sendDirectPoke(to: friendID)
         }
+    }
+
+    private var existingTodayRecord: DailyRecord? {
+        appState.record(for: appState.referenceDate)
     }
 
     private var greeting: String {

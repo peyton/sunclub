@@ -22,6 +22,7 @@ struct HomeTodayCardPresentation: Equatable {
     let streakRiskBadgeText: String?
     let uvHeadline: String?
     let uvSymbolName: String?
+    let uvIsEstimated: Bool
     let metadataRows: [HomeTodayMetadataRow]
 
     var accessibilityValue: String {
@@ -164,11 +165,13 @@ struct VerificationSuccessPresentation: Equatable {
     let streak: Int
     let isPersonalBest: Bool
     let canAddDetails: Bool
+    let title: String
 
-    init(streak: Int, isPersonalBest: Bool = false, canAddDetails: Bool = false) {
+    init(streak: Int, isPersonalBest: Bool = false, canAddDetails: Bool = false, title: String = SunclubCopy.Success.defaultTitle) {
         self.streak = streak
         self.isPersonalBest = isPersonalBest
         self.canAddDetails = canAddDetails
+        self.title = title
     }
 
     var detail: String {
@@ -988,6 +991,7 @@ final class AppState {
                 streakRiskBadgeText: streakRiskBadgeText,
                 uvHeadline: nil,
                 uvSymbolName: nil,
+                uvIsEstimated: false,
                 metadataRows: metadataRows
             )
         }
@@ -1008,6 +1012,7 @@ final class AppState {
             streakRiskBadgeText: streakRiskBadgeText,
             uvHeadline: uvHeadline,
             uvSymbolName: level.symbolName,
+            uvIsEstimated: uvReading?.source == .heuristic,
             metadataRows: metadataRows
         )
     }
@@ -2378,6 +2383,16 @@ final class AppState {
         SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
     }
 
+    var yearInReviewSummary: SunclubSkinHealthReportSummary? {
+        let loggedDays = Set(records.map { calendar.startOfDay(for: $0.startOfDay) })
+        guard loggedDays.count >= 30 else { return nil }
+
+        let now = currentDate()
+        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: now)) ?? now
+        let interval = DateInterval(start: yearStart, end: now)
+        return SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
+    }
+
     func nextDailyPhrase() -> String {
         nextPhrase(
             catalog: PhraseBank.dailyPhrases,
@@ -2464,10 +2479,18 @@ final class AppState {
             spfLevel: spfLevel,
             notes: notes
         )
+        var growthSettings = growthFeatureStore.load()
+        let (successTitle, updatedSuccessState) = PhraseRotation.nextPhrase(
+            from: growthSettings.successPhraseState,
+            catalog: PhraseBank.successPhrases
+        )
+        growthSettings.successPhraseState = updatedSuccessState
+        growthFeatureStore.save(growthSettings)
         verificationSuccessPresentation = VerificationSuccessPresentation(
             streak: currentStreak,
             isPersonalBest: currentStreak > previousLongestStreak,
-            canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil
+            canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil,
+            title: successTitle
         )
     }
 

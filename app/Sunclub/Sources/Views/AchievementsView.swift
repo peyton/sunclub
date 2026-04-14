@@ -376,6 +376,12 @@ private struct AchievementCard: View {
                 accessibilityID: "achievement.progress.\(achievement.id.rawValue)"
             )
 
+            if !achievement.isUnlocked {
+                Text(achievement.id.hint)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+
             if achievement.isUnlocked {
                 Button {
                     onShare()

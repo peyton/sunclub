@@ -10,6 +10,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var scannedSPFLevels: [Int]
     var accountability: SunclubAccountabilitySettings
     var automation: SunclubAutomationPreferences
+    var successPhraseState: Data?
 
     init(
         preferredName: String = "",
@@ -20,7 +21,8 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry(),
         scannedSPFLevels: [Int] = [],
         accountability: SunclubAccountabilitySettings = SunclubAccountabilitySettings(),
-        automation: SunclubAutomationPreferences = SunclubAutomationPreferences()
+        automation: SunclubAutomationPreferences = SunclubAutomationPreferences(),
+        successPhraseState: Data? = nil
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
@@ -31,6 +33,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         self.scannedSPFLevels = Self.normalizedSPFLevels(scannedSPFLevels)
         self.accountability = accountability
         self.automation = automation
+        self.successPhraseState = successPhraseState
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -43,6 +46,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         case scannedSPFLevels
         case accountability
         case automation
+        case successPhraseState
     }
 
     init(from decoder: Decoder) throws {
@@ -64,6 +68,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
             ?? SunclubAccountabilitySettings()
         automation = try container.decodeIfPresent(SunclubAutomationPreferences.self, forKey: .automation)
             ?? SunclubAutomationPreferences()
+        successPhraseState = try container.decodeIfPresent(Data.self, forKey: .successPhraseState)
     }
 
     static func normalizedSPFLevels(_ levels: [Int]) -> [Int] {
@@ -301,6 +306,29 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return "magnifyingglass.circle.fill"
         case .socialSpark:
             return "person.2.fill"
+        }
+    }
+
+    var hint: String {
+        switch self {
+        case .streak7: return "Log 7 consecutive days"
+        case .streak30: return "Log 30 consecutive days"
+        case .streak100: return "Log 100 consecutive days"
+        case .streak365: return "Log every day for a year"
+        case .firstReapply: return "Log a reapply during the day"
+        case .firstBackfill: return "Backfill a missed past day"
+        case .summerSurvivor: return "Log 30 days during summer"
+        case .winterWarrior: return "Log 30 days during winter"
+        case .morningGlow: return "Log before 9 AM five times"
+        case .weekendCanopy: return "Log both Saturday and Sunday four times"
+        case .spfSampler: return "Log 5 different SPF levels"
+        case .noteTaker: return "Add notes to 10 check-ins"
+        case .reapplyRelay: return "Log 3 reapplies in a single day"
+        case .highUVHero: return "Log on 10 high-UV days"
+        case .homeBase: return "Set up leave-home reminders"
+        case .liveSignal: return "Turn on live UV data"
+        case .bottleDetective: return "Scan a sunscreen bottle"
+        case .socialSpark: return "Share a streak or add a friend"
         }
     }
 

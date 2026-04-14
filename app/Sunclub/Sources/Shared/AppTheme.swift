@@ -98,6 +98,25 @@ enum AppPalette {
     static let white = Color.white
 }
 
+enum AppTypography {
+    static let screenTitle = Font.system(size: 26, weight: .bold)
+    static let sectionLabel = Font.system(size: 14, weight: .semibold)
+    static let cardTitle = Font.system(size: 18, weight: .semibold)
+    static let body = Font.system(size: 15)
+    static let bodyMedium = Font.system(size: 15, weight: .medium)
+    static let caption = Font.system(size: 13)
+    static let captionMedium = Font.system(size: 13, weight: .medium)
+    static let metric = Font.system(size: 14, weight: .medium)
+    static let streakNumber = Font.system(size: 64, weight: .heavy)
+    static let pillLabel = Font.system(size: 13, weight: .semibold)
+}
+
+enum AppRadius {
+    static let card: CGFloat = 22
+    static let insetCard: CGFloat = 18
+    static let control: CGFloat = 14
+}
+
 enum SunMotion {
     static func easeInOut(duration: Double, reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeInOut(duration: duration)
@@ -290,6 +309,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .padding(.bottom, 18)
                         .frame(minHeight: proxy.size.height - 120, alignment: .top)
                     }
+                    .scrollDismissesKeyboard(.interactively)
 
                     footer
                         .padding(.horizontal, 24)
@@ -701,24 +721,63 @@ struct SunAssetHero: View {
 }
 
 struct SunSuccessBurst: View {
+    enum MilestoneLevel: Equatable {
+        case standard
+        case minor
+        case major
+        case epic
+
+        var sizeMultiplier: CGFloat {
+            switch self {
+            case .standard: return 1.0
+            case .minor: return 1.08
+            case .major: return 1.14
+            case .epic: return 1.22
+            }
+        }
+
+        var glowOpacity: Double {
+            switch self {
+            case .standard: return 0.20
+            case .minor: return 0.28
+            case .major: return 0.36
+            case .epic: return 0.48
+            }
+        }
+    }
+
+    static func milestoneLevel(for streak: Int) -> MilestoneLevel {
+        switch streak {
+        case 365...: return .epic
+        case 30...: return .major
+        case 7...: return .minor
+        default: return .standard
+        }
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var size: CGFloat = 180
+    var milestone: MilestoneLevel = .standard
     @State private var isAnimating = false
+
+    private var effectiveSize: CGFloat {
+        size * milestone.sizeMultiplier
+    }
 
     var body: some View {
         ZStack {
             SunclubVisualAsset.motifSunRing.image
                 .resizable()
                 .scaledToFit()
-                .frame(width: size, height: size)
-                .opacity(reduceMotion ? 0.52 : (isAnimating ? 0.68 : 0.44))
+                .frame(width: effectiveSize, height: effectiveSize)
+                .opacity(reduceMotion ? (0.52 + milestone.glowOpacity * 0.5) : (isAnimating ? (0.68 + milestone.glowOpacity) : (0.44 + milestone.glowOpacity * 0.5)))
                 .scaleEffect(reduceMotion ? 1 : (isAnimating ? 1.08 : 0.94))
 
             SunclubVisualAsset.motifShieldGlow.image
                 .resizable()
                 .scaledToFit()
-                .frame(width: size * 0.72, height: size * 0.72)
+                .frame(width: effectiveSize * 0.72, height: effectiveSize * 0.72)
         }
         .accessibilityHidden(true)
         .onAppear {
@@ -808,7 +867,7 @@ struct SunclubBadgeMedallion: View {
 }
 
 extension View {
-    func sunGlassCard(cornerRadius: CGFloat = 20, fillOpacity: Double = 0.72) -> some View {
+    func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.72) -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

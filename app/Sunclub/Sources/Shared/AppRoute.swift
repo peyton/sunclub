@@ -21,6 +21,8 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case accountabilityOnboarding
     case skinHealthReport
     case productScanner
+    case yearInReview
+    case valueProps
 
     var id: String { rawValue }
 }
