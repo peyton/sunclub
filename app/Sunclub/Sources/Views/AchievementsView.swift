@@ -53,7 +53,7 @@ struct AchievementsView: View {
                     )
             }
 
-            ForEach(appState.achievements) { achievement in
+            ForEach(sortedAchievements) { achievement in
                 AchievementCard(achievement: achievement) {
                     shareAchievement(achievement)
                 }
@@ -67,7 +67,7 @@ struct AchievementsView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            ForEach(appState.seasonalChallenges) { challenge in
+            ForEach(sortedChallenges) { challenge in
                 ChallengeCard(challenge: challenge) {
                     shareChallenge(challenge)
                 }
@@ -81,26 +81,15 @@ struct AchievementsView: View {
                 BadgeShelfPreview()
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Your badge shelf")
+                    Text(nextAchievement == nil ? "Badge shelf complete" : "Next badge")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
-                    Text("Keep logging to turn quiet silhouettes into full-color medals.")
+                    Text(nextBadgeDetail)
                         .font(.system(size: 14))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-
-            HStack(spacing: 10) {
-                BadgeCountPill(
-                    title: "Unlocked",
-                    value: "\(appState.achievements.filter(\.isUnlocked).count)"
-                )
-                BadgeCountPill(
-                    title: "Total",
-                    value: "\(appState.achievements.count)"
-                )
             }
         }
         .padding(18)
@@ -139,6 +128,79 @@ struct AchievementsView: View {
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.72))
+    }
+
+    private var sortedAchievements: [SunclubAchievement] {
+        appState.achievements.sorted { lhs, rhs in
+            if lhs.isUnlocked != rhs.isUnlocked {
+                return !lhs.isUnlocked
+            }
+
+            if !lhs.isUnlocked, !rhs.isUnlocked {
+                let lhsRemaining = remainingCount(for: lhs)
+                let rhsRemaining = remainingCount(for: rhs)
+                if lhsRemaining != rhsRemaining {
+                    return lhsRemaining < rhsRemaining
+                }
+            }
+
+            if lhs.progress != rhs.progress {
+                return lhs.progress > rhs.progress
+            }
+
+            if lhs.targetValue != rhs.targetValue {
+                return lhs.targetValue < rhs.targetValue
+            }
+
+            return lhs.title < rhs.title
+        }
+    }
+
+    private var sortedChallenges: [SunclubSeasonalChallenge] {
+        appState.seasonalChallenges.sorted { lhs, rhs in
+            if lhs.isComplete != rhs.isComplete {
+                return !lhs.isComplete
+            }
+
+            if !lhs.isComplete, !rhs.isComplete {
+                let lhsRemaining = remainingCount(for: lhs)
+                let rhsRemaining = remainingCount(for: rhs)
+                if lhsRemaining != rhsRemaining {
+                    return lhsRemaining < rhsRemaining
+                }
+            }
+
+            if lhs.progress != rhs.progress {
+                return lhs.progress > rhs.progress
+            }
+
+            if lhs.targetValue != rhs.targetValue {
+                return lhs.targetValue < rhs.targetValue
+            }
+
+            return lhs.title < rhs.title
+        }
+    }
+
+    private var nextAchievement: SunclubAchievement? {
+        sortedAchievements.first { !$0.isUnlocked }
+    }
+
+    private var nextBadgeDetail: String {
+        guard let nextAchievement else {
+            return "Every badge is unlocked. Completed medals stay below for sharing."
+        }
+
+        let remaining = max(nextAchievement.targetValue - nextAchievement.currentValue, 0)
+        return "\(nextAchievement.title): \(remaining) left."
+    }
+
+    private func remainingCount(for achievement: SunclubAchievement) -> Int {
+        max(achievement.targetValue - achievement.currentValue, 0)
+    }
+
+    private func remainingCount(for challenge: SunclubSeasonalChallenge) -> Int {
+        max(challenge.targetValue - challenge.currentValue, 0)
     }
 }
 
@@ -244,26 +306,6 @@ private struct BadgeShelfPreview: View {
         }
         .frame(width: 112, height: 88)
         .accessibilityHidden(true)
-    }
-}
-
-private struct BadgeCountPill: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(value)
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(AppPalette.controlFill.opacity(0.70), in: Capsule())
     }
 }
 

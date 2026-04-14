@@ -245,7 +245,6 @@ final class SunclubWatchSyncCoordinator: NSObject {
         syncStatus = initialSnapshot.isOnboardingComplete ? nil : "Open Sunclub on iPhone to finish setup."
         super.init()
         activate()
-        requestNotificationAuthorizationIfNeeded()
     }
 
     func activate() {
@@ -380,6 +379,8 @@ final class SunclubWatchSyncCoordinator: NSObject {
               fireDate > Date() else {
             return
         }
+
+        requestNotificationAuthorizationIfNeeded()
 
         let content = UNMutableNotificationContent()
         content.title = "Time to reapply"

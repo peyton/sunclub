@@ -131,18 +131,17 @@ struct FriendsView: View {
                     router.goBack()
                 })
 
-                SunAssetHero(
-                    asset: .illustrationFriendsPair,
-                    height: 154,
-                    glowColor: AppPalette.pool
-                )
-
-                statusCard
                 if appState.friends.isEmpty {
+                    SunAssetHero(
+                        asset: .illustrationFriendsPair,
+                        height: 128,
+                        glowColor: AppPalette.pool
+                    )
+
+                    statusCard
                     addFriendsCard
                     inviteCard
                     importCard
-                    friendsListSection
                 } else {
                     friendsListSection
                     compactAddFriendsCard
@@ -150,6 +149,7 @@ struct FriendsView: View {
                         inviteCard
                         importCard
                     }
+                    statusCard
                 }
 
                 Spacer(minLength: 0)
@@ -189,7 +189,7 @@ struct FriendsView: View {
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label("Accountability is optional", systemImage: "person.2.fill")
+                Label("Your sharing", systemImage: "person.2.fill")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
@@ -203,7 +203,7 @@ struct FriendsView: View {
                     .background(Capsule().fill(AppPalette.cardFill.opacity(0.8)))
             }
 
-            Text("Friends see only your display name, logged-today status, streaks, and last update.")
+            Text("Friends see your display name, logged-today status, streaks, and last update.")
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)

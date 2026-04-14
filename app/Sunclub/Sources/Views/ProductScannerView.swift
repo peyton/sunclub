@@ -45,18 +45,18 @@ struct ProductScannerView: View {
                         .foregroundStyle(AppPalette.softInk)
                 }
 
-                if previewImage == nil {
-                    SunAssetHero(
-                        asset: .illustrationScannerLabel,
-                        height: 178,
-                        glowColor: AppPalette.pool
-                    )
-                }
-
                 actionRow
 
                 if cameraAuthorizationState == .denied {
                     cameraAccessDeniedCard
+                }
+
+                if previewImage == nil {
+                    SunAssetHero(
+                        asset: .illustrationScannerLabel,
+                        height: 132,
+                        glowColor: AppPalette.pool
+                    )
                 }
 
                 if let previewImage {
@@ -130,24 +130,35 @@ struct ProductScannerView: View {
     }
 
     private var actionRow: some View {
-        HStack(spacing: 12) {
-            if Self.isCameraSourceAvailable, cameraAuthorizationState != .denied {
-                Button("Use Camera") {
-                    requestCameraAccess()
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .disabled(isScanning)
-                .accessibilityIdentifier("productScanner.useCamera")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                scannerActions
             }
 
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                Text("Pick Photo")
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 10) {
+                scannerActions
             }
-            .buttonStyle(SunSecondaryButtonStyle())
-            .disabled(isScanning)
-            .accessibilityIdentifier("productScanner.pickPhoto")
         }
+    }
+
+    @ViewBuilder
+    private var scannerActions: some View {
+        if Self.isCameraSourceAvailable, cameraAuthorizationState != .denied {
+            Button("Use Camera") {
+                requestCameraAccess()
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .disabled(isScanning)
+            .accessibilityIdentifier("productScanner.useCamera")
+        }
+
+        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+            Text("Pick Photo")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(SunSecondaryButtonStyle())
+        .disabled(isScanning)
+        .accessibilityIdentifier("productScanner.pickPhoto")
     }
 
     private static var isCameraSourceAvailable: Bool {
@@ -230,14 +241,6 @@ struct ProductScannerView: View {
                     .foregroundStyle(AppPalette.softInk)
             }
 
-            if !result.recognizedText.isEmpty {
-                Text(result.recognizedText.joined(separator: "\n"))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("productScanner.recognizedText")
-            }
-
             Button(result.spfLevel == nil ? "No SPF Found" : "Use in Today's Log") {
                 feedbackTrigger += 1
                 scanResultPendingUse = result
@@ -245,6 +248,19 @@ struct ProductScannerView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .disabled(result.spfLevel == nil)
             .accessibilityIdentifier("productScanner.useResult")
+
+            if !result.recognizedText.isEmpty {
+                Text("Read from label")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                Text(result.recognizedText.joined(separator: "\n"))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("productScanner.recognizedText")
+            }
+
         }
         .padding(18)
         .sunGlassCard(cornerRadius: 20)

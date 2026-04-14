@@ -142,7 +142,7 @@ struct SettingsView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
 
-                        Text(section.detail)
+                        Text(sectionDetail(for: section))
                             .font(.system(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
@@ -403,15 +403,15 @@ struct SettingsView: View {
                         SunStatusCard(
                             title: presentation.title,
                             detail: presentation.detail,
-                        tint: Color.red.opacity(0.72),
-                        symbol: "bell.badge.fill"
-                    )
+                            tint: Color.red.opacity(0.72),
+                            symbol: "bell.badge.fill"
+                        )
 
-                    Button(presentation.actionTitle) {
-                        handleNotificationHealthAction(for: presentation)
-                    }
-                    .buttonStyle(SunSecondaryButtonStyle())
-                    .accessibilityIdentifier("settings.notificationHealth.action")
+                        Button(presentation.actionTitle) {
+                            handleNotificationHealthAction(for: presentation)
+                        }
+                        .buttonStyle(SunSecondaryButtonStyle())
+                        .accessibilityIdentifier("settings.notificationHealth.action")
                     }
                     .padding(18)
                     .background(cardBackground)
@@ -521,6 +521,7 @@ struct SettingsView: View {
                         .foregroundStyle(AppPalette.ink)
                 }
                 .tint(AppPalette.sun)
+                .accessibilityIdentifier("settings.healthKitToggle")
                 .onChange(of: healthKitEnabled) { _, newValue in
                     appState.updateHealthKitEnabled(newValue)
                 }
@@ -798,6 +799,29 @@ struct SettingsView: View {
             expandedSections.remove(section)
         } else {
             expandedSections.insert(section)
+        }
+    }
+
+    private func sectionDetail(for section: SettingsSection) -> String {
+        switch section {
+        case .reminders:
+            return reminderHeadline
+        case .progress:
+            return reapplyEnabled
+                ? "Reapply reminder every \(formattedAccessibleInterval(reapplyInterval))."
+                : "Reapply reminders are off."
+        case .data:
+            return appState.cloudSyncStatusPresentation.title
+        case .automation:
+            let writes = appState.automationPreferences.shortcutWritesEnabled ? "writes on" : "writes off"
+            let links = appState.automationPreferences.urlOpenActionsEnabled ? "links on" : "links off"
+            return "Shortcuts \(writes), URL \(links)."
+        case .advanced:
+            let uv = usesLiveUV ? "Live UV on" : "Live UV off"
+            let health = healthKitEnabled ? "Health sync on" : "Health sync off"
+            return "\(uv). \(health)."
+        case .help:
+            return section.detail
         }
     }
 

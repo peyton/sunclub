@@ -17,10 +17,10 @@ struct WeeklyReportView: View {
 
                 weeklyPostcard
 
-                streakContextRow
-
                 weeklyChart
                     .frame(maxWidth: .infinity, alignment: .center)
+
+                streakContextRow
 
                 usageInsightsSection
 
@@ -49,17 +49,17 @@ struct WeeklyReportView: View {
 
     private var streakContextRow: some View {
         HStack(spacing: 12) {
-            WeeklyMetricPill(
-                value: "\(appState.currentStreak)",
-                label: appState.currentStreak == 1 ? "Current day" : "Current days",
-                accessibilityIdentifier: "weekly.currentStreak"
-            )
+                WeeklyMetricPill(
+                    value: "\(appState.currentStreak)",
+                    label: "Current streak",
+                    accessibilityIdentifier: "weekly.currentStreak"
+                )
 
-            WeeklyMetricPill(
-                value: "\(appState.longestStreak)",
-                label: appState.longestStreak == 1 ? "Best day" : "Best days",
-                accessibilityIdentifier: "weekly.bestStreak"
-            )
+                WeeklyMetricPill(
+                    value: "\(appState.longestStreak)",
+                    label: "Best streak",
+                    accessibilityIdentifier: "weekly.bestStreak"
+                )
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Current streak \(appState.currentStreak) days, best streak \(appState.longestStreak) days")
@@ -102,6 +102,10 @@ struct WeeklyReportView: View {
                             Text(entry.date.formatted(.dateTime.day()))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(AppPalette.softInk)
+
+                            Text(entry.applied ? "Logged" : "Open")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(entry.applied ? AppPalette.success : AppPalette.softInk)
                         }
                     }
                     .buttonStyle(.plain)
@@ -112,7 +116,7 @@ struct WeeklyReportView: View {
                 }
             }
 
-            Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Not logged: \(report.missedDays.joined(separator: ", "))")
+            Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Backfill missing days")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : AppPalette.ink)
                 .multilineTextAlignment(.leading)
@@ -176,13 +180,6 @@ struct WeeklyReportView: View {
                 Text("Last 7 days")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
-
-                if appState.longestStreak > 0 {
-                    Text("Longest streak: \(appState.longestStreak) days")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                        .accessibilityIdentifier("weekly.longestStreak")
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

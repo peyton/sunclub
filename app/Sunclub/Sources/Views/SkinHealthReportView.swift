@@ -23,17 +23,17 @@ struct SkinHealthReportView: View {
                     router.goBack()
                 })
 
-                SunAssetHero(
-                    asset: .illustrationSkinReport,
-                    height: 156,
-                    glowColor: AppPalette.aloe
-                )
-
                 introCard
                 dateRangeCard
                 metricsCard
                 monthlyConsistencyCard
                 spfDistributionCard
+
+                SunAssetHero(
+                    asset: .illustrationSkinReport,
+                    height: 104,
+                    glowColor: AppPalette.aloe
+                )
 
                 Spacer(minLength: 0)
             }
@@ -49,11 +49,11 @@ struct SkinHealthReportView: View {
 
     private var introCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Your year in sun protection")
+            Text("Report preview")
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
-            Text("Generate a dermatologist-friendly PDF from any date range. The report stays on-device and summarizes streaks, coverage, SPF mix, and how often you were protected on higher-UV days.")
+            Text("Choose a date range, review the summary, then export the on-device PDF.")
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }
@@ -63,6 +63,10 @@ struct SkinHealthReportView: View {
 
     private var dateRangeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("Date range")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
             DatePicker("Start", selection: $startDate, displayedComponents: .date)
             DatePicker("End", selection: $endDate, displayedComponents: .date)
         }
@@ -76,9 +80,9 @@ struct SkinHealthReportView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            reportMetricRow(label: "Protected days", value: "\(summary.totalProtectedDays)")
+            reportMetricRow(label: "Protected days in range", value: "\(summary.totalProtectedDays)")
             reportMetricRow(label: "Longest streak", value: "\(summary.longestStreak)")
-            reportMetricRow(label: "Average streak", value: String(format: "%.1f", summary.averageStreakLength))
+            reportMetricRow(label: "Average streak length", value: String(format: "%.1f", summary.averageStreakLength))
             reportMetricRow(label: "High-UV protected days", value: "\(summary.highUVProtectedDays)")
         }
         .padding(18)
