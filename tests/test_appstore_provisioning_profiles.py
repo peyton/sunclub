@@ -39,10 +39,10 @@ class FakeProfilesClient:
             identifier = query["filter[identifier]"]
             return [bundle_id(f"bundle-{identifier}", str(identifier))]
         if path == "/bundleIds/bundle-app.peyton.sunclub/profiles":
-            assert query["filter[profileType]"] == APP_STORE_PROFILE_TYPE
+            assert "filter[profileType]" not in query
             return [existing_profile("profile-existing")]
         if path.startswith("/bundleIds/") and path.endswith("/profiles"):
-            assert query["filter[profileType]"] == APP_STORE_PROFILE_TYPE
+            assert "filter[profileType]" not in query
             return []
         if path == "/certificates":
             certificate_type = query["filter[certificateType]"]

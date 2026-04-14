@@ -191,14 +191,21 @@ def find_active_profile(
     profiles = client.get_collection(
         f"/bundleIds/{bundle_id}/profiles",
         {
-            "filter[profileType]": profile_type,
             "limit": 200,
         },
     )
-    active_profiles = [profile for profile in profiles if profile_is_active(profile)]
+    active_profiles = [
+        profile
+        for profile in profiles
+        if profile_matches_type(profile, profile_type) and profile_is_active(profile)
+    ]
     if not active_profiles:
         return None
     return max(active_profiles, key=profile_expiration)
+
+
+def profile_matches_type(profile: JsonObject, profile_type: str) -> bool:
+    return profile_attributes(profile).get("profileType") == profile_type
 
 
 def find_distribution_certificate(client: ProfilesClient) -> JsonObject:
