@@ -14,7 +14,10 @@ struct VerificationSuccessView: View {
         SunLightScreen {
             VStack(spacing: 28) {
                 ZStack(alignment: .bottomTrailing) {
-                    SunSuccessBurst(size: 186)
+                    SunSuccessBurst(
+                        size: 186,
+                        milestone: SunSuccessBurst.milestoneLevel(for: presentation.streak)
+                    )
 
                     Circle()
                         .fill(AppPalette.success)

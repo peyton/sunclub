@@ -701,24 +701,63 @@ struct SunAssetHero: View {
 }
 
 struct SunSuccessBurst: View {
+    enum MilestoneLevel: Equatable {
+        case standard
+        case minor
+        case major
+        case epic
+
+        var sizeMultiplier: CGFloat {
+            switch self {
+            case .standard: return 1.0
+            case .minor: return 1.08
+            case .major: return 1.14
+            case .epic: return 1.22
+            }
+        }
+
+        var glowOpacity: Double {
+            switch self {
+            case .standard: return 0.20
+            case .minor: return 0.28
+            case .major: return 0.36
+            case .epic: return 0.48
+            }
+        }
+    }
+
+    static func milestoneLevel(for streak: Int) -> MilestoneLevel {
+        switch streak {
+        case 365...: return .epic
+        case 30...: return .major
+        case 7...: return .minor
+        default: return .standard
+        }
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var size: CGFloat = 180
+    var milestone: MilestoneLevel = .standard
     @State private var isAnimating = false
+
+    private var effectiveSize: CGFloat {
+        size * milestone.sizeMultiplier
+    }
 
     var body: some View {
         ZStack {
             SunclubVisualAsset.motifSunRing.image
                 .resizable()
                 .scaledToFit()
-                .frame(width: size, height: size)
-                .opacity(reduceMotion ? 0.52 : (isAnimating ? 0.68 : 0.44))
+                .frame(width: effectiveSize, height: effectiveSize)
+                .opacity(reduceMotion ? (0.52 + milestone.glowOpacity * 0.5) : (isAnimating ? (0.68 + milestone.glowOpacity) : (0.44 + milestone.glowOpacity * 0.5)))
                 .scaleEffect(reduceMotion ? 1 : (isAnimating ? 1.08 : 0.94))
 
             SunclubVisualAsset.motifShieldGlow.image
                 .resizable()
                 .scaledToFit()
-                .frame(width: size * 0.72, height: size * 0.72)
+                .frame(width: effectiveSize * 0.72, height: effectiveSize * 0.72)
         }
         .accessibilityHidden(true)
         .onAppear {
