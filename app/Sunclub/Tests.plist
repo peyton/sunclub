@@ -21,6 +21,6 @@
 	<key>CFBundleVersion</key>
 	<string>$(SUNCLUB_BUILD_NUMBER)</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright ©. All rights reserved.</string>
+	<string>Copyright © 2026 Peyton Randolph. All rights reserved.</string>
 </dict>
 </plist>
