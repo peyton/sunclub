@@ -15,6 +15,14 @@ struct SunclubProductScanResult: Equatable, Sendable {
 
         return "No SPF detected"
     }
+
+    var confirmationDetail: String {
+        if spfLevel != nil {
+            return "Check this against the label before saving it to today's log."
+        }
+
+        return "No clear SPF was found. You can scan again or enter SPF manually."
+    }
 }
 
 enum SunclubProductScannerService {

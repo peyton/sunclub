@@ -54,6 +54,39 @@ final class ImprovementTests: XCTestCase {
         XCTAssertNil(record.lastReappliedAt)
     }
 
+    func testProductionSourcesCreateSwiftDataContainersOnlyThroughFactory() throws {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let sunclubRoot = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourcesRoot = sunclubRoot.appendingPathComponent("Sources", isDirectory: true)
+        let allowedFactoryFile = sourcesRoot
+            .appendingPathComponent("Models/SunclubSchema.swift")
+            .standardizedFileURL
+            .path
+        let enumerator = try XCTUnwrap(
+            FileManager.default.enumerator(
+                at: sourcesRoot,
+                includingPropertiesForKeys: [.isRegularFileKey]
+            )
+        )
+        var offenders: [String] = []
+
+        for case let fileURL as URL in enumerator where fileURL.pathExtension == "swift" {
+            let standardizedPath = fileURL.standardizedFileURL.path
+            guard standardizedPath != allowedFactoryFile else {
+                continue
+            }
+
+            let contents = try String(contentsOf: fileURL, encoding: .utf8)
+            if contents.contains("ModelContainer(") {
+                offenders.append(fileURL.path.replacingOccurrences(of: "\(sunclubRoot.path)/", with: ""))
+            }
+        }
+
+        XCTAssertEqual(offenders, [])
+    }
+
     func testMigrationV3ToV4PreservesData() throws {
         let storeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -206,6 +239,22 @@ final class ImprovementTests: XCTestCase {
             let result = SunclubProductScannerService.analyze(recognizedText: [testCase.line])
             XCTAssertEqual(result.expirationText, testCase.expiration, "Failed to parse \(testCase.line)")
         }
+    }
+
+    func testProductScannerResultAsksUserToConfirmDetectedSPF() {
+        let result = SunclubProductScanResult(
+            spfLevel: 50,
+            expirationText: nil,
+            recognizedText: ["SPF 50"]
+        )
+        let noResult = SunclubProductScanResult(
+            spfLevel: nil,
+            expirationText: nil,
+            recognizedText: ["WATER RESISTANT"]
+        )
+
+        XCTAssertTrue(result.confirmationDetail.contains("Check this against the label"))
+        XCTAssertTrue(noResult.confirmationDetail.contains("enter SPF manually"))
     }
 
     func testProductScannerAnalyzerNormalizesAndCapsRecognizedText() {

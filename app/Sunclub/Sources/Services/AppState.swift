@@ -43,6 +43,54 @@ struct HomeRecoveryAction: Equatable, Identifiable {
     var id: Kind { kind }
 }
 
+enum HomeDailyPlanAction: String, Equatable {
+    case logToday
+    case backfillYesterday
+    case logReapply
+    case addDetails
+    case viewProgress
+    case reviewRecovery
+    case repairReminders
+    case openSettings
+}
+
+enum HomeDailyPlanTone: Equatable {
+    case calm
+    case action
+    case warning
+    case complete
+}
+
+struct HomeDailyPlanFact: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let value: String
+    let symbolName: String
+
+    var accessibilityLabel: String {
+        "\(title): \(value)"
+    }
+}
+
+struct HomeDailyPlanPresentation: Equatable {
+    let title: String
+    let detail: String
+    let actionTitle: String
+    let action: HomeDailyPlanAction
+    let symbolName: String
+    let tone: HomeDailyPlanTone
+    let facts: [HomeDailyPlanFact]
+
+    var accessibilityValue: String {
+        ([title, detail] + facts.map(\.accessibilityLabel)).joined(separator: ". ")
+    }
+}
+
+struct DailyReminderPreview: Equatable {
+    let fireDate: Date
+    let summary: String
+}
+
 struct ReapplyReminderPlan: Equatable {
     let baseIntervalMinutes: Int
     let intervalMinutes: Int
@@ -852,6 +900,23 @@ final class AppState {
         try? historyService.conflict(for: day)
     }
 
+    func conflictChangedFieldNames(for conflict: SunclubConflictItem) -> [String] {
+        let batchID = conflict.mergedBatchID
+        let recordPredicate = #Predicate<DailyRecordRevision> { revision in
+            revision.batchID == batchID
+        }
+        let settingsPredicate = #Predicate<SettingsRevision> { revision in
+            revision.batchID == batchID
+        }
+        let recordFields = (try? modelContext.fetch(FetchDescriptor<DailyRecordRevision>(predicate: recordPredicate)))?
+            .flatMap(\.changedFields) ?? []
+        let settingsFields = (try? modelContext.fetch(FetchDescriptor<SettingsRevision>(predicate: settingsPredicate)))?
+            .flatMap(\.changedFields) ?? []
+        let uniqueTitles = Set((recordFields + settingsFields).map(\.displayTitle))
+
+        return uniqueTitles.sorted()
+    }
+
     var reminderDate: Date {
         reminderDate(for: ReminderPlanner.scheduleKind(for: currentDate(), calendar: calendar))
     }
@@ -865,6 +930,41 @@ final class AppState {
             second: 0,
             of: today
         ) ?? today
+    }
+
+    var nextDailyReminderPreview: DailyReminderPreview? {
+        nextDailyReminderPreview(now: currentDate())
+    }
+
+    private func nextDailyReminderPreview(now: Date) -> DailyReminderPreview? {
+        let reminderSettings = settings.smartReminderSettings
+        let timeZone = reminderSettings.notificationTimeZone(currentTimeZone: calendar.timeZone)
+        var scheduleCalendar = calendar
+        scheduleCalendar.timeZone = timeZone
+        let today = scheduleCalendar.startOfDay(for: now)
+
+        for dayOffset in 0..<14 {
+            guard let day = scheduleCalendar.date(byAdding: .day, value: dayOffset, to: today) else {
+                continue
+            }
+
+            let kind = ReminderPlanner.scheduleKind(for: day, calendar: scheduleCalendar)
+            let time = reminderSettings.time(for: kind)
+            guard let fireDate = ReminderPlanner.scheduledDate(
+                for: day,
+                time: time,
+                timeZone: timeZone,
+                calendar: scheduleCalendar
+            ),
+                fireDate > now else {
+                continue
+            }
+
+            let summary = "Next reminder: \(fireDate.formatted(.dateTime.weekday(.wide).hour().minute()))."
+            return DailyReminderPreview(fireDate: fireDate, summary: summary)
+        }
+
+        return nil
     }
 
     var todayCardPresentation: HomeTodayCardPresentation {
@@ -912,6 +1012,257 @@ final class AppState {
         )
     }
 
+    var homeDailyPlanPresentation: HomeDailyPlanPresentation {
+        let now = currentDate()
+        let todayRecord = record(for: now)
+        let facts = dailyPlanFacts(now: now, todayRecord: todayRecord)
+
+        guard let todayRecord else {
+            let activeStreak = CalendarAnalytics.currentStreak(
+                records: recordedDays,
+                now: now,
+                calendar: calendar
+            )
+            let hour = calendar.component(.hour, from: now)
+            let title: String
+            let detail: String
+
+            if hour >= 18, activeStreak > 0 {
+                title = "Log before midnight"
+                detail = "Today is still open. One quick log keeps your \(activeStreak)-day streak intact."
+            } else if reapplyReminderPlan.isElevated {
+                title = "Log before outdoor time"
+                detail = "UV is elevated today. Save the first log now, then reapply sooner if you stay outside."
+            } else if uvReading?.level == .low {
+                title = "Keep the routine steady"
+                detail = "UV is low, but logging now keeps the habit simple and consistent."
+            } else {
+                title = "Log sunscreen today"
+                detail = "One quick check-in is enough to keep the day on track."
+            }
+
+            return HomeDailyPlanPresentation(
+                title: title,
+                detail: detail,
+                actionTitle: "Log Today",
+                action: .logToday,
+                symbolName: "sun.max.fill",
+                tone: .action,
+                facts: facts
+            )
+        }
+
+        if appStateNeedsRecoveryReview {
+            return HomeDailyPlanPresentation(
+                title: syncRecoveryTitle,
+                detail: syncRecoveryDetail,
+                actionTitle: "Review Changes",
+                action: .reviewRecovery,
+                symbolName: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
+                tone: .warning,
+                facts: facts
+            )
+        }
+
+        if let notificationHealthPresentation {
+            let action: HomeDailyPlanAction = notificationHealthPresentation.state == .stale ? .repairReminders : .openSettings
+            return HomeDailyPlanPresentation(
+                title: notificationHealthPresentation.title,
+                detail: "\(notificationHealthPresentation.detail) Manual logging still works.",
+                actionTitle: notificationHealthPresentation.actionTitle,
+                action: action,
+                symbolName: "bell.badge.fill",
+                tone: .warning,
+                facts: facts
+            )
+        }
+
+        if let backfillAction = homeRecoveryActions.first(where: { $0.kind == .backfillYesterday }) {
+            return HomeDailyPlanPresentation(
+                title: backfillAction.title,
+                detail: backfillAction.detail,
+                actionTitle: backfillAction.buttonTitle,
+                action: .backfillYesterday,
+                symbolName: "calendar.badge.exclamationmark",
+                tone: .warning,
+                facts: facts
+            )
+        }
+
+        if settings.reapplyReminderEnabled, reapplyReminderPlan.shouldScheduleNotification {
+            let title = todayRecord.reapplyCount > 0 ? "Reapply again if you're outside" : "Plan the next reapply"
+            let detail: String
+            if let fireDate = reapplyReminderPlan.fireDate {
+                detail = "Sunclub can remind you around \(fireDate.formatted(date: .omitted, time: .shortened)). Log a reapply whenever you put more on."
+            } else {
+                detail = "Log a reapply whenever you put more on so today's history stays accurate."
+            }
+
+            return HomeDailyPlanPresentation(
+                title: title,
+                detail: detail,
+                actionTitle: todayRecord.reapplyCount > 0 ? "Log Another Reapply" : "Log Reapply",
+                action: .logReapply,
+                symbolName: "timer",
+                tone: .action,
+                facts: facts
+            )
+        }
+
+        if todayRecord.spfLevel == nil, todayRecord.trimmedNotes == nil {
+            return HomeDailyPlanPresentation(
+                title: "Add details if useful",
+                detail: "Today's streak is saved. Add SPF or a note only if it helps future you understand the day.",
+                actionTitle: "Add SPF or Note",
+                action: .addDetails,
+                symbolName: "note.text",
+                tone: .calm,
+                facts: facts
+            )
+        }
+
+        if !settings.reapplyReminderEnabled {
+            return HomeDailyPlanPresentation(
+                title: "You're set for today",
+                detail: "Today's log is saved. Reapply reminders are off, so Sunclub will stay quiet unless you open it.",
+                actionTitle: "View Progress",
+                action: .viewProgress,
+                symbolName: "checkmark.circle.fill",
+                tone: .complete,
+                facts: facts
+            )
+        }
+
+        return HomeDailyPlanPresentation(
+            title: "You're set for today",
+            detail: "Today's log is saved. Check your week if you want a quick progress read.",
+            actionTitle: "View Progress",
+            action: .viewProgress,
+            symbolName: "checkmark.circle.fill",
+            tone: .complete,
+            facts: facts
+        )
+    }
+
+    private var appStateNeedsRecoveryReview: Bool {
+        pendingImportedBatchCount > 0 || !conflicts.isEmpty
+    }
+
+    var syncRecoveryTitle: String {
+        if !conflicts.isEmpty {
+            return "Review changes"
+        }
+
+        return "Saved only on this phone"
+    }
+
+    var syncRecoveryDetail: String {
+        var parts: [String] = []
+
+        if pendingImportedBatchCount > 0 {
+            parts.append(SunclubCopy.Sync.readyToSendToICloud(pendingImportedBatchCount))
+        }
+
+        if !conflicts.isEmpty {
+            parts.append(SunclubCopy.Sync.mergedChangesNeedReview(conflicts.count))
+        }
+
+        return parts.joined(separator: " ")
+    }
+
+    private func dailyPlanFacts(now: Date, todayRecord: DailyRecord?) -> [HomeDailyPlanFact] {
+        var facts = [
+            todayDailyPlanFact(now: now, record: todayRecord),
+            streakDailyPlanFact(now: now)
+        ]
+
+        if let uvFact = uvDailyPlanFact() {
+            facts.append(uvFact)
+        }
+
+        if let detailsFact = detailsDailyPlanFact(for: todayRecord) {
+            facts.append(detailsFact)
+        }
+
+        return Array(facts.prefix(4))
+    }
+
+    private func todayDailyPlanFact(now: Date, record: DailyRecord?) -> HomeDailyPlanFact {
+        if let record {
+            return HomeDailyPlanFact(
+                id: "today",
+                title: "Today",
+                value: "Logged \(record.verifiedAt.formatted(date: .omitted, time: .shortened))",
+                symbolName: "checkmark.circle.fill"
+            )
+        }
+
+        return HomeDailyPlanFact(
+            id: "reminder",
+            title: "Reminder",
+            value: nextReminderSummary(now: now),
+            symbolName: "bell.fill"
+        )
+    }
+
+    private func streakDailyPlanFact(now: Date) -> HomeDailyPlanFact {
+        let streak = CalendarAnalytics.currentStreak(records: recordedDays, now: now, calendar: calendar)
+        return HomeDailyPlanFact(
+            id: "streak",
+            title: "Streak",
+            value: streak == 1 ? "1 day" : "\(streak) days",
+            symbolName: "flame.fill"
+        )
+    }
+
+    private func uvDailyPlanFact() -> HomeDailyPlanFact? {
+        if let uvForecast, let peakHour = uvForecast.peakHour {
+            return HomeDailyPlanFact(
+                id: "uv",
+                title: "Peak UV",
+                value: "\(peakHour.index) at \(peakHour.date.formatted(date: .omitted, time: .shortened))",
+                symbolName: peakHour.level.symbolName
+            )
+        }
+
+        guard let uvReading else {
+            return nil
+        }
+
+        return HomeDailyPlanFact(
+            id: "uv",
+            title: "UV Now",
+            value: "\(uvReading.index), \(uvReading.level.displayName)",
+            symbolName: uvReading.level.symbolName
+        )
+    }
+
+    private func detailsDailyPlanFact(for record: DailyRecord?) -> HomeDailyPlanFact? {
+        guard let record, record.spfLevel != nil || record.trimmedNotes != nil else {
+            return nil
+        }
+
+        return HomeDailyPlanFact(
+            id: "details",
+            title: "Details",
+            value: dailyPlanDetailsValue(for: record),
+            symbolName: "note.text"
+        )
+    }
+
+    private func dailyPlanDetailsValue(for record: DailyRecord) -> String {
+        switch (record.spfLevel, record.trimmedNotes) {
+        case let (.some(spfLevel), .some(_)):
+            return "SPF \(spfLevel), note saved"
+        case let (.some(spfLevel), .none):
+            return "SPF \(spfLevel)"
+        case (.none, .some(_)):
+            return "Note saved"
+        case (.none, .none):
+            return "Optional"
+        }
+    }
+
     private func todayCardMetadataRows(now: Date, todayRecord: DailyRecord?) -> [HomeTodayMetadataRow] {
         var rows: [HomeTodayMetadataRow] = []
 
@@ -919,7 +1270,7 @@ final class AppState {
             rows.append(
                 HomeTodayMetadataRow(
                     id: "logged",
-                    title: "Logged",
+                    title: "Last Saved",
                     value: todayRecord.verifiedAt.formatted(date: .omitted, time: .shortened),
                     symbolName: "checkmark.circle.fill"
                 )
@@ -1123,9 +1474,9 @@ final class AppState {
         if todayRecord.reapplyCount > 0 {
             let detail: String
             if let lastReappliedAt = todayRecord.lastReappliedAt {
-                detail = "Checked in \(todayRecord.reapplyCount) \(todayRecord.reapplyCount == 1 ? "time" : "times") today. Last one at \(lastReappliedAt.formatted(date: .omitted, time: .shortened))."
+                detail = "Checked in \(todayRecord.reapplyCount) \(todayRecord.reapplyCount == 1 ? "time" : "times") today. Last one at \(lastReappliedAt.formatted(date: .omitted, time: .shortened)). If there is enough daylight left, Sunclub will set up the next reminder."
             } else {
-                detail = "Checked in \(todayRecord.reapplyCount) \(todayRecord.reapplyCount == 1 ? "time" : "times") today."
+                detail = "Checked in \(todayRecord.reapplyCount) \(todayRecord.reapplyCount == 1 ? "time" : "times") today. If there is enough daylight left, Sunclub will set up the next reminder."
             }
 
             return ReapplyCheckInPresentation(
@@ -1137,7 +1488,7 @@ final class AppState {
 
         return ReapplyCheckInPresentation(
             title: "Reapply",
-            detail: "Use this whenever you reapply so today's reminders stay in step.",
+            detail: "Use this whenever you reapply. If there is enough daylight left, Sunclub will set up the next interval reminder.",
             actionTitle: "Log Reapply"
         )
     }
@@ -1153,6 +1504,13 @@ final class AppState {
 
     var notificationHealthPresentation: NotificationHealthPresentation? {
         NotificationHealthEvaluator.presentation(
+            from: notificationHealthSnapshot,
+            onboardingComplete: settings.hasCompletedOnboarding
+        )
+    }
+
+    var notificationHealthStatusPresentation: NotificationHealthStatusPresentation? {
+        NotificationHealthEvaluator.statusPresentation(
             from: notificationHealthSnapshot,
             onboardingComplete: settings.hasCompletedOnboarding
         )
@@ -2059,7 +2417,7 @@ final class AppState {
             RecordUpsertRequest(
                 day: now,
                 verifiedAt: now,
-                verificationValues: (method, verificationDuration, spfLevel, notes),
+                verificationValues: (method, verificationDuration, SunManualLogInput.normalizedSPF(spfLevel), notes),
                 replaceOptionalFields: false,
                 preserveExistingDuration: false,
                 kind: .manualLog,
@@ -2084,7 +2442,7 @@ final class AppState {
             RecordUpsertRequest(
                 day: day,
                 verifiedAt: timestamp,
-                verificationValues: (.manual, nil, spfLevel, notes),
+                verificationValues: (.manual, nil, SunManualLogInput.normalizedSPF(spfLevel), notes),
                 replaceOptionalFields: true,
                 preserveExistingDuration: true,
                 kind: kind,
@@ -2213,7 +2571,11 @@ final class AppState {
         finishDurableChange(batch, reschedulesReminders: false)
 
         if calendar.isDate(targetDay, inSameDayAs: currentDate()) {
-            cancelReapplyRemindersIfNeeded()
+            if settings.reapplyReminderEnabled {
+                scheduleReapplyReminder()
+            } else {
+                cancelReapplyRemindersIfNeeded()
+            }
         }
     }
 
@@ -2458,6 +2820,7 @@ final class AppState {
             summary: request.summary,
             changedFields: [.verifiedAt, .methodRawValue, .verificationDuration, .spfLevel, .notes]
         ) { existingSnapshot in
+            let normalizedSPF = SunManualLogInput.normalizedSPF(request.verificationValues.spfLevel)
             let normalizedNotes = Self.normalizedNotes(request.verificationValues.notes)
             if var snapshot = existingSnapshot {
                 snapshot.verifiedAt = request.verifiedAt
@@ -2467,10 +2830,10 @@ final class AppState {
                     : request.verificationValues.duration
 
                 if request.replaceOptionalFields {
-                    snapshot.spfLevel = request.verificationValues.spfLevel
+                    snapshot.spfLevel = normalizedSPF
                     snapshot.notes = normalizedNotes
                 } else {
-                    if let spfLevel = request.verificationValues.spfLevel {
+                    if let spfLevel = normalizedSPF {
                         snapshot.spfLevel = spfLevel
                     }
                     if let normalizedNotes {
@@ -2485,7 +2848,7 @@ final class AppState {
                 verifiedAt: request.verifiedAt,
                 methodRawValue: request.verificationValues.method.rawValue,
                 verificationDuration: request.verificationValues.duration,
-                spfLevel: request.verificationValues.spfLevel,
+                spfLevel: normalizedSPF,
                 notes: normalizedNotes,
                 reapplyCount: 0,
                 lastReappliedAt: nil
@@ -2706,9 +3069,7 @@ final class AppState {
     }
 
     private static func normalizedNotes(_ notes: String?) -> String? {
-        guard let notes else { return nil }
-        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        SunManualLogInput.normalizedNotes(notes)
     }
 
     private func finalizeImportedBackup(importedBatchCount: Int) {

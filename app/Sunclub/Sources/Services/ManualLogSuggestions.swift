@@ -84,14 +84,15 @@ enum ManualLogSuggestionEngine {
             ManualLogReuseSuggestion(spfLevel: $0.spfLevel, note: $0.trimmedNotes)
         }
 
-        let excludedNotes = Set([sameAsLastTime?.note].compactMap { $0 })
+        let excludedNotes = Set([sameAsLastTime?.note].compactMap(SunManualLogInput.noteDedupeKey))
         var noteSnippets: [String] = []
         var seenNotes = Set<String>()
 
         for record in sortedRecords {
             guard let note = record.trimmedNotes,
-                  !excludedNotes.contains(note),
-                  seenNotes.insert(note).inserted else {
+                  let noteKey = SunManualLogInput.noteDedupeKey(note),
+                  !excludedNotes.contains(noteKey),
+                  seenNotes.insert(noteKey).inserted else {
                 continue
             }
 

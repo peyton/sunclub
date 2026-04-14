@@ -20,6 +20,7 @@ final class AutomationTests: XCTestCase {
             .saveLog(day: day, time: ReminderTime(hour: 7, minute: 45), spfLevel: 30, notes: "Before run"),
             .reapply,
             .status,
+            .timeSinceLastApplication,
             .setReminder(kind: .weekday, time: ReminderTime(hour: 8, minute: 30)),
             .setReminder(kind: .weekend, time: ReminderTime(hour: 10, minute: 15)),
             .setReapply(enabled: true, intervalMinutes: 120),
@@ -58,7 +59,9 @@ final class AutomationTests: XCTestCase {
             weeklyApplied: 5,
             recordDate: "2026-04-14",
             friend: "Maya",
-            route: "automation"
+            route: "automation",
+            lastAppliedAt: "2026-04-14T15:30:00.000Z",
+            minutesSinceLastApplication: 42
         )
 
         let detailedSuccess = SunclubXCallbackResponse.successURL(
@@ -76,6 +79,8 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(queryValue("recordDate", in: detailedSuccess), "2026-04-14")
         XCTAssertEqual(queryValue("friend", in: detailedSuccess), "Maya")
         XCTAssertEqual(queryValue("route", in: detailedSuccess), "automation")
+        XCTAssertEqual(queryValue("lastAppliedAt", in: detailedSuccess), "2026-04-14T15:30:00.000Z")
+        XCTAssertEqual(queryValue("minutesSinceLastApplication", in: detailedSuccess), "42")
 
         let minimalSuccess = SunclubXCallbackResponse.successURL(
             baseURL: baseURL,
@@ -125,6 +130,7 @@ final class AutomationTests: XCTestCase {
         let examples: [(String, SunclubAutomationAction)] = [
             ("sunclub://automation/log-today?spf=50&notes=Beach%20bag", .logToday(spfLevel: 50, notes: "Beach bag")),
             ("sunclub://automation/status", .status),
+            ("sunclub://automation/time-since-last-application", .timeSinceLastApplication),
             ("sunclub://automation/open?route=settings", .open(.settings)),
             ("sunclub://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: ReminderTime(hour: 8, minute: 30), spfLevel: 50, notes: "Morning")),
             ("sunclub://automation/reapply", .reapply),
@@ -141,6 +147,24 @@ final class AutomationTests: XCTestCase {
                 return XCTFail("Expected automation deeplink for \(urlString)")
             }
             XCTAssertEqual(request.action, expectedAction)
+        }
+    }
+
+    func testMalformedAutomationLinksFailBeforeCreatingRequests() throws {
+        let malformedURLs = [
+            "sunclub://automation/not-a-real-action",
+            "sunclub://automation/log-today?spf=strong",
+            "sunclub://automation/save-log?date=tomorrow&spf=50",
+            "sunclub://automation/save-log?date=2026-02-31&spf=50",
+            "sunclub://automation/save-log?date=2026-04-13&time=25:30",
+            "sunclub://automation/set-reapply?enabled=true&interval=later",
+            "sunclub://automation/open?route=unknown",
+            "sunclub://automation/poke-friend?id=not-a-uuid"
+        ]
+
+        for urlString in malformedURLs {
+            let url = try XCTUnwrap(URL(string: urlString))
+            XCTAssertNil(SunclubDeepLink(url: url), urlString)
         }
     }
 
@@ -224,6 +248,7 @@ final class AutomationTests: XCTestCase {
 
         XCTAssertEqual(logResult.action, "log-today")
         XCTAssertEqual(logResult.status, "ok")
+        XCTAssertEqual(logResult.message, "Logged sunscreen for today.")
         XCTAssertEqual(logResult.recordDate, dateString(now))
         XCTAssertEqual(harness.state.records.count, 1)
         let todayRecord = try XCTUnwrap(harness.state.record(for: now))
@@ -234,14 +259,15 @@ final class AutomationTests: XCTestCase {
         XCTAssertTrue(harness.widgetStore.load().hasLoggedToday(now: now))
         XCTAssertEqual(harness.widgetStore.load().mostUsedSPF, 50)
 
-        _ = try harness.state.performAutomationAction(.logToday(spfLevel: nil, notes: nil), invocation: .url)
+        let updateResult = try harness.state.performAutomationAction(.logToday(spfLevel: nil, notes: nil), invocation: .url)
+        XCTAssertEqual(updateResult.message, "Updated today's sunscreen log.")
         XCTAssertEqual(harness.state.records.count, 1)
         let updatedTodayRecord = try XCTUnwrap(harness.state.record(for: now))
         XCTAssertEqual(updatedTodayRecord.spfLevel, 50)
         XCTAssertEqual(updatedTodayRecord.notes, "Beach bag")
 
         let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
-        _ = try harness.state.performAutomationAction(
+        let backfillResult = try harness.state.performAutomationAction(
             .saveLog(
                 day: yesterday,
                 time: ReminderTime(hour: 8, minute: 45),
@@ -250,6 +276,7 @@ final class AutomationTests: XCTestCase {
             ),
             invocation: .url
         )
+        XCTAssertEqual(backfillResult.message, "Backfilled sunscreen log.")
         XCTAssertEqual(harness.state.records.count, 2)
         let yesterdayRecord = try XCTUnwrap(harness.state.record(for: yesterday))
         XCTAssertEqual(yesterdayRecord.spfLevel, 30)
@@ -258,10 +285,11 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(Calendar.current.component(.minute, from: yesterdayRecord.verifiedAt), 45)
         XCTAssertTrue(harness.state.changeBatches.contains { $0.kind == .historyBackfill })
 
-        _ = try harness.state.performAutomationAction(
+        let editResult = try harness.state.performAutomationAction(
             .saveLog(day: yesterday, time: nil, spfLevel: nil, notes: nil),
             invocation: .url
         )
+        XCTAssertEqual(editResult.message, "Updated sunscreen log.")
         let clearedYesterdayRecord = try XCTUnwrap(harness.state.record(for: yesterday))
         XCTAssertNil(clearedYesterdayRecord.spfLevel)
         XCTAssertNil(clearedYesterdayRecord.notes)
@@ -272,6 +300,32 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(reappliedTodayRecord.reapplyCount, 1)
         XCTAssertNotNil(reappliedTodayRecord.lastReappliedAt)
         XCTAssertTrue(harness.state.changeBatches.contains { $0.kind == .reapply })
+    }
+
+    func testAutomationNormalizesSPFAndNotesAcrossWriteActions() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+        let longNote = String(repeating: "N", count: SunManualLogInput.noteCharacterLimit + 20)
+
+        _ = try harness.state.performAutomationAction(
+            .logToday(spfLevel: -4, notes: "  \(longNote)  "),
+            invocation: .url
+        )
+
+        let todayRecord = try XCTUnwrap(harness.state.record(for: now))
+        XCTAssertEqual(todayRecord.spfLevel, 1)
+        XCTAssertEqual(todayRecord.notes?.count, SunManualLogInput.noteCharacterLimit)
+
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
+        _ = try harness.state.performAutomationAction(
+            .saveLog(day: yesterday, time: nil, spfLevel: 500, notes: "  Shortcut note  "),
+            invocation: .shortcut
+        )
+
+        let yesterdayRecord = try XCTUnwrap(harness.state.record(for: yesterday))
+        XCTAssertEqual(yesterdayRecord.spfLevel, 100)
+        XCTAssertEqual(yesterdayRecord.notes, "Shortcut note")
     }
 
     func testStatusBackupReportAndStreakCardAutomationReturnExpectedValuesOrFiles() throws {
@@ -286,6 +340,8 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(status.todayLogged, true)
         XCTAssertEqual(status.currentStreak, 1)
         XCTAssertEqual(status.weeklyApplied, 1)
+        XCTAssertEqual(status.minutesSinceLastApplication, 0)
+        XCTAssertNotNil(status.lastAppliedAt)
 
         let backup = try harness.state.performAutomationAction(.exportBackup, invocation: .shortcut)
         try assertAutomationFile(backup, expectedAction: "export-backup", expectedType: SunclubBackupDocument.contentType.identifier)
@@ -298,6 +354,34 @@ final class AutomationTests: XCTestCase {
 
         let streakCard = try harness.state.performAutomationAction(.createStreakCard, invocation: .shortcut)
         try assertAutomationFile(streakCard, expectedAction: "create-streak-card", expectedType: UTType.png.identifier)
+    }
+
+    func testTimeSinceLastApplicationAutomationUsesMostRecentLogOrReapply() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+
+        let empty = try harness.state.performAutomationAction(.timeSinceLastApplication, invocation: .shortcut)
+        XCTAssertEqual(empty.action, "time-since-last-application")
+        XCTAssertEqual(empty.status, "ok")
+        XCTAssertEqual(empty.message, "No sunscreen application has been logged yet.")
+        XCTAssertNil(empty.lastAppliedAt)
+        XCTAssertNil(empty.minutesSinceLastApplication)
+
+        _ = try harness.state.performAutomationAction(
+            .saveLog(day: now, time: ReminderTime(hour: 10, minute: 15), spfLevel: 50, notes: "Morning"),
+            invocation: .url
+        )
+
+        let afterLog = try harness.state.performAutomationAction(.timeSinceLastApplication, invocation: .shortcut)
+        XCTAssertEqual(afterLog.minutesSinceLastApplication, 165)
+        XCTAssertEqual(afterLog.message, "Last sunscreen application was 2 hours and 45 minutes ago.")
+        XCTAssertNotNil(afterLog.lastAppliedAt)
+
+        _ = try harness.state.performAutomationAction(.reapply, invocation: .url)
+        let afterReapply = try harness.state.performAutomationAction(.timeSinceLastApplication, invocation: .shortcut)
+        XCTAssertEqual(afterReapply.minutesSinceLastApplication, 0)
+        XCTAssertEqual(afterReapply.message, "Last sunscreen application was 0 minutes ago.")
     }
 
     func testFriendEntityQueryImportInviteAndPokeAutomationUseSeededFriends() async throws {

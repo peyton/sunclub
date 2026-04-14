@@ -183,6 +183,24 @@ struct SettingsView: View {
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
 
+            if let preview = appState.nextDailyReminderPreview {
+                Text(preview.summary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("settings.nextReminderPreview")
+            }
+
+            if let status = appState.notificationHealthStatusPresentation {
+                SunStatusCard(
+                    title: status.title,
+                    detail: status.detail,
+                    tint: status.needsAttention ? Color.red.opacity(0.72) : AppPalette.success,
+                    symbol: status.symbolName
+                )
+                .accessibilityIdentifier("settings.notificationStatus")
+            }
+
             VStack(spacing: 12) {
                 reminderCard(for: .weekday, detail: "Used Monday through Friday")
                 reminderCard(for: .weekend, detail: "Used Saturday and Sunday")
@@ -347,7 +365,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("Get a reminder to reapply after today's log.")
+                Text("Interval reminders are timing aids, not medical advice. Sunclub stops scheduling them after the estimated sunset cutoff.")
                     .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             }

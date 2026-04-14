@@ -167,7 +167,7 @@ enum SunclubDeepLinkHandler {
             router.open(.automation)
         case .importFriend, .pokeFriend:
             router.open(.friends)
-        case .status:
+        case .status, .timeSinceLastApplication:
             router.goHome()
         case .open, .exportBackup, .createSkinHealthReport, .createStreakCard:
             break
@@ -189,7 +189,7 @@ enum SunclubDeepLinkHandler {
         switch action {
         case .reapply:
             router.open(.manualLog)
-        case .setReminder, .setReapply, .setToggle, .status:
+        case .setReminder, .setReapply, .setToggle, .status, .timeSinceLastApplication:
             router.open(.automation)
         case .importFriend, .pokeFriend:
             router.open(.friends)

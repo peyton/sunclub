@@ -9,6 +9,8 @@ struct HistoryView: View {
     @State private var selectedDay: Date?
     @State private var editorPresentation: HistoryEditorPresentation?
     @State private var dayPendingDeletion: Date?
+    @State private var lastDeletedBatchID: UUID?
+    @State private var lastDeletedDay: Date?
     @State private var isShowingMonthlyInsights = false
 
     private let calendar = Calendar.current
@@ -30,6 +32,8 @@ struct HistoryView: View {
                 })
 
                 monthNavigator
+
+                deleteUndoBanner
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay, presentation: presentation)
@@ -74,8 +78,13 @@ struct HistoryView: View {
         ) {
             Button("Delete", role: .destructive) {
                 if let day = dayPendingDeletion {
+                    let existingBatchIDs = Set(appState.changeBatches.map(\.id))
                     appState.deleteRecord(for: day)
                     selectedDay = calendar.startOfDay(for: day)
+                    lastDeletedDay = calendar.startOfDay(for: day)
+                    lastDeletedBatchID = appState.changeBatches.first {
+                        $0.kind == .deleteRecord && !existingBatchIDs.contains($0.id)
+                    }?.id
                 }
                 dayPendingDeletion = nil
             }
@@ -87,6 +96,48 @@ struct HistoryView: View {
                 day: presentation.day,
                 existingRecord: appState.record(for: presentation.day)
             )
+        }
+    }
+
+    @ViewBuilder
+    private var deleteUndoBanner: some View {
+        if let lastDeletedBatchID,
+           let lastDeletedDay {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Entry deleted")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(lastDeletedDay.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+
+                Spacer(minLength: 0)
+
+                Button("Undo Delete") {
+                    appState.undoChange(lastDeletedBatchID)
+                    selectedDay = lastDeletedDay
+                    self.lastDeletedBatchID = nil
+                    self.lastDeletedDay = nil
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("history.undoDelete")
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(AppPalette.cardFill.opacity(0.76))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("history.deleteUndoBanner")
         }
     }
 
@@ -344,7 +395,8 @@ struct HistoryView: View {
     ) -> HistoryDayCellState {
         let isCurrentMonth = calendar.isDate(day, equalTo: displayedMonth, toGranularity: .month)
         let dayStart = calendar.startOfDay(for: day)
-        let hasRecord = presentation.recordDateSet.contains(dayStart)
+        let record = presentation.record(for: dayStart, calendar: calendar)
+        let hasRecord = record != nil
         let isToday = dayStart == presentation.today
         let isFuture = dayStart > presentation.today
         let isSelected = selectedDay.map { calendar.isDate($0, inSameDayAs: day) } ?? false
@@ -358,6 +410,8 @@ struct HistoryView: View {
                 calendar: calendar
             ),
             hasRecord: hasRecord,
+            spfLevel: record?.spfLevel,
+            hasNotes: record?.trimmedNotes != nil,
             isToday: isToday,
             isFuture: isFuture,
             isSelected: isSelected,
@@ -377,16 +431,41 @@ struct HistoryView: View {
         .accessibilityLabel(
             dayAccessibilityLabel(
                 for: day,
-                hasRecord: state.hasRecord,
-                isToday: state.isToday,
-                isSelected: state.isSelected,
-                isCurrentStreak: state.isCurrentStreak
+                state: state
             )
         )
         .accessibilityHint(
             dayAccessibilityHint(hasRecord: state.hasRecord, isToday: state.isToday, isFuture: state.isFuture)
         )
         .accessibilityIdentifier(dayAccessibilityIdentifier(for: state.dayStart))
+        .contextMenu {
+            calendarDayContextMenu(for: state)
+        }
+        .accessibilityAction(named: state.hasRecord ? "Edit Entry" : (state.isToday ? "Log Today" : "Backfill Day")) {
+            guard state.isCurrentMonth, !state.isFuture else { return }
+            editorPresentation = HistoryEditorPresentation(day: state.dayStart)
+        }
+        .accessibilityAction(named: "Delete Entry") {
+            guard state.hasRecord else { return }
+            dayPendingDeletion = state.dayStart
+        }
+    }
+
+    @ViewBuilder
+    private func calendarDayContextMenu(for state: HistoryDayCellState) -> some View {
+        if state.hasRecord {
+            Button("Edit Entry") {
+                editorPresentation = HistoryEditorPresentation(day: state.dayStart)
+            }
+
+            Button("Delete Entry", role: .destructive) {
+                dayPendingDeletion = state.dayStart
+            }
+        } else if state.isCurrentMonth, !state.isFuture {
+            Button(state.isToday ? "Log Today" : "Backfill Day") {
+                editorPresentation = HistoryEditorPresentation(day: state.dayStart)
+            }
+        }
     }
 
     private func calendarDayContent(day: Date, state: HistoryDayCellState) -> some View {
@@ -792,7 +871,27 @@ struct HistoryView: View {
         }
 
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        return "This removes the visible entry for \(dateLabel). You can undo recent changes in Recovery & Changes."
+        return "This removes \(deleteRecordSummary(for: day)) for \(dateLabel). You can undo this from the History banner or Recovery & Changes."
+    }
+
+    private func deleteRecordSummary(for day: Date) -> String {
+        guard let record = appState.record(for: day) else {
+            return "the visible entry"
+        }
+
+        var parts: [String] = []
+        if let spfLevel = record.spfLevel {
+            parts.append("SPF \(spfLevel)")
+        }
+        if record.trimmedNotes != nil {
+            parts.append("a saved note")
+        }
+        if record.reapplyCount > 0 {
+            let checkInLabel = record.reapplyCount == 1 ? "reapply check-in" : "reapply check-ins"
+            parts.append("\(record.reapplyCount) \(checkInLabel)")
+        }
+
+        return parts.isEmpty ? "the visible entry" : parts.joined(separator: ", ")
     }
 
     private func changeMonth(by offset: Int) {
@@ -831,20 +930,25 @@ struct HistoryView: View {
 
     private func dayAccessibilityLabel(
         for day: Date,
-        hasRecord: Bool,
-        isToday: Bool,
-        isSelected: Bool,
-        isCurrentStreak: Bool
+        state: HistoryDayCellState
     ) -> String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        let status = hasRecord ? "Applied" : (isToday ? "Pending" : "No entry")
+        let status = state.hasRecord ? "Applied" : (state.isToday ? "Pending" : "No entry")
         var parts = [dateLabel, status]
 
-        if isCurrentStreak {
+        if let spfLevel = state.spfLevel {
+            parts.append("SPF \(spfLevel)")
+        }
+
+        if state.hasNotes {
+            parts.append("note saved")
+        }
+
+        if state.isCurrentStreak {
             parts.append("part of current streak")
         }
 
-        if isSelected {
+        if state.isSelected {
             parts.append("selected")
         }
 
@@ -967,6 +1071,8 @@ private struct HistoryDayCellState {
     let dayStart: Date
     let status: DayStatus
     let hasRecord: Bool
+    let spfLevel: Int?
+    let hasNotes: Bool
     let isToday: Bool
     let isFuture: Bool
     let isSelected: Bool

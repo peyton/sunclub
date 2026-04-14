@@ -117,6 +117,15 @@ struct RecoveryView: View {
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
 
+                        let changedFields = appState.conflictChangedFieldNames(for: conflict)
+                        if !changedFields.isEmpty {
+                            Text("Changed: \(changedFields.joined(separator: ", "))")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AppPalette.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("recovery.conflict.changedFields")
+                        }
+
                         Button("Undo Auto-Merge") {
                             appState.undoChange(conflict.mergedBatchID)
                             appState.resolveConflict(conflict.id)

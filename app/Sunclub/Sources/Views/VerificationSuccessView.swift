@@ -93,7 +93,7 @@ struct VerificationSuccessView: View {
 
     private var successProgressNote: String {
         if presentation.canAddDetails {
-            return "Your streak is saved. Add SPF or a note if you want more detail."
+            return "Your streak is saved. SPF is optional; add it only if it helps later."
         }
 
         return "Your streak and progress are saved."

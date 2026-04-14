@@ -248,6 +248,7 @@ struct AutomationSettingsPanel: View {
         [
             AutomationActionRow.Model(title: "Log Sunscreen", detail: "Optional SPF and notes."),
             AutomationActionRow.Model(title: "Get Sunclub Status", detail: "Returns today, streak, and weekly count."),
+            AutomationActionRow.Model(title: "Time Since Last Sunscreen", detail: "Returns minutes since the last log or reapply."),
             AutomationActionRow.Model(title: "Log Reapply", detail: "Adds a reapply check-in for today's record."),
             AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Today or a chosen date and time."),
             AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Weekday or weekend reminder time."),
@@ -279,6 +280,12 @@ struct AutomationSettingsPanel: View {
                 title: "Status",
                 detail: "Return today's status to the caller.",
                 urlString: "\(scheme)://automation/status"
+            ),
+            AutomationExample(
+                id: "timeSinceLastApplication",
+                title: "Time Since Last Sunscreen",
+                detail: "Return minutes since the last log or reapply.",
+                urlString: "\(scheme)://automation/time-since-last-application"
             ),
             AutomationExample(
                 id: "openAutomation",
@@ -346,6 +353,12 @@ struct AutomationSettingsPanel: View {
                 title: "Status Callback",
                 detail: "Returns action, status, and status fields.",
                 urlString: "\(scheme)://x-callback-url/status?x-success=shortcuts://callback&x-error=shortcuts://callback"
+            ),
+            AutomationExample(
+                id: "callbackLastApplication",
+                title: "Last Application Callback",
+                detail: "Returns the last application time and minutes-since field when details are on.",
+                urlString: "\(scheme)://x-callback-url/time-since-last-application?x-success=shortcuts://callback&x-error=shortcuts://callback"
             ),
             AutomationExample(
                 id: "callbackLogToday",

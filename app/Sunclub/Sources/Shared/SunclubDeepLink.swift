@@ -114,10 +114,25 @@ enum SunclubDeepLink: Equatable {
             return nil
         }
 
+        return logAutomationAction(name: name, query: query)
+            ?? reminderAutomationAction(name: name, query: query)
+            ?? socialAutomationAction(name: name, query: query)
+            ?? navigationAutomationAction(name: name, query: query)
+    }
+
+    private static func logAutomationAction(name: String, query: SunclubDeepLinkQuery) -> SunclubAutomationAction? {
         switch name {
         case "log-today":
+            guard query.hasValidOptionalInt("spf") else {
+                return nil
+            }
             return .logToday(spfLevel: query.int("spf"), notes: query.string("notes"))
         case "save-log":
+            guard query.hasValidOptionalDate("date"),
+                  query.hasValidOptionalTime("time"),
+                  query.hasValidOptionalInt("spf") else {
+                return nil
+            }
             return .saveLog(
                 day: query.date("date"),
                 time: query.time("time"),
@@ -128,14 +143,22 @@ enum SunclubDeepLink: Equatable {
             return .reapply
         case "status":
             return .status
+        case "time-since-last-application":
+            return .timeSinceLastApplication
+        default:
+            return nil
+        }
+    }
+
+    private static func reminderAutomationAction(name: String, query: SunclubDeepLinkQuery) -> SunclubAutomationAction? {
+        switch name {
         case "set-reminder":
-            guard let kindValue = query.string("kind").flatMap(SunclubAutomationReminderKind.init(rawValue:)),
-                  let time = query.time("time") else {
-                return nil
-            }
-            return .setReminder(kind: kindValue, time: time)
+            return setReminderAutomationAction(query: query)
         case "set-reapply":
             guard let enabled = query.bool("enabled") else {
+                return nil
+            }
+            guard query.hasValidOptionalInt("interval") else {
                 return nil
             }
             return .setReapply(enabled: enabled, intervalMinutes: query.int("interval"))
@@ -145,6 +168,22 @@ enum SunclubDeepLink: Equatable {
                 return nil
             }
             return .setToggle(toggle, enabled: enabled)
+        default:
+            return nil
+        }
+    }
+
+    private static func setReminderAutomationAction(query: SunclubDeepLinkQuery) -> SunclubAutomationAction? {
+        guard let kindValue = query.string("kind").flatMap(SunclubAutomationReminderKind.init(rawValue:)),
+              let time = query.time("time") else {
+            return nil
+        }
+
+        return .setReminder(kind: kindValue, time: time)
+    }
+
+    private static func socialAutomationAction(name: String, query: SunclubDeepLinkQuery) -> SunclubAutomationAction? {
+        switch name {
         case "import-friend":
             guard let code = query.string("code") else {
                 return nil
@@ -155,6 +194,13 @@ enum SunclubDeepLink: Equatable {
                 return nil
             }
             return .pokeFriend(id: friendID)
+        default:
+            return nil
+        }
+    }
+
+    private static func navigationAutomationAction(name: String, query: SunclubDeepLinkQuery) -> SunclubAutomationAction? {
+        switch name {
         case "open":
             guard let route = query.string("route").flatMap(SunclubAutomationRoute.init(rawValue:)) else {
                 return nil
@@ -226,7 +272,7 @@ struct SunclubAutomationRequest: Equatable {
             return [URLQueryItem(name: "id", value: id.uuidString)]
         case let .open(route):
             return [URLQueryItem(name: "route", value: route.rawValue)]
-        case .reapply, .status, .exportBackup, .createSkinHealthReport, .createStreakCard:
+        case .reapply, .status, .timeSinceLastApplication, .exportBackup, .createSkinHealthReport, .createStreakCard:
             return []
         }
     }
@@ -267,6 +313,22 @@ private struct SunclubDeepLinkQuery {
         items.first(where: { $0.name == name })?.value
     }
 
+    func contains(_ name: String) -> Bool {
+        items.contains { $0.name == name }
+    }
+
+    func hasValidOptionalInt(_ name: String) -> Bool {
+        !contains(name) || int(name) != nil
+    }
+
+    func hasValidOptionalDate(_ name: String) -> Bool {
+        !contains(name) || date(name) != nil
+    }
+
+    func hasValidOptionalTime(_ name: String) -> Bool {
+        !contains(name) || time(name) != nil
+    }
+
     func int(_ name: String) -> Int? {
         string(name).flatMap(Int.init)
     }
@@ -297,6 +359,7 @@ private struct SunclubDeepLinkQuery {
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.isLenient = false
         return formatter.date(from: value)
     }
 

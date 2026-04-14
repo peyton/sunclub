@@ -375,12 +375,38 @@ struct GetSunclubStatusIntent: AppIntent {
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         do {
             let result = try SunclubIntentSupport.perform(.status)
-            let status = [
+            var statusLines = [
                 result.message,
                 "Current streak: \(result.currentStreak ?? 0).",
                 "This week: \(result.weeklyApplied ?? 0) days."
-            ].joined(separator: " ")
+            ]
+            if let minutesSinceLastApplication = result.minutesSinceLastApplication {
+                statusLines.append("Last application: \(minutesSinceLastApplication) minutes ago.")
+            }
+            let status = statusLines.joined(separator: " ")
             return .result(value: status, dialog: IntentDialog(stringLiteral: status))
+        } catch {
+            let dialog = SunclubIntentSupport.dialog(for: error)
+            return .result(value: "Sunclub could not finish that automation right now.", dialog: dialog)
+        }
+    }
+}
+
+struct GetTimeSinceLastSunscreenIntent: AppIntent {
+    static let title: LocalizedStringResource = "Time Since Last Sunscreen"
+    static let description = IntentDescription("Gets how long it has been since the last Sunclub sunscreen application or reapply.")
+    static let openAppWhenRun = false
+    static let isDiscoverable = true
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Get time since last sunscreen")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        do {
+            let result = try SunclubIntentSupport.perform(.timeSinceLastApplication)
+            return .result(value: result.message, dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             let dialog = SunclubIntentSupport.dialog(for: error)
             return .result(value: "Sunclub could not finish that automation right now.", dialog: dialog)
@@ -684,6 +710,15 @@ struct SunclubAppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Sunclub Status",
             systemImageName: "checkmark.seal.fill"
+        )
+        AppShortcut(
+            intent: GetTimeSinceLastSunscreenIntent(),
+            phrases: [
+                "How long since sunscreen in \(.applicationName)",
+                "Time since sunscreen in \(.applicationName)"
+            ],
+            shortTitle: "Last Sunscreen",
+            systemImageName: "clock.fill"
         )
         AppShortcut(
             intent: OpenSunclubRouteIntent(route: .automation),
