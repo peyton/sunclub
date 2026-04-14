@@ -67,6 +67,7 @@ final class SunclubWatchSyncCoordinator: NSObject {
     static let shared = SunclubWatchSyncCoordinator()
 
     private let session: WCSession?
+    private var logTodayHandler: (() throws -> SunclubWidgetSnapshot)?
 
     private override init() {
         if WCSession.isSupported() {
@@ -75,7 +76,6 @@ final class SunclubWatchSyncCoordinator: NSObject {
             session = nil
         }
         super.init()
-        activate()
     }
 
     func activate() {
@@ -84,7 +84,15 @@ final class SunclubWatchSyncCoordinator: NSObject {
         }
 
         session.delegate = self
-        session.activate()
+        if session.activationState == .activated {
+            pushCurrentSnapshot()
+        } else {
+            session.activate()
+        }
+    }
+
+    func setLogTodayHandler(_ handler: @escaping () throws -> SunclubWidgetSnapshot) {
+        logTodayHandler = handler
     }
 
     func push(snapshot: SunclubWidgetSnapshot) {
@@ -102,6 +110,14 @@ final class SunclubWatchSyncCoordinator: NSObject {
         }
 
         session.transferCurrentComplicationUserInfo(context)
+
+        if session.isReachable {
+            session.sendMessage(context, replyHandler: nil, errorHandler: nil)
+        }
+    }
+
+    private func pushCurrentSnapshot() {
+        push(snapshot: SunclubWidgetSnapshotStore().load())
     }
 
     private func handleMessage(
@@ -120,8 +136,7 @@ final class SunclubWatchSyncCoordinator: NSObject {
         case SunclubWatchSyncPayload.logTodayCommand:
             Task { @MainActor in
                 do {
-                    _ = try SunclubQuickLogAction.performStandalone()
-                    let snapshot = SunclubWidgetSnapshotStore().load()
+                    let snapshot = try logTodaySnapshot()
                     push(snapshot: snapshot)
                     replyHandler?(SunclubWatchSyncPayload.successReply(snapshot: snapshot, message: "Logged from your wrist."))
                 } catch let error as LocalizedError {
@@ -134,6 +149,15 @@ final class SunclubWatchSyncCoordinator: NSObject {
             replyHandler?(SunclubWatchSyncPayload.errorReply("Unknown watch request."))
         }
     }
+
+    private func logTodaySnapshot() throws -> SunclubWidgetSnapshot {
+        if let logTodayHandler {
+            return try logTodayHandler()
+        }
+
+        _ = try SunclubQuickLogAction.performStandalone()
+        return SunclubWidgetSnapshotStore().load()
+    }
 }
 
 extension SunclubWatchSyncCoordinator: WCSessionDelegate {
@@ -141,7 +165,15 @@ extension SunclubWatchSyncCoordinator: WCSessionDelegate {
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
-    ) {}
+    ) {
+        guard activationState == .activated else {
+            return
+        }
+
+        Task { @MainActor in
+            pushCurrentSnapshot()
+        }
+    }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
@@ -176,6 +208,16 @@ extension SunclubWatchSyncCoordinator: WCSessionDelegate {
             handleMessage(userInfo)
         }
     }
+
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        guard session.isReachable else {
+            return
+        }
+
+        Task { @MainActor in
+            pushCurrentSnapshot()
+        }
+    }
 }
 #elseif os(watchOS) && canImport(WatchConnectivity)
 @MainActor
@@ -193,13 +235,14 @@ final class SunclubWatchSyncCoordinator: NSObject {
     private(set) var syncStatus: String?
 
     private override init() {
-        snapshot = SunclubWidgetSnapshotStore().load()
+        let initialSnapshot = SunclubWidgetSnapshotStore().load()
+        snapshot = initialSnapshot
         if WCSession.isSupported() {
             session = WCSession.default
         } else {
             session = nil
         }
-        syncStatus = snapshot.isOnboardingComplete ? nil : "Open Sunclub on iPhone to finish setup."
+        syncStatus = initialSnapshot.isOnboardingComplete ? nil : "Open Sunclub on iPhone to finish setup."
         super.init()
         activate()
         requestNotificationAuthorizationIfNeeded()
@@ -215,9 +258,23 @@ final class SunclubWatchSyncCoordinator: NSObject {
     }
 
     func refreshSnapshot() {
-        guard let session,
-              session.activationState == .activated,
-              session.isReachable else {
+        guard let session else {
+            syncStatus = "Watch sync is unavailable."
+            return
+        }
+
+        guard session.activationState == .activated else {
+            session.activate()
+            _ = applyReceivedApplicationContextIfAvailable()
+            return
+        }
+
+        guard session.isReachable else {
+            if !applyReceivedApplicationContextIfAvailable() {
+                syncStatus = snapshot.isOnboardingComplete
+                    ? "Open Sunclub on iPhone to sync live status."
+                    : "Open Sunclub on iPhone to finish setup."
+            }
             return
         }
 
@@ -238,6 +295,12 @@ final class SunclubWatchSyncCoordinator: NSObject {
             return syncStatus ?? "Watch sync is unavailable."
         }
 
+        guard session.activationState == .activated else {
+            session.activate()
+            syncStatus = "Open Sunclub on iPhone to finish syncing."
+            return syncStatus ?? "Open Sunclub on iPhone to finish syncing."
+        }
+
         if session.activationState == .activated, session.isReachable {
             return await withCheckedContinuation { continuation in
                 session.sendMessage(
@@ -251,19 +314,15 @@ final class SunclubWatchSyncCoordinator: NSObject {
                     },
                     errorHandler: { [weak self] _ in
                         Task { @MainActor in
-                            self?.syncStatus = "Keep your iPhone nearby to log from your wrist."
-                            continuation.resume(returning: self?.syncStatus ?? "Keep your iPhone nearby to log from your wrist.")
+                            let message = self?.queueLogToday(on: session) ?? "Queued for your iPhone."
+                            continuation.resume(returning: message)
                         }
                     }
                 )
             }
         }
 
-        session.transferUserInfo([
-            SunclubWatchSyncPayload.commandKey: SunclubWatchSyncPayload.logTodayCommand
-        ])
-        syncStatus = "Queued for your iPhone."
-        return syncStatus ?? "Queued for your iPhone."
+        return queueLogToday(on: session)
     }
 
     private func consume(
@@ -275,9 +334,18 @@ final class SunclubWatchSyncCoordinator: NSObject {
         }
 
         let message = (payload[SunclubWatchSyncPayload.messageKey] as? String) ?? fallbackMessage
-        let isSuccess = (payload[SunclubWatchSyncPayload.successKey] as? Bool) ?? true
         syncStatus = message
-        return isSuccess ? message : message
+        return message
+    }
+
+    private func applyReceivedApplicationContextIfAvailable() -> Bool {
+        guard let session,
+              !session.receivedApplicationContext.isEmpty else {
+            return false
+        }
+
+        _ = consume(payload: session.receivedApplicationContext, fallbackMessage: "Status updated.")
+        return true
     }
 
     private func apply(snapshot: SunclubWidgetSnapshot) {
@@ -293,6 +361,14 @@ final class SunclubWatchSyncCoordinator: NSObject {
         #if canImport(UserNotifications)
         notificationCenter.requestAuthorization(options: [.alert, .sound]) { _, _ in }
         #endif
+    }
+
+    private func queueLogToday(on session: WCSession) -> String {
+        session.transferUserInfo([
+            SunclubWatchSyncPayload.commandKey: SunclubWatchSyncPayload.logTodayCommand
+        ])
+        syncStatus = "Queued for your iPhone."
+        return syncStatus ?? "Queued for your iPhone."
     }
 
     private func scheduleReapplyNotification(for snapshot: SunclubWidgetSnapshot) {
@@ -329,6 +405,7 @@ extension SunclubWatchSyncCoordinator: WCSessionDelegate {
         }
 
         Task { @MainActor in
+            _ = applyReceivedApplicationContextIfAvailable()
             refreshSnapshot()
         }
     }

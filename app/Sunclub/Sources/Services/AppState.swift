@@ -1836,6 +1836,18 @@ final class AppState {
         )
     }
 
+    func recordWatchSunscreenLog() throws -> SunclubWidgetSnapshot {
+        guard settings.hasCompletedOnboarding else {
+            throw SunclubQuickLogError.onboardingRequired
+        }
+
+        markAppliedToday(method: .quickLog)
+        if settings.reapplyReminderEnabled {
+            scheduleReapplyReminder()
+        }
+        return widgetSnapshotStore.load()
+    }
+
     func clearVerificationSuccessPresentation() {
         verificationSuccessPresentation = nil
     }

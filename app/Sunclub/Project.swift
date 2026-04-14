@@ -109,7 +109,8 @@ func appTarget(for flavor: SunclubFlavor) -> Target {
         ],
         entitlements: "Sunclub.entitlements",
         dependencies: [
-            .target(name: flavor.widgetTargetName)
+            .target(name: flavor.widgetTargetName),
+            .target(name: flavor.watchTargetName)
         ],
         settings: targetSettings(for: flavor)
     )
@@ -194,17 +195,21 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
-            "WKAppBundleIdentifier": .string(flavor.watchBundleID),
             "NSExtension": .dictionary([
-                "NSExtensionPointIdentifier": .string("com.apple.watchkit")
+                "NSExtensionPointIdentifier": .string("com.apple.watchkit"),
+                "NSExtensionAttributes": .dictionary([
+                    "WKAppBundleIdentifier": .string(flavor.watchBundleID)
+                ])
             ])
         ]),
         sources: [
             "WatchApp/Sources/**",
+            "Sources/Models/AccountabilityModels.swift",
             "Sources/Models/DailyRecord.swift",
             "Sources/Models/GrowthFeatures.swift",
             "Sources/Models/Settings.swift",
             "Sources/Models/UVSupport.swift",
+            "Sources/Models/VerificationMethod.swift",
             "Sources/Services/CalendarAnalytics.swift",
             "Sources/Services/SunclubWatchSyncCoordinator.swift",
             "Sources/Services/SunscreenUsageInsights.swift",
@@ -252,10 +257,12 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
         ]),
         sources: [
             "WatchWidgetExtension/Sources/**",
+            "Sources/Models/AccountabilityModels.swift",
             "Sources/Models/DailyRecord.swift",
             "Sources/Models/GrowthFeatures.swift",
             "Sources/Models/Settings.swift",
             "Sources/Models/UVSupport.swift",
+            "Sources/Models/VerificationMethod.swift",
             "Sources/Services/CalendarAnalytics.swift",
             "Sources/Services/SunscreenUsageInsights.swift",
             "Sources/Shared/AppRoute.swift",
