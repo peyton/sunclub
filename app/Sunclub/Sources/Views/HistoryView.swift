@@ -29,18 +29,19 @@ struct HistoryView: View {
 
                 monthNavigator
 
-                weekdayHeader
-                historyLegend
-
                 let recordDates = appState.recordedDays
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay)
                 }
 
+                weekdayHeader
+
                 calendarGrid(recordDates: recordDates)
                     .id(displayedMonth)
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+
+                historyLegend
 
                 if selectedDay == nil {
                     historyEmptyHint
@@ -598,34 +599,8 @@ struct HistoryView: View {
             let record = appState.record(for: dayStart)
             let status = appState.dayStatus(for: dayStart)
 
-            VStack(alignment: .leading, spacing: 10) {
-                footerStatusSummary(for: dayStart, status: status)
-                actionButtons(for: dayStart, record: record)
-            }
+            actionButtons(for: dayStart, record: record, status: status)
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func footerStatusSummary(for day: Date, status: DayStatus) -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: statusSymbol(for: status))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(statusColor(for: status))
-                .frame(width: 28, height: 28)
-                .background(AppPalette.cardFill.opacity(0.76), in: Circle())
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(statusTitle(for: status))
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .accessibilityIdentifier("history.statusTitle")
-
-                Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AppPalette.softInk)
-            }
-
-            Spacer(minLength: 0)
         }
     }
 
@@ -723,28 +698,44 @@ struct HistoryView: View {
     }
 
     @ViewBuilder
-    private func actionButtons(for day: Date, record: DailyRecord?) -> some View {
+    private func actionButtons(for day: Date, record: DailyRecord?, status: DayStatus) -> some View {
         if record != nil {
-            HStack(spacing: 12) {
-                Button("Edit Entry") {
-                    editorPresentation = HistoryEditorPresentation(day: day)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    loggedDayActions(for: day)
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .accessibilityIdentifier("history.editRecord")
 
-                Button("Delete") {
-                    dayPendingDeletion = day
+                VStack(spacing: 10) {
+                    loggedDayActions(for: day)
                 }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityIdentifier("history.deleteRecord")
             }
+            .accessibilityLabel("\(statusTitle(for: status)) entry actions")
         } else {
-            Button("Backfill Day") {
+            Button(isToday(day) ? "Log Today" : "Backfill Day") {
                 editorPresentation = HistoryEditorPresentation(day: day)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("history.backfillRecord")
         }
+    }
+
+    @ViewBuilder
+    private func loggedDayActions(for day: Date) -> some View {
+        Button("Edit Entry") {
+            editorPresentation = HistoryEditorPresentation(day: day)
+        }
+        .buttonStyle(SunPrimaryButtonStyle())
+        .accessibilityIdentifier("history.editRecord")
+
+        Button("Delete") {
+            dayPendingDeletion = day
+        }
+        .buttonStyle(SunSecondaryButtonStyle())
+        .accessibilityIdentifier("history.deleteRecord")
+    }
+
+    private func isToday(_ day: Date) -> Bool {
+        calendar.isDate(day, inSameDayAs: appState.referenceDate)
     }
 
     private var deleteDialogTitle: String {

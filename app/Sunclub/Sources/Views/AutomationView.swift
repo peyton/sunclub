@@ -230,14 +230,14 @@ struct AutomationSettingsPanel: View {
     private var shortcutRows: [AutomationActionRow.Model] {
         [
             AutomationActionRow.Model(title: "Log Sunscreen", detail: "Optional SPF and notes."),
-            AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Today or a chosen date and time."),
-            AutomationActionRow.Model(title: "Log Reapply", detail: "Adds a reapply check-in for today's record."),
             AutomationActionRow.Model(title: "Get Sunclub Status", detail: "Returns today, streak, and weekly count."),
+            AutomationActionRow.Model(title: "Log Reapply", detail: "Adds a reapply check-in for today's record."),
+            AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Today or a chosen date and time."),
             AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Weekday or weekend reminder time."),
             AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Travel, UV, iCloud, Health, and alert toggles."),
-            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Returns a backup file."),
             AutomationActionRow.Model(title: "Create Skin Health Report", detail: "Returns a PDF report."),
             AutomationActionRow.Model(title: "Create Streak Card", detail: "Returns a shareable image."),
+            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Returns a backup file."),
             AutomationActionRow.Model(title: "Import Friend Invite", detail: "Adds a friend from an invite code."),
             AutomationActionRow.Model(title: "Poke Friend", detail: "Uses the friend picker from Shortcuts and opens Friends for a message nudge.")
         ]
@@ -246,28 +246,28 @@ struct AutomationSettingsPanel: View {
     private var urlExamples: [AutomationExample] {
         [
             AutomationExample(
-                id: "openAutomation",
-                title: "Open Automation",
-                detail: "Open this catalog.",
-                urlString: "\(scheme)://automation/open?route=automation"
-            ),
-            AutomationExample(
                 id: "logToday",
                 title: "Log Today",
                 detail: "Log sunscreen with SPF and notes.",
                 urlString: "\(scheme)://automation/log-today?spf=50&notes=Beach%20bag"
             ),
             AutomationExample(
-                id: "saveLog",
-                title: "Save Log",
-                detail: "Backfill or update a day.",
-                urlString: "\(scheme)://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning"
-            ),
-            AutomationExample(
                 id: "status",
                 title: "Status",
                 detail: "Return today's status to the caller.",
                 urlString: "\(scheme)://automation/status"
+            ),
+            AutomationExample(
+                id: "openAutomation",
+                title: "Open Automation",
+                detail: "Open this catalog.",
+                urlString: "\(scheme)://automation/open?route=automation"
+            ),
+            AutomationExample(
+                id: "saveLog",
+                title: "Save Log",
+                detail: "Backfill or update a day.",
+                urlString: "\(scheme)://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning"
             ),
             AutomationExample(
                 id: "reapply",
@@ -337,12 +337,12 @@ private struct AutomationHeroCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Every everyday action has an outside-app path.")
+                Text("Choose what other apps can do.")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Destructive, permission-only, camera, file-picking, and review-heavy flows open Sunclub instead of running in the background.")
+                Text("Logging and status can run from Shortcuts or URLs. Review-heavy flows open Sunclub first.")
                     .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)

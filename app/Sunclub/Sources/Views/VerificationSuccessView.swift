@@ -29,8 +29,6 @@ struct VerificationSuccessView: View {
                 .frame(maxWidth: .infinity)
                 .accessibilityHidden(true)
 
-                SunBrandLockup(layout: .inline, markSize: 28)
-
                 VStack(spacing: 10) {
                     Text(SunclubCopy.Success.title)
                         .font(.system(size: 30, weight: .bold))

@@ -17,19 +17,19 @@ struct ManualLogView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 26) {
-                SunLightHeader(title: "Today's Log", showsBack: true, onBack: {
+                SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
                     router.goBack()
                 })
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(existingRecord == nil ? "Log today" : "Update today's log")
+                    Text(existingRecord == nil ? "Ready to save today" : "Update this log")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(
                         existingRecord == nil
-                            ? "Tap Log Today now, or add optional SPF and notes first."
-                            : "You're editing today's entry. Update the SPF or note below."
+                            ? "SPF and notes can be added now or later."
+                            : "SPF and notes can be changed before saving."
                     )
                         .font(.system(size: 15))
                         .foregroundStyle(AppPalette.softInk)
@@ -96,7 +96,7 @@ struct ManualLogView: View {
     }
 
     private var heroHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 92 : 154
+        dynamicTypeSize.isAccessibilitySize ? 80 : 112
     }
 
     private var scanSPFButton: some View {
@@ -117,11 +117,11 @@ struct ManualLogView: View {
                     .frame(width: 24, height: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Scan SPF")
+                    Text("Scan Bottle SPF")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
-                    Text("Optional. Read a bottle label and confirm before using it.")
+                    Text("Read a label and confirm before using it.")
                         .font(.system(size: 13))
                         .foregroundStyle(AppPalette.softInk)
                 }

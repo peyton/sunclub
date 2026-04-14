@@ -13,32 +13,20 @@ struct SunclubWatchHomeView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header
-                statusCard
-                uvCard
-                reapplyCard
+        VStack(alignment: .leading, spacing: 8) {
+            header
+            logButton
 
-                Button {
-                    logFromWrist()
-                } label: {
-                    if isLogging {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Label(snapshot.hasLoggedToday() ? "Refresh Wrist Log" : "Log Sunscreen", systemImage: "sun.max.fill")
-                            .frame(maxWidth: .infinity)
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    statusCard
+                    uvCard
+                    reapplyCard
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .disabled(isLogging)
-                .accessibilityLabel(snapshot.hasLoggedToday() ? "Refresh wrist log" : "Log sunscreen")
-                .accessibilityHint("Sends today's sunscreen log to your paired iPhone.")
             }
-            .padding()
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .navigationTitle("Sunclub")
         .onAppear {
             syncCoordinator.refreshSnapshot()
@@ -61,12 +49,33 @@ struct SunclubWatchHomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(snapshot.hasLoggedToday() ? "Protected today" : "Still open today")
+            Text(snapshot.hasLoggedToday() ? "Protected today" : "Still open")
                 .font(.headline)
-            Text("\(currentStreak)-day streak")
+            Text(currentStreak == 1 ? "1 day streak" : "\(currentStreak) day streak")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.orange)
         }
+    }
+
+    private var logButton: some View {
+        Button {
+            logFromWrist()
+        } label: {
+            if isLogging {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            } else {
+                Label(snapshot.hasLoggedToday() ? "Refresh Log" : "Log Sunscreen", systemImage: "sun.max.fill")
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(.orange)
+        .disabled(isLogging)
+        .accessibilityLabel(snapshot.hasLoggedToday() ? "Refresh wrist log" : "Log sunscreen")
+        .accessibilityHint("Sends today's sunscreen log to your paired iPhone.")
+        .accessibilityIdentifier("watch.logSunscreen")
     }
 
     private var statusCard: some View {
@@ -75,7 +84,7 @@ struct SunclubWatchHomeView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(snapshot.hasLoggedToday() ? .green : .orange)
 
-            Text(snapshot.hasLoggedToday() ? "Logged from your wrist or phone." : "Tap once to log sunscreen from your wrist.")
+            Text(snapshot.hasLoggedToday() ? "Logged from wrist or phone." : "Button above logs from your wrist.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -86,8 +95,8 @@ struct SunclubWatchHomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var uvCard: some View {
@@ -112,8 +121,8 @@ struct SunclubWatchHomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var reapplyCard: some View {
@@ -132,8 +141,8 @@ struct SunclubWatchHomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func logFromWrist() {

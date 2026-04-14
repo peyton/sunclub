@@ -39,8 +39,8 @@ struct ReapplyCheckInView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             SunStatusCard(
-                title: "One day, one streak",
-                detail: "This tracks today's reapply without creating a second daily streak entry.",
+                title: "Today stays one log",
+                detail: "This adds a reapply check-in without changing the daily streak count.",
                 tint: AppPalette.sun,
                 symbol: "arrow.clockwise.circle.fill"
             )

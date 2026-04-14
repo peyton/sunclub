@@ -18,6 +18,9 @@ struct HomeView: View {
 
                 todayCard
 
+                secondaryActionsSection
+                uvBriefingSection
+
                 Button {
                     router.open(.weeklySummary)
                 } label: {
@@ -29,9 +32,7 @@ struct HomeView: View {
 
                 accountabilityHomeCard
                 accountabilityNudgeCard
-                uvBriefingSection
                 achievementCelebrationCard
-                secondaryActionsSection
 
                 Button {
                     router.open(.history)
@@ -283,14 +284,14 @@ struct HomeView: View {
         if let uvForecast = appState.uvForecast {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("UV Today")
+                    Text("UV Forecast")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
 
                     Spacer(minLength: 0)
 
                     if let peakHour = uvForecast.peakHour {
-                        Text("Peak \(peakHour.index)")
+                        Text("Peak UV \(peakHour.index)")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppPalette.sun)
                     }
@@ -533,7 +534,7 @@ struct HomeView: View {
                 }
                 .accessibilityHidden(true)
 
-                Text("Open your weekly streak, then view full history.")
+                Text("Last 7 days at a glance.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
             }
@@ -560,7 +561,7 @@ struct HomeView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
-                Text("View your full calendar")
+                Text("Calendar, backfills, and edits")
                     .font(.system(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             }
@@ -687,9 +688,9 @@ struct HomeView: View {
 
     @ViewBuilder
     private var recoveryCard: some View {
-        if !appState.homeRecoveryActions.isEmpty {
+        if !visibleRecoveryActions.isEmpty {
             VStack(spacing: 10) {
-                ForEach(appState.homeRecoveryActions) { action in
+                ForEach(visibleRecoveryActions) { action in
                     HomeBannerCard(
                         title: action.title,
                         detail: action.detail,
@@ -822,9 +823,19 @@ struct HomeView: View {
 
     private var hasSecondaryActions: Bool {
         appState.notificationHealthPresentation != nil
-            || !appState.homeRecoveryActions.isEmpty
+            || !visibleRecoveryActions.isEmpty
             || appState.pendingImportedBatchCount > 0
             || !appState.conflicts.isEmpty
+    }
+
+    private var visibleRecoveryActions: [HomeRecoveryAction] {
+        appState.homeRecoveryActions.filter { action in
+            guard action.kind == .logToday else {
+                return true
+            }
+
+            return appState.record(for: now) != nil
+        }
     }
 
     private func shouldShowExpandedUVForecast(_ forecast: SunclubUVForecast) -> Bool {
