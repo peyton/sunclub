@@ -127,10 +127,30 @@ def ensure_profiles(
 ) -> list[PreparedProfile]:
     prepared: list[PreparedProfile] = []
     distribution_certificate_ids: list[str] | None = None
+    reusable_certificate_ids_by_profile_type: dict[str, list[str]] = {}
+    bundle_ids: dict[str, JsonObject] = {}
+    required_entitlements_by_bundle: dict[str, JsonObject] = {}
 
     for bundle in bundles:
-        required_entitlements = read_bundle_profile_entitlements(bundle.path)
+        required_entitlements_by_bundle[bundle.bundle_identifier] = (
+            read_bundle_profile_entitlements(bundle.path)
+        )
         bundle_id = find_bundle_id(client, bundle.bundle_identifier)
+        bundle_ids[bundle.bundle_identifier] = bundle_id
+        reusable_certificate_ids_by_profile_type[bundle.profile_type] = (
+            append_unique_certificate_ids(
+                reusable_certificate_ids_by_profile_type.get(bundle.profile_type, []),
+                find_reusable_certificate_ids(
+                    client, bundle_id["id"], bundle.profile_type
+                ),
+            )
+        )
+
+    for bundle in bundles:
+        required_entitlements = required_entitlements_by_bundle[
+            bundle.bundle_identifier
+        ]
+        bundle_id = bundle_ids[bundle.bundle_identifier]
         profile = find_active_profile(
             client,
             bundle_id["id"],
@@ -148,6 +168,10 @@ def ensure_profiles(
                 client, bundle_id["id"], bundle.profile_type
             )
             if not certificate_ids:
+                certificate_ids = reusable_certificate_ids_by_profile_type.get(
+                    bundle.profile_type, []
+                )
+            if not certificate_ids:
                 if distribution_certificate_ids is None:
                     distribution_certificate_ids = [
                         find_distribution_certificate(client)["id"]
@@ -157,6 +181,23 @@ def ensure_profiles(
             created = True
             validate_profile_entitlements(
                 client, profile, bundle, required_entitlements
+            )
+            reusable_certificate_ids_by_profile_type[bundle.profile_type] = (
+                append_unique_certificate_ids(
+                    reusable_certificate_ids_by_profile_type.get(
+                        bundle.profile_type, []
+                    ),
+                    certificate_ids,
+                )
+            )
+        else:
+            reusable_certificate_ids_by_profile_type[bundle.profile_type] = (
+                append_unique_certificate_ids(
+                    reusable_certificate_ids_by_profile_type.get(
+                        bundle.profile_type, []
+                    ),
+                    profile_certificate_ids(client, profile),
+                )
             )
 
         installed_path = None
@@ -173,6 +214,19 @@ def ensure_profiles(
         )
 
     return prepared
+
+
+def append_unique_certificate_ids(
+    existing: Sequence[str], additional: Sequence[str]
+) -> list[str]:
+    merged = list(existing)
+    seen = set(merged)
+    for certificate_id in additional:
+        if certificate_id in seen:
+            continue
+        merged.append(certificate_id)
+        seen.add(certificate_id)
+    return merged
 
 
 def find_bundle_id(client: ProfilesClient, identifier: str) -> JsonObject:
