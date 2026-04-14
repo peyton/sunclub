@@ -93,6 +93,10 @@ GitHub run cross-check:
   profile content and proving it covers the archived bundle's profile-backed
   entitlements, including app groups. Stale profiles must be skipped and
   regenerated before export.
+- When borrowing certificates from existing profiles to create a replacement
+  profile, tolerate profile relationship 404s from App Store Connect and keep
+  scanning active profile candidates. The list endpoint can lag deleted or
+  invalidated profile resources.
 - Keep the app-owned left-edge back gesture in `RootView` when hiding the
   native navigation bar. Do not rely only on UIKit
   `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed to

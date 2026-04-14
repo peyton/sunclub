@@ -8,12 +8,14 @@ from pathlib import Path
 from typing import Any
 
 import scripts.appstore.provisioning_profiles as provisioning_profiles
+from scripts.appstore.connect_api import AppStoreConnectError
 from scripts.appstore.provisioning_profiles import (
     APP_STORE_PROFILE_TYPE,
     ArchivedBundle,
     collect_archived_bundles,
     ensure_profiles,
     find_bundle_id,
+    find_reusable_certificate_ids,
     missing_profile_entitlements,
 )
 
@@ -215,6 +217,51 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
     ]
 
 
+def test_find_reusable_certificate_ids_skips_deleted_profile_candidates() -> None:
+    client = FakeProfilesClient()
+
+    def get(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> dict[str, Any]:
+        if path == "/profiles/profile-deleted/relationships/certificates":
+            raise AppStoreConnectError(
+                "App Store Connect request failed with HTTP 404: "
+                "The specified resource does not exist - There is no resource "
+                "of type 'profiles' with id 'profile-deleted'"
+            )
+        if path == "/profiles/profile-existing/relationships/certificates":
+            return {
+                "data": [
+                    {
+                        "type": "certificates",
+                        "id": "cert-profile-existing",
+                    }
+                ]
+            }
+        raise AssertionError(f"Unexpected GET: {path} {query}")
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        if path == "/bundleIds/bundle-app.peyton.sunclub/profiles":
+            return [
+                existing_profile("profile-deleted", days=60),
+                existing_profile("profile-existing", days=30),
+            ]
+        raise AssertionError(f"Unexpected collection: {path} {query}")
+
+    client.get = get  # type: ignore[method-assign]
+    client.get_collection = get_collection  # type: ignore[method-assign]
+
+    certificate_ids = find_reusable_certificate_ids(
+        client, "bundle-app.peyton.sunclub", APP_STORE_PROFILE_TYPE
+    )
+
+    assert certificate_ids == ["cert-profile-existing"]
+
+
 def test_find_bundle_id_uses_exact_identifier_match() -> None:
     client = FakeProfilesClient()
 
@@ -283,7 +330,7 @@ def bundle_id(bundle_id: str, identifier: str) -> dict[str, Any]:
     }
 
 
-def existing_profile(profile_id: str) -> dict[str, Any]:
+def existing_profile(profile_id: str, *, days: int = 30) -> dict[str, Any]:
     return {
         "type": "profiles",
         "id": profile_id,
@@ -291,7 +338,7 @@ def existing_profile(profile_id: str) -> dict[str, Any]:
             "name": "Existing Sunclub Profile",
             "profileType": APP_STORE_PROFILE_TYPE,
             "profileState": "ACTIVE",
-            "expirationDate": future_date(),
+            "expirationDate": future_date(days=days),
             "uuid": f"uuid-{profile_id}",
             "profileContent": profile_content(),
         },
@@ -310,8 +357,8 @@ def certificate(certificate_id: str) -> dict[str, Any]:
     }
 
 
-def future_date() -> str:
-    return (datetime.now(UTC) + timedelta(days=30)).isoformat().replace("+00:00", "Z")
+def future_date(*, days: int = 30) -> str:
+    return (datetime.now(UTC) + timedelta(days=days)).isoformat().replace("+00:00", "Z")
 
 
 def profile_content() -> str:

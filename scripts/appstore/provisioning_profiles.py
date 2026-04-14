@@ -273,11 +273,20 @@ def profile_certificate_ids(client: ProfilesClient, profile: JsonObject) -> list
     if not isinstance(profile_id, str) or not profile_id:
         return []
 
-    response = client.get(f"/profiles/{profile_id}/relationships/certificates")
+    try:
+        response = client.get(f"/profiles/{profile_id}/relationships/certificates")
+    except AppStoreConnectError as error_:
+        if is_not_found_error(error_):
+            return []
+        raise
     data = response.get("data")
     if not isinstance(data, list):
         return []
     return relationship_ids(data)
+
+
+def is_not_found_error(error_: AppStoreConnectError) -> bool:
+    return "HTTP 404" in str(error_)
 
 
 def relationship_data(resource: JsonObject, name: str) -> list[JsonObject]:
