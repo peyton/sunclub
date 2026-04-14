@@ -104,6 +104,10 @@ GitHub run cross-check:
   profile, query the profile certificates endpoint, tolerate profile 404s from
   App Store Connect, and keep scanning active profile candidates. The list
   endpoint can lag deleted or invalidated profile resources.
+- Also fetch each reusable profile with `include=certificates` before falling
+  back to the profile certificates endpoint. App Store Connect may omit
+  certificate relationships from bundle profile listings while still returning
+  them through the included profile resource.
 - Gather reusable release certificate IDs across all archived bundles before
   creating any missing profiles. A watch extension can require a new profile
   while App Store Connect hides the top-level certificate list from the API key,

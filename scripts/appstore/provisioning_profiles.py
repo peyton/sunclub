@@ -327,6 +327,10 @@ def profile_certificate_ids(client: ProfilesClient, profile: JsonObject) -> list
     if not isinstance(profile_id, str) or not profile_id:
         return []
 
+    certificate_ids = included_profile_certificate_ids(client, profile_id)
+    if certificate_ids:
+        return certificate_ids
+
     try:
         response = client.get(f"/profiles/{profile_id}/certificates")
     except AppStoreConnectError as error_:
@@ -337,6 +341,42 @@ def profile_certificate_ids(client: ProfilesClient, profile: JsonObject) -> list
     if not isinstance(data, list):
         return []
     return relationship_ids(data)
+
+
+def included_profile_certificate_ids(
+    client: ProfilesClient, profile_id: str
+) -> list[str]:
+    try:
+        response = client.get(
+            f"/profiles/{profile_id}",
+            {
+                "include": "certificates",
+                "fields[profiles]": "certificates",
+                "fields[certificates]": "activated,certificateType,expirationDate",
+            },
+        )
+    except AppStoreConnectError as error_:
+        if is_not_found_error(error_):
+            return []
+        raise
+
+    included = response.get("included")
+    if isinstance(included, list):
+        certificates = [
+            resource
+            for resource in included
+            if isinstance(resource, dict)
+            and resource.get("type") == "certificates"
+            and certificate_is_usable(resource)
+        ]
+        certificate_ids = relationship_ids(certificates)
+        if certificate_ids:
+            return certificate_ids
+
+    data = response.get("data")
+    if isinstance(data, dict):
+        return relationship_ids(relationship_data(data, "certificates"))
+    return []
 
 
 def is_not_found_error(error_: AppStoreConnectError) -> bool:

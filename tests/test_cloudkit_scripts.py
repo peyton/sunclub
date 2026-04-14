@@ -119,39 +119,39 @@ xcent_path="$derived_data/Build/Intermediates.noindex/Sunclub.build/Debug-iphone
 mkdir -p "$(dirname "$xcent_path")"
 
 if [ "${FAKE_XCENT_MODE:-plain}" = "cloudkit" ]; then
-  cat >"$xcent_path" <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>application-identifier</key>
-  <string>3VDQ4656LX.app.peyton.sunclub</string>
-  <key>com.apple.developer.icloud-container-identifiers</key>
-  <array>
-    <string>iCloud.app.peyton.sunclub</string>
-  </array>
-  <key>com.apple.developer.icloud-services</key>
-  <array>
-    <string>CloudKit</string>
-  </array>
-  <key>com.apple.developer.team-identifier</key>
-  <string>3VDQ4656LX</string>
-</dict>
-</plist>
-EOF
+  {
+    printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+    printf '%s\n' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+    printf '%s\n' '<plist version="1.0">'
+    printf '%s\n' '<dict>'
+    printf '%s\n' '  <key>application-identifier</key>'
+    printf '%s\n' '  <string>3VDQ4656LX.app.peyton.sunclub</string>'
+    printf '%s\n' '  <key>com.apple.developer.icloud-container-identifiers</key>'
+    printf '%s\n' '  <array>'
+    printf '%s\n' '    <string>iCloud.app.peyton.sunclub</string>'
+    printf '%s\n' '  </array>'
+    printf '%s\n' '  <key>com.apple.developer.icloud-services</key>'
+    printf '%s\n' '  <array>'
+    printf '%s\n' '    <string>CloudKit</string>'
+    printf '%s\n' '  </array>'
+    printf '%s\n' '  <key>com.apple.developer.team-identifier</key>'
+    printf '%s\n' '  <string>3VDQ4656LX</string>'
+    printf '%s\n' '</dict>'
+    printf '%s\n' '</plist>'
+  } >"$xcent_path"
 else
-  cat >"$xcent_path" <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>application-identifier</key>
-  <string>3VDQ4656LX.app.peyton.sunclub</string>
-  <key>com.apple.developer.team-identifier</key>
-  <string>3VDQ4656LX</string>
-</dict>
-</plist>
-EOF
+  {
+    printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+    printf '%s\n' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+    printf '%s\n' '<plist version="1.0">'
+    printf '%s\n' '<dict>'
+    printf '%s\n' '  <key>application-identifier</key>'
+    printf '%s\n' '  <string>3VDQ4656LX.app.peyton.sunclub</string>'
+    printf '%s\n' '  <key>com.apple.developer.team-identifier</key>'
+    printf '%s\n' '  <string>3VDQ4656LX</string>'
+    printf '%s\n' '</dict>'
+    printf '%s\n' '</plist>'
+  } >"$xcent_path"
 fi
 """,
     )

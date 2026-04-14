@@ -17,6 +17,7 @@ from scripts.appstore.provisioning_profiles import (
     find_bundle_id,
     find_reusable_certificate_ids,
     missing_profile_entitlements,
+    profile_certificate_ids,
 )
 
 
@@ -246,6 +247,14 @@ def test_find_reusable_certificate_ids_skips_deleted_profile_candidates() -> Non
                 "The specified resource does not exist - There is no resource "
                 "of type 'profiles' with id 'profile-deleted'"
             )
+        if path == "/profiles/profile-deleted":
+            raise AppStoreConnectError(
+                "App Store Connect request failed with HTTP 404: "
+                "The specified resource does not exist - There is no resource "
+                "of type 'profiles' with id 'profile-deleted'"
+            )
+        if path == "/profiles/profile-existing":
+            return {"data": existing_profile("profile-existing")}
         if path == "/profiles/profile-existing/certificates":
             return {
                 "data": [
@@ -276,6 +285,56 @@ def test_find_reusable_certificate_ids_skips_deleted_profile_candidates() -> Non
     )
 
     assert certificate_ids == ["cert-profile-existing"]
+
+
+def test_profile_certificate_ids_reads_included_profile_certificates() -> None:
+    client = FakeProfilesClient()
+
+    def get(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> dict[str, Any]:
+        if path == "/profiles/profile-existing":
+            assert query == {
+                "include": "certificates",
+                "fields[profiles]": "certificates",
+                "fields[certificates]": "activated,certificateType,expirationDate",
+            }
+            profile = existing_profile("profile-existing")
+            profile["relationships"] = {
+                "certificates": {
+                    "data": [
+                        {
+                            "type": "certificates",
+                            "id": "cert-included",
+                        }
+                    ]
+                }
+            }
+            return {
+                "data": profile,
+                "included": [certificate("cert-included")],
+            }
+        if path == "/profiles/profile-existing/certificates":
+            raise AssertionError("Included certificates should be used first")
+        raise AssertionError(f"Unexpected GET: {path} {query}")
+
+    client.get = get  # type: ignore[method-assign]
+
+    certificate_ids = profile_certificate_ids(
+        client,
+        {
+            "type": "profiles",
+            "id": "profile-existing",
+            "attributes": {
+                "profileType": APP_STORE_PROFILE_TYPE,
+                "profileState": "ACTIVE",
+                "expirationDate": future_date(),
+            },
+        },
+    )
+
+    assert certificate_ids == ["cert-included"]
 
 
 def test_find_bundle_id_uses_exact_identifier_match() -> None:
