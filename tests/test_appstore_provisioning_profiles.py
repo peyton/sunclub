@@ -119,6 +119,17 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
     tmp_path: Path,
 ) -> None:
     client = FakeProfilesClient()
+    original_get_collection = client.get_collection
+
+    def get_collection_without_global_certificates(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        if path == "/certificates":
+            raise AssertionError("Global certificate lookup should not be required")
+        return original_get_collection(path, query)
+
+    client.get_collection = get_collection_without_global_certificates  # type: ignore[method-assign]
     bundles = [
         ArchivedBundle(
             path=tmp_path / "Sunclub.app",
@@ -153,7 +164,7 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
         "id": "bundle-app.peyton.sunclub.watch.extension",
     }
     assert posted_data["relationships"]["certificates"]["data"] == [
-        {"type": "certificates", "id": "cert-distribution"}
+        {"type": "certificates", "id": "cert-profile-existing"}
     ]
     assert (
         tmp_path / "profiles" / "uuid-profile-existing.mobileprovision"
