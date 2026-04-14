@@ -7,11 +7,14 @@ import plistlib
 from pathlib import Path
 from typing import Any
 
+import scripts.appstore.provisioning_profiles as provisioning_profiles
 from scripts.appstore.provisioning_profiles import (
     APP_STORE_PROFILE_TYPE,
     ArchivedBundle,
     collect_archived_bundles,
     ensure_profiles,
+    find_bundle_id,
+    missing_profile_entitlements,
 )
 
 
@@ -26,6 +29,15 @@ class FakeProfilesClient:
     ) -> dict[str, Any]:
         if path == "/profiles/profile-existing":
             return {"data": existing_profile("profile-existing")}
+        if path == "/profiles/profile-existing/relationships/certificates":
+            return {
+                "data": [
+                    {
+                        "type": "certificates",
+                        "id": "cert-profile-existing",
+                    }
+                ]
+            }
         raise AssertionError(f"Unexpected GET: {path} {query}")
 
     def get_collection(
@@ -36,10 +48,12 @@ class FakeProfilesClient:
         query = query or {}
         if path == "/bundleIds":
             identifier = query["filter[identifier]"]
-            return [{"type": "bundleIds", "id": f"bundle-{identifier}"}]
-        if path == "/profiles":
-            if query["filter[bundleId]"] == "bundle-app.peyton.sunclub":
-                return [existing_profile("profile-existing")]
+            return [bundle_id(f"bundle-{identifier}", str(identifier))]
+        if path == "/bundleIds/bundle-app.peyton.sunclub/profiles":
+            assert "filter[profileType]" not in query
+            return [existing_profile("profile-existing")]
+        if path.startswith("/bundleIds/") and path.endswith("/profiles"):
+            assert "filter[profileType]" not in query
             return []
         if path == "/certificates":
             certificate_type = query["filter[certificateType]"]
@@ -128,10 +142,10 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
     assert [profile.created for profile in prepared] == [False, True]
     assert len(client.posts) == 1
     posted_data = client.posts[0]["data"]
-    assert posted_data["attributes"] == {
-        "name": "Sunclub App Store app.peyton.sunclub.watch.extension",
-        "profileType": APP_STORE_PROFILE_TYPE,
-    }
+    assert posted_data["attributes"]["name"].startswith(
+        "Sunclub App Store app.peyton.sunclub.watch.extension "
+    )
+    assert posted_data["attributes"]["profileType"] == APP_STORE_PROFILE_TYPE
     assert posted_data["relationships"]["bundleId"]["data"] == {
         "type": "bundleIds",
         "id": "bundle-app.peyton.sunclub.watch.extension",
@@ -149,6 +163,104 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
     ).read_bytes()
 
 
+def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    client = FakeProfilesClient()
+    bundle = ArchivedBundle(
+        path=tmp_path / "Sunclub.app",
+        relative_path="Sunclub.app",
+        bundle_identifier="app.peyton.sunclub",
+        package_type="APPL",
+    )
+    required = {"com.apple.security.application-groups": ["group.app.peyton.sunclub"]}
+
+    def read_bundle_profile_entitlements(_path: Path) -> dict[str, Any]:
+        return required
+
+    def profile_entitlements_from_content(
+        _client: FakeProfilesClient, profile: dict[str, Any]
+    ) -> dict[str, Any]:
+        if profile["id"] == "profile-existing":
+            return {"com.apple.security.application-groups": ["group.app.peyton.other"]}
+        return required
+
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "read_bundle_profile_entitlements",
+        read_bundle_profile_entitlements,
+    )
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "profile_entitlements_from_content",
+        profile_entitlements_from_content,
+    )
+
+    prepared = ensure_profiles(
+        client,
+        [bundle],
+        create_missing=True,
+        install_directory=None,
+    )
+
+    assert [profile.created for profile in prepared] == [True]
+    assert len(client.posts) == 1
+    posted_data = client.posts[0]["data"]
+    assert posted_data["relationships"]["bundleId"]["data"] == {
+        "type": "bundleIds",
+        "id": "bundle-app.peyton.sunclub",
+    }
+    assert posted_data["relationships"]["certificates"]["data"] == [
+        {"type": "certificates", "id": "cert-profile-existing"}
+    ]
+
+
+def test_find_bundle_id_uses_exact_identifier_match() -> None:
+    client = FakeProfilesClient()
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        assert path == "/bundleIds"
+        return [
+            bundle_id("bundle-app", "app.peyton.sunclub"),
+            bundle_id("bundle-widget", "app.peyton.sunclub.widgets"),
+            bundle_id("bundle-watch", "app.peyton.sunclub.watch"),
+        ]
+
+    client.get_collection = get_collection  # type: ignore[method-assign]
+
+    found = find_bundle_id(client, "app.peyton.sunclub")
+
+    assert found["id"] == "bundle-app"
+
+
+def test_missing_profile_entitlements_reports_missing_app_group() -> None:
+    missing = missing_profile_entitlements(
+        {"com.apple.security.application-groups": ["group.app.peyton.other"]},
+        {"com.apple.security.application-groups": ["group.app.peyton.sunclub"]},
+    )
+
+    assert missing == [
+        "com.apple.security.application-groups=['group.app.peyton.sunclub']"
+    ]
+
+
+def test_missing_profile_entitlements_accepts_superset_arrays() -> None:
+    missing = missing_profile_entitlements(
+        {
+            "com.apple.security.application-groups": [
+                "group.app.peyton.sunclub",
+                "group.app.peyton.other",
+            ]
+        },
+        {"com.apple.security.application-groups": ["group.app.peyton.sunclub"]},
+    )
+
+    assert missing == []
+
+
 def write_info_plist(path: Path, bundle_identifier: str, package_type: str) -> None:
     path.mkdir(parents=True)
     with (path / "Info.plist").open("wb") as file:
@@ -159,6 +271,16 @@ def write_info_plist(path: Path, bundle_identifier: str, package_type: str) -> N
             },
             file,
         )
+
+
+def bundle_id(bundle_id: str, identifier: str) -> dict[str, Any]:
+    return {
+        "type": "bundleIds",
+        "id": bundle_id,
+        "attributes": {
+            "identifier": identifier,
+        },
+    }
 
 
 def existing_profile(profile_id: str) -> dict[str, Any]:
