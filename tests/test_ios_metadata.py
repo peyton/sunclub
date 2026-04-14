@@ -188,13 +188,22 @@ def test_tests_plist_uses_resolved_version_placeholders() -> None:
 
 def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     workflow = RELEASE_WORKFLOW.read_text()
+    release_safety_step = re.search(
+        r"- name: Run release launch safety tests\n"
+        r"(?P<body>(?:        .*\n)+?)"
+        r"\n      - name: Archive and upload to TestFlight",
+        workflow,
+    )
 
     assert '- "v*.*.*"' in workflow
     assert 'xcode-version: "26.3"' in workflow
     assert "environment: testflight" in workflow
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
-    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
-    assert "mise exec -- just test-unit" in workflow
+    assert release_safety_step is not None
+    release_safety_body = release_safety_step.group("body")
+    assert "timeout-minutes: 45" in release_safety_body
+    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in release_safety_body
+    assert "mise exec -- just test-unit" in release_safety_body
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
         in workflow

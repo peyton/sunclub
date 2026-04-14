@@ -71,7 +71,7 @@ It:
 1. resolves release versions
 2. validates App Store metadata
    - uses draft mode for TestFlight-only fields
-3. runs the Swift unit suite as a launch-safety gate
+3. runs the Swift unit suite as a launch-safety gate with Xcode compile caches disabled and a timeout
 4. archives the production app on pinned stable Xcode `26.3`
 5. ad-hoc signs the unsigned archive with resolved release entitlements before export
 6. exports the production IPA
@@ -95,6 +95,8 @@ just cloudkit-validate-schema
 ```
 
 Those CloudKit commands verify Apple-side CloudKit access. The final IPA entitlement report verifies what testers actually receive.
+
+The launch-safety gate must keep `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1` and `timeout-minutes` in the workflow. If that pre-archive test step hangs, the job never reaches the archive step and there is no IPA or entitlement artifact to inspect.
 
 `.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review.
 

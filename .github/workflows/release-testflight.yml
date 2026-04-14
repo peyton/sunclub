@@ -59,6 +59,9 @@ jobs:
         run: mise exec -- just appstore-validate
 
       - name: Run release launch safety tests
+        timeout-minutes: 45
+        env:
+          SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
         run: mise exec -- just test-unit
 
       - name: Archive and upload to TestFlight
