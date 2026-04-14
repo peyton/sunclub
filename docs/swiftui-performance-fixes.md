@@ -80,7 +80,9 @@ Edit these files:
 
 After edits, run:
 
-    just test-unit
+```sh
+just test-unit
+```
 
 If that is too slow or blocked by local simulator state, run the closest compile check available through the repo's standard iOS tooling and record the reason.
 
