@@ -300,6 +300,7 @@ final class AppState {
         healthKitService: (any SunclubHealthKitServing)? = nil,
         liveActivityCoordinator: (any SunclubLiveActivityCoordinating)? = nil,
         backupService: SunclubBackupService = SunclubBackupService(),
+        storeRecoveryService: SunclubStoreRecoveryService = SunclubStoreRecoveryService(),
         historyService: SunclubHistoryService? = nil,
         cloudSyncCoordinator: CloudSyncControlling? = nil,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
@@ -322,6 +323,12 @@ final class AppState {
         self.healthKitService = healthKitService ?? SunclubHealthKitService.shared
         self.liveActivityCoordinator = liveActivityCoordinator ?? SunclubLiveActivityCoordinator.shared
         self.backupService = backupService
+        let launchRecoveryResult = Self.recoverLegacyStoreIfNeeded(
+            storeRecoveryService: storeRecoveryService,
+            context: context,
+            historyService: resolvedHistoryService,
+            runtimeEnvironment: runtimeEnvironment
+        )
         try? resolvedHistoryService.bootstrapIfNeeded()
         self.widgetSnapshotStore = widgetSnapshotStore
         self.growthFeatureStore = Self.defaultGrowthFeatureStore(
@@ -356,10 +363,33 @@ final class AppState {
 
         if runtimeEnvironment.shouldStartCloudSyncOnLaunch {
             Task {
+                if let launchRecoveryResult,
+                   self.syncPreference?.isICloudSyncEnabled ?? true {
+                    _ = try? await self.cloudSyncCoordinator.publishImportedSession(
+                        launchRecoveryResult.importSessionID
+                    )
+                }
                 await self.cloudSyncCoordinator.start()
                 self.refresh()
             }
         }
+    }
+
+    @MainActor
+    private static func recoverLegacyStoreIfNeeded(
+        storeRecoveryService: SunclubStoreRecoveryService,
+        context: ModelContext,
+        historyService: SunclubHistoryService,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot
+    ) -> SunclubStoreRecoveryResult? {
+        guard runtimeEnvironment.shouldRunLaunchStoreRecovery else {
+            return nil
+        }
+
+        return try? storeRecoveryService.recoverLegacyApplicationSupportStoreIfNeeded(
+            into: context,
+            historyService: historyService
+        )
     }
 
     static func defaultCloudSyncCoordinator(

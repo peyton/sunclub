@@ -30,15 +30,18 @@ final class SunclubHistoryService {
         let settings = try loadOrCreateSettings()
         let preference = try loadOrCreateSyncPreference()
         _ = try loadOrCreateCloudSyncState()
+        let records = try context.fetch(FetchDescriptor<DailyRecord>())
 
         let existingBatchCount = try context.fetch(FetchDescriptor<SunclubChangeBatch>()).count
         if existingBatchCount == 0 {
+            let isEmptyDefaultSeed = Self.isDefaultSettingsSnapshot(settings.projectionSnapshot) && records.isEmpty
             let batch = SunclubChangeBatch(
                 kind: .migrationSeed,
                 scope: .timeline,
                 scopeIdentifier: "timeline",
                 authorDeviceID: preference.deviceID,
-                summary: "Initialized Sunclub history."
+                summary: "Initialized Sunclub history.",
+                isLocalOnly: isEmptyDefaultSeed
             )
             context.insert(batch)
             context.insert(
@@ -49,7 +52,6 @@ final class SunclubHistoryService {
                 )
             )
 
-            let records = try context.fetch(FetchDescriptor<DailyRecord>())
             for record in records {
                 context.insert(
                     DailyRecordRevision(
@@ -112,6 +114,11 @@ final class SunclubHistoryService {
         )
         descriptor.fetchLimit = limit
         return try context.fetch(descriptor)
+    }
+
+    func hasImportSession(sourceDescriptionPrefix: String) throws -> Bool {
+        let sessions = try context.fetch(FetchDescriptor<SunclubImportSession>())
+        return sessions.contains { $0.sourceDescription.hasPrefix(sourceDescriptionPrefix) }
     }
 
     func importSession(id: UUID) throws -> SunclubImportSession? {
@@ -288,6 +295,82 @@ final class SunclubHistoryService {
         )
     }
 
+    @discardableResult
+    func recoverLegacyDomainData(
+        from importedContext: ModelContext,
+        sourceDescription: String
+    ) throws -> SunclubImportResult? {
+        try bootstrapIfNeeded()
+
+        guard try hasImportSession(sourceDescriptionPrefix: sourceDescription) == false else {
+            return nil
+        }
+
+        let importedHistoryService = SunclubHistoryService(context: importedContext, calendar: calendar)
+        try importedHistoryService.refreshProjectedState()
+        let importedDomain = try ImportedDomainSnapshot(context: importedContext)
+        guard Self.isMeaningfulRecovery(
+            settings: importedDomain.projectedSettings?.projectionSnapshot,
+            records: importedDomain.projectedRecords
+        ) else {
+            return nil
+        }
+
+        let recoveryPlan = try recoveredProjectedState(
+            projectedSettings: importedDomain.projectedSettings,
+            projectedRecords: importedDomain.projectedRecords
+        )
+        guard recoveryPlan.hasChanges else {
+            return nil
+        }
+
+        let restorePoint = try createRestorePoint(summary: "Saved state before legacy store recovery.")
+        let session = SunclubImportSession(
+            sourceDescription: sourceDescription,
+            restorePointBatchID: restorePoint.id
+        )
+        context.insert(session)
+
+        let recoveryBatch = try createBatch(
+            kind: .legacyStoreRecovery,
+            scope: .timeline,
+            scopeIdentifier: "timeline",
+            summary: "Recovered data from the pre-entitlement local store.",
+            isLocalOnly: true,
+            importSessionID: session.id
+        )
+
+        if let recoveredSettings = recoveryPlan.settings {
+            context.insert(
+                SettingsRevision(
+                    batch: recoveryBatch,
+                    snapshot: recoveredSettings,
+                    changedFields: Self.allSettingsFields
+                )
+            )
+        }
+
+        for record in recoveryPlan.records {
+            context.insert(
+                DailyRecordRevision(
+                    batch: recoveryBatch,
+                    snapshot: record.projectionSnapshot,
+                    changedFields: Self.allRecordFields
+                )
+            )
+        }
+
+        session.setImportedBatchIDs([recoveryBatch.id])
+        try context.save()
+        try rebuildProjections()
+
+        return SunclubImportResult(
+            importedBatchCount: 1,
+            importSessionID: session.id,
+            restorePointBatchID: restorePoint.id
+        )
+    }
+
     private func cloneImportedBatches(
         _ importedBatches: [SunclubChangeBatch],
         sessionID: UUID
@@ -389,6 +472,24 @@ final class SunclubHistoryService {
         try insertDeletedDaysMissingFromImport(into: importBatch, projectedRecords: projectedRecords)
         try insertImportedProjectedRecords(projectedRecords, batch: importBatch)
         return importBatch
+    }
+
+    private func recoveredProjectedState(
+        projectedSettings: Settings?,
+        projectedRecords: [DailyRecord]
+    ) throws -> RecoveredProjectedState {
+        let currentSettings = try loadOrCreateSettings().projectionSnapshot
+        let recoveredSettings = projectedSettings
+            .map(\.projectionSnapshot)
+            .map { Self.mergeRecoveredSettings(current: currentSettings, imported: $0) }
+        let settingsToRecover = recoveredSettings == currentSettings ? nil : recoveredSettings
+
+        let currentDays = Set(try records().map { calendar.startOfDay(for: $0.startOfDay) })
+        let recordsToRecover = projectedRecords.filter { record in
+            !currentDays.contains(calendar.startOfDay(for: record.startOfDay))
+        }
+
+        return RecoveredProjectedState(settings: settingsToRecover, records: recordsToRecover)
     }
 
     private func insertDeletedDaysMissingFromImport(
@@ -698,9 +799,10 @@ final class SunclubHistoryService {
         try resolveConflictsIfNeeded()
 
         let settings = try loadOrCreateSettings()
-        let settingsRevisions = try context.fetch(
+        let rawSettingsRevisions = try context.fetch(
             FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
         )
+        let settingsRevisions = Self.settingsRevisionsForProjection(rawSettingsRevisions)
         if let latestSettings = settingsRevisions.last {
             settings.apply(snapshot: latestSettings.snapshot)
         }
@@ -752,12 +854,16 @@ final class SunclubHistoryService {
             return
         }
 
+        let isEmptyDefaultSeed = existingSettingsRevisions.isEmpty
+            && orphanRecords.isEmpty
+            && Self.isDefaultSettingsSnapshot(settings.projectionSnapshot)
         let batch = SunclubChangeBatch(
             kind: .migrationSeed,
             scope: .timeline,
             scopeIdentifier: "timeline",
             authorDeviceID: preference.deviceID,
-            summary: "Reconciled projected rows into history."
+            summary: "Reconciled projected rows into history.",
+            isLocalOnly: isEmptyDefaultSeed
         )
         context.insert(batch)
 
@@ -815,9 +921,10 @@ final class SunclubHistoryService {
     }
 
     private func resolveSettingsConflictIfNeeded() throws -> SunclubChangeBatch? {
-        let revisions = try context.fetch(
+        let rawRevisions = try context.fetch(
             FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
         )
+        let revisions = Self.settingsRevisionsForProjection(rawRevisions)
         guard revisions.count >= 2 else {
             return nil
         }
@@ -1052,6 +1159,100 @@ final class SunclubHistoryService {
         return batch
     }
 
+    private static func settingsRevisionsForProjection(
+        _ revisions: [SettingsRevision]
+    ) -> [SettingsRevision] {
+        let filtered = revisions.filter { !isSyntheticDefaultSettingsRevision($0) }
+        return filtered.isEmpty ? revisions : filtered
+    }
+
+    private static func isSyntheticDefaultSettingsRevision(_ revision: SettingsRevision) -> Bool {
+        guard isDefaultSettingsSnapshot(revision.snapshot) else {
+            return false
+        }
+
+        switch revision.batchKind {
+        case .migrationSeed, .conflictAutoMerge:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func isMeaningfulRecovery(
+        settings: SettingsProjectionSnapshot?,
+        records: [DailyRecord]
+    ) -> Bool {
+        if !records.isEmpty {
+            return true
+        }
+
+        guard let settings else {
+            return false
+        }
+
+        return !isDefaultSettingsSnapshot(settings)
+    }
+
+    private static func mergeRecoveredSettings(
+        current: SettingsProjectionSnapshot,
+        imported: SettingsProjectionSnapshot
+    ) -> SettingsProjectionSnapshot {
+        let defaults = defaultSettingsSnapshot
+        return SettingsProjectionSnapshot(
+            hasCompletedOnboarding: current.hasCompletedOnboarding || imported.hasCompletedOnboarding,
+            reminderHour: recoveredField(current: current.reminderHour, imported: imported.reminderHour, defaultValue: defaults.reminderHour),
+            reminderMinute: recoveredField(current: current.reminderMinute, imported: imported.reminderMinute, defaultValue: defaults.reminderMinute),
+            weeklyHour: recoveredField(current: current.weeklyHour, imported: imported.weeklyHour, defaultValue: defaults.weeklyHour),
+            weeklyWeekday: recoveredField(current: current.weeklyWeekday, imported: imported.weeklyWeekday, defaultValue: defaults.weeklyWeekday),
+            dailyPhraseState: recoveredOptionalField(current: current.dailyPhraseState, imported: imported.dailyPhraseState),
+            weeklyPhraseState: recoveredOptionalField(current: current.weeklyPhraseState, imported: imported.weeklyPhraseState),
+            smartReminderSettingsData: recoveredOptionalField(current: current.smartReminderSettingsData, imported: imported.smartReminderSettingsData),
+            reapplyReminderEnabled: current.reapplyReminderEnabled || imported.reapplyReminderEnabled,
+            reapplyIntervalMinutes: recoveredField(
+                current: current.reapplyIntervalMinutes,
+                imported: imported.reapplyIntervalMinutes,
+                defaultValue: defaults.reapplyIntervalMinutes
+            ),
+            usesLiveUV: current.usesLiveUV || imported.usesLiveUV
+        )
+    }
+
+    private static func recoveredField<Value: Equatable>(
+        current: Value,
+        imported: Value,
+        defaultValue: Value
+    ) -> Value {
+        current == defaultValue && imported != defaultValue ? imported : current
+    }
+
+    private static func recoveredOptionalField<Value>(
+        current: Value?,
+        imported: Value?
+    ) -> Value? {
+        current ?? imported
+    }
+
+    private static func isDefaultSettingsSnapshot(_ snapshot: SettingsProjectionSnapshot) -> Bool {
+        snapshot == defaultSettingsSnapshot
+    }
+
+    private static var defaultSettingsSnapshot: SettingsProjectionSnapshot {
+        SettingsProjectionSnapshot(
+            hasCompletedOnboarding: false,
+            reminderHour: 8,
+            reminderMinute: 0,
+            weeklyHour: 18,
+            weeklyWeekday: 1,
+            dailyPhraseState: nil,
+            weeklyPhraseState: nil,
+            smartReminderSettingsData: nil,
+            reapplyReminderEnabled: false,
+            reapplyIntervalMinutes: 120,
+            usesLiveUV: false
+        )
+    }
+
     private static func mergeSettings(
         older: SettingsProjectionSnapshot,
         olderChangedFields: Set<SunclubTrackedField>,
@@ -1187,6 +1388,15 @@ final class SunclubHistoryService {
             settingsRevisions = try context.fetch(
                 FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
             )
+        }
+    }
+
+    private struct RecoveredProjectedState {
+        let settings: SettingsProjectionSnapshot?
+        let records: [DailyRecord]
+
+        var hasChanges: Bool {
+            settings != nil || !records.isEmpty
         }
     }
 }

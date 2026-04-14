@@ -119,6 +119,15 @@ def test_info_plist_declares_no_non_exempt_encryption() -> None:
     assert info["ITSAppUsesNonExemptEncryption"] is False
 
 
+def test_info_plist_declares_copyright_owner() -> None:
+    info = load_info_plist()
+
+    assert (
+        info["NSHumanReadableCopyright"]
+        == "Copyright © 2026 Peyton Randolph. All rights reserved."
+    )
+
+
 def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
     info = load_info_plist()
 

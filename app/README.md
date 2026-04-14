@@ -1,5 +1,15 @@
 # Sunclub App
 
+## Source Availability and License
+
+Sunclub is source-available, not open source. Copyright (c) 2026 Peyton
+Randolph. All rights reserved.
+
+This app is distributed under the repo-root PolyForm Strict License 1.0.0. No
+source redistribution, binary redistribution, sublicensing, public fork
+distribution, App Store or other marketplace publication, or modified or
+derivative work is licensed. No trademark rights are granted.
+
 Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit through quick manual check-ins, streak tracking, weekly summaries, widget status surfaces, and reminder settings.
 
 ## Flow

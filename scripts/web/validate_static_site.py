@@ -12,6 +12,7 @@ CONTACT_EMAIL = "contact@sunclub.peyton.app"
 SUPPORT_EMAIL = "support@sunclub.peyton.app"
 PRIVACY_EMAIL = "privacy@sunclub.peyton.app"
 SECURITY_EMAIL = "security@sunclub.peyton.app"
+COPYRIGHT_NOTICE = "© 2026 Peyton Randolph. All rights reserved."
 EMAIL_LABELS = {
     CONTACT_EMAIL: "contact",
     SUPPORT_EMAIL: "support",
@@ -197,6 +198,8 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
         if email not in raw:
             label = EMAIL_LABELS[email]
             errors.append(f"{relative}: missing public {label} email {email}.")
+    if COPYRIGHT_NOTICE not in raw:
+        errors.append(f"{relative}: missing copyright notice {COPYRIGHT_NOTICE!r}.")
     if not parsed.title:
         errors.append(f"{relative}: missing non-empty <title>.")
     if not parsed.meta_description:

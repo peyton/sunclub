@@ -1,5 +1,17 @@
 # Sunclub
 
+## Source Availability and License
+
+Sunclub is source-available, not open source. Copyright (c) 2026 Peyton
+Randolph. All rights reserved.
+
+This repository is available under the unmodified [PolyForm Strict License
+1.0.0](LICENSE). The license does not permit source redistribution, binary
+redistribution, sublicensing, public fork distribution, App Store or other
+marketplace publication, or modified or derivative works. Commercial use is not
+licensed. No trademark rights are granted. See [NOTICE](NOTICE) for the
+ownership notice.
+
 Repository layout:
 
 - App: [app/README.md](app/README.md)

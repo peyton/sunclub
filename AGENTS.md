@@ -32,6 +32,17 @@ Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or 
 - Prefer `just ci-lint`, `just ci`, or the specific underlying repo script that matches the failing GitHub job.
 - Do not report a CI fix as ready unless the relevant GitHub workflow is expected to pass from the current branch state.
 
+## Data Preservation Release Gate
+
+Every app update must preserve user data stored locally and in CloudKit. Treat data preservation as a release gate for any change that touches signing, entitlements, app groups, store paths, SwiftData schema, revision history, backup import, or CloudKit sync.
+
+- Test app-group entitlement and store-location transitions whenever signing, entitlements, app-group IDs, container IDs, store URLs, SwiftData container setup, or release export behavior changes. At minimum, cover the update path from no app-group entitlement using the Application Support `default.store` to a later build with the app-group entitlement using the shared app-group `default.store`.
+- Never assume a provisioning profile proves runtime capabilities. For TestFlight or CloudKit-affecting releases, inspect the final exported IPA entitlements from the release artifact with `codesign -d --entitlements :- Payload/Sunclub.app` or the checked release diagnostics before trusting CloudKit, push, or app-group behavior.
+- Route every SwiftData `ModelContainer` creation path through `SunclubModelContainerFactory` so migrations, store-location recovery, and CloudKit `.none` configuration stay consistent. This app uses manual `CKSyncEngine`; do not enable SwiftData CloudKit mirroring accidentally.
+- Empty/default local bootstrap state must never overwrite meaningful local or CloudKit history. Mark synthetic empty migration seeds local-only, do not queue them for CloudKit, and ignore synthetic default `migrationSeed` or default `conflictAutoMerge` settings revisions whenever meaningful settings history exists.
+- Persisted model or history changes must include migration or projection tests that open prior shipped stores and prove non-empty users keep publishable history while empty stores remain local-only.
+- Recovery and import paths must be idempotent and non-destructive: never delete current days during recovery, never overwrite current settings with less complete defaults, and always prefer `hasCompletedOnboarding: true` over `false`.
+
 ## Accessibility Scorecard Rules
 
 Every future change under `app/` must preserve a perfect App Store Accessibility Nutrition Label scorecard for the app's common tasks. Treat the scorecard as a release gate, not a nice-to-have.
