@@ -28,6 +28,14 @@ jobs:
     if: ${{ inputs.confirm_submit == true }}
     runs-on: macos-latest
     environment: app-store-review
+    env:
+      SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME: ${{ secrets.SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME }}
+      SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME: ${{ secrets.SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME }}
+      SUNCLUB_APP_REVIEW_CONTACT_EMAIL: ${{ secrets.SUNCLUB_APP_REVIEW_CONTACT_EMAIL }}
+      SUNCLUB_APP_REVIEW_CONTACT_PHONE: ${{ secrets.SUNCLUB_APP_REVIEW_CONTACT_PHONE }}
+      SUNCLUB_APP_PRIVACY_COMPLETED: "1"
+      SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS: "NOT_MEDICAL_DEVICE"
+      SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED: "1"
     steps:
       - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
         with:
@@ -74,6 +82,9 @@ jobs:
       - name: Capture App Store screenshots
         run: mise exec -- just appstore-screenshots
 
+      - name: Write App Review checkpoint
+        run: mise exec -- uv run python -m scripts.appstore.review_package --checkpoint
+
       - name: Archive and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -88,4 +99,4 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
           SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT: "1"
-        run: mise exec -- uv run python -m scripts.appstore.submit_review --submit --confirm-submit
+        run: bash scripts/appstore/submit-review.sh --submit --confirm-submit --skip-screenshots --skip-archive-upload

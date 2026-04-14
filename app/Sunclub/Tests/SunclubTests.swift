@@ -84,6 +84,8 @@ final class ProbeCloudSyncCoordinator: CloudSyncControlling {
 
 @MainActor
 final class FakeAccountabilityService: SunclubAccountabilityServing {
+    let supportsDirectDelivery = true
+
     private(set) var publishedProfiles: [SunclubAccountabilityProfile] = []
     private(set) var fetchedProfileRequests: [[UUID]] = []
     private(set) var sentInviteResponses: [SunclubAccountabilityInviteResponse] = []
@@ -818,6 +820,32 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testReleaseDefaultDisablesPublicAccountabilityTransport() throws {
+        let runtimeEnvironment = RuntimeEnvironmentSnapshot(
+            isRunningTests: false,
+            isPreviewing: false,
+            hasAppGroupContainer: true,
+            isPublicAccountabilityTransportEnabled: false
+        )
+        let growthStore = SunclubGrowthFeatureStore(
+            userDefaults: UserDefaults(suiteName: UUID().uuidString)
+        )
+        let state = try makeAppState(
+            growthFeatureStore: growthStore,
+            runtimeEnvironment: runtimeEnvironment
+        )
+        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
+
+        state.importAccountabilityInvite(envelope)
+        state.sendDirectPoke(to: try XCTUnwrap(state.friends.first?.id))
+
+        XCTAssertFalse(state.supportsDirectAccountabilityTransport)
+        XCTAssertFalse(state.growthSettings.accountability.connections.first?.canDirectPoke ?? true)
+        XCTAssertTrue(state.growthSettings.accountability.pokeHistory.isEmpty)
+        XCTAssertEqual(state.friendImportMessage, "Use Message to nudge Maya.")
+    }
+
+    @MainActor
     func testAddingByInviteStoresFriendSendsResponseAndUpdatesByProfileID() async throws {
         let service = FakeAccountabilityService()
         let state = try makeAppState(accountabilityService: service)
@@ -1018,13 +1046,16 @@ final class SunclubTests: XCTestCase {
         await waitForMainActorTasks()
 
         XCTAssertTrue(service.sentPokes.isEmpty)
-        XCTAssertEqual(state.friendImportMessage, "Add Maya again before direct pokes work.")
+        XCTAssertEqual(state.friendImportMessage, "Use Message to nudge Maya.")
     }
 
     @MainActor
     func testIncomingPokeValidatesRelationshipBeforeNotifying() async throws {
         let notificationManager = MockNotificationManager()
-        let state = try makeAppState(notificationManager: notificationManager)
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            accountabilityService: FakeAccountabilityService()
+        )
         let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
         state.importAccountabilityInvite(envelope, sendsResponse: false)
 
@@ -1065,6 +1096,7 @@ final class SunclubTests: XCTestCase {
         let openNotificationManager = MockNotificationManager()
         let openState = try makeAppState(
             notificationManager: openNotificationManager,
+            accountabilityService: FakeAccountabilityService(),
             clock: { Date(timeIntervalSinceReferenceDate: 800_000_000) }
         )
         openState.importAccountabilityInvite(envelope, sendsResponse: false)
@@ -1072,6 +1104,7 @@ final class SunclubTests: XCTestCase {
         let loggedNotificationManager = MockNotificationManager()
         let loggedState = try makeAppState(
             notificationManager: loggedNotificationManager,
+            accountabilityService: FakeAccountabilityService(),
             clock: { Date(timeIntervalSinceReferenceDate: 800_000_000) }
         )
         loggedState.importAccountabilityInvite(envelope, sendsResponse: false)
@@ -1832,7 +1865,8 @@ final class SunclubTests: XCTestCase {
         let runtimeEnvironment = RuntimeEnvironmentSnapshot(
             isRunningTests: false,
             isPreviewing: false,
-            hasAppGroupContainer: false
+            hasAppGroupContainer: false,
+            isPublicAccountabilityTransportEnabled: false
         )
 
         let coordinator = AppState.defaultCloudSyncCoordinator(
@@ -1853,7 +1887,8 @@ final class SunclubTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
             )
         )
         let previewCoordinator = AppState.defaultCloudSyncCoordinator(
@@ -1861,7 +1896,8 @@ final class SunclubTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: true,
-                hasAppGroupContainer: false
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
             )
         )
 
@@ -1882,7 +1918,8 @@ final class SunclubTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: false,
-                hasAppGroupContainer: false
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
             ),
             homeExitReminderMonitor: nil
         )
@@ -2482,6 +2519,8 @@ final class SunclubTests: XCTestCase {
         uvIndexService: UVIndexService? = nil,
         uvBriefingService: SunclubUVBriefingService? = nil,
         accountabilityService: SunclubAccountabilityServing? = nil,
+        growthFeatureStore: SunclubGrowthFeatureStoring? = nil,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         clock: @escaping () -> Date = Date.init
     ) throws -> AppState {
@@ -2492,7 +2531,9 @@ final class SunclubTests: XCTestCase {
             uvIndexService: uvIndexService ?? UVIndexService(),
             uvBriefingService: uvBriefingService,
             widgetSnapshotStore: widgetSnapshotStore,
+            growthFeatureStore: growthFeatureStore ?? SunclubGrowthFeatureStore.shared,
             accountabilityService: accountabilityService,
+            runtimeEnvironment: runtimeEnvironment,
             homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock
         )

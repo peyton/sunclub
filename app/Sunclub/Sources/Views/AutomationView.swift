@@ -96,7 +96,7 @@ struct AutomationSettingsPanel: View {
 
             preferenceToggle(
                 title: "Allow URL write actions",
-                detail: "Links can log sunscreen, reapply, import invites, poke friends, and update supported settings.",
+                detail: "Links can log sunscreen, reapply, import invites, open Friends for a message nudge, and update supported settings.",
                 keyPath: \.urlWriteActionsEnabled,
                 accessibilityIdentifier: "automation.urlWriteToggle"
             )
@@ -239,7 +239,7 @@ struct AutomationSettingsPanel: View {
             AutomationActionRow.Model(title: "Create Skin Health Report", detail: "Returns a PDF report."),
             AutomationActionRow.Model(title: "Create Streak Card", detail: "Returns a shareable image."),
             AutomationActionRow.Model(title: "Import Friend Invite", detail: "Adds a friend from an invite code."),
-            AutomationActionRow.Model(title: "Poke Friend", detail: "Uses the friend picker from Shortcuts.")
+            AutomationActionRow.Model(title: "Poke Friend", detail: "Uses the friend picker from Shortcuts and opens Friends for a message nudge.")
         ]
     }
 

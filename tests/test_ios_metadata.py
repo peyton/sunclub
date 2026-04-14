@@ -109,6 +109,27 @@ def test_info_plist_declares_no_non_exempt_encryption() -> None:
     assert info["ITSAppUsesNonExemptEncryption"] is False
 
 
+def test_info_plist_declares_copyright_owner() -> None:
+    info = load_info_plist()
+
+    assert (
+        info["NSHumanReadableCopyright"]
+        == "Copyright © 2026 Peyton Randolph. All rights reserved."
+    )
+
+
+def test_public_accountability_transport_defaults_off() -> None:
+    info = load_info_plist()
+    source = PROJECT_SWIFT.read_text()
+
+    assert (
+        info["SunclubPublicAccountabilityTransportEnabled"]
+        == "$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"
+    )
+    assert '"SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED": .string("NO")' in source
+    assert "SunclubPublicAccountabilityTransportEnabled" in source
+
+
 def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
     info = load_info_plist()
 
@@ -407,6 +428,29 @@ def test_privacy_manifest_declares_no_collected_data_types() -> None:
     manifest = load_privacy_manifest()
 
     assert manifest["NSPrivacyCollectedDataTypes"] == []
+
+
+def test_public_cloudkit_database_usage_is_guarded_by_transport_flag() -> None:
+    app_state = (SOURCES_DIR / "Services" / "AppState.swift").read_text()
+    runtime_config = (
+        SOURCES_DIR / "Shared" / "SunclubRuntimeConfiguration.swift"
+    ).read_text()
+    service = (
+        SOURCES_DIR / "Services" / "SunclubAccountabilityService.swift"
+    ).read_text()
+    files_with_public_database = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in SOURCES_DIR.rglob("*.swift")
+        if "publicCloudDatabase" in path.read_text()
+    ]
+
+    assert files_with_public_database == [
+        "app/Sunclub/Sources/Services/SunclubAccountabilityService.swift"
+    ]
+    assert "isPublicAccountabilityTransportEnabled" in runtime_config
+    assert "if !runtimeEnvironment.isPublicAccountabilityTransportEnabled" in app_state
+    assert "return NoopSunclubAccountabilityService()" in app_state
+    assert "publicCloudDatabase" in service
 
 
 def test_privacy_manifest_declares_no_tracking_domains() -> None:

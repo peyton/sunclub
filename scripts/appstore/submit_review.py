@@ -12,6 +12,7 @@ import sys
 import time
 from typing import Any, Protocol
 
+from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore import validate_metadata
 from scripts.appstore.connect_api import (
     AppStoreConnectClient,
@@ -36,6 +37,7 @@ EDITABLE_VERSION_STATES = {
 }
 READY_REVIEW_SUBMISSION_STATE = "READY_FOR_REVIEW"
 CONFIRMATION_ENV = "SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT"
+CHECKPOINT_CONFIRMATION_ENV = "SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 SUPPORTED_SCREENSHOT_SIZES = {
@@ -394,6 +396,23 @@ class AppStoreReviewSubmitter:
                 }
             },
         )
+        self.update_app_categories(app_info_id)
+
+    def update_app_categories(self, app_info_id: str) -> None:
+        app = self.manifest["app"]
+        primary_category = str(app.get("primary_category", "")).strip()
+        secondary_category = str(app.get("secondary_category", "")).strip()
+
+        if primary_category:
+            self.client.patch(
+                f"/appInfos/{app_info_id}/relationships/primaryCategory",
+                {"data": {"type": "appCategories", "id": primary_category}},
+            )
+        if secondary_category:
+            self.client.patch(
+                f"/appInfos/{app_info_id}/relationships/secondaryCategory",
+                {"data": {"type": "appCategories", "id": secondary_category}},
+            )
 
     def upload_screenshots(self, version_localization_id: str) -> None:
         screenshot_files = collect_screenshot_files(self.manifest, self.repo_root)
@@ -776,7 +795,45 @@ def accessibility_attributes(payload: Mapping[str, Any]) -> JsonObject:
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
-    return validate_metadata.load_manifest(path)
+    return appstore_manifest.load_resolved_manifest(path)
+
+
+def write_checkpoint_summary(
+    report: appstore_manifest.ResolvedManifest,
+    *,
+    context: SubmissionContext,
+    warnings: Sequence[str],
+    output_path: Path | None = None,
+) -> Path:
+    path = (
+        output_path
+        or REPO_ROOT / ".build" / "appstore-review-checkpoint" / "summary.md"
+    )
+    lines = appstore_manifest.redacted_summary_lines(
+        report.value,
+        missing_env_vars=report.missing_env_vars,
+        env_file=report.env_file,
+        env_file_loaded=report.env_file_loaded,
+        warnings=warnings,
+    )
+    lines.extend(
+        [
+            f"- Marketing version: {context.marketing_version}",
+            f"- Build number: {context.build_number}",
+            "",
+            (
+                "Exact local confirmation phrase: "
+                f"`submit Sunclub {context.marketing_version} "
+                f"({context.build_number}) to App Review`"
+            ),
+            "",
+            "No secret values are written here.",
+            "",
+        ]
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines))
+    return path
 
 
 def local_validation(
@@ -823,6 +880,24 @@ def dry_run_lines(
         isinstance(iphone_accessibility, Mapping)
         and iphone_accessibility.get("ready") is True
     )
+    planned_steps = [
+        "Look up the existing app record by bundle ID.",
+        "Poll the uploaded build until App Store Connect marks it VALID.",
+        "Reuse or create the iOS App Store version and attach the build.",
+        "Patch app info, categories, version localization, support, marketing, and privacy URLs.",
+        "Replace the version screenshot set with the generated PNG screenshots.",
+    ]
+    if accessibility_ready:
+        planned_steps.append(
+            "Publish the audited iPhone Accessibility Nutrition Label declaration."
+        )
+    planned_steps.extend(
+        [
+            "Create or update App Review contact details and notes.",
+            "Create or reuse a draft review submission and add this app version.",
+            "Submit the draft review submission for App Review.",
+        ]
+    )
     lines = [
         "App Store review submission dry run",
         f"- Bundle ID: {manifest['app']['bundle_id']}",
@@ -832,23 +907,15 @@ def dry_run_lines(
         f"- Screenshot display type: {screenshot_files[0].display_type}",
         "",
         "Planned App Store Connect mutations:",
-        "1. Look up the existing app record by bundle ID.",
-        "2. Poll the uploaded build until App Store Connect marks it VALID.",
-        "3. Reuse or create the iOS App Store version and attach the build.",
-        "4. Patch app info, version localization, support, marketing, and privacy URLs.",
-        "5. Replace the version screenshot set with the generated PNG screenshots.",
-        "6. Create or update App Review contact details and notes.",
-        "7. Create or reuse a draft review submission and add this app version.",
-        "8. Submit the draft review submission for App Review.",
     ]
-    if accessibility_ready:
-        lines.insert(
-            -2,
-            "7. Publish the audited iPhone Accessibility Nutrition Label declaration.",
-        )
-    else:
+    lines.extend(
+        f"{index}. {step}" for index, step in enumerate(planned_steps, start=1)
+    )
+    if not accessibility_ready:
         lines.append("")
         lines.append("Accessibility declaration: skipped until marked ready.")
+    lines.append("")
+    lines.extend(appstore_manifest.redacted_summary_lines(manifest))
     if warnings:
         lines.append("")
         lines.append("Warnings before final submission:")
@@ -859,11 +926,18 @@ def dry_run_lines(
 def require_confirmation(
     args: argparse.Namespace, environment: Mapping[str, str]
 ) -> None:
-    if args.confirm_submit or environment.get(CONFIRMATION_ENV) == "1":
+    submit_confirmed = args.confirm_submit or environment.get(CONFIRMATION_ENV) == "1"
+    if not submit_confirmed:
+        raise AppStoreConnectError(
+            "Final App Review submission requires --confirm-submit or "
+            f"{CONFIRMATION_ENV}=1."
+        )
+    if environment.get(CHECKPOINT_CONFIRMATION_ENV) == "1":
         return
     raise AppStoreConnectError(
-        "Final App Review submission requires --confirm-submit or "
-        f"{CONFIRMATION_ENV}=1."
+        "Final App Review submission requires the checkpoint gate "
+        f"{CHECKPOINT_CONFIRMATION_ENV}=1 after reviewing "
+        ".build/appstore-review-checkpoint/summary.md."
     )
 
 
@@ -901,7 +975,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        manifest = load_manifest(args.manifest)
+        report = appstore_manifest.load_resolved_manifest_report(args.manifest)
+        manifest = report.value
         context = resolve_submission_context(os.environ)
         errors, warnings = local_validation(
             manifest,
@@ -920,6 +995,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("\n".join(dry_run_lines(manifest, context, warnings)))
             return 0
 
+        checkpoint_path = write_checkpoint_summary(
+            report,
+            context=context,
+            warnings=warnings,
+        )
+        print(f"Review checkpoint written to {checkpoint_path}.")
+        print("\n".join(checkpoint_path.read_text().splitlines()))
         require_confirmation(args, os.environ)
         client = AppStoreConnectClient.from_env()
         submitter = AppStoreReviewSubmitter(
@@ -931,7 +1013,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             poll_interval_seconds=args.poll_interval_seconds,
         )
         result = submitter.submit()
-    except (AppStoreConnectError, OSError, json.JSONDecodeError) as error:
+    except (
+        AppStoreConnectError,
+        OSError,
+        json.JSONDecodeError,
+        appstore_manifest.ReviewEnvError,
+    ) as error:
         print(f"App Store review submission failed: {error}", file=sys.stderr)
         return 1
 

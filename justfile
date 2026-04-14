@@ -19,6 +19,18 @@ appstore-validate:
     uv run python -m scripts.appstore.validate_metadata --allow-draft
 
 [group('app')]
+appstore-validate-strict:
+    uv run python -m scripts.appstore.validate_metadata
+
+[group('app')]
+appstore-env:
+    bash scripts/appstore/review-env.sh
+
+[group('app')]
+appstore-review-package:
+    uv run python -m scripts.appstore.review_package
+
+[group('app')]
 appstore-screenshots:
     bash scripts/appstore/capture-screenshots.sh
 
@@ -95,6 +107,9 @@ appstore-submit-dry-run:
 [group('app')]
 appstore-submit-review:
     bash scripts/appstore/submit-review.sh --submit
+
+[group('app')]
+appstore-send-review: appstore-submit-review
 
 [group('app')]
 release-tag VERSION:

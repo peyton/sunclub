@@ -431,7 +431,8 @@ enum SunclubAutomationRuntime {
         context: ModelContext,
         growthStore: SunclubGrowthFeatureStoring,
         widgetStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
-        now: Date = Date()
+        now: Date = Date(),
+        supportsDirectAccountabilityTransport: Bool = SunclubRuntimeConfiguration.isPublicAccountabilityTransportEnabled
     ) throws -> SunclubAutomationResult {
         let runtimeContext = RuntimeContext(
             modelContext: context,
@@ -444,13 +445,19 @@ enum SunclubAutomationRuntime {
         var growthSettings = growthStore.load()
 
         try validate(action: action, invocation: invocation, settings: settings, preferences: growthSettings.automation)
-        return try performValidated(action, runtimeContext: runtimeContext, growthSettings: &growthSettings)
+        return try performValidated(
+            action,
+            runtimeContext: runtimeContext,
+            growthSettings: &growthSettings,
+            supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
+        )
     }
 
     private static func performValidated(
         _ action: SunclubAutomationAction,
         runtimeContext: RuntimeContext,
-        growthSettings: inout SunclubGrowthSettings
+        growthSettings: inout SunclubGrowthSettings,
+        supportsDirectAccountabilityTransport: Bool
     ) throws -> SunclubAutomationResult {
         switch action {
         case let .logToday(spfLevel, notes):
@@ -504,13 +511,15 @@ enum SunclubAutomationRuntime {
             return try importFriend(
                 code: code,
                 runtimeContext: runtimeContext,
-                growthSettings: &growthSettings
+                growthSettings: &growthSettings,
+                supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
             )
         case let .pokeFriend(id):
             return try pokeFriend(
                 id: id,
                 runtimeContext: runtimeContext,
-                growthSettings: &growthSettings
+                growthSettings: &growthSettings,
+                supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
             )
         case let .open(route):
             return SunclubAutomationResult(
@@ -799,7 +808,8 @@ enum SunclubAutomationRuntime {
     private static func importFriend(
         code: String,
         runtimeContext: RuntimeContext,
-        growthSettings: inout SunclubGrowthSettings
+        growthSettings: inout SunclubGrowthSettings,
+        supportsDirectAccountabilityTransport: Bool
     ) throws -> SunclubAutomationResult {
         let envelope = try SunclubAccountabilityCodec.envelope(from: code)
         guard envelope.profileID != growthSettings.accountability.localProfileID else {
@@ -825,7 +835,8 @@ enum SunclubAutomationRuntime {
                 friendSnapshotID: importedSnapshot.id,
                 friendDisplayName: importedSnapshot.name,
                 relationshipToken: envelope.relationshipToken,
-                acceptedAt: runtimeContext.now
+                acceptedAt: runtimeContext.now,
+                canDirectPoke: supportsDirectAccountabilityTransport
             ),
             growthSettings: &growthSettings
         )
@@ -848,11 +859,23 @@ enum SunclubAutomationRuntime {
     private static func pokeFriend(
         id: UUID,
         runtimeContext: RuntimeContext,
-        growthSettings: inout SunclubGrowthSettings
+        growthSettings: inout SunclubGrowthSettings,
+        supportsDirectAccountabilityTransport: Bool
     ) throws -> SunclubAutomationResult {
-        guard let friend = growthSettings.friends.first(where: { $0.id == id }),
-              let connection = growthSettings.accountability.connections.first(where: { $0.friendSnapshotID == id }) else {
+        guard let friend = growthSettings.friends.first(where: { $0.id == id }) else {
             throw SunclubAutomationError.friendNotFound
+        }
+
+        guard supportsDirectAccountabilityTransport,
+              let connection = growthSettings.accountability.connections.first(where: { $0.friendSnapshotID == id }),
+              connection.canDirectPoke else {
+            return SunclubAutomationResult(
+                action: "poke-friend",
+                status: "needs-message",
+                message: "Open Sunclub to message \(friend.name).",
+                friend: friend.name,
+                route: AppRoute.friends.rawValue
+            )
         }
 
         let message = friend.hasLoggedToday

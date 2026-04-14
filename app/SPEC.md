@@ -218,7 +218,7 @@ Expected sequence:
 
 ### Automation and Deep Links
 
-- Apple Shortcuts should expose supported non-destructive writes, status reads, foreground opens, friend invite import, friend pokes, and file exports.
+- Apple Shortcuts should expose supported non-destructive writes, status reads, foreground opens, friend invite import, Message-first friend nudges, and file exports.
 - Custom URL actions should support `sunclub://automation/...` and `sunclub://x-callback-url/...`.
 - x-callback success payloads should include action, status, message, and action-specific fields while callback details are enabled.
 - x-callback errors should include action, error code, and error message while callback details are enabled.

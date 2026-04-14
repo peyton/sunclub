@@ -271,11 +271,17 @@ enum SunclubWidgetSnapshotBuilder {
             return lhs.lastSharedAt > rhs.lastSharedAt
         }
         let latestPoke = settings.accountability.pokeHistory.sorted { $0.createdAt > $1.createdAt }.first
-        let primaryPokeFriendID = friends.first { friend in
-            !friend.hasLoggedToday && settings.accountability.connections.contains { connection in
-                connection.friendSnapshotID == friend.id && connection.canDirectPoke
-            }
-        }?.id
+        let primaryPokeFriendID: UUID?
+        if SunclubRuntimeConfiguration.isPublicAccountabilityTransportEnabled {
+            primaryPokeFriendID = friends.first { friend in
+                !friend.hasLoggedToday
+                    && settings.accountability.connections.contains { connection in
+                        connection.friendSnapshotID == friend.id && connection.canDirectPoke
+                    }
+            }?.id
+        } else {
+            primaryPokeFriendID = nil
+        }
         return SunclubAccountabilitySummary(
             isActive: settings.accountability.isActive,
             friendCount: friends.count,

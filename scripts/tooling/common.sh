@@ -80,6 +80,18 @@ ensure_local_state() {
     "$REPO_ROOT/.state/hk"
 }
 
+source_appstore_review_env() {
+  local review_env="$REPO_ROOT/.state/appstore/review.env"
+  if [ ! -f "$review_env" ]; then
+    return 0
+  fi
+
+  set -a
+  # shellcheck source=/dev/null
+  source "$review_env"
+  set +a
+}
+
 setup_local_tooling_env() {
   ensure_local_state
 

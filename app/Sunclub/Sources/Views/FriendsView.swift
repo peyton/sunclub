@@ -443,6 +443,7 @@ struct FriendsView: View {
                 ForEach(appState.friends) { friend in
                     FriendAccountabilityRow(
                         friend: friend,
+                        supportsDirectPoke: appState.supportsDirectAccountabilityTransport,
                         onPoke: {
                             localFeedbackMessage = nil
                             appState.sendDirectPoke(to: friend.id)
@@ -555,6 +556,7 @@ private enum AccountabilitySheet: Identifiable {
 
 private struct FriendAccountabilityRow: View {
     let friend: SunclubFriendSnapshot
+    let supportsDirectPoke: Bool
     let onPoke: () -> Void
     let onSharePoke: () -> Void
     let onRemove: () -> Void
@@ -608,17 +610,27 @@ private struct FriendAccountabilityRow: View {
 
     @ViewBuilder
     private var friendActions: some View {
-        Button("Poke") {
-            onPoke()
+        if supportsDirectPoke {
+            Button("Poke") {
+                onPoke()
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("friends.poke.\(friend.id.uuidString)")
         }
-        .buttonStyle(SunPrimaryButtonStyle())
-        .accessibilityIdentifier("friends.poke.\(friend.id.uuidString)")
 
-        Button("Message") {
-            onSharePoke()
+        if supportsDirectPoke {
+            Button("Message") {
+                onSharePoke()
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
+        } else {
+            Button("Message") {
+                onSharePoke()
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
         }
-        .buttonStyle(SunSecondaryButtonStyle())
-        .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
 
         Menu {
             Button("Remove Friend", role: .destructive) {
