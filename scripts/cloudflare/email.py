@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from typing import Any
+from urllib.parse import quote
 
 from scripts.cloudflare.common import (
     CloudflareAPIError,
@@ -33,18 +34,136 @@ def email_setup_permissions_help(config: JsonObject) -> str:
 def destination_address(config: JsonObject) -> str:
     return require_env(
         str(config["destination_env"]),
-        "Set it to the private inbox that should receive peyton.app mail.",
+        "Set it to the private inbox that should receive Sunclub public mail.",
     )
 
 
-def build_catch_all_payload(config: JsonObject, destination: str) -> JsonObject:
+def email_route_local_parts(config: JsonObject) -> list[str]:
+    return [str(route).strip() for route in config["routes"]]
+
+
+def email_route_address(config: JsonObject, local_part: str) -> str:
+    return f"{local_part}@{config['mail_domain']}"
+
+
+def email_route_addresses(config: JsonObject) -> list[str]:
+    return [
+        email_route_address(config, local_part)
+        for local_part in email_route_local_parts(config)
+    ]
+
+
+def build_route_payload(
+    config: JsonObject,
+    local_part: str,
+    destination: str,
+) -> JsonObject:
+    public_address = email_route_address(config, local_part)
+    return {
+        "name": f"Sunclub {local_part} forwarding",
+        "enabled": True,
+        "matchers": [
+            {
+                "type": "literal",
+                "field": "to",
+                "value": public_address,
+            }
+        ],
+        "actions": [{"type": "forward", "value": [destination]}],
+    }
+
+
+def build_disabled_catch_all_payload(config: JsonObject) -> JsonObject:
     catch_all = config["catch_all"]
+    action: JsonObject = {"type": catch_all["action"]}
     return {
         "name": catch_all["name"],
         "enabled": catch_all["enabled"],
         "matchers": [{"type": catch_all["matcher"]}],
-        "actions": [{"type": catch_all["action"], "value": [destination]}],
+        "actions": [action],
     }
+
+
+def build_catch_all_payload(
+    config: JsonObject,
+    destination: str | None = None,
+) -> JsonObject:
+    del destination
+    return build_disabled_catch_all_payload(config)
+
+
+def list_routing_rules(
+    client: CloudflareClient,
+    config: JsonObject,
+) -> list[JsonObject]:
+    result = client.request(
+        "GET",
+        f"/zones/{config['zone_id']}/email/routing/rules",
+        query={"per_page": 100},
+    )
+    if isinstance(result, list):
+        return [item for item in result if isinstance(item, dict)]
+    return []
+
+
+def ensure_email_route_rule(
+    client: CloudflareClient,
+    config: JsonObject,
+    local_part: str,
+    existing_rules: list[JsonObject],
+) -> JsonObject:
+    destination = destination_address(config)
+    payload = build_route_payload(config, local_part, destination)
+    existing = _find_matching_route_rule(existing_rules, payload)
+    if existing is None:
+        created = client.request(
+            "POST",
+            f"/zones/{config['zone_id']}/email/routing/rules",
+            body=payload,
+        )
+        if isinstance(created, dict):
+            existing_rules.append(created)
+        return {
+            "action": "created",
+            "address": email_route_address(config, local_part),
+            "rule": created,
+        }
+
+    if _routing_rule_payload_matches(existing, payload):
+        return {
+            "action": "exists",
+            "address": email_route_address(config, local_part),
+            "rule": existing,
+        }
+
+    rule_id = existing.get("id")
+    if not isinstance(rule_id, str) or not rule_id:
+        raise ConfigError(
+            f"Cloudflare Email Routing rule for {email_route_address(config, local_part)} "
+            "has no id."
+        )
+
+    updated = client.request(
+        "PUT",
+        f"/zones/{config['zone_id']}/email/routing/rules/{quote(rule_id, safe='')}",
+        body=payload,
+    )
+    return {
+        "action": "updated",
+        "address": email_route_address(config, local_part),
+        "rule": updated,
+    }
+
+
+def ensure_email_route_rules(
+    client: CloudflareClient,
+    config: JsonObject,
+) -> list[JsonObject]:
+    existing_rules = list_routing_rules(client, config)
+    return [
+        ensure_email_route_rule(client, config, local_part, existing_rules)
+        for local_part in email_route_local_parts(config)
+    ]
 
 
 def list_destination_addresses(
@@ -86,7 +205,7 @@ def ensure_email_routing(
         client,
         "POST",
         f"/zones/{config['zone_id']}/email/routing/dns",
-        body={"name": config["zone_name"]},
+        body={"name": config["mail_domain"]},
     )
     enable_result = _request_allowing_already_configured(
         client,
@@ -101,12 +220,18 @@ def ensure_catch_all_rule(
     client: CloudflareClient,
     config: JsonObject,
 ) -> JsonObject:
-    destination = destination_address(config)
     return client.request(
         "PUT",
         f"/zones/{config['zone_id']}/email/routing/rules/catch_all",
-        body=build_catch_all_payload(config, destination),
+        body=build_disabled_catch_all_payload(config),
     )
+
+
+def ensure_catch_all_disabled(
+    client: CloudflareClient,
+    config: JsonObject,
+) -> JsonObject:
+    return ensure_catch_all_rule(client, config)
 
 
 def get_email_routing_settings(
@@ -148,7 +273,8 @@ def email_status_lines(
     destination = optional_env(str(config["destination_env"]))
     lines = [
         f"Email zone: {config['zone_name']}",
-        "Email Routing rule: catch-all",
+        f"Email Routing mail domain: {config['mail_domain']}",
+        "Email Routing routes: " + ", ".join(email_route_addresses(config)),
         f"Destination env: {config['destination_env']}",
     ]
     if destination:
@@ -188,6 +314,16 @@ def email_status_lines(
                 f"Remote destination address verified: {bool(match.get('verified'))}"
             )
 
+    rules = list_routing_rules(client, config)
+    for public_address in email_route_addresses(config):
+        rule = _find_matching_route_rule_by_address(rules, public_address)
+        if rule is None:
+            lines.append(f"Remote route {public_address}: missing")
+        else:
+            lines.append(
+                f"Remote route {public_address} enabled: {bool(rule.get('enabled'))}"
+            )
+
     catch_all = get_catch_all_rule(client, config)
     if catch_all is None:
         lines.append("Remote catch-all rule: missing")
@@ -213,6 +349,99 @@ def _request_allowing_already_configured(
 
 def _address_verified(address: JsonObject) -> bool:
     return bool(address.get("verified"))
+
+
+def _find_matching_route_rule(
+    rules: list[JsonObject],
+    payload: JsonObject,
+) -> JsonObject | None:
+    matchers = payload["matchers"]
+    public_address = str(matchers[0]["value"])
+    by_address = _find_matching_route_rule_by_address(rules, public_address)
+    if by_address is not None:
+        return by_address
+
+    wanted_name = str(payload.get("name", "")).lower()
+    return next(
+        (rule for rule in rules if str(rule.get("name", "")).lower() == wanted_name),
+        None,
+    )
+
+
+def _find_matching_route_rule_by_address(
+    rules: list[JsonObject],
+    public_address: str,
+) -> JsonObject | None:
+    wanted_address = public_address.lower()
+    return next(
+        (
+            rule
+            for rule in rules
+            if (_literal_to_address(rule) or "").lower() == wanted_address
+        ),
+        None,
+    )
+
+
+def _literal_to_address(rule: JsonObject) -> str | None:
+    matchers = rule.get("matchers")
+    if not isinstance(matchers, list):
+        return None
+    for matcher in matchers:
+        if not isinstance(matcher, dict):
+            continue
+        if matcher.get("type") == "literal" and matcher.get("field") == "to":
+            value = matcher.get("value")
+            if isinstance(value, str):
+                return value
+    return None
+
+
+def _routing_rule_payload_matches(rule: JsonObject, payload: JsonObject) -> bool:
+    return (
+        str(rule.get("name", "")) == str(payload.get("name", ""))
+        and bool(rule.get("enabled")) == bool(payload.get("enabled"))
+        and _normalized_matchers(rule) == _normalized_matchers(payload)
+        and _normalized_actions(rule) == _normalized_actions(payload)
+    )
+
+
+def _normalized_matchers(rule: JsonObject) -> list[tuple[str, str, str]]:
+    matchers = rule.get("matchers")
+    if not isinstance(matchers, list):
+        return []
+    normalized: list[tuple[str, str, str]] = []
+    for matcher in matchers:
+        if not isinstance(matcher, dict):
+            continue
+        normalized.append(
+            (
+                str(matcher.get("type", "")).lower(),
+                str(matcher.get("field", "")).lower(),
+                str(matcher.get("value", "")).lower(),
+            )
+        )
+    return normalized
+
+
+def _normalized_actions(rule: JsonObject) -> list[tuple[str, tuple[str, ...]]]:
+    actions = rule.get("actions")
+    if not isinstance(actions, list):
+        return []
+    normalized: list[tuple[str, tuple[str, ...]]] = []
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        values = action.get("value", [])
+        if not isinstance(values, list):
+            values = []
+        normalized.append(
+            (
+                str(action.get("type", "")).lower(),
+                tuple(str(value).lower() for value in values),
+            )
+        )
+    return normalized
 
 
 def run_status() -> int:
@@ -254,9 +483,15 @@ def run_setup() -> int:
         return 2
 
     ensure_email_routing(client, config)
-    ensure_catch_all_rule(client, config)
+    route_results = ensure_email_route_rules(client, config)
+    catch_all_result = ensure_catch_all_disabled(client, config)
+    for route_result in route_results:
+        print(f"Email route {route_result['action']}: {route_result['address']}")
+    print(f"Email Routing catch-all disabled: {bool(catch_all_result.get('enabled'))}")
     print(
-        f"Email Routing catch-all forwards *@{config['zone_name']} to {destination_address(config)}."
+        "Email Routing forwards "
+        + ", ".join(email_route_addresses(config))
+        + f" to {destination_address(config)}."
     )
     return 0
 
@@ -270,7 +505,7 @@ def main(argv: list[str] | None = None) -> int:
         "status", help="Show local and optional remote Email Routing status."
     )
     subparsers.add_parser(
-        "setup", help="Create or update Email Routing catch-all forwarding."
+        "setup", help="Create or update explicit Email Routing forwarding rules."
     )
     args = parser.parse_args(argv)
 

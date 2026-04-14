@@ -37,6 +37,8 @@ def test_cloudflare_config_files_are_valid() -> None:
     assert pages_config["project_name"] == "sunclub"
     assert pages_config["custom_domain"] == "sunclub.peyton.app"
     assert email_config["zone_name"] == "peyton.app"
+    assert email_config["mail_domain"] == "mail.sunclub.peyton.app"
+    assert email_config["routes"] == ["support", "privacy", "security", "contact"]
 
 
 def test_pages_project_payload_matches_github_actions_direct_upload_plan() -> None:
@@ -360,7 +362,7 @@ def test_manual_pages_deploy_rejects_wrong_account_id() -> None:
         )
 
 
-def test_email_catch_all_payload_uses_env_destination(
+def test_email_route_payloads_use_env_destination(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -368,13 +370,42 @@ def test_email_catch_all_payload_uses_env_destination(
     monkeypatch.setenv("SUNCLUB_FORWARD_TO", "owner@example.com")
     config = common.load_email_config()
 
-    payload = email.build_catch_all_payload(config, email.destination_address(config))
+    payload = email.build_route_payload(
+        config,
+        "support",
+        email.destination_address(config),
+    )
 
     assert payload == {
-        "name": "Catch-all forwarding",
+        "name": "Sunclub support forwarding",
         "enabled": True,
-        "matchers": [{"type": "all"}],
+        "matchers": [
+            {
+                "type": "literal",
+                "field": "to",
+                "value": "support@mail.sunclub.peyton.app",
+            }
+        ],
         "actions": [{"type": "forward", "value": ["owner@example.com"]}],
+    }
+    assert email.email_route_addresses(config) == [
+        "support@mail.sunclub.peyton.app",
+        "privacy@mail.sunclub.peyton.app",
+        "security@mail.sunclub.peyton.app",
+        "contact@mail.sunclub.peyton.app",
+    ]
+
+
+def test_email_catch_all_payload_disables_old_catch_all() -> None:
+    config = common.load_email_config()
+
+    payload = email.build_disabled_catch_all_payload(config)
+
+    assert payload == {
+        "name": "Catch-all disabled",
+        "enabled": False,
+        "matchers": [{"type": "all"}],
+        "actions": [{"type": "drop"}],
     }
 
 
@@ -440,3 +471,112 @@ def test_email_destination_setup_reuses_existing_address(
 
     assert result["action"] == "exists"
     assert client.calls == [("GET", addresses_path, None)]
+
+
+def test_email_routing_dns_uses_mail_subdomain() -> None:
+    config = common.load_email_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/email/routing/dns"
+    enable_path = "/zones/a004f01ed99de3582152debde5a96a08/email/routing/enable"
+    client = FakeCloudflareClient(
+        {
+            ("POST", dns_path): {"name": "mail.sunclub.peyton.app"},
+            ("POST", enable_path): {"enabled": True},
+        }
+    )
+
+    result = email.ensure_email_routing(client, config)
+
+    assert result == {
+        "dns": {"name": "mail.sunclub.peyton.app"},
+        "enable": {"enabled": True},
+    }
+    assert client.calls == [
+        ("POST", dns_path, {"name": "mail.sunclub.peyton.app"}),
+        ("POST", enable_path, {}),
+    ]
+
+
+def test_email_route_setup_creates_missing_literal_rules(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(common, "LOCAL_ENV_PATH", tmp_path / "missing.env")
+    monkeypatch.setenv("SUNCLUB_FORWARD_TO", "owner@example.com")
+    config = common.load_email_config()
+    rules_path = "/zones/a004f01ed99de3582152debde5a96a08/email/routing/rules"
+    client = FakeCloudflareClient(
+        {
+            ("GET", rules_path): [],
+            ("POST", rules_path): {"id": "created-id", "enabled": True},
+        }
+    )
+
+    result = email.ensure_email_route_rules(client, config)
+
+    assert [item["action"] for item in result] == [
+        "created",
+        "created",
+        "created",
+        "created",
+    ]
+    assert [call[2]["matchers"][0]["value"] for call in client.calls[1:]] == [
+        "support@mail.sunclub.peyton.app",
+        "privacy@mail.sunclub.peyton.app",
+        "security@mail.sunclub.peyton.app",
+        "contact@mail.sunclub.peyton.app",
+    ]
+    assert client.queries[0] == ("GET", rules_path, {"per_page": 100})
+
+
+def test_email_route_setup_updates_existing_mismatched_rule(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(common, "LOCAL_ENV_PATH", tmp_path / "missing.env")
+    monkeypatch.setenv("SUNCLUB_FORWARD_TO", "owner@example.com")
+    config = common.load_email_config()
+    rules: list[JsonObject] = [
+        {
+            "id": "support-rule-id",
+            "name": "Old support rule",
+            "enabled": False,
+            "matchers": [
+                {
+                    "type": "literal",
+                    "field": "to",
+                    "value": "support@mail.sunclub.peyton.app",
+                }
+            ],
+            "actions": [{"type": "drop"}],
+        }
+    ]
+    update_path = (
+        "/zones/a004f01ed99de3582152debde5a96a08/email/routing/rules/support-rule-id"
+    )
+    client = FakeCloudflareClient(
+        {
+            ("PUT", update_path): {"id": "support-rule-id", "enabled": True},
+        }
+    )
+
+    result = email.ensure_email_route_rule(client, config, "support", rules)
+
+    assert result["action"] == "updated"
+    assert client.calls == [
+        (
+            "PUT",
+            update_path,
+            {
+                "name": "Sunclub support forwarding",
+                "enabled": True,
+                "matchers": [
+                    {
+                        "type": "literal",
+                        "field": "to",
+                        "value": "support@mail.sunclub.peyton.app",
+                    }
+                ],
+                "actions": [{"type": "forward", "value": ["owner@example.com"]}],
+            },
+        )
+    ]

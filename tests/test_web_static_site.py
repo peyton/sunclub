@@ -48,6 +48,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
           </head>
           <body>
             <a href="#">Download on the App Store</a>
+            <a href="mailto:support@sunclub.peyton.app">Old support address</a>
             <a href="/missing/">Missing</a>
           </body>
         </html>
@@ -69,6 +70,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
     assert any("missing public support email" in error for error in errors)
     assert any("missing public privacy email" in error for error in errors)
     assert any("missing public security email" in error for error in errors)
+    assert any("@sunclub.peyton.app" in error for error in errors)
     assert any("download on the app store" in error for error in errors)
     assert any("broken internal" in error for error in errors)
 

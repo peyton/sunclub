@@ -8,10 +8,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-CONTACT_EMAIL = "contact@sunclub.peyton.app"
-SUPPORT_EMAIL = "support@sunclub.peyton.app"
-PRIVACY_EMAIL = "privacy@sunclub.peyton.app"
-SECURITY_EMAIL = "security@sunclub.peyton.app"
+CONTACT_EMAIL = "contact@mail.sunclub.peyton.app"
+SUPPORT_EMAIL = "support@mail.sunclub.peyton.app"
+PRIVACY_EMAIL = "privacy@mail.sunclub.peyton.app"
+SECURITY_EMAIL = "security@mail.sunclub.peyton.app"
 EMAIL_LABELS = {
     CONTACT_EMAIL: "contact",
     SUPPORT_EMAIL: "support",
@@ -64,6 +64,8 @@ FORBIDDEN_PHRASES = (
     "premium",
     "subscription",
     "subscriptions",
+    "sunclub@peyton.app",
+    "@sunclub.peyton.app",
 )
 
 

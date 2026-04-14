@@ -615,7 +615,7 @@ struct SettingsView: View {
 
                 webLinkButton(
                     title: "Email Support",
-                    detail: "Send an email to sunclub@peyton.app.",
+                    detail: "Send an email to support@mail.sunclub.peyton.app.",
                     symbolName: "envelope.fill",
                     url: SunclubWebLinks.supportEmail,
                     accessibilityIdentifier: "settings.emailSupport"
