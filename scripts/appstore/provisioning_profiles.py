@@ -154,20 +154,35 @@ def find_bundle_id(client: ProfilesClient, identifier: str) -> JsonObject:
         "/bundleIds",
         {
             "filter[identifier]": identifier,
-            "limit": 2,
+            "limit": 200,
         },
     )
-    if not matches:
+    exact_matches = [
+        bundle_id
+        for bundle_id in matches
+        if bundle_id_identifier(bundle_id) == identifier
+    ]
+    if not exact_matches:
         raise AppStoreConnectError(
             "App Store Connect bundle ID is missing for "
             f"{identifier}. Open the Apple Developer portal or Xcode once to "
             "register this bundle ID before cutting the release."
         )
-    if len(matches) > 1:
+    if len(exact_matches) > 1:
         raise AppStoreConnectError(
             f"App Store Connect returned multiple bundle IDs for {identifier}."
         )
-    return matches[0]
+    return exact_matches[0]
+
+
+def bundle_id_identifier(bundle_id: JsonObject) -> str | None:
+    attributes = bundle_id.get("attributes")
+    if not isinstance(attributes, dict):
+        return None
+    identifier = attributes.get("identifier")
+    if not isinstance(identifier, str):
+        return None
+    return identifier
 
 
 def find_active_profile(

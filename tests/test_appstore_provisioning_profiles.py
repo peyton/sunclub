@@ -12,6 +12,7 @@ from scripts.appstore.provisioning_profiles import (
     ArchivedBundle,
     collect_archived_bundles,
     ensure_profiles,
+    find_bundle_id,
 )
 
 
@@ -36,7 +37,7 @@ class FakeProfilesClient:
         query = query or {}
         if path == "/bundleIds":
             identifier = query["filter[identifier]"]
-            return [{"type": "bundleIds", "id": f"bundle-{identifier}"}]
+            return [bundle_id(f"bundle-{identifier}", str(identifier))]
         if path == "/profiles":
             if query["filter[bundleId]"] == "bundle-app.peyton.sunclub":
                 return [existing_profile("profile-existing")]
@@ -149,6 +150,27 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
     ).read_bytes()
 
 
+def test_find_bundle_id_uses_exact_identifier_match() -> None:
+    client = FakeProfilesClient()
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        assert path == "/bundleIds"
+        return [
+            bundle_id("bundle-app", "app.peyton.sunclub"),
+            bundle_id("bundle-widget", "app.peyton.sunclub.widgets"),
+            bundle_id("bundle-watch", "app.peyton.sunclub.watch"),
+        ]
+
+    client.get_collection = get_collection  # type: ignore[method-assign]
+
+    found = find_bundle_id(client, "app.peyton.sunclub")
+
+    assert found["id"] == "bundle-app"
+
+
 def write_info_plist(path: Path, bundle_identifier: str, package_type: str) -> None:
     path.mkdir(parents=True)
     with (path / "Info.plist").open("wb") as file:
@@ -159,6 +181,16 @@ def write_info_plist(path: Path, bundle_identifier: str, package_type: str) -> N
             },
             file,
         )
+
+
+def bundle_id(bundle_id: str, identifier: str) -> dict[str, Any]:
+    return {
+        "type": "bundleIds",
+        "id": bundle_id,
+        "attributes": {
+            "identifier": identifier,
+        },
+    }
 
 
 def existing_profile(profile_id: str) -> dict[str, Any]:
