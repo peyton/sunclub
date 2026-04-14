@@ -126,7 +126,7 @@ def ensure_profiles(
     install_directory: Path | None,
 ) -> list[PreparedProfile]:
     prepared: list[PreparedProfile] = []
-    certificate: JsonObject | None = None
+    distribution_certificate_ids: list[str] | None = None
 
     for bundle in bundles:
         required_entitlements = read_bundle_profile_entitlements(bundle.path)
@@ -144,9 +144,16 @@ def ensure_profiles(
                     "No compatible active App Store provisioning profile found for "
                     f"{bundle.bundle_identifier}"
                 )
-            if certificate is None:
-                certificate = find_distribution_certificate(client)
-            profile = create_profile(client, bundle, bundle_id["id"], certificate["id"])
+            certificate_ids = find_reusable_certificate_ids(
+                client, bundle_id["id"], bundle.profile_type
+            )
+            if not certificate_ids:
+                if distribution_certificate_ids is None:
+                    distribution_certificate_ids = [
+                        find_distribution_certificate(client)["id"]
+                    ]
+                certificate_ids = distribution_certificate_ids
+            profile = create_profile(client, bundle, bundle_id["id"], certificate_ids)
             created = True
             validate_profile_entitlements(
                 client, profile, bundle, required_entitlements
@@ -234,6 +241,66 @@ def profile_matches_type(profile: JsonObject, profile_type: str) -> bool:
     return profile_attributes(profile).get("profileType") == profile_type
 
 
+def find_reusable_certificate_ids(
+    client: ProfilesClient,
+    bundle_id: str,
+    profile_type: str,
+) -> list[str]:
+    profiles = client.get_collection(
+        f"/bundleIds/{bundle_id}/profiles",
+        {
+            "limit": 200,
+        },
+    )
+    active_profiles = [
+        profile
+        for profile in profiles
+        if profile_matches_type(profile, profile_type) and profile_is_active(profile)
+    ]
+    for profile in sorted(active_profiles, key=profile_expiration, reverse=True):
+        certificate_ids = profile_certificate_ids(client, profile)
+        if certificate_ids:
+            return certificate_ids
+    return []
+
+
+def profile_certificate_ids(client: ProfilesClient, profile: JsonObject) -> list[str]:
+    certificates = relationship_data(profile, "certificates")
+    if certificates:
+        return relationship_ids(certificates)
+
+    profile_id = profile.get("id")
+    if not isinstance(profile_id, str) or not profile_id:
+        return []
+
+    response = client.get(f"/profiles/{profile_id}/relationships/certificates")
+    data = response.get("data")
+    if not isinstance(data, list):
+        return []
+    return relationship_ids(data)
+
+
+def relationship_data(resource: JsonObject, name: str) -> list[JsonObject]:
+    relationships = resource.get("relationships")
+    if not isinstance(relationships, dict):
+        return []
+    relationship = relationships.get(name)
+    if not isinstance(relationship, dict):
+        return []
+    data = relationship.get("data")
+    if not isinstance(data, list):
+        return []
+    return [item for item in data if isinstance(item, dict)]
+
+
+def relationship_ids(resources: Sequence[JsonObject]) -> list[str]:
+    return [
+        resource_id
+        for resource in resources
+        if isinstance(resource_id := resource.get("id"), str) and resource_id
+    ]
+
+
 def profile_satisfies_entitlements(
     client: ProfilesClient,
     profile: JsonObject,
@@ -319,7 +386,7 @@ def create_profile(
     client: ProfilesClient,
     bundle: ArchivedBundle,
     bundle_id: str,
-    certificate_id: str,
+    certificate_ids: Sequence[str],
 ) -> JsonObject:
     timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     name = f"Sunclub App Store {bundle.bundle_identifier} {timestamp}"
@@ -341,10 +408,8 @@ def create_profile(
                     },
                     "certificates": {
                         "data": [
-                            {
-                                "type": "certificates",
-                                "id": certificate_id,
-                            }
+                            {"type": "certificates", "id": certificate_id}
+                            for certificate_id in certificate_ids
                         ]
                     },
                 },

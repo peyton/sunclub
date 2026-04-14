@@ -29,6 +29,15 @@ class FakeProfilesClient:
     ) -> dict[str, Any]:
         if path == "/profiles/profile-existing":
             return {"data": existing_profile("profile-existing")}
+        if path == "/profiles/profile-existing/relationships/certificates":
+            return {
+                "data": [
+                    {
+                        "type": "certificates",
+                        "id": "cert-profile-existing",
+                    }
+                ]
+            }
         raise AssertionError(f"Unexpected GET: {path} {query}")
 
     def get_collection(
@@ -201,6 +210,9 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
         "type": "bundleIds",
         "id": "bundle-app.peyton.sunclub",
     }
+    assert posted_data["relationships"]["certificates"]["data"] == [
+        {"type": "certificates", "id": "cert-profile-existing"}
+    ]
 
 
 def test_find_bundle_id_uses_exact_identifier_match() -> None:
