@@ -40,7 +40,7 @@ These steps still require real App Store Connect data and cannot be faked safely
 
 1. Replace the draft App Review contact information in `scripts/appstore/metadata.json`, then set `review.contact.ready` to `true`.
 2. Complete App Privacy answers in App Store Connect so they match the manifest, then set `privacy.app_store_connect_completed` to `true`.
-3. Audit the Accessibility Nutrition Label answers before setting `accessibility.iphone.ready` to `true`; otherwise the automation leaves the label undeclared.
+3. Re-audit the Accessibility Nutrition Label answers if the supported accessibility criteria change before submission.
 
 ## Review Notes
 

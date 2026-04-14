@@ -256,6 +256,7 @@ struct ProductScannerView: View {
             .resizable()
             .scaledToFit()
             .frame(maxWidth: .infinity)
+            .frame(maxHeight: 280)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -265,8 +266,8 @@ struct ProductScannerView: View {
                 SunclubVisualAsset.motifScanSheen.image
                     .resizable()
                     .scaledToFill()
-                    .opacity(isScanning ? 0.42 : 0.16)
-                    .offset(x: reduceMotion ? 0 : (scanSheenActive ? 220 : -220))
+                    .opacity(isScanning ? 0.42 : 0.12)
+                    .offset(x: reduceMotion || !isScanning ? 0 : (scanSheenActive ? 220 : -220))
                     .animation(
                         SunMotion.repeatingEaseInOut(
                             duration: 1.45,
@@ -290,7 +291,10 @@ struct ProductScannerView: View {
                 .padding(14)
             }
             .onAppear {
-                scanSheenActive = !reduceMotion
+                scanSheenActive = isScanning && !reduceMotion
+            }
+            .onChange(of: isScanning) { _, newValue in
+                scanSheenActive = newValue && !reduceMotion
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Selected sunscreen photo")
@@ -321,6 +325,7 @@ struct ProductScannerView: View {
         scanResult = nil
         errorMessage = nil
         isScanning = true
+        scanSheenActive = !reduceMotion
 
         Task {
             do {
@@ -339,6 +344,7 @@ struct ProductScannerView: View {
 
             if activeScanID == scanID {
                 isScanning = false
+                scanSheenActive = false
             }
         }
     }

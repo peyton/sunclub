@@ -91,7 +91,7 @@ struct WeeklyReportView: View {
                                     }
                                 }
                                 .overlay {
-                                    if Calendar.current.isDateInToday(entry.date) {
+                                    if isToday(entry.date) {
                                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                                             .stroke(AppPalette.ink.opacity(0.18), lineWidth: 1)
                                     }
@@ -217,7 +217,7 @@ struct WeeklyReportView: View {
     }
 
     private var notLoggedEntries: [WeeklyEntry] {
-        weekEntries.filter { !$0.applied }
+        weekEntries.filter { !$0.applied && !$0.isFuture }
     }
 
     private var usageInsightsSection: some View {
@@ -285,7 +285,7 @@ struct WeeklyReportView: View {
     }
 
     private func openBackfill(for day: Date) {
-        if Calendar.current.isDateInToday(day) {
+        if isToday(day) {
             router.open(.manualLog)
         } else {
             editorPresentation = WeeklyEditorPresentation(day: day)
@@ -293,7 +293,7 @@ struct WeeklyReportView: View {
     }
 
     private func backfillTitle(for day: Date) -> String {
-        if Calendar.current.isDateInToday(day) {
+        if isToday(day) {
             return "Log Today"
         }
 
@@ -311,11 +311,15 @@ struct WeeklyReportView: View {
             return "Opens this entry for editing."
         }
 
-        if Calendar.current.isDateInToday(entry.date) {
+        if isToday(entry.date) {
             return "Opens today's log."
         }
 
         return "Opens this missed day for backfill."
+    }
+
+    private func isToday(_ day: Date) -> Bool {
+        Calendar.current.isDate(day, inSameDayAs: appState.referenceDate)
     }
 
     private static let dayIdentifierFormatter: DateFormatter = {

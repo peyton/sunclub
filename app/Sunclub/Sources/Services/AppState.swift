@@ -247,6 +247,10 @@ final class AppState {
     private var notificationHealthOverride: NotificationHealthSnapshot?
     private var leaveHomeAuthorizationOverride: LeaveHomeAuthorizationState?
 
+    var referenceDate: Date {
+        currentDate()
+    }
+
     convenience init(context: ModelContext) {
         self.init(
             context: context,
@@ -620,6 +624,9 @@ final class AppState {
     func updateDailyReminder(hour: Int, minute: Int) {
         var reminderSettings = settings.smartReminderSettings
         let reminderTime = ReminderTime(hour: hour, minute: minute)
+        guard reminderSettings.weekdayTime != reminderTime || reminderSettings.weekendTime != reminderTime else {
+            return
+        }
         reminderSettings.weekdayTime = reminderTime
         reminderSettings.weekendTime = reminderTime
         applyReminderSettingsChange(
@@ -631,6 +638,9 @@ final class AppState {
     func updateReminderTime(for kind: ReminderScheduleKind, hour: Int, minute: Int) {
         var reminderSettings = settings.smartReminderSettings
         let reminderTime = ReminderTime(hour: hour, minute: minute)
+        guard reminderSettings.time(for: kind) != reminderTime else {
+            return
+        }
 
         switch kind {
         case .weekday:
@@ -647,6 +657,9 @@ final class AppState {
 
     func updateTravelTimeZoneHandling(followsTravelTimeZone: Bool) {
         var reminderSettings = settings.smartReminderSettings
+        guard reminderSettings.followsTravelTimeZone != followsTravelTimeZone else {
+            return
+        }
         reminderSettings.followsTravelTimeZone = followsTravelTimeZone
         if !followsTravelTimeZone {
             reminderSettings.anchoredTimeZoneIdentifier = TimeZone.autoupdatingCurrent.identifier
@@ -659,6 +672,9 @@ final class AppState {
 
     func updateStreakRiskReminder(enabled: Bool) {
         var reminderSettings = settings.smartReminderSettings
+        guard reminderSettings.streakRiskEnabled != enabled else {
+            return
+        }
         reminderSettings.streakRiskEnabled = enabled
         applyReminderSettingsChange(
             reminderSettings,
@@ -668,6 +684,12 @@ final class AppState {
 
     func updateLeaveHomeReminderEnabled(enabled: Bool, allowPermissionPrompt: Bool = true) {
         var reminderSettings = settings.smartReminderSettings
+        guard reminderSettings.leaveHomeReminder.isEnabled != enabled else {
+            if enabled {
+                refreshLeaveHomeReminderStatus(allowPermissionPrompt: false)
+            }
+            return
+        }
         reminderSettings.leaveHomeReminder.isEnabled = enabled
         leaveHomeReminderErrorMessage = nil
         applyReminderSettingsChange(
@@ -1298,6 +1320,9 @@ final class AppState {
 
     func updateHealthKitEnabled(_ enabled: Bool) {
         if !enabled {
+            guard growthSettings.healthKit.isEnabled else {
+                return
+            }
             growthSettings.healthKit.isEnabled = false
             persistGrowthSettings()
             return
@@ -1330,12 +1355,16 @@ final class AppState {
         dailyBriefingEnabled: Bool? = nil,
         extremeAlertEnabled: Bool? = nil
     ) {
-        if let dailyBriefingEnabled {
-            growthSettings.uvBriefing.dailyBriefingEnabled = dailyBriefingEnabled
+        let newDailyBriefingEnabled = dailyBriefingEnabled ?? growthSettings.uvBriefing.dailyBriefingEnabled
+        let newExtremeAlertEnabled = extremeAlertEnabled ?? growthSettings.uvBriefing.extremeAlertEnabled
+
+        guard growthSettings.uvBriefing.dailyBriefingEnabled != newDailyBriefingEnabled
+            || growthSettings.uvBriefing.extremeAlertEnabled != newExtremeAlertEnabled else {
+            return
         }
-        if let extremeAlertEnabled {
-            growthSettings.uvBriefing.extremeAlertEnabled = extremeAlertEnabled
-        }
+
+        growthSettings.uvBriefing.dailyBriefingEnabled = newDailyBriefingEnabled
+        growthSettings.uvBriefing.extremeAlertEnabled = newExtremeAlertEnabled
         persistGrowthSettings()
         scheduleReminders()
     }
@@ -1854,13 +1883,19 @@ final class AppState {
     }
 
     func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
+        let clampedIntervalMinutes = max(30, min(480, intervalMinutes))
+        guard settings.reapplyReminderEnabled != enabled
+            || settings.reapplyIntervalMinutes != clampedIntervalMinutes else {
+            return
+        }
+
         let batch = try? historyService.applySettingsChange(
             kind: .reapplySettings,
             summary: "Updated the reapply reminder.",
             changedFields: [.reapplyReminderEnabled, .reapplyIntervalMinutes]
         ) { snapshot in
             snapshot.reapplyReminderEnabled = enabled
-            snapshot.reapplyIntervalMinutes = max(30, min(480, intervalMinutes))
+            snapshot.reapplyIntervalMinutes = clampedIntervalMinutes
         }
         finishDurableChange(batch, reschedulesReminders: false)
 
@@ -1894,6 +1929,10 @@ final class AppState {
     }
 
     func updateLiveUVPreference(enabled: Bool, allowPermissionPrompt: Bool = true) {
+        guard settings.usesLiveUV != enabled else {
+            return
+        }
+
         let batch = try? historyService.applySettingsChange(
             kind: .liveUVSettings,
             summary: "Updated the live UV preference.",

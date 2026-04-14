@@ -220,7 +220,7 @@ struct HistoryView: View {
     private var canGoForward: Bool {
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
         let nextMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: nextMonth)) ?? nextMonth
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: appState.referenceDate)
         return nextMonthStart <= today
     }
 
@@ -304,7 +304,7 @@ struct HistoryView: View {
     private var historyEmptyHint: some View {
         SunStatusCard(
             title: "Pick a day",
-            detail: "Swipe the calendar to move between months. Tap a logged day to edit it or a missed day to backfill it.",
+            detail: "Use the month arrows or swipe the calendar to move between months. Tap a logged day to edit it or a missed day to backfill it.",
             tint: AppPalette.sun,
             symbol: "calendar.badge.plus"
         )
@@ -315,7 +315,7 @@ struct HistoryView: View {
         let days = appState.monthGrid(for: displayedMonth)
         let recordDateSet = Set(recordDates)
         let streakDaySet = Set(appState.currentStreakDays)
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: appState.referenceDate)
 
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
@@ -651,7 +651,7 @@ struct HistoryView: View {
     private func monthStats(recordDates: [Date]) -> HistoryMonthStats {
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
         let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: appState.referenceDate)
         let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? today)
         let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
         let daysInRange = daysInCurrentMonthRange(monthEnd: monthEnd, monthStart: monthStart, effectiveEnd: effectiveEnd)
@@ -666,7 +666,7 @@ struct HistoryView: View {
     }
 
     private func daysInCurrentMonthRange(monthEnd: Date, monthStart: Date, effectiveEnd: Date) -> Int {
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: appState.referenceDate)
         if monthEnd <= today {
             return calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
         }
@@ -776,7 +776,7 @@ struct HistoryView: View {
     }
 
     private func jumpToToday() {
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: appState.referenceDate)
         withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
             displayedMonth = today
             selectedDay = today
