@@ -4,6 +4,17 @@ import os
 import SwiftData
 import WidgetKit
 
+struct HomeTodayMetadataRow: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let value: String
+    let symbolName: String
+
+    var accessibilityLabel: String {
+        "\(title): \(value)"
+    }
+}
+
 struct HomeTodayCardPresentation: Equatable {
     let title: String
     let detail: String
@@ -11,6 +22,11 @@ struct HomeTodayCardPresentation: Equatable {
     let streakRiskBadgeText: String?
     let uvHeadline: String?
     let uvSymbolName: String?
+    let metadataRows: [HomeTodayMetadataRow]
+
+    var accessibilityValue: String {
+        ([title, detail] + metadataRows.map(\.accessibilityLabel)).joined(separator: ". ")
+    }
 }
 
 struct HomeRecoveryAction: Equatable, Identifiable {
@@ -36,6 +52,10 @@ struct ReapplyReminderPlan: Equatable {
     let confirmationSymbolName: String
     let fireDate: Date?
     let isElevated: Bool
+
+    var intervalSummary: String {
+        Self.formattedInterval(intervalMinutes)
+    }
 
     var shouldScheduleNotification: Bool {
         fireDate != nil
@@ -857,6 +877,7 @@ final class AppState {
             : "One quick check-in keeps the streak steady."
         let logBadgeText = todayRecord.map { Self.logBadgeText(for: $0) }
         let streakRiskBadgeText = streakRiskBadgeText(now: now, hasLoggedToday: hasLoggedToday)
+        let metadataRows = todayCardMetadataRows(now: now, todayRecord: todayRecord)
 
         guard let level = uvReading?.level,
               let uvHeadline = level.homeHeadline else {
@@ -866,7 +887,8 @@ final class AppState {
                 logBadgeText: logBadgeText,
                 streakRiskBadgeText: streakRiskBadgeText,
                 uvHeadline: nil,
-                uvSymbolName: nil
+                uvSymbolName: nil,
+                metadataRows: metadataRows
             )
         }
 
@@ -885,8 +907,152 @@ final class AppState {
             logBadgeText: logBadgeText,
             streakRiskBadgeText: streakRiskBadgeText,
             uvHeadline: uvHeadline,
-            uvSymbolName: level.symbolName
+            uvSymbolName: level.symbolName,
+            metadataRows: metadataRows
         )
+    }
+
+    private func todayCardMetadataRows(now: Date, todayRecord: DailyRecord?) -> [HomeTodayMetadataRow] {
+        var rows: [HomeTodayMetadataRow] = []
+
+        if let todayRecord {
+            rows.append(
+                HomeTodayMetadataRow(
+                    id: "logged",
+                    title: "Logged",
+                    value: todayRecord.verifiedAt.formatted(date: .omitted, time: .shortened),
+                    symbolName: "checkmark.circle.fill"
+                )
+            )
+
+            rows.append(
+                HomeTodayMetadataRow(
+                    id: "spf",
+                    title: "SPF",
+                    value: todayRecord.spfLevel.map { "SPF \($0)" } ?? "Not saved",
+                    symbolName: "sun.max.fill"
+                )
+            )
+
+            if todayRecord.trimmedNotes != nil {
+                rows.append(
+                    HomeTodayMetadataRow(
+                        id: "notes",
+                        title: "Notes",
+                        value: "Saved",
+                        symbolName: "note.text"
+                    )
+                )
+            }
+
+            if settings.reapplyReminderEnabled {
+                rows.append(
+                    HomeTodayMetadataRow(
+                        id: "reapply",
+                        title: "Reapply",
+                        value: reapplyWindowSummary,
+                        symbolName: "timer"
+                    )
+                )
+            }
+        } else {
+            rows.append(
+                HomeTodayMetadataRow(
+                    id: "reminder",
+                    title: "Reminder",
+                    value: nextReminderSummary(now: now),
+                    symbolName: "bell.fill"
+                )
+            )
+
+            let activeStreak = CalendarAnalytics.currentStreak(
+                records: recordedDays,
+                now: now,
+                calendar: calendar
+            )
+            if activeStreak > 0 {
+                rows.append(
+                    HomeTodayMetadataRow(
+                        id: "streak",
+                        title: "Streak",
+                        value: "\(activeStreak) \(activeStreak == 1 ? "day" : "days") open",
+                        symbolName: "flame.fill"
+                    )
+                )
+            }
+
+            if settings.reapplyReminderEnabled {
+                rows.append(
+                    HomeTodayMetadataRow(
+                        id: "reapply",
+                        title: "Reapply",
+                        value: "After today's log",
+                        symbolName: "timer"
+                    )
+                )
+            }
+        }
+
+        rows.append(contentsOf: uvMetadataRows())
+        return Array(rows.prefix(6))
+    }
+
+    private var reapplyWindowSummary: String {
+        let plan = reapplyReminderPlan
+        guard plan.shouldScheduleNotification else {
+            return "No reminder after sunset"
+        }
+
+        if plan.isElevated {
+            return "\(plan.intervalSummary), UV-adjusted"
+        }
+
+        return "Every \(plan.intervalSummary)"
+    }
+
+    private func nextReminderSummary(now: Date) -> String {
+        let kind = ReminderPlanner.scheduleKind(for: now, calendar: calendar)
+        let time = settings.smartReminderSettings.time(for: kind)
+        let day = calendar.startOfDay(for: now)
+        let reminderDate = calendar.date(
+            bySettingHour: time.hour,
+            minute: time.minute,
+            second: 0,
+            of: day
+        ) ?? day
+        return "\(kind.shortTitle) \(reminderDate.formatted(date: .omitted, time: .shortened))"
+    }
+
+    private func uvMetadataRows() -> [HomeTodayMetadataRow] {
+        if let uvForecast, let peakHour = uvForecast.peakHour {
+            return [
+                HomeTodayMetadataRow(
+                    id: "uvPeak",
+                    title: "Peak UV",
+                    value: "\(peakHour.index) at \(peakHour.date.formatted(date: .omitted, time: .shortened))",
+                    symbolName: peakHour.level.symbolName
+                ),
+                HomeTodayMetadataRow(
+                    id: "uvSource",
+                    title: "Source",
+                    value: uvForecast.sourceLabel,
+                    symbolName: "location.fill"
+                )
+            ]
+        }
+
+        if let uvReading {
+            return [
+                HomeTodayMetadataRow(
+                    id: "uvNow",
+                    title: "UV Now",
+                    value: "\(uvReading.index), \(uvReading.source.statusLabel)",
+                    symbolName: uvReading.level.symbolName
+                )
+            ]
+        }
+
+        return []
     }
 
     private static func logBadgeText(for record: DailyRecord) -> String {
@@ -913,7 +1079,11 @@ final class AppState {
             now: now,
             calendar: calendar
         )
-        return activeStreak > 0 ? "Streak at risk" : nil
+        guard activeStreak > 0 else {
+            return nil
+        }
+
+        return "\(activeStreak)-day streak at risk"
     }
 
     var reapplyReminderPlan: ReapplyReminderPlan {
@@ -1404,7 +1574,7 @@ final class AppState {
         let newExtremeAlertEnabled = extremeAlertEnabled ?? growthSettings.uvBriefing.extremeAlertEnabled
 
         guard growthSettings.uvBriefing.dailyBriefingEnabled != newDailyBriefingEnabled
-            || growthSettings.uvBriefing.extremeAlertEnabled != newExtremeAlertEnabled else {
+                || growthSettings.uvBriefing.extremeAlertEnabled != newExtremeAlertEnabled else {
             return
         }
 
@@ -2004,7 +2174,7 @@ final class AppState {
     func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
         let clampedIntervalMinutes = max(30, min(480, intervalMinutes))
         guard settings.reapplyReminderEnabled != enabled
-            || settings.reapplyIntervalMinutes != clampedIntervalMinutes else {
+                || settings.reapplyIntervalMinutes != clampedIntervalMinutes else {
             return
         }
 
@@ -2141,6 +2311,10 @@ final class AppState {
     func setUVReadingForTesting(_ reading: UVReading?) {
         uvReadingOverride = reading
         uvReading = reading
+    }
+
+    func setUVForecastForTesting(_ forecast: SunclubUVForecast?) {
+        uvForecast = forecast
     }
 
     func refreshNotificationHealth() {

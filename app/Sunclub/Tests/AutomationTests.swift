@@ -120,6 +120,30 @@ final class AutomationTests: XCTestCase {
         }
     }
 
+    func testAutomationCatalogURLExamplesStayParseable() throws {
+        let friendID = try XCTUnwrap(UUID(uuidString: "D2A26E1B-7E95-4F45-A103-83D1A8C1E656"))
+        let examples: [(String, SunclubAutomationAction)] = [
+            ("sunclub://automation/log-today?spf=50&notes=Beach%20bag", .logToday(spfLevel: 50, notes: "Beach bag")),
+            ("sunclub://automation/status", .status),
+            ("sunclub://automation/open?route=settings", .open(.settings)),
+            ("sunclub://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: ReminderTime(hour: 8, minute: 30), spfLevel: 50, notes: "Morning")),
+            ("sunclub://automation/reapply", .reapply),
+            ("sunclub://automation/set-reminder?kind=weekday&time=08:30", .setReminder(kind: .weekday, time: ReminderTime(hour: 8, minute: 30))),
+            ("sunclub://automation/set-reapply?enabled=true&interval=90", .setReapply(enabled: true, intervalMinutes: 90)),
+            ("sunclub://automation/set-toggle?name=dailyUVBriefing&enabled=true", .setToggle(.dailyUVBriefing, enabled: true)),
+            ("sunclub://automation/import-friend?code=sunclub-invite-code", .importFriend(code: "sunclub-invite-code")),
+            ("sunclub://automation/poke-friend?id=\(friendID.uuidString)", .pokeFriend(id: friendID))
+        ]
+
+        for (urlString, expectedAction) in examples {
+            let url = try XCTUnwrap(URL(string: urlString))
+            guard case let .automation(request) = SunclubDeepLink(url: url) else {
+                return XCTFail("Expected automation deeplink for \(urlString)")
+            }
+            XCTAssertEqual(request.action, expectedAction)
+        }
+    }
+
     func testGrowthSettingsDecodeOlderPayloadWithDefaultAutomationPreferences() throws {
         let decoded = try JSONDecoder().decode(SunclubGrowthSettings.self, from: Data(#"{}"#.utf8))
 

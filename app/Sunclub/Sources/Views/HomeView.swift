@@ -155,6 +155,16 @@ struct HomeView: View {
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
                 .accessibilityIdentifier("home.todayDetail")
+
+            if !presentation.metadataRows.isEmpty {
+                LazyVGrid(columns: todayMetadataColumns, spacing: 8) {
+                    ForEach(presentation.metadataRows) { row in
+                        HomeTodayMetadataPill(row: row)
+                    }
+                }
+                .padding(.top, 4)
+                .accessibilityIdentifier("home.todayMetadata")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(22)
@@ -177,6 +187,8 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityValue(presentation.accessibilityValue)
     }
 
     private func refreshHomeOnAppear() {
@@ -301,6 +313,11 @@ struct HomeView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
+                Text("\(uvForecast.sourceLabel) · Updated \(uvForecast.generatedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityIdentifier("home.uvForecastSource")
+
                 if shouldShowExpandedUVForecast(uvForecast), !uvForecast.hours.isEmpty {
                     HStack(alignment: .bottom, spacing: 8) {
                         ForEach(Array(uvForecast.hours.prefix(8))) { hour in
@@ -308,6 +325,10 @@ struct HomeView: View {
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                                     .fill(barColor(for: hour.level))
                                     .frame(width: 18, height: max(CGFloat(hour.index) * 8, 10))
+
+                                Text("UV \(hour.index)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(AppPalette.ink)
 
                                 Text(hour.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated))))
                                     .font(.system(size: 10, weight: .medium))
@@ -340,16 +361,18 @@ struct HomeView: View {
                         .foregroundStyle(AppPalette.softInk)
                 }
 
-                Button(isUVExpanded ? "Show Less" : "Show More") {
-                    feedbackTrigger += 1
-                    withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
-                        isUVExpanded.toggle()
+                if !isElevatedUVLevel(uvForecast.peakHour?.level) {
+                    Button(isUVExpanded ? "Hide Forecast Details" : "Show Forecast Details") {
+                        feedbackTrigger += 1
+                        withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+                            isUVExpanded.toggle()
+                        }
                     }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.uvBriefingToggle")
                 }
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AppPalette.ink)
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home.uvBriefingToggle")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
@@ -389,7 +412,7 @@ struct HomeView: View {
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(AppPalette.warmGlow.opacity(0.5))
+                    .fill(AppPalette.warmGlow.opacity(0.5))
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -481,6 +504,13 @@ struct HomeView: View {
     private var exploreColumns: [GridItem] {
         Array(
             repeating: GridItem(.flexible(), spacing: 12),
+            count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        )
+    }
+
+    private var todayMetadataColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 8),
             count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
         )
     }
@@ -635,7 +665,8 @@ struct HomeView: View {
             let time = hour.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)))
             return "\(time), UV \(hour.index), \(hour.level.displayName)"
         }
-        return "UV forecast. \(hours.joined(separator: ". "))"
+        let peak = forecast.peakHour.map { "Peak UV \($0.index) at \($0.date.formatted(date: .omitted, time: .shortened))." } ?? ""
+        return "UV forecast. \(forecast.sourceLabel). \(peak) \(forecast.recommendation) \(hours.joined(separator: ". "))"
     }
 
     @ViewBuilder
@@ -905,6 +936,43 @@ enum HomeGreetingFormatter {
         default:
             return "Good evening"
         }
+    }
+}
+
+private struct HomeTodayMetadataPill: View {
+    let row: HomeTodayMetadataRow
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 9) {
+            Image(systemName: row.symbolName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+                .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                Text(row.value)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AppPalette.controlFill.opacity(0.58))
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(row.accessibilityLabel)
+        .accessibilityIdentifier("home.todayMetadata.\(row.id)")
     }
 }
 

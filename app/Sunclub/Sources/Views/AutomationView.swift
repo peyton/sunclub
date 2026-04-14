@@ -54,6 +54,7 @@ struct AutomationSettingsPanel: View {
 
             preferenceSection
             shortcutSection
+            shortcutOnlySection
             urlSection
             callbackSection
 
@@ -135,6 +136,22 @@ struct AutomationSettingsPanel: View {
         .padding(18)
         .background(cardBackground)
         .accessibilityIdentifier("automation.shortcuts")
+    }
+
+    private var shortcutOnlySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                "Shortcut File Actions",
+                detail: "These return files to Shortcuts. They are not direct URL actions because the file needs a system handoff."
+            )
+
+            ForEach(shortcutOnlyRows) { row in
+                AutomationActionRow(row: row)
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+        .accessibilityIdentifier("automation.shortcutFileActions")
     }
 
     private var urlSection: some View {
@@ -234,12 +251,18 @@ struct AutomationSettingsPanel: View {
             AutomationActionRow.Model(title: "Log Reapply", detail: "Adds a reapply check-in for today's record."),
             AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Today or a chosen date and time."),
             AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Weekday or weekend reminder time."),
+            AutomationActionRow.Model(title: "Set Sunclub Reapply Reminder", detail: "Turns reapply reminders on or off and can update the interval."),
             AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Travel, UV, iCloud, Health, and alert toggles."),
-            AutomationActionRow.Model(title: "Create Skin Health Report", detail: "Returns a PDF report."),
-            AutomationActionRow.Model(title: "Create Streak Card", detail: "Returns a shareable image."),
-            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Returns a backup file."),
             AutomationActionRow.Model(title: "Import Friend Invite", detail: "Adds a friend from an invite code."),
             AutomationActionRow.Model(title: "Poke Friend", detail: "Uses the friend picker from Shortcuts and opens Friends for a message nudge.")
+        ]
+    }
+
+    private var shortcutOnlyRows: [AutomationActionRow.Model] {
+        [
+            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Returns a backup file.", symbolName: "externaldrive.fill"),
+            AutomationActionRow.Model(title: "Create Skin Health Report", detail: "Returns a PDF report.", symbolName: "doc.richtext.fill"),
+            AutomationActionRow.Model(title: "Create Streak Card", detail: "Returns a shareable image.", symbolName: "photo.fill")
         ]
     }
 
@@ -264,6 +287,12 @@ struct AutomationSettingsPanel: View {
                 urlString: "\(scheme)://automation/open?route=automation"
             ),
             AutomationExample(
+                id: "openSettings",
+                title: "Open Settings",
+                detail: "Open settings without allowing URL writes.",
+                urlString: "\(scheme)://automation/open?route=settings"
+            ),
+            AutomationExample(
                 id: "saveLog",
                 title: "Save Log",
                 detail: "Backfill or update a day.",
@@ -282,10 +311,30 @@ struct AutomationSettingsPanel: View {
                 urlString: "\(scheme)://automation/set-reminder?kind=weekday&time=08:30"
             ),
             AutomationExample(
+                id: "setReapply",
+                title: "Set Reapply",
+                detail: "Turn on the reapply reminder and set an interval.",
+                urlString: "\(scheme)://automation/set-reapply?enabled=true&interval=90"
+            ),
+            AutomationExample(
                 id: "setToggle",
                 title: "Set Toggle",
                 detail: "Turn on daily UV briefing.",
                 urlString: "\(scheme)://automation/set-toggle?name=dailyUVBriefing&enabled=true"
+            ),
+            AutomationExample(
+                id: "importFriend",
+                title: "Import Friend Invite",
+                detail: "Paste a real invite code before using this.",
+                urlString: "\(scheme)://automation/import-friend?code=PASTE_INVITE_CODE",
+                canTest: false
+            ),
+            AutomationExample(
+                id: "pokeFriend",
+                title: "Poke Friend",
+                detail: "Use a saved friend UUID from your own automation.",
+                urlString: "\(scheme)://automation/poke-friend?id=FRIEND_UUID",
+                canTest: false
             )
         ]
     }
@@ -359,16 +408,24 @@ private struct AutomationHeroCard: View {
 
 private struct AutomationActionRow: View {
     struct Model: Identifiable {
-        let id = UUID()
         let title: String
         let detail: String
+        let symbolName: String
+
+        var id: String { title }
+
+        init(title: String, detail: String, symbolName: String = "checkmark.circle.fill") {
+            self.title = title
+            self.detail = detail
+            self.symbolName = symbolName
+        }
     }
 
     let row: Model
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
+            Image(systemName: row.symbolName)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppPalette.success)
                 .frame(width: 22, height: 22)
@@ -396,6 +453,21 @@ private struct AutomationExample: Identifiable {
     let title: String
     let detail: String
     let urlString: String
+    let canTest: Bool
+
+    init(
+        id: String,
+        title: String,
+        detail: String,
+        urlString: String,
+        canTest: Bool = true
+    ) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.urlString = urlString
+        self.canTest = canTest
+    }
 }
 
 private struct AutomationExampleCard: View {
@@ -438,17 +510,25 @@ private struct AutomationExampleCard: View {
                 .accessibilityLabel("Copy \(example.title) URL")
                 .accessibilityIdentifier("automation.example.\(example.id).copy")
 
-                Button("Test") {
-                    guard let url = URL(string: example.urlString) else {
-                        feedbackMessage = "That example URL is invalid."
-                        return
+                if example.canTest {
+                    Button("Test") {
+                        guard let url = URL(string: example.urlString) else {
+                            feedbackMessage = "That example URL is invalid."
+                            return
+                        }
+                        feedbackMessage = "Opened \(example.title)."
+                        openURL(url)
                     }
-                    feedbackMessage = "Opened \(example.title)."
-                    openURL(url)
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityLabel("Test \(example.title) URL")
+                    .accessibilityIdentifier("automation.example.\(example.id).test")
+                } else {
+                    Text("Paste your own value before testing.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("automation.example.\(example.id).requiresValue")
                 }
-                .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityLabel("Test \(example.title) URL")
-                .accessibilityIdentifier("automation.example.\(example.id).test")
             }
         }
         .padding(14)
