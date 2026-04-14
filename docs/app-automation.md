@@ -15,7 +15,7 @@
 - `urlWriteActionsEnabled`: blocks URL and x-callback writes when off.
 - `callbackResultDetailsEnabled`: removes action-specific callback fields when off.
 - Location: Settings -> Automation.
-- Website: `/automation/`.
+- Website: `/docs/automation/`.
 
 ## App Intents
 
@@ -105,7 +105,7 @@
 - UI: `sunclub-dev://x-callback-url/open?route=automation` opens Automation.
 - UI: URL write disable blocks mutation and routes to foreground UI.
 - UI: Automation remains usable under Dynamic Type, dark mode, increased contrast, Reduce Motion, and Differentiate Without Color.
-- Web: `/automation/` is required by the static site validator and sitemap.
+- Web: `/docs/automation/` is required by the static site validator and sitemap.
 
 ## Future Feature Checklist
 

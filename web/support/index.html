@@ -3,17 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Support - Sunclub</title>
+    <title>Sunclub Support and Troubleshooting</title>
     <meta
       name="description"
-      content="Get Sunclub support for sunscreen logging, reminders, widgets, Shortcuts, URL actions, iCloud sync, backup import/export, and privacy questions."
+      content="Get Sunclub support for sunscreen logging, reminders, widgets, Shortcuts, URL actions, iCloud sync, backup import/export, privacy, and security."
     />
-    <meta name="theme-color" content="#0f766e" />
+    <meta
+      name="theme-color"
+      content="#0f766e"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#12100e"
+      media="(prefers-color-scheme: dark)"
+    />
     <link rel="canonical" href="https://sunclub.peyton.app/support/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="brand" href="/" aria-label="Sunclub home">
@@ -21,19 +31,16 @@
           <span>Sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
           <a href="/support/" aria-current="page">Support</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@sunclub.peyton.app"
-            >contact@sunclub.peyton.app</a
-          >
         </div>
       </nav>
     </header>
 
-    <main class="content">
-      <p class="eyebrow">Support</p>
-      <h1>Sunclub Support</h1>
+    <main id="main" class="content">
+      <p class="eyebrow on-surface">Support</p>
+      <h1>Sunclub support</h1>
       <p class="lead">
         For app issues, feedback, or feature requests, email
         <a href="mailto:support@sunclub.peyton.app"
@@ -73,8 +80,9 @@
           <h2>Shortcuts and URL actions</h2>
           <p>
             Automation settings control Shortcut writes, URL opens, URL writes,
-            and x-callback-url detail fields. Turn off URL writes if links
-            should only open Sunclub screens.
+            and x-callback-url detail fields. The
+            <a href="/docs/automation/">automation docs</a> include examples and
+            privacy controls.
           </p>
         </article>
         <article class="support-item">
@@ -105,13 +113,12 @@
         </li>
       </ul>
 
-      <h2>Automation</h2>
+      <h2>Documentation</h2>
       <p>
-        Sunclub supports Apple Shortcuts, custom URL actions, and
-        x-callback-url. Supported writes include logging sunscreen, reapply,
-        reminders, toggles, friend invite import, and friend pokes. Review the
-        <a href="/automation/">automation reference</a> for examples and privacy
-        controls.
+        The <a href="/docs/">docs</a> collect setup notes for logging,
+        reminders, widgets, automation, private sync, backup, and privacy. For
+        automation examples, read
+        <a href="/docs/automation/">Automation Docs</a>.
       </p>
 
       <h2>Security</h2>
@@ -131,6 +138,14 @@
         camera/product scanning, and backups.
       </p>
 
+      <h2>General Contact</h2>
+      <p>
+        General questions can go to
+        <a href="mailto:contact@sunclub.peyton.app"
+          >contact@sunclub.peyton.app</a
+        >.
+      </p>
+
       <h2>Medical Disclaimer</h2>
       <p>
         Sunclub is a habit tracker, not a medical device or medical advice.
@@ -147,7 +162,8 @@
         </div>
         <nav aria-label="Footer">
           <a href="/">Home</a>
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
+          <a href="/docs/automation/">Automation Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"
