@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 import json
 import plistlib
 from pathlib import Path
+import subprocess
+import tempfile
 from typing import Any, Protocol
 
 from scripts.appstore.connect_api import (
@@ -19,6 +21,14 @@ from scripts.appstore.connect_api import (
 
 APP_STORE_PROFILE_TYPE = "IOS_APP_STORE"
 DISTRIBUTION_CERTIFICATE_TYPES = ("DISTRIBUTION", "IOS_DISTRIBUTION")
+PROFILE_BACKED_ENTITLEMENTS = (
+    "aps-environment",
+    "com.apple.developer.healthkit",
+    "com.apple.developer.icloud-container-identifiers",
+    "com.apple.developer.icloud-services",
+    "com.apple.developer.weatherkit",
+    "com.apple.security.application-groups",
+)
 
 
 class ProfilesClient(Protocol):
@@ -119,19 +129,28 @@ def ensure_profiles(
     certificate: JsonObject | None = None
 
     for bundle in bundles:
+        required_entitlements = read_bundle_profile_entitlements(bundle.path)
         bundle_id = find_bundle_id(client, bundle.bundle_identifier)
-        profile = find_active_profile(client, bundle_id["id"], bundle.profile_type)
+        profile = find_active_profile(
+            client,
+            bundle_id["id"],
+            bundle.profile_type,
+            required_entitlements=required_entitlements,
+        )
         created = False
         if profile is None:
             if not create_missing:
                 raise AppStoreConnectError(
-                    "No active App Store provisioning profile found for "
+                    "No compatible active App Store provisioning profile found for "
                     f"{bundle.bundle_identifier}"
                 )
             if certificate is None:
                 certificate = find_distribution_certificate(client)
             profile = create_profile(client, bundle, bundle_id["id"], certificate["id"])
             created = True
+            validate_profile_entitlements(
+                client, profile, bundle, required_entitlements
+            )
 
         installed_path = None
         if install_directory is not None:
@@ -186,7 +205,11 @@ def bundle_id_identifier(bundle_id: JsonObject) -> str | None:
 
 
 def find_active_profile(
-    client: ProfilesClient, bundle_id: str, profile_type: str
+    client: ProfilesClient,
+    bundle_id: str,
+    profile_type: str,
+    *,
+    required_entitlements: Mapping[str, Any] | None = None,
 ) -> JsonObject | None:
     profiles = client.get_collection(
         f"/bundleIds/{bundle_id}/profiles",
@@ -194,10 +217,13 @@ def find_active_profile(
             "limit": 200,
         },
     )
+    required_entitlements = required_entitlements or {}
     active_profiles = [
         profile
         for profile in profiles
-        if profile_matches_type(profile, profile_type) and profile_is_active(profile)
+        if profile_matches_type(profile, profile_type)
+        and profile_is_active(profile)
+        and profile_satisfies_entitlements(client, profile, required_entitlements)
     ]
     if not active_profiles:
         return None
@@ -206,6 +232,62 @@ def find_active_profile(
 
 def profile_matches_type(profile: JsonObject, profile_type: str) -> bool:
     return profile_attributes(profile).get("profileType") == profile_type
+
+
+def profile_satisfies_entitlements(
+    client: ProfilesClient,
+    profile: JsonObject,
+    required_entitlements: Mapping[str, Any],
+) -> bool:
+    if not required_entitlements:
+        return True
+    profile_entitlements = profile_entitlements_from_content(client, profile)
+    missing = missing_profile_entitlements(profile_entitlements, required_entitlements)
+    return not missing
+
+
+def validate_profile_entitlements(
+    client: ProfilesClient,
+    profile: JsonObject,
+    bundle: ArchivedBundle,
+    required_entitlements: Mapping[str, Any],
+) -> None:
+    if not required_entitlements:
+        return
+    profile_entitlements = profile_entitlements_from_content(client, profile)
+    missing = missing_profile_entitlements(profile_entitlements, required_entitlements)
+    if not missing:
+        return
+    profile_name = profile_attributes(profile).get("name", profile.get("id", "unknown"))
+    formatted_missing = ", ".join(missing)
+    raise AppStoreConnectError(
+        f"Provisioning profile {profile_name} for {bundle.bundle_identifier} "
+        f"does not cover required archived entitlements: {formatted_missing}."
+    )
+
+
+def missing_profile_entitlements(
+    profile_entitlements: Mapping[str, Any],
+    required_entitlements: Mapping[str, Any],
+) -> list[str]:
+    missing: list[str] = []
+    for key in PROFILE_BACKED_ENTITLEMENTS:
+        if key not in required_entitlements:
+            continue
+        required_value = required_entitlements[key]
+        profile_value = profile_entitlements.get(key)
+        if isinstance(required_value, list):
+            profile_values = (
+                set(profile_value) if isinstance(profile_value, list) else set()
+            )
+            missing_values = [
+                value for value in required_value if value not in profile_values
+            ]
+            if missing_values:
+                missing.append(f"{key}={missing_values}")
+        elif profile_value != required_value:
+            missing.append(f"{key}={required_value!r}")
+    return missing
 
 
 def find_distribution_certificate(client: ProfilesClient) -> JsonObject:
@@ -239,7 +321,8 @@ def create_profile(
     bundle_id: str,
     certificate_id: str,
 ) -> JsonObject:
-    name = f"Sunclub App Store {bundle.bundle_identifier}"
+    timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    name = f"Sunclub App Store {bundle.bundle_identifier} {timestamp}"
     response = client.post(
         "/profiles",
         {
@@ -316,6 +399,71 @@ def profile_with_content(client: ProfilesClient, profile: JsonObject) -> JsonObj
             f"Could not fetch profile content for {profile.get('id')}."
         )
     return data
+
+
+def read_bundle_profile_entitlements(bundle_path: Path) -> JsonObject:
+    process = subprocess.run(
+        ["/usr/bin/codesign", "-d", "--entitlements", ":-", str(bundle_path)],
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode != 0 or not process.stdout.strip():
+        return {}
+    payload = plistlib.loads(process.stdout)
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        key: value
+        for key, value in payload.items()
+        if key in PROFILE_BACKED_ENTITLEMENTS
+    }
+
+
+def profile_entitlements_from_content(
+    client: ProfilesClient, profile: JsonObject
+) -> JsonObject:
+    profile = profile_with_content(client, profile)
+    attributes = profile_attributes(profile)
+    content = attributes.get("profileContent")
+    if not isinstance(content, str) or not content:
+        profile_name = attributes.get("name", profile.get("id", "unknown"))
+        raise AppStoreConnectError(
+            f"App Store Connect profile {profile_name} has no downloadable content."
+        )
+
+    try:
+        decoded = base64.b64decode(content, validate=True)
+    except ValueError as error:
+        raise AppStoreConnectError(
+            f"App Store Connect profile {profile.get('id')} content is not base64."
+        ) from error
+
+    profile_plist = decode_mobileprovision(decoded)
+    entitlements = profile_plist.get("Entitlements")
+    if not isinstance(entitlements, dict):
+        return {}
+    return entitlements
+
+
+def decode_mobileprovision(payload: bytes) -> JsonObject:
+    with tempfile.NamedTemporaryFile(suffix=".mobileprovision") as profile_file:
+        profile_file.write(payload)
+        profile_file.flush()
+        process = subprocess.run(
+            ["/usr/bin/security", "cms", "-D", "-i", profile_file.name],
+            check=False,
+            capture_output=True,
+        )
+    if process.returncode != 0:
+        message = process.stderr.decode("utf-8", errors="replace").strip()
+        raise AppStoreConnectError(
+            "Could not decode provisioning profile content"
+            + (f": {message}" if message else ".")
+        )
+    decoded = plistlib.loads(process.stdout)
+    if not isinstance(decoded, dict):
+        raise AppStoreConnectError("Provisioning profile content is not a plist.")
+    return decoded
 
 
 def profile_is_active(profile: JsonObject) -> bool:

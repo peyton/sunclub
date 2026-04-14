@@ -89,6 +89,10 @@ GitHub run cross-check:
   enumerate the archive itself, create any missing App Store profiles through
   App Store Connect, install them locally for export, and preserve
   `.build/release-diagnostics/provisioning-profiles.json` for audit.
+- Treat an existing App Store profile as reusable only after decoding the
+  profile content and proving it covers the archived bundle's profile-backed
+  entitlements, including app groups. Stale profiles must be skipped and
+  regenerated before export.
 - Keep the app-owned left-edge back gesture in `RootView` when hiding the
   native navigation bar. Do not rely only on UIKit
   `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed to
