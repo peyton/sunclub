@@ -156,6 +156,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Shared/AppRoute.swift",
             "Sources/Shared/AppTheme.swift",
             "Sources/Shared/RuntimeEnvironment.swift",
+            "Sources/Shared/SunManualLogInput.swift",
             "Sources/Shared/SunclubDeepLink.swift",
             "Sources/Shared/SunclubRuntimeConfiguration.swift",
             "Sources/WidgetSupport/**"
