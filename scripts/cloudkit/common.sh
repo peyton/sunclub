@@ -146,7 +146,7 @@ read_plist_summary() {
   fi
 
   if command -v python3 >/dev/null 2>&1; then
-    python3 - "$plist_path" <<'PY'
+    python3 -c '
 from __future__ import annotations
 
 import json
@@ -159,7 +159,7 @@ with plist_path.open("rb") as plist_file:
     plist = plistlib.load(plist_file)
 
 print(json.dumps(plist, indent=2, sort_keys=True))
-PY
+' "$plist_path"
     return 0
   fi
 
@@ -185,22 +185,21 @@ signed_entitlements_have_cloudkit() {
 }
 
 print_cloudkit_setup_instructions() {
-  cat <<EOF
-CloudKit is not configured for App ID $RELEASE_APP_IDENTIFIER on team $CLOUDKIT_TEAM_ID.
-
-Required Apple-side setup:
-1. Create the iCloud container $CLOUDKIT_CONTAINER_ID.
-2. Enable the iCloud capability on App ID $RELEASE_APP_IDENTIFIER and assign $CLOUDKIT_CONTAINER_ID.
-3. If Xcode automatic signing should be allowed to make those changes, confirm Automatic Signing Controls are not blocking App ID updates for your role.
-
-Official Apple references:
-- Create an iCloud container: $CLOUDKIT_CREATE_CONTAINER_HELP_URL
-- Enable iCloud for an App ID: $CLOUDKIT_ENABLE_ICLOUD_HELP_URL
-- Automatic Signing Controls: $CLOUDKIT_AUTOMATIC_SIGNING_HELP_URL
-- Certificates, IDs & Profiles: $CLOUDKIT_IDENTIFIERS_URL
-
-Apple's docs say creating an iCloud container requires the Account Holder or Admin role.
-EOF
+  printf 'CloudKit is not configured for App ID %s on team %s.\n\n' \
+    "$RELEASE_APP_IDENTIFIER" \
+    "$CLOUDKIT_TEAM_ID"
+  printf '%s\n' 'Required Apple-side setup:'
+  printf '1. Create the iCloud container %s.\n' "$CLOUDKIT_CONTAINER_ID"
+  printf '2. Enable the iCloud capability on App ID %s and assign %s.\n' \
+    "$RELEASE_APP_IDENTIFIER" \
+    "$CLOUDKIT_CONTAINER_ID"
+  printf '%s\n\n' '3. If Xcode automatic signing should be allowed to make those changes, confirm Automatic Signing Controls are not blocking App ID updates for your role.'
+  printf '%s\n' 'Official Apple references:'
+  printf -- '- Create an iCloud container: %s\n' "$CLOUDKIT_CREATE_CONTAINER_HELP_URL"
+  printf -- '- Enable iCloud for an App ID: %s\n' "$CLOUDKIT_ENABLE_ICLOUD_HELP_URL"
+  printf -- '- Automatic Signing Controls: %s\n' "$CLOUDKIT_AUTOMATIC_SIGNING_HELP_URL"
+  printf -- '- Certificates, IDs & Profiles: %s\n\n' "$CLOUDKIT_IDENTIFIERS_URL"
+  printf "%s\n" "Apple's docs say creating an iCloud container requires the Account Holder or Admin role."
 }
 
 open_cloudkit_setup_pages() {
