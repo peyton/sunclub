@@ -92,15 +92,9 @@ struct HistoryView: View {
 
     private var monthNavigator: some View {
         HStack {
-            Button {
+            monthNavigationButton(systemName: "chevron.left") {
                 changeMonth(by: -1)
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("Previous month")
             .accessibilityHint("Shows the previous month in history.")
             .accessibilityIdentifier("history.previousMonth")
@@ -114,20 +108,27 @@ struct HistoryView: View {
 
             Spacer()
 
-            Button {
+            monthNavigationButton(systemName: "chevron.right", isEnabled: canGoForward) {
                 changeMonth(by: 1)
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(canGoForward ? AppPalette.ink : AppPalette.muted)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoForward)
             .accessibilityLabel("Next month")
             .accessibilityHint(canGoForward ? "Shows the next month in history." : "The next month is in the future.")
             .accessibilityIdentifier("history.nextMonth")
         }
+    }
+
+    private func monthNavigationButton(
+        systemName: String,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(isEnabled ? AppPalette.ink : AppPalette.muted)
+        }
+        .buttonStyle(HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))
+        .disabled(!isEnabled)
     }
 
     private func streakContextCard(presentation: HistoryPresentation) -> some View {
@@ -1140,6 +1141,41 @@ private struct HistoryMonthStats {
     let openCount: Int
     let rate: String
     let insights: MonthlyReviewInsights
+}
+
+private struct HistoryMonthNavigationButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    let isEnabled: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: 44, height: 44)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(controlFill)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+            }
+            .opacity(configuration.isPressed ? 0.88 : 1)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.96 : 1))
+            .animation(
+                SunMotion.easeOut(duration: 0.12, reduceMotion: reduceMotion),
+                value: configuration.isPressed
+            )
+    }
+
+    private var controlFill: Color {
+        switch colorScheme {
+        case .dark:
+            return AppPalette.controlFill.opacity(isEnabled ? 0.88 : 0.72)
+        default:
+            return AppPalette.muted.opacity(isEnabled ? 0.22 : 0.18)
+        }
+    }
 }
 
 #Preview {

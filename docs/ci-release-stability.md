@@ -84,6 +84,11 @@ GitHub run cross-check:
   code-signing identifier equals `CFBundleIdentifier`, `CFBundleIconName` is
   `AppIcon`, compiled `Assets.car` exists, and the iOS-only plist keys are
   absent.
+- Before `xcodebuild -exportArchive`, prepare App Store provisioning profiles
+  for every archived `.app` and `.appex` bundle. The release script must
+  enumerate the archive itself, create any missing App Store profiles through
+  App Store Connect, install them locally for export, and preserve
+  `.build/release-diagnostics/provisioning-profiles.json` for audit.
 - Keep the app-owned left-edge back gesture in `RootView` when hiding the
   native navigation bar. Do not rely only on UIKit
   `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed to
