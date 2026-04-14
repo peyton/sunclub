@@ -189,9 +189,8 @@ def find_active_profile(
     client: ProfilesClient, bundle_id: str, profile_type: str
 ) -> JsonObject | None:
     profiles = client.get_collection(
-        "/profiles",
+        f"/bundleIds/{bundle_id}/profiles",
         {
-            "filter[bundleId]": bundle_id,
             "filter[profileType]": profile_type,
             "limit": 200,
         },

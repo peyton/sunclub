@@ -38,9 +38,11 @@ class FakeProfilesClient:
         if path == "/bundleIds":
             identifier = query["filter[identifier]"]
             return [bundle_id(f"bundle-{identifier}", str(identifier))]
-        if path == "/profiles":
-            if query["filter[bundleId]"] == "bundle-app.peyton.sunclub":
-                return [existing_profile("profile-existing")]
+        if path == "/bundleIds/bundle-app.peyton.sunclub/profiles":
+            assert query["filter[profileType]"] == APP_STORE_PROFILE_TYPE
+            return [existing_profile("profile-existing")]
+        if path.startswith("/bundleIds/") and path.endswith("/profiles"):
+            assert query["filter[profileType]"] == APP_STORE_PROFILE_TYPE
             return []
         if path == "/certificates":
             certificate_type = query["filter[certificateType]"]
