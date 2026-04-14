@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build a signed archive, export it as a signed App Store package, and
+# Build an archive, export it as a signed App Store package, and
 # optionally upload the exported IPA to TestFlight.
 #
 # Usage:
@@ -169,10 +169,6 @@ if [ "$UPLOAD_TESTFLIGHT" = true ] && [ "$SKIP_EXPORT" = true ]; then
   fail "--upload-testflight requires IPA export"
 fi
 
-if [ "$UNSIGNED_ARCHIVE" = true ] && [ "$SKIP_EXPORT" = false ]; then
-  fail "--unsigned-archive can only be used with --skip-export; App Store export validation requires a signed archive with entitlements"
-fi
-
 step "Validating App Store metadata"
 metadata_args=("scripts/appstore/metadata.json")
 if [ "$ALLOW_DRAFT_METADATA" = true ]; then
@@ -247,9 +243,13 @@ if [ "$SKIP_EXPORT" = false ]; then
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"
   ok "Exported IPA: $IPA_FILE"
 
-  step "Validating signed app entitlements"
-  validate_signed_ipa_entitlements "$IPA_FILE"
-  ok "Signed app entitlements are valid"
+  if [ "$UNSIGNED_ARCHIVE" = true ]; then
+    printf 'Skipping signed app entitlement validation because this export was created from an unsigned archive.\n'
+  else
+    step "Validating signed app entitlements"
+    validate_signed_ipa_entitlements "$IPA_FILE"
+    ok "Signed app entitlements are valid"
+  fi
 else
   ok "Skipping IPA export"
 fi

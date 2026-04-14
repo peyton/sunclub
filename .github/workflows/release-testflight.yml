@@ -64,7 +64,7 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
           SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
-        run: bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight
+        run: bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

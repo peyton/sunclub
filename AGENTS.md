@@ -108,3 +108,7 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 - Don't change persisted SwiftData models without bumping the schema version and adding/updating a migration test that opens the previous shipped store
 - Don't bypass `UITEST_MODE` in UI tests — they must work without real camera/notifications
 - Don't put documentation anywhere other than `docs/`
+
+## Recent Learnings
+
+- `release-testflight.yml` must not use signed automatic archives on GitHub unless the workflow first imports an Apple signing certificate private key. Without that cert, Xcode resolves the archive to iOS Development signing and can fail at Apple's development certificate limit. Keep the TestFlight tag workflow on `--unsigned-archive`, and only enforce signed IPA entitlement validation on signed archive exports.

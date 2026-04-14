@@ -192,10 +192,10 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
     assert (
-        "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --upload-testflight"
+        "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
         in workflow
     )
-    assert "--unsigned-archive" not in workflow
+    assert "--unsigned-archive" in workflow
 
 
 def test_archive_script_uses_app_store_connect_cli_auth() -> None:
@@ -215,7 +215,9 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert 'xcodebuild "${xcodebuild_archive_args[@]}"' in archive_step
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in script
     assert "XCODEBUILD_ARCHIVE_SIGNING_ARGS=(" in script
-    assert "--unsigned-archive can only be used with --skip-export" in script
+    assert "--unsigned-archive can only be used with --skip-export" not in script
+    assert "Skipping signed app entitlement validation" in script
+    assert 'validate_signed_ipa_entitlements "$IPA_FILE"' in script
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script
     assert "xcodebuild_export_args=(" in export_step

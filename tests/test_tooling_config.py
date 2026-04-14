@@ -13,6 +13,8 @@ def test_justfile_exposes_app_review_submission_commands() -> None:
     assert "bash scripts/appstore/submit-review.sh --dry-run" in justfile
     assert "appstore-submit-review:" in justfile
     assert "bash scripts/appstore/submit-review.sh --submit" in justfile
+    assert "release-testflight VERSION:" in justfile
+    assert "VERSION={{VERSION}} bash scripts/appstore/release-tag.sh" in justfile
 
 
 def test_tooling_config_matches_repo_contract() -> None:

@@ -101,6 +101,10 @@ release-tag VERSION:
     VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
 
 [group('app')]
+release-testflight VERSION:
+    VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
+
+[group('app')]
 generate:
     bash scripts/tooling/generate.sh
 
