@@ -175,6 +175,8 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
         deploymentTargets: defaultWatchDeploymentTarget,
         infoPlist: .extendingDefault(with: [
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
+            "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+            "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
@@ -202,6 +204,8 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
         deploymentTargets: defaultWatchDeploymentTarget,
         infoPlist: .extendingDefault(with: [
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
+            "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+            "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
@@ -240,7 +244,9 @@ func watchContainerTarget(for flavor: SunclubFlavor) -> Target {
         bundleId: flavor.watchContainerBundleID,
         deploymentTargets: defaultDeploymentTarget,
         infoPlist: .extendingDefault(with: [
-            "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME) Watch")
+            "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME) Watch"),
+            "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+            "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)")
         ]),
         dependencies: [
             .target(name: flavor.watchTargetName)
@@ -258,6 +264,8 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
         deploymentTargets: defaultWatchDeploymentTarget,
         infoPlist: .extendingDefault(with: [
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
+            "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+            "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
