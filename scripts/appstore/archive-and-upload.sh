@@ -346,6 +346,23 @@ adhoc_sign_archived_app_with_release_entitlements() {
   adhoc_sign "$APP_BUNDLE_PATH" "$app_entitlements_path"
 }
 
+prepare_app_store_provisioning_profiles() {
+  if [ "$HAS_APP_STORE_CONNECT_AUTH" != true ]; then
+    if [ "$UPLOAD_TESTFLIGHT" = true ]; then
+      fail "Missing App Store Connect authentication for TestFlight profile preparation"
+    fi
+    printf 'Skipping provisioning profile preparation without App Store Connect authentication.\n'
+    return 0
+  fi
+
+  run_repo_python_module scripts.appstore.provisioning_profiles \
+    --archive-path "$ARCHIVE_OUTPUT_PATH" \
+    --app-name "$RELEASE_APP_PRODUCT_NAME" \
+    --create-missing \
+    --install \
+    --diagnostics "$RELEASE_DIAGNOSTICS_PATH/provisioning-profiles.json"
+}
+
 write_ipa_entitlement_diagnostics() {
   local ipa_file="$1"
   local temp_dir
@@ -361,8 +378,10 @@ write_ipa_entitlement_diagnostics() {
   signed_app_path="$(find "$temp_dir/Payload" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME.app" -type d -print -quit)"
   [ -n "$signed_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME.app"
 
-  rm -rf "$RELEASE_DIAGNOSTICS_PATH"
   mkdir -p "$RELEASE_DIAGNOSTICS_PATH"
+  find "$RELEASE_DIAGNOSTICS_PATH" -maxdepth 1 -type f \
+    \( -name '*.codesign.txt' -o -name '*.entitlements.plist' -o -name '*.entitlements.log' -o -name 'summary.txt' \) \
+    -delete
 
   codesign -dvvv "$signed_app_path" >"$RELEASE_DIAGNOSTICS_PATH/$RELEASE_APP_PRODUCT_NAME.codesign.txt" 2>&1
   if ! codesign -d --entitlements :- "$signed_app_path" >"$RELEASE_DIAGNOSTICS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.plist" \
@@ -463,6 +482,10 @@ fi
 
 IPA_FILE=""
 if [ "$SKIP_EXPORT" = false ]; then
+  step "Preparing App Store provisioning profiles"
+  prepare_app_store_provisioning_profiles
+  ok "App Store provisioning profiles cover every archived app bundle"
+
   step "Exporting the App Store package"
   rm -rf "$EXPORT_OUTPUT_PATH"
 

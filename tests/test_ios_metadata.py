@@ -424,6 +424,9 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
         'IPA_FILE="',
         1,
     )[0]
+    profile_step = script.split('step "Preparing App Store provisioning profiles"', 1)[
+        1
+    ].split('step "Exporting the App Store package"', 1)[0]
 
     assert "XCODEBUILD_AUTH_ARGS=(" in script
     assert "XCODEBUILD_ARCHIVE_PROVISIONING_ARGS=(" in script
@@ -435,6 +438,8 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "--unsigned-archive can only be used with --skip-export" not in script
     assert "write_ipa_entitlement_diagnostics" in script
     assert "adhoc_sign_archived_app_with_release_entitlements" in script
+    assert "prepare_app_store_provisioning_profiles" in script
+    assert "scripts.appstore.provisioning_profiles" in script
     assert "scripts.appstore.resolve_entitlements" in script
     assert "--generate-entitlement-der" in script
     assert '--identifier "$bundle_id"' in script
@@ -452,6 +457,13 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "SunclubICloudContainerIdentifier" in script
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script
+    assert "prepare_app_store_provisioning_profiles" in profile_step
+    assert '--archive-path "$ARCHIVE_OUTPUT_PATH"' in script
+    assert '--app-name "$RELEASE_APP_PRODUCT_NAME"' in script
+    assert "--create-missing" in script
+    assert "--install" in script
+    assert "provisioning-profiles.json" in script
+    assert 'rm -rf "$RELEASE_DIAGNOSTICS_PATH"' not in script
     assert "xcodebuild_export_args=(" in export_step
     assert "-exportArchive" in export_step
     assert "-allowProvisioningUpdates" in export_step
