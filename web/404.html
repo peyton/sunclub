@@ -6,13 +6,23 @@
     <title>Page Not Found - Sunclub</title>
     <meta
       name="description"
-      content="The requested Sunclub page could not be found. Use the homepage, support page, or privacy policy."
+      content="The requested Sunclub page could not be found. Use the homepage, docs, support page, or privacy policy."
     />
-    <meta name="theme-color" content="#0f766e" />
+    <meta
+      name="theme-color"
+      content="#0f766e"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#12100e"
+      media="(prefers-color-scheme: dark)"
+    />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="brand" href="/" aria-label="Sunclub home">
@@ -20,22 +30,19 @@
           <span>Sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@sunclub.peyton.app"
-            >contact@sunclub.peyton.app</a
-          >
         </div>
       </nav>
     </header>
 
-    <main class="content">
-      <p class="eyebrow">404</p>
+    <main id="main" class="content">
+      <p class="eyebrow on-surface">404</p>
       <h1>That page is not here.</h1>
       <p class="lead">
-        Go back to <a href="/">Sunclub</a>, read the
-        <a href="/privacy/">privacy policy</a>, or email
+        Go back to <a href="/">Sunclub</a>, read the <a href="/docs/">docs</a>,
+        open the <a href="/privacy/">privacy policy</a>, or email
         <a href="mailto:support@sunclub.peyton.app"
           >support@sunclub.peyton.app</a
         >
@@ -48,7 +55,8 @@
         <div>© 2026 Peyton Randolph. Sunclub is not medical advice.</div>
         <nav aria-label="Footer">
           <a href="/">Home</a>
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
+          <a href="/docs/automation/">Automation Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"

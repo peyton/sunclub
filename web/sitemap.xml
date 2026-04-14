@@ -4,7 +4,10 @@
     <loc>https://sunclub.peyton.app/</loc>
   </url>
   <url>
-    <loc>https://sunclub.peyton.app/automation/</loc>
+    <loc>https://sunclub.peyton.app/docs/</loc>
+  </url>
+  <url>
+    <loc>https://sunclub.peyton.app/docs/automation/</loc>
   </url>
   <url>
     <loc>https://sunclub.peyton.app/support/</loc>

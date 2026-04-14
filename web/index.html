@@ -3,18 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sunclub - Daily SPF Habit Tracker</title>
+    <title>Sunclub - Daily SPF Habit Tracker for iPhone</title>
     <meta
       name="description"
-      content="Sunclub is an iPhone app for quick sunscreen logging, streaks, weekly summaries, reminders, widgets, Shortcuts, URL actions, and private habit history."
+      content="Sunclub is an iPhone app for fast sunscreen logging, streaks, weekly review, reminders, widgets, documentation, and private habit history."
     />
-    <meta name="theme-color" content="#0f766e" />
+    <meta
+      name="theme-color"
+      content="#0f766e"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#12100e"
+      media="(prefers-color-scheme: dark)"
+    />
     <link rel="canonical" href="https://sunclub.peyton.app/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
-    <meta property="og:title" content="Sunclub - Daily SPF Habit Tracker" />
+    <meta
+      property="og:title"
+      content="Sunclub - Daily SPF Habit Tracker for iPhone"
+    />
     <meta
       property="og:description"
-      content="Quick sunscreen logging, streaks, summaries, reminders, widgets, Shortcuts, URL actions, and private habit history."
+      content="Fast sunscreen logging, streaks, weekly review, reminders, widgets, docs, and private habit history."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sunclub.peyton.app/" />
@@ -33,52 +45,37 @@
           <span>Sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@sunclub.peyton.app"
-            >contact@sunclub.peyton.app</a
-          >
         </div>
       </nav>
     </header>
 
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
+        <img
+          class="hero-backdrop"
+          src="/assets/screenshots/home.jpg"
+          width="560"
+          height="1216"
+          alt=""
+          aria-hidden="true"
+          fetchpriority="high"
+        />
         <div class="hero-inner">
-          <div>
-            <p class="eyebrow">Daily SPF Habit Tracker</p>
-            <h1 id="hero-title">Log sunscreen before the day gets away.</h1>
-            <p class="hero-copy">
-              Sunclub keeps sunscreen simple: log today in a few taps, keep a
-              streak moving, review the week, and get reminders when it is time
-              to apply or reapply.
-            </p>
-            <div class="actions" aria-label="Sunclub links">
-              <a class="button primary" href="#release-title"
-                >App Store Download Coming Soon</a
-              >
-              <a
-                class="button secondary"
-                href="mailto:support@sunclub.peyton.app"
-                >Email Sunclub Support</a
-              >
-            </div>
-          </div>
-
-          <div class="phone-stage" aria-label="Sunclub app preview">
-            <div class="phone">
-              <div class="phone-screen">
-                <img
-                  class="phone-shot"
-                  src="/assets/screenshots/home.jpg"
-                  width="560"
-                  height="1216"
-                  alt="Sunclub home screen with current streak, daily progress, and manual logging."
-                  fetchpriority="high"
-                />
-              </div>
-            </div>
+          <p class="eyebrow">Daily SPF habit tracker</p>
+          <h1 id="hero-title">Log SPF in seconds. Keep the habit all week.</h1>
+          <p class="hero-copy">
+            Sunclub turns sunscreen into a quick daily check-in: log today, keep
+            your streak moving, review the week, and get nudges when it is time
+            to reapply.
+          </p>
+          <div class="actions" aria-label="Sunclub links">
+            <a class="button primary" href="#app-store"
+              >App Store release status</a
+            >
+            <a class="button secondary" href="/docs/">Read the docs</a>
           </div>
         </div>
       </section>
@@ -86,40 +83,47 @@
       <section class="section" aria-labelledby="why-title">
         <div class="wrap">
           <div class="section-heading">
-            <h2 id="why-title">Built for one small routine.</h2>
+            <p class="eyebrow on-surface">Why Sunclub</p>
+            <h2 id="why-title">A sunscreen routine that stays light.</h2>
             <p>
-              Sunclub stays focused on the sunscreen habit itself, without
-              accounts, feeds, or setup that gets between you and the daily
-              check-in.
+              Sunclub stays focused on the daily SPF habit, without accounts,
+              feeds, ads, or extra setup between you and the check-in.
             </p>
           </div>
           <div class="feature-list">
             <article class="feature">
-              <h3>Quick manual logging</h3>
+              <h3>Fast daily logging</h3>
               <p>
-                Record today from the app, widgets, reminders, or Control
-                Center, then return to your day.
+                Record today from Home, reminders, widgets, or Control Center
+                and move on.
               </p>
             </article>
             <article class="feature">
-              <h3>Automation from anywhere</h3>
+              <h3>Reminder paths</h3>
               <p>
-                Shortcuts, URL actions, x-callback-url, widgets, and controls
-                can run supported Sunclub actions.
+                Daily, reapply, elevated UV, and weekly nudges can open the
+                right place in Sunclub.
               </p>
             </article>
             <article class="feature">
-              <h3>Progress you can read fast</h3>
+              <h3>Readable progress</h3>
               <p>
                 Streaks, weekly summaries, history, SPF notes, and missed days
                 stay easy to scan.
               </p>
             </article>
             <article class="feature">
-              <h3>Private habit history</h3>
+              <h3>Glanceable widgets</h3>
               <p>
-                Sunclub has no app-owned account system, no advertising, and no
-                analytics SDKs.
+                Widgets and controls keep the next action close without turning
+                the app into another feed.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>Private by design</h3>
+              <p>
+                No app-owned account system, no ads, no analytics SDKs, and
+                optional private iCloud sync.
               </p>
             </article>
           </div>
@@ -129,30 +133,31 @@
       <section class="section alt" aria-labelledby="flow-title">
         <div class="wrap split">
           <div class="section-heading">
-            <h2 id="flow-title">A clear path from reminder to done.</h2>
+            <p class="eyebrow on-surface">Daily flow</p>
+            <h2 id="flow-title">From nudge to done without extra taps.</h2>
             <p>
-              The app opens directly into the next useful action, then
-              reinforces the streak without turning sunscreen into a chore.
+              The app opens into the next useful action, keeps the day
+              consistent, and makes the weekly pattern easy to read.
             </p>
           </div>
           <div class="timeline" aria-label="Sunclub routine">
             <div class="timeline-item">
               <div class="timeline-number">1</div>
               <div>
-                <h3>Get a nudge</h3>
+                <h3>Get the right nudge</h3>
                 <p>
-                  Daily, reapply, elevated UV, and weekly reminders can open the
-                  right view.
+                  Morning, reapply, elevated UV, and weekly review reminders can
+                  route directly to the matching screen.
                 </p>
               </div>
             </div>
             <div class="timeline-item">
               <div class="timeline-number">2</div>
               <div>
-                <h3>Log today</h3>
+                <h3>Log once for the day</h3>
                 <p>
-                  Manual logging records the day once and keeps recent SPF
-                  details close.
+                  Manual logging keeps one record per day, with recent SPF
+                  details close when you need them.
                 </p>
               </div>
             </div>
@@ -161,8 +166,8 @@
               <div>
                 <h3>Review the week</h3>
                 <p>
-                  Weekly summary and history help you spot the routine, misses
-                  included.
+                  Weekly summary and history show consistency, misses, and notes
+                  without making you dig.
                 </p>
               </div>
             </div>
@@ -175,9 +180,36 @@
                 loading="lazy"
               />
               <figcaption>
-                Weekly summary keeps the last seven days readable.
+                Weekly review keeps the last seven days readable.
               </figcaption>
             </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section docs-band" aria-labelledby="docs-title">
+        <div class="wrap">
+          <div class="section-heading">
+            <p class="eyebrow on-surface">Documentation</p>
+            <h2 id="docs-title">Short answers for setup and automation.</h2>
+            <p>
+              The docs collect the practical details for Apple Shortcuts, URL
+              actions, privacy choices, reminders, widgets, and backup behavior.
+            </p>
+          </div>
+          <div class="docs-grid">
+            <a class="docs-card" href="/docs/">
+              <span>Start with docs</span>
+              <strong>Browse Sunclub documentation</strong>
+            </a>
+            <a class="docs-card" href="/docs/automation/">
+              <span>Shortcuts and links</span>
+              <strong>Read automation docs</strong>
+            </a>
+            <a class="docs-card" href="/privacy/">
+              <span>Local-first choices</span>
+              <strong>Review privacy details</strong>
+            </a>
           </div>
         </div>
       </section>
@@ -185,8 +217,10 @@
       <section class="section privacy-band" aria-labelledby="privacy-title">
         <div class="wrap privacy-row">
           <div class="section-heading">
+            <p class="eyebrow on-surface">Privacy</p>
             <h2 id="privacy-title">
-              Local-first, with Apple system features when you choose them.
+              Local-first history, with Apple system features when you choose
+              them.
             </h2>
             <p>
               Sunclub stores app history on device, can use your private iCloud
@@ -197,50 +231,31 @@
           <ul class="privacy-points">
             <li>No app-owned accounts.</li>
             <li>No ads or third-party analytics SDKs.</li>
-            <li>
-              Optional notifications, location features, HealthKit, and
-              camera/product scanning.
-            </li>
+            <li>Optional notifications, location features, and HealthKit.</li>
+            <li>Optional private iCloud sync and local backup export.</li>
             <li>
               Shortcut writes, URL writes, and callback details can be disabled
-              in Sunclub settings.
+              in Settings.
             </li>
-            <li>
-              Support requests go to
-              <a href="mailto:support@sunclub.peyton.app"
-                >support@sunclub.peyton.app</a
-              >.
-            </li>
-            <li>
-              Privacy questions go to
-              <a href="mailto:privacy@sunclub.peyton.app"
-                >privacy@sunclub.peyton.app</a
-              >.
-            </li>
-            <li>
-              Security reports go to
-              <a href="mailto:security@sunclub.peyton.app"
-                >security@sunclub.peyton.app</a
-              >.
-            </li>
+            <li><a href="/privacy/">Read the privacy policy</a>.</li>
           </ul>
         </div>
       </section>
 
-      <section class="section tight" aria-labelledby="release-title">
+      <section class="section tight" id="app-store" aria-labelledby="app-title">
         <div class="wrap">
           <div class="release-note">
-            <h2 id="release-title">App Store release in progress</h2>
+            <p class="eyebrow on-surface">App Store</p>
+            <h2 id="app-title">App Store release status</h2>
             <p>
-              The public App Store link will be added here after release. For
-              general questions, email
-              <a href="mailto:contact@sunclub.peyton.app"
-                >contact@sunclub.peyton.app</a
-              >. For app issues, email
-              <a href="mailto:support@sunclub.peyton.app"
-                >support@sunclub.peyton.app</a
-              >.
+              Sunclub is being prepared for public App Store availability. The
+              App Store link will replace this status as soon as the listing is
+              live.
             </p>
+            <div class="actions compact">
+              <a class="button primary" href="/docs/">Read the docs</a>
+              <a class="button tertiary" href="/privacy/">Privacy policy</a>
+            </div>
           </div>
         </div>
       </section>
@@ -251,7 +266,8 @@
         <div>© 2026 Peyton Randolph. Sunclub is not medical advice.</div>
         <nav aria-label="Footer">
           <a href="/">Home</a>
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
+          <a href="/docs/automation/">Automation Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"
