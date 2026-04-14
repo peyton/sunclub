@@ -1,0 +1,91 @@
+---
+name: Submit App Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to submit, for example v1.2.3"
+        required: true
+        type: string
+      confirm_submit:
+        description: "I understand this submits the app to App Review"
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: app-review-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  submit:
+    name: Submit App Review
+    if: ${{ inputs.confirm_submit == true }}
+    runs-on: macos-latest
+    environment: app-store-review
+    steps:
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+        with:
+          xcode-version: "26.3"
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag }}
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        with:
+          cache: false
+          cache_save: false
+
+      - name: Materialize App Store Connect key
+        shell: bash
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_KEY_P8"
+          key_path="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key_path"
+          chmod 600 "$key_path"
+          echo "ASC_KEY_FILE=$key_path" >> "$GITHUB_ENV"
+
+      - name: Resolve release versions
+        shell: bash
+        env:
+          SUNCLUB_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          {
+            echo "SUNCLUB_RELEASE_TAG=$SUNCLUB_RELEASE_TAG"
+            mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
+            echo "SUNCLUB_FLAVOR=prod"
+            echo "SUNCLUB_APS_ENVIRONMENT=production"
+            echo "SUNCLUB_TUIST_SHARE=0"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate App Store metadata
+        run: mise exec -- uv run python -m scripts.appstore.validate_metadata scripts/appstore/metadata.json
+
+      - name: Capture App Store screenshots
+        run: mise exec -- just appstore-screenshots
+
+      - name: Archive and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
+          SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
+        run: bash scripts/appstore/archive-and-upload.sh --upload-testflight
+
+      - name: Submit app for review
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
+          SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT: "1"
+        run: mise exec -- uv run python -m scripts.appstore.submit_review --submit --confirm-submit

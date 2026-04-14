@@ -9,6 +9,7 @@ DEPLOY_WEB_WORKFLOW = WORKFLOWS_DIR / "deploy-web-cloudflare.yml"
 RELEASE_WEB_WORKFLOW = WORKFLOWS_DIR / "release-web.yml"
 ROLLBACK_WEB_WORKFLOW = WORKFLOWS_DIR / "rollback-web-cloudflare.yml"
 RELEASE_TESTFLIGHT_WORKFLOW = WORKFLOWS_DIR / "release-testflight.yml"
+SUBMIT_APP_REVIEW_WORKFLOW = WORKFLOWS_DIR / "submit-app-review.yml"
 JUSTFILE = REPO_ROOT / "justfile"
 
 WEB_WORKFLOWS = (
@@ -70,10 +71,13 @@ def test_manual_cloudflare_pages_deploy_is_exposed_through_just() -> None:
 def test_web_and_ios_release_tags_are_separate() -> None:
     web_workflow = workflow_text(RELEASE_WEB_WORKFLOW)
     ios_workflow = workflow_text(RELEASE_TESTFLIGHT_WORKFLOW)
+    app_review_workflow = workflow_text(SUBMIT_APP_REVIEW_WORKFLOW)
 
     assert '- "web/v*.*.*"' in web_workflow
     assert '- "v*.*.*"' in ios_workflow
     assert "web/v*.*.*" not in ios_workflow
+    assert "workflow_dispatch:" in app_review_workflow
+    assert "release_tag:" in app_review_workflow
 
 
 def test_web_workflows_do_not_use_ios_release_secrets() -> None:
@@ -93,6 +97,26 @@ def test_web_workflow_actions_are_pinned_to_full_commit_shas() -> None:
             assert re.search(r"@[0-9a-f]{40}$", reference), (
                 f"{path.name} action reference is not pinned to a full SHA: {reference}"
             )
+
+
+def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
+    workflow = workflow_text(SUBMIT_APP_REVIEW_WORKFLOW)
+
+    assert "workflow_dispatch:" in workflow
+    assert "confirm_submit:" in workflow
+    assert "if: ${{ inputs.confirm_submit == true }}" in workflow
+    assert "environment: app-store-review" in workflow
+    assert "mise exec -- just appstore-screenshots" in workflow
+    assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in workflow
+    assert (
+        "mise exec -- uv run python -m scripts.appstore.submit_review --submit --confirm-submit"
+        in workflow
+    )
+    assert 'SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT: "1"' in workflow
+    for reference in uses_references(workflow):
+        assert re.search(r"@[0-9a-f]{40}$", reference), (
+            f"{SUBMIT_APP_REVIEW_WORKFLOW.name} action reference is not pinned: {reference}"
+        )
 
 
 def test_web_workflow_permissions_are_minimal() -> None:

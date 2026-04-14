@@ -3,7 +3,7 @@
 # setup-signing.sh — One-time setup for App Store submission credentials.
 #
 # This script guides you through storing the credentials needed for
-# archive-and-upload.sh and create-app-store-listing.sh.
+# archive-and-upload.sh, submit-review.sh, and create-app-store-listing.sh.
 #
 set -euo pipefail
 

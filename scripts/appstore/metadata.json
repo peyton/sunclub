@@ -15,7 +15,17 @@
   "localizations": {
     "en-US": {
       "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nLog today in a few taps, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
-      "keywords": ["sunscreen", "spf", "uv", "habit", "streak", "daily", "reminder", "skincare", "sun care"],
+      "keywords": [
+        "sunscreen",
+        "spf",
+        "uv",
+        "habit",
+        "streak",
+        "daily",
+        "reminder",
+        "skincare",
+        "sun care"
+      ],
       "promotional_text": "Build a steady sunscreen routine with quick logging, streaks, and reminders.",
       "whats_new": "Initial release. Log sunscreen use quickly, keep your streak on track, and stay consistent with reminders."
     }
@@ -50,6 +60,7 @@
   "privacy": {
     "tracking": false,
     "data_collection": "none",
+    "app_store_connect_completed": false,
     "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
   },
   "export_compliance": {
@@ -62,6 +73,7 @@
     "screenshots": {
       "capture_device": "iPhone 17 Pro Max",
       "required_size_class": "6.9-inch iPhone",
+      "display_type": "APP_IPHONE_67",
       "output_directory": ".build/appstore-screenshots",
       "screens": [
         {
@@ -97,8 +109,26 @@
       ]
     }
   },
+  "accessibility": {
+    "iphone": {
+      "ready": false,
+      "supports_audio_descriptions": false,
+      "supports_captions": false,
+      "supports_dark_interface": false,
+      "supports_differentiate_without_color_alone": false,
+      "supports_larger_text": false,
+      "supports_reduced_motion": false,
+      "supports_sufficient_contrast": false,
+      "supports_voice_control": false,
+      "supports_voiceover": false
+    }
+  },
   "submission": {
     "copyright": "2026 Peyton Randolph",
-    "manual_steps": ["Replace the draft App Review contact details and mark them ready.", "Answer App Privacy questions in App Store Connect to match this manifest.", "Upload the generated 6.9-inch iPhone screenshots in App Store Connect."]
+    "release_type": "MANUAL",
+    "manual_steps": [
+      "Replace the draft App Review contact details and mark them ready.",
+      "Answer App Privacy questions in App Store Connect to match this manifest and mark privacy.app_store_connect_completed true."
+    ]
   }
 }
