@@ -25,6 +25,12 @@ REQUIRED_EMAILS_BY_FILE = {
         PRIVACY_EMAIL,
         SECURITY_EMAIL,
     ),
+    Path("automation/index.html"): (
+        CONTACT_EMAIL,
+        SUPPORT_EMAIL,
+        PRIVACY_EMAIL,
+        SECURITY_EMAIL,
+    ),
     Path("support/index.html"): (
         CONTACT_EMAIL,
         SUPPORT_EMAIL,
@@ -41,6 +47,7 @@ REQUIRED_EMAILS_BY_FILE = {
 }
 REQUIRED_FILES = (
     "index.html",
+    "automation/index.html",
     "support/index.html",
     "privacy/index.html",
     "404.html",
@@ -237,7 +244,7 @@ def validate_site(root: Path) -> list[str]:
     sitemap = resolved_root / "sitemap.xml"
     if sitemap.is_file():
         sitemap_text = sitemap.read_text(encoding="utf-8")
-        for path in ("/", "/support/", "/privacy/"):
+        for path in ("/", "/automation/", "/support/", "/privacy/"):
             expected = f"https://sunclub.peyton.app{path}"
             if expected not in sitemap_text:
                 errors.append(f"sitemap.xml missing {expected}.")

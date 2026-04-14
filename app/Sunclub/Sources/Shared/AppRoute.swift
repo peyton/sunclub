@@ -9,6 +9,7 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case reapplyCheckIn
     case weeklySummary
     case settings
+    case automation
     case recovery
     case history
     case backfillYesterday

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Automation - Sunclub</title>
+    <meta
+      name="description"
+      content="Sunclub automation reference for Apple Shortcuts, custom URL actions, x-callback-url, widgets, controls, privacy settings, and support contacts."
+    />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="canonical" href="https://sunclub.peyton.app/automation/" />
+    <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="/" aria-label="Sunclub home">
+          <img src="/assets/app-icon.svg" width="36" height="36" alt="" />
+          <span>Sunclub</span>
+        </a>
+        <div class="nav-links">
+          <a href="/automation/" aria-current="page">Automation</a>
+          <a href="/support/">Support</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="mailto:contact@sunclub.peyton.app"
+            >contact@sunclub.peyton.app</a
+          >
+        </div>
+      </nav>
+    </header>
+
+    <main class="content">
+      <p class="eyebrow">Automation</p>
+      <h1>Run Sunclub from Shortcuts and URL actions.</h1>
+      <p class="lead">
+        Sunclub supports Apple Shortcuts, Control Center, widgets, custom URL
+        scheme actions, and x-callback-url for supported non-destructive app
+        actions.
+      </p>
+
+      <h2>Settings</h2>
+      <p>
+        Open Sunclub Settings -> Automation to manage Shortcut writes, URL open
+        actions, URL write actions, and detailed callback results. Turn off URL
+        writes if links from other apps should only open Sunclub screens.
+      </p>
+
+      <h2>Apple Shortcuts</h2>
+      <ul>
+        <li>Log Sunscreen with optional SPF and notes.</li>
+        <li>Save Sunscreen Log for today or a selected date and time.</li>
+        <li>Log Reapply.</li>
+        <li>Get Sunclub Status.</li>
+        <li>Open Sunclub to a supported screen.</li>
+        <li>Set reminder times and supported toggles.</li>
+        <li>
+          Export a backup, create a skin health report, or create a streak card.
+        </li>
+        <li>Import a friend invite or poke a friend.</li>
+      </ul>
+
+      <h2>URL Actions</h2>
+      <p>
+        Production links use <code>sunclub://automation/...</code>. Development
+        builds use <code>sunclub-dev://automation/...</code>. Existing widget
+        and accountability links continue to work.
+      </p>
+      <ul>
+        <li>
+          <code>sunclub://automation/log-today?spf=50&amp;notes=Beach</code>
+        </li>
+        <li>
+          <code
+            >sunclub://automation/save-log?date=2026-04-13&amp;time=08:30&amp;spf=50</code
+          >
+        </li>
+        <li><code>sunclub://automation/reapply</code></li>
+        <li><code>sunclub://automation/status</code></li>
+        <li>
+          <code
+            >sunclub://automation/set-reminder?kind=weekday&amp;time=08:30</code
+          >
+        </li>
+        <li>
+          <code
+            >sunclub://automation/set-toggle?name=dailyUVBriefing&amp;enabled=true</code
+          >
+        </li>
+        <li><code>sunclub://automation/open?route=automation</code></li>
+      </ul>
+
+      <h2>x-callback-url</h2>
+      <p>
+        x-callback-url links use <code>sunclub://x-callback-url/...</code>.
+        Success callbacks receive <code>action</code>, <code>status</code>,
+        <code>message</code>, and action-specific fields when callback details
+        are enabled. Error callbacks receive <code>action</code>,
+        <code>errorCode</code>, and <code>errorMessage</code>.
+      </p>
+      <p>
+        If callback result details are off, callbacks only include
+        <code>action</code> and <code>status</code>.
+      </p>
+
+      <h2>Foreground-Only Actions</h2>
+      <p>
+        Delete log, remove friend, backup import, recovery undo or redo,
+        conflict resolution, camera scanning, file picking, and permission-only
+        setup open Sunclub instead of writing in the background.
+      </p>
+
+      <h2>Privacy</h2>
+      <p>
+        URL actions can be called by other apps on your device. Disable URL
+        writes in Sunclub Settings -> Automation if background links should not
+        log sunscreen, reapply, update reminders, change supported toggles,
+        import friends, or poke friends.
+      </p>
+
+      <h2>Help</h2>
+      <p>
+        For automation support, email
+        <a href="mailto:support@sunclub.peyton.app"
+          >support@sunclub.peyton.app</a
+        >. Privacy questions go to
+        <a href="mailto:privacy@sunclub.peyton.app"
+          >privacy@sunclub.peyton.app</a
+        >. Security reports go to
+        <a href="mailto:security@sunclub.peyton.app"
+          >security@sunclub.peyton.app</a
+        >. General questions go to
+        <a href="mailto:contact@sunclub.peyton.app"
+          >contact@sunclub.peyton.app</a
+        >.
+      </p>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer">
+        <div>© 2026 Peyton Randolph. Sunclub is not medical advice.</div>
+        <nav aria-label="Footer">
+          <a href="/">Home</a>
+          <a href="/automation/">Automation</a>
+          <a href="/support/">Support</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="mailto:contact@sunclub.peyton.app"
+            >contact@sunclub.peyton.app</a
+          >
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -2,11 +2,11 @@
 
 ## Product Summary
 
-Sunclub is a local-first iOS app for maintaining a daily sunscreen habit, with optional local backup import/export and default-on iCloud sync for undoable history.
+Sunclub is a local-first iOS app for maintaining a daily sunscreen habit, with optional local backup import/export, default-on iCloud sync for undoable history, and first-class automation through Apple Shortcuts, widgets, controls, custom URL scheme actions, and x-callback-url callers.
 
 The product loop is:
 
-1. Open the app, tap the widget, or tap the reminder.
+1. Open the app, tap the widget, run a Shortcut, open a URL action, or tap the reminder.
 2. Log the day manually.
 3. Reinforce the streak.
 
@@ -14,6 +14,7 @@ The product loop is:
 
 - Help users build a daily sunscreen routine with as little friction as possible.
 - Make daily logging fast and repeatable with a simple manual flow.
+- Make supported non-destructive app actions automatable from Apple system surfaces and URL callers.
 - Make daily progress visible through streaks and weekly reporting.
 - Keep the app useful without requiring an account gate or a server-owned profile.
 - Keep the product focused on one action: logging sunscreen for today.
@@ -36,6 +37,7 @@ The product loop is:
 - Habit-first: progress, reminders, and summaries should reinforce consistency more than novelty.
 - Deterministic logging: recording today should be a direct, low-friction action.
 - Recoverable changes: user-visible history changes should remain reviewable and undoable.
+- Always automatable: every user-facing feature should have an App Intent, URL/x-callback route, foreground route, or documented reason for exclusion.
 
 ## Primary User Journey
 
@@ -150,6 +152,15 @@ Expected sequence:
 - Let the user pause or resume iCloud sync without deleting local or cloud history.
 - Let the user export and import a local backup file without forcing an account migration flow.
 - Let the user open `Recovery & Changes` to review imports, conflicts, and undoable history.
+- Let the user discover Automation and manage Shortcut writes, URL open actions, URL write actions, and callback detail fields.
+
+### Automation
+
+- Show the supported Apple Shortcuts actions.
+- Show direct URL and x-callback-url examples.
+- Let users copy and test example links.
+- Warn that URL actions can be called by other apps.
+- Keep destructive, permission-only, camera, file-picker, and review-heavy actions as foreground UI routes.
 
 ### Recovery & Changes
 
@@ -205,6 +216,18 @@ Expected sequence:
 - Widget state should come from a lightweight shared snapshot mirror rather than direct widget access to the live SwiftData store.
 - Widgets should refresh at the next local midnight so daily state and streak continuity roll over correctly without requiring an app launch.
 
+### Automation and Deep Links
+
+- Apple Shortcuts should expose supported non-destructive writes, status reads, foreground opens, friend invite import, friend pokes, and file exports.
+- Custom URL actions should support `sunclub://automation/...` and `sunclub://x-callback-url/...`.
+- x-callback success payloads should include action, status, message, and action-specific fields while callback details are enabled.
+- x-callback errors should include action, error code, and error message while callback details are enabled.
+- Callback details can be disabled in Settings.
+- URL writes can be disabled in Settings without breaking foreground route discovery.
+- Shortcut writes can be disabled in Settings without blocking open-only intents.
+- Existing `sunclub://widget/...` and `sunclub://accountability/...` links must keep working.
+- Universal Links are deferred for this version; do not add Associated Domains or `apple-app-site-association`.
+
 ### Settings and Controls
 
 - Users should be able to change reminder timing and reminder behavior without repeating onboarding.
@@ -212,6 +235,7 @@ Expected sequence:
 - Manual logging should always remain available as the primary check-in flow.
 - iCloud sync should default to on for supported devices, but the user must be able to pause it locally.
 - Control Center should expose quick actions for `Log Today`, `Summary`, and `History`.
+- Automation settings should be visible from Settings and from Home Explore.
 
 ### History Recovery
 
@@ -246,6 +270,13 @@ Expected sequence:
 - A `Log Today` notification action should route directly to manual logging.
 - Weekly reminders should open the weekly summary view.
 
+### Routing from Automation
+
+- Open actions should route to the requested supported screen.
+- UI-only actions should return `status=opened` for x-callback callers.
+- Failed write actions should open the nearest useful foreground route.
+- Background writes should use revision history and refresh widget snapshots.
+
 ## Out of Scope for This Version
 
 - Multiple tracked products or bottles.
@@ -256,6 +287,8 @@ Expected sequence:
 - Shared or server-owned sync conflict arbitration beyond the user's private iCloud history.
 - Product catalog, purchase flow, or refill logistics inside the app.
 - Coaching content beyond short reminder and summary copy.
+- Universal Links for automation.
+- Direct background execution for delete, backup import, recovery undo/redo, conflict resolution, camera scanning, file picking, or permission-only setup.
 
 ## Success Criteria
 
@@ -264,3 +297,4 @@ Expected sequence:
 - Users can understand their recent adherence from the weekly summary without explanation.
 - Reminder settings are easy enough to use without support.
 - The app remains valuable even for users who decline notifications.
+- Automation users can discover, copy, test, and disable Shortcut and URL write surfaces without external documentation.

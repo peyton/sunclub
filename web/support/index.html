@@ -6,7 +6,7 @@
     <title>Support - Sunclub</title>
     <meta
       name="description"
-      content="Get Sunclub support for sunscreen logging, reminders, widgets, iCloud sync, backup import/export, and privacy questions."
+      content="Get Sunclub support for sunscreen logging, reminders, widgets, Shortcuts, URL actions, iCloud sync, backup import/export, and privacy questions."
     />
     <meta name="theme-color" content="#0f766e" />
     <link rel="canonical" href="https://sunclub.peyton.app/support/" />
@@ -21,6 +21,7 @@
           <span>Sunclub</span>
         </a>
         <div class="nav-links">
+          <a href="/automation/">Automation</a>
           <a href="/support/" aria-current="page">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"
@@ -69,6 +70,14 @@
           </p>
         </article>
         <article class="support-item">
+          <h2>Shortcuts and URL actions</h2>
+          <p>
+            Automation settings control Shortcut writes, URL opens, URL writes,
+            and x-callback-url detail fields. Turn off URL writes if links
+            should only open Sunclub screens.
+          </p>
+        </article>
+        <article class="support-item">
           <h2>Backup and iCloud sync</h2>
           <p>
             Local backup export/import and private iCloud sync live in Settings.
@@ -90,7 +99,20 @@
           For sync or backup issues, note whether iCloud sync is paused in
           Sunclub settings.
         </li>
+        <li>
+          For Shortcut or URL issues, include the action name and whether URL
+          writes are enabled in Settings -> Automation.
+        </li>
       </ul>
+
+      <h2>Automation</h2>
+      <p>
+        Sunclub supports Apple Shortcuts, custom URL actions, and
+        x-callback-url. Supported writes include logging sunscreen, reapply,
+        reminders, toggles, friend invite import, and friend pokes. Review the
+        <a href="/automation/">automation reference</a> for examples and privacy
+        controls.
+      </p>
 
       <h2>Security</h2>
       <p>
@@ -122,6 +144,7 @@
         <div>© 2026 Peyton Randolph. Sunclub is not medical advice.</div>
         <nav aria-label="Footer">
           <a href="/">Home</a>
+          <a href="/automation/">Automation</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"

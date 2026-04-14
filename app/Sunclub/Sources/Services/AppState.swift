@@ -1369,6 +1369,49 @@ final class AppState {
         scheduleReminders()
     }
 
+    var automationPreferences: SunclubAutomationPreferences {
+        growthSettings.automation
+    }
+
+    func updateAutomationPreferences(_ preferences: SunclubAutomationPreferences) {
+        guard growthSettings.automation != preferences else {
+            return
+        }
+        growthSettings.automation = preferences
+        persistGrowthSettings()
+    }
+
+    @discardableResult
+    func performAutomationAction(
+        _ action: SunclubAutomationAction,
+        invocation: SunclubAutomationInvocation
+    ) throws -> SunclubAutomationResult {
+        let result = try SunclubAutomationRuntime.perform(
+            action,
+            invocation: invocation,
+            context: modelContext,
+            growthStore: growthFeatureStore,
+            widgetStore: widgetSnapshotStore,
+            now: currentDate()
+        )
+        growthSettings = growthFeatureStore.load()
+        refresh()
+        if action.logsCurrentDay, settings.reapplyReminderEnabled {
+            scheduleReapplyReminder()
+        }
+        if case .setReminder = action {
+            scheduleReminders()
+        }
+        if case .setReapply = action {
+            scheduleReminders()
+        }
+        if case let .setToggle(toggle, _) = action,
+           toggle == .dailyUVBriefing || toggle == .extremeUVAlert || toggle == .travelTimeZone || toggle == .streakRisk {
+            scheduleReminders()
+        }
+        return result
+    }
+
     func refreshUVForecastIfNeeded(allowPermissionPrompt: Bool = false) {
         Task {
             uvForecast = await uvBriefingService.forecast(

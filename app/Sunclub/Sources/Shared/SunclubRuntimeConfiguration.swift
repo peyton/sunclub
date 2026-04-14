@@ -23,6 +23,13 @@ enum SunclubRuntimeConfiguration {
         stringValue(for: "SunclubURLScheme", fallback: fallbackURLScheme)
     }
 
+    static func supportsURLScheme(_ scheme: String?) -> Bool {
+        guard let normalizedScheme = scheme?.lowercased() else {
+            return false
+        }
+        return [urlScheme.lowercased(), "sunclub", "sunclub-dev"].contains(normalizedScheme)
+    }
+
     static func widgetKind(_ base: String) -> String {
         "\(bundle.bundleIdentifier ?? fallbackAppGroupID).\(base)"
     }

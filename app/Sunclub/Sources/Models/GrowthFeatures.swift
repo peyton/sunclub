@@ -9,6 +9,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var telemetry: SunclubGrowthTelemetry
     var scannedSPFLevels: [Int]
     var accountability: SunclubAccountabilitySettings
+    var automation: SunclubAutomationPreferences
 
     init(
         preferredName: String = "",
@@ -18,7 +19,8 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         presentedAchievementIDs: [String] = [],
         telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry(),
         scannedSPFLevels: [Int] = [],
-        accountability: SunclubAccountabilitySettings = SunclubAccountabilitySettings()
+        accountability: SunclubAccountabilitySettings = SunclubAccountabilitySettings(),
+        automation: SunclubAutomationPreferences = SunclubAutomationPreferences()
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
@@ -28,6 +30,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         self.telemetry = telemetry
         self.scannedSPFLevels = Self.normalizedSPFLevels(scannedSPFLevels)
         self.accountability = accountability
+        self.automation = automation
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -39,6 +42,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         case telemetry
         case scannedSPFLevels
         case accountability
+        case automation
     }
 
     init(from decoder: Decoder) throws {
@@ -58,6 +62,8 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         )
         accountability = try container.decodeIfPresent(SunclubAccountabilitySettings.self, forKey: .accountability)
             ?? SunclubAccountabilitySettings()
+        automation = try container.decodeIfPresent(SunclubAutomationPreferences.self, forKey: .automation)
+            ?? SunclubAutomationPreferences()
     }
 
     static func normalizedSPFLevels(_ levels: [Int]) -> [Int] {
@@ -71,6 +77,25 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
 
             return normalizedLevel
         }
+    }
+}
+
+struct SunclubAutomationPreferences: Codable, Equatable, Sendable {
+    var shortcutWritesEnabled: Bool
+    var urlOpenActionsEnabled: Bool
+    var urlWriteActionsEnabled: Bool
+    var callbackResultDetailsEnabled: Bool
+
+    init(
+        shortcutWritesEnabled: Bool = true,
+        urlOpenActionsEnabled: Bool = true,
+        urlWriteActionsEnabled: Bool = true,
+        callbackResultDetailsEnabled: Bool = true
+    ) {
+        self.shortcutWritesEnabled = shortcutWritesEnabled
+        self.urlOpenActionsEnabled = urlOpenActionsEnabled
+        self.urlWriteActionsEnabled = urlWriteActionsEnabled
+        self.callbackResultDetailsEnabled = callbackResultDetailsEnabled
     }
 }
 

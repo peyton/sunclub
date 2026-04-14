@@ -47,6 +47,17 @@ Every future change under `app/` must preserve a perfect App Store Accessibility
 - Motion must honor Reduce Motion. Use `SunMotion` for SwiftUI animations, and suppress or replace decorative looping effects when `accessibilityReduceMotion` is true.
 - UI or behavior changes in `app/` should add or update unit/UI/integration tests for any affected scorecard criterion. Prefer the existing `UITEST_FORCE_*` launch arguments for deterministic accessibility coverage.
 
+## Always-Automatable Rules
+
+Every future user-facing feature must preserve Sunclub's always-automatable posture. Before a feature is considered ready, document and test its automation surface.
+
+- Add an App Intent for the feature, or document why it is destructive, permission-only, camera-based, file-picker-based, or review-heavy enough to open foreground UI instead.
+- Add a custom URL/x-callback route for non-destructive reads and writes, or document the foreground route users and callers should open.
+- Add Settings visibility for any automation knob, privacy toggle, or sensitive callback behavior.
+- Route outside-app writes through the shared automation runtime and revision-history services; do not add ad hoc direct-write shortcuts.
+- Update `docs/app-automation.md`, app product docs, website copy under `web/`, and tests whenever an automation surface changes.
+- Keep Universal Links deferred unless the release plan explicitly includes Associated Domains signing and `apple-app-site-association` verification.
+
 ## Project Layout
 
 ```text

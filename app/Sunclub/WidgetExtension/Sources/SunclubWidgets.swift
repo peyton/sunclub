@@ -164,7 +164,7 @@ struct SunclubSummaryControl: ControlWidget {
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: kind) {
-            ControlWidgetButton(action: OpenSunclubRouteIntent(route: .summary)) {
+            ControlWidgetButton(action: OpenSunclubRouteIntent(route: SunclubWidgetRoute.summary)) {
                 Label("Summary", systemImage: "flame.fill")
             }
         }
@@ -178,7 +178,7 @@ struct SunclubHistoryControl: ControlWidget {
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: kind) {
-            ControlWidgetButton(action: OpenSunclubRouteIntent(route: .history)) {
+            ControlWidgetButton(action: OpenSunclubRouteIntent(route: SunclubWidgetRoute.history)) {
                 Label("History", systemImage: "calendar")
             }
         }

@@ -25,6 +25,7 @@ struct SettingsView: View {
     @State private var isImportingBackup = false
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
+    @State private var automationFeedback = "Ready"
     @State private var expandedSections: Set<SettingsSection> = []
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
@@ -49,6 +50,14 @@ struct SettingsView: View {
                 settingsGroup(.data) {
                     iCloudSection
                     backupSection
+                }
+
+                settingsGroup(.automation) {
+                    AutomationSettingsPanel(
+                        style: .settings,
+                        feedbackMessage: $automationFeedback,
+                        openURL: openURL
+                    )
                 }
 
                 settingsGroup(.advanced) {
@@ -1092,6 +1101,7 @@ private enum SettingsSection: String, Hashable {
     case reminders
     case progress
     case data
+    case automation
     case advanced
     case help
 
@@ -1103,6 +1113,8 @@ private enum SettingsSection: String, Hashable {
             return "Progress"
         case .data:
             return "Data & Sync"
+        case .automation:
+            return "Automation"
         case .advanced:
             return "Advanced"
         case .help:
@@ -1118,6 +1130,8 @@ private enum SettingsSection: String, Hashable {
             return "Reapply reminders and progress helpers."
         case .data:
             return "iCloud, backup, import, and recovery."
+        case .automation:
+            return "Shortcuts, URL actions, and x-callback-url."
         case .advanced:
             return "Location, UV data, and Health settings."
         case .help:
@@ -1133,6 +1147,8 @@ private enum SettingsSection: String, Hashable {
             return "chart.line.uptrend.xyaxis"
         case .data:
             return "icloud.fill"
+        case .automation:
+            return "wand.and.stars"
         case .advanced:
             return "slider.horizontal.3"
         case .help:
