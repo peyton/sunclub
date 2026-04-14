@@ -22,6 +22,11 @@ def test_justfile_exposes_app_review_submission_commands() -> None:
     assert "appstore-send-review: appstore-submit-review" in justfile
     assert "release-testflight VERSION:" in justfile
     assert "VERSION={{VERSION}} bash scripts/appstore/release-tag.sh" in justfile
+    assert "release-preflight:" in justfile
+    assert "just appstore-validate-strict" in justfile
+    assert "just test-python" in justfile
+    assert "SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit" in justfile
+    assert "SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build" in justfile
 
 
 def test_tooling_config_matches_repo_contract() -> None:

@@ -14,6 +14,9 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  SUNCLUB_XCODE_VERSION: "26.3"
+
 jobs:
   release:
     name: Archive and Upload
@@ -22,7 +25,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
         with:
-          xcode-version: "26.3"
+          xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
@@ -65,6 +68,7 @@ jobs:
         run: mise exec -- just test-unit
 
       - name: Archive and upload to TestFlight
+        timeout-minutes: 90
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

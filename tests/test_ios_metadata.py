@@ -13,7 +13,16 @@ PRIVACY_MANIFEST = REPO_ROOT / "app" / "Sunclub" / "Resources" / "PrivacyInfo.xc
 PROJECT_SWIFT = REPO_ROOT / "app" / "Sunclub" / "Project.swift"
 APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
+SUBMIT_APP_REVIEW_WORKFLOW = (
+    REPO_ROOT / ".github" / "workflows" / "submit-app-review.yml"
+)
+IOS_XCODE_WORKFLOWS = (
+    CI_WORKFLOW,
+    RELEASE_WORKFLOW,
+    SUBMIT_APP_REVIEW_WORKFLOW,
+)
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
 RESOLVE_ENTITLEMENTS = REPO_ROOT / "scripts" / "appstore" / "resolve_entitlements.py"
 WATCH_APP_ICONSET = (
@@ -315,6 +324,25 @@ def test_tests_plist_uses_resolved_version_placeholders() -> None:
     assert ">1.0<" not in tests_plist
 
 
+def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
+    workflow = CI_WORKFLOW.read_text()
+
+    assert "xcode-version: latest" not in workflow
+    assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
+    assert workflow.count("xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}") == 2
+    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
+    assert "timeout-minutes: 45" in workflow
+
+
+def test_ios_workflows_share_single_xcode_version_pin() -> None:
+    for workflow_path in IOS_XCODE_WORKFLOWS:
+        workflow = workflow_path.read_text()
+
+        assert "xcode-version: latest" not in workflow
+        assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
+        assert "xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}" in workflow
+
+
 def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     workflow = RELEASE_WORKFLOW.read_text()
     release_safety_step = re.search(
@@ -323,9 +351,16 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
         r"\n      - name: Archive and upload to TestFlight",
         workflow,
     )
+    archive_upload_step = re.search(
+        r"- name: Archive and upload to TestFlight\n"
+        r"(?P<body>(?:        .*\n)+?)"
+        r"\n      - name: Upload release artifacts",
+        workflow,
+    )
 
     assert '- "v*.*.*"' in workflow
-    assert 'xcode-version: "26.3"' in workflow
+    assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
+    assert "xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}" in workflow
     assert "environment: testflight" in workflow
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert release_safety_step is not None
@@ -333,6 +368,10 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     assert "timeout-minutes: 45" in release_safety_body
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in release_safety_body
     assert "mise exec -- just test-unit" in release_safety_body
+    assert archive_upload_step is not None
+    archive_upload_body = archive_upload_step.group("body")
+    assert "timeout-minutes: 90" in archive_upload_body
+    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in archive_upload_body
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
         in workflow
@@ -341,6 +380,50 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     assert "if: always()" in workflow
     assert "retention-days: 90" in workflow
     assert ".build/release-diagnostics" in workflow
+
+
+def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
+    workflow = SUBMIT_APP_REVIEW_WORKFLOW.read_text()
+    screenshot_step = re.search(
+        r"- name: Capture App Store screenshots\n"
+        r"(?P<body>(?:        .*\n)+?)"
+        r"\n      - name: Write App Review checkpoint",
+        workflow,
+    )
+    archive_upload_step = re.search(
+        r"- name: Archive and upload to TestFlight\n"
+        r"(?P<body>(?:        .*\n)+?)"
+        r"\n      - name: Submit app for review",
+        workflow,
+    )
+    submit_step = re.search(
+        r"- name: Submit app for review\n"
+        r"(?P<body>(?:        .*\n)+?)$",
+        workflow,
+    )
+
+    assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
+    assert "xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}" in workflow
+    assert "environment: app-store-review" in workflow
+    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
+
+    assert screenshot_step is not None
+    screenshot_body = screenshot_step.group("body")
+    assert "timeout-minutes: 45" in screenshot_body
+    assert "mise exec -- just appstore-screenshots" in screenshot_body
+
+    assert archive_upload_step is not None
+    archive_upload_body = archive_upload_step.group("body")
+    assert "timeout-minutes: 90" in archive_upload_body
+    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in archive_upload_body
+    assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in (
+        archive_upload_body
+    )
+
+    assert submit_step is not None
+    submit_body = submit_step.group("body")
+    assert "timeout-minutes: 30" in submit_body
+    assert "bash scripts/appstore/submit-review.sh --submit" in submit_body
 
 
 def test_resolve_entitlements_replaces_xcode_placeholders(tmp_path: Path) -> None:
@@ -438,6 +521,7 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "--unsigned-archive can only be used with --skip-export" not in script
     assert "write_ipa_entitlement_diagnostics" in script
     assert "adhoc_sign_archived_app_with_release_entitlements" in script
+    assert "validate_signed_ipa_nested_bundle_identifiers" in script
     assert "prepare_app_store_provisioning_profiles" in script
     assert "scripts.appstore.provisioning_profiles" in script
     assert "scripts.appstore.resolve_entitlements" in script
@@ -446,8 +530,20 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "Unsigned archive export detected" not in script
     assert "Skipping signed app entitlement validation" not in script
     assert 'validate_signed_ipa_entitlements "$IPA_FILE"' in script
+    assert 'validate_signed_ipa_nested_bundle_identifiers "$IPA_FILE"' in script
     assert 'validate_signed_ipa_watch_bundle "$IPA_FILE"' in script
     assert "assert_codesign_identifier_matches_bundle" in script
+    assert "WatchKit stub code-signing identifier com.apple.WK" in script
+    assert 'Print :CFBundleShortVersionString" "$signed_app_path/Info.plist"' in script
+    assert 'Print :CFBundleVersion" "$signed_app_path/Info.plist"' in script
+    assert (
+        'assert_info_plist_string "$watch_info_path" "CFBundleShortVersionString" "$main_marketing_version"'
+        in script
+    )
+    assert (
+        'assert_info_plist_string "$watch_info_path" "CFBundleVersion" "$main_build_number"'
+        in script
+    )
     assert '"${RELEASE_APP_PRODUCT_NAME}WatchExtension.appex"' in script
     assert '"${RELEASE_APP_PRODUCT_NAME}WatchWidgetsExtension.appex"' in script
     assert (
@@ -493,6 +589,39 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '-apiKey "$ASC_KEY_ID"' in script
     assert '-apiIssuer "$ASC_ISSUER_ID"' in script
     assert "AuthKey_${ASC_KEY_ID}.p8" in script
+
+
+def test_archive_script_writes_diagnostics_for_every_nested_bundle() -> None:
+    script = ARCHIVE_SCRIPT.read_text()
+    diagnostics_function = script.split("write_ipa_entitlement_diagnostics() {", 1)[
+        1
+    ].split("\n}\n\n[ -f", 1)[0]
+    nested_validation_function = script.split(
+        "validate_signed_ipa_nested_bundle_identifiers() {",
+        1,
+    )[1].split("\n}\n\nresolve_release_entitlements", 1)[0]
+
+    assert 'find "$signed_app_path"' in diagnostics_function
+    assert "-mindepth 2" in diagnostics_function
+    assert "\\( -name '*.app' -o -name '*.appex' \\)" in diagnostics_function
+    assert 'find "$signed_app_path/PlugIns"' not in diagnostics_function
+    assert 'nested_diagnostic_stem="${nested_bundle_path#"$signed_app_path"/}"' in (
+        diagnostics_function
+    )
+    assert (
+        "Could not write entitlement diagnostics for $nested_diagnostic_stem"
+        in diagnostics_function
+    )
+    assert 'codesign -d --entitlements :- "$nested_bundle_path"' in (
+        diagnostics_function
+    )
+
+    assert 'find "$signed_app_path"' in nested_validation_function
+    assert "\\( -name '*.app' -o -name '*.appex' \\)" in nested_validation_function
+    assert (
+        'assert_codesign_identifier_matches_bundle "$nested_bundle_path" "$nested_label"'
+        in nested_validation_function
+    )
 
 
 # ---------------------------------------------------------------------------
