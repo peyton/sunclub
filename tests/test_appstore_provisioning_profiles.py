@@ -234,6 +234,114 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
     ]
 
 
+def test_ensure_profiles_creates_one_distribution_certificate_for_missing_profiles(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    client = FakeProfilesClient()
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        query = query or {}
+        if path == "/bundleIds":
+            identifier = query["filter[identifier]"]
+            return [bundle_id(f"bundle-{identifier}", str(identifier))]
+        if path.startswith("/bundleIds/") and path.endswith("/profiles"):
+            return []
+        if path == "/certificates":
+            return []
+        raise AssertionError(f"Unexpected collection: {path} {query}")
+
+    created_certificates: list[str] = []
+
+    def create_and_install_distribution_certificate(
+        certificate_client: FakeProfilesClient,
+    ) -> dict[str, Any]:
+        assert certificate_client is client
+        created_certificates.append("cert-created")
+        return certificate("cert-created")
+
+    client.get_collection = get_collection  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "read_bundle_profile_entitlements",
+        lambda _path: {},
+    )
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "create_and_install_distribution_certificate",
+        create_and_install_distribution_certificate,
+    )
+    bundles = [
+        ArchivedBundle(
+            path=tmp_path / "SunclubWatch.app",
+            relative_path="Sunclub.app/Watch/SunclubWatch.app",
+            bundle_identifier="app.peyton.sunclub.watch",
+            package_type="APPL",
+        ),
+        ArchivedBundle(
+            path=tmp_path / "SunclubWatchExtension.appex",
+            relative_path="Sunclub.app/Watch/SunclubWatch.app/PlugIns/Ext.appex",
+            bundle_identifier="app.peyton.sunclub.watch.extension",
+            package_type="XPC!",
+        ),
+    ]
+
+    prepared = ensure_profiles(
+        client,
+        bundles,
+        create_missing=True,
+        install_directory=None,
+    )
+
+    assert [profile.created for profile in prepared] == [True, True]
+    assert created_certificates == ["cert-created"]
+    assert len(client.posts) == 2
+    for post in client.posts:
+        assert post["data"]["relationships"]["certificates"]["data"] == [
+            {"type": "certificates", "id": "cert-created"}
+        ]
+
+
+def test_create_distribution_certificate_posts_pem_csr() -> None:
+    client = FakeProfilesClient()
+    posts: list[dict[str, Any]] = []
+    csr_content = (
+        "-----BEGIN CERTIFICATE REQUEST-----\n"
+        "abc123\n"
+        "-----END CERTIFICATE REQUEST-----\n"
+    )
+
+    def post(path: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        assert path == "/certificates"
+        posts.append(dict(body))
+        created = certificate("cert-created")
+        created["attributes"]["certificateContent"] = base64.b64encode(
+            b"certificate"
+        ).decode("ascii")
+        return {"data": created}
+
+    client.post = post  # type: ignore[method-assign]
+
+    created = provisioning_profiles.create_distribution_certificate(
+        client, "DISTRIBUTION", csr_content
+    )
+
+    assert created["id"] == "cert-created"
+    assert posts == [
+        {
+            "data": {
+                "type": "certificates",
+                "attributes": {
+                    "certificateType": "DISTRIBUTION",
+                    "csrContent": csr_content,
+                },
+            }
+        }
+    ]
+
+
 def test_find_reusable_certificate_ids_skips_deleted_profile_candidates() -> None:
     client = FakeProfilesClient()
 

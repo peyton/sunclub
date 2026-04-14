@@ -113,6 +113,12 @@ GitHub run cross-check:
   while App Store Connect hides the top-level certificate list from the API key,
   so profile creation must be able to reuse the certificate attached to a valid
   app, widget, or watch app profile.
+- If App Store Connect exposes no reusable certificate through existing
+  profiles or `/certificates`, create a fresh Apple distribution certificate
+  from a generated CSR, import its private key into a temporary release
+  keychain, and use that certificate ID for every missing App Store profile.
+  The release workflow carries only App Store Connect API credentials, not a
+  reusable `.p12` signing secret.
 - Keep the app-owned left-edge back gesture in `RootView` when hiding the
   native navigation bar. Do not rely only on UIKit
   `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed to

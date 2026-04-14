@@ -6,8 +6,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
+import os
 import plistlib
 from pathlib import Path
+import secrets
+import shlex
 import subprocess
 import tempfile
 from typing import Any, Protocol
@@ -174,7 +177,7 @@ def ensure_profiles(
             if not certificate_ids:
                 if distribution_certificate_ids is None:
                     distribution_certificate_ids = [
-                        find_distribution_certificate(client)["id"]
+                        find_or_create_distribution_certificate(client)["id"]
                     ]
                 certificate_ids = distribution_certificate_ids
             profile = create_profile(client, bundle, bundle_id["id"], certificate_ids)
@@ -483,6 +486,255 @@ def find_distribution_certificate(client: ProfilesClient) -> JsonObject:
             "App Store provisioning profiles."
         )
     return max(certificates, key=certificate_expiration)
+
+
+def find_or_create_distribution_certificate(client: ProfilesClient) -> JsonObject:
+    try:
+        return find_distribution_certificate(client)
+    except AppStoreConnectError as error_:
+        if not str(error_).startswith(
+            "No active Apple distribution certificate is available"
+        ):
+            raise
+    return create_and_install_distribution_certificate(client)
+
+
+def create_and_install_distribution_certificate(client: ProfilesClient) -> JsonObject:
+    with tempfile.TemporaryDirectory(prefix="sunclub-release-certificate-") as raw_tmp:
+        tmp_path = Path(raw_tmp)
+        key_path = tmp_path / "distribution.key"
+        csr_path = tmp_path / "distribution.csr"
+        certificate_path = tmp_path / "distribution.cer"
+        certificate_pem_path = tmp_path / "distribution.pem"
+        p12_path = tmp_path / "distribution.p12"
+        p12_password = secrets.token_urlsafe(32)
+
+        run_command(
+            [
+                "openssl",
+                "req",
+                "-new",
+                "-newkey",
+                "rsa:2048",
+                "-nodes",
+                "-keyout",
+                str(key_path),
+                "-out",
+                str(csr_path),
+                "-subj",
+                "/CN=Sunclub Release Signing/",
+            ],
+            error_prefix="Failed to generate Apple distribution certificate CSR",
+        )
+        certificate = request_distribution_certificate(client, csr_path)
+        write_certificate_content(certificate, certificate_path)
+        run_command(
+            [
+                "openssl",
+                "x509",
+                "-inform",
+                "DER",
+                "-in",
+                str(certificate_path),
+                "-out",
+                str(certificate_pem_path),
+            ],
+            error_prefix="Failed to convert Apple distribution certificate",
+        )
+        run_command(
+            [
+                "openssl",
+                "pkcs12",
+                "-export",
+                "-inkey",
+                str(key_path),
+                "-in",
+                str(certificate_pem_path),
+                "-out",
+                str(p12_path),
+                "-passout",
+                f"pass:{p12_password}",
+                "-name",
+                "Apple Distribution: Sunclub Release Signing",
+            ],
+            error_prefix="Failed to package Apple distribution certificate",
+        )
+        install_signing_identity(p12_path, p12_password)
+        return certificate
+
+
+def request_distribution_certificate(
+    client: ProfilesClient, csr_path: Path
+) -> JsonObject:
+    csr_content = csr_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    for certificate_type in DISTRIBUTION_CERTIFICATE_TYPES:
+        try:
+            return create_distribution_certificate(
+                client, certificate_type, csr_content
+            )
+        except AppStoreConnectError as error_:
+            errors.append(f"{certificate_type}: {error_}")
+            if certificate_type == "DISTRIBUTION" and is_certificate_type_error(error_):
+                continue
+            break
+
+    joined = "; ".join(errors)
+    raise AppStoreConnectError(
+        "Could not create an Apple distribution certificate for release "
+        f"profile generation. {joined}"
+    )
+
+
+def create_distribution_certificate(
+    client: ProfilesClient, certificate_type: str, csr_content: str
+) -> JsonObject:
+    response = client.post(
+        "/certificates",
+        {
+            "data": {
+                "type": "certificates",
+                "attributes": {
+                    "certificateType": certificate_type,
+                    "csrContent": csr_content,
+                },
+            }
+        },
+    )
+    data = response.get("data")
+    if not isinstance(data, dict):
+        raise AppStoreConnectError(
+            "App Store Connect did not return a distribution certificate."
+        )
+    return data
+
+
+def is_certificate_type_error(error_: AppStoreConnectError) -> bool:
+    message = str(error_).lower()
+    return "certificatetype" in message or "certificate type" in message
+
+
+def write_certificate_content(certificate: JsonObject, destination: Path) -> None:
+    content = profile_attributes(certificate).get("certificateContent")
+    if not isinstance(content, str) or not content:
+        certificate_name = certificate.get("id", "unknown")
+        raise AppStoreConnectError(
+            f"App Store Connect certificate {certificate_name} has no content."
+        )
+    try:
+        destination.write_bytes(base64.b64decode(content, validate=True))
+    except ValueError as error:
+        raise AppStoreConnectError(
+            f"App Store Connect certificate {certificate.get('id')} content is "
+            "not base64."
+        ) from error
+
+
+def install_signing_identity(p12_path: Path, p12_password: str) -> None:
+    keychain_root = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir()))
+    keychain_root = keychain_root / "sunclub-release-keychains"
+    keychain_root.mkdir(parents=True, exist_ok=True)
+    keychain_password = secrets.token_urlsafe(32)
+    keychain_path = (
+        keychain_root
+        / f"sunclub-release-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}.keychain-db"
+    )
+    existing_keychains = current_user_keychains()
+
+    run_command(
+        ["security", "create-keychain", "-p", keychain_password, str(keychain_path)],
+        error_prefix="Failed to create release signing keychain",
+    )
+    run_command(
+        ["security", "set-keychain-settings", "-lut", "21600", str(keychain_path)],
+        error_prefix="Failed to configure release signing keychain",
+    )
+    run_command(
+        ["security", "unlock-keychain", "-p", keychain_password, str(keychain_path)],
+        error_prefix="Failed to unlock release signing keychain",
+    )
+    run_command(
+        [
+            "security",
+            "list-keychains",
+            "-d",
+            "user",
+            "-s",
+            str(keychain_path),
+            *existing_keychains,
+        ],
+        error_prefix="Failed to add release signing keychain to search list",
+    )
+    run_command(
+        [
+            "security",
+            "import",
+            str(p12_path),
+            "-k",
+            str(keychain_path),
+            "-P",
+            p12_password,
+            "-T",
+            "/usr/bin/codesign",
+            "-T",
+            "/usr/bin/security",
+            "-T",
+            "/usr/bin/productbuild",
+            "-T",
+            "/usr/bin/xcodebuild",
+        ],
+        error_prefix="Failed to import release signing identity",
+    )
+    run_command(
+        [
+            "security",
+            "set-key-partition-list",
+            "-S",
+            "apple-tool:,apple:,codesign:",
+            "-s",
+            "-k",
+            keychain_password,
+            str(keychain_path),
+        ],
+        error_prefix="Failed to authorize release signing identity",
+    )
+    identity_output = run_command(
+        ["security", "find-identity", "-v", "-p", "codesigning", str(keychain_path)],
+        error_prefix="Failed to verify release signing identity",
+    )
+    if "0 valid identities found" in identity_output:
+        raise AppStoreConnectError(
+            "Imported Apple distribution certificate did not create a valid "
+            "code-signing identity."
+        )
+
+
+def current_user_keychains() -> list[str]:
+    output = run_command(
+        ["security", "list-keychains", "-d", "user"],
+        error_prefix="Failed to read user keychain search list",
+    )
+    return shlex.split(output)
+
+
+def run_command(command: Sequence[str], *, error_prefix: str) -> str:
+    try:
+        result = subprocess.run(
+            list(command),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as error_:
+        raise AppStoreConnectError(
+            f"{error_prefix}: {command[0]} is not available."
+        ) from error_
+    except subprocess.CalledProcessError as error_:
+        details = error_.stderr.strip() or error_.stdout.strip()
+        if not details:
+            details = f"{command[0]} exited with status {error_.returncode}"
+        raise AppStoreConnectError(f"{error_prefix}: {details}") from error_
+    return result.stdout
 
 
 def create_profile(
