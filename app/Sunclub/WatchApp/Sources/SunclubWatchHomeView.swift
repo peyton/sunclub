@@ -8,6 +8,10 @@ struct SunclubWatchHomeView: View {
         syncCoordinator.snapshot
     }
 
+    private var currentStreak: Int {
+        snapshot.streakValue()
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -30,6 +34,8 @@ struct SunclubWatchHomeView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .disabled(isLogging)
+                .accessibilityLabel(snapshot.hasLoggedToday() ? "Refresh wrist log" : "Log sunscreen")
+                .accessibilityHint("Sends today's sunscreen log to your paired iPhone.")
             }
             .padding()
         }
@@ -38,10 +44,18 @@ struct SunclubWatchHomeView: View {
             syncCoordinator.refreshSnapshot()
         }
         .onOpenURL { url in
-            guard url.host == "watch", url.path == "/log" else {
+            guard url.host == "watch" else {
                 return
             }
-            logFromWrist()
+
+            switch url.path {
+            case "/log":
+                logFromWrist()
+            case "/open":
+                syncCoordinator.refreshSnapshot()
+            default:
+                return
+            }
         }
     }
 
@@ -49,7 +63,7 @@ struct SunclubWatchHomeView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(snapshot.hasLoggedToday() ? "Protected today" : "Still open today")
                 .font(.headline)
-            Text("\(snapshot.currentStreak)-day streak")
+            Text("\(currentStreak)-day streak")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.orange)
         }

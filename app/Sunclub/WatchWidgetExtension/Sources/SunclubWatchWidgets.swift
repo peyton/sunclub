@@ -20,9 +20,11 @@ private struct SunclubWatchProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<SunclubWatchEntry>) -> Void) {
         let snapshot = store.load()
         let now = Date()
-        let refreshDate = snapshot.reapplyDeadline() ?? Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now
+        let refreshDate = snapshot.reapplyDeadline(now: now).flatMap { deadline in
+            deadline > now ? deadline : nil
+        } ?? Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now
         let entry = SunclubWatchEntry(date: now, snapshot: snapshot)
-        completion(Timeline(entries: [entry], policy: .after(max(refreshDate, now.addingTimeInterval(900)))))
+        completion(Timeline(entries: [entry], policy: .after(refreshDate)))
     }
 }
 
@@ -35,8 +37,16 @@ private struct SunclubWatchStatusComplicationView: View {
         entry.snapshot
     }
 
+    private var hasLoggedToday: Bool {
+        snapshot.hasLoggedToday(now: entry.date)
+    }
+
+    private var currentStreak: Int {
+        snapshot.streakValue(now: entry.date)
+    }
+
     private var statusURL: URL {
-        let action = snapshot.hasLoggedToday() ? "open" : "log"
+        let action = hasLoggedToday ? "open" : "log"
         return URL(string: "\(SunclubRuntimeConfiguration.urlScheme)://watch/\(action)")!
     }
 
@@ -56,10 +66,10 @@ private struct SunclubWatchStatusComplicationView: View {
 
     private var accessoryRectangular: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(snapshot.hasLoggedToday() ? "Protected Today" : "Tap to Log")
+            Text(hasLoggedToday ? "Protected Today" : "Tap to Log")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("\(snapshot.currentStreak)d streak")
+            Text("\(currentStreak)d streak")
                 .font(.headline)
             if let currentUVIndex = snapshot.currentUVIndex {
                 Text("UV \(currentUVIndex)")
@@ -72,19 +82,19 @@ private struct SunclubWatchStatusComplicationView: View {
     private var accessoryCircular: some View {
         ZStack {
             Circle()
-                .fill(snapshot.hasLoggedToday() ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
+                .fill(hasLoggedToday ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
 
             VStack(spacing: 1) {
-                Image(systemName: snapshot.hasLoggedToday() ? "checkmark.circle.fill" : "sun.max.fill")
+                Image(systemName: hasLoggedToday ? "checkmark.circle.fill" : "sun.max.fill")
                     .font(.caption.weight(.semibold))
-                Text("\(snapshot.currentStreak)")
+                Text("\(currentStreak)")
                     .font(.caption2.weight(.bold))
             }
         }
     }
 
     private var accessoryInline: some View {
-        Text(snapshot.hasLoggedToday() ? "Sunclub protected • \(snapshot.currentStreak)d" : "Sunclub log now • \(snapshot.currentStreak)d")
+        Text(hasLoggedToday ? "Sunclub protected • \(currentStreak)d" : "Sunclub log now • \(currentStreak)d")
     }
 }
 

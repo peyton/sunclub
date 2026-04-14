@@ -143,6 +143,43 @@ def test_widget_extension_inherits_app_version_metadata() -> None:
     assert '"CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)"' in source
 
 
+def test_project_embeds_watch_app_in_release_app() -> None:
+    source = PROJECT_SWIFT.read_text()
+    app_target = source.split(
+        "func appTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func widgetTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+
+    assert ".target(name: flavor.watchTargetName)" in app_target
+
+
+def test_watch_targets_compile_shared_snapshot_model_dependencies() -> None:
+    source = PROJECT_SWIFT.read_text()
+    watch_extension_target = source.split(
+        "func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func watchContainerTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+    watch_widget_target = source.split(
+        "func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("let project = Project(", 1)[0]
+
+    for target_source in (watch_extension_target, watch_widget_target):
+        assert '"Sources/Models/AccountabilityModels.swift"' in target_source
+        assert '"Sources/Models/VerificationMethod.swift"' in target_source
+        assert '"Sources/WidgetSupport/SunclubWidgetSupport.swift"' in target_source
+
+
+def test_watchkit_extension_declares_nested_app_bundle_identifier() -> None:
+    source = PROJECT_SWIFT.read_text()
+    watch_extension_target = source.split(
+        "func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func watchContainerTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+
+    assert '"NSExtensionAttributes": .dictionary([' in watch_extension_target
+    assert (
+        '"WKAppBundleIdentifier": .string(flavor.watchBundleID)'
+        in watch_extension_target
+    )
+
+
 def test_project_uses_tuist_version_helpers_and_explicit_bundle_build_number() -> None:
     source = PROJECT_SWIFT.read_text()
 

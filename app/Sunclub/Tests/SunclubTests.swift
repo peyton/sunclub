@@ -2030,6 +2030,23 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testWatchLogRecordsQuickLogAndReturnsUpdatedSnapshot() throws {
+        let suiteName = "watch-log-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let widgetSnapshotStore = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        let state = try makeAppState(widgetSnapshotStore: widgetSnapshotStore)
+        state.completeOnboarding()
+
+        let snapshot = try state.recordWatchSunscreenLog()
+
+        XCTAssertEqual(state.records.count, 1)
+        XCTAssertEqual(state.record(for: Date())?.method, .quickLog)
+        XCTAssertTrue(snapshot.hasLoggedToday())
+        XCTAssertEqual(widgetSnapshotStore.load(), snapshot)
+    }
+
+    @MainActor
     func testWidgetLogTodayDeepLinkSchedulesReapplyReminderWhenEnabled() async throws {
         let notificationManager = MockNotificationManager()
         let daytime = try XCTUnwrap(
@@ -2465,6 +2482,7 @@ final class SunclubTests: XCTestCase {
         uvIndexService: UVIndexService? = nil,
         uvBriefingService: SunclubUVBriefingService? = nil,
         accountabilityService: SunclubAccountabilityServing? = nil,
+        widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         clock: @escaping () -> Date = Date.init
     ) throws -> AppState {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()
@@ -2473,6 +2491,7 @@ final class SunclubTests: XCTestCase {
             notificationManager: notificationManager ?? NotificationManager.shared,
             uvIndexService: uvIndexService ?? UVIndexService(),
             uvBriefingService: uvBriefingService,
+            widgetSnapshotStore: widgetSnapshotStore,
             accountabilityService: accountabilityService,
             homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock

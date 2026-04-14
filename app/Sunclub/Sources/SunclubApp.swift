@@ -29,7 +29,6 @@ struct SunclubApp: App {
             fatalError("Failed to create ModelContainer: \(error)")
         }
         NotificationManager.shared.configure(modelContainer: container)
-        SunclubWatchSyncCoordinator.shared.activate()
 
         let modelContext = ModelContext(container)
         #if DEBUG
@@ -50,6 +49,8 @@ struct SunclubApp: App {
             )
             _appState = State(initialValue: state)
             Self.registerRemoteNotificationHandler(for: state)
+            Self.registerWatchSyncHandler(for: state)
+            SunclubWatchSyncCoordinator.shared.activate()
             return
         }
         #endif
@@ -57,6 +58,8 @@ struct SunclubApp: App {
         let state = AppState(context: modelContext, notificationManager: NotificationManager.shared)
         _appState = State(initialValue: state)
         Self.registerRemoteNotificationHandler(for: state)
+        Self.registerWatchSyncHandler(for: state)
+        SunclubWatchSyncCoordinator.shared.activate()
     }
 
     var body: some Scene {
@@ -619,6 +622,12 @@ struct SunclubApp: App {
         SunclubRemoteNotificationBridge.shared.setHandler { _ in
             let didProcessEvent = await state.processRemoteAccountabilityEventsNow()
             return didProcessEvent ? .newData : .noData
+        }
+    }
+
+    private static func registerWatchSyncHandler(for state: AppState) {
+        SunclubWatchSyncCoordinator.shared.setLogTodayHandler {
+            try state.recordWatchSunscreenLog()
         }
     }
 }

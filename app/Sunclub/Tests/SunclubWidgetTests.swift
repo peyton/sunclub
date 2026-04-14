@@ -320,6 +320,50 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(SunclubDeepLink(url: updateURL), .widgetRoute(.updateToday))
     }
 
+    func testWatchSyncPayloadRoundTripsSnapshotContext() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2],
+            longestStreak: 5,
+            now: now,
+            calendar: calendar,
+            currentUVIndex: 8,
+            peakUVIndex: 10
+        )
+
+        let context = try XCTUnwrap(SunclubWatchSyncPayload.context(snapshot: snapshot, message: "Status updated."))
+        let decodedSnapshot = try XCTUnwrap(SunclubWatchSyncPayload.decodeSnapshot(from: context))
+
+        XCTAssertEqual(decodedSnapshot, snapshot)
+        XCTAssertEqual(context[SunclubWatchSyncPayload.successKey] as? Bool, true)
+        XCTAssertEqual(context[SunclubWatchSyncPayload.messageKey] as? String, "Status updated.")
+    }
+
+    func testWatchSyncPayloadRejectsMalformedSnapshotData() {
+        let payload: [String: Any] = [
+            SunclubWatchSyncPayload.snapshotKey: Data("not-json".utf8)
+        ]
+
+        XCTAssertNil(SunclubWatchSyncPayload.decodeSnapshot(from: payload))
+    }
+
+    func testWatchSyncRepliesCarrySuccessAndFailureState() throws {
+        let snapshot = makeSnapshot(dayOffsets: [1], longestStreak: 4)
+        let successReply = SunclubWatchSyncPayload.successReply(
+            snapshot: snapshot,
+            message: "Logged from your wrist."
+        )
+        let errorReply = SunclubWatchSyncPayload.errorReply("Open Sunclub once to finish setup.")
+
+        XCTAssertEqual(successReply[SunclubWatchSyncPayload.successKey] as? Bool, true)
+        XCTAssertEqual(successReply[SunclubWatchSyncPayload.messageKey] as? String, "Logged from your wrist.")
+        XCTAssertEqual(try XCTUnwrap(SunclubWatchSyncPayload.decodeSnapshot(from: successReply)), snapshot)
+        XCTAssertEqual(errorReply[SunclubWatchSyncPayload.successKey] as? Bool, false)
+        XCTAssertEqual(errorReply[SunclubWatchSyncPayload.messageKey] as? String, "Open Sunclub once to finish setup.")
+        XCTAssertNil(SunclubWatchSyncPayload.decodeSnapshot(from: errorReply))
+    }
+
     func testWidgetSummaryRouteOpensWeeklySummary() throws {
         let state = try makeAppState()
         let router = AppRouter()
