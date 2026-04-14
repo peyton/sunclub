@@ -778,12 +778,12 @@ final class AppState {
     }
 
     var reminderDate: Date {
-        reminderDate(for: ReminderPlanner.scheduleKind(for: Date(), calendar: calendar))
+        reminderDate(for: ReminderPlanner.scheduleKind(for: currentDate(), calendar: calendar))
     }
 
     func reminderDate(for kind: ReminderScheduleKind) -> Date {
         let reminderTime = settings.smartReminderSettings.time(for: kind)
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: currentDate())
         return calendar.date(
             bySettingHour: reminderTime.hour,
             minute: reminderTime.minute,
@@ -873,7 +873,8 @@ final class AppState {
     var homeRecoveryActions: [HomeRecoveryAction] {
         var actions: [HomeRecoveryAction] = []
 
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        let now = currentDate()
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
         if records.count >= 3, record(for: yesterday) == nil {
             actions.append(
                 HomeRecoveryAction(
@@ -890,7 +891,7 @@ final class AppState {
 
     var reapplyCheckInPresentation: ReapplyCheckInPresentation? {
         guard settings.reapplyReminderEnabled,
-              let todayRecord = record(for: Date()) else {
+              let todayRecord = record(for: currentDate()) else {
             return nil
         }
 
@@ -920,7 +921,7 @@ final class AppState {
         ReminderCoachingEngine.suggestions(
             from: records,
             settings: settings.smartReminderSettings,
-            now: Date(),
+            now: currentDate(),
             calendar: calendar
         )
     }
@@ -1747,7 +1748,7 @@ final class AppState {
         spfLevel: Int? = nil,
         notes: String? = nil
     ) {
-        let now = Date()
+        let now = currentDate()
         upsertRecord(
             RecordUpsertRequest(
                 day: now,
@@ -1826,7 +1827,7 @@ final class AppState {
         finishDurableChange(batch, reschedulesReminders: false)
 
         let target = calendar.startOfDay(for: day)
-        if calendar.isDateInToday(target), record(for: target) == nil {
+        if calendar.isDate(target, inSameDayAs: currentDate()), record(for: target) == nil {
             cancelReapplyRemindersIfNeeded()
         }
     }
@@ -1868,10 +1869,11 @@ final class AppState {
         }
     }
 
-    func recordReapplication(for day: Date = Date(), performedAt: Date? = nil) {
-        let now = performedAt ?? Date()
+    func recordReapplication(for day: Date? = nil, performedAt: Date? = nil) {
+        let now = performedAt ?? currentDate()
+        let targetDay = day ?? now
         let batch = try? historyService.applyDayChange(
-            for: day,
+            for: targetDay,
             kind: .reapply,
             summary: "Logged a reapply check-in.",
             changedFields: [.reapplyCount, .lastReappliedAt]
@@ -1886,7 +1888,7 @@ final class AppState {
         }
         finishDurableChange(batch, reschedulesReminders: false)
 
-        if calendar.isDateInToday(day) {
+        if calendar.isDate(targetDay, inSameDayAs: currentDate()) {
             cancelReapplyRemindersIfNeeded()
         }
     }
@@ -2034,9 +2036,9 @@ final class AppState {
         }
     }
 
-    func dayStatus(for date: Date, now: Date = Date()) -> DayStatus {
+    func dayStatus(for date: Date, now: Date? = nil) -> DayStatus {
         let set = Set(records.map { calendar.startOfDay(for: $0.startOfDay) })
-        return CalendarAnalytics.status(for: date, with: set, now: now, calendar: calendar)
+        return CalendarAnalytics.status(for: date, with: set, now: now ?? currentDate(), calendar: calendar)
     }
 
     func monthGrid(for month: Date) -> [Date] {
@@ -2048,15 +2050,15 @@ final class AppState {
     }
 
     var currentStreak: Int {
-        CalendarAnalytics.currentStreak(records: recordedDays, now: Date(), calendar: calendar)
+        CalendarAnalytics.currentStreak(records: recordedDays, now: currentDate(), calendar: calendar)
     }
 
     var currentStreakDays: [Date] {
-        CalendarAnalytics.currentStreakDays(records: recordedDays, now: Date(), calendar: calendar)
+        CalendarAnalytics.currentStreakDays(records: recordedDays, now: currentDate(), calendar: calendar)
     }
 
     func last7DaysReport() -> WeeklyReport {
-        CalendarAnalytics.weeklyReport(records: records.map(\.startOfDay), now: Date(), calendar: calendar)
+        CalendarAnalytics.weeklyReport(records: records.map(\.startOfDay), now: currentDate(), calendar: calendar)
     }
 
     func sunscreenUsageInsights(recentNotesLimit: Int = 3) -> SunscreenUsageInsights {
@@ -2076,7 +2078,7 @@ final class AppState {
         MonthlyReviewAnalytics.insights(
             from: records,
             month: month,
-            now: Date(),
+            now: currentDate(),
             calendar: calendar
         )
     }
@@ -2163,7 +2165,7 @@ final class AppState {
 
     private func defaultVerifiedAt(for day: Date) -> Date {
         let targetDay = calendar.startOfDay(for: day)
-        let nowComponents = calendar.dateComponents([.hour, .minute, .second], from: Date())
+        let nowComponents = calendar.dateComponents([.hour, .minute, .second], from: currentDate())
         let dayComponents = calendar.dateComponents([.year, .month, .day], from: targetDay)
 
         return calendar.date(
@@ -2396,7 +2398,7 @@ final class AppState {
             growthSettings: growthSettings,
             uvReading: uvReading,
             uvForecast: uvForecast,
-            now: Date(),
+            now: currentDate(),
             calendar: calendar
         )
         widgetSnapshotStore.save(snapshot)

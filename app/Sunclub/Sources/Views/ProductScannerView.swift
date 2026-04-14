@@ -18,12 +18,15 @@ struct ProductScannerView: View {
     @State private var scanResultPendingUse: SunclubProductScanResult?
     @State private var scanSheenActive = false
     @State private var feedbackTrigger = 0
+    @State private var activeScanID = UUID()
 
     private enum CameraAuthorizationState {
         case notDetermined
         case authorized
         case denied
     }
+
+    private static let maximumScanImageDimension: CGFloat = 1600
 
     var body: some View {
         SunLightScreen {
@@ -63,6 +66,7 @@ struct ProductScannerView: View {
                 if isScanning {
                     ProgressView("Scanning bottle")
                         .tint(AppPalette.sun)
+                        .accessibilityIdentifier("productScanner.scanning")
                 }
 
                 if let errorMessage {
@@ -127,11 +131,12 @@ struct ProductScannerView: View {
 
     private var actionRow: some View {
         HStack(spacing: 12) {
-            if Self.isCameraSourceAvailable {
+            if Self.isCameraSourceAvailable, cameraAuthorizationState != .denied {
                 Button("Use Camera") {
                     requestCameraAccess()
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
+                .disabled(isScanning)
                 .accessibilityIdentifier("productScanner.useCamera")
             }
 
@@ -140,6 +145,7 @@ struct ProductScannerView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(SunSecondaryButtonStyle())
+            .disabled(isScanning)
             .accessibilityIdentifier("productScanner.pickPhoto")
         }
     }
@@ -229,6 +235,7 @@ struct ProductScannerView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("productScanner.recognizedText")
             }
 
             Button(result.spfLevel == nil ? "No SPF Found" : "Use in Today's Log") {
@@ -237,9 +244,11 @@ struct ProductScannerView: View {
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .disabled(result.spfLevel == nil)
+            .accessibilityIdentifier("productScanner.useResult")
         }
         .padding(18)
         .sunGlassCard(cornerRadius: 20)
+        .accessibilityIdentifier("productScanner.result")
     }
 
     private func scanPreview(for image: UIImage) -> some View {
@@ -289,6 +298,8 @@ struct ProductScannerView: View {
     }
 
     private func loadPhoto(from item: PhotosPickerItem) async {
+        defer { selectedPhotoItem = nil }
+
         do {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data) else {
@@ -303,20 +314,51 @@ struct ProductScannerView: View {
 
     private func handleImage(_ image: UIImage) {
         feedbackTrigger += 1
-        previewImage = image
+        let preparedImage = Self.preparedImageForScanning(image)
+        let scanID = UUID()
+        activeScanID = scanID
+        previewImage = preparedImage
         scanResult = nil
         errorMessage = nil
         isScanning = true
 
         Task {
-            defer { isScanning = false }
             do {
-                let result = try await SunclubProductScannerService.scan(image: image)
+                let result = try await SunclubProductScannerService.scan(image: preparedImage)
+                guard activeScanID == scanID else {
+                    return
+                }
                 scanResult = result
                 appState.rememberScannedSPF(result.spfLevel)
             } catch {
+                guard activeScanID == scanID else {
+                    return
+                }
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
+
+            if activeScanID == scanID {
+                isScanning = false
+            }
+        }
+    }
+
+    private static func preparedImageForScanning(_ image: UIImage) -> UIImage {
+        let longestSide = max(image.size.width, image.size.height)
+        guard longestSide > maximumScanImageDimension else {
+            return image
+        }
+
+        let scale = maximumScanImageDimension / longestSide
+        let targetSize = CGSize(
+            width: max(1, floor(image.size.width * scale)),
+            height: max(1, floor(image.size.height * scale))
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+
+        return UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
     }
 
