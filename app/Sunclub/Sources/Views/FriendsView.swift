@@ -132,11 +132,21 @@ struct FriendsView: View {
                 })
 
                 if appState.friends.isEmpty {
-                    SunAssetHero(
-                        asset: .illustrationFriendsPair,
-                        height: 128,
-                        glowColor: AppPalette.pool
-                    )
+                    VStack(spacing: 10) {
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundStyle(AppPalette.sun)
+
+                        Text("Better together")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text("Add a friend to keep each other on track. You'll see their streak and can send nudges.")
+                            .font(.system(size: 15))
+                            .foregroundStyle(AppPalette.softInk)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
 
                     statusCard
                     addFriendsCard

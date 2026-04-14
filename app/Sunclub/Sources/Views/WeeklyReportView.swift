@@ -107,6 +107,8 @@ struct WeeklyReportView: View {
                                 .font(.system(size: 10, weight: .semibold))
                                 .foregroundStyle(entry.applied ? AppPalette.success : AppPalette.softInk)
                         }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .disabled(entry.isFuture)

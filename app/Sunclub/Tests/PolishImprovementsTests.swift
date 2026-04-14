@@ -23,4 +23,10 @@ final class PolishImprovementsTests: XCTestCase {
         XCTAssertFalse(phrase.isEmpty)
         XCTAssertFalse(state.isEmpty)
     }
+
+    func testEveryAchievementHasNonEmptyHint() {
+        for id in SunclubAchievementID.allCases {
+            XCTAssertFalse(id.hint.isEmpty, "\(id) has empty hint")
+        }
+    }
 }

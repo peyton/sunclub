@@ -80,6 +80,10 @@ struct RootView: View {
             SkinHealthReportView()
         case .productScanner:
             ProductScannerView()
+        case .yearInReview:
+            YearInReviewView()
+        case .valueProps:
+            ValuePropsView()
         }
     }
 }

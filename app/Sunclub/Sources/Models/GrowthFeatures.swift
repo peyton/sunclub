@@ -309,6 +309,29 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
         }
     }
 
+    var hint: String {
+        switch self {
+        case .streak7: return "Log 7 consecutive days"
+        case .streak30: return "Log 30 consecutive days"
+        case .streak100: return "Log 100 consecutive days"
+        case .streak365: return "Log every day for a year"
+        case .firstReapply: return "Log a reapply during the day"
+        case .firstBackfill: return "Backfill a missed past day"
+        case .summerSurvivor: return "Log 30 days during summer"
+        case .winterWarrior: return "Log 30 days during winter"
+        case .morningGlow: return "Log before 9 AM five times"
+        case .weekendCanopy: return "Log both Saturday and Sunday four times"
+        case .spfSampler: return "Log 5 different SPF levels"
+        case .noteTaker: return "Add notes to 10 check-ins"
+        case .reapplyRelay: return "Log 3 reapplies in a single day"
+        case .highUVHero: return "Log on 10 high-UV days"
+        case .homeBase: return "Set up leave-home reminders"
+        case .liveSignal: return "Turn on live UV data"
+        case .bottleDetective: return "Scan a sunscreen bottle"
+        case .socialSpark: return "Share a streak or add a friend"
+        }
+    }
+
     var targetValue: Int {
         switch self {
         case .streak7:

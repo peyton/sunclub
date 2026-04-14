@@ -34,13 +34,75 @@ struct WelcomeView: View {
         } footer: {
             Button("Get Started") {
                 startFeedbackTrigger += 1
-                router.open(.enableNotifications)
+                router.open(.valueProps)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
         }
         .sensoryFeedback(.impact(.medium), trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+struct ValuePropsView: View {
+    @Environment(AppRouter.self) private var router
+    @State private var feedbackTrigger = 0
+
+    var body: some View {
+        SunLightScreen {
+            VStack(spacing: 28) {
+                VStack(spacing: 24) {
+                    valuePropRow(
+                        symbol: "flame.fill",
+                        title: "Build a streak",
+                        detail: "Log sunscreen daily and watch your consistency grow."
+                    )
+                    valuePropRow(
+                        symbol: "bell.badge.fill",
+                        title: "Smart reminders",
+                        detail: "Separate weekday and weekend times, plus streak-risk nudges."
+                    )
+                    valuePropRow(
+                        symbol: "hand.tap.fill",
+                        title: "One-tap logging",
+                        detail: "Log from widgets, Shortcuts, notifications, or the app."
+                    )
+                }
+                .padding(.top, 32)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 24)
+        } footer: {
+            Button("Continue") {
+                feedbackTrigger += 1
+                router.open(.enableNotifications)
+            }
+            .buttonStyle(SunPrimaryButtonStyle())
+            .accessibilityIdentifier("onboarding.valueProps.continue")
+        }
+        .sensoryFeedback(.impact(.medium), trigger: feedbackTrigger)
+        .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
+    }
+
+    private func valuePropRow(symbol: String, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+                .frame(width: 36, height: 36)
+                .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                Text(detail)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppPalette.softInk)
+            }
+        }
     }
 }
 

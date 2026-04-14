@@ -22,6 +22,7 @@ struct HomeTodayCardPresentation: Equatable {
     let streakRiskBadgeText: String?
     let uvHeadline: String?
     let uvSymbolName: String?
+    let uvIsEstimated: Bool
     let metadataRows: [HomeTodayMetadataRow]
 
     var accessibilityValue: String {
@@ -990,6 +991,7 @@ final class AppState {
                 streakRiskBadgeText: streakRiskBadgeText,
                 uvHeadline: nil,
                 uvSymbolName: nil,
+                uvIsEstimated: false,
                 metadataRows: metadataRows
             )
         }
@@ -1010,6 +1012,7 @@ final class AppState {
             streakRiskBadgeText: streakRiskBadgeText,
             uvHeadline: uvHeadline,
             uvSymbolName: level.symbolName,
+            uvIsEstimated: uvReading?.source == .heuristic,
             metadataRows: metadataRows
         )
     }
@@ -2378,6 +2381,16 @@ final class AppState {
 
     func skinHealthReportSummary(for interval: DateInterval) -> SunclubSkinHealthReportSummary {
         SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
+    }
+
+    var yearInReviewSummary: SunclubSkinHealthReportSummary? {
+        let loggedDays = Set(records.map { calendar.startOfDay(for: $0.startOfDay) })
+        guard loggedDays.count >= 30 else { return nil }
+
+        let now = currentDate()
+        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: now)) ?? now
+        let interval = DateInterval(start: yearStart, end: now)
+        return SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
     }
 
     func nextDailyPhrase() -> String {

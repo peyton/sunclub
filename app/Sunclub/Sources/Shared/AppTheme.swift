@@ -98,6 +98,25 @@ enum AppPalette {
     static let white = Color.white
 }
 
+enum AppTypography {
+    static let screenTitle = Font.system(size: 26, weight: .bold)
+    static let sectionLabel = Font.system(size: 14, weight: .semibold)
+    static let cardTitle = Font.system(size: 18, weight: .semibold)
+    static let body = Font.system(size: 15)
+    static let bodyMedium = Font.system(size: 15, weight: .medium)
+    static let caption = Font.system(size: 13)
+    static let captionMedium = Font.system(size: 13, weight: .medium)
+    static let metric = Font.system(size: 14, weight: .medium)
+    static let streakNumber = Font.system(size: 64, weight: .heavy)
+    static let pillLabel = Font.system(size: 13, weight: .semibold)
+}
+
+enum AppRadius {
+    static let card: CGFloat = 22
+    static let insetCard: CGFloat = 18
+    static let control: CGFloat = 14
+}
+
 enum SunMotion {
     static func easeInOut(duration: Double, reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeInOut(duration: duration)
@@ -290,6 +309,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .padding(.bottom, 18)
                         .frame(minHeight: proxy.size.height - 120, alignment: .top)
                     }
+                    .scrollDismissesKeyboard(.interactively)
 
                     footer
                         .padding(.horizontal, 24)
@@ -847,7 +867,7 @@ struct SunclubBadgeMedallion: View {
 }
 
 extension View {
-    func sunGlassCard(cornerRadius: CGFloat = 20, fillOpacity: Double = 0.72) -> some View {
+    func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.72) -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

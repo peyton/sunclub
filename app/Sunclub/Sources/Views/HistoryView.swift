@@ -11,7 +11,7 @@ struct HistoryView: View {
     @State private var dayPendingDeletion: Date?
     @State private var lastDeletedBatchID: UUID?
     @State private var lastDeletedDay: Date?
-    @State private var isShowingMonthlyInsights = false
+    @State private var isShowingMonthlyInsights = true
 
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
@@ -44,6 +44,16 @@ struct HistoryView: View {
                 calendarGrid(presentation: presentation)
                     .id(displayedMonth)
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+
+                if presentation.monthStats.appliedCount == 0 &&
+                    calendar.isDate(displayedMonth, equalTo: appState.referenceDate, toGranularity: .month) {
+                    Text("Days you log sunscreen will appear here.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
 
                 historyLegend(presentation: presentation)
 
@@ -691,7 +701,16 @@ struct HistoryView: View {
     }
 
     private func statsSection(stats: HistoryMonthStats) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        if stats.appliedCount == 0 {
+            return AnyView(
+                Text("No sunscreen logged this month.")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            )
+        }
+
+        return AnyView(VStack(alignment: .leading, spacing: 12) {
             Text("Month Stats")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
@@ -702,9 +721,36 @@ struct HistoryView: View {
                 statBubble(value: "\(stats.rate)", label: "Rate")
             }
 
+            if isShowingMonthlyInsights {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 4) {
+                        Text("\(stats.appliedCount) of \(stats.totalDays) days logged")
+                            .font(AppTypography.metric)
+                            .foregroundStyle(AppPalette.ink)
+                    }
+
+                    Text("Consistency: \(stats.rate)")
+                        .font(AppTypography.metric)
+                        .foregroundStyle(AppPalette.ink)
+
+                    if stats.bestStreak > 0 {
+                        Text("Best streak: \(stats.bestStreak) days")
+                            .font(AppTypography.metric)
+                            .foregroundStyle(AppPalette.ink)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
+                        .fill(AppPalette.warmGlow.opacity(0.3))
+                )
+                .accessibilityIdentifier("history.monthSummary")
+            }
+
             monthlyInsightDisclosure(stats.insights)
         }
-        .accessibilityIdentifier("history.monthStats")
+        .accessibilityIdentifier("history.monthStats"))
     }
 
     private var historyPresentation: HistoryPresentation {
@@ -746,6 +792,8 @@ struct HistoryView: View {
             today: today
         )
         let rate = daysInRange > 0 ? Int(Double(monthRecords.count) / Double(daysInRange) * 100) : 0
+        let monthRecordSet = Set(monthRecords.map { calendar.startOfDay(for: $0) })
+        let bestStreak = CalendarAnalytics.longestStreak(records: Array(monthRecordSet), calendar: calendar)
 
         return HistoryMonthStats(
             appliedCount: monthRecords.count,
@@ -756,7 +804,8 @@ struct HistoryView: View {
                 month: displayedMonth,
                 now: today,
                 calendar: calendar
-            )
+            ),
+            bestStreak: bestStreak
         )
     }
 
@@ -1247,6 +1296,9 @@ private struct HistoryMonthStats {
     let openCount: Int
     let rate: String
     let insights: MonthlyReviewInsights
+    let bestStreak: Int
+
+    var totalDays: Int { appliedCount + openCount }
 }
 
 private struct HistoryMonthNavigationButtonStyle: ButtonStyle {

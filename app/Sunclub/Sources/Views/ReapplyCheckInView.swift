@@ -44,6 +44,24 @@ struct ReapplyCheckInView: View {
                 tint: AppPalette.sun,
                 symbol: "arrow.clockwise.circle.fill"
             )
+
+            if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
+                HStack(spacing: 8) {
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.sun)
+
+                    Text("Reapply #\(record.reapplyCount) today")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    if let lastReapplied = record.lastReappliedAt {
+                        Text("· \(lastReapplied, style: .relative) ago")
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+                }
+            }
         }
     }
 

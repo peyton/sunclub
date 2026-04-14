@@ -696,6 +696,18 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.icloudToggle")
 
+                if iCloudSyncEnabled {
+                    if let lastSyncAt = appState.syncPreference?.lastSyncAt {
+                        Text("Last synced \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                    } else {
+                        Text("iCloud sync is on")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+                }
+
                 SunStatusCard(
                     title: presentation.title,
                     detail: presentation.detail,
