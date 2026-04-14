@@ -3,13 +3,15 @@ import SwiftUI
 struct ManualLogView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var referenceDate = Date()
     @State private var selectedSPF: Int?
     @State private var notes: String = ""
     @State private var hasLoadedInitialState = false
     @State private var feedbackTrigger = 0
 
     private var existingRecord: DailyRecord? {
-        appState.record(for: Date())
+        appState.record(for: referenceDate)
     }
 
     var body: some View {
@@ -35,7 +37,7 @@ struct ManualLogView: View {
 
                 SunAssetHero(
                     asset: .illustrationLogBottle,
-                    height: 154,
+                    height: heroHeight,
                     glowColor: AppPalette.aloe
                 )
                 .accessibilityLabel("Sunscreen bottle")
@@ -49,15 +51,15 @@ struct ManualLogView: View {
                     )
                 }
 
-                scanSPFButton
-
                 SunManualLogFields(
                     selectedSPF: $selectedSPF,
                     notes: $notes,
                     accessibilityPrefix: "manualLog",
-                    suggestions: appState.manualLogSuggestionState(for: Date()),
+                    suggestions: appState.manualLogSuggestionState(for: referenceDate),
                     detailsInitiallyExpanded: existingRecord != nil || appState.manualLogPrefill != nil
                 )
+
+                scanSPFButton
 
                 Spacer(minLength: 0)
             }
@@ -66,7 +68,10 @@ struct ManualLogView: View {
                 .buttonStyle(SunPrimaryButtonStyle())
                 .accessibilityIdentifier("manualLog.logToday")
         }
-        .onAppear(perform: syncInitialStateIfNeeded)
+        .onAppear {
+            referenceDate = appState.referenceDate
+            syncInitialStateIfNeeded()
+        }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -88,6 +93,10 @@ struct ManualLogView: View {
 
     private var primaryActionTitle: String {
         existingRecord == nil ? "Log Today" : "Update Today"
+    }
+
+    private var heroHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 92 : 154
     }
 
     private var scanSPFButton: some View {

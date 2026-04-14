@@ -47,6 +47,7 @@ struct WelcomeView: View {
 struct EnableNotificationsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @State private var isCompleting = false
     @State private var completionFeedbackTrigger = 0
 
     var body: some View {
@@ -89,23 +90,32 @@ struct EnableNotificationsView: View {
             .padding(.top, 24)
             .frame(maxWidth: .infinity)
         } footer: {
-            Button("Turn On Reminders") {
-                completionFeedbackTrigger += 1
-                Task {
-                    if !appState.isUITesting {
-                        _ = await NotificationManager.shared.configure()
-                        await NotificationManager.shared.scheduleReminders(using: appState)
-                    }
-                    appState.completeOnboarding()
-                    if appState.importPendingAccountabilityInvitesIfNeeded() {
-                        router.open(.friends)
-                    } else {
-                        router.goHome()
+            VStack(spacing: 10) {
+                Button {
+                    completeOnboarding(requestsNotifications: true)
+                } label: {
+                    HStack(spacing: 8) {
+                        if isCompleting {
+                            ProgressView()
+                                .tint(AppPalette.onAccent)
+                                .accessibilityHidden(true)
+                        }
+
+                        Text(isCompleting ? "Setting Up" : "Turn On Reminders")
                     }
                 }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .disabled(isCompleting)
+                .accessibilityIdentifier("onboarding.enableNotifications")
+
+                Button("Not Now") {
+                    completeOnboarding(requestsNotifications: false)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .disabled(isCompleting)
+                .accessibilityHint("Finishes setup without turning on reminder notifications.")
+                .accessibilityIdentifier("onboarding.skipNotifications")
             }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("onboarding.enableNotifications")
         }
         .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
@@ -114,6 +124,33 @@ struct EnableNotificationsView: View {
 
     private var reminderDescription: String {
         SunclubCopy.Brand.reminderDetail
+    }
+
+    private func completeOnboarding(requestsNotifications: Bool) {
+        guard !isCompleting else {
+            return
+        }
+
+        completionFeedbackTrigger += 1
+        isCompleting = true
+
+        Task { @MainActor in
+            if requestsNotifications, !appState.isUITesting {
+                let granted = await NotificationManager.shared.configure()
+                if granted {
+                    await NotificationManager.shared.scheduleReminders(using: appState)
+                }
+            }
+
+            appState.completeOnboarding()
+            isCompleting = false
+
+            if appState.importPendingAccountabilityInvitesIfNeeded() {
+                router.open(.friends)
+            } else {
+                router.goHome()
+            }
+        }
     }
 }
 

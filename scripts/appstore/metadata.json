@@ -111,16 +111,16 @@
   },
   "accessibility": {
     "iphone": {
-      "ready": false,
+      "ready": true,
       "supports_audio_descriptions": false,
       "supports_captions": false,
-      "supports_dark_interface": false,
-      "supports_differentiate_without_color_alone": false,
-      "supports_larger_text": false,
-      "supports_reduced_motion": false,
-      "supports_sufficient_contrast": false,
-      "supports_voice_control": false,
-      "supports_voiceover": false
+      "supports_dark_interface": true,
+      "supports_differentiate_without_color_alone": true,
+      "supports_larger_text": true,
+      "supports_reduced_motion": true,
+      "supports_sufficient_contrast": true,
+      "supports_voice_control": true,
+      "supports_voiceover": true
     }
   },
   "submission": {

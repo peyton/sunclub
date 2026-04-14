@@ -117,8 +117,22 @@ def test_validator_allows_current_manifest_in_draft_mode() -> None:
     manual_steps = manifest["submission"]["manual_steps"]
 
     errors, warnings = validator.validate_manifest(manifest, allow_draft=True)
+    iphone_accessibility = manifest["accessibility"]["iphone"]
 
     assert errors == []
+    assert iphone_accessibility["ready"] is True
+    assert iphone_accessibility["supports_audio_descriptions"] is False
+    assert iphone_accessibility["supports_captions"] is False
+    for field in [
+        "supports_dark_interface",
+        "supports_differentiate_without_color_alone",
+        "supports_larger_text",
+        "supports_reduced_motion",
+        "supports_sufficient_contrast",
+        "supports_voice_control",
+        "supports_voiceover",
+    ]:
+        assert iphone_accessibility[field] is True
     assert not any("export compliance" in step.lower() for step in manual_steps)
     assert (
         "urls.support is still marked as not ready for App Store submission."
@@ -213,7 +227,7 @@ def test_validator_accepts_submission_ready_manifest() -> None:
               "supports_larger_text": true,
               "supports_reduced_motion": true,
               "supports_sufficient_contrast": true,
-              "supports_voice_control": false,
+              "supports_voice_control": true,
               "supports_voiceover": true
             }
           },

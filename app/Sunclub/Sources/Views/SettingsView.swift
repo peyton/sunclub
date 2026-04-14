@@ -851,6 +851,9 @@ struct SettingsView: View {
         let isSelected = reapplyInterval == minutes
 
         return Button {
+            guard !isSelected else {
+                return
+            }
             reapplyInterval = minutes
             appState.updateReapplySettings(enabled: reapplyEnabled, intervalMinutes: minutes)
         } label: {
@@ -872,7 +875,7 @@ struct SettingsView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Reapply interval \(formatInterval(minutes))")
+        .accessibilityLabel("Reapply interval \(formattedAccessibleInterval(minutes))")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("settings.reapplyInterval.\(minutes)")
@@ -921,8 +924,27 @@ struct SettingsView: View {
             iCloudSyncEnabled = true
             appState.updateCloudSyncEnabled(true)
         case .error, .idle, .syncing:
+            guard appState.syncPreference?.status != .syncing else {
+                return
+            }
             appState.syncCloudNow()
         }
+    }
+
+    private func formattedAccessibleInterval(_ minutes: Int) -> String {
+        if minutes < 60 {
+            return minutes == 1 ? "1 minute" : "\(minutes) minutes"
+        }
+
+        let hours = minutes / 60
+        let remaining = minutes % 60
+        let hourText = hours == 1 ? "1 hour" : "\(hours) hours"
+        guard remaining > 0 else {
+            return hourText
+        }
+
+        let minuteText = remaining == 1 ? "1 minute" : "\(remaining) minutes"
+        return "\(hourText) \(minuteText)"
     }
 
     private func reminderPickerSheet(for schedule: ReminderScheduleKind) -> some View {

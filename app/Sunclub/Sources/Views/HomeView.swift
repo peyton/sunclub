@@ -5,6 +5,7 @@ struct HomeView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.scenePhase) private var scenePhase
     @State private var now = Date()
     @State private var isExploreExpanded = false
     @State private var isUVExpanded = false
@@ -53,6 +54,12 @@ struct HomeView: View {
         }
         .refreshable {
             refreshHome()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else {
+                return
+            }
+            refreshHomeOnAppear()
         }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
@@ -172,12 +179,12 @@ struct HomeView: View {
     }
 
     private func refreshHomeOnAppear() {
-        now = Date()
+        now = appState.referenceDate
         refreshHomeLiveData()
     }
 
     private func refreshHome() {
-        now = Date()
+        now = appState.referenceDate
         appState.refresh()
         refreshHomeLiveData()
     }
@@ -733,7 +740,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private var footerActions: some View {
-        if appState.record(for: Date()) == nil {
+        if appState.record(for: now) == nil {
             Button("Log Today") {
                 feedbackTrigger += 1
                 router.open(.manualLog)
@@ -832,7 +839,7 @@ struct HomeView: View {
 
     private var recentDayTrack: [Bool] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: now)
         let recorded = Set(appState.recordedDays.map { calendar.startOfDay(for: $0) })
 
         return (0..<7).compactMap { offset in

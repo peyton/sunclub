@@ -55,6 +55,10 @@ is_simulator_launch_error() {
     "$xcodebuild_log_path"
 }
 
+has_xctest_failure() {
+  grep -Eq ':[0-9]+: error: -\[|XCTAssert|Test Case .+ failed' "$xcodebuild_log_path"
+}
+
 reset_test_simulator
 
 xcodebuild_args=(
@@ -97,7 +101,7 @@ while true; do
     break
   fi
 
-  if [ "$attempt" -ge "$max_attempts" ] || ! is_simulator_launch_error; then
+  if [ "$attempt" -ge "$max_attempts" ] || has_xctest_failure || ! is_simulator_launch_error; then
     exit "$status"
   fi
 

@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Vision
 import UIKit
 
@@ -43,7 +44,11 @@ enum SunclubProductScannerService {
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = false
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        let handler = VNImageRequestHandler(
+            cgImage: cgImage,
+            orientation: visionOrientation(for: image.imageOrientation),
+            options: [:]
+        )
         try handler.perform([request])
 
         let lines = (request.results ?? [])
@@ -124,6 +129,29 @@ enum SunclubProductScannerService {
 
             return String(line.prefix(maximumRecognizedLineLength)).trimmingCharacters(in: .whitespacesAndNewlines) + "..."
         })
+    }
+
+    static func visionOrientation(for imageOrientation: UIImage.Orientation) -> CGImagePropertyOrientation {
+        switch imageOrientation {
+        case .up:
+            return .up
+        case .upMirrored:
+            return .upMirrored
+        case .down:
+            return .down
+        case .downMirrored:
+            return .downMirrored
+        case .left:
+            return .leftMirrored
+        case .leftMirrored:
+            return .left
+        case .right:
+            return .rightMirrored
+        case .rightMirrored:
+            return .right
+        @unknown default:
+            return .up
+        }
     }
 
     private struct TextPattern: @unchecked Sendable {

@@ -19,6 +19,13 @@ Sunclub is being prepared for App Store review. This pass improves the first-run
 - [x] (2026-04-14 04:15Z) Improved AppState consistency by using the injected clock for time-sensitive behavior instead of direct `Date()` calls where the app already owns a clock.
 - [x] (2026-04-14 04:15Z) Added focused unit tests for parser correctness, suggestion presentation data, and deterministic app-state time behavior.
 - [x] (2026-04-14 04:15Z) Ran the relevant repo commands and fixed the one test-calendar mismatch discovered during verification.
+- [x] (2026-04-14 04:38Z) Started a second release-hardening batch from a clean worktree for final App Store review preparation.
+- [x] (2026-04-14 05:10Z) Improved first-run notification onboarding so users can continue without granting notification access and the permission action cannot be double-submitted.
+- [x] (2026-04-14 05:10Z) Improved common-view date consistency so Home, Manual Log, History, and Weekly Report use the app state's release/test clock instead of direct wall-clock reads.
+- [x] (2026-04-14 05:10Z) Added duplicate-work guards for settings writes that previously persisted or rescheduled even when the selected value had not changed.
+- [x] (2026-04-14 05:10Z) Improved scanner reliability for rotated camera and photo-library images.
+- [x] (2026-04-14 05:10Z) Aligned App Store accessibility metadata with the app's documented scorecard support.
+- [x] (2026-04-14 05:10Z) Added focused tests for the second batch and reran the relevant release commands.
 
 ## Surprises & Discoveries
 
@@ -30,6 +37,16 @@ Sunclub is being prepared for App Store review. This pass improves the first-run
   Evidence: `ManualLogSuggestionEngine.suggestions` fills `defaultSPF`, while `SunManualLogFields` only renders `sameAsLastTime`, presets, scanned SPF levels, and notes.
 - Observation: `AppState` accepts an injected `clock` but several time-sensitive methods still call `Date()` directly.
   Evidence: `markAppliedToday`, `currentStreak`, `last7DaysReport`, `monthlyReviewInsights`, `syncWidgetSnapshot`, and related helpers call `Date()` rather than `currentDate()`.
+- Observation: The second pass found remaining direct `Date()` use in SwiftUI views that decide whether today's log exists or whether history days are future days.
+  Evidence: `HomeView.footerActions`, `HomeView.recentDayTrack`, `ManualLogView.existingRecord`, `HistoryView.canGoForward`, `HistoryView.calendarGrid`, `HistoryView.monthStats`, and `HistoryView.jumpToToday` call `Date()` directly.
+- Observation: The notification onboarding screen has only a "Turn On Reminders" path.
+  Evidence: `EnableNotificationsView` completes onboarding inside the primary button action and does not offer a "Not Now" action.
+- Observation: Product scanner OCR does not pass `UIImage.imageOrientation` into Vision.
+  Evidence: `SunclubProductScannerService.scan(image:)` constructs `VNImageRequestHandler(cgImage:options:)`, which can make text recognition worse for rotated images.
+- Observation: Some settings update methods write history and reschedule work even when the selected value already matches the stored setting.
+  Evidence: `updateReapplySettings`, `updateUVBriefingPreferences`, `updateTravelTimeZoneHandling`, `updateStreakRiskReminder`, and `updateLeaveHomeReminderEnabled` do not check for no-op updates before applying changes.
+- Observation: The submission manifest still marks every iPhone accessibility declaration false.
+  Evidence: `scripts/appstore/metadata.json` has `accessibility.iphone.ready: false` and false values for VoiceOver, Voice Control, Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, and Reduced Motion.
 
 ## Decision Log
 
@@ -42,10 +59,19 @@ Sunclub is being prepared for App Store review. This pass improves the first-run
 - Decision: Use the existing AppState clock rather than adding a new time service.
   Rationale: The dependency already exists, is testable, and matches the repo's conservative architecture.
   Date/Author: 2026-04-14 / Codex.
+- Decision: Keep the second batch release-safe by avoiding persisted SwiftData schema changes and new dependencies.
+  Rationale: The app is being prepared for App Store review, so the work should reduce risk rather than introduce migration or dependency review surface.
+  Date/Author: 2026-04-14 / Codex.
+- Decision: Add an internal AppState reference-date accessor for views instead of giving each view a separate clock.
+  Rationale: The app already owns an injected clock for tests and runtime overrides; exposing a read-only value keeps Home, Manual Log, and History consistent without a broader architecture change.
+  Date/Author: 2026-04-14 / Codex.
+- Decision: Keep notification onboarding as an opt-in prompt and add a secondary path rather than requiring authorization to enter the app.
+  Rationale: Users should be able to review and use the app even when they do not want notifications, and App Review can proceed without granting permissions.
+  Date/Author: 2026-04-14 / Codex.
 
 ## Outcomes & Retrospective
 
-Implemented a release-hardening pass across scanner, manual logging, and time-sensitive app state without changing persisted SwiftData schema or adding dependencies.
+Implemented two release-hardening passes across scanner, manual logging, onboarding, settings, time-sensitive SwiftUI views, App Store metadata, and test tooling without changing persisted SwiftData schema or adding dependencies.
 
 Concrete outcomes:
 
@@ -54,23 +80,41 @@ Concrete outcomes:
 - Scanner expiration parsing preserves useful full strings for numeric, year-first, slash, and month-name labels.
 - Scanner regexes are precompiled once instead of rebuilt per OCR line.
 - Scanner recognized text is normalized, de-duplicated, and capped before display.
+- Scanner Vision requests now pass image orientation derived from `UIImage.imageOrientation`, improving OCR reliability for rotated camera and photo-library images.
 - Product scanner UI downsamples oversized images before preview and scanning.
 - Product scanner UI disables competing scan actions while a scan is active.
 - Product scanner UI clears the photo picker item after image loading so the same photo can be selected again.
 - Product scanner UI prevents stale async scan results from overwriting newer scan results.
 - Product scanner UI hides the camera action when camera permission is denied while keeping photo import reachable.
+- Product scanner UI constrains the preview height and runs its scan sheen only while scanning and when Reduce Motion allows animation.
 - Product scanner UI exposes stable accessibility identifiers for scan progress, recognized text, use-result, and result sections.
 - Manual log fields now surface the existing usual SPF suggestion when it is useful.
 - Manual log note entry now supports vertical multi-line input.
+- Manual Log now keeps details above the scan action and shortens the hero at accessibility Dynamic Type sizes.
 - AppState now uses its injected clock for today logs, reapplication, streaks, weekly reports, monthly insights, reminder/recovery behavior, and widget snapshots.
-- Unit tests cover scanner parsing, expiration handling, recognized text limits, usual SPF suggestions, and injected-clock behavior.
+- Home, Manual Log, History, and Weekly Report now read the app state's reference date for user-visible "today" and future-day decisions.
+- Home refreshes when the scene becomes active so returning users see current day and UV state without relaunching.
+- Weekly Report now excludes future days from the not-logged count.
+- First-run notification onboarding now has a secondary "Not Now" path and guards against duplicate completion taps.
+- Onboarding schedules reminder notifications only after notification authorization succeeds.
+- AppState settings updates now skip no-op persistence, history batches, reminder rescheduling, and permission work for repeated selections.
+- Reapply interval controls avoid duplicate writes and use human-readable accessibility labels.
+- Cloud sync's manual sync action no-ops while a sync is already running.
+- The App Store accessibility metadata now marks supported iPhone criteria ready while leaving captions and audio descriptions false because the app has no time-based media.
+- The UI test wrapper stops retrying when an XCTest assertion is present, preventing simulator retries from hiding real app failures.
+- Unit tests cover scanner parsing, expiration handling, recognized text limits, usual SPF suggestions, injected-clock behavior, Vision orientation mapping, no-op settings updates, and app-state reference dates.
+- UI tests cover the new notification-skip onboarding path and the scroll-aware accessibility scorecard manual-log path.
+- Python tests cover App Store accessibility metadata validation and assertion-aware UI retry behavior.
 
 Verification:
 
-- `just test-unit` passed: 180 tests, 0 failures.
-- `just test-ui` passed: 51 tests, 0 failures.
+- `just test-unit` passed: 183 tests, 0 failures.
+- `just test-ui` passed: 52 tests, 0 failures.
+- `just test-python` passed: 99 tests, 0 failures.
 - `just appstore-validate` passed with warnings that review contact remains marked not ready and App Store Connect privacy completion is still false.
 - `just lint` passed. SwiftLint reported 16 non-failing warnings in pre-existing files outside this pass.
+- Targeted UI verification for `SunclubUITests/testAccessibilityScorecardCoreTasksRemainUsable` passed after the manual-log accessibility fix.
+- Targeted Python verification for the UI retry script passed.
 - `git diff --check` passed.
 
 Remaining release gates:
@@ -101,9 +145,19 @@ Fourth, update `app/Sunclub/Sources/Services/AppState.swift` so time-sensitive l
 
 Fifth, add or extend tests under `app/Sunclub/Tests`. Unit tests should cover scanner analyzer parsing and limits, manual log suggestion state behavior, and injected-clock behavior. Existing UI tests should not need broad changes because the user-facing flow remains the same.
 
+Sixth, update the second batch. In `app/Sunclub/Sources/Views/OnboardingView.swift`, keep the primary reminder opt-in button but add a secondary "Not Now" path that completes onboarding without requesting notification authorization. Add an `isCompleting` state flag so repeated taps cannot launch duplicate authorization and scheduling tasks.
+
+Seventh, add a read-only `referenceDate` property to `app/Sunclub/Sources/Services/AppState.swift` and use it in views that need the current day. Replace remaining direct `Date()` reads in Home, Manual Log, and History when they determine today's log state, recent-day tracks, future month navigation, month statistics, and jump-to-today behavior. Keep purely preview-only `Date()` initializers unchanged where they are not user-visible decisions.
+
+Eighth, add no-op guards in AppState settings methods where the requested value already matches the stored value. This should avoid unnecessary history batches, persistence, reminder rescheduling, and async permission work for repeated selections.
+
+Ninth, update `app/Sunclub/Sources/Services/SunclubProductScannerService.swift` so Vision receives the correct `CGImagePropertyOrientation` derived from `UIImage.Orientation`. This improves OCR reliability for rotated images from the camera or photo library without changing the scanner UI or adding dependencies.
+
+Tenth, update `scripts/appstore/metadata.json` so the accessibility nutrition label declarations match the app's documented supported criteria. Captions and audio descriptions stay false because the app has no time-based media. VoiceOver, Voice Control, Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, and Reduced Motion should be true, and `accessibility.iphone.ready` should be true after this repo-level scorecard pass.
+
 ## Concrete Steps
 
-Work from the repository root `/Users/peyton/.codex/worktrees/d4b6/sunclub`.
+Work from the repository root `/Users/peyton/.codex/worktrees/cb1d/sunclub`.
 
 Edit these files:
 
@@ -111,14 +165,27 @@ Edit these files:
 - `app/Sunclub/Sources/Views/ProductScannerView.swift`
 - `app/Sunclub/Sources/Shared/SunManualLogFields.swift`
 - `app/Sunclub/Sources/Services/AppState.swift`
+- `app/Sunclub/Sources/Views/HomeView.swift`
+- `app/Sunclub/Sources/Views/ManualLogView.swift`
+- `app/Sunclub/Sources/Views/HistoryView.swift`
+- `app/Sunclub/Sources/Views/WeeklyReportView.swift`
+- `app/Sunclub/Sources/Views/OnboardingView.swift`
+- `app/Sunclub/Sources/Views/SettingsView.swift`
 - `app/Sunclub/Tests/ImprovementTests.swift`
+- `app/Sunclub/UITests/SunclubUITests.swift`
+- `scripts/appstore/metadata.json`
+- `tests/test_appstore_metadata_validator.py`
+- `scripts/tooling/test_ios.sh`
+- `tests/test_tooling_build_script.py`
 
 After edits, run:
 
     just test-unit
     just test-ui
+    just test-python
     just appstore-validate
     just lint
+    git diff --check
 
 If `just test-unit` is too broad or fails because of simulator availability, run the closest generated Xcode unit-test command reported by `scripts/tooling/test_ios.sh --suite unit` and capture the failure. Do not report the app ready until relevant failures are fixed or clearly documented as an environment blocker.
 

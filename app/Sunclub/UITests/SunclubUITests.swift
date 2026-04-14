@@ -28,6 +28,20 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testOnboardingCanSkipNotifications() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("UITEST_MODE")
+        app.launch()
+
+        XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
+        app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipNotifications"].tap()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testHomeRoutesToWeeklySummaryAndSettings() throws {
         let app = launchHome()
 
@@ -305,7 +319,7 @@ final class SunclubUITests: XCTestCase {
         settingsApp.terminate()
 
         let manualLogApp = launchAccessibilityScorecardRoute("manualLog")
-        XCTAssertTrue(manualLogApp.buttons["manualLog.detailsToggle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(manualLogApp.buttons["manualLog.detailsToggle"], in: manualLogApp))
         manualLogApp.buttons["manualLog.detailsToggle"].tap()
         XCTAssertTrue(scrollToElement(manualLogApp.buttons["manualLog.spf.30"], in: manualLogApp))
         manualLogApp.buttons["manualLog.spf.30"].tap()

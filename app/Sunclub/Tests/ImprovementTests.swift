@@ -1,5 +1,7 @@
 import Foundation
+import ImageIO
 import SwiftData
+import UIKit
 import XCTest
 @testable import Sunclub
 
@@ -219,6 +221,26 @@ final class ImprovementTests: XCTestCase {
         XCTAssertTrue(result.recognizedText.last?.hasSuffix("...") == true)
     }
 
+    func testProductScannerMapsUIImageOrientationForVision() {
+        let cases: [(UIImage.Orientation, CGImagePropertyOrientation)] = [
+            (.up, .up),
+            (.upMirrored, .upMirrored),
+            (.down, .down),
+            (.downMirrored, .downMirrored),
+            (.left, .leftMirrored),
+            (.leftMirrored, .left),
+            (.right, .rightMirrored),
+            (.rightMirrored, .right)
+        ]
+
+        for (imageOrientation, expectedVisionOrientation) in cases {
+            XCTAssertEqual(
+                SunclubProductScannerService.visionOrientation(for: imageOrientation),
+                expectedVisionOrientation
+            )
+        }
+    }
+
     // MARK: - App Store readiness: manual log suggestions
 
     func testManualLogSuggestionsExposeUsualSPFAfterNoteOnlyLog() throws {
@@ -288,5 +310,53 @@ final class ImprovementTests: XCTestCase {
         XCTAssertEqual(snapshot.currentStreak, 1)
         XCTAssertEqual(snapshot.weeklyAppliedCount, 1)
         XCTAssertTrue(calendar.isDate(try XCTUnwrap(snapshot.lastLoggedDay), inSameDayAs: fixedNow))
+    }
+
+    func testAppStateReferenceDateUsesInjectedClock() throws {
+        let calendar = Calendar.current
+        let fixedNow = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 5, day: 20, hour: 16)))
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let state = AppState(
+            context: ModelContext(container),
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(),
+            clock: { fixedNow }
+        )
+
+        XCTAssertEqual(state.referenceDate, fixedNow)
+    }
+
+    func testNoopSettingsUpdatesDoNotCreateDurableHistoryBatches() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let state = AppState(
+            context: ModelContext(container),
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService()
+        )
+        let initialBatchCount = state.changeBatches.count
+        let reminderSettings = state.settings.smartReminderSettings
+
+        state.updateDailyReminder(
+            hour: reminderSettings.weekdayTime.hour,
+            minute: reminderSettings.weekdayTime.minute
+        )
+        state.updateReminderTime(
+            for: .weekend,
+            hour: reminderSettings.weekendTime.hour,
+            minute: reminderSettings.weekendTime.minute
+        )
+        state.updateTravelTimeZoneHandling(followsTravelTimeZone: reminderSettings.followsTravelTimeZone)
+        state.updateStreakRiskReminder(enabled: reminderSettings.streakRiskEnabled)
+        state.updateLeaveHomeReminderEnabled(
+            enabled: reminderSettings.leaveHomeReminder.isEnabled,
+            allowPermissionPrompt: false
+        )
+        state.updateReapplySettings(
+            enabled: state.settings.reapplyReminderEnabled,
+            intervalMinutes: state.settings.reapplyIntervalMinutes
+        )
+        state.updateLiveUVPreference(enabled: state.settings.usesLiveUV, allowPermissionPrompt: false)
+
+        XCTAssertEqual(state.changeBatches.count, initialBatchCount)
     }
 }
