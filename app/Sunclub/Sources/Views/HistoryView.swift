@@ -3,6 +3,8 @@ import SwiftUI
 struct HistoryView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var displayedMonth: Date
     @State private var selectedDay: Date?
     @State private var editorPresentation: HistoryEditorPresentation?
@@ -38,7 +40,7 @@ struct HistoryView: View {
 
                 calendarGrid(recordDates: recordDates)
                     .id(displayedMonth)
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
 
                 if selectedDay == nil {
                     historyEmptyHint
@@ -187,7 +189,7 @@ struct HistoryView: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("history.streakContext")
@@ -210,7 +212,7 @@ struct HistoryView: View {
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.76))
+                .fill(AppPalette.cardFill.opacity(0.76))
         )
         .accessibilityIdentifier(accessibilityIdentifier)
     }
@@ -234,7 +236,7 @@ struct HistoryView: View {
     }
 
     private var historyLegend: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+        LazyVGrid(columns: historyLegendColumns, spacing: 8) {
             if !appState.currentStreakDays.isEmpty {
                 historyLegendItem(
                     title: "Streak",
@@ -285,11 +287,18 @@ struct HistoryView: View {
             Text(title)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier(accessibilityIdentifier)
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var historyLegendColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 8),
+            count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        )
     }
 
     private var historyEmptyHint: some View {
@@ -416,7 +425,7 @@ struct HistoryView: View {
     private func selectDay(_ day: Date, state: HistoryDayCellState) {
         guard state.isCurrentMonth && !state.isFuture else { return }
 
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
             selectedDay = day
         }
     }
@@ -495,11 +504,11 @@ struct HistoryView: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
 
@@ -553,7 +562,7 @@ struct HistoryView: View {
             Text(notes)
                 .font(.system(size: 13))
                 .foregroundStyle(AppPalette.softInk)
-                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("history.dayNote")
         }
     }
@@ -564,7 +573,7 @@ struct HistoryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Merged for review")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.red.opacity(0.8))
+                    .foregroundStyle(AppPalette.ink)
 
                 Text(conflict.summary)
                     .font(.system(size: 13))
@@ -603,7 +612,7 @@ struct HistoryView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(statusColor(for: status))
                 .frame(width: 28, height: 28)
-                .background(Color.white.opacity(0.76), in: Circle())
+                .background(AppPalette.cardFill.opacity(0.76), in: Circle())
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(statusTitle(for: status))
@@ -669,7 +678,7 @@ struct HistoryView: View {
     private func monthlyInsightDisclosure(_ insights: MonthlyReviewInsights) -> some View {
         if insights.hasContent {
             Button(isShowingMonthlyInsights ? "Hide Patterns" : "Show Patterns") {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
                     isShowingMonthlyInsights.toggle()
                 }
             }
@@ -759,7 +768,7 @@ struct HistoryView: View {
         guard offset != 0 else { return }
         guard offset < 0 || canGoForward else { return }
 
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
             displayedMonth = calendar.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
             selectedDay = nil
             isShowingMonthlyInsights = false
@@ -768,7 +777,7 @@ struct HistoryView: View {
 
     private func jumpToToday() {
         let today = calendar.startOfDay(for: Date())
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
             displayedMonth = today
             selectedDay = today
         }
@@ -844,11 +853,11 @@ struct HistoryView: View {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
 
@@ -875,7 +884,7 @@ struct HistoryView: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier)

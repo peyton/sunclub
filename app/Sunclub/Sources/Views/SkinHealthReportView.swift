@@ -3,6 +3,7 @@ import SwiftUI
 struct SkinHealthReportView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var startDate = Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 1, day: 1)) ?? Date()
     @State private var endDate = Date()
     @State private var shareSheetItem: ShareSheetItem?
@@ -90,7 +91,7 @@ struct SkinHealthReportView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+            LazyVGrid(columns: monthlyConsistencyColumns, spacing: 10) {
                 ForEach(summary.monthlyConsistency) { month in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(month.monthLabel)
@@ -103,12 +104,16 @@ struct SkinHealthReportView: View {
 
                         ProgressView(value: month.ratio)
                             .tint(AppPalette.sun)
+                            .accessibilityHidden(true)
                     }
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.9))
+                            .fill(AppPalette.cardFill.opacity(0.9))
                     )
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(month.monthLabel)
+                    .accessibilityValue("\(month.protectedDays) of \(month.totalDays) protected days")
                 }
             }
         }
@@ -148,6 +153,15 @@ struct SkinHealthReportView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var monthlyConsistencyColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible(), spacing: 10)]
+        }
+
+        return Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
     }
 
     @ViewBuilder
@@ -190,11 +204,11 @@ struct SkinHealthReportView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.72))
+            .fill(AppPalette.cardFill.opacity(0.72))
             .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
     }
 }

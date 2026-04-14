@@ -108,13 +108,14 @@ struct AccountabilityOnboardingView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.72))
+            .fill(AppPalette.cardFill.opacity(0.72))
     }
 }
 
 struct FriendsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var preferredName = ""
     @State private var importCode = ""
     @State private var importErrorMessage: String?
@@ -199,7 +200,7 @@ struct FriendsView: View {
                     .foregroundStyle(appState.growthSettings.accountability.isActive ? AppPalette.success : AppPalette.softInk)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.white.opacity(0.8)))
+                    .background(Capsule().fill(AppPalette.cardFill.opacity(0.8)))
             }
 
             Text("Friends see only your display name, logged-today status, streaks, and last update.")
@@ -249,7 +250,7 @@ struct FriendsView: View {
     private var compactAddFriendsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
                     isAddFriendsExpanded.toggle()
                 }
             } label: {
@@ -277,6 +278,8 @@ struct FriendsView: View {
                 }
             }
             .buttonStyle(AccountabilityCardButtonStyle())
+            .accessibilityValue(isAddFriendsExpanded ? "Expanded" : "Collapsed")
+            .accessibilityHint(isAddFriendsExpanded ? "Hides invite options." : "Shows invite options.")
             .accessibilityIdentifier("friends.add.toggle")
 
             if isAddFriendsExpanded {
@@ -348,8 +351,7 @@ struct FriendsView: View {
             Text(appState.accountabilityInviteCode)
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
                 .foregroundStyle(AppPalette.ink)
-                .lineLimit(4)
-                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
                 .accessibilityIdentifier("friends.backupCode")
 
@@ -385,12 +387,13 @@ struct FriendsView: View {
                 .padding(10)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.9))
+                        .fill(AppPalette.cardFill.opacity(0.9))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(AppPalette.ink.opacity(0.08), lineWidth: 1)
                 )
+                .accessibilityLabel("Invite or backup code")
                 .accessibilityIdentifier("friends.importCode")
 
             if let importErrorMessage {
@@ -519,7 +522,7 @@ struct FriendsView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
+                    .fill(AppPalette.cardFill.opacity(0.72))
             )
         }
         .buttonStyle(AccountabilityCardButtonStyle())
@@ -527,11 +530,11 @@ struct FriendsView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.72))
+            .fill(AppPalette.cardFill.opacity(0.72))
             .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
     }
 }
@@ -595,11 +598,11 @@ private struct FriendAccountabilityRow: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
 
@@ -629,7 +632,7 @@ private struct FriendAccountabilityRow: View {
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
-                        .fill(Color.white.opacity(0.72))
+                        .fill(AppPalette.cardFill.opacity(0.72))
                 )
         }
         .accessibilityLabel("More actions for \(friend.name)")
@@ -656,7 +659,7 @@ private struct FriendAvatar: View {
 
             Text(initial)
                 .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppPalette.onAccent)
 
             if isLogged {
                 SunclubVisualAsset.motifShieldGlow.image
@@ -675,11 +678,13 @@ private struct FriendAvatar: View {
 }
 
 private struct AccountabilityCardButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(configuration.isPressed ? 0.82 : 1)
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.985 : 1))
+            .animation(SunMotion.easeOut(duration: 0.12, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -774,7 +779,7 @@ private struct NearbyAccountabilitySheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
     }
 }

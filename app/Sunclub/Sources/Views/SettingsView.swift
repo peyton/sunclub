@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedReminderPicker: ReminderScheduleKind?
     @State private var pickerTime = Date()
@@ -116,7 +118,7 @@ struct SettingsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
                     toggleSection(section)
                 }
             } label: {
@@ -147,7 +149,8 @@ struct SettingsView: View {
                 .background(cardBackground)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Shows \(section.title) settings.")
+            .accessibilityValue(isSectionExpanded(section) ? "Expanded" : "Collapsed")
+            .accessibilityHint(isSectionExpanded(section) ? "Hides \(section.title) settings." : "Shows \(section.title) settings.")
             .accessibilityIdentifier("settings.section.\(section.rawValue)")
 
             if isSectionExpanded(section) {
@@ -326,23 +329,9 @@ struct SettingsView: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(AppPalette.softInk)
 
-                        HStack(spacing: 8) {
+                        LazyVGrid(columns: reapplyIntervalColumns, spacing: 8) {
                             ForEach(reapplyOptions, id: \.self) { minutes in
-                                Button {
-                                    reapplyInterval = minutes
-                                    appState.updateReapplySettings(enabled: reapplyEnabled, intervalMinutes: minutes)
-                                } label: {
-                                    Text(formatInterval(minutes))
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(reapplyInterval == minutes ? .white : AppPalette.ink)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .fill(reapplyInterval == minutes ? AppPalette.sun : Color.white.opacity(0.72))
-                                        )
-                                }
-                                .buttonStyle(.plain)
+                                reapplyIntervalButton(minutes)
                             }
                         }
                         .accessibilityIdentifier("settings.reapplyInterval")
@@ -760,10 +749,10 @@ struct SettingsView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.82))
+            .fill(AppPalette.cardFill.opacity(0.82))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
     }
 
@@ -851,6 +840,42 @@ struct SettingsView: View {
         let hours = minutes / 60
         let remaining = minutes % 60
         return remaining > 0 ? "\(hours)h\(remaining)m" : "\(hours)h"
+    }
+
+    private var reapplyIntervalColumns: [GridItem] {
+        let minimumWidth: CGFloat = dynamicTypeSize.isAccessibilitySize ? 124 : 64
+        return [GridItem(.adaptive(minimum: minimumWidth), spacing: 8)]
+    }
+
+    private func reapplyIntervalButton(_ minutes: Int) -> some View {
+        let isSelected = reapplyInterval == minutes
+
+        return Button {
+            reapplyInterval = minutes
+            appState.updateReapplySettings(enabled: reapplyEnabled, intervalMinutes: minutes)
+        } label: {
+            HStack(spacing: 5) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                }
+
+                Text(formatInterval(minutes))
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
+            .frame(maxWidth: .infinity, minHeight: 34)
+            .padding(.horizontal, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Reapply interval \(formatInterval(minutes))")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("settings.reapplyInterval.\(minutes)")
     }
 
     private func handleNotificationHealthAction(for presentation: NotificationHealthPresentation) {
@@ -1118,10 +1143,10 @@ private struct ReminderToggleCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.82))
+                .fill(AppPalette.cardFill.opacity(0.82))
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                        .stroke(AppPalette.hairlineStroke, lineWidth: 1)
                 }
         )
     }

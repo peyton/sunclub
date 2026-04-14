@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct RuntimeEnvironmentSnapshot: Equatable {
     let isRunningTests: Bool
@@ -25,6 +26,65 @@ struct RuntimeEnvironmentSnapshot: Equatable {
 enum RuntimeEnvironment {
     static var isUITesting: Bool {
         ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
+    }
+
+    static var preferredColorSchemeOverride: ColorScheme? {
+        guard isUITesting else {
+            return nil
+        }
+
+        if ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_DARK_MODE") {
+            return .dark
+        }
+
+        if ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_LIGHT_MODE") {
+            return .light
+        }
+
+        return nil
+    }
+
+    static var dynamicTypeSizeOverride: DynamicTypeSize? {
+        guard isUITesting else {
+            return nil
+        }
+
+        if ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_ACCESSIBILITY_TEXT") {
+            return .accessibility3
+        }
+
+        if ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_LARGER_TEXT") {
+            return .xxLarge
+        }
+
+        return nil
+    }
+
+    static var accessibilityReduceMotionOverride: Bool? {
+        guard isUITesting,
+              ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_REDUCE_MOTION") else {
+            return nil
+        }
+
+        return true
+    }
+
+    static var differentiateWithoutColorOverride: Bool? {
+        guard isUITesting,
+              ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_DIFFERENTIATE_WITHOUT_COLOR") else {
+            return nil
+        }
+
+        return true
+    }
+
+    static var shouldUseIncreasedAccessibilityContrast: Bool {
+        guard isUITesting,
+              ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_INCREASE_CONTRAST") else {
+            return false
+        }
+
+        return true
     }
 
     static var currentDateOverride: Date? {

@@ -22,11 +22,12 @@ struct VerificationSuccessView: View {
                         .overlay {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(AppPalette.onAccent)
                         }
                         .offset(x: 10, y: 8)
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
 
                 SunBrandLockup(layout: .inline, markSize: 28)
 

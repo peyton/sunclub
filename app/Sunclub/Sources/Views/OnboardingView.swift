@@ -60,7 +60,7 @@ struct EnableNotificationsView: View {
                 .overlay(alignment: .topTrailing) {
                     Image(systemName: "bell.badge.fill")
                         .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppPalette.onAccent)
                         .frame(width: 58, height: 58)
                         .background(AppPalette.sun, in: Circle())
                         .shadow(color: AppPalette.sun.opacity(0.28), radius: 16, x: 0, y: 8)

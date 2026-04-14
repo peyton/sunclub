@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class SunclubUITests: XCTestCase {
     override func setUpWithError() throws {
@@ -242,6 +243,87 @@ final class SunclubUITests: XCTestCase {
     func testHomeShowsManualLogButton() throws {
         let app = launchHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testDarkModeCoreScreensRemainUsable() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_FORCE_DARK_MODE",
+            "UITEST_UV_INDEX=7"
+        ])
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertLessThan(averageScreenshotLuminance(), 0.70)
+        app.terminate()
+
+        let settingsApp = launchDarkRoute("settings")
+        XCTAssertTrue(settingsApp.staticTexts["Settings"].waitForExistence(timeout: 5))
+        expandSettingsSection("reminders", in: settingsApp)
+        XCTAssertTrue(settingsApp.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        settingsApp.terminate()
+
+        let manualLogApp = launchDarkRoute("manualLog")
+        XCTAssertTrue(manualLogApp.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        XCTAssertTrue(manualLogApp.buttons["manualLog.scanSPF"].exists)
+        manualLogApp.terminate()
+
+        let historyApp = launchDarkRoute("history")
+        XCTAssertTrue(historyApp.otherElements["history.calendarGrid"].waitForExistence(timeout: 5))
+        historyApp.terminate()
+
+        let weeklyApp = launchDarkRoute("weeklySummary")
+        XCTAssertTrue(weeklyApp.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        weeklyApp.terminate()
+
+        let achievementsApp = launchDarkRoute("achievements")
+        XCTAssertTrue(achievementsApp.staticTexts["Achievements"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testAccessibilityScorecardCoreTasksRemainUsable() throws {
+        let app = launchHome(additionalArguments: accessibilityScorecardArguments + [
+            "UITEST_UV_INDEX=8",
+            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
+        ])
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.buttons["home.streakCard"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["home.uvBriefingToggle"], in: app))
+        app.buttons["home.uvBriefingToggle"].tap()
+        XCTAssertTrue(app.buttons["home.uvBriefingToggle"].exists)
+        app.terminate()
+
+        let settingsApp = launchAccessibilityScorecardRoute("settings")
+        XCTAssertTrue(settingsApp.staticTexts["Settings"].waitForExistence(timeout: 5))
+        expandSettingsSection("progress", in: settingsApp)
+        let reapplyToggle = settingsApp.switches["settings.reapplyToggle"]
+        XCTAssertTrue(scrollToElement(reapplyToggle, in: settingsApp))
+        reapplyToggle.tap()
+        XCTAssertTrue(scrollToElement(settingsApp.buttons["settings.reapplyInterval.120"], in: settingsApp))
+        settingsApp.terminate()
+
+        let manualLogApp = launchAccessibilityScorecardRoute("manualLog")
+        XCTAssertTrue(manualLogApp.buttons["manualLog.detailsToggle"].waitForExistence(timeout: 5))
+        manualLogApp.buttons["manualLog.detailsToggle"].tap()
+        XCTAssertTrue(scrollToElement(manualLogApp.buttons["manualLog.spf.30"], in: manualLogApp))
+        manualLogApp.buttons["manualLog.spf.30"].tap()
+        XCTAssertTrue(manualLogApp.buttons["manualLog.logToday"].exists)
+        manualLogApp.terminate()
+
+        let historyApp = launchAccessibilityScorecardRoute("history", additionalArguments: [
+            "UITEST_SEED_HISTORY=monthlyReview"
+        ])
+        XCTAssertTrue(historyApp.otherElements["history.calendarGrid"].waitForExistence(timeout: 5))
+        XCTAssertTrue(historyApp.staticTexts["history.monthTitle"].exists)
+        historyApp.terminate()
+
+        let weeklyApp = launchAccessibilityScorecardRoute("weeklySummary", additionalArguments: [
+            "UITEST_SEED_HISTORY=achievementProgress"
+        ])
+        XCTAssertTrue(weeklyApp.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+        XCTAssertTrue(weeklyApp.buttons["weekly.viewFullHistory"].exists)
     }
 
     @MainActor
@@ -541,7 +623,7 @@ final class SunclubUITests: XCTestCase {
         let app = launchHistoryWithSeededRecords(route: "historyEditToday")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
 
-        app.buttons["70"].tap()
+        app.buttons["historyEditor.spf.70"].tap()
         app.buttons["historyEditor.save"].tap()
 
         XCTAssertTrue(waitForLabel("SPF 70", on: app.staticTexts["historyHarness.spf"]))
@@ -552,7 +634,7 @@ final class SunclubUITests: XCTestCase {
         let app = launchHistoryWithSeededRecords(route: "historyBackfillTwoDaysAgo")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
 
-        app.buttons["50"].tap()
+        app.buttons["historyEditor.spf.50"].tap()
         app.buttons["historyEditor.save"].tap()
 
         XCTAssertTrue(waitForLabel("SPF 50", on: app.staticTexts["historyHarness.spf"]))
@@ -841,6 +923,34 @@ final class SunclubUITests: XCTestCase {
         return app
     }
 
+    private var accessibilityScorecardArguments: [String] {
+        [
+            "UITEST_FORCE_DARK_MODE",
+            "UITEST_FORCE_ACCESSIBILITY_TEXT",
+            "UITEST_FORCE_REDUCE_MOTION",
+            "UITEST_FORCE_DIFFERENTIATE_WITHOUT_COLOR",
+            "UITEST_FORCE_INCREASE_CONTRAST"
+        ]
+    }
+
+    @MainActor
+    private func launchDarkRoute(_ route: String) -> XCUIApplication {
+        launchHome(additionalArguments: [
+            "UITEST_FORCE_DARK_MODE",
+            "UITEST_ROUTE=\(route)"
+        ])
+    }
+
+    @MainActor
+    private func launchAccessibilityScorecardRoute(
+        _ route: String,
+        additionalArguments: [String] = []
+    ) -> XCUIApplication {
+        launchHome(additionalArguments: accessibilityScorecardArguments + [
+            "UITEST_ROUTE=\(route)"
+        ] + additionalArguments)
+    }
+
     @MainActor
     private func launchHistoryWithSeededRecords(route: String = "history") -> XCUIApplication {
         let app = XCUIApplication()
@@ -958,6 +1068,50 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     private func stringValue(of element: XCUIElement) -> String? {
         element.value as? String
+    }
+
+    private func averageScreenshotLuminance() -> Double {
+        let screenshot = XCUIScreen.main.screenshot()
+        guard let image = UIImage(data: screenshot.pngRepresentation),
+              let cgImage = image.cgImage else {
+            XCTFail("Could not decode screenshot for luminance audit.")
+            return 1
+        }
+
+        let width = 80
+        let height = max(1, Int(Double(cgImage.height) * Double(width) / Double(cgImage.width)))
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let pixelBufferCount = pixels.count
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+
+        return pixels.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(
+                data: buffer.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: colorSpace,
+                bitmapInfo: bitmapInfo
+            ) else {
+                XCTFail("Could not create screenshot sampling context.")
+                return 1
+            }
+
+            context.interpolationQuality = .low
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+            var total = 0.0
+            let bytes = buffer.bindMemory(to: UInt8.self)
+            for index in stride(from: 0, to: pixelBufferCount, by: 4) {
+                let red = Double(bytes[index]) / 255
+                let green = Double(bytes[index + 1]) / 255
+                let blue = Double(bytes[index + 2]) / 255
+                total += 0.2126 * red + 0.7152 * green + 0.0722 * blue
+            }
+            return total / Double(width * height)
+        }
     }
 
     @MainActor

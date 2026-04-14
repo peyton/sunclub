@@ -3,6 +3,8 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var now = Date()
     @State private var isExploreExpanded = false
     @State private var isUVExpanded = false
@@ -72,11 +74,13 @@ struct HomeView: View {
                         .frame(width: 44, height: 44)
                         .background(
                             Circle()
-                                .fill(Color.white.opacity(0.72))
+                                .fill(AppPalette.cardFill.opacity(0.72))
                         )
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .accessibilityHint("Opens app settings.")
                 .accessibilityIdentifier("home.settingsButton")
             }
 
@@ -149,7 +153,7 @@ struct HomeView: View {
         .background(
             ZStack(alignment: .bottomTrailing) {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
+                    .fill(AppPalette.cardFill.opacity(0.72))
 
                 if presentation.logBadgeText != nil {
                     SunclubVisualAsset.motifShieldGlow.image
@@ -163,7 +167,7 @@ struct HomeView: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
 
@@ -300,6 +304,11 @@ struct HomeView: View {
                                 Text(hour.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated))))
                                     .font(.system(size: 10, weight: .medium))
                                     .foregroundStyle(AppPalette.softInk)
+
+                                Text(hour.level.displayName)
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(AppPalette.softInk)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
@@ -311,7 +320,10 @@ struct HomeView: View {
                             .scaledToFill()
                             .opacity(0.24)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .accessibilityHidden(true)
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(uvForecastAccessibilityLabel(uvForecast))
                 }
 
                 if shouldShowExpandedUVForecast(uvForecast) {
@@ -322,7 +334,7 @@ struct HomeView: View {
 
                 Button(isUVExpanded ? "Show Less" : "Show More") {
                     feedbackTrigger += 1
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
                         isUVExpanded.toggle()
                     }
                 }
@@ -355,7 +367,7 @@ struct HomeView: View {
                     Text(achievement.detail)
                         .font(.system(size: 13))
                         .foregroundStyle(AppPalette.softInk)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 0)
@@ -373,7 +385,7 @@ struct HomeView: View {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
         }
     }
@@ -382,7 +394,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
                 feedbackTrigger += 1
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
                     isExploreExpanded.toggle()
                 }
             } label: {
@@ -417,7 +429,7 @@ struct HomeView: View {
             .accessibilityIdentifier("home.exploreToggle")
 
             if isExploreExpanded {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                LazyVGrid(columns: exploreColumns, spacing: 12) {
                     homeFeatureButton(
                         title: "Achievements",
                         detail: appState.unseenAchievementCount > 0 ? "\(appState.unseenAchievementCount) new" : "Progress badges",
@@ -449,6 +461,13 @@ struct HomeView: View {
                 .accessibilityIdentifier("home.exploreGrid")
             }
         }
+    }
+
+    private var exploreColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 12),
+            count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        )
     }
 
     private var streakCard: some View {
@@ -489,10 +508,10 @@ struct HomeView: View {
                 HStack(spacing: 6) {
                     ForEach(Array(recentDayTrack.enumerated()), id: \.offset) { _, isLogged in
                         Capsule()
-                            .fill(isLogged ? AppPalette.sun : Color.white.opacity(0.68))
+                            .fill(isLogged ? AppPalette.sun : AppPalette.controlFill.opacity(0.68))
                             .overlay {
                                 Capsule()
-                                    .stroke(Color.white.opacity(0.60), lineWidth: 1)
+                                    .stroke(AppPalette.cardStroke, lineWidth: 1)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 9)
@@ -511,6 +530,9 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(AppPalette.streakBackground)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Current streak")
+        .accessibilityValue(streakAccessibilityValue)
     }
 
     private var historyCard: some View {
@@ -538,7 +560,7 @@ struct HomeView: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
     }
 
@@ -601,6 +623,14 @@ struct HomeView: View {
         case .unknown:
             return AppPalette.muted
         }
+    }
+
+    private func uvForecastAccessibilityLabel(_ forecast: SunclubUVForecast) -> String {
+        let hours = forecast.hours.prefix(8).map { hour in
+            let time = hour.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)))
+            return "\(time), UV \(hour.index), \(hour.level.displayName)"
+        }
+        return "UV forecast. \(hours.joined(separator: ". "))"
     }
 
     @ViewBuilder
@@ -813,6 +843,11 @@ struct HomeView: View {
         }
     }
 
+    private var streakAccessibilityValue: String {
+        let loggedDays = recentDayTrack.filter { $0 }.count
+        return "\(appState.currentStreak) days. Best streak \(appState.longestStreak) days. \(loggedDays) of the last 7 days logged."
+    }
+
     private func featureAsset(for route: AppRoute) -> SunclubVisualAsset {
         switch route {
         case .achievements:
@@ -905,7 +940,7 @@ private struct HomeBannerCard: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: symbol)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppPalette.onAccent)
                     .frame(width: 30, height: 30)
                     .background(tint, in: Circle())
 
@@ -937,11 +972,11 @@ private struct HomeBannerCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
 }
@@ -953,76 +988,81 @@ private struct HomeAccountabilityCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(AppPalette.sun, in: Circle())
+            Button(action: onOpenFriends) {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(AppPalette.onAccent)
+                            .frame(width: 34, height: 34)
+                            .background(AppPalette.sun, in: Circle())
+                            .accessibilityHidden(true)
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Accountability")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(AppPalette.softInk)
-
-                        Text(presentation.title)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(AppPalette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    HStack(alignment: .top, spacing: 8) {
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text(presentation.openCountText)
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(AppPalette.ink)
-                            Text(presentation.loggedCountText)
-                                .font(.system(size: 12, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Accountability")
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(AppPalette.softInk)
+
+                            Text(presentation.title)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(AppPalette.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(AppPalette.softInk)
-                            .padding(.top, 2)
-                    }
-                }
+                        Spacer(minLength: 0)
 
-                Text(presentation.detail)
-                    .font(.system(size: 14))
+                        HStack(alignment: .top, spacing: 8) {
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text(presentation.openCountText)
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(AppPalette.ink)
+                                Text(presentation.loggedCountText)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(AppPalette.softInk)
+                            }
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(AppPalette.softInk)
+                                .padding(.top, 2)
+                                .accessibilityHidden(true)
+                        }
+                    }
+
+                    Text(presentation.detail)
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Accountability")
+            .accessibilityValue(accountabilityAccessibilityValue)
+            .accessibilityHint("Opens accountability friends.")
+            .accessibilityIdentifier("home.accountabilityOpen")
+
+            if !presentation.friends.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(presentation.friends) { friend in
+                            HomeAccountabilityFriendChip(friend: friend)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Friends")
+                .accessibilityIdentifier("home.accountabilityFriendStrip")
+            }
+
+            if let latestPokeText = presentation.latestPokeText {
+                Label(latestPokeText, systemImage: "hand.tap.fill")
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
-
-                if !presentation.friends.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(presentation.friends) { friend in
-                                HomeAccountabilityFriendChip(friend: friend)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("home.accountabilityFriendStrip")
-                }
-
-                if let latestPokeText = presentation.latestPokeText {
-                    Label(latestPokeText, systemImage: "hand.tap.fill")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("home.accountabilityLatestPoke")
-                }
+                    .accessibilityIdentifier("home.accountabilityLatestPoke")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onOpenFriends)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("home.accountabilityOpen")
 
             if presentation.primaryActionKind != .view {
                 Button(presentation.primaryActionTitle, action: onPrimaryAction)
@@ -1034,10 +1074,33 @@ private struct HomeAccountabilityCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.accountabilityCard")
+    }
+
+    private var accountabilityAccessibilityValue: String {
+        var parts = [
+            presentation.title,
+            presentation.detail,
+            presentation.openCountText,
+            presentation.loggedCountText
+        ]
+
+        if !presentation.friends.isEmpty {
+            parts.append(
+                presentation.friends
+                    .map { "\($0.name), \($0.status), \($0.streak)" }
+                    .joined(separator: "; ")
+            )
+        }
+
+        if let latestPokeText = presentation.latestPokeText {
+            parts.append(latestPokeText)
+        }
+
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -1048,7 +1111,7 @@ private struct HomeAccountabilityFriendChip: View {
         HStack(spacing: 7) {
             Text(initial)
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppPalette.onAccent)
                 .frame(width: 26, height: 26)
                 .background(avatarColor, in: Circle())
                 .accessibilityHidden(true)
@@ -1057,20 +1120,23 @@ private struct HomeAccountabilityFriendChip: View {
                 Text(friend.name)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text("\(friend.status) · \(friend.streak)")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.82))
+                .fill(AppPalette.cardFill.opacity(0.82))
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(friend.name)
+        .accessibilityValue("\(friend.status), \(friend.streak)")
     }
 
     private var initial: String {
@@ -1087,7 +1153,7 @@ private struct HomeAccountabilityFriendChip: View {
             AppPalette.coral,
             AppPalette.aloe,
             AppPalette.pool,
-            AppPalette.ink
+            AppPalette.success
         ]
         let index = Int(friend.id.uuid.0) % palette.count
         return palette[index]
