@@ -38,7 +38,7 @@ Sunclub needs a public web presence that is suitable for App Store review and ch
 - Decision: Do not add an App Store badge or download link yet.
   Rationale: The real App Store URL is not present in the repo. A fake or placeholder download link would be worse for App Review and users than a clear release-in-progress note.
   Date/Author: 2026-04-12 / Codex
-- Decision: Make `sunclub@peyton.app` visible on every HTML page.
+- Decision: Make `support@mail.sunclub.peyton.app` visible on every HTML page.
   Rationale: Apple requires support URLs to lead to actual contact information. Repeating the address in the header/footer also makes privacy and support contact easy to find.
   Date/Author: 2026-04-12 / Codex
 - Decision: Fix `scripts/appstore/capture-screenshots.sh` to use the repo's common tooling wrapper rather than `bin/mise`.
@@ -71,7 +71,7 @@ Local static serving was checked with `just web-serve PORT=8000`. The routes `/`
 
 The iOS app lives under `app/`. Current product behavior is documented in `app/SPEC.md` and `app/README.md`. App Store metadata is centralized in `scripts/appstore/metadata.json` and checked by `scripts/appstore/validate_metadata.py`. Repo commands are exposed through `justfile`. The public website now lives entirely under `web/`; a static host should publish that directory as the document root with no build command.
 
-The site must avoid App Review risks: placeholder links, JavaScript-required rendering, `noindex`, invisible contact details, misleading claims, and copy that conflicts with the current app. The public support contact is `sunclub@peyton.app`.
+The site must avoid App Review risks: placeholder links, JavaScript-required rendering, `noindex`, invisible contact details, misleading claims, and copy that conflicts with the current app. The public support contact is `support@mail.sunclub.peyton.app`.
 
 ## Plan of Work
 
@@ -104,7 +104,7 @@ Then open:
 
 Acceptance is user-visible and command-backed. `just web-check` must pass with no broken links, placeholder links, `noindex`, missing titles, missing descriptions, insecure URLs, missing support email, or forbidden stale claims. The focused pytest command must pass. `just appstore-validate` may still warn that the private App Review contact is draft, but it must not warn that the marketing, support, or privacy URLs are draft. `just lint` must include web validation through its dependency chain.
 
-When served locally, the homepage, support page, and privacy policy must render without JavaScript. The header and footer must provide `sunclub@peyton.app`. The homepage must not show a fake App Store link. The support and privacy pages must say Sunclub is not medical advice.
+When served locally, the homepage, support page, and privacy policy must render without JavaScript. The header and footer must provide `support@mail.sunclub.peyton.app`. The homepage must not show a fake App Store link. The support and privacy pages must say Sunclub is not medical advice.
 
 ## Idempotence and Recovery
 

@@ -20,7 +20,7 @@ Sunclub's public website should work as an App Store marketing surface, not only
 - Observation: The old static-site validator hard-coded `/automation/` as required in both the file list and sitemap checks.
   Evidence: `scripts/web/validate_static_site.py` included `automation/index.html` and `"/automation/"`.
 - Observation: The existing homepage made support a hero CTA even though support should be a low-prominence path.
-  Evidence: `web/index.html` linked the secondary hero button to `mailto:support@sunclub.peyton.app`.
+  Evidence: `web/index.html` linked the secondary hero button to `mailto:support@mail.sunclub.peyton.app`.
 - Observation: Mobile light mode needed an opaque secondary hero button because the phone screenshot sits behind the hero actions at 390px.
   Evidence: The first headless mobile screenshot showed weak contrast on `Read the docs`; after increasing the secondary button background opacity, the button stayed readable.
 - Observation: The long URL examples on the automation docs do not cause mobile horizontal overflow.

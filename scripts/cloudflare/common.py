@@ -307,9 +307,21 @@ def validate_pages_config(config: JsonObject) -> list[str]:
 
 def validate_email_config(config: JsonObject) -> list[str]:
     errors: list[str] = []
-    for key in ("account_id", "zone_id", "zone_name", "destination_env"):
+    for key in (
+        "account_id",
+        "zone_id",
+        "zone_name",
+        "destination_env",
+        "mail_domain",
+    ):
         if not isinstance(config.get(key), str) or not config[key].strip():
             errors.append(f"email-routing.json missing non-empty string {key!r}.")
+
+    routes = config.get("routes")
+    if not _is_string_list(routes) or not routes:
+        errors.append("email-routing.json routes must be a non-empty string list.")
+    elif any("@" in route or not route.strip() for route in routes):
+        errors.append("email-routing.json routes must contain local parts only.")
 
     catch_all = config.get("catch_all")
     if not isinstance(catch_all, dict):

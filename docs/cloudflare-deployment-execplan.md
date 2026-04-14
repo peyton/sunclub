@@ -6,7 +6,7 @@ The local PLANS guidance used for this work was found at `/Users/peyton/.agents/
 
 ## Purpose / Big Picture
 
-Sunclub needs a public website and working support email surface that are stable enough for App Store review. After this change, the existing static site in `web/` can be connected to Cloudflare Pages at `https://sunclub.peyton.app`, and Cloudflare Email Routing can forward inbound `peyton.app` mail to the owner's private inbox without committing that inbox address. The iOS app Settings screen will also include visible support, privacy, and email links so reviewers and users can reach the same public pages from inside the app.
+Sunclub needs a public website and working support email surface that are stable enough for App Store review. After this change, the existing static site in `web/` can stay connected to Cloudflare Pages at `https://sunclub.peyton.app`, and Cloudflare Email Routing can forward the public mailboxes at `mail.sunclub.peyton.app` to the owner's private inbox without committing that inbox address. The iOS app Settings screen will also include visible support, privacy, and email links so reviewers and users can reach the same public pages from inside the app.
 
 ## Progress
 
@@ -19,6 +19,9 @@ Sunclub needs a public website and working support email surface that are stable
 - [x] (2026-04-12T00:00-07:00) Added Python and UI test coverage.
 - [x] (2026-04-12T00:00-07:00) Ran validation commands and recorded results.
 - [x] (2026-04-12T00:00-07:00) Switched web deployment ownership from Cloudflare Git integration to GitHub Actions Direct Upload.
+- [x] (2026-04-14T12:19Z) Adopted `mail.sunclub.peyton.app` as the dedicated Email Routing domain while keeping the `sunclub.peyton.app` Pages CNAME unchanged.
+- [x] (2026-04-14T12:19Z) Update local tooling, public links, and tests for the new mail subdomain routes.
+- [x] (2026-04-14T12:19Z) Run focused validation for Cloudflare config, static web links, iOS source assertions, and local status commands.
 
 ## Surprises & Discoveries
 
@@ -33,6 +36,9 @@ Sunclub needs a public website and working support email surface that are stable
 
 - Observation: The Cloudflare OpenAPI metadata available through the Cloudflare MCP matches the REST endpoints and payload keys used by the scripts.
   Evidence: The spec lists Pages project create/update, Pages custom domains, Email Routing destination addresses, Email Routing DNS/enable, and catch-all rule update endpoints with the fields used here.
+
+- Observation: A mail subdomain avoids a DNS conflict with the existing Pages CNAME.
+  Evidence: `sunclub.peyton.app` remains modeled in `infra/cloudflare/pages-project.json` as a proxied CNAME to `sunclub.pages.dev`; the new mail routes use `mail.sunclub.peyton.app` so Email Routing MX/TXT records can be created at a separate hostname.
 
 ## Decision Log
 
@@ -52,11 +58,28 @@ Sunclub needs a public website and working support email surface that are stable
   Rationale: Repo-root commands should be runnable from a clean checkout for local validation. Remote mutation and real status need Cloudflare credentials, so those paths must fail clearly only when explicitly invoked for setup.
   Date/Author: 2026-04-12 / Codex
 
+- Decision: Use explicit literal Email Routing rules at `mail.sunclub.peyton.app` and disable the old catch-all.
+  Rationale: The public website already owns `sunclub.peyton.app` through a Pages CNAME. A dedicated mail subdomain keeps web DNS untouched and limits delivery to the four intended public addresses: support, privacy, security, and contact.
+  Date/Author: 2026-04-14 / Codex
+
 ## Outcomes & Retrospective
 
 Implemented repo-root Cloudflare deployment tooling, tracked Cloudflare configuration, Settings links for App Store review, and tests for the new Python configuration helpers. Web deployment is now owned by GitHub Actions Direct Upload; any existing Cloudflare Git integration should have automatic production and preview builds disabled. Remote Cloudflare state was not mutated in this session because no usable `CLOUDFLARE_API_TOKEN` and `SUNCLUB_FORWARD_TO` were present.
 
+Implemented the mail subdomain migration on 2026-04-14. The Pages CNAME for `sunclub.peyton.app` remains unchanged, Email Routing now targets `mail.sunclub.peyton.app`, and the setup tool creates or updates explicit literal routes for `support`, `privacy`, `security`, and `contact` while disabling the old catch-all rule. Public web, validation, documentation, and iOS Settings references now use `@mail.sunclub.peyton.app` addresses. Remote Cloudflare mutation was not performed because `CLOUDFLARE_API_TOKEN` and `SUNCLUB_FORWARD_TO` were not available in this environment.
+
 Validation results:
+
+2026-04-14 mail subdomain validation:
+
+- `uv run pytest tests/test_cloudflare_config.py tests/test_web_static_site.py tests/test_ios_metadata.py -q`: passed, 63 tests.
+- `just cloudflare-email-status`: passed; local mail-domain and route config printed, remote checks skipped because `CLOUDFLARE_API_TOKEN` was not set, and `SUNCLUB_FORWARD_TO` was missing.
+- `just cloudflare-check`: passed; local config validation passed and remote checks were skipped without credentials.
+- `just web-check`: passed.
+- `just test-unit`: passed, 215 iOS unit tests.
+- `just lint`: passed after Ruff formatting; SwiftLint reported existing warning-level violations and zero serious violations.
+
+Earlier 2026-04-12 baseline validation:
 
 - `just web-check`: passed as part of `just cloudflare-check`, `just web-build`, and `just lint`.
 - `just web-build`: passed.
@@ -75,15 +98,15 @@ The public static site lives under `web/`. It already contains `index.html`, `su
 
 The iOS app lives under `app/`. The Settings screen is implemented in `app/Sunclub/Sources/Views/SettingsView.swift`. The app target in `app/Sunclub/Project.swift` includes every file under `app/Sunclub/Sources/**`, so a new shared Swift file under `app/Sunclub/Sources/Shared/` is automatically compiled into the app target.
 
-Cloudflare Pages is the Cloudflare static-hosting product used here. GitHub Actions deploys the static site with Wrangler Direct Upload whenever `web/**` changes land on `master`; Cloudflare-side Git automatic builds should stay disabled. Cloudflare Email Routing is the Cloudflare inbound-mail forwarding product. A catch-all rule means any address at `peyton.app`, such as `sunclub@peyton.app` or `support@peyton.app`, forwards to the configured destination.
+Cloudflare Pages is the Cloudflare static-hosting product used here. GitHub Actions deploys the static site with Wrangler Direct Upload whenever `web/**` changes land on `master`; Cloudflare-side Git automatic builds should stay disabled. Cloudflare Email Routing is the Cloudflare inbound-mail forwarding product. The current mail setup uses explicit literal rules, meaning only the exact configured addresses at `mail.sunclub.peyton.app` forward to the private destination. The old catch-all rule is disabled so unexpected `peyton.app` addresses do not silently forward.
 
 The Cloudflare account is `0e32ee7804b102bea6b9d3056d60f980` named Personal. The `peyton.app` zone is `a004f01ed99de3582152debde5a96a08` and is active. The GitHub repository is `peyton/sunclub`, and `origin/HEAD` points to `master`.
 
 ## Plan of Work
 
-Create `infra/cloudflare/` as the tracked source of truth for Cloudflare setup. `pages-project.json` describes the Pages project named `sunclub`, production branch `master`, custom domain `sunclub.peyton.app`, proxied CNAME DNS target `sunclub.pages.dev`, GitHub Actions Direct Upload mode, `cloudflare-production` GitHub deployment environment, build command `just web-build`, output directory `.build/web`, and required GitHub Actions secrets. `email-routing.json` describes a catch-all forwarding rule for `peyton.app`, with its destination read from `SUNCLUB_FORWARD_TO`. `infra/cloudflare/.env.example` documents the required local environment variables, while the real `.env` remains ignored.
+Create `infra/cloudflare/` as the tracked source of truth for Cloudflare setup. `pages-project.json` describes the Pages project named `sunclub`, production branch `master`, custom domain `sunclub.peyton.app`, proxied CNAME DNS target `sunclub.pages.dev`, GitHub Actions Direct Upload mode, `cloudflare-production` GitHub deployment environment, build command `just web-build`, output directory `.build/web`, and required GitHub Actions secrets. `email-routing.json` describes explicit forwarding rules for `support@mail.sunclub.peyton.app`, `privacy@mail.sunclub.peyton.app`, `security@mail.sunclub.peyton.app`, and `contact@mail.sunclub.peyton.app`, with the private destination read from `SUNCLUB_FORWARD_TO`. The real `infra/cloudflare/.env` remains ignored.
 
-Create `scripts/cloudflare/` with Python modules that use only the standard library. `common.py` will load config, validate environment variables, call Cloudflare's REST API, and expose idempotent helpers. `pages.py` will inspect or set up the Pages project and custom domain. `email.py` will inspect or set up destination addresses, Email Routing DNS, Email Routing enablement, and the catch-all rule.
+Create `scripts/cloudflare/` with Python modules that use only the standard library. `common.py` will load config, validate environment variables, call Cloudflare's REST API, and expose idempotent helpers. `pages.py` will inspect or set up the Pages project and custom domain. `email.py` will inspect or set up destination addresses, Email Routing DNS for `mail.sunclub.peyton.app`, Email Routing enablement, literal route rules, and catch-all disabling.
 
 Update the root `justfile` with `cloudflare-status`, `cloudflare-pages-setup`, `cloudflare-pages-status`, `cloudflare-email-setup`, `cloudflare-email-status`, and `cloudflare-check`. The status and check targets should succeed without credentials by validating local config and explaining that remote checks were skipped. The setup targets should require `CLOUDFLARE_API_TOKEN`; email setup should also require `SUNCLUB_FORWARD_TO`.
 
@@ -117,11 +140,11 @@ Local acceptance requires `just web-check`, `just web-build`, `just cloudflare-s
 
 App acceptance requires the Settings UI test to find the section button `settings.section.help` and the buttons `settings.support`, `settings.privacyPolicy`, and `settings.emailSupport`.
 
-Remote acceptance, when credentials are available, requires `just cloudflare-pages-setup` to create or update a Pages project named `sunclub`, attach `sunclub.peyton.app`, keep Cloudflare-side Git automatic builds disabled when source control is present, and report the project/domain status. It also requires `just cloudflare-email-setup` to ensure Email Routing is enabled and the catch-all rule forwards to the verified `SUNCLUB_FORWARD_TO` address.
+Remote acceptance, when credentials are available, requires `just cloudflare-pages-setup` to create or update a Pages project named `sunclub`, attach `sunclub.peyton.app`, keep Cloudflare-side Git automatic builds disabled when source control is present, and report the project/domain status. It also requires `just cloudflare-email-setup` to ensure Email Routing DNS is enabled for `mail.sunclub.peyton.app`, the four explicit route rules forward to the verified `SUNCLUB_FORWARD_TO` address, and the catch-all rule is disabled.
 
 ## Idempotence and Recovery
 
-The setup scripts must be safe to rerun. If the Pages project already exists, update its build configuration and disable Cloudflare-side Git automatic deployments when a source configuration is present instead of creating a duplicate. If the custom domain already exists, leave it in place. If the forwarding destination already exists, reuse it. If the destination exists but is not verified, tell the operator to verify it and rerun the setup command. If Email Routing is already enabled, leave it enabled and update the catch-all rule to the desired state.
+The setup scripts must be safe to rerun. If the Pages project already exists, update its build configuration and disable Cloudflare-side Git automatic deployments when a source configuration is present instead of creating a duplicate. If the custom domain already exists, leave it in place. If the forwarding destination already exists, reuse it. If the destination exists but is not verified, tell the operator to verify it and rerun the setup command. If Email Routing is already enabled, leave it enabled, create or update the four literal route rules to the desired state, and keep the catch-all disabled.
 
 No script should store secrets in tracked files. A local `infra/cloudflare/.env` file may be used by shell users, but it must stay ignored by git.
 
@@ -143,15 +166,17 @@ The public Python helpers at the end of implementation should include:
     scripts.cloudflare.pages.ensure_pages_project(client, config, github_repo_id=None)
     scripts.cloudflare.pages.ensure_pages_domain(client, config)
     scripts.cloudflare.email.destination_address(config)
-    scripts.cloudflare.email.build_catch_all_payload(config, destination)
+    scripts.cloudflare.email.build_route_payload(config, local_part, destination)
+    scripts.cloudflare.email.build_disabled_catch_all_payload(config)
     scripts.cloudflare.email.ensure_destination_address(client, config)
     scripts.cloudflare.email.ensure_email_routing(client, config)
-    scripts.cloudflare.email.ensure_catch_all_rule(client, config)
+    scripts.cloudflare.email.ensure_email_route_rules(client, config)
+    scripts.cloudflare.email.ensure_catch_all_disabled(client, config)
 
 The Swift interface should be a simple enum:
 
     enum SunclubWebLinks {
         static let support = URL(string: "https://sunclub.peyton.app/support/")!
         static let privacy = URL(string: "https://sunclub.peyton.app/privacy/")!
-        static let supportEmail = URL(string: "mailto:sunclub@peyton.app")!
+        static let supportEmail = URL(string: "mailto:support@mail.sunclub.peyton.app")!
     }

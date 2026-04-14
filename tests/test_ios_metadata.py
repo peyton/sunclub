@@ -152,6 +152,23 @@ def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
     assert quick_action["UIApplicationShortcutItemIconSymbolName"] == "sun.max.fill"
 
 
+def test_support_email_uses_mail_subdomain() -> None:
+    links = (SOURCES_DIR / "Shared" / "SunclubWebLinks.swift").read_text()
+    settings = (SOURCES_DIR / "Views" / "SettingsView.swift").read_text()
+
+    assert (
+        'static let supportEmail = URL(string: "mailto:support@mail.sunclub.peyton.app")!'
+        in links
+    )
+    assert "Send an email to support@mail.sunclub.peyton.app." in settings
+    for stale_address in (
+        "sunclub@peyton.app",
+        "support@sunclub.peyton.app",
+    ):
+        assert stale_address not in links
+        assert stale_address not in settings
+
+
 def test_app_entitlements_enable_weatherkit_for_live_uv() -> None:
     entitlements = load_app_entitlements()
 
