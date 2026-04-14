@@ -136,7 +136,7 @@ version = "3.8.1"
 backend = "npm:prettier"
 
 [[tools."npm:wrangler"]]
-version = "4.81.1"
+version = "4.82.2"
 backend = "npm:wrangler"
 
 [[tools.pkl]]
