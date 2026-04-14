@@ -9,6 +9,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
    - Logged-state widgets switch to status and navigation instead of re-logging.
    - `Streak`, `Stats`, and `Calendar` widgets summarize current progress with low-text layouts.
    - Control Center exposes `Log Today`, `Summary`, and `History`.
+   - Apple Shortcuts and URL actions expose supported non-destructive reads and writes.
 2. `Welcome`
    - Intro screen with the Sunclub mark and `Get Started`.
 3. `Enable Notifications`
@@ -24,6 +25,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 7. `Settings`
    - `Notification Time` updates the daily reminder time.
    - Reapply reminders, iCloud sync state, local backup controls, and `Recovery & Changes` live here.
+   - Automation controls let users manage Shortcut writes, URL opens, URL writes, and callback details.
 8. `Recovery & Changes`
    - Lists undoable change batches, imported backups, and any auto-merged conflicts that still need review.
    - Lets the user undo or redo recent changes, restore the pre-import state, and explicitly publish imported local backups to iCloud.
@@ -38,6 +40,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - The projected app state still works fully offline, but revision history now syncs through the user's private iCloud database by default.
 - Local backup export/import still works without an account migration step. Import changes only the local device until the user explicitly publishes the imported batches to iCloud.
 - The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
+- The automation runtime backs Apple Shortcuts, Control Center actions, widgets, custom URL scheme actions, and x-callback-url callers. The public contract lives in `../docs/app-automation.md`.
 - Sunclub still has no app-owned accounts or analytics SDKs. The only sync path is the user's private iCloud database.
 
 ## Project Structure
@@ -120,6 +123,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
   - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
   - `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
 - Widgets and controls route through shared widget routes for summary, history, and manual-update surfaces.
+- Automation routes use `sunclub://automation/...` and `sunclub://x-callback-url/...`; destructive and review-heavy flows open Sunclub instead of writing in the background.
 - The widget `Log Today` action routes into the same success flow used by manual logging.
 - Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
 - Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.

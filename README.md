@@ -4,6 +4,7 @@ Repository layout:
 
 - App: [app/README.md](app/README.md)
 - Docs: [docs/](docs/)
+- App automation: [docs/app-automation.md](docs/app-automation.md)
 - TestFlight flow: [docs/testflight-release.md](docs/testflight-release.md)
 
 The iOS app lives in [app/](app). Product and design notes live in [docs/](docs).
@@ -58,6 +59,8 @@ Common setup from the repo root:
 `just bootstrap` installs repo-local tooling into `.mise/`, syncs the Python environment into `.venv/`, and prepares repo-local caches under `.cache/`.
 
 Sunclub stays local-first, but the app now ships with default-on iCloud sync for revision history plus local backup export/import. Local imports stay recoverable on-device and do not change iCloud until the user explicitly publishes the imported batches from `Recovery & Changes`.
+
+Automation is a first-class release surface. Shortcuts, Control Center, widgets, custom URL actions, and x-callback-url routes are documented in [docs/app-automation.md](docs/app-automation.md), and users can manage automation writes from Settings -> Automation.
 
 The static public web presence lives in [web/](web). Local preview uses `just web-serve`; `just web-build` copies the checked site into `.build/web/`; `just web-package VERSION=test` writes a release tarball and checksum under `.build/releases/`.
 

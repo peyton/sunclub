@@ -101,6 +101,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.section.progress"].exists)
         XCTAssertTrue(app.buttons["settings.section.data"].exists)
+        XCTAssertTrue(app.buttons["settings.section.automation"].exists)
         XCTAssertTrue(app.buttons["settings.section.advanced"].exists)
         XCTAssertFalse(app.buttons["settings.weekdayReminderTime"].exists)
 
@@ -117,6 +118,15 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(scrollToElement(app.switches["settings.icloudToggle"], in: app))
         XCTAssertTrue(app.buttons["settings.backup.export"].exists)
         XCTAssertTrue(app.buttons["settings.backup.import"].exists)
+
+        expandSettingsSection("automation", in: app)
+        XCTAssertTrue(scrollToElement(automationSwitch("Allow Shortcut writes", in: app), in: app))
+        XCTAssertTrue(automationSwitch("Allow URL open actions", in: app).exists)
+        XCTAssertTrue(automationSwitch("Allow URL write actions", in: app).exists)
+        XCTAssertTrue(automationSwitch("Include callback result details", in: app).exists)
+        XCTAssertTrue(scrollToElement(app.buttons["automation.example.logToday.copy"], in: app))
+        XCTAssertTrue(app.buttons["automation.example.logToday.test"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["settings.automation.openCatalog"], in: app))
 
         expandSettingsSection("advanced", in: app)
         XCTAssertTrue(scrollToElement(app.switches["settings.leaveHomeToggle"], in: app))
@@ -292,6 +302,11 @@ final class SunclubUITests: XCTestCase {
 
         let achievementsApp = launchDarkRoute("achievements")
         XCTAssertTrue(achievementsApp.staticTexts["Achievements"].waitForExistence(timeout: 5))
+        achievementsApp.terminate()
+
+        let automationApp = launchDarkRoute("automation")
+        XCTAssertTrue(automationApp.staticTexts["Automation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL write actions", in: automationApp), in: automationApp))
     }
 
     @MainActor
@@ -338,6 +353,14 @@ final class SunclubUITests: XCTestCase {
         ])
         XCTAssertTrue(weeklyApp.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
         XCTAssertTrue(weeklyApp.buttons["weekly.viewFullHistory"].exists)
+        weeklyApp.terminate()
+
+        let automationApp = launchAccessibilityScorecardRoute("automation")
+        XCTAssertTrue(automationApp.staticTexts["Automation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            scrollToElement(automationSwitch("Allow Shortcut writes", in: automationApp), in: automationApp)
+        )
+        XCTAssertTrue(scrollToElement(automationApp.buttons["automation.example.logToday.copy"], in: automationApp))
     }
 
     @MainActor
@@ -350,12 +373,14 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.buttons["home.feature.friends"].exists)
         XCTAssertFalse(app.buttons["home.feature.skinHealthReport"].exists)
         XCTAssertFalse(app.buttons["home.feature.productScanner"].exists)
+        XCTAssertFalse(app.buttons["home.feature.automation"].exists)
 
         app.buttons["home.exploreToggle"].tap()
 
         XCTAssertTrue(app.otherElements["home.exploreGrid"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.feature.achievements"].exists)
-        XCTAssertTrue(app.buttons["home.feature.friends"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["home.feature.friends"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["home.feature.automation"], in: app))
         XCTAssertTrue(scrollToElement(app.buttons["home.feature.skinHealthReport"], in: app))
         XCTAssertTrue(scrollToElement(app.buttons["home.feature.productScanner"], in: app))
     }
@@ -917,6 +942,55 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testAutomationXCallbackOpenRouteOpensCatalog() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_URL=\(xCallbackURL(path: "open?route=automation"))"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Automation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(automationElement("automation.hero", in: app).exists)
+        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL write actions", in: app), in: app))
+    }
+
+    @MainActor
+    func testAutomationXCallbackLogTodayLogsDayWhenURLWritesAreEnabled() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_URL=\(xCallbackURL(path: "log-today?spf=50&notes=UITest"))"
+        ]
+        app.launch()
+
+        let todayStatus = app.staticTexts["home.todayStatus"]
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(todayStatus.label, "Today's log is in")
+    }
+
+    @MainActor
+    func testDisabledURLWritesRouteToManualLogWithoutMutatingHistory() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_URL_WRITES_DISABLED",
+            "UITEST_URL=\(automationURL(path: "log-today?spf=50&notes=Blocked"))"
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+
+        let todayStatus = app.staticTexts["home.todayStatus"]
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(todayStatus.label, "Ready for today's log")
+    }
+
+    @MainActor
     private func launchAndCompleteOnboarding() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("UITEST_MODE")
@@ -979,8 +1053,28 @@ final class SunclubUITests: XCTestCase {
     }
 
     private func widgetURL(path: String) -> String {
-        let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub"
+        let scheme = automationScheme
         return "\(scheme)://widget/\(path)"
+    }
+
+    private func automationURL(path: String) -> String {
+        "\(automationScheme)://automation/\(path)"
+    }
+
+    private func xCallbackURL(path: String) -> String {
+        "\(automationScheme)://x-callback-url/\(path)"
+    }
+
+    private func automationElement(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    private func automationSwitch(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        app.switches[label]
+    }
+
+    private var automationScheme: String {
+        Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub-dev"
     }
 
     private func accountabilityInviteURL(displayName: String) throws -> String {
@@ -1004,7 +1098,7 @@ final class SunclubUITests: XCTestCase {
         var allowedCharacters = CharacterSet.urlQueryAllowed
         allowedCharacters.remove(charactersIn: "+=&")
         let encodedCode = try XCTUnwrap(code.addingPercentEncoding(withAllowedCharacters: allowedCharacters))
-        let scheme = Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub"
+        let scheme = automationScheme
         return "\(scheme)://accountability/invite?code=\(encodedCode)"
     }
 

@@ -490,7 +490,58 @@ enum SunclubGrowthAnalytics {
 
     private static func middayUVLevel(for date: Date, calendar: Calendar) -> UVLevel {
         let midday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-        return UVLevel.from(index: UVIndexService.estimatedUVIndex(at: midday, calendar: calendar))
+        return UVLevel.from(index: estimatedUVIndex(at: midday, calendar: calendar))
+    }
+
+    private static func estimatedUVIndex(at date: Date, calendar: Calendar) -> Int {
+        let hour = calendar.component(.hour, from: date)
+        let month = calendar.component(.month, from: date)
+
+        let seasonalBase: Int
+        switch month {
+        case 6, 7, 8:
+            seasonalBase = 8
+        case 5, 9:
+            seasonalBase = 6
+        case 4, 10:
+            seasonalBase = 4
+        case 3, 11:
+            seasonalBase = 3
+        default:
+            seasonalBase = 2
+        }
+
+        let timeMultiplier: Double
+        switch hour {
+        case 0...5:
+            timeMultiplier = 0.0
+        case 6:
+            timeMultiplier = 0.1
+        case 7:
+            timeMultiplier = 0.2
+        case 8:
+            timeMultiplier = 0.4
+        case 9:
+            timeMultiplier = 0.6
+        case 10:
+            timeMultiplier = 0.8
+        case 11, 12, 13:
+            timeMultiplier = 1.0
+        case 14:
+            timeMultiplier = 0.9
+        case 15:
+            timeMultiplier = 0.7
+        case 16:
+            timeMultiplier = 0.5
+        case 17:
+            timeMultiplier = 0.3
+        case 18:
+            timeMultiplier = 0.1
+        default:
+            timeMultiplier = 0.0
+        }
+
+        return max(0, Int(Double(seasonalBase) * timeMultiplier))
     }
 }
 

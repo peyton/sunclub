@@ -19,6 +19,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
 ) -> None:
     site_root = tmp_path / "web"
     site_root.mkdir()
+    (site_root / "automation").mkdir()
     (site_root / "support").mkdir()
     (site_root / "privacy").mkdir()
     (site_root / "assets").mkdir()
@@ -30,6 +31,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
         """
         <urlset>
           <url><loc>https://sunclub.peyton.app/</loc></url>
+          <url><loc>https://sunclub.peyton.app/automation/</loc></url>
           <url><loc>https://sunclub.peyton.app/support/</loc></url>
           <url><loc>https://sunclub.peyton.app/privacy/</loc></url>
         </urlset>
@@ -50,6 +52,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
         """
     for relative_path in (
         "index.html",
+        "automation/index.html",
         "support/index.html",
         "privacy/index.html",
         "404.html",

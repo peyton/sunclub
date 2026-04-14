@@ -6,7 +6,7 @@
     <title>Privacy Policy - Sunclub</title>
     <meta
       name="description"
-      content="Sunclub privacy policy covering local storage, optional iCloud sync, backups, notifications, location, HealthKit, camera/product scanning, and support contact."
+      content="Sunclub privacy policy covering local storage, optional iCloud sync, backups, Shortcuts, URL actions, callbacks, notifications, location, HealthKit, camera/product scanning, and support contact."
     />
     <meta name="theme-color" content="#0f766e" />
     <link rel="canonical" href="https://sunclub.peyton.app/privacy/" />
@@ -21,6 +21,7 @@
           <span>Sunclub</span>
         </a>
         <div class="nav-links">
+          <a href="/automation/">Automation</a>
           <a href="/support/">Support</a>
           <a href="/privacy/" aria-current="page">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"
@@ -92,6 +93,21 @@
         files are created only when you choose to export them. Anyone with
         access to an exported backup file may be able to read the habit history
         inside it, so store and share backup files carefully.
+      </p>
+
+      <h2>Shortcuts and URL Automation</h2>
+      <p>
+        Sunclub supports Apple Shortcuts, custom URL scheme actions, and
+        x-callback-url for supported app actions. URL actions can be opened by
+        other apps on your device, and x-callback-url responses can include
+        status fields such as streak, today's log state, record date, weekly
+        applied count, friend name, or generated file details.
+      </p>
+      <p>
+        You can turn off Shortcut writes, URL open actions, URL write actions,
+        and detailed callback results in Sunclub Settings -> Automation. Turning
+        off URL writes keeps links from logging sunscreen, reapply, friend
+        actions, reminders, or supported toggles in the background.
       </p>
 
       <h2>Notifications</h2>
@@ -168,6 +184,7 @@
         <div>© 2026 Peyton Randolph. Sunclub is not medical advice.</div>
         <nav aria-label="Footer">
           <a href="/">Home</a>
+          <a href="/automation/">Automation</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"

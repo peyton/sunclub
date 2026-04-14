@@ -163,6 +163,37 @@ struct SunclubApp: App {
             appState.updateLeaveHomeReminderEnabled(enabled: true, allowPermissionPrompt: false)
             appState.setLeaveHomeAuthorizationStateForTesting(.notDetermined)
         }
+
+        applyUITestAutomationPreferences(from: arguments)
+    }
+
+    private func applyUITestAutomationPreferences(from arguments: [String]) {
+        var preferences = appState.automationPreferences
+        var didChange = false
+
+        if arguments.contains("UITEST_SHORTCUT_WRITES_DISABLED") {
+            preferences.shortcutWritesEnabled = false
+            didChange = true
+        }
+
+        if arguments.contains("UITEST_URL_OPEN_ACTIONS_DISABLED") {
+            preferences.urlOpenActionsEnabled = false
+            didChange = true
+        }
+
+        if arguments.contains("UITEST_URL_WRITES_DISABLED") {
+            preferences.urlWriteActionsEnabled = false
+            didChange = true
+        }
+
+        if arguments.contains("UITEST_CALLBACK_DETAILS_DISABLED") {
+            preferences.callbackResultDetailsEnabled = false
+            didChange = true
+        }
+
+        if didChange {
+            appState.updateAutomationPreferences(preferences)
+        }
     }
 
     private func openUITestRequestedRoute(
@@ -603,7 +634,9 @@ struct SunclubApp: App {
     }
 
     private func handleIncomingURL(_ url: URL) {
-        _ = SunclubDeepLinkHandler.handle(url: url, appState: appState, router: router)
+        _ = SunclubDeepLinkHandler.handle(url: url, appState: appState, router: router) { callbackURL in
+            UIApplication.shared.open(callbackURL)
+        }
     }
 
     private func openExternalRoute(_ route: AppRoute) {

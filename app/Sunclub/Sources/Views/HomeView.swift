@@ -438,6 +438,13 @@ struct HomeView: View {
             if isExploreExpanded {
                 LazyVGrid(columns: exploreColumns, spacing: 12) {
                     homeFeatureButton(
+                        title: "Automation",
+                        detail: "Shortcuts & links",
+                        symbol: "wand.and.stars",
+                        route: .automation
+                    )
+
+                    homeFeatureButton(
                         title: "Achievements",
                         detail: appState.unseenAchievementCount > 0 ? "\(appState.unseenAchievementCount) new" : "Progress badges",
                         symbol: "rosette",
