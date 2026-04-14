@@ -274,7 +274,7 @@ def profile_certificate_ids(client: ProfilesClient, profile: JsonObject) -> list
         return []
 
     try:
-        response = client.get(f"/profiles/{profile_id}/relationships/certificates")
+        response = client.get(f"/profiles/{profile_id}/certificates")
     except AppStoreConnectError as error_:
         if is_not_found_error(error_):
             return []

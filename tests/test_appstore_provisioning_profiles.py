@@ -31,7 +31,7 @@ class FakeProfilesClient:
     ) -> dict[str, Any]:
         if path == "/profiles/profile-existing":
             return {"data": existing_profile("profile-existing")}
-        if path == "/profiles/profile-existing/relationships/certificates":
+        if path == "/profiles/profile-existing/certificates":
             return {
                 "data": [
                     {
@@ -224,13 +224,13 @@ def test_find_reusable_certificate_ids_skips_deleted_profile_candidates() -> Non
         path: str,
         query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
     ) -> dict[str, Any]:
-        if path == "/profiles/profile-deleted/relationships/certificates":
+        if path == "/profiles/profile-deleted/certificates":
             raise AppStoreConnectError(
                 "App Store Connect request failed with HTTP 404: "
                 "The specified resource does not exist - There is no resource "
                 "of type 'profiles' with id 'profile-deleted'"
             )
-        if path == "/profiles/profile-existing/relationships/certificates":
+        if path == "/profiles/profile-existing/certificates":
             return {
                 "data": [
                     {
