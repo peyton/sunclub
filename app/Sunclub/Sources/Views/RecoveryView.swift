@@ -286,10 +286,10 @@ struct RecoveryView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.82))
+            .fill(AppPalette.cardFill.opacity(0.82))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
     }
 }

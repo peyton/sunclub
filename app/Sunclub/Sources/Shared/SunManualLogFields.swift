@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SunManualLogFields: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @Binding var selectedSPF: Int?
     @Binding var notes: String
     @State private var isShowingDetails: Bool
@@ -38,7 +40,7 @@ struct SunManualLogFields: View {
     private var optionalDetailsDisclosure: some View {
         VStack(alignment: .leading, spacing: 14) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
                     isShowingDetails.toggle()
                 }
             } label: {
@@ -63,11 +65,12 @@ struct SunManualLogFields: View {
                 .padding(18)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.72))
+                        .fill(AppPalette.cardFill.opacity(0.72))
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Shows optional SPF and note fields.")
+            .accessibilityValue(isShowingDetails ? "Expanded" : "Collapsed")
+            .accessibilityHint(isShowingDetails ? "Hides optional SPF and note fields." : "Shows optional SPF and note fields.")
             .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
 
             if isShowingDetails {
@@ -191,26 +194,38 @@ struct SunManualLogFields: View {
     }
 
     private func spfButton(level: Int, title: String, accessibilityIdentifier: String) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                selectedSPF = selectedSPF == level ? nil : level
+        let isSelected = selectedSPF == level
+
+        return Button {
+            withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
+                selectedSPF = isSelected ? nil : level
             }
         } label: {
-            Text(title)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(selectedSPF == level ? .white : AppPalette.ink)
-                .frame(minWidth: 48, minHeight: 40)
-                .padding(.horizontal, title.count > 3 ? 12 : 0)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(selectedSPF == level ? AppPalette.sun : Color.white.opacity(0.72))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(selectedSPF == level ? Color.clear : Color.black.opacity(0.06), lineWidth: 1)
+            HStack(spacing: 5) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
                 }
+
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
+            .frame(minWidth: 48, minHeight: 40)
+            .padding(.horizontal, title.count > 3 || isSelected ? 12 : 0)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isSelected ? Color.clear : AppPalette.hairlineStroke, lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("SPF \(level)")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
@@ -228,18 +243,18 @@ struct SunManualLogFields: View {
                                 notes = noteSnippet
                             } label: {
                                 Text(noteSnippet)
-                                    .lineLimit(1)
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundStyle(AppPalette.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
                                     .background(
                                         Capsule()
-                                            .fill(Color.white.opacity(0.72))
+                                            .fill(AppPalette.cardFill.opacity(0.72))
                                     )
                                     .overlay {
                                         Capsule()
-                                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                                            .stroke(AppPalette.hairlineStroke, lineWidth: 1)
                                     }
                             }
                             .buttonStyle(.plain)
@@ -255,11 +270,11 @@ struct SunManualLogFields: View {
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.72))
+                        .fill(AppPalette.cardFill.opacity(0.72))
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                        .stroke(AppPalette.hairlineStroke, lineWidth: 1)
                 }
                 .accessibilityIdentifier("\(accessibilityPrefix).notesField")
         }

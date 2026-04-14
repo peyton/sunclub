@@ -138,7 +138,7 @@ struct AchievementsView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.72))
+            .fill(AppPalette.cardFill.opacity(0.72))
     }
 }
 
@@ -171,7 +171,7 @@ private struct AchievementCelebrationCard: View {
         .background { celebrationBackground }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.64), lineWidth: 1)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
 
@@ -197,8 +197,7 @@ private struct AchievementCelebrationCard: View {
         Text(achievement.title)
             .font(.system(size: 23, weight: .bold))
             .foregroundStyle(AppPalette.ink)
-            .lineLimit(2)
-            .minimumScaleFactor(0.86)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var detail: some View {
@@ -264,11 +263,13 @@ private struct BadgeCountPill: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color.white.opacity(0.70), in: Capsule())
+        .background(AppPalette.controlFill.opacity(0.70), in: Capsule())
     }
 }
 
 private struct AchievementCard: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let achievement: SunclubAchievement
     let onShare: () -> Void
 
@@ -335,13 +336,13 @@ private struct AchievementCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.34) : Color.white.opacity(0.78))
+                .fill(achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.78))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(achievement.isUnlocked ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
         }
-        .symbolEffect(.bounce, value: achievement.isUnlocked)
+        .symbolEffect(.bounce, value: reduceMotion ? false : achievement.isUnlocked)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("achievement.card.\(achievement.id.rawValue)")
     }
@@ -409,7 +410,7 @@ private struct ChallengeCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(challenge.isComplete ? AppPalette.warmGlow.opacity(0.34) : Color.white.opacity(0.76))
+                .fill(challenge.isComplete ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.76))
         )
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -508,6 +509,8 @@ private struct MilestoneProgressMeter: View {
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityLabel("Progress")
+        .accessibilityValue("\(summaryLabel), \(statusLabel)")
         .accessibilityIdentifier(accessibilityID)
     }
 

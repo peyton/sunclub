@@ -1,24 +1,119 @@
 import SwiftUI
+import UIKit
 
 enum AppPalette {
+    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
+        })
+    }
+
+    private static func uiColor(
+        red: CGFloat,
+        green: CGFloat,
+        blue: CGFloat,
+        alpha: CGFloat = 1
+    ) -> UIColor {
+        UIColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
     static let cream = Color(red: 0.982, green: 0.965, blue: 0.939)
     static let pearl = Color(red: 1.000, green: 0.988, blue: 0.960)
-    static let warmGlow = Color(red: 1.000, green: 0.930, blue: 0.760)
-    static let sun = Color(red: 0.980, green: 0.643, blue: 0.012)
-    static let coral = Color(red: 0.960, green: 0.365, blue: 0.255)
-    static let aloe = Color(red: 0.365, green: 0.720, blue: 0.510)
-    static let pool = Color(red: 0.260, green: 0.655, blue: 0.850)
-    static let uvExtreme = Color(red: 0.780, green: 0.255, blue: 0.560)
+    static let warmGlow = adaptive(
+        light: uiColor(red: 1.000, green: 0.930, blue: 0.760),
+        dark: uiColor(red: 0.430, green: 0.286, blue: 0.126)
+    )
+    static let sun = adaptive(
+        light: uiColor(red: 0.980, green: 0.643, blue: 0.012),
+        dark: uiColor(red: 1.000, green: 0.705, blue: 0.145)
+    )
+    static let coral = adaptive(
+        light: uiColor(red: 0.960, green: 0.365, blue: 0.255),
+        dark: uiColor(red: 1.000, green: 0.450, blue: 0.340)
+    )
+    static let aloe = adaptive(
+        light: uiColor(red: 0.365, green: 0.720, blue: 0.510),
+        dark: uiColor(red: 0.485, green: 0.830, blue: 0.620)
+    )
+    static let pool = adaptive(
+        light: uiColor(red: 0.260, green: 0.655, blue: 0.850),
+        dark: uiColor(red: 0.385, green: 0.745, blue: 0.940)
+    )
+    static let uvExtreme = adaptive(
+        light: uiColor(red: 0.780, green: 0.255, blue: 0.560),
+        dark: uiColor(red: 0.960, green: 0.430, blue: 0.720)
+    )
     static let nightAmber = Color(red: 0.315, green: 0.164, blue: 0.068)
     static let darkCanvas = Color(red: 0.114, green: 0.098, blue: 0.086)
     static let darkSurface = Color(red: 0.171, green: 0.150, blue: 0.129)
-    static let ink = Color(red: 0.129, green: 0.114, blue: 0.102)
-    static let softInk = Color(red: 0.514, green: 0.459, blue: 0.427)
-    static let success = Color(red: 0.151, green: 0.772, blue: 0.353)
-    static let muted = Color(red: 0.832, green: 0.832, blue: 0.842)
-    static let streakAccent = Color(red: 0.870, green: 0.482, blue: 0.000)
-    static let streakBackground = Color(red: 1.000, green: 0.947, blue: 0.760)
+    static let ink = adaptive(
+        light: uiColor(red: 0.129, green: 0.114, blue: 0.102),
+        dark: uiColor(red: 0.964, green: 0.925, blue: 0.855)
+    )
+    static let softInk = adaptive(
+        light: uiColor(red: 0.514, green: 0.459, blue: 0.427),
+        dark: uiColor(red: 0.745, green: 0.690, blue: 0.620)
+    )
+    static let success = adaptive(
+        light: uiColor(red: 0.151, green: 0.772, blue: 0.353),
+        dark: uiColor(red: 0.360, green: 0.875, blue: 0.540)
+    )
+    static let muted = adaptive(
+        light: uiColor(red: 0.832, green: 0.832, blue: 0.842),
+        dark: uiColor(red: 0.430, green: 0.395, blue: 0.360)
+    )
+    static let streakAccent = adaptive(
+        light: uiColor(red: 0.870, green: 0.482, blue: 0.000),
+        dark: uiColor(red: 1.000, green: 0.590, blue: 0.110)
+    )
+    static let streakBackground = adaptive(
+        light: uiColor(red: 1.000, green: 0.947, blue: 0.760),
+        dark: uiColor(red: 0.244, green: 0.171, blue: 0.092)
+    )
+    static let cardFill = adaptive(
+        light: uiColor(red: 1, green: 1, blue: 1),
+        dark: uiColor(red: 0.205, green: 0.178, blue: 0.150)
+    )
+    static let elevatedCardFill = adaptive(
+        light: uiColor(red: 1, green: 1, blue: 1),
+        dark: uiColor(red: 0.252, green: 0.220, blue: 0.184)
+    )
+    static let controlFill = adaptive(
+        light: uiColor(red: 1, green: 1, blue: 1),
+        dark: uiColor(red: 0.294, green: 0.252, blue: 0.207)
+    )
+    static let editorFill = adaptive(
+        light: uiColor(red: 1, green: 1, blue: 1),
+        dark: uiColor(red: 0.139, green: 0.122, blue: 0.104)
+    )
+    static let cardStroke = adaptive(
+        light: uiColor(red: 1, green: 1, blue: 1, alpha: 0.62),
+        dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.16)
+    )
+    static let hairlineStroke = adaptive(
+        light: uiColor(red: 0, green: 0, blue: 0, alpha: 0.06),
+        dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.14)
+    )
+    static let onAccent = Color(red: 0.129, green: 0.114, blue: 0.102)
     static let white = Color.white
+}
+
+enum SunMotion {
+    static func easeInOut(duration: Double, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: duration)
+    }
+
+    static func easeOut(duration: Double, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: duration)
+    }
+
+    static func repeatingEaseInOut(
+        duration: Double,
+        reduceMotion: Bool,
+        autoreverses: Bool = true
+    ) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: duration).repeatForever(autoreverses: autoreverses)
+    }
 }
 
 enum SunclubVisualAsset: String, CaseIterable {
@@ -114,27 +209,35 @@ struct SunclubAssetImage: View {
 }
 
 struct SunBackdrop: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [AppPalette.cream, AppPalette.pearl, Color.white],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        Group {
+            if colorScheme == .dark {
+                SunDarkBackdrop()
+            } else {
+                ZStack {
+                    LinearGradient(
+                        colors: [AppPalette.cream, AppPalette.pearl, Color.white],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
 
-            SunclubVisualAsset.backgroundSunGrainLight.image
-                .resizable()
-                .scaledToFill()
-                .opacity(0.52)
-                .blendMode(.multiply)
+                    SunclubVisualAsset.backgroundSunGrainLight.image
+                        .resizable()
+                        .scaledToFill()
+                        .opacity(0.52)
+                        .blendMode(.multiply)
 
-            SunclubVisualAsset.backgroundUVBands.image
-                .resizable()
-                .scaledToFill()
-                .opacity(0.18)
-                .blur(radius: 18)
-                .offset(y: 300)
-                .blendMode(.softLight)
+                    SunclubVisualAsset.backgroundUVBands.image
+                        .resizable()
+                        .scaledToFill()
+                        .opacity(0.18)
+                        .blur(radius: 18)
+                        .offset(y: 300)
+                        .blendMode(.softLight)
+                }
+            }
         }
         .ignoresSafeArea()
     }
@@ -270,10 +373,12 @@ struct SunScreen<Content: View>: View {
 }
 
 struct SunPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(AppPalette.onAccent)
             .frame(maxWidth: .infinity, minHeight: 58)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -291,12 +396,14 @@ struct SunPrimaryButtonStyle: ButtonStyle {
                     .stroke(Color.white.opacity(0.28), lineWidth: 1)
             )
             .opacity(configuration.isPressed ? 0.90 : 1)
-            .scaleEffect(configuration.isPressed ? 0.976 : 1)
-            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.976 : 1))
+            .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
 struct SunSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 16, weight: .medium))
@@ -304,23 +411,23 @@ struct SunSecondaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 52)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
+                    .fill(AppPalette.controlFill.opacity(0.82))
                     .shadow(color: AppPalette.ink.opacity(configuration.isPressed ? 0.02 : 0.06), radius: configuration.isPressed ? 2 : 10, x: 0, y: configuration.isPressed ? 1 : 5)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.92 : 1)
-            .scaleEffect(configuration.isPressed ? 0.982 : 1)
-            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.982 : 1))
+            .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
 struct SunStepHeader: View {
     let step: Int
     let total: Int
-    var tint: Color = Color.white.opacity(0.62)
+    var tint: Color = AppPalette.softInk
 
     var body: some View {
         Text("Step \(step) of \(total)")
@@ -332,6 +439,8 @@ struct SunStepHeader: View {
 }
 
 struct SunLightHeader: View {
+    private let sideButtonSize: CGFloat = 44
+
     let title: String
     let showsBack: Bool
     let trailingSystemImage: String?
@@ -361,14 +470,14 @@ struct SunLightHeader: View {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
-                            .frame(width: 32, height: 32)
+                            .frame(width: sideButtonSize, height: sideButtonSize)
                     }
                 )
                 .buttonStyle(.plain)
                 .accessibilityLabel("Back")
                 .accessibilityIdentifier("screen.back")
             } else {
-                Color.clear.frame(width: 32, height: 32)
+                Color.clear.frame(width: sideButtonSize, height: sideButtonSize)
             }
 
             Spacer(minLength: 0)
@@ -386,12 +495,12 @@ struct SunLightHeader: View {
                         Image(systemName: trailingSystemImage)
                             .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(AppPalette.ink)
-                            .frame(width: 32, height: 32)
+                            .frame(width: sideButtonSize, height: sideButtonSize)
                     }
                 )
                 .buttonStyle(.plain)
             } else {
-                Color.clear.frame(width: 32, height: 32)
+                Color.clear.frame(width: sideButtonSize, height: sideButtonSize)
             }
         }
     }
@@ -435,6 +544,7 @@ struct SunLogoMark: View {
                 .offset(x: -size * 0.03, y: -size * 0.05)
         }
         .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }
 
@@ -519,9 +629,10 @@ struct SunStatusCard: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppPalette.onAccent)
                 .frame(width: 36, height: 36)
                 .background(tint, in: Circle())
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -537,8 +648,9 @@ struct SunStatusCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.82))
+                .fill(AppPalette.elevatedCardFill.opacity(0.86))
         )
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -549,7 +661,7 @@ struct SunCameraOverlayLabel: View {
     var body: some View {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(AppPalette.onAccent)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(tint.opacity(0.92), in: Capsule())
@@ -566,14 +678,14 @@ struct SunAssetHero: View {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.64), AppPalette.warmGlow.opacity(0.32)],
+                        colors: [AppPalette.cardFill.opacity(0.64), AppPalette.warmGlow.opacity(0.32)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.58), lineWidth: 1)
+                        .stroke(AppPalette.cardStroke, lineWidth: 1)
                 }
                 .shadow(color: glowColor.opacity(0.16), radius: 28, x: 0, y: 18)
 
@@ -589,6 +701,8 @@ struct SunAssetHero: View {
 }
 
 struct SunSuccessBurst: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var size: CGFloat = 180
     @State private var isAnimating = false
 
@@ -598,8 +712,8 @@ struct SunSuccessBurst: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
-                .opacity(isAnimating ? 0.68 : 0.44)
-                .scaleEffect(isAnimating ? 1.08 : 0.94)
+                .opacity(reduceMotion ? 0.52 : (isAnimating ? 0.68 : 0.44))
+                .scaleEffect(reduceMotion ? 1 : (isAnimating ? 1.08 : 0.94))
 
             SunclubVisualAsset.motifShieldGlow.image
                 .resizable()
@@ -608,7 +722,12 @@ struct SunSuccessBurst: View {
         }
         .accessibilityHidden(true)
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+            guard !reduceMotion else {
+                isAnimating = false
+                return
+            }
+
+            withAnimation(SunMotion.repeatingEaseInOut(duration: 1.8, reduceMotion: reduceMotion)) {
                 isAnimating = true
             }
         }
@@ -649,7 +768,7 @@ struct SunclubBadgeMedallion: View {
                 )
 
             Circle()
-                .stroke(Color.white.opacity(isLocked ? 0.46 : 0.72), lineWidth: max(1, size * 0.035))
+                .stroke(AppPalette.cardStroke.opacity(isLocked ? 0.74 : 1), lineWidth: max(1, size * 0.035))
 
             asset.image
                 .resizable()
@@ -663,7 +782,7 @@ struct SunclubBadgeMedallion: View {
                     .font(.system(size: max(10, size * 0.18), weight: .bold))
                     .foregroundStyle(AppPalette.softInk.opacity(0.82))
                     .frame(width: size * 0.34, height: size * 0.34)
-                    .background(Color.white.opacity(0.72), in: Circle())
+                    .background(AppPalette.controlFill.opacity(0.84), in: Circle())
                     .offset(x: size * 0.27, y: size * 0.27)
             }
         }
@@ -675,13 +794,13 @@ struct SunclubBadgeMedallion: View {
     private var medallionFill: [Color] {
         if isLocked {
             return [
-                Color.white.opacity(0.84),
+                AppPalette.cardFill.opacity(0.84),
                 AppPalette.muted.opacity(0.44)
             ]
         }
 
         return [
-            Color.white.opacity(0.98),
+            AppPalette.elevatedCardFill.opacity(0.98),
             AppPalette.warmGlow.opacity(0.50),
             tint.opacity(0.22)
         ]
@@ -693,12 +812,12 @@ extension View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(fillOpacity))
+                    .fill(AppPalette.cardFill.opacity(fillOpacity))
                     .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
     }
 }

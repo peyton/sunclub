@@ -7,6 +7,7 @@ struct ProductScannerView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var scanResult: SunclubProductScanResult?
@@ -227,7 +228,7 @@ struct ProductScannerView: View {
                 Text(result.recognizedText.joined(separator: "\n"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
-                    .lineLimit(6)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Button(result.spfLevel == nil ? "No SPF Found" : "Use in Today's Log") {
@@ -256,8 +257,15 @@ struct ProductScannerView: View {
                     .resizable()
                     .scaledToFill()
                     .opacity(isScanning ? 0.42 : 0.16)
-                    .offset(x: scanSheenActive ? 220 : -220)
-                    .animation(.easeInOut(duration: 1.45).repeatForever(autoreverses: false), value: scanSheenActive)
+                    .offset(x: reduceMotion ? 0 : (scanSheenActive ? 220 : -220))
+                    .animation(
+                        SunMotion.repeatingEaseInOut(
+                            duration: 1.45,
+                            reduceMotion: reduceMotion,
+                            autoreverses: false
+                        ),
+                        value: scanSheenActive
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                     .accessibilityHidden(true)
             }
@@ -273,8 +281,11 @@ struct ProductScannerView: View {
                 .padding(14)
             }
             .onAppear {
-                scanSheenActive = true
+                scanSheenActive = !reduceMotion
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Selected sunscreen photo")
+            .accessibilityValue(isScanning ? "Scanning bottle" : "Ready to scan")
     }
 
     private func loadPhoto(from item: PhotosPickerItem) async {

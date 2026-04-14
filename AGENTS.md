@@ -32,6 +32,21 @@ Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or 
 - Prefer `just ci-lint`, `just ci`, or the specific underlying repo script that matches the failing GitHub job.
 - Do not report a CI fix as ready unless the relevant GitHub workflow is expected to pass from the current branch state.
 
+## Accessibility Scorecard Rules
+
+Every future change under `app/` must preserve a perfect App Store Accessibility Nutrition Label scorecard for the app's common tasks. Treat the scorecard as a release gate, not a nice-to-have.
+
+- Supported criteria must remain true for VoiceOver, Voice Control, Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, and Reduced Motion.
+- Captions and Audio Descriptions are currently not applicable because the app has no time-based audio or video content. If media playback is added, captions and audio descriptions become required before shipping.
+- All interactive controls need visible, specific accessible names. Icon-only controls need explicit labels and, when useful, hints. Use stable accessibility identifiers for UI-testable flows.
+- VoiceOver users must be able to perceive and operate every common task. Decorative images and symbols should be `accessibilityHidden(true)`; meaningful custom visuals need labels and values.
+- Voice Control names should match visible text where practical. Do not hide primary actions behind unlabeled gestures.
+- Text must support Dynamic Type through accessibility sizes without clipping essential content, overlapping controls, or blocking primary actions. Do not use `minimumScaleFactor` or fixed `lineLimit` for essential app copy.
+- Do not encode status, selection, risk, or progress with color alone. Pair color with text, symbols, selection traits, labels, or values.
+- Text, icons, controls, focusable states, and semantic colors must keep sufficient contrast in light mode, dark mode, and increased-contrast contexts. Use `AppPalette` tokens such as `onAccent` instead of low-contrast foregrounds on accent fills.
+- Motion must honor Reduce Motion. Use `SunMotion` for SwiftUI animations, and suppress or replace decorative looping effects when `accessibilityReduceMotion` is true.
+- UI or behavior changes in `app/` should add or update unit/UI/integration tests for any affected scorecard criterion. Prefer the existing `UITEST_FORCE_*` launch arguments for deterministic accessibility coverage.
+
 ## Project Layout
 
 ```text

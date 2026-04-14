@@ -3,6 +3,7 @@ import SwiftUI
 struct WeeklyReportView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
     @State private var insights = SunscreenUsageInsights.empty
     @State private var editorPresentation: WeeklyEditorPresentation?
@@ -70,7 +71,7 @@ struct WeeklyReportView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            HStack(spacing: 10) {
+            LazyVGrid(columns: weekEntryColumns, spacing: 10) {
                 ForEach(weekEntries) { entry in
                     Button {
                         handleWeekEntryTap(entry)
@@ -81,12 +82,12 @@ struct WeeklyReportView: View {
                                 .foregroundStyle(AppPalette.softInk)
 
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(entry.applied ? AppPalette.sun : Color.white.opacity(0.9))
+                                .fill(entry.applied ? AppPalette.sun : AppPalette.cardFill.opacity(0.9))
                                 .overlay {
                                     if entry.applied {
                                         Image(systemName: "checkmark")
                                             .font(.system(size: 14, weight: .bold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(AppPalette.onAccent)
                                     }
                                 }
                                 .overlay {
@@ -113,7 +114,7 @@ struct WeeklyReportView: View {
 
             Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Not logged: \(report.missedDays.joined(separator: ", "))")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : Color.red.opacity(0.78))
+                .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : AppPalette.ink)
                 .multilineTextAlignment(.leading)
 
             if !notLoggedEntries.isEmpty {
@@ -137,7 +138,7 @@ struct WeeklyReportView: View {
                             .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.white.opacity(0.72))
+                                    .fill(AppPalette.cardFill.opacity(0.72))
                             )
                         }
                         .buttonStyle(.plain)
@@ -262,6 +263,14 @@ struct WeeklyReportView: View {
         .accessibilityIdentifier("weekly.usageInsights")
     }
 
+    private var weekEntryColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.adaptive(minimum: 76), spacing: 10)]
+        }
+
+        return Array(repeating: GridItem(.flexible(), spacing: 10), count: 7)
+    }
+
     private func refreshReport() {
         report = appState.last7DaysReport()
         insights = appState.sunscreenUsageInsights()
@@ -343,7 +352,7 @@ private struct WeeklyInsightCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityIdentifier("weekly.mostUsedSPFCard")
     }
@@ -368,7 +377,7 @@ private struct WeeklyRecentNoteRow: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
     }
 }
@@ -393,7 +402,7 @@ private struct WeeklyMetricPill: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+                .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityIdentifier(accessibilityIdentifier)
     }

@@ -65,6 +65,11 @@ struct SunclubApp: App {
                 .environment(appState)
                 .environment(router)
                 .modelContainer(container)
+                .preferredColorScheme(RuntimeEnvironment.preferredColorSchemeOverride)
+                .sunclubDynamicTypeSizeOverride(RuntimeEnvironment.dynamicTypeSizeOverride)
+                .sunclubAccessibilityReduceMotionOverride(RuntimeEnvironment.accessibilityReduceMotionOverride)
+                .sunclubAccessibilityDifferentiateWithoutColorOverride(RuntimeEnvironment.differentiateWithoutColorOverride)
+                .sunclubColorSchemeContrastOverride(RuntimeEnvironment.shouldUseIncreasedAccessibilityContrast ? .increased : nil)
                 .onOpenURL { url in
                     handleIncomingURL(url)
                 }
@@ -614,6 +619,44 @@ struct SunclubApp: App {
         SunclubRemoteNotificationBridge.shared.setHandler { _ in
             let didProcessEvent = await state.processRemoteAccountabilityEventsNow()
             return didProcessEvent ? .newData : .noData
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func sunclubDynamicTypeSizeOverride(_ override: DynamicTypeSize?) -> some View {
+        if let override {
+            self.dynamicTypeSize(override)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func sunclubAccessibilityReduceMotionOverride(_ override: Bool?) -> some View {
+        if let override {
+            self.environment(\._accessibilityReduceMotion, override)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func sunclubAccessibilityDifferentiateWithoutColorOverride(_ override: Bool?) -> some View {
+        if let override {
+            self.environment(\._accessibilityDifferentiateWithoutColor, override)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func sunclubColorSchemeContrastOverride(_ override: ColorSchemeContrast?) -> some View {
+        if let override {
+            self.environment(\._colorSchemeContrast, override)
+        } else {
+            self
         }
     }
 }
