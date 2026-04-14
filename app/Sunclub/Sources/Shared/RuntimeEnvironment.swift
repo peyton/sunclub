@@ -23,6 +23,10 @@ struct RuntimeEnvironmentSnapshot: Equatable {
     var shouldStartCloudSyncOnLaunch: Bool {
         !shouldUseNoopCloudSyncCoordinator
     }
+
+    var shouldRunLaunchStoreRecovery: Bool {
+        !isRunningTests && !isPreviewing
+    }
 }
 
 enum RuntimeEnvironment {

@@ -5,17 +5,12 @@
 Sunclub is source-available, not open source. Copyright (c) 2026 Peyton
 Randolph. All rights reserved.
 
-No public license is granted. Without prior written permission from Peyton
-Randolph, you may not use, copy, modify, compile, package, redistribute in
-source or binary form, sublicense, publish to the App Store or any other
-marketplace, or create or distribute modified or derivative works based on
-Sunclub.
-
-Forks, mirrors, archives, and copies made through repository-hosting
-functionality must preserve the all-rights-reserved notice and do not receive
-any license to use, redistribute, publish, or distribute Sunclub outside that
-functionality. No trademark rights are granted. See [LICENSE](LICENSE) and
-[NOTICE](NOTICE).
+This repository is available under the unmodified [PolyForm Strict License
+1.0.0](LICENSE). The license does not permit source redistribution, binary
+redistribution, sublicensing, public fork distribution, App Store or other
+marketplace publication, or modified or derivative works. Commercial use is not
+licensed. No trademark rights are granted. See [NOTICE](NOTICE) for the
+ownership notice.
 
 Repository layout:
 

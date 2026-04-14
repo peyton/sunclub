@@ -111,6 +111,18 @@ Do not rely on Tuist default watch `Info.plist` metadata. App Store and CI
 WatchKit validation require the embedded watch app marketing version to exactly
 match the companion app.
 
+The embedded watch app plist must stay minimal and App Store-safe:
+
+- keep `WKCompanionAppBundleIdentifier`
+- keep `CFBundleIconName=AppIcon`
+- keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset`
+- do not include `CFBundleURLTypes`, `SunclubAppGroupID`,
+  `SunclubICloudContainerIdentifier`, or `SunclubURLScheme`
+
+The release script validates the exported IPA before upload. It must fail if the
+watch app code signature identifier does not match its `CFBundleIdentifier`, if
+compiled watch icon assets are missing, or if iOS-only plist keys reappear.
+
 `.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review.
 
 Required secrets:

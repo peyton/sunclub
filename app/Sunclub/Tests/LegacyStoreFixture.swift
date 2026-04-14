@@ -154,6 +154,16 @@ enum LegacyStoreFixture {
 
         return (startOfDay, verifiedAt)
     }
+
+    static func seedEmptyCurrentV3Store(at storeURL: URL) throws {
+        let schema = Schema(versionedSchema: SunclubSchemaV3.self)
+        let configuration = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(container)
+
+        context.insert(SunclubSchemaV3.Settings())
+        try context.save()
+    }
 }
 
 extension Calendar {

@@ -3,17 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Privacy Policy - Sunclub</title>
+    <title>Sunclub Privacy Policy</title>
     <meta
       name="description"
-      content="Sunclub privacy policy covering local storage, optional iCloud sync, backups, Shortcuts, URL actions, callbacks, notifications, location, HealthKit, camera/product scanning, and support contact."
+      content="Sunclub privacy policy for local storage, optional iCloud sync, backups, Shortcuts, URL actions, callbacks, notifications, location, HealthKit, camera/product scanning, and support contact."
     />
-    <meta name="theme-color" content="#0f766e" />
+    <meta
+      name="theme-color"
+      content="#0f766e"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#12100e"
+      media="(prefers-color-scheme: dark)"
+    />
     <link rel="canonical" href="https://sunclub.peyton.app/privacy/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="brand" href="/" aria-label="Sunclub home">
@@ -21,19 +31,16 @@
           <span>Sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/" aria-current="page">Privacy</a>
-          <a href="mailto:contact@sunclub.peyton.app"
-            >contact@sunclub.peyton.app</a
-          >
         </div>
       </nav>
     </header>
 
-    <main class="content">
-      <p class="eyebrow">Privacy Policy</p>
-      <h1>Sunclub Privacy Policy</h1>
+    <main id="main" class="content">
+      <p class="eyebrow on-surface">Privacy Policy</p>
+      <h1>Sunclub privacy policy</h1>
       <p class="lead">
         Sunclub is designed as a local-first sunscreen habit tracker. This
         policy explains what the app handles, which Apple system features are
@@ -51,6 +58,9 @@
         >. For security reports, email
         <a href="mailto:security@sunclub.peyton.app"
           >security@sunclub.peyton.app</a
+        >. General questions can go to
+        <a href="mailto:contact@sunclub.peyton.app"
+          >contact@sunclub.peyton.app</a
         >.
       </p>
 
@@ -108,7 +118,8 @@
         and detailed callback results in Sunclub Settings -> Automation. Turning
         off URL writes keeps links from logging sunscreen, reapply, friend
         invite import, message-nudge routes, reminders, or supported toggles in
-        the background.
+        the background. The <a href="/docs/automation/">automation docs</a>
+        include examples and controls.
       </p>
 
       <h2>Notifications</h2>
@@ -188,7 +199,8 @@
         </div>
         <nav aria-label="Footer">
           <a href="/">Home</a>
-          <a href="/automation/">Automation</a>
+          <a href="/docs/">Docs</a>
+          <a href="/docs/automation/">Automation Docs</a>
           <a href="/support/">Support</a>
           <a href="/privacy/">Privacy</a>
           <a href="mailto:contact@sunclub.peyton.app"

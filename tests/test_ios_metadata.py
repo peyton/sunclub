@@ -1,3 +1,4 @@
+import json
 import plistlib
 import re
 import subprocess
@@ -15,6 +16,15 @@ SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
 RESOLVE_ENTITLEMENTS = REPO_ROOT / "scripts" / "appstore" / "resolve_entitlements.py"
+WATCH_APP_ICONSET = (
+    REPO_ROOT
+    / "app"
+    / "Sunclub"
+    / "WatchApp"
+    / "Resources"
+    / "Assets.xcassets"
+    / "AppIcon.appiconset"
+)
 
 
 def load_info_plist() -> dict:
@@ -201,6 +211,50 @@ def test_watchkit_extension_declares_nested_app_bundle_identifier() -> None:
     )
 
 
+def test_watch_app_target_uses_app_store_safe_metadata_and_icons() -> None:
+    source = PROJECT_SWIFT.read_text()
+    watch_app_target = source.split(
+        "func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+
+    assert (
+        '"CFBundleShortVersionString": .string("$(MARKETING_VERSION)")'
+        in watch_app_target
+    )
+    assert '"CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)")' in watch_app_target
+    assert '"CFBundleIconName": .string("AppIcon")' in watch_app_target
+    assert (
+        '"WKCompanionAppBundleIdentifier": .string(flavor.bundleID)' in watch_app_target
+    )
+    assert '"WatchApp/Resources/**"' in watch_app_target
+
+    for invalid_key in (
+        "CFBundleURLTypes",
+        "SunclubAppGroupID",
+        "SunclubICloudContainerIdentifier",
+        "SunclubURLScheme",
+    ):
+        assert invalid_key not in watch_app_target
+
+
+def test_watch_app_iconset_declares_watchos_icon_asset() -> None:
+    icon = WATCH_APP_ICONSET / "watch-appicon.png"
+    contents_json = WATCH_APP_ICONSET / "Contents.json"
+
+    assert icon.exists()
+    assert contents_json.exists()
+
+    contents = json.loads(contents_json.read_text())
+    assert contents["images"] == [
+        {
+            "filename": "watch-appicon.png",
+            "idiom": "universal",
+            "platform": "watchos",
+            "size": "1024x1024",
+        },
+    ]
+
+
 def test_project_uses_tuist_version_helpers_and_explicit_bundle_build_number() -> None:
     source = PROJECT_SWIFT.read_text()
 
@@ -366,9 +420,19 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "adhoc_sign_archived_app_with_release_entitlements" in script
     assert "scripts.appstore.resolve_entitlements" in script
     assert "--generate-entitlement-der" in script
+    assert '--identifier "$bundle_id"' in script
     assert "Unsigned archive export detected" not in script
     assert "Skipping signed app entitlement validation" not in script
     assert 'validate_signed_ipa_entitlements "$IPA_FILE"' in script
+    assert 'validate_signed_ipa_watch_bundle "$IPA_FILE"' in script
+    assert "assert_codesign_identifier_matches_bundle" in script
+    assert '"${RELEASE_APP_PRODUCT_NAME}WatchExtension.appex"' in script
+    assert '"${RELEASE_APP_PRODUCT_NAME}WatchWidgetsExtension.appex"' in script
+    assert (
+        "$RELEASE_APP_PRODUCT_NAME Watch app is missing compiled icon assets" in script
+    )
+    assert "CFBundleURLTypes" in script
+    assert "SunclubICloudContainerIdentifier" in script
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script
     assert "xcodebuild_export_args=(" in export_step
