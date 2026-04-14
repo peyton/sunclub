@@ -1,5 +1,7 @@
 import plistlib
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -12,6 +14,7 @@ APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
+RESOLVE_ENTITLEMENTS = REPO_ROOT / "scripts" / "appstore" / "resolve_entitlements.py"
 
 
 def load_info_plist() -> dict:
@@ -191,11 +194,87 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     assert "environment: testflight" in workflow
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
+    assert "mise exec -- just test-unit" in workflow
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
         in workflow
     )
     assert "--unsigned-archive" in workflow
+    assert "if: always()" in workflow
+    assert "retention-days: 90" in workflow
+    assert ".build/release-diagnostics" in workflow
+
+
+def test_resolve_entitlements_replaces_xcode_placeholders(tmp_path: Path) -> None:
+    source = tmp_path / "Source.entitlements"
+    output = tmp_path / "Resolved.entitlements"
+    with source.open("wb") as source_file:
+        plistlib.dump(
+            {
+                "aps-environment": "$(SUNCLUB_APS_ENVIRONMENT)",
+                "com.apple.developer.icloud-container-identifiers": [
+                    "$(SUNCLUB_ICLOUD_CONTAINER)",
+                ],
+                "com.apple.security.application-groups": [
+                    "$(SUNCLUB_APP_GROUP_ID)",
+                ],
+            },
+            source_file,
+        )
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(RESOLVE_ENTITLEMENTS),
+            "--source",
+            str(source),
+            "--output",
+            str(output),
+            "--set",
+            "SUNCLUB_APS_ENVIRONMENT=production",
+            "--set",
+            "SUNCLUB_ICLOUD_CONTAINER=iCloud.app.peyton.sunclub",
+            "--set",
+            "SUNCLUB_APP_GROUP_ID=group.app.peyton.sunclub",
+        ],
+        check=True,
+    )
+
+    with output.open("rb") as output_file:
+        resolved = plistlib.load(output_file)
+
+    assert resolved["aps-environment"] == "production"
+    assert resolved["com.apple.developer.icloud-container-identifiers"] == [
+        "iCloud.app.peyton.sunclub",
+    ]
+    assert resolved["com.apple.security.application-groups"] == [
+        "group.app.peyton.sunclub",
+    ]
+
+
+def test_resolve_entitlements_rejects_unresolved_placeholders(tmp_path: Path) -> None:
+    source = tmp_path / "Source.entitlements"
+    output = tmp_path / "Resolved.entitlements"
+    with source.open("wb") as source_file:
+        plistlib.dump({"aps-environment": "$(SUNCLUB_APS_ENVIRONMENT)"}, source_file)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RESOLVE_ENTITLEMENTS),
+            "--source",
+            str(source),
+            "--output",
+            str(output),
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 1
+    assert "SUNCLUB_APS_ENVIRONMENT" in result.stderr
+    assert not output.exists()
 
 
 def test_archive_script_uses_app_store_connect_cli_auth() -> None:
@@ -216,7 +295,12 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in script
     assert "XCODEBUILD_ARCHIVE_SIGNING_ARGS=(" in script
     assert "--unsigned-archive can only be used with --skip-export" not in script
-    assert "Skipping signed app entitlement validation" in script
+    assert "write_ipa_entitlement_diagnostics" in script
+    assert "adhoc_sign_archived_app_with_release_entitlements" in script
+    assert "scripts.appstore.resolve_entitlements" in script
+    assert "--generate-entitlement-der" in script
+    assert "Unsigned archive export detected" not in script
+    assert "Skipping signed app entitlement validation" not in script
     assert 'validate_signed_ipa_entitlements "$IPA_FILE"' in script
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script

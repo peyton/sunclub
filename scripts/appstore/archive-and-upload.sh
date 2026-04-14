@@ -23,6 +23,8 @@ EXPORT_OUTPUT_PATH="$EXPORT_PATH"
 EXPORT_OPTIONS_PATHNAME="$ROOT_DIR/$EXPORT_OPTIONS_PATH"
 ARCHIVE_DERIVED_DATA_PATH="$ROOT_DIR/$ARCHIVE_DERIVED_DATA"
 APP_BUNDLE_PATH="$ARCHIVE_OUTPUT_PATH/Products/Applications/$RELEASE_APP_PRODUCT_NAME.app"
+RELEASE_DIAGNOSTICS_PATH="${RELEASE_DIAGNOSTICS_PATH:-$ROOT_DIR/.build/release-diagnostics}"
+RELEASE_ENTITLEMENTS_PATH="${RELEASE_ENTITLEMENTS_PATH:-$ROOT_DIR/.build/release-entitlements}"
 
 SKIP_GENERATE=false
 SKIP_ARCHIVE=false
@@ -161,6 +163,122 @@ validate_signed_ipa_entitlements() {
   rm -rf "$temp_dir"
 }
 
+resolve_release_entitlements() {
+  local cloudkit_environment
+  local app_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.plist"
+  local widget_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-widget.entitlements.plist"
+
+  cloudkit_environment="Development"
+  if [ "$SUNCLUB_APS_ENVIRONMENT" = "production" ]; then
+    cloudkit_environment="Production"
+  fi
+
+  rm -rf "$RELEASE_ENTITLEMENTS_PATH"
+  mkdir -p "$RELEASE_ENTITLEMENTS_PATH"
+
+  run_repo_python_module scripts.appstore.resolve_entitlements \
+    --source "$ROOT_DIR/app/Sunclub/Sunclub.entitlements" \
+    --output "$app_entitlements_path" \
+    --set "SUNCLUB_APS_ENVIRONMENT=$SUNCLUB_APS_ENVIRONMENT" \
+    --set "SUNCLUB_ICLOUD_ENVIRONMENT=$cloudkit_environment" \
+    --set "SUNCLUB_ICLOUD_CONTAINER=iCloud.$RELEASE_APP_IDENTIFIER" \
+    --set "SUNCLUB_APP_GROUP_ID=group.$RELEASE_APP_IDENTIFIER"
+
+  run_repo_python_module scripts.appstore.resolve_entitlements \
+    --source "$ROOT_DIR/app/Sunclub/SunclubWidgetsExtension.entitlements" \
+    --output "$widget_entitlements_path" \
+    --set "SUNCLUB_APP_GROUP_ID=group.$RELEASE_APP_IDENTIFIER"
+}
+
+adhoc_sign() {
+  local path="$1"
+  local entitlements_path="${2:-}"
+  local codesign_args=(
+    --force
+    --sign -
+    --timestamp=none
+    --generate-entitlement-der
+  )
+
+  if [ -n "$entitlements_path" ]; then
+    codesign_args+=(--entitlements "$entitlements_path")
+  fi
+
+  codesign "${codesign_args[@]}" "$path"
+}
+
+adhoc_sign_archived_app_with_release_entitlements() {
+  local app_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.plist"
+  local widget_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-widget.entitlements.plist"
+  local nested_path
+
+  command -v codesign >/dev/null || fail "codesign is required."
+  resolve_release_entitlements
+
+  while IFS= read -r nested_path; do
+    adhoc_sign "$nested_path"
+  done < <(find "$APP_BUNDLE_PATH" -type d -name '*.framework' -print)
+
+  while IFS= read -r nested_path; do
+    adhoc_sign "$nested_path"
+  done < <(find "$APP_BUNDLE_PATH" -type f -name '*.dylib' -print)
+
+  while IFS= read -r nested_path; do
+    adhoc_sign "$nested_path" "$widget_entitlements_path"
+  done < <(find "$APP_BUNDLE_PATH/PlugIns" -maxdepth 1 -type d -name '*.appex' -print 2>/dev/null || true)
+
+  adhoc_sign "$APP_BUNDLE_PATH" "$app_entitlements_path"
+}
+
+write_ipa_entitlement_diagnostics() {
+  local ipa_file="$1"
+  local temp_dir
+  local signed_app_path
+  local widget_path
+  local archive_signed
+
+  command -v codesign >/dev/null || fail "codesign is required."
+  command -v unzip >/dev/null || fail "unzip is required."
+
+  temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-ipa-diagnostics.XXXXXX")"
+  unzip -q "$ipa_file" -d "$temp_dir"
+  signed_app_path="$(find "$temp_dir/Payload" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME.app" -type d -print -quit)"
+  [ -n "$signed_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME.app"
+
+  rm -rf "$RELEASE_DIAGNOSTICS_PATH"
+  mkdir -p "$RELEASE_DIAGNOSTICS_PATH"
+
+  codesign -dvvv "$signed_app_path" >"$RELEASE_DIAGNOSTICS_PATH/$RELEASE_APP_PRODUCT_NAME.codesign.txt" 2>&1
+  if ! codesign -d --entitlements :- "$signed_app_path" >"$RELEASE_DIAGNOSTICS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.plist" \
+    2>"$RELEASE_DIAGNOSTICS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.log"; then
+    fail "Could not write signed app entitlement diagnostics"
+  fi
+
+  widget_path="$(find "$signed_app_path/PlugIns" -maxdepth 1 -name '*.appex' -type d -print -quit 2>/dev/null || true)"
+  if [ -n "$widget_path" ]; then
+    widget_name="$(basename "$widget_path")"
+    codesign -dvvv "$widget_path" >"$RELEASE_DIAGNOSTICS_PATH/$widget_name.codesign.txt" 2>&1
+    if ! codesign -d --entitlements :- "$widget_path" >"$RELEASE_DIAGNOSTICS_PATH/$widget_name.entitlements.plist" \
+      2>"$RELEASE_DIAGNOSTICS_PATH/$widget_name.entitlements.log"; then
+      fail "Could not write widget entitlement diagnostics"
+    fi
+  fi
+
+  archive_signed="yes"
+  if [ "$UNSIGNED_ARCHIVE" = true ]; then
+    archive_signed="no"
+  fi
+
+  {
+    printf 'IPA: %s\n' "$ipa_file"
+    printf 'App: %s\n' "$signed_app_path"
+    printf 'Archive signed before export: %s\n' "$archive_signed"
+    printf 'Generated at: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  } >"$RELEASE_DIAGNOSTICS_PATH/summary.txt"
+
+  rm -rf "$temp_dir"
+}
+
 [ -f "$EXPORT_OPTIONS_PATHNAME" ] || fail "Missing export options: $EXPORT_OPTIONS_PATHNAME"
 command -v xcodebuild >/dev/null || fail "xcodebuild is required."
 command -v xcrun >/dev/null || fail "xcrun is required."
@@ -221,6 +339,12 @@ fi
 
 [ -d "$APP_BUNDLE_PATH" ] || fail "Archive is missing $APP_BUNDLE_PATH"
 
+if [ "$UNSIGNED_ARCHIVE" = true ]; then
+  step "Ad-hoc signing archived app with requested release entitlements"
+  adhoc_sign_archived_app_with_release_entitlements
+  ok "Archived app carries requested entitlements for export"
+fi
+
 IPA_FILE=""
 if [ "$SKIP_EXPORT" = false ]; then
   step "Exporting the App Store package"
@@ -243,13 +367,13 @@ if [ "$SKIP_EXPORT" = false ]; then
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"
   ok "Exported IPA: $IPA_FILE"
 
-  if [ "$UNSIGNED_ARCHIVE" = true ]; then
-    printf 'Skipping signed app entitlement validation because this export was created from an unsigned archive.\n'
-  else
-    step "Validating signed app entitlements"
-    validate_signed_ipa_entitlements "$IPA_FILE"
-    ok "Signed app entitlements are valid"
-  fi
+  step "Writing signed app entitlement diagnostics"
+  write_ipa_entitlement_diagnostics "$IPA_FILE"
+  ok "Release entitlement diagnostics written to $RELEASE_DIAGNOSTICS_PATH"
+
+  step "Validating signed app entitlements"
+  validate_signed_ipa_entitlements "$IPA_FILE"
+  ok "Signed app entitlements are valid"
 else
   ok "Skipping IPA export"
 fi

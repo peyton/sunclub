@@ -8,6 +8,18 @@
 - `just cloudkit-export-schema`
 - `just cloudkit-validate-schema`
 
+## Release preflight
+
+Run `just cloudkit-doctor` first when a TestFlight crash or release issue points at CloudKit. If `.state/cloudkit/sunclub-cloudkit-schema.json` is missing or stale, run `just cloudkit-export-schema` and then `just cloudkit-validate-schema`.
+
+These commands prove that the saved management token can see the team and that CloudKit accepts the development schema. They do not prove the final TestFlight IPA has CloudKit entitlements. For release artifacts, inspect the exported app entitlements from the downloaded GitHub Actions artifact, for example:
+
+```bash
+plutil -p /tmp/sunclub-vX.Y.Z/release-diagnostics/Sunclub.entitlements.plist
+```
+
+The final app signature must include `com.apple.developer.icloud-container-identifiers` with `iCloud.app.peyton.sunclub` and `com.apple.developer.icloud-services` with `CloudKit` for live iCloud sync. The TestFlight workflow ad-hoc signs unsigned archives with resolved release entitlements and then validates the exported IPA before upload. If final IPA entitlements are still absent, the workflow should fail before TestFlight distribution; the runtime guard is only a last-resort launch-crash guard.
+
 ## What `cloudkit-doctor` checks
 
 1. The saved `cktool` token can access the configured team via `cktool get-teams`. If this passes, the token is a management token with team-level management API access.

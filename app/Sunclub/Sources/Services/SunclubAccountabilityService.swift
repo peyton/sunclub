@@ -40,10 +40,15 @@ protocol SunclubAccountabilityDatabase: AnyObject {
 @MainActor
 final class CloudKitAccountabilityDatabase: SunclubAccountabilityDatabase {
     private let containerIdentifier: String
+    private let cloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding
     private var database: CKDatabase?
 
-    init(containerIdentifier: String) {
+    init(
+        containerIdentifier: String,
+        cloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding = CodeSignatureCloudKitEntitlementProvider()
+    ) {
         self.containerIdentifier = containerIdentifier
+        self.cloudKitEntitlementProvider = cloudKitEntitlementProvider
     }
 
     func record(for recordID: CKRecord.ID) async throws -> CKRecord {
@@ -79,7 +84,10 @@ final class CloudKitAccountabilityDatabase: SunclubAccountabilityDatabase {
             return database
         }
 
-        try SunclubCloudKitAvailability.validate(containerIdentifier: containerIdentifier)
+        try SunclubCloudKitAvailability.validateRuntime(
+            containerIdentifier: containerIdentifier,
+            entitlementProvider: cloudKitEntitlementProvider
+        )
         let database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
         self.database = database
         return database

@@ -130,6 +130,14 @@ private enum FakeAccountabilityError: Error {
     case sendFailed
 }
 
+private struct StaticCloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding {
+    var entitlements: [String: Any]
+
+    func entitlementValue(for key: String) -> Any? {
+        entitlements[key]
+    }
+}
+
 @MainActor
 final class FakeAccountabilityDatabase: SunclubAccountabilityDatabase {
     private(set) var fetchedRecordNames: [String] = []
@@ -200,6 +208,13 @@ final class MockHomeExitReminderMonitor: HomeExitReminderMonitoring {
 }
 
 final class SunclubTests: XCTestCase {
+    private static func cloudKitEntitlements(containerIdentifier: String) -> [String: Any] {
+        [
+            "com.apple.developer.icloud-container-identifiers": [containerIdentifier],
+            "com.apple.developer.icloud-services": ["CloudKit"]
+        ]
+    }
+
     @MainActor
     func testAppRouterGoBackRemovesCurrentRoute() {
         let router = AppRouter()
@@ -1218,6 +1233,78 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testCloudKitAvailabilityAcceptsSignedRuntimeEntitlements() throws {
+        let containerIdentifier = "iCloud.app.peyton.sunclub"
+        let entitlementProvider = StaticCloudKitEntitlementProvider(
+            entitlements: Self.cloudKitEntitlements(containerIdentifier: containerIdentifier)
+        )
+
+        XCTAssertNoThrow(
+            try SunclubCloudKitAvailability.validateRuntime(
+                containerIdentifier: containerIdentifier,
+                entitlementProvider: entitlementProvider
+            )
+        )
+    }
+
+    @MainActor
+    func testCloudKitAvailabilityAcceptsWildcardCloudKitServiceEntitlement() throws {
+        let containerIdentifier = "iCloud.app.peyton.sunclub"
+        var entitlements = Self.cloudKitEntitlements(containerIdentifier: containerIdentifier)
+        entitlements["com.apple.developer.icloud-services"] = "*"
+        let entitlementProvider = StaticCloudKitEntitlementProvider(entitlements: entitlements)
+
+        XCTAssertNoThrow(
+            try SunclubCloudKitAvailability.validateRuntime(
+                containerIdentifier: containerIdentifier,
+                entitlementProvider: entitlementProvider
+            )
+        )
+    }
+
+    @MainActor
+    func testCloudKitAvailabilityRejectsMissingRuntimeContainerEntitlement() {
+        let containerIdentifier = "iCloud.app.peyton.sunclub"
+        let entitlementProvider = StaticCloudKitEntitlementProvider(
+            entitlements: ["com.apple.developer.icloud-services": ["CloudKit"]]
+        )
+
+        XCTAssertThrowsError(
+            try SunclubCloudKitAvailability.validateRuntime(
+                containerIdentifier: containerIdentifier,
+                entitlementProvider: entitlementProvider
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? SunclubCloudKitConfigurationError,
+                .missingContainerEntitlement(containerIdentifier)
+            )
+        }
+    }
+
+    @MainActor
+    func testCloudKitAvailabilityRejectsMissingRuntimeCloudKitServiceEntitlement() {
+        let containerIdentifier = "iCloud.app.peyton.sunclub"
+        let entitlementProvider = StaticCloudKitEntitlementProvider(
+            entitlements: [
+                "com.apple.developer.icloud-container-identifiers": [containerIdentifier]
+            ]
+        )
+
+        XCTAssertThrowsError(
+            try SunclubCloudKitAvailability.validateRuntime(
+                containerIdentifier: containerIdentifier,
+                entitlementProvider: entitlementProvider
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? SunclubCloudKitConfigurationError,
+                .missingCloudKitServiceEntitlement
+            )
+        }
+    }
+
+    @MainActor
     func testCloudKitAvailabilityRejectsUnsafeLaunchConfiguration() {
         XCTAssertThrowsError(
             try SunclubCloudKitAvailability.validate(
@@ -1246,6 +1333,52 @@ final class SunclubTests: XCTestCase {
             preference.lastSyncErrorDescription,
             SunclubCloudKitConfigurationError.invalidContainerIdentifier.errorDescription
         )
+    }
+
+    @MainActor
+    func testCloudSyncCoordinatorRecordsMissingCloudKitEntitlementBeforeContainerAccess() async throws {
+        let containerIdentifier = "iCloud.app.peyton.sunclub"
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        try historyService.bootstrapIfNeeded()
+        let coordinator = CloudSyncCoordinator(
+            historyService: historyService,
+            containerIdentifier: containerIdentifier,
+            cloudKitEntitlementProvider: StaticCloudKitEntitlementProvider(entitlements: [:])
+        )
+
+        await coordinator.start()
+
+        let preference = try historyService.syncPreference()
+        XCTAssertEqual(preference.status, .error)
+        XCTAssertEqual(
+            preference.lastSyncErrorDescription,
+            SunclubCloudKitConfigurationError
+                .missingContainerEntitlement(containerIdentifier)
+                .errorDescription
+        )
+    }
+
+    @MainActor
+    func testCloudKitAccountabilityDatabaseRejectsMissingCloudKitEntitlementBeforeContainerAccess() async throws {
+        let database = CloudKitAccountabilityDatabase(
+            containerIdentifier: "iCloud.app.peyton.sunclub",
+            cloudKitEntitlementProvider: StaticCloudKitEntitlementProvider(entitlements: [:])
+        )
+        let query = CKQuery(
+            recordType: "AccountabilityProfile",
+            predicate: NSPredicate(format: "TRUEPREDICATE")
+        )
+
+        do {
+            _ = try await database.records(matching: query, limit: 1)
+            XCTFail("Expected missing CloudKit entitlement error.")
+        } catch {
+            XCTAssertEqual(
+                error as? SunclubCloudKitConfigurationError,
+                .missingContainerEntitlement("iCloud.app.peyton.sunclub")
+            )
+        }
     }
 
     @MainActor

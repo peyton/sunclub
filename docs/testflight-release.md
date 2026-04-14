@@ -60,7 +60,7 @@ just release-testflight 1.2.3
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
 Use `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1 just appstore-submit-review` only after strict metadata, App Privacy, screenshots, and App Review contact details are ready.
-The production tag workflow archives unsigned on GitHub, then exports and uploads the IPA with App Store Connect API key auth. The runner does not import an Apple signing certificate private key, and signed automatic archives can resolve to iOS Development signing and fail at Apple's certificate limit. Unsigned archive exports skip the strict signed IPA entitlement validator because the unsigned archive does not preserve the entitlement context needed for that check. Development flavors keep development signing so local installs and tests continue to use dev profiles.
+The production tag workflow archives unsigned on GitHub, ad-hoc signs the archived app with the resolved production entitlements, then exports and uploads the IPA with App Store Connect API key auth. The runner does not import an Apple signing certificate private key, and signed automatic archives can resolve to iOS Development signing and fail at Apple's certificate limit. The workflow writes final signed-app entitlement diagnostics into `.build/release-diagnostics` and validates those diagnostics before upload, so a TestFlight IPA that is missing CloudKit, push, or app-group entitlements is blocked before testers receive it. The app still keeps runtime CloudKit entitlement guards as a last-resort launch-crash guard. Development flavors keep development signing so local installs and tests continue to use dev profiles.
 
 ## GitHub Automation
 
@@ -71,9 +71,30 @@ It:
 1. resolves release versions
 2. validates App Store metadata
    - uses draft mode for TestFlight-only fields
-3. archives and exports the production IPA on pinned stable Xcode `26.3`
-4. uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
-5. publishes the `.xcarchive` and exported IPA as workflow artifacts
+3. runs the Swift unit suite as a launch-safety gate
+4. archives the production app on pinned stable Xcode `26.3`
+5. ad-hoc signs the unsigned archive with resolved release entitlements before export
+6. exports the production IPA
+7. writes and validates signed-app entitlement diagnostics before upload
+8. uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
+9. publishes the `.xcarchive`, exported IPA, and `.build/release-diagnostics` as workflow artifacts for 90 days, even when the job fails after artifacts are produced
+
+Before trusting a TestFlight upload, download the workflow artifact and inspect the exported IPA entitlements:
+
+```bash
+gh run download <run-id> --name sunclub-testflight-vX.Y.Z --dir /tmp/sunclub-vX.Y.Z
+plutil -p /tmp/sunclub-vX.Y.Z/release-diagnostics/Sunclub.entitlements.plist
+```
+
+For CloudKit releases, also run:
+
+```bash
+just cloudkit-doctor
+just cloudkit-export-schema
+just cloudkit-validate-schema
+```
+
+Those CloudKit commands verify Apple-side CloudKit access. The final IPA entitlement report verifies what testers actually receive.
 
 `.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review.
 

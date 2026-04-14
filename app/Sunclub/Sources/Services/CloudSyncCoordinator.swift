@@ -78,6 +78,7 @@ final class NoopCloudSyncCoordinator: CloudSyncControlling {
 final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDelegate, @unchecked Sendable {
     private let historyService: SunclubHistoryService
     private let containerIdentifier: String
+    private let cloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding
     private let zoneID = CKRecordZone.ID(zoneName: "sunclub-history", ownerName: CKCurrentUserDefaultName)
 
     private var syncEngine: CKSyncEngine?
@@ -85,10 +86,12 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
 
     init(
         historyService: SunclubHistoryService,
-        containerIdentifier: String = SunclubRuntimeConfiguration.cloudKitContainerIdentifier
+        containerIdentifier: String = SunclubRuntimeConfiguration.cloudKitContainerIdentifier,
+        cloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding = CodeSignatureCloudKitEntitlementProvider()
     ) {
         self.historyService = historyService
         self.containerIdentifier = containerIdentifier
+        self.cloudKitEntitlementProvider = cloudKitEntitlementProvider
         super.init()
     }
 
@@ -232,7 +235,10 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
             return
         }
 
-        try SunclubCloudKitAvailability.validate(containerIdentifier: containerIdentifier)
+        try SunclubCloudKitAvailability.validateRuntime(
+            containerIdentifier: containerIdentifier,
+            entitlementProvider: cloudKitEntitlementProvider
+        )
         let database = CKContainer(identifier: containerIdentifier).privateCloudDatabase
         let configuration = CKSyncEngine.Configuration(
             database: database,
