@@ -56,10 +56,17 @@ GitHub run cross-check:
 - Do not cut a TestFlight tag until the latest `master` CI run for the exact
   `HEAD` commit succeeds.
 - Keep every GitHub Actions Xcode build or test step bounded with
-  `timeout-minutes`.
+  `timeout-minutes`. This includes TestFlight archive/upload, App Review
+  screenshot capture, App Review archive/upload, and final review submission
+  steps.
 - Set `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1` on every macOS GitHub Actions job
   that runs `just test-unit`, `just test-ui`, `just ci-build`, or release
-  archive/test commands.
+  archive/test commands. Screenshot capture is also Xcode-heavy and should keep
+  this guard.
+- Pin CI and release jobs to the same supported stable Xcode version through
+  each workflow's `SUNCLUB_XCODE_VERSION` env value instead of relying on
+  `latest`, which can move before Tuist, simulators, or App Store validation
+  behavior is verified for Sunclub.
 - If an in-progress GitHub iOS job has no downloadable logs, inspect job step
   metadata with `gh run view <run-id> --json jobs` or
   `gh api /repos/peyton/sunclub/actions/jobs/<job-id>`.
@@ -82,8 +89,8 @@ GitHub run cross-check:
   export compiled icon assets.
 - Keep release IPA validation checking the embedded watch app before upload:
   code-signing identifier equals `CFBundleIdentifier`, `CFBundleIconName` is
-  `AppIcon`, compiled `Assets.car` exists, and the iOS-only plist keys are
-  absent.
+  `AppIcon`, marketing version and build number match the companion app,
+  compiled `Assets.car` exists, and the iOS-only plist keys are absent.
 - Before `xcodebuild -exportArchive`, prepare App Store provisioning profiles
   for every archived `.app` and `.appex` bundle. The release script must
   enumerate the archive itself, create any missing App Store profiles through
@@ -109,3 +116,10 @@ GitHub run cross-check:
 - Before trusting a TestFlight release, inspect the downloaded workflow artifact
   entitlements from `.build/release-diagnostics`, not just the provisioning
   profile or checked-in entitlement files.
+- Release diagnostics must include code-signing and entitlement dumps for the
+  main app and every nested `.app` or `.appex` bundle inside the exported IPA,
+  including watch app, watch extension, iOS widget, and watch widget bundles.
+- Run `just release-preflight` before cutting a TestFlight tag when a local
+  macOS/Xcode environment is available. It combines strict metadata validation,
+  Python release guard tests, release-safety unit tests, and the release build
+  shard.

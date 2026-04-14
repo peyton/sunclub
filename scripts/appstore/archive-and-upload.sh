@@ -160,6 +160,9 @@ assert_codesign_identifier_matches_bundle() {
 
   actual="$(codesign -dvvv "$bundle_path" 2>&1 | sed -n 's/^Identifier=//p' | head -1)"
   [ -n "$actual" ] || fail "$label is missing a code signature identifier"
+  if [ "$expected" = "com.apple.WK" ] || [ "$actual" = "com.apple.WK" ]; then
+    fail "$label uses the WatchKit stub code-signing identifier com.apple.WK"
+  fi
   if [ "$actual" != "$expected" ]; then
     fail "$label code signature identifier is '$actual', expected '$expected'"
   fi
@@ -211,6 +214,8 @@ validate_signed_ipa_watch_bundle() {
   local signed_app_path
   local watch_app_path
   local watch_info_path
+  local main_build_number
+  local main_marketing_version
 
   command -v codesign >/dev/null || fail "codesign is required."
   command -v unzip >/dev/null || fail "unzip is required."
@@ -226,8 +231,15 @@ validate_signed_ipa_watch_bundle() {
 
   watch_info_path="$watch_app_path/Info.plist"
   [ -f "$watch_info_path" ] || fail "Exported watch app is missing Info.plist"
+  main_marketing_version="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$signed_app_path/Info.plist" 2>/dev/null || true)"
+  [ -n "$main_marketing_version" ] || fail "$RELEASE_APP_PRODUCT_NAME app is missing CFBundleShortVersionString"
+  main_build_number="$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$signed_app_path/Info.plist" 2>/dev/null || true)"
+  [ -n "$main_build_number" ] || fail "$RELEASE_APP_PRODUCT_NAME app is missing CFBundleVersion"
+
   assert_codesign_identifier_matches_bundle "$watch_app_path" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_info_plist_string "$watch_info_path" "WKCompanionAppBundleIdentifier" "$RELEASE_APP_IDENTIFIER" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_info_plist_string "$watch_info_path" "CFBundleShortVersionString" "$main_marketing_version" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_info_plist_string "$watch_info_path" "CFBundleVersion" "$main_build_number" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_info_plist_string "$watch_info_path" "CFBundleIconName" "AppIcon" "$RELEASE_APP_PRODUCT_NAME Watch app"
   [ -f "$watch_app_path/Assets.car" ] || fail "$RELEASE_APP_PRODUCT_NAME Watch app is missing compiled icon assets"
 
@@ -235,6 +247,37 @@ validate_signed_ipa_watch_bundle() {
   assert_plist_key_absent "$watch_info_path" "SunclubAppGroupID" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "SunclubICloudContainerIdentifier" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "SunclubURLScheme" "$RELEASE_APP_PRODUCT_NAME Watch app"
+
+  rm -rf "$temp_dir"
+}
+
+validate_signed_ipa_nested_bundle_identifiers() {
+  local ipa_file="$1"
+  local temp_dir
+  local signed_app_path
+  local nested_bundle_path
+  local nested_label
+
+  command -v codesign >/dev/null || fail "codesign is required."
+  command -v unzip >/dev/null || fail "unzip is required."
+  [ -x /usr/libexec/PlistBuddy ] || fail "PlistBuddy is required."
+
+  temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-nested-ipa.XXXXXX")"
+  unzip -q "$ipa_file" -d "$temp_dir"
+  signed_app_path="$(find "$temp_dir/Payload" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME.app" -type d -print -quit)"
+  [ -n "$signed_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME.app"
+
+  while IFS= read -r nested_bundle_path; do
+    nested_label="${nested_bundle_path#"$signed_app_path"/}"
+    assert_codesign_identifier_matches_bundle "$nested_bundle_path" "$nested_label"
+  done < <(
+    find "$signed_app_path" \
+      -mindepth 2 \
+      -type d \
+      \( -name '*.app' -o -name '*.appex' \) \
+      -print |
+      sort
+  )
 
   rm -rf "$temp_dir"
 }
@@ -367,7 +410,8 @@ write_ipa_entitlement_diagnostics() {
   local ipa_file="$1"
   local temp_dir
   local signed_app_path
-  local widget_path
+  local nested_bundle_path
+  local nested_diagnostic_stem
   local archive_signed
 
   command -v codesign >/dev/null || fail "codesign is required."
@@ -389,15 +433,24 @@ write_ipa_entitlement_diagnostics() {
     fail "Could not write signed app entitlement diagnostics"
   fi
 
-  widget_path="$(find "$signed_app_path/PlugIns" -maxdepth 1 -name '*.appex' -type d -print -quit 2>/dev/null || true)"
-  if [ -n "$widget_path" ]; then
-    widget_name="$(basename "$widget_path")"
-    codesign -dvvv "$widget_path" >"$RELEASE_DIAGNOSTICS_PATH/$widget_name.codesign.txt" 2>&1
-    if ! codesign -d --entitlements :- "$widget_path" >"$RELEASE_DIAGNOSTICS_PATH/$widget_name.entitlements.plist" \
-      2>"$RELEASE_DIAGNOSTICS_PATH/$widget_name.entitlements.log"; then
-      fail "Could not write widget entitlement diagnostics"
+  while IFS= read -r nested_bundle_path; do
+    nested_diagnostic_stem="${nested_bundle_path#"$signed_app_path"/}"
+    nested_diagnostic_stem="${nested_diagnostic_stem//\//__}"
+    nested_diagnostic_stem="${nested_diagnostic_stem// /_}"
+
+    codesign -dvvv "$nested_bundle_path" >"$RELEASE_DIAGNOSTICS_PATH/$nested_diagnostic_stem.codesign.txt" 2>&1
+    if ! codesign -d --entitlements :- "$nested_bundle_path" >"$RELEASE_DIAGNOSTICS_PATH/$nested_diagnostic_stem.entitlements.plist" \
+      2>"$RELEASE_DIAGNOSTICS_PATH/$nested_diagnostic_stem.entitlements.log"; then
+      fail "Could not write entitlement diagnostics for $nested_diagnostic_stem"
     fi
-  fi
+  done < <(
+    find "$signed_app_path" \
+      -mindepth 2 \
+      -type d \
+      \( -name '*.app' -o -name '*.appex' \) \
+      -print |
+      sort
+  )
 
   archive_signed="yes"
   if [ "$UNSIGNED_ARCHIVE" = true ]; then
@@ -513,6 +566,10 @@ if [ "$SKIP_EXPORT" = false ]; then
   step "Validating signed app entitlements"
   validate_signed_ipa_entitlements "$IPA_FILE"
   ok "Signed app entitlements are valid"
+
+  step "Validating nested bundle code signatures"
+  validate_signed_ipa_nested_bundle_identifiers "$IPA_FILE"
+  ok "Nested bundle code signatures are valid"
 
   step "Validating signed watch app bundle"
   validate_signed_ipa_watch_bundle "$IPA_FILE"
