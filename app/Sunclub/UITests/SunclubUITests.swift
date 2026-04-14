@@ -578,7 +578,7 @@ final class SunclubUITests: XCTestCase {
 
         let calendarGrid = app.otherElements["history.calendarGrid"]
         XCTAssertTrue(calendarGrid.waitForExistence(timeout: 5))
-        calendarGrid.swipeRight()
+        dragCalendarGrid(calendarGrid, toward: .right)
 
         XCTAssertTrue(waitForDifferentLabel(from: initialMonth, on: monthTitle))
     }
@@ -596,12 +596,12 @@ final class SunclubUITests: XCTestCase {
 
         let calendarGrid = app.otherElements["history.calendarGrid"]
         XCTAssertTrue(calendarGrid.waitForExistence(timeout: 5))
-        calendarGrid.swipeLeft()
-        XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle, timeout: 2))
+        dragCalendarGrid(calendarGrid, toward: .left)
+        XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle))
 
-        calendarGrid.swipeRight()
+        dragCalendarGrid(calendarGrid, toward: .right)
         XCTAssertTrue(waitForDifferentLabel(from: currentMonth, on: monthTitle))
-        calendarGrid.swipeLeft()
+        dragCalendarGrid(calendarGrid, toward: .left)
         XCTAssertTrue(waitForLabel(currentMonth, on: monthTitle))
     }
 
@@ -1137,6 +1137,15 @@ final class SunclubUITests: XCTestCase {
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
+    @MainActor
+    private func dragCalendarGrid(_ calendarGrid: XCUIElement, toward direction: CalendarGridDragDirection) {
+        let startX = direction == .left ? 0.76 : 0.24
+        let endX = direction == .left ? 0.24 : 0.76
+        let start = calendarGrid.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: 0.5))
+        let end = calendarGrid.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
     private func dayIdentifier(offset: Int = 0) -> String {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -1285,4 +1294,9 @@ final class SunclubUITests: XCTestCase {
 
         return false
     }
+}
+
+private enum CalendarGridDragDirection {
+    case left
+    case right
 }
