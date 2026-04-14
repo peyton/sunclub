@@ -2229,7 +2229,7 @@ final class SunclubTests: XCTestCase {
         state.recordReapplication()
 
         await Task.yield()
-        let record = try XCTUnwrap(state.record(for: Date()))
+        let record = try XCTUnwrap(state.record(for: midday))
         XCTAssertEqual(record.reapplyCount, 1)
         XCTAssertNotNil(record.lastReappliedAt)
         XCTAssertTrue(record.hasReapplied)
