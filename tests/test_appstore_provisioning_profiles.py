@@ -116,7 +116,7 @@ def test_collect_archived_bundles_reads_app_and_nested_extensions(
 
 
 def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: Any
 ) -> None:
     client = FakeProfilesClient()
     original_get_collection = client.get_collection
@@ -130,6 +130,11 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
         return original_get_collection(path, query)
 
     client.get_collection = get_collection_without_global_certificates  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "read_bundle_profile_entitlements",
+        lambda _path: {},
+    )
     bundles = [
         ArchivedBundle(
             path=tmp_path / "Sunclub.app",
