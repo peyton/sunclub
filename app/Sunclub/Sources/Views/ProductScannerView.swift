@@ -239,7 +239,7 @@ struct ProductScannerView: View {
         VStack(alignment: .leading, spacing: 12) {
             SunStatusCard(
                 title: "Camera access denied",
-                detail: "Turn on camera access in Settings to scan sunscreen labels. You can still pick a photo.",
+                detail: "Turn on camera access in Settings to scan sunscreen labels. You can still pick a photo or enter SPF manually.",
                 tint: Color.red.opacity(0.8),
                 symbol: "camera.fill"
             )
@@ -253,6 +253,12 @@ struct ProductScannerView: View {
             }
             .buttonStyle(SunSecondaryButtonStyle())
             .accessibilityIdentifier("productScanner.openSettings")
+
+            Button("Enter SPF Manually") {
+                router.open(.manualLog)
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("productScanner.manualLog")
         }
     }
 
@@ -261,6 +267,12 @@ struct ProductScannerView: View {
             Text(result.summary)
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
+
+            Text(result.confirmationDetail)
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("productScanner.confirmationDetail")
 
             if let expirationText = result.expirationText {
                 Text("Detected expiry: \(expirationText)")

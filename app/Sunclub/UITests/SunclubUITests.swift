@@ -107,6 +107,7 @@ final class SunclubUITests: XCTestCase {
 
         expandSettingsSection("reminders", in: app)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.notificationStatus"].exists)
         XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
         XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
@@ -394,6 +395,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Camera access denied"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["productScanner.openSettings"].exists)
+        XCTAssertTrue(app.buttons["productScanner.manualLog"].exists)
         let pickerByIdentifier = app.buttons["productScanner.pickPhoto"]
         let pickerByLabel = app.buttons["Pick Photo"]
         XCTAssertTrue(pickerByIdentifier.exists || pickerByLabel.exists)

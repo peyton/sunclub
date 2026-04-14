@@ -95,6 +95,41 @@ enum SunclubTrackedField: String, Codable, CaseIterable, Sendable {
     case reapplyReminderEnabled
     case reapplyIntervalMinutes
     case usesLiveUV
+
+    var displayTitle: String {
+        switch self {
+        case .isDeleted:
+            return "Deleted day"
+        case .verifiedAt:
+            return "Log time"
+        case .methodRawValue:
+            return "Log method"
+        case .verificationDuration:
+            return "Scan duration"
+        case .spfLevel:
+            return "SPF"
+        case .notes:
+            return "Notes"
+        case .reapplyCount:
+            return "Reapply count"
+        case .lastReappliedAt:
+            return "Last reapply"
+        case .hasCompletedOnboarding:
+            return "Onboarding"
+        case .reminderHour, .reminderMinute, .smartReminderSettingsData:
+            return "Daily reminders"
+        case .weeklyHour, .weeklyWeekday:
+            return "Weekly reminder"
+        case .dailyPhraseState:
+            return "Daily phrase"
+        case .weeklyPhraseState:
+            return "Weekly phrase"
+        case .reapplyReminderEnabled, .reapplyIntervalMinutes:
+            return "Reapply reminders"
+        case .usesLiveUV:
+            return "Live UV"
+        }
+    }
 }
 
 enum CloudSyncStatus: String, Codable, Sendable {

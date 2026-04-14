@@ -23,6 +23,7 @@
 - `Save Sunscreen Log`: today or a selected date/time, optional SPF and notes.
 - `Log Reapply`: increments today's reapply count.
 - `Get Sunclub Status`: returns today logged state, streak, weekly applied count, and message.
+- `Time Since Last Sunscreen`: returns minutes since the last log or reapply.
 - `Open Sunclub`: opens a supported app route.
 - `Set Sunclub Reminder`: updates weekday or weekend reminder time.
 - `Set Sunclub Reapply Reminder`: turns reapply reminders on or off and can update the interval.
@@ -35,7 +36,7 @@
 
 ## App Shortcuts
 
-- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Open Automation, Export Backup, Create Skin Health Report, and Create Streak Card.
+- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Time Since Last Sunscreen, Open Automation, Export Backup, Create Skin Health Report, and Create Streak Card.
 - File-producing App Intents return files through Shortcuts and are shown separately from URL examples in the in-app Automation catalog.
 - The in-app catalog intentionally disables the Test button for URL examples that need a real friend invite code or saved friend UUID.
 
@@ -53,12 +54,15 @@
 - `save-log?date=YYYY-MM-DD&time=HH:mm&spf=50&notes=Morning`
 - `reapply`
 - `status`
+- `time-since-last-application`
 - `set-reminder?kind=weekday|weekend&time=HH:mm`
 - `set-reapply?enabled=true&interval=120`
 - `set-toggle?name=travelTimeZone|streakRisk|liveUV|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
 - `import-friend?code=...`
 - `poke-friend?id=<uuid>` opens Friends with `status=needs-message` while public accountability transport is disabled.
 - `open?route=home|log|reapply|summary|history|settings|automation|achievements|friends|health-report|product-scanner|recovery`
+
+URL validation is strict for typed fields. Malformed dates, times, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
 
 ## x-callback-url
 
@@ -76,6 +80,8 @@
 - `todayLogged`
 - `weeklyApplied`
 - `recordDate`
+- `lastAppliedAt`
+- `minutesSinceLastApplication`
 - `friend`
 - `fileName`
 - `fileType`
@@ -97,11 +103,12 @@
 - Logging, save-log, and reapply write through `SunclubHistoryService`.
 - Outside-app writes must refresh projected state and widget snapshots.
 - Duplicate same-day logs update the existing day rather than adding another visible day.
-- Optional SPF and notes behavior must match the manual log flows.
+- Optional SPF and notes behavior must match the manual log flows, including SPF clamping and the 280-character note limit.
 
 ## Testing Requirements
 
 - Unit: parser round-trips every supported direct and x-callback action.
+- Unit: malformed automation links fail before creating requests or mutating app state.
 - Unit: callback success and error payloads encode correctly.
 - Unit: settings toggles block URL and Shortcut writes while preserving open-only routing rules.
 - Unit: automation logging uses revision history and refreshes widget snapshots.

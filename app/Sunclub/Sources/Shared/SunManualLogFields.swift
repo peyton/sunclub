@@ -132,7 +132,7 @@ struct SunManualLogFields: View {
                         selectedSPF = spfLevel
                     }
                     if let note = sameAsLastTime.note {
-                        notes = note
+                        notes = SunManualLogInput.clampedNotes(note)
                     }
                 } label: {
                     Text(sameAsLastTime.chipTitle)
@@ -261,16 +261,30 @@ struct SunManualLogFields: View {
 
     private var notesField: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Notes (optional)")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("Notes (optional)")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                Spacer(minLength: 0)
+
+                if hasNotes {
+                    Button("Clear Note") {
+                        notes = ""
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("\(accessibilityPrefix).clearNote")
+                }
+            }
 
             if !suggestions.noteSnippets.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Array(suggestions.noteSnippets.enumerated()), id: \.offset) { index, noteSnippet in
                             Button {
-                                notes = noteSnippet
+                                notes = SunManualLogInput.clampedNotes(noteSnippet)
                             } label: {
                                 Text(noteSnippet)
                                     .font(.system(size: 13, weight: .medium))
@@ -310,6 +324,30 @@ struct SunManualLogFields: View {
                 }
                 .accessibilityLabel("Notes")
                 .accessibilityIdentifier("\(accessibilityPrefix).notesField")
+                .onChange(of: notes) { _, newValue in
+                    let clampedNotes = SunManualLogInput.clampedNotes(newValue)
+                    if clampedNotes != newValue {
+                        notes = clampedNotes
+                    }
+                }
+
+            Text(noteCountText)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppPalette.softInk.opacity(0.86))
+                .accessibilityIdentifier("\(accessibilityPrefix).noteCount")
         }
+    }
+
+    private var hasNotes: Bool {
+        !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var noteCountText: String {
+        let remaining = SunManualLogInput.remainingNoteCharacters(for: notes)
+        if remaining == 1 {
+            return "1 character left"
+        }
+
+        return "\(remaining) characters left"
     }
 }

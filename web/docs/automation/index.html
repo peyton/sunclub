@@ -60,6 +60,7 @@
         <li>Save Sunscreen Log for today or a selected date and time.</li>
         <li>Log Reapply.</li>
         <li>Get Sunclub Status.</li>
+        <li>Get Time Since Last Sunscreen.</li>
         <li>Open Sunclub to a supported screen.</li>
         <li>Set reminder times, reapply reminders, and supported toggles.</li>
         <li>
@@ -90,6 +91,9 @@
         <li><code>sunclub://automation/reapply</code></li>
         <li><code>sunclub://automation/status</code></li>
         <li>
+          <code>sunclub://automation/time-since-last-application</code>
+        </li>
+        <li>
           <code
             >sunclub://automation/set-reminder?kind=weekday&amp;time=08:30</code
           >
@@ -113,6 +117,12 @@
         <li><code>sunclub://automation/open?route=automation</code></li>
         <li><code>sunclub://automation/open?route=settings</code></li>
       </ul>
+      <p>
+        Typed URL fields are strict. Malformed dates, times, non-numeric SPF
+        values, invalid routes, invalid toggles, invalid booleans, and invalid
+        UUIDs fail before Sunclub writes anything. Valid SPF values are
+        normalized to 1-100, and notes are trimmed and capped at 280 characters.
+      </p>
 
       <h2>x-callback-url</h2>
       <p>

@@ -51,6 +51,13 @@ struct NotificationHealthPresentation: Equatable {
     }
 }
 
+struct NotificationHealthStatusPresentation: Equatable {
+    let title: String
+    let detail: String
+    let symbolName: String
+    let needsAttention: Bool
+}
+
 enum NotificationHealthEvaluator {
     static func presentation(
         from snapshot: NotificationHealthSnapshot,
@@ -68,7 +75,7 @@ enum NotificationHealthEvaluator {
                 detail: "Turn notifications back on in Settings to get daily reminders again.",
                 actionTitle: "Open Settings"
             )
-        case .authorized, .provisional, .ephemeral:
+        case .authorized:
             if snapshot.pendingDailyReminderCount == 0 || snapshot.lastScheduledAt == nil {
                 return NotificationHealthPresentation(
                     state: .stale,
@@ -78,7 +85,68 @@ enum NotificationHealthEvaluator {
                 )
             }
             return nil
+        case .provisional, .ephemeral:
+            if snapshot.pendingDailyReminderCount == 0 || snapshot.lastScheduledAt == nil {
+                return NotificationHealthPresentation(
+                    state: .stale,
+                    title: "Quiet reminders need attention",
+                    detail: "Sunclub can deliver quiet reminders, but it couldn't find an active daily reminder on this phone.",
+                    actionTitle: "Refresh Reminders"
+                )
+            }
+            return nil
         case .notDetermined, .unknown:
+            return nil
+        }
+    }
+
+    static func statusPresentation(
+        from snapshot: NotificationHealthSnapshot,
+        onboardingComplete: Bool
+    ) -> NotificationHealthStatusPresentation? {
+        guard onboardingComplete else {
+            return nil
+        }
+
+        if let presentation = presentation(from: snapshot, onboardingComplete: onboardingComplete) {
+            return NotificationHealthStatusPresentation(
+                title: presentation.title,
+                detail: presentation.detail,
+                symbolName: presentation.state == .denied ? "bell.slash.fill" : "bell.badge.fill",
+                needsAttention: true
+            )
+        }
+
+        switch snapshot.authorizationState {
+        case .authorized:
+            return NotificationHealthStatusPresentation(
+                title: "Notifications are ready",
+                detail: "Sunclub has an active daily reminder scheduled on this phone.",
+                symbolName: "bell.fill",
+                needsAttention: false
+            )
+        case .provisional, .ephemeral:
+            return NotificationHealthStatusPresentation(
+                title: "Quiet reminders are ready",
+                detail: "Sunclub can deliver quiet daily reminders on this phone.",
+                symbolName: "bell.fill",
+                needsAttention: false
+            )
+        case .notDetermined:
+            return NotificationHealthStatusPresentation(
+                title: "Notification permission not asked",
+                detail: "You can still log manually. Sunclub will ask before scheduling reminders.",
+                symbolName: "bell",
+                needsAttention: false
+            )
+        case .unknown:
+            return NotificationHealthStatusPresentation(
+                title: "Notification status unknown",
+                detail: "Sunclub will refresh this status when reminders are checked.",
+                symbolName: "bell",
+                needsAttention: false
+            )
+        case .denied:
             return nil
         }
     }

@@ -187,6 +187,7 @@ enum SunclubAutomationAction: Equatable {
     case saveLog(day: Date?, time: ReminderTime?, spfLevel: Int?, notes: String?)
     case reapply
     case status
+    case timeSinceLastApplication
     case setReminder(kind: SunclubAutomationReminderKind, time: ReminderTime)
     case setReapply(enabled: Bool, intervalMinutes: Int?)
     case setToggle(SunclubAutomationToggle, enabled: Bool)
@@ -207,6 +208,8 @@ enum SunclubAutomationAction: Equatable {
             return "reapply"
         case .status:
             return "status"
+        case .timeSinceLastApplication:
+            return "time-since-last-application"
         case .setReminder:
             return "set-reminder"
         case .setReapply:
@@ -239,7 +242,7 @@ enum SunclubAutomationAction: Equatable {
              .importFriend,
              .pokeFriend:
             return true
-        case .status, .open, .exportBackup, .createSkinHealthReport, .createStreakCard:
+        case .status, .timeSinceLastApplication, .open, .exportBackup, .createSkinHealthReport, .createStreakCard:
             return false
         }
     }
@@ -277,6 +280,8 @@ struct SunclubAutomationResult: Equatable {
     var route: String?
     var fileURL: URL?
     var fileTypeIdentifier: String?
+    var lastAppliedAt: String?
+    var minutesSinceLastApplication: Int?
 
     var callbackQueryItems: [URLQueryItem] {
         var items = [
@@ -305,6 +310,12 @@ struct SunclubAutomationResult: Equatable {
         }
         if let route {
             items.append(URLQueryItem(name: "route", value: route))
+        }
+        if let lastAppliedAt {
+            items.append(URLQueryItem(name: "lastAppliedAt", value: lastAppliedAt))
+        }
+        if let minutesSinceLastApplication {
+            items.append(URLQueryItem(name: "minutesSinceLastApplication", value: String(minutesSinceLastApplication)))
         }
 
         return items
@@ -486,6 +497,12 @@ enum SunclubAutomationRuntime {
                 historyService: runtimeContext.historyService,
                 now: runtimeContext.now
             )
+        case .timeSinceLastApplication:
+            return try timeSinceLastApplicationResult(
+                action: action.identifier,
+                historyService: runtimeContext.historyService,
+                now: runtimeContext.now
+            )
         case let .setReminder(kind, time):
             return try setReminder(
                 kind: kind,
@@ -593,6 +610,7 @@ enum SunclubAutomationRuntime {
         growthSettings: SunclubGrowthSettings
     ) throws -> SunclubAutomationResult {
         let day = calendar.startOfDay(for: runtimeContext.now)
+        let isUpdate = try runtimeContext.historyService.record(for: day) != nil
         try upsertRecord(
             RecordMutation(
                 day: day,
@@ -609,7 +627,7 @@ enum SunclubAutomationRuntime {
         )
         return try finishChangedTimeline(
             action: "log-today",
-            message: "Logged sunscreen for today.",
+            message: isUpdate ? "Updated today's sunscreen log." : "Logged sunscreen for today.",
             recordDate: day,
             historyService: runtimeContext.historyService,
             growthSettings: growthSettings,
@@ -648,7 +666,7 @@ enum SunclubAutomationRuntime {
         )
         return try finishChangedTimeline(
             action: "save-log",
-            message: "Saved sunscreen log.",
+            message: kind == .historyBackfill ? "Backfilled sunscreen log." : "Updated sunscreen log.",
             recordDate: dayStart,
             historyService: runtimeContext.historyService,
             growthSettings: growthSettings,
@@ -1073,8 +1091,77 @@ enum SunclubAutomationRuntime {
             currentStreak: CalendarAnalytics.currentStreak(records: recordedDays, now: now, calendar: calendar),
             longestStreak: settings.longestStreak,
             todayLogged: todayLogged,
-            weeklyApplied: weekly.appliedCount
+            weeklyApplied: weekly.appliedCount,
+            lastAppliedAt: mostRecentApplication(in: records).map(dateTimeString),
+            minutesSinceLastApplication: minutesSinceLastApplication(in: records, now: now)
         )
+    }
+
+    private static func timeSinceLastApplicationResult(
+        action: String,
+        historyService: SunclubHistoryService,
+        now: Date
+    ) throws -> SunclubAutomationResult {
+        try historyService.refreshProjectedState()
+        let settings = try historyService.settings()
+        let records = try historyService.records()
+        let recordedDays = records.map { calendar.startOfDay(for: $0.startOfDay) }
+        let todayLogged = Set(recordedDays).contains(calendar.startOfDay(for: now))
+        let weekly = CalendarAnalytics.weeklyReport(records: recordedDays, now: now, calendar: calendar)
+        let currentStreak = CalendarAnalytics.currentStreak(records: recordedDays, now: now, calendar: calendar)
+        guard let lastApplication = mostRecentApplication(in: records),
+              let minutes = minutesSinceLastApplication(from: lastApplication, now: now) else {
+            return SunclubAutomationResult(
+                action: action,
+                status: "ok",
+                message: "No sunscreen application has been logged yet.",
+                currentStreak: currentStreak,
+                longestStreak: settings.longestStreak,
+                todayLogged: todayLogged,
+                weeklyApplied: weekly.appliedCount
+            )
+        }
+
+        return SunclubAutomationResult(
+            action: action,
+            status: "ok",
+            message: timeSinceLastApplicationMessage(minutes: minutes),
+            currentStreak: currentStreak,
+            longestStreak: settings.longestStreak,
+            todayLogged: todayLogged,
+            weeklyApplied: weekly.appliedCount,
+            lastAppliedAt: dateTimeString(lastApplication),
+            minutesSinceLastApplication: minutes
+        )
+    }
+
+    private static func mostRecentApplication(in records: [DailyRecord]) -> Date? {
+        records.flatMap { record in
+            [record.verifiedAt, record.lastReappliedAt].compactMap { $0 }
+        }
+        .max()
+    }
+
+    private static func minutesSinceLastApplication(in records: [DailyRecord], now: Date) -> Int? {
+        mostRecentApplication(in: records).flatMap { minutesSinceLastApplication(from: $0, now: now) }
+    }
+
+    private static func minutesSinceLastApplication(from date: Date, now: Date) -> Int? {
+        max(calendar.dateComponents([.minute], from: date, to: now).minute ?? 0, 0)
+    }
+
+    private static func timeSinceLastApplicationMessage(minutes: Int) -> String {
+        if minutes < 60 {
+            return "Last sunscreen application was \(minutes) minutes ago."
+        }
+
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        if remainingMinutes == 0 {
+            return "Last sunscreen application was \(hours) \(hours == 1 ? "hour" : "hours") ago."
+        }
+
+        return "Last sunscreen application was \(hours) \(hours == 1 ? "hour" : "hours") and \(remainingMinutes) minutes ago."
     }
 
     private static func syncSnapshot(
@@ -1153,13 +1240,11 @@ enum SunclubAutomationRuntime {
     }
 
     private static func normalizedSPF(_ spfLevel: Int?) -> Int? {
-        spfLevel.map { max(1, min($0, 100)) }
+        SunManualLogInput.normalizedSPF(spfLevel)
     }
 
     private static func normalizedNotes(_ notes: String?) -> String? {
-        guard let notes else { return nil }
-        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        SunManualLogInput.normalizedNotes(notes)
     }
 
     private static func formatted(_ time: ReminderTime) -> String {
@@ -1172,6 +1257,13 @@ enum SunclubAutomationRuntime {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = calendar.timeZone
         formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    private static func dateTimeString(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = calendar.timeZone
         return formatter.string(from: date)
     }
 

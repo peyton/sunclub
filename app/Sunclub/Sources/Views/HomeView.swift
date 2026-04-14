@@ -17,6 +17,7 @@ struct HomeView: View {
                 header
 
                 todayCard
+                dailyPlanCard
 
                 secondaryActionsSection
                 uvBriefingSection
@@ -669,6 +670,78 @@ struct HomeView: View {
         return "UV forecast. \(forecast.sourceLabel). \(peak) \(forecast.recommendation) \(hours.joined(separator: ". "))"
     }
 
+    private var dailyPlanCard: some View {
+        let presentation = appState.homeDailyPlanPresentation
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: presentation.symbolName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(dailyPlanTint(for: presentation.tone))
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(dailyPlanTint(for: presentation.tone).opacity(0.16))
+                    )
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Plan for today")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    Text(presentation.title)
+                        .font(.system(size: 21, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .accessibilityIdentifier("home.dailyPlanTitle")
+
+                    Text(presentation.detail)
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("home.dailyPlanDetail")
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if !presentation.facts.isEmpty {
+                LazyVGrid(columns: todayMetadataColumns, spacing: 8) {
+                    ForEach(presentation.facts) { fact in
+                        HomeDailyPlanFactPill(fact: fact)
+                    }
+                }
+                .accessibilityIdentifier("home.dailyPlanFacts")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(AppPalette.cardFill.opacity(0.72))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityValue(presentation.accessibilityValue)
+        .accessibilityIdentifier("home.dailyPlan")
+    }
+
+    private func dailyPlanTint(for tone: HomeDailyPlanTone) -> Color {
+        switch tone {
+        case .calm:
+            return AppPalette.pool
+        case .action:
+            return AppPalette.sun
+        case .warning:
+            return AppPalette.coral
+        case .complete:
+            return AppPalette.success
+        }
+    }
+
     @ViewBuilder
     private var secondaryActionsSection: some View {
         if hasSecondaryActions {
@@ -731,8 +804,8 @@ struct HomeView: View {
     private var syncRecoveryCard: some View {
         if appState.pendingImportedBatchCount > 0 || !appState.conflicts.isEmpty {
             HomeBannerCard(
-                title: syncRecoveryTitle,
-                detail: syncRecoveryDetail,
+                title: appState.syncRecoveryTitle,
+                detail: appState.syncRecoveryDetail,
                 symbol: !appState.conflicts.isEmpty
                     ? "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
                     : "icloud.and.arrow.up",
@@ -745,50 +818,18 @@ struct HomeView: View {
         }
     }
 
-    private var syncRecoveryTitle: String {
-        if !appState.conflicts.isEmpty {
-            return "Review changes"
-        }
-
-        return "Saved only on this phone"
-    }
-
-    private var syncRecoveryDetail: String {
-        var parts: [String] = []
-
-        if appState.pendingImportedBatchCount > 0 {
-            parts.append(SunclubCopy.Sync.readyToSendToICloud(appState.pendingImportedBatchCount))
-        }
-
-        if !appState.conflicts.isEmpty {
-            parts.append(SunclubCopy.Sync.mergedChangesNeedReview(appState.conflicts.count))
-        }
-
-        return parts.joined(separator: " ")
-    }
-
     @ViewBuilder
     private var footerActions: some View {
-        if appState.record(for: now) == nil {
-            Button("Log Today") {
-                feedbackTrigger += 1
-                router.open(.manualLog)
+        let presentation = appState.homeDailyPlanPresentation
+
+        VStack(spacing: 10) {
+            Button(presentation.actionTitle) {
+                performDailyPlanAction(presentation.action)
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("home.logManually")
-        } else {
-            VStack(spacing: 10) {
-                Button(loggedPrimaryActionTitle) {
-                    feedbackTrigger += 1
-                    if appState.reapplyCheckInPresentation != nil {
-                        router.open(.reapplyCheckIn)
-                    } else {
-                        router.open(.weeklySummary)
-                    }
-                }
-                .buttonStyle(SunPrimaryButtonStyle())
-                .accessibilityIdentifier("home.loggedPrimaryAction")
+            .accessibilityIdentifier(primaryActionAccessibilityIdentifier(for: presentation.action))
 
+            if appState.record(for: now) != nil, presentation.action != .addDetails {
                 Button("Edit Today's Log") {
                     feedbackTrigger += 1
                     router.open(.manualLog)
@@ -799,8 +840,33 @@ struct HomeView: View {
         }
     }
 
-    private var loggedPrimaryActionTitle: String {
-        appState.reapplyCheckInPresentation?.actionTitle ?? "View Progress"
+    private func performDailyPlanAction(_ action: HomeDailyPlanAction) {
+        feedbackTrigger += 1
+        switch action {
+        case .logToday, .addDetails:
+            router.open(.manualLog)
+        case .backfillYesterday:
+            router.open(.backfillYesterday)
+        case .logReapply:
+            router.open(.reapplyCheckIn)
+        case .viewProgress:
+            router.open(.weeklySummary)
+        case .reviewRecovery:
+            router.open(.recovery)
+        case .repairReminders:
+            appState.repairReminderSchedule()
+        case .openSettings:
+            router.open(.settings)
+        }
+    }
+
+    private func primaryActionAccessibilityIdentifier(for action: HomeDailyPlanAction) -> String {
+        switch action {
+        case .logToday:
+            return "home.logManually"
+        case .backfillYesterday, .logReapply, .addDetails, .viewProgress, .reviewRecovery, .repairReminders, .openSettings:
+            return "home.loggedPrimaryAction"
+        }
     }
 
     private func performRecoveryAction(_ action: HomeRecoveryAction) {
@@ -973,6 +1039,43 @@ private struct HomeTodayMetadataPill: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.accessibilityLabel)
         .accessibilityIdentifier("home.todayMetadata.\(row.id)")
+    }
+}
+
+private struct HomeDailyPlanFactPill: View {
+    let fact: HomeDailyPlanFact
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 9) {
+            Image(systemName: fact.symbolName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+                .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(fact.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+
+                Text(fact.value)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AppPalette.controlFill.opacity(0.58))
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(fact.accessibilityLabel)
+        .accessibilityIdentifier("home.dailyPlan.fact.\(fact.id)")
     }
 }
 

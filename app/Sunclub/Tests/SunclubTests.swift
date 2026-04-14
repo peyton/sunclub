@@ -628,6 +628,24 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testManualLogSuggestionStateDeduplicatesNotesCaseInsensitively() {
+        let records = [
+            makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: nil, notes: "Morning Beach Walk"),
+            makeDailyRecord(dayOffset: 2, hour: 8, spfLevel: nil, notes: "morning beach walk"),
+            makeDailyRecord(dayOffset: 3, hour: 7, spfLevel: nil, notes: "Before lunch")
+        ]
+
+        let suggestions = ManualLogSuggestionEngine.suggestions(
+            from: records,
+            excluding: Date(),
+            calendar: Calendar.current
+        )
+
+        XCTAssertEqual(suggestions.sameAsLastTime?.note, "Morning Beach Walk")
+        XCTAssertEqual(suggestions.noteSnippets, ["Before lunch"])
+    }
+
+    @MainActor
     func testManualLogSuggestionStatePrefillsMostRecentSPFEvenAfterNoteOnlyLog() {
         let records = [
             makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: nil, notes: "Hat day"),
@@ -1567,7 +1585,7 @@ final class SunclubTests: XCTestCase {
             notes: "  Pool day  "
         )
 
-        let record = try XCTUnwrap(state.record(for: Date()))
+        let record = try XCTUnwrap(state.record(for: midday))
         XCTAssertEqual(record.spfLevel, 30)
         XCTAssertEqual(record.notes, "Pool day")
     }
@@ -1701,6 +1719,7 @@ final class SunclubTests: XCTestCase {
         let rows = Dictionary(uniqueKeysWithValues: presentation.metadataRows.map { ($0.id, $0) })
 
         XCTAssertEqual(presentation.metadataRows.map(\.id), ["logged", "spf", "notes", "reapply", "uvPeak", "uvSource"])
+        XCTAssertEqual(rows["logged"]?.title, "Last Saved")
         XCTAssertEqual(rows["spf"]?.value, "SPF 50")
         XCTAssertEqual(rows["notes"]?.value, "Saved")
         XCTAssertEqual(rows["reapply"]?.value, "1h 30m, UV-adjusted")
@@ -2192,9 +2211,15 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testRecordReapplicationUpdatesTodayRecordAndCancelsReminder() async throws {
+    func testRecordReapplicationUpdatesTodayRecordAndSchedulesNextReminderBeforeSunset() async throws {
         let notificationManager = MockNotificationManager()
-        let state = try makeAppState(notificationManager: notificationManager)
+        let midday = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { midday }
+        )
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         state.markAppliedToday(method: .manual, spfLevel: 50)
 
@@ -2205,16 +2230,42 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(record.reapplyCount, 1)
         XCTAssertNotNil(record.lastReappliedAt)
         XCTAssertTrue(record.hasReapplied)
-        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [120])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
         XCTAssertEqual(state.reapplyCheckInPresentation?.actionTitle, "Log Another Reapply")
+    }
+
+    @MainActor
+    func testRecordReapplicationAfterSunsetCancelsReminder() async throws {
+        let notificationManager = MockNotificationManager()
+        let afterSunset = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 12, hour: 17, minute: 15))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { afterSunset }
+        )
+        state.updateReapplySettings(enabled: true, intervalMinutes: 60)
+        state.markAppliedToday(method: .manual, spfLevel: 50)
+
+        state.recordReapplication()
+
+        await Task.yield()
+        let record = try XCTUnwrap(state.record(for: afterSunset))
+        XCTAssertEqual(record.reapplyCount, 1)
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
+        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
     }
 
     @MainActor
     func testUndoingDeleteRestoresProjectedRecord() throws {
         let state = try makeAppState()
         let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+        let verifiedAt = try XCTUnwrap(Calendar.current.date(bySettingHour: 8, minute: 15, second: 0, of: yesterday))
+        let reappliedAt = try XCTUnwrap(Calendar.current.date(bySettingHour: 12, minute: 30, second: 0, of: yesterday))
 
-        state.saveManualRecord(for: yesterday, spfLevel: 50, notes: "Beach day")
+        state.saveManualRecord(for: yesterday, verifiedAt: verifiedAt, spfLevel: 50, notes: "Beach day")
+        state.recordReapplication(for: yesterday, performedAt: reappliedAt)
         state.deleteRecord(for: yesterday)
 
         let deletedBatch = try XCTUnwrap(state.changeBatches.first(where: { $0.kind == .deleteRecord }))
@@ -2225,6 +2276,9 @@ final class SunclubTests: XCTestCase {
         let restored = try XCTUnwrap(state.record(for: yesterday))
         XCTAssertEqual(restored.spfLevel, 50)
         XCTAssertEqual(restored.notes, "Beach day")
+        XCTAssertEqual(restored.verifiedAt, verifiedAt)
+        XCTAssertEqual(restored.reapplyCount, 1)
+        XCTAssertEqual(restored.lastReappliedAt, reappliedAt)
     }
 
     @MainActor
@@ -2274,6 +2328,12 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(mergedRecord.reapplyCount, 1)
         XCTAssertEqual(state.conflicts.count, 1)
         XCTAssertEqual(state.conflicts.first?.scope, .day)
+        XCTAssertEqual(state.homeDailyPlanPresentation.action, .reviewRecovery)
+        let conflict = try XCTUnwrap(state.conflicts.first)
+        let changedFields = state.conflictChangedFieldNames(for: conflict)
+        XCTAssertTrue(changedFields.contains("SPF"))
+        XCTAssertTrue(changedFields.contains("Notes"))
+        XCTAssertTrue(changedFields.contains("Reapply count"))
     }
 
     @MainActor
@@ -2308,6 +2368,177 @@ final class SunclubTests: XCTestCase {
         state.saveManualRecord(for: yesterday, spfLevel: 30, notes: nil)
 
         XCTAssertTrue(state.homeRecoveryActions.isEmpty)
+    }
+
+    @MainActor
+    func testHomeDailyPlanStartsWithLogToday() throws {
+        let morning = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 9, minute: 0))
+        )
+        let state = try makeAppState(clock: { morning })
+
+        let presentation = state.homeDailyPlanPresentation
+
+        XCTAssertEqual(presentation.action, .logToday)
+        XCTAssertEqual(presentation.actionTitle, "Log Today")
+        XCTAssertEqual(presentation.tone, .action)
+        XCTAssertTrue(presentation.facts.contains(where: { $0.id == "reminder" }))
+    }
+
+    @MainActor
+    func testHomeDailyPlanOffersDetailsAfterBareLog() throws {
+        let state = try makeAppState()
+
+        state.markAppliedToday(method: .manual)
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .addDetails)
+        XCTAssertEqual(presentation.actionTitle, "Add SPF or Note")
+        XCTAssertEqual(presentation.tone, .calm)
+    }
+
+    @MainActor
+    func testHomeDailyPlanPrioritizesYesterdayBackfillAfterTodayIsLogged() throws {
+        let state = try makeAppState()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        state.saveManualRecord(for: today, spfLevel: 50, notes: "Today")
+        for offset in [2, 3, 4] {
+            let day = try XCTUnwrap(calendar.date(byAdding: .day, value: -offset, to: today))
+            state.saveManualRecord(for: day, spfLevel: 50, notes: nil)
+        }
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .backfillYesterday)
+        XCTAssertEqual(presentation.actionTitle, "Backfill Yesterday")
+        XCTAssertEqual(presentation.tone, .warning)
+    }
+
+    @MainActor
+    func testHomeDailyPlanShowsReapplyWhenEnabledBeforeSunset() throws {
+        let midday = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(clock: { midday })
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+        state.markAppliedToday(method: .manual, spfLevel: 50)
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .logReapply)
+        XCTAssertEqual(presentation.actionTitle, "Log Reapply")
+        XCTAssertEqual(presentation.tone, .action)
+    }
+
+    @MainActor
+    func testHomeDailyPlanExplainsReapplyRemindersOffAfterTodayIsLogged() throws {
+        let state = try makeAppState()
+
+        state.updateReapplySettings(enabled: false, intervalMinutes: 90)
+        state.markAppliedToday(method: .manual, spfLevel: 50, notes: "Morning")
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .viewProgress)
+        XCTAssertTrue(presentation.detail.contains("Reapply reminders are off"))
+    }
+
+    @MainActor
+    func testHomeDailyPlanFallsBackToProgressWhenTodayIsComplete() throws {
+        let afterSunset = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 12, hour: 18, minute: 0))
+        )
+        let state = try makeAppState(clock: { afterSunset })
+
+        state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+        state.markAppliedToday(method: .manual, spfLevel: 50, notes: "Commute")
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .viewProgress)
+        XCTAssertEqual(presentation.actionTitle, "View Progress")
+        XCTAssertEqual(presentation.tone, .complete)
+    }
+
+    @MainActor
+    func testHomeDailyPlanNotificationDeniedKeepsManualLoggingAvailable() throws {
+        let state = try makeAppState()
+        state.completeOnboarding()
+        state.markAppliedToday(method: .manual, spfLevel: 50, notes: "Morning")
+        state.setNotificationHealthSnapshotForTesting(
+            NotificationHealthSnapshot(
+                authorizationState: .denied,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            )
+        )
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .openSettings)
+        XCTAssertEqual(presentation.actionTitle, "Open Settings")
+        XCTAssertTrue(presentation.detail.contains("Manual logging still works"))
+    }
+
+    @MainActor
+    func testHomeDailyPlanStaleNotificationsOfferRepair() throws {
+        let state = try makeAppState()
+        state.completeOnboarding()
+        state.markAppliedToday(method: .manual, spfLevel: 50, notes: "Morning")
+        state.setNotificationHealthSnapshotForTesting(
+            NotificationHealthSnapshot(
+                authorizationState: .authorized,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            )
+        )
+
+        let presentation = state.homeDailyPlanPresentation
+        XCTAssertEqual(presentation.action, .repairReminders)
+        XCTAssertEqual(presentation.actionTitle, "Refresh Reminders")
+        XCTAssertTrue(presentation.detail.contains("Manual logging still works"))
+    }
+
+    @MainActor
+    func testManualLogsNormalizeSPFAndClampNotes() throws {
+        let state = try makeAppState()
+        let longNote = String(repeating: "A", count: SunManualLogInput.noteCharacterLimit + 25)
+
+        state.markAppliedToday(method: .manual, spfLevel: -10, notes: "  \(longNote)  ")
+
+        let todayRecord = try XCTUnwrap(state.record(for: Date()))
+        XCTAssertEqual(todayRecord.spfLevel, 1)
+        XCTAssertEqual(todayRecord.notes?.count, SunManualLogInput.noteCharacterLimit)
+
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+        state.saveManualRecord(for: yesterday, spfLevel: 500, notes: "  \(longNote)  ")
+
+        let yesterdayRecord = try XCTUnwrap(state.record(for: yesterday))
+        XCTAssertEqual(yesterdayRecord.spfLevel, 100)
+        XCTAssertEqual(yesterdayRecord.notes?.count, SunManualLogInput.noteCharacterLimit)
+    }
+
+    @MainActor
+    func testNextDailyReminderPreviewUsesActualNextFireDate() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 9, minute: 0))
+        )
+        let state = try makeAppState(clock: { now })
+        state.updateReminderTime(for: .weekday, hour: 8, minute: 30)
+        state.updateReminderTime(for: .weekend, hour: 10, minute: 15)
+
+        let preview = try XCTUnwrap(state.nextDailyReminderPreview)
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: preview.fireDate)
+
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 4)
+        XCTAssertEqual(components.day, 15)
+        XCTAssertEqual(components.hour, 8)
+        XCTAssertEqual(components.minute, 30)
+        XCTAssertTrue(preview.summary.hasPrefix("Next reminder:"))
     }
 
     @MainActor
@@ -2410,6 +2641,62 @@ final class SunclubTests: XCTestCase {
         )
         XCTAssertEqual(stale?.state, .stale)
         XCTAssertEqual(stale?.actionTitle, "Refresh Reminders")
+
+        let provisional = NotificationHealthEvaluator.presentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .provisional,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(provisional?.state, .stale)
+        XCTAssertEqual(provisional?.title, "Quiet reminders need attention")
+    }
+
+    @MainActor
+    func testNotificationHealthStatusPresentationIncludesHealthyAndQuietStates() {
+        let scheduledAt = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let healthy = NotificationHealthEvaluator.statusPresentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .authorized,
+                pendingDailyReminderCount: 1,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: scheduledAt
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(healthy?.title, "Notifications are ready")
+        XCTAssertEqual(healthy?.needsAttention, false)
+
+        let quiet = NotificationHealthEvaluator.statusPresentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .provisional,
+                pendingDailyReminderCount: 1,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: scheduledAt
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(quiet?.title, "Quiet reminders are ready")
+        XCTAssertEqual(quiet?.needsAttention, false)
+
+        let denied = NotificationHealthEvaluator.statusPresentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .denied,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(denied?.title, "Notifications are off")
+        XCTAssertEqual(denied?.needsAttention, true)
     }
 
     @MainActor
