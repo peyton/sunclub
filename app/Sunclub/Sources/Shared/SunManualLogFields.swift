@@ -149,6 +149,32 @@ struct SunManualLogFields: View {
                 .accessibilityIdentifier("\(accessibilityPrefix).sameAsLastTime")
             }
 
+            if let defaultSPF = suggestions.defaultSPF,
+               shouldShowDefaultSPF(defaultSPF) {
+                Button {
+                    withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
+                        selectedSPF = defaultSPF
+                    }
+                } label: {
+                    Label("Usual SPF \(defaultSPF)", systemImage: "clock.arrow.circlepath")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(AppPalette.cardFill.opacity(0.72))
+                        )
+                        .overlay {
+                            Capsule()
+                                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Use usual SPF \(defaultSPF)")
+                .accessibilityIdentifier("\(accessibilityPrefix).defaultSPF")
+            }
+
             spfOptionSection(
                 title: "Presets",
                 levels: commonSPFLevels,
@@ -165,6 +191,10 @@ struct SunManualLogFields: View {
                 )
             }
         }
+    }
+
+    private func shouldShowDefaultSPF(_ level: Int) -> Bool {
+        selectedSPF != level && suggestions.sameAsLastTime?.spfLevel != level
     }
 
     private func spfOptionSection(
@@ -265,8 +295,10 @@ struct SunManualLogFields: View {
                 .accessibilityIdentifier("\(accessibilityPrefix).noteSnippets")
             }
 
-            TextField("e.g. Applied before morning run", text: $notes)
+            TextField("e.g. Applied before morning run", text: $notes, axis: .vertical)
                 .font(.system(size: 15))
+                .textInputAutocapitalization(.sentences)
+                .submitLabel(.done)
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -276,6 +308,7 @@ struct SunManualLogFields: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(AppPalette.hairlineStroke, lineWidth: 1)
                 }
+                .accessibilityLabel("Notes")
                 .accessibilityIdentifier("\(accessibilityPrefix).notesField")
         }
     }

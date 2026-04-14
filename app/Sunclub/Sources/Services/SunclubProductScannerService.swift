@@ -17,6 +17,23 @@ struct SunclubProductScanResult: Equatable, Sendable {
 }
 
 enum SunclubProductScannerService {
+    private static let maximumRecognizedLines = 12
+    private static let maximumRecognizedLineLength = 96
+    private static let spfPatterns = [
+        TextPattern(#"\bSPF\s*[:#-]?\s*([0-9]{1,3})\s*(?:\+)?(?!\d)"#),
+        TextPattern(#"\bSUNSCREEN\s+SPF\s*[:#-]?\s*([0-9]{1,3})\s*(?:\+)?(?!\d)"#),
+        TextPattern(#"\bSUNSCREEN\s*([0-9]{1,3})\s*(?:\+)?(?!\d)"#),
+        TextPattern(#"\bSUN\s+PROTECTION\s+FACTOR\s*[:#-]?\s*([0-9]{1,3})\s*(?:\+)?(?!\d)"#),
+        TextPattern(#"\b([0-9]{1,3})\s*(?:\+)?\s*SPF\b"#)
+    ]
+    private static let expirationPatterns = [
+        TextPattern(#"\b(?:EXP|EXPIRES|EXPIRATION|USE BY|BEST BY)\s*[:#-]?\s*((?:0?[1-9]|1[0-2])[\/\-](?:20)?[0-9]{2})\b"#),
+        TextPattern(#"\b(?:EXP|EXPIRES|EXPIRATION|USE BY|BEST BY)\s*[:#-]?\s*((?:20)?[0-9]{2}[\/\-](?:0?[1-9]|1[0-2]))\b"#),
+        TextPattern(#"\b(?:EXP|EXPIRES|EXPIRATION|USE BY|BEST BY)\s*[:#-]?\s*([A-Z]{3,9}\s+[0-9]{2,4})\b"#),
+        TextPattern(#"\b((?:0?[1-9]|1[0-2])[\/\-]20[0-9]{2})\b"#),
+        TextPattern(#"\b(20[0-9]{2}[\/\-](?:0?[1-9]|1[0-2]))\b"#)
+    ]
+
     static func scan(image: UIImage) async throws -> SunclubProductScanResult {
         guard let cgImage = image.cgImage else {
             throw SunclubProductScannerError.imageUnavailable
@@ -29,7 +46,7 @@ enum SunclubProductScannerService {
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         try handler.perform([request])
 
-        let strings = (request.results ?? [])
+        let lines = (request.results ?? [])
             .compactMap { $0.topCandidates(1).first?.string }
             .flatMap { line in
                 line
@@ -37,23 +54,23 @@ enum SunclubProductScannerService {
                     .map(String.init)
             }
 
+        return analyze(recognizedText: lines)
+    }
+
+    static func analyze(recognizedText lines: [String]) -> SunclubProductScanResult {
+        let normalizedLines = normalizedRecognizedLines(lines)
+
         return SunclubProductScanResult(
-            spfLevel: detectedSPF(in: strings),
-            expirationText: detectedExpiration(in: strings),
-            recognizedText: strings
+            spfLevel: detectedSPF(in: normalizedLines),
+            expirationText: detectedExpiration(in: normalizedLines),
+            recognizedText: displayLines(from: normalizedLines)
         )
     }
 
     private static func detectedSPF(in lines: [String]) -> Int? {
-        let patterns = [
-            #"\bSPF\s*([0-9]{1,3})\b"#,
-            #"\bSUNSCREEN\s*([0-9]{1,3})\b"#,
-            #"\b([0-9]{1,3})\s*SPF\b"#
-        ]
-
         for line in lines {
-            for pattern in patterns {
-                if let value = firstMatch(for: pattern, in: line),
+            for pattern in spfPatterns {
+                if let value = pattern.firstMatch(in: line),
                    let spf = Int(value) {
                     return max(1, min(spf, 100))
                 }
@@ -64,15 +81,9 @@ enum SunclubProductScannerService {
     }
 
     private static func detectedExpiration(in lines: [String]) -> String? {
-        let patterns = [
-            #"\b(0?[1-9]|1[0-2])[\/\-](20[0-9]{2})\b"#,
-            #"\b(20[0-9]{2})[\/\-](0?[1-9]|1[0-2])\b"#,
-            #"\bEXP[:\s]+([A-Z]{3}\s+[0-9]{4})\b"#
-        ]
-
         for line in lines {
-            for pattern in patterns {
-                if let value = firstMatch(for: pattern, in: line) {
+            for pattern in expirationPatterns {
+                if let value = pattern.firstMatch(in: line) {
                     return value
                 }
             }
@@ -81,25 +92,69 @@ enum SunclubProductScannerService {
         return nil
     }
 
-    private static func firstMatch(for pattern: String, in line: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
-            return nil
+    private static func normalizedRecognizedLines(_ lines: [String]) -> [String] {
+        var normalizedLines: [String] = []
+        var seenLines = Set<String>()
+
+        for line in lines {
+            let normalized = line
+                .split { $0.isWhitespace }
+                .joined(separator: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalized.isEmpty else {
+                continue
+            }
+
+            let key = normalized.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            guard seenLines.insert(key).inserted else {
+                continue
+            }
+
+            normalizedLines.append(normalized)
         }
 
-        let range = NSRange(line.startIndex..<line.endIndex, in: line)
-        guard let match = regex.firstMatch(in: line, options: [], range: range) else {
-            return nil
+        return normalizedLines
+    }
+
+    private static func displayLines(from lines: [String]) -> [String] {
+        Array(lines.prefix(maximumRecognizedLines).map { line in
+            guard line.count > maximumRecognizedLineLength else {
+                return line
+            }
+
+            return String(line.prefix(maximumRecognizedLineLength)).trimmingCharacters(in: .whitespacesAndNewlines) + "..."
+        })
+    }
+
+    private struct TextPattern: @unchecked Sendable {
+        let regex: NSRegularExpression
+        let captureGroup: Int
+
+        init(_ pattern: String, captureGroup: Int = 1) {
+            do {
+                regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+            } catch {
+                preconditionFailure("Invalid scanner regex: \(pattern)")
+            }
+
+            self.captureGroup = captureGroup
         }
 
-        if match.numberOfRanges > 1,
-           let valueRange = Range(match.range(at: 1), in: line) {
+        func firstMatch(in line: String) -> String? {
+            let range = NSRange(line.startIndex..<line.endIndex, in: line)
+            guard let match = regex.firstMatch(in: line, options: [], range: range),
+                  captureGroup < match.numberOfRanges else {
+                return nil
+            }
+
+            let matchRange = match.range(at: captureGroup)
+            guard matchRange.location != NSNotFound,
+                  let valueRange = Range(matchRange, in: line) else {
+                return nil
+            }
+
             return String(line[valueRange])
         }
-
-        guard let fullRange = Range(match.range(at: 0), in: line) else {
-            return nil
-        }
-        return String(line[fullRange])
     }
 }
 

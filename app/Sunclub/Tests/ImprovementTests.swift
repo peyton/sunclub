@@ -172,4 +172,121 @@ final class ImprovementTests: XCTestCase {
         state.refresh()
         XCTAssertNil(state.lastRefreshError)
     }
+
+    // MARK: - App Store readiness: scanner parsing and efficiency
+
+    func testProductScannerAnalyzerParsesCommonSPFVariants() {
+        let cases: [(line: String, spfLevel: Int)] = [
+            ("Broad Spectrum SPF-50+", 50),
+            ("SPF: 30 water resistant", 30),
+            ("sun protection factor 45", 45),
+            ("50 SPF lotion", 50),
+            ("Sunscreen 100", 100),
+            ("SPF 150", 100)
+        ]
+
+        for testCase in cases {
+            let result = SunclubProductScannerService.analyze(recognizedText: [testCase.line])
+            XCTAssertEqual(result.spfLevel, testCase.spfLevel, "Failed to parse \(testCase.line)")
+        }
+    }
+
+    func testProductScannerAnalyzerPreservesUsefulExpirationText() {
+        let cases: [(line: String, expiration: String)] = [
+            ("EXP 05/2027", "05/2027"),
+            ("Expires 05/27", "05/27"),
+            ("EXP 2027-05", "2027-05"),
+            ("EXP JAN 2027", "JAN 2027"),
+            ("Best by 2028/6", "2028/6")
+        ]
+
+        for testCase in cases {
+            let result = SunclubProductScannerService.analyze(recognizedText: [testCase.line])
+            XCTAssertEqual(result.expirationText, testCase.expiration, "Failed to parse \(testCase.line)")
+        }
+    }
+
+    func testProductScannerAnalyzerNormalizesAndCapsRecognizedText() {
+        let longLine = String(repeating: "A", count: 140)
+        let input = ["  SPF    50  ", "spf 50"] + (0..<20).map { "Line \($0) \(longLine)" }
+
+        let result = SunclubProductScannerService.analyze(recognizedText: input)
+
+        XCTAssertEqual(result.spfLevel, 50)
+        XCTAssertEqual(result.recognizedText.first, "SPF 50")
+        XCTAssertEqual(result.recognizedText.count, 12)
+        XCTAssertFalse(result.recognizedText.contains("spf 50"))
+        XCTAssertTrue(result.recognizedText.last?.hasSuffix("...") == true)
+    }
+
+    // MARK: - App Store readiness: manual log suggestions
+
+    func testManualLogSuggestionsExposeUsualSPFAfterNoteOnlyLog() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 4, day: 14)))
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
+        let twoDaysAgo = try XCTUnwrap(calendar.date(byAdding: .day, value: -2, to: today))
+
+        let noteOnlyRecord = DailyRecord(
+            startOfDay: yesterday,
+            verifiedAt: try XCTUnwrap(calendar.date(byAdding: .hour, value: 8, to: yesterday)),
+            method: .manual,
+            notes: "Cloudy commute"
+        )
+        let spfRecord = DailyRecord(
+            startOfDay: twoDaysAgo,
+            verifiedAt: try XCTUnwrap(calendar.date(byAdding: .hour, value: 9, to: twoDaysAgo)),
+            method: .manual,
+            spfLevel: 45,
+            notes: nil
+        )
+
+        let suggestions = ManualLogSuggestionEngine.suggestions(
+            from: [noteOnlyRecord, spfRecord],
+            excluding: today,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(suggestions.sameAsLastTime?.note, "Cloudy commute")
+        XCTAssertNil(suggestions.sameAsLastTime?.spfLevel)
+        XCTAssertEqual(suggestions.defaultSPF, 45)
+    }
+
+    // MARK: - App Store readiness: injected clock consistency
+
+    func testAppStateUsesInjectedClockForTodayLogReportsAndWidgetSnapshot() throws {
+        let calendar = Calendar.current
+        let fixedNow = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 12, hour: 10, minute: 30)))
+        let suiteName = "sunclub-improvement-tests-\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { userDefaults.removePersistentDomain(forName: suiteName) }
+
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let widgetStore = SunclubWidgetSnapshotStore(userDefaults: userDefaults)
+        let state = AppState(
+            context: ModelContext(container),
+            notificationManager: NotificationManager.shared,
+            uvIndexService: UVIndexService(),
+            widgetSnapshotStore: widgetStore,
+            clock: { fixedNow }
+        )
+
+        state.completeOnboarding()
+        state.recordVerificationSuccess(method: .manual, spfLevel: 50, notes: "Release test")
+
+        let record = try XCTUnwrap(state.record(for: fixedNow))
+        XCTAssertTrue(calendar.isDate(record.startOfDay, inSameDayAs: fixedNow))
+        XCTAssertEqual(record.verifiedAt, fixedNow)
+        XCTAssertEqual(state.currentStreak, 1)
+
+        let report = state.last7DaysReport()
+        XCTAssertEqual(report.endDate, calendar.startOfDay(for: fixedNow))
+        XCTAssertEqual(report.appliedCount, 1)
+
+        let snapshot = widgetStore.load()
+        XCTAssertEqual(snapshot.currentStreak, 1)
+        XCTAssertEqual(snapshot.weeklyAppliedCount, 1)
+        XCTAssertTrue(calendar.isDate(try XCTUnwrap(snapshot.lastLoggedDay), inSameDayAs: fixedNow))
+    }
 }
