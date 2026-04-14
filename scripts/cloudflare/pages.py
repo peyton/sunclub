@@ -17,6 +17,7 @@ from scripts.cloudflare.common import (
 )
 
 JsonObject = dict[str, Any]
+PAGES_WEB_DNS_RECORD_TYPES = {"A", "AAAA", "CNAME"}
 
 
 def build_pages_project_payload(
@@ -179,10 +180,14 @@ def list_pages_dns_records(
     result = client.request(
         "GET",
         f"/zones/{config['zone_id']}/dns_records",
-        query={"name.exact": config["dns"]["name"], "per_page": 20},
+        query={"name.exact": config["dns"]["name"], "per_page": 100},
     )
     if isinstance(result, list):
-        return [item for item in result if isinstance(item, dict)]
+        return [
+            item
+            for item in result
+            if isinstance(item, dict) and _is_pages_web_dns_record(item)
+        ]
     return []
 
 
@@ -202,7 +207,7 @@ def ensure_pages_dns_record(
 
     if len(records) > 1:
         raise ConfigError(
-            f"Found multiple DNS records for {config['dns']['name']}; "
+            f"Found multiple A, AAAA, or CNAME records for {config['dns']['name']}; "
             "resolve the conflict in Cloudflare before rerunning setup."
         )
 
@@ -239,6 +244,10 @@ def _dns_record_matches(record: JsonObject, payload: JsonObject) -> bool:
         == _normalize_hostname(str(payload["content"]))
         and bool(record.get("proxied")) == bool(payload["proxied"])
     )
+
+
+def _is_pages_web_dns_record(record: JsonObject) -> bool:
+    return str(record.get("type", "")).upper() in PAGES_WEB_DNS_RECORD_TYPES
 
 
 def _normalize_hostname(value: str) -> str:

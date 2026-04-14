@@ -189,10 +189,86 @@ def test_pages_dns_setup_creates_missing_cname() -> None:
         (
             "GET",
             dns_path,
-            {"name.exact": "sunclub.peyton.app", "per_page": 20},
+            {"name.exact": "sunclub.peyton.app", "per_page": 100},
         ),
         ("POST", dns_path, None),
     ]
+
+
+def test_pages_dns_setup_ignores_email_records_when_creating_cname() -> None:
+    config = common.load_pages_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    client = FakeCloudflareClient(
+        {
+            ("GET", dns_path): [
+                {
+                    "id": "mx-record-id",
+                    "type": "MX",
+                    "name": "sunclub.peyton.app",
+                    "content": "route1.mx.cloudflare.net",
+                },
+                {
+                    "id": "txt-record-id",
+                    "type": "TXT",
+                    "name": "sunclub.peyton.app",
+                    "content": "v=spf1 include:_spf.mx.cloudflare.net ~all",
+                },
+            ],
+            ("POST", dns_path): {"id": "record-id"},
+        }
+    )
+
+    result = pages.ensure_pages_dns_record(client, config)
+
+    assert result["action"] == "created"
+    assert client.calls[-1] == (
+        "POST",
+        dns_path,
+        {
+            "type": "CNAME",
+            "name": "sunclub.peyton.app",
+            "content": "sunclub.pages.dev",
+            "proxied": True,
+            "ttl": 1,
+            "comment": "Sunclub Cloudflare Pages custom domain",
+        },
+    )
+
+
+def test_pages_dns_setup_ignores_email_records_when_cname_exists() -> None:
+    config = common.load_pages_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    cname_record = {
+        "id": "record-id",
+        "type": "CNAME",
+        "name": "sunclub.peyton.app",
+        "content": "sunclub.pages.dev",
+        "proxied": True,
+    }
+    client = FakeCloudflareClient(
+        {
+            ("GET", dns_path): [
+                {
+                    "id": "mx-record-id",
+                    "type": "MX",
+                    "name": "sunclub.peyton.app",
+                    "content": "route1.mx.cloudflare.net",
+                },
+                {
+                    "id": "txt-record-id",
+                    "type": "TXT",
+                    "name": "sunclub.peyton.app",
+                    "content": "v=spf1 include:_spf.mx.cloudflare.net ~all",
+                },
+                cname_record,
+            ],
+        }
+    )
+
+    result = pages.ensure_pages_dns_record(client, config)
+
+    assert result == {"action": "exists", "record": cname_record}
+    assert client.calls == [("GET", dns_path, None)]
 
 
 def test_pages_dns_setup_updates_mismatched_cname() -> None:
