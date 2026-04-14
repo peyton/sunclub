@@ -164,11 +164,13 @@ struct VerificationSuccessPresentation: Equatable {
     let streak: Int
     let isPersonalBest: Bool
     let canAddDetails: Bool
+    let title: String
 
-    init(streak: Int, isPersonalBest: Bool = false, canAddDetails: Bool = false) {
+    init(streak: Int, isPersonalBest: Bool = false, canAddDetails: Bool = false, title: String = SunclubCopy.Success.defaultTitle) {
         self.streak = streak
         self.isPersonalBest = isPersonalBest
         self.canAddDetails = canAddDetails
+        self.title = title
     }
 
     var detail: String {
@@ -2464,10 +2466,18 @@ final class AppState {
             spfLevel: spfLevel,
             notes: notes
         )
+        var growthSettings = growthFeatureStore.load()
+        let (successTitle, updatedSuccessState) = PhraseRotation.nextPhrase(
+            from: growthSettings.successPhraseState,
+            catalog: PhraseBank.successPhrases
+        )
+        growthSettings.successPhraseState = updatedSuccessState
+        growthFeatureStore.save(growthSettings)
         verificationSuccessPresentation = VerificationSuccessPresentation(
             streak: currentStreak,
             isPersonalBest: currentStreak > previousLongestStreak,
-            canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil
+            canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil,
+            title: successTitle
         )
     }
 

@@ -33,7 +33,7 @@ struct VerificationSuccessView: View {
                 .accessibilityHidden(true)
 
                 VStack(spacing: 10) {
-                    Text(SunclubCopy.Success.title)
+                    Text(presentation.title)
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("success.title")

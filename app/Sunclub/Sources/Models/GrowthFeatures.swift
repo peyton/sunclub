@@ -10,6 +10,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var scannedSPFLevels: [Int]
     var accountability: SunclubAccountabilitySettings
     var automation: SunclubAutomationPreferences
+    var successPhraseState: Data?
 
     init(
         preferredName: String = "",
@@ -20,7 +21,8 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry(),
         scannedSPFLevels: [Int] = [],
         accountability: SunclubAccountabilitySettings = SunclubAccountabilitySettings(),
-        automation: SunclubAutomationPreferences = SunclubAutomationPreferences()
+        automation: SunclubAutomationPreferences = SunclubAutomationPreferences(),
+        successPhraseState: Data? = nil
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
@@ -31,6 +33,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         self.scannedSPFLevels = Self.normalizedSPFLevels(scannedSPFLevels)
         self.accountability = accountability
         self.automation = automation
+        self.successPhraseState = successPhraseState
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -43,6 +46,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         case scannedSPFLevels
         case accountability
         case automation
+        case successPhraseState
     }
 
     init(from decoder: Decoder) throws {
@@ -64,6 +68,7 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
             ?? SunclubAccountabilitySettings()
         automation = try container.decodeIfPresent(SunclubAutomationPreferences.self, forKey: .automation)
             ?? SunclubAutomationPreferences()
+        successPhraseState = try container.decodeIfPresent(Data.self, forKey: .successPhraseState)
     }
 
     static func normalizedSPFLevels(_ levels: [Int]) -> [Int] {
