@@ -73,6 +73,7 @@ jobs:
     needs: lint
     env:
       SUNCLUB_FLAVOR: dev
+      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
     steps:
       - if: ${{ !env.ACT }}
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
@@ -96,8 +97,10 @@ jobs:
         with:
           cache: true
       - name: Run unit tests
+        timeout-minutes: 45
         run: mise exec -- just test-unit
       - name: Run UI tests
+        timeout-minutes: 45
         run: mise exec -- just test-ui
 
   build:
@@ -106,6 +109,7 @@ jobs:
     needs: lint
     env:
       SUNCLUB_FLAVOR: prod
+      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
     permissions:
       contents: read
       id-token: write
@@ -144,4 +148,5 @@ jobs:
             echo "SUNCLUB_TUIST_SHARE=1" >> "$GITHUB_ENV"
           fi
       - name: Run iOS build shard
+        timeout-minutes: 45
         run: mise exec -- just ci-build
