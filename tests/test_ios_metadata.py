@@ -200,6 +200,16 @@ def test_widget_extension_inherits_app_version_metadata() -> None:
     assert '"CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)"' in source
 
 
+def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
+    source = PROJECT_SWIFT.read_text()
+    widget_target = source.split(
+        "func widgetTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+
+    assert '"Sources/Services/SunclubAutomationRuntime.swift"' in widget_target
+    assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
+
+
 def test_project_embeds_watch_app_in_release_app() -> None:
     source = PROJECT_SWIFT.read_text()
     app_target = source.split(

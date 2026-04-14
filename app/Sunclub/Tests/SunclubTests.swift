@@ -1576,7 +1576,10 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     func testRecordVerificationSuccessStoresSPFAndTrimmedNotes() throws {
-        let state = try makeAppState()
+        let midday = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
+        )
+        let state = try makeAppState(clock: { midday })
 
         state.recordVerificationSuccess(
             method: .manual,
@@ -2226,7 +2229,7 @@ final class SunclubTests: XCTestCase {
         state.recordReapplication()
 
         await Task.yield()
-        let record = try XCTUnwrap(state.record(for: Date()))
+        let record = try XCTUnwrap(state.record(for: midday))
         XCTAssertEqual(record.reapplyCount, 1)
         XCTAssertNotNil(record.lastReappliedAt)
         XCTAssertTrue(record.hasReapplied)
