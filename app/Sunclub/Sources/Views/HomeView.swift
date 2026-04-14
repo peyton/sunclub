@@ -589,31 +589,21 @@ struct HomeView: View {
             feedbackTrigger += 1
             router.open(route)
         } label: {
-            ZStack(alignment: .topTrailing) {
-                featureAsset(for: route).image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 72, height: 72)
-                    .opacity(0.24)
-                    .offset(x: 14, y: -10)
-                    .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(featureTint(for: route))
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Image(systemName: symbol)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(featureTint(for: route))
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
 
-                    Text(title)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(detail)
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppPalette.softInk)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(detail)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppPalette.softInk)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
             .padding(18)
             .sunGlassCard(cornerRadius: 18)
@@ -871,21 +861,6 @@ struct HomeView: View {
     private var streakAccessibilityValue: String {
         let loggedDays = recentDayTrack.filter { $0 }.count
         return "\(appState.currentStreak) days. Best streak \(appState.longestStreak) days. \(loggedDays) of the last 7 days logged."
-    }
-
-    private func featureAsset(for route: AppRoute) -> SunclubVisualAsset {
-        switch route {
-        case .achievements:
-            return .illustrationAchievementsShelf
-        case .friends:
-            return .illustrationFriendsPair
-        case .skinHealthReport:
-            return .illustrationSkinReport
-        case .productScanner:
-            return .illustrationScannerLabel
-        default:
-            return .motifShieldGlow
-        }
     }
 
     private func featureTint(for route: AppRoute) -> Color {
