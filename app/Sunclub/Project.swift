@@ -177,17 +177,12 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
             "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
-            "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
-            "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
-            "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
-            "CFBundleURLTypes": .array([
-                .dictionary([
-                    "CFBundleURLName": .string("$(PRODUCT_BUNDLE_IDENTIFIER)"),
-                    "CFBundleURLSchemes": .array([.string("$(SUNCLUB_URL_SCHEME)")])
-                ])
-            ]),
+            "CFBundleIconName": .string("AppIcon"),
             "WKCompanionAppBundleIdentifier": .string(flavor.bundleID)
         ]),
+        resources: [
+            "WatchApp/Resources/**"
+        ],
         dependencies: [
             .target(name: flavor.watchExtensionTargetName)
         ],

@@ -123,6 +123,47 @@ assert_plist_array_contains() {
   fi
 }
 
+assert_plist_key_absent() {
+  local plist_path="$1"
+  local key="$2"
+  local label="$3"
+
+  if /usr/libexec/PlistBuddy -c "Print :$key" "$plist_path" >/dev/null 2>&1; then
+    fail "$label contains App Store-invalid Info.plist key: $key"
+  fi
+}
+
+assert_info_plist_string() {
+  local plist_path="$1"
+  local key="$2"
+  local expected="$3"
+  local label="$4"
+  local actual
+
+  if ! actual="$(/usr/libexec/PlistBuddy -c "Print :$key" "$plist_path" 2>/dev/null)"; then
+    fail "$label is missing Info.plist key: $key"
+  fi
+  if [ "$actual" != "$expected" ]; then
+    fail "$label Info.plist key $key is '$actual', expected '$expected'"
+  fi
+}
+
+assert_codesign_identifier_matches_bundle() {
+  local bundle_path="$1"
+  local label="$2"
+  local expected
+  local actual
+
+  expected="$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$bundle_path/Info.plist" 2>/dev/null || true)"
+  [ -n "$expected" ] || fail "$label is missing CFBundleIdentifier"
+
+  actual="$(codesign -dvvv "$bundle_path" 2>&1 | sed -n 's/^Identifier=//p' | head -1)"
+  [ -n "$actual" ] || fail "$label is missing a code signature identifier"
+  if [ "$actual" != "$expected" ]; then
+    fail "$label code signature identifier is '$actual', expected '$expected'"
+  fi
+}
+
 validate_signed_ipa_entitlements() {
   local ipa_file="$1"
   local temp_dir
@@ -163,10 +204,46 @@ validate_signed_ipa_entitlements() {
   rm -rf "$temp_dir"
 }
 
+validate_signed_ipa_watch_bundle() {
+  local ipa_file="$1"
+  local temp_dir
+  local signed_app_path
+  local watch_app_path
+  local watch_info_path
+
+  command -v codesign >/dev/null || fail "codesign is required."
+  command -v unzip >/dev/null || fail "unzip is required."
+  [ -x /usr/libexec/PlistBuddy ] || fail "PlistBuddy is required."
+
+  temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sunclub-watch-ipa.XXXXXX")"
+  unzip -q "$ipa_file" -d "$temp_dir"
+  signed_app_path="$(find "$temp_dir/Payload" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME.app" -type d -print -quit)"
+  [ -n "$signed_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME.app"
+
+  watch_app_path="$(find "$signed_app_path/Watch" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME"'Watch.app' -type d -print -quit 2>/dev/null || true)"
+  [ -n "$watch_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME Watch app"
+
+  watch_info_path="$watch_app_path/Info.plist"
+  [ -f "$watch_info_path" ] || fail "Exported watch app is missing Info.plist"
+  assert_codesign_identifier_matches_bundle "$watch_app_path" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_info_plist_string "$watch_info_path" "WKCompanionAppBundleIdentifier" "$RELEASE_APP_IDENTIFIER" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_info_plist_string "$watch_info_path" "CFBundleIconName" "AppIcon" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  [ -f "$watch_app_path/Assets.car" ] || fail "$RELEASE_APP_PRODUCT_NAME Watch app is missing compiled icon assets"
+
+  assert_plist_key_absent "$watch_info_path" "CFBundleURLTypes" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_plist_key_absent "$watch_info_path" "SunclubAppGroupID" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_plist_key_absent "$watch_info_path" "SunclubICloudContainerIdentifier" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_plist_key_absent "$watch_info_path" "SunclubURLScheme" "$RELEASE_APP_PRODUCT_NAME Watch app"
+
+  rm -rf "$temp_dir"
+}
+
 resolve_release_entitlements() {
   local cloudkit_environment
   local app_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.plist"
   local widget_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-widget.entitlements.plist"
+  local watch_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-watch.entitlements.plist"
+  local watch_widget_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-watch-widget.entitlements.plist"
 
   cloudkit_environment="Development"
   if [ "$SUNCLUB_APS_ENVIRONMENT" = "production" ]; then
@@ -188,11 +265,30 @@ resolve_release_entitlements() {
     --source "$ROOT_DIR/app/Sunclub/SunclubWidgetsExtension.entitlements" \
     --output "$widget_entitlements_path" \
     --set "SUNCLUB_APP_GROUP_ID=group.$RELEASE_APP_IDENTIFIER"
+
+  run_repo_python_module scripts.appstore.resolve_entitlements \
+    --source "$ROOT_DIR/app/Sunclub/SunclubWatch.entitlements" \
+    --output "$watch_entitlements_path" \
+    --set "SUNCLUB_APP_GROUP_ID=group.$RELEASE_APP_IDENTIFIER"
+
+  run_repo_python_module scripts.appstore.resolve_entitlements \
+    --source "$ROOT_DIR/app/Sunclub/SunclubWatchWidgets.entitlements" \
+    --output "$watch_widget_entitlements_path" \
+    --set "SUNCLUB_APP_GROUP_ID=group.$RELEASE_APP_IDENTIFIER"
+}
+
+codesign_bundle_identifier() {
+  local path="$1"
+
+  if [ -d "$path" ] && [ -f "$path/Info.plist" ]; then
+    /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$path/Info.plist" 2>/dev/null || true
+  fi
 }
 
 adhoc_sign() {
   local path="$1"
   local entitlements_path="${2:-}"
+  local bundle_id
   local codesign_args=(
     --force
     --sign -
@@ -204,13 +300,21 @@ adhoc_sign() {
     codesign_args+=(--entitlements "$entitlements_path")
   fi
 
+  bundle_id="$(codesign_bundle_identifier "$path")"
+  if [ -n "$bundle_id" ]; then
+    codesign_args+=(--identifier "$bundle_id")
+  fi
+
   codesign "${codesign_args[@]}" "$path"
 }
 
 adhoc_sign_archived_app_with_release_entitlements() {
   local app_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME.entitlements.plist"
   local widget_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-widget.entitlements.plist"
+  local watch_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-watch.entitlements.plist"
+  local watch_widget_entitlements_path="$RELEASE_ENTITLEMENTS_PATH/$RELEASE_APP_PRODUCT_NAME-watch-widget.entitlements.plist"
   local nested_path
+  local entitlements_path
 
   command -v codesign >/dev/null || fail "codesign is required."
   resolve_release_entitlements
@@ -224,8 +328,19 @@ adhoc_sign_archived_app_with_release_entitlements() {
   done < <(find "$APP_BUNDLE_PATH" -type f -name '*.dylib' -print)
 
   while IFS= read -r nested_path; do
-    adhoc_sign "$nested_path" "$widget_entitlements_path"
-  done < <(find "$APP_BUNDLE_PATH/PlugIns" -maxdepth 1 -type d -name '*.appex' -print 2>/dev/null || true)
+    case "$(basename "$nested_path")" in
+    "${RELEASE_APP_PRODUCT_NAME}WidgetsExtension.appex") entitlements_path="$widget_entitlements_path" ;;
+    "${RELEASE_APP_PRODUCT_NAME}WatchExtension.appex") entitlements_path="$watch_entitlements_path" ;;
+    "${RELEASE_APP_PRODUCT_NAME}WatchWidgetsExtension.appex") entitlements_path="$watch_widget_entitlements_path" ;;
+    *) entitlements_path="" ;;
+    esac
+    adhoc_sign "$nested_path" "$entitlements_path"
+  done < <(find "$APP_BUNDLE_PATH" -type d -name '*.appex' -print | awk '{ print gsub(/\//, "/") " " $0 }' | sort -rn | cut -d' ' -f2-)
+
+  while IFS= read -r nested_path; do
+    [ "$nested_path" != "$APP_BUNDLE_PATH" ] || continue
+    adhoc_sign "$nested_path"
+  done < <(find "$APP_BUNDLE_PATH" -type d -name '*.app' -print | awk '{ print gsub(/\//, "/") " " $0 }' | sort -rn | cut -d' ' -f2-)
 
   adhoc_sign "$APP_BUNDLE_PATH" "$app_entitlements_path"
 }
@@ -374,6 +489,10 @@ if [ "$SKIP_EXPORT" = false ]; then
   step "Validating signed app entitlements"
   validate_signed_ipa_entitlements "$IPA_FILE"
   ok "Signed app entitlements are valid"
+
+  step "Validating signed watch app bundle"
+  validate_signed_ipa_watch_bundle "$IPA_FILE"
+  ok "Signed watch app bundle is valid"
 else
   ok "Skipping IPA export"
 fi
