@@ -114,9 +114,35 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(syncPreference.status, .idle)
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<CloudSyncState>()).count, 1)
+        let migrationBatch = try XCTUnwrap(try context.fetch(FetchDescriptor<SunclubChangeBatch>()).first)
         XCTAssertEqual(try context.fetch(FetchDescriptor<SunclubChangeBatch>()).count, 1)
+        XCTAssertFalse(migrationBatch.isLocalOnly)
         XCTAssertEqual(try context.fetch(FetchDescriptor<SettingsRevision>()).count, 1)
         XCTAssertEqual(try context.fetch(FetchDescriptor<DailyRecordRevision>()).count, 1)
+    }
+
+    func testMigrationFromEmptyV3StoreCreatesLocalOnlyDefaultSeed() throws {
+        let storeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: storeDirectory) }
+
+        let storeURL = storeDirectory.appendingPathComponent("Sunclub.store")
+        try LegacyStoreFixture.seedEmptyCurrentV3Store(at: storeURL)
+
+        let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
+        let context = ModelContext(container)
+
+        let settings = try XCTUnwrap(try context.fetch(FetchDescriptor<Settings>()).first)
+        XCTAssertFalse(settings.hasCompletedOnboarding)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<DailyRecord>()).isEmpty)
+
+        let migrationBatch = try XCTUnwrap(try context.fetch(FetchDescriptor<SunclubChangeBatch>()).first)
+        XCTAssertEqual(migrationBatch.kind, .migrationSeed)
+        XCTAssertTrue(migrationBatch.isLocalOnly)
+        XCTAssertFalse(migrationBatch.isPublishedToCloud)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<SettingsRevision>()).count, 1)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<DailyRecordRevision>()).isEmpty)
     }
 
     func testDiskBackedContainerCreatesMissingParentDirectory() throws {

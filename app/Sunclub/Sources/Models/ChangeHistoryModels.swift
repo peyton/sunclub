@@ -21,6 +21,7 @@ enum SunclubChangeKind: String, Codable, CaseIterable, Sendable {
     case undo
     case redo
     case restore
+    case legacyStoreRecovery
 
     var displayTitle: String {
         switch self {
@@ -62,6 +63,8 @@ enum SunclubChangeKind: String, Codable, CaseIterable, Sendable {
             return "Redo"
         case .restore:
             return "Restore"
+        case .legacyStoreRecovery:
+            return "Recovered Legacy Store"
         }
     }
 }
