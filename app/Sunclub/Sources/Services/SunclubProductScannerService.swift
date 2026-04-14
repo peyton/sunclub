@@ -20,6 +20,7 @@ struct SunclubProductScanResult: Equatable, Sendable {
 enum SunclubProductScannerService {
     private static let maximumRecognizedLines = 12
     private static let maximumRecognizedLineLength = 96
+    private static let maximumScanImagePixelDimension = 1600
     private static let spfPatterns = [
         TextPattern(#"\bSPF\s*[:#-]?\s*([0-9]{1,3})\s*(?:\+)?(?!\d)"#),
         TextPattern(#"\bSUNSCREEN\s+SPF\s*[:#-]?\s*([0-9]{1,3})\s*(?:\+)?(?!\d)"#),
@@ -34,6 +35,46 @@ enum SunclubProductScannerService {
         TextPattern(#"\b((?:0?[1-9]|1[0-2])[\/\-]20[0-9]{2})\b"#),
         TextPattern(#"\b(20[0-9]{2}[\/\-](?:0?[1-9]|1[0-2]))\b"#)
     ]
+
+    static func preparedImageForScanning(data: Data) throws -> UIImage {
+        let sourceOptions = [
+            kCGImageSourceShouldCache: false
+        ] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else {
+            throw SunclubProductScannerError.imageUnavailable
+        }
+
+        let thumbnailOptions = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maximumScanImagePixelDimension
+        ] as CFDictionary
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions) else {
+            throw SunclubProductScannerError.imageUnavailable
+        }
+
+        return UIImage(cgImage: cgImage, scale: 1, orientation: .up)
+    }
+
+    static func preparedImageForScanning(image: UIImage) throws -> UIImage {
+        let longestSide = max(image.size.width, image.size.height)
+        guard longestSide > CGFloat(maximumScanImagePixelDimension) else {
+            return image
+        }
+
+        let scale = CGFloat(maximumScanImagePixelDimension) / longestSide
+        let targetSize = CGSize(
+            width: max(1, floor(image.size.width * scale)),
+            height: max(1, floor(image.size.height * scale))
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+
+        return UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+    }
 
     static func scan(image: UIImage) async throws -> SunclubProductScanResult {
         guard let cgImage = image.cgImage else {
