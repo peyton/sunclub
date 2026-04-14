@@ -535,6 +535,11 @@ struct HomeView: View {
                             endPoint: .bottomTrailing
                         )
                     )
+                    .contentTransition(.numericText())
+                    .animation(
+                        SunMotion.easeOut(duration: 0.4, reduceMotion: reduceMotion),
+                        value: appState.currentStreak
+                    )
                     .accessibilityIdentifier("home.streakValue")
 
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
