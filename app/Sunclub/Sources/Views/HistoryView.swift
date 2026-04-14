@@ -21,6 +21,8 @@ struct HistoryView: View {
     }
 
     var body: some View {
+        let presentation = historyPresentation
+
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "History", showsBack: true, onBack: {
@@ -29,27 +31,25 @@ struct HistoryView: View {
 
                 monthNavigator
 
-                let recordDates = appState.recordedDays
-
                 if let selectedDay = selectedDay {
-                    dayDetailCard(for: selectedDay)
+                    dayDetailCard(for: selectedDay, presentation: presentation)
                 }
 
                 weekdayHeader
 
-                calendarGrid(recordDates: recordDates)
+                calendarGrid(presentation: presentation)
                     .id(displayedMonth)
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
 
-                historyLegend
+                historyLegend(presentation: presentation)
 
                 if selectedDay == nil {
                     historyEmptyHint
                 }
 
-                statsSection(recordDates: recordDates)
+                statsSection(stats: presentation.monthStats)
 
-                streakContextCard
+                streakContextCard(presentation: presentation)
 
                 SunAssetHero(
                     asset: .illustrationHistoryCalendar,
@@ -60,7 +60,7 @@ struct HistoryView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            historyActionFooter
+            historyActionFooter(presentation: presentation)
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -130,8 +130,8 @@ struct HistoryView: View {
         }
     }
 
-    private var streakContextCard: some View {
-        let streakDays = appState.currentStreakDays
+    private func streakContextCard(presentation: HistoryPresentation) -> some View {
+        let streakDays = presentation.currentStreakDays
         let currentStreak = streakDays.count
         let startText = streakDays.first.map {
             "Started \($0.formatted(.dateTime.month(.abbreviated).day()))"
@@ -166,8 +166,8 @@ struct HistoryView: View {
 
             HStack(spacing: 12) {
                 streakMetricPill(
-                    value: "\(appState.longestStreak)",
-                    label: appState.longestStreak == 1 ? "Best day" : "Best days",
+                    value: "\(presentation.longestStreak)",
+                    label: presentation.longestStreak == 1 ? "Best day" : "Best days",
                     accessibilityIdentifier: "history.bestStreak"
                 )
 
@@ -236,9 +236,9 @@ struct HistoryView: View {
         }
     }
 
-    private var historyLegend: some View {
+    private func historyLegend(presentation: HistoryPresentation) -> some View {
         LazyVGrid(columns: historyLegendColumns, spacing: 8) {
-            if !appState.currentStreakDays.isEmpty {
+            if !presentation.currentStreakDays.isEmpty {
                 historyLegendItem(
                     title: "Streak",
                     color: AppPalette.streakAccent,
@@ -312,21 +312,14 @@ struct HistoryView: View {
         .accessibilityIdentifier("history.emptyHint")
     }
 
-    private func calendarGrid(recordDates: [Date]) -> some View {
-        let days = appState.monthGrid(for: displayedMonth)
-        let recordDateSet = Set(recordDates)
-        let streakDaySet = Set(appState.currentStreakDays)
-        let today = calendar.startOfDay(for: appState.referenceDate)
-
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
-            ForEach(Array(days.enumerated()), id: \.offset) { _, day in
+    private func calendarGrid(presentation: HistoryPresentation) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
+            ForEach(Array(presentation.monthDays.enumerated()), id: \.offset) { _, day in
                 calendarDayButton(
                     day: day,
                     state: dayCellState(
                         for: day,
-                        recordDateSet: recordDateSet,
-                        streakDaySet: streakDaySet,
-                        today: today
+                        presentation: presentation
                     )
                 )
             }
@@ -346,26 +339,29 @@ struct HistoryView: View {
 
     private func dayCellState(
         for day: Date,
-        recordDateSet: Set<Date>,
-        streakDaySet: Set<Date>,
-        today: Date
+        presentation: HistoryPresentation
     ) -> HistoryDayCellState {
-        let isCurrentMonth = appState.isCurrentMonth(day, month: displayedMonth)
+        let isCurrentMonth = calendar.isDate(day, equalTo: displayedMonth, toGranularity: .month)
         let dayStart = calendar.startOfDay(for: day)
-        let hasRecord = recordDateSet.contains(dayStart)
-        let isToday = dayStart == today
-        let isFuture = dayStart > today
+        let hasRecord = presentation.recordDateSet.contains(dayStart)
+        let isToday = dayStart == presentation.today
+        let isFuture = dayStart > presentation.today
         let isSelected = selectedDay.map { calendar.isDate($0, inSameDayAs: day) } ?? false
 
         return HistoryDayCellState(
             dayStart: dayStart,
-            status: CalendarAnalytics.status(for: dayStart, with: recordDateSet, now: today, calendar: calendar),
+            status: CalendarAnalytics.status(
+                for: dayStart,
+                with: presentation.recordDateSet,
+                now: presentation.today,
+                calendar: calendar
+            ),
             hasRecord: hasRecord,
             isToday: isToday,
             isFuture: isFuture,
             isSelected: isSelected,
             isCurrentMonth: isCurrentMonth,
-            isCurrentStreak: isCurrentMonth && streakDaySet.contains(dayStart)
+            isCurrentStreak: isCurrentMonth && presentation.currentStreakDaySet.contains(dayStart)
         )
     }
 
@@ -481,12 +477,17 @@ struct HistoryView: View {
     }
 
     @ViewBuilder
-    private func dayDetailCard(for day: Date) -> some View {
+    private func dayDetailCard(for day: Date, presentation: HistoryPresentation) -> some View {
         let dayStart = calendar.startOfDay(for: day)
-        let record = appState.record(for: dayStart)
-        let status = appState.dayStatus(for: dayStart)
+        let record = presentation.record(for: dayStart, calendar: calendar)
+        let status = CalendarAnalytics.status(
+            for: dayStart,
+            with: presentation.recordDateSet,
+            now: presentation.today,
+            calendar: calendar
+        )
         let conflict = appState.conflict(for: dayStart)
-        let isCurrentStreak = Set(appState.currentStreakDays).contains(dayStart)
+        let isCurrentStreak = presentation.currentStreakDaySet.contains(dayStart)
 
         VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
@@ -593,21 +594,24 @@ struct HistoryView: View {
     }
 
     @ViewBuilder
-    private var historyActionFooter: some View {
+    private func historyActionFooter(presentation: HistoryPresentation) -> some View {
         if let selectedDay = selectedDay {
             let dayStart = calendar.startOfDay(for: selectedDay)
-            let record = appState.record(for: dayStart)
-            let status = appState.dayStatus(for: dayStart)
+            let record = presentation.record(for: dayStart, calendar: calendar)
+            let status = CalendarAnalytics.status(
+                for: dayStart,
+                with: presentation.recordDateSet,
+                now: presentation.today,
+                calendar: calendar
+            )
 
             actionButtons(for: dayStart, record: record, status: status)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func statsSection(recordDates: [Date]) -> some View {
-        let stats = monthStats(recordDates: recordDates)
-
-        return VStack(alignment: .leading, spacing: 12) {
+    private func statsSection(stats: HistoryMonthStats) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Month Stats")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
@@ -623,25 +627,60 @@ struct HistoryView: View {
         .accessibilityIdentifier("history.monthStats")
     }
 
-    private func monthStats(recordDates: [Date]) -> HistoryMonthStats {
+    private var historyPresentation: HistoryPresentation {
+        let records = appState.records
+        let recordDates = records.map { calendar.startOfDay(for: $0.startOfDay) }
+        let recordDateSet = Set(recordDates)
+        let today = calendar.startOfDay(for: appState.referenceDate)
+        let currentStreakDays = CalendarAnalytics.currentStreakDays(
+            records: recordDates,
+            now: today,
+            calendar: calendar
+        )
+        var recordsByDay: [Date: DailyRecord] = [:]
+        for record in records {
+            recordsByDay[calendar.startOfDay(for: record.startOfDay)] = record
+        }
+
+        return HistoryPresentation(
+            recordsByDay: recordsByDay,
+            recordDateSet: recordDateSet,
+            currentStreakDays: currentStreakDays,
+            currentStreakDaySet: Set(currentStreakDays),
+            today: today,
+            monthDays: CalendarAnalytics.monthGridDays(for: displayedMonth, calendar: calendar),
+            monthStats: monthStats(recordDates: recordDates, records: records, today: today),
+            longestStreak: appState.longestStreak
+        )
+    }
+
+    private func monthStats(recordDates: [Date], records: [DailyRecord], today: Date) -> HistoryMonthStats {
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
         let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
-        let today = calendar.startOfDay(for: appState.referenceDate)
         let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? today)
         let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
-        let daysInRange = daysInCurrentMonthRange(monthEnd: monthEnd, monthStart: monthStart, effectiveEnd: effectiveEnd)
+        let daysInRange = daysInCurrentMonthRange(
+            monthEnd: monthEnd,
+            monthStart: monthStart,
+            effectiveEnd: effectiveEnd,
+            today: today
+        )
         let rate = daysInRange > 0 ? Int(Double(monthRecords.count) / Double(daysInRange) * 100) : 0
 
         return HistoryMonthStats(
             appliedCount: monthRecords.count,
             openCount: max(daysInRange - monthRecords.count, 0),
             rate: "\(rate)%",
-            insights: appState.monthlyReviewInsights(for: displayedMonth)
+            insights: MonthlyReviewAnalytics.insights(
+                from: records,
+                month: displayedMonth,
+                now: today,
+                calendar: calendar
+            )
         )
     }
 
-    private func daysInCurrentMonthRange(monthEnd: Date, monthStart: Date, effectiveEnd: Date) -> Int {
-        let today = calendar.startOfDay(for: appState.referenceDate)
+    private func daysInCurrentMonthRange(monthEnd: Date, monthStart: Date, effectiveEnd: Date, today: Date) -> Int {
         if monthEnd <= today {
             return calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
         }
@@ -1078,6 +1117,21 @@ struct HistoryEditorTestHarnessView: View {
     private var currentRecord: DailyRecord? {
         let dayStart = Calendar.current.startOfDay(for: day)
         return appState.records.first { Calendar.current.isDate($0.startOfDay, inSameDayAs: dayStart) }
+    }
+}
+
+private struct HistoryPresentation {
+    let recordsByDay: [Date: DailyRecord]
+    let recordDateSet: Set<Date>
+    let currentStreakDays: [Date]
+    let currentStreakDaySet: Set<Date>
+    let today: Date
+    let monthDays: [Date]
+    let monthStats: HistoryMonthStats
+    let longestStreak: Int
+
+    func record(for day: Date, calendar: Calendar) -> DailyRecord? {
+        recordsByDay[calendar.startOfDay(for: day)]
     }
 }
 

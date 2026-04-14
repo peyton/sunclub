@@ -7,6 +7,8 @@ struct AchievementsView: View {
     @State private var feedbackTrigger = 0
 
     var body: some View {
+        let presentation = achievementsPresentation
+
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "Achievements", showsBack: true, onBack: {
@@ -17,10 +19,10 @@ struct AchievementsView: View {
                     celebrationCard(for: achievementCelebration)
                 }
 
-                badgeOverviewCard
+                badgeOverviewCard(presentation: presentation)
 
-                achievementsSection
-                challengesSection
+                achievementsSection(presentation: presentation)
+                challengesSection(presentation: presentation)
 
                 Spacer(minLength: 0)
             }
@@ -33,7 +35,7 @@ struct AchievementsView: View {
         .interactivePopGestureEnabled()
     }
 
-    private var achievementsSection: some View {
+    private func achievementsSection(presentation: AchievementsPresentation) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Progress Badges")
@@ -42,7 +44,7 @@ struct AchievementsView: View {
 
                 Spacer(minLength: 0)
 
-                Text("\(appState.achievements.filter(\.isUnlocked).count)/\(appState.achievements.count) unlocked")
+                Text(presentation.unlockedCountText)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .padding(.horizontal, 10)
@@ -53,7 +55,7 @@ struct AchievementsView: View {
                     )
             }
 
-            ForEach(sortedAchievements) { achievement in
+            ForEach(presentation.achievements) { achievement in
                 AchievementCard(achievement: achievement) {
                     shareAchievement(achievement)
                 }
@@ -61,13 +63,13 @@ struct AchievementsView: View {
         }
     }
 
-    private var challengesSection: some View {
+    private func challengesSection(presentation: AchievementsPresentation) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Challenges")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            ForEach(sortedChallenges) { challenge in
+            ForEach(presentation.challenges) { challenge in
                 ChallengeCard(challenge: challenge) {
                     shareChallenge(challenge)
                 }
@@ -75,17 +77,17 @@ struct AchievementsView: View {
         }
     }
 
-    private var badgeOverviewCard: some View {
+    private func badgeOverviewCard(presentation: AchievementsPresentation) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 16) {
                 BadgeShelfPreview()
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(nextAchievement == nil ? "Badge shelf complete" : "Next badge")
+                    Text(presentation.nextAchievement == nil ? "Badge shelf complete" : "Next badge")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
-                    Text(nextBadgeDetail)
+                    Text(presentation.nextBadgeDetail)
                         .font(.system(size: 14))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -130,8 +132,22 @@ struct AchievementsView: View {
             .fill(AppPalette.cardFill.opacity(0.72))
     }
 
-    private var sortedAchievements: [SunclubAchievement] {
-        appState.achievements.sorted { lhs, rhs in
+    private var achievementsPresentation: AchievementsPresentation {
+        let achievements = sortedAchievements(appState.achievements)
+        let challenges = sortedChallenges(appState.seasonalChallenges)
+        let nextAchievement = achievements.first { !$0.isUnlocked }
+
+        return AchievementsPresentation(
+            achievements: achievements,
+            challenges: challenges,
+            unlockedCountText: "\(achievements.filter(\.isUnlocked).count)/\(achievements.count) unlocked",
+            nextAchievement: nextAchievement,
+            nextBadgeDetail: nextBadgeDetail(for: nextAchievement)
+        )
+    }
+
+    private func sortedAchievements(_ achievements: [SunclubAchievement]) -> [SunclubAchievement] {
+        achievements.sorted { lhs, rhs in
             if lhs.isUnlocked != rhs.isUnlocked {
                 return !lhs.isUnlocked
             }
@@ -156,8 +172,8 @@ struct AchievementsView: View {
         }
     }
 
-    private var sortedChallenges: [SunclubSeasonalChallenge] {
-        appState.seasonalChallenges.sorted { lhs, rhs in
+    private func sortedChallenges(_ challenges: [SunclubSeasonalChallenge]) -> [SunclubSeasonalChallenge] {
+        challenges.sorted { lhs, rhs in
             if lhs.isComplete != rhs.isComplete {
                 return !lhs.isComplete
             }
@@ -182,11 +198,7 @@ struct AchievementsView: View {
         }
     }
 
-    private var nextAchievement: SunclubAchievement? {
-        sortedAchievements.first { !$0.isUnlocked }
-    }
-
-    private var nextBadgeDetail: String {
+    private func nextBadgeDetail(for nextAchievement: SunclubAchievement?) -> String {
         guard let nextAchievement else {
             return "Every badge is unlocked. Completed medals stay below for sharing."
         }
@@ -202,6 +214,14 @@ struct AchievementsView: View {
     private func remainingCount(for challenge: SunclubSeasonalChallenge) -> Int {
         max(challenge.targetValue - challenge.currentValue, 0)
     }
+}
+
+private struct AchievementsPresentation {
+    let achievements: [SunclubAchievement]
+    let challenges: [SunclubSeasonalChallenge]
+    let unlockedCountText: String
+    let nextAchievement: SunclubAchievement?
+    let nextBadgeDetail: String
 }
 
 #Preview {

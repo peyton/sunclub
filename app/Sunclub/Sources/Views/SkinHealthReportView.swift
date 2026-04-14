@@ -12,11 +12,10 @@ struct SkinHealthReportView: View {
         DateInterval(start: min(startDate, endDate), end: max(startDate, endDate))
     }
 
-    private var summary: SunclubSkinHealthReportSummary {
-        appState.skinHealthReportSummary(for: interval)
-    }
-
     var body: some View {
+        let reportInterval = interval
+        let summary = appState.skinHealthReportSummary(for: reportInterval)
+
         SunLightScreen {
             VStack(alignment: .leading, spacing: 24) {
                 SunLightHeader(title: "Skin Health Report", showsBack: true, onBack: {
@@ -25,9 +24,9 @@ struct SkinHealthReportView: View {
 
                 introCard
                 dateRangeCard
-                metricsCard
-                monthlyConsistencyCard
-                spfDistributionCard
+                metricsCard(summary: summary)
+                monthlyConsistencyCard(summary: summary)
+                spfDistributionCard(summary: summary)
 
                 SunAssetHero(
                     asset: .illustrationSkinReport,
@@ -74,7 +73,7 @@ struct SkinHealthReportView: View {
         .background(cardBackground)
     }
 
-    private var metricsCard: some View {
+    private func metricsCard(summary: SunclubSkinHealthReportSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Summary")
                 .font(.system(size: 14, weight: .semibold))
@@ -89,7 +88,7 @@ struct SkinHealthReportView: View {
         .background(cardBackground)
     }
 
-    private var monthlyConsistencyCard: some View {
+    private func monthlyConsistencyCard(summary: SunclubSkinHealthReportSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Monthly consistency")
                 .font(.system(size: 14, weight: .semibold))
@@ -125,7 +124,7 @@ struct SkinHealthReportView: View {
         .background(cardBackground)
     }
 
-    private var spfDistributionCard: some View {
+    private func spfDistributionCard(summary: SunclubSkinHealthReportSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SPF mix")
                 .font(.system(size: 14, weight: .semibold))

@@ -26,7 +26,34 @@ struct ProductScannerView: View {
         case denied
     }
 
-    private static let maximumScanImageDimension: CGFloat = 1600
+    private struct SendableImage: @unchecked Sendable {
+        let image: UIImage
+    }
+
+    private struct ScanImageSource: @unchecked Sendable {
+        let data: Data?
+        let image: UIImage?
+
+        static func photoData(_ data: Data) -> Self {
+            Self(data: data, image: nil)
+        }
+
+        static func cameraImage(_ image: UIImage) -> Self {
+            Self(data: nil, image: image)
+        }
+
+        func preparedImage() throws -> SendableImage {
+            if let data {
+                return SendableImage(image: try SunclubProductScannerService.preparedImageForScanning(data: data))
+            }
+
+            if let image {
+                return SendableImage(image: try SunclubProductScannerService.preparedImageForScanning(image: image))
+            }
+
+            throw SunclubProductScannerError.imageUnavailable
+        }
+    }
 
     var body: some View {
         SunLightScreen {
@@ -89,7 +116,7 @@ struct ProductScannerView: View {
             CameraCaptureSheet(
                 onImage: { image in
                     isShowingCamera = false
-                    handleImage(image)
+                    handleImageSource(.cameraImage(image))
                 },
                 onCancel: {
                     isShowingCamera = false
@@ -321,23 +348,21 @@ struct ProductScannerView: View {
         defer { selectedPhotoItem = nil }
 
         do {
-            guard let data = try await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data) else {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
                 errorMessage = "Sunclub could not load that photo."
                 return
             }
-            handleImage(image)
+            handleImageSource(.photoData(data))
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func handleImage(_ image: UIImage) {
+    private func handleImageSource(_ source: ScanImageSource) {
         feedbackTrigger += 1
-        let preparedImage = Self.preparedImageForScanning(image)
         let scanID = UUID()
         activeScanID = scanID
-        previewImage = preparedImage
+        previewImage = nil
         scanResult = nil
         errorMessage = nil
         isScanning = true
@@ -345,7 +370,18 @@ struct ProductScannerView: View {
 
         Task {
             do {
-                let result = try await SunclubProductScannerService.scan(image: preparedImage)
+                let preparedImage = try await Task.detached(priority: .userInitiated) {
+                    try source.preparedImage()
+                }.value
+                guard activeScanID == scanID else {
+                    return
+                }
+
+                previewImage = preparedImage.image
+
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try await SunclubProductScannerService.scan(image: preparedImage.image)
+                }.value
                 guard activeScanID == scanID else {
                     return
                 }
@@ -362,25 +398,6 @@ struct ProductScannerView: View {
                 isScanning = false
                 scanSheenActive = false
             }
-        }
-    }
-
-    private static func preparedImageForScanning(_ image: UIImage) -> UIImage {
-        let longestSide = max(image.size.width, image.size.height)
-        guard longestSide > maximumScanImageDimension else {
-            return image
-        }
-
-        let scale = maximumScanImageDimension / longestSide
-        let targetSize = CGSize(
-            width: max(1, floor(image.size.width * scale)),
-            height: max(1, floor(image.size.height * scale))
-        )
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-
-        return UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
-            image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
     }
 

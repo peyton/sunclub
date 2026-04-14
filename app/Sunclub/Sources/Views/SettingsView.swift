@@ -358,14 +358,16 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var reminderCoachingSection: some View {
-        if !appState.reminderCoachingSuggestions.isEmpty {
+        let suggestions = appState.reminderCoachingSuggestions
+
+        if !suggestions.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Suggested Times")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 VStack(spacing: 12) {
-                    ForEach(appState.reminderCoachingSuggestions) { suggestion in
+                    ForEach(suggestions) { suggestion in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(suggestion.title)
                                 .font(.system(size: 17, weight: .semibold))
