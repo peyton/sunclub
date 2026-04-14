@@ -102,11 +102,20 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             )
         }
         if let topOpenFriend = summary.topFriends.first(where: { !$0.hasLoggedToday }) {
+            guard summary.primaryPokeFriendID != nil else {
+                return Content(
+                    title: family == .systemSmall ? "Open" : "Message \(topOpenFriend.name)",
+                    subtitle: "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")",
+                    detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
+                    actionText: "Open",
+                    iconName: "message.fill"
+                )
+            }
             return Content(
                 title: family == .systemSmall ? "Poke" : "Poke \(topOpenFriend.name)",
                 subtitle: "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")",
                 detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
-                actionText: summary.primaryPokeFriendID == nil ? "Open" : "Poke",
+                actionText: "Poke",
                 iconName: "hand.tap.fill"
             )
         }

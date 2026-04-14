@@ -16,6 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$ROOT_DIR/scripts/tooling/common.sh"
+source_appstore_review_env
 
 setup_local_tooling_env
 

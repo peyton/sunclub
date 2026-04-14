@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from scripts.appstore import manifest as appstore_manifest
+
 APP_NAME_LIMIT = 30
 SUBTITLE_LIMIT = 30
 KEYWORDS_LIMIT_BYTES = 100
@@ -26,6 +28,38 @@ VALID_ROUTES = {
 }
 VALID_RELEASE_TYPES = {"MANUAL", "AFTER_APPROVAL", "SCHEDULED"}
 VALID_SCREENSHOT_DISPLAY_TYPES = {"APP_IPHONE_67"}
+VALID_PRIMARY_CATEGORIES = {"HEALTH_AND_FITNESS"}
+VALID_SECONDARY_CATEGORIES = {"LIFESTYLE"}
+VALID_AGE_RATINGS = {"4+"}
+VALID_DATA_COLLECTION_VALUES = {"none"}
+VALID_MEDICAL_DEVICE_STATUSES = {"not_regulated"}
+REQUIRED_MEDICAL_DEVICE_ASC_VALUE = "NOT_MEDICAL_DEVICE"
+REQUIRED_AGE_RATING_FIELDS = {
+    "ads": False,
+    "unrestricted_web_access": False,
+    "broad_user_generated_content": False,
+    "in_app_chat": False,
+    "gambling_or_contests": False,
+    "mature_or_suggestive_content": "none",
+    "sexual_content_or_nudity": "none",
+    "violence": "none",
+    "substance_or_tobacco_content": "none",
+    "medical_or_treatment_information": "none",
+}
+REQUIRED_ATTESTATIONS = {
+    "free_only": True,
+    "in_app_purchases": False,
+    "idfa": False,
+    "tracking": False,
+    "ads": False,
+    "analytics_sdks": False,
+    "non_exempt_encryption": False,
+    "third_party_content": False,
+    "kids_category": False,
+    "iphone_only_v1": True,
+    "accessibility_criteria_reviewed": True,
+    "public_cloudkit_accountability_transport_enabled": False,
+}
 ACCESSIBILITY_FIELDS = {
     "supports_audio_descriptions",
     "supports_captions",
@@ -56,6 +90,10 @@ FORBIDDEN_STALE_COPY = (
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
+    return appstore_manifest.load_resolved_manifest(path)
+
+
+def load_raw_manifest(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text())
 
 
@@ -109,6 +147,19 @@ def validate_manifest(
 
     if pricing_model != "free":
         errors.append("app.pricing_model must be 'free' for this release train.")
+
+    if app.get("primary_category") not in VALID_PRIMARY_CATEGORIES:
+        errors.append(
+            "app.primary_category must be HEALTH_AND_FITNESS for the first submission."
+        )
+
+    if app.get("secondary_category") not in VALID_SECONDARY_CATEGORIES:
+        errors.append(
+            "app.secondary_category must be LIFESTYLE for the first submission."
+        )
+
+    if app.get("age_rating") not in VALID_AGE_RATINGS:
+        errors.append("app.age_rating must remain 4+ for the first submission.")
 
     if app.get("device_family") != "iphone":
         errors.append("app.device_family must be 'iphone' for the iPhone-only release.")
@@ -222,11 +273,20 @@ def validate_manifest(
         if not isinstance(contact, dict):
             errors.append("review.contact must be an object.")
         else:
+            missing_contact_fields: list[str] = []
             for field in ("first_name", "last_name", "email", "phone"):
-                value = str(contact.get(field, "")).strip()
+                raw_value = contact.get(field, "")
+                value = "" if isinstance(raw_value, dict) else str(raw_value).strip()
                 if not value:
-                    errors.append(f"review.contact.{field} is required.")
-            if contact.get("ready") is not True:
+                    missing_contact_fields.append(field)
+            if missing_contact_fields:
+                message = "review.contact is still marked as not ready for submission."
+                if allow_draft:
+                    warnings.append(message)
+                else:
+                    for field in missing_contact_fields:
+                        errors.append(f"review.contact.{field} is required.")
+            elif contact.get("ready") is False:
                 message = "review.contact is still marked as not ready for submission."
                 if allow_draft:
                     warnings.append(message)
@@ -242,6 +302,17 @@ def validate_manifest(
     else:
         if privacy.get("tracking") not in (True, False):
             errors.append("privacy.tracking must be a boolean.")
+        if privacy.get("data_collection") not in VALID_DATA_COLLECTION_VALUES:
+            errors.append("privacy.data_collection must be 'none' for this release.")
+        public_transport = privacy.get("public_cloudkit_accountability_transport")
+        if public_transport not in (True, False):
+            errors.append(
+                "privacy.public_cloudkit_accountability_transport must be a boolean."
+            )
+        elif public_transport is True and privacy.get("data_collection") == "none":
+            errors.append(
+                "Public CloudKit accountability transport requires conservative App Privacy data-collection answers, not privacy.data_collection='none'."
+            )
         if not str(privacy.get("notifications_usage_description", "")).strip():
             errors.append("privacy.notifications_usage_description is required.")
         if privacy.get("app_store_connect_completed") is not True:
@@ -254,11 +325,84 @@ def validate_manifest(
             else:
                 errors.append(message)
 
+    age_rating = manifest.get("age_rating_questionnaire")
+    if not isinstance(age_rating, dict):
+        errors.append("Missing required object: age_rating_questionnaire.")
+    else:
+        for field, expected in REQUIRED_AGE_RATING_FIELDS.items():
+            if age_rating.get(field) != expected:
+                errors.append(
+                    f"age_rating_questionnaire.{field} must be {expected!r} for the first submission."
+                )
+        wellness_topic = str(age_rating.get("health_or_wellness_topics", "")).lower()
+        if "sunscreen" not in wellness_topic or "guidance" not in wellness_topic:
+            errors.append(
+                "age_rating_questionnaire.health_or_wellness_topics must document sunscreen habit guidance only."
+            )
+
     export_compliance = manifest.get("export_compliance")
     if not isinstance(export_compliance, dict):
         errors.append("Missing required object: export_compliance.")
     elif export_compliance.get("uses_encryption") not in (True, False):
         errors.append("export_compliance.uses_encryption must be a boolean.")
+    elif export_compliance.get("uses_encryption") is True:
+        errors.append("export_compliance.uses_encryption must remain false.")
+    elif export_compliance.get("contains_third_party_content") is not False:
+        errors.append(
+            "export_compliance.contains_third_party_content must remain false."
+        )
+
+    attestations = manifest.get("attestations")
+    if not isinstance(attestations, dict):
+        errors.append("Missing required object: attestations.")
+    else:
+        for field, expected in REQUIRED_ATTESTATIONS.items():
+            if attestations.get(field) != expected:
+                errors.append(
+                    f"attestations.{field} must be {expected!r} for the first submission."
+                )
+
+    regulatory = manifest.get("regulatory")
+    if not isinstance(regulatory, dict):
+        errors.append("Missing required object: regulatory.")
+    else:
+        medical = regulatory.get("regulated_medical_device")
+        if not isinstance(medical, dict):
+            errors.append("regulatory.regulated_medical_device must be an object.")
+        else:
+            if medical.get("status") not in VALID_MEDICAL_DEVICE_STATUSES:
+                errors.append(
+                    "regulatory.regulated_medical_device.status must be not_regulated."
+                )
+            if (
+                medical.get("required_app_store_connect_value")
+                != REQUIRED_MEDICAL_DEVICE_ASC_VALUE
+            ):
+                errors.append(
+                    "regulatory.regulated_medical_device.required_app_store_connect_value must be NOT_MEDICAL_DEVICE."
+                )
+            if (
+                medical.get("app_store_connect_value")
+                != REQUIRED_MEDICAL_DEVICE_ASC_VALUE
+            ):
+                message = (
+                    "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS must be "
+                    "NOT_MEDICAL_DEVICE after the App Store Connect medical-device "
+                    "status is set."
+                )
+                if allow_draft:
+                    warnings.append(message)
+                else:
+                    errors.append(message)
+            if medical.get("confirmation_completed") is not True:
+                message = (
+                    "regulatory.regulated_medical_device.confirmation_completed "
+                    "must be true for submission."
+                )
+                if allow_draft:
+                    warnings.append(message)
+                else:
+                    errors.append(message)
 
     assets = manifest.get("assets")
     if not isinstance(assets, dict):
@@ -373,6 +517,11 @@ def main() -> int:
         action="store_true",
         help="Validate shape and content limits without requiring submission-ready URLs and review contact details.",
     )
+    parser.add_argument(
+        "--no-env-file",
+        action="store_true",
+        help="Do not auto-load .state/appstore/review.env before resolving env-backed metadata.",
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.manifest)
@@ -381,9 +530,16 @@ def main() -> int:
         return 2
 
     try:
-        manifest = load_manifest(manifest_path)
+        report = appstore_manifest.load_resolved_manifest_report(
+            manifest_path,
+            load_env_file=not args.no_env_file,
+        )
+        manifest = report.value
     except json.JSONDecodeError as error:
         print(f"Invalid JSON in {manifest_path}: {error}", file=sys.stderr)
+        return 2
+    except appstore_manifest.ReviewEnvError as error:
+        print(f"Invalid App Store review environment: {error}", file=sys.stderr)
         return 2
 
     errors, warnings = validate_manifest(manifest, allow_draft=args.allow_draft)

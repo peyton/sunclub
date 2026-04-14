@@ -417,7 +417,7 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
+        XCTAssertTrue(app.buttons["home.accountabilityAction"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
         XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
 
@@ -435,7 +435,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Bring in backup"].exists)
-        XCTAssertTrue(app.buttons["home.accountabilityPoke"].exists)
+        XCTAssertTrue(app.buttons["home.accountabilityAction"].exists)
     }
 
     @MainActor
@@ -446,8 +446,8 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["Poke"], in: app))
-        XCTAssertTrue(app.buttons["Message"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["Message"], in: app))
+        XCTAssertFalse(app.buttons["Poke"].exists)
         XCTAssertFalse(app.buttons["Refresh"].exists)
         XCTAssertFalse(app.buttons["Poke by Message"].exists)
         XCTAssertFalse(app.buttons["Remove Friend"].exists)
@@ -476,7 +476,8 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.staticTexts["Maya"], in: app))
-        XCTAssertTrue(app.buttons["Poke"].exists)
+        XCTAssertTrue(app.buttons["Message"].exists)
+        XCTAssertFalse(app.buttons["Poke"].exists)
     }
 
     @MainActor

@@ -20,6 +20,8 @@ struct SunclubAccountabilityRemoteEvents: Equatable, Sendable {
 
 @MainActor
 protocol SunclubAccountabilityServing: AnyObject {
+    var supportsDirectDelivery: Bool { get }
+
     func publishProfile(_ profile: SunclubAccountabilityProfile) async throws
     func fetchProfiles(profileIDs: [UUID]) async throws -> [SunclubAccountabilityProfile]
     func sendInviteResponse(_ response: SunclubAccountabilityInviteResponse) async throws
@@ -96,6 +98,8 @@ final class CloudKitAccountabilityDatabase: SunclubAccountabilityDatabase {
 
 @MainActor
 final class NoopSunclubAccountabilityService: SunclubAccountabilityServing {
+    let supportsDirectDelivery = false
+
     func publishProfile(_ profile: SunclubAccountabilityProfile) async throws {}
     func fetchProfiles(profileIDs: [UUID]) async throws -> [SunclubAccountabilityProfile] { [] }
     func sendInviteResponse(_ response: SunclubAccountabilityInviteResponse) async throws {}
@@ -119,6 +123,8 @@ enum SunclubAccountabilityServiceError: LocalizedError {
 
 @MainActor
 final class SunclubAccountabilityService: SunclubAccountabilityServing {
+    let supportsDirectDelivery = true
+
     private enum RecordType {
         static let profile = "AccountabilityProfile"
         static let inviteResponse = "AccountabilityInviteResponse"

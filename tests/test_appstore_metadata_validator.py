@@ -1,10 +1,30 @@
 import json
 from pathlib import Path
 
+from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore import validate_metadata as validator
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+MANIFEST_PATH = REPO_ROOT / "scripts" / "appstore" / "metadata.json"
+READY_ENV = {
+    "SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME": "Peyton",
+    "SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME": "Randolph",
+    "SUNCLUB_APP_REVIEW_CONTACT_EMAIL": "review@example.com",
+    "SUNCLUB_APP_REVIEW_CONTACT_PHONE": "+1-415-555-0100",
+    "SUNCLUB_APP_PRIVACY_COMPLETED": "1",
+    "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS": "NOT_MEDICAL_DEVICE",
+}
+
+
+def current_manifest(
+    environment: dict[str, str] | None = None,
+) -> dict[str, object]:
+    return appstore_manifest.load_resolved_manifest(
+        MANIFEST_PATH,
+        environment=environment or READY_ENV,
+        load_env_file=False,
+    )
 
 
 def test_validator_rejects_legacy_submission_problems() -> None:
@@ -111,8 +131,10 @@ def test_validator_rejects_legacy_submission_problems() -> None:
 
 
 def test_validator_allows_current_manifest_in_draft_mode() -> None:
-    manifest = validator.load_manifest(
-        REPO_ROOT / "scripts" / "appstore" / "metadata.json"
+    manifest = appstore_manifest.load_resolved_manifest(
+        MANIFEST_PATH,
+        environment={},
+        load_env_file=False,
     )
     manual_steps = manifest["submission"]["manual_steps"]
 
@@ -144,101 +166,14 @@ def test_validator_allows_current_manifest_in_draft_mode() -> None:
         "privacy.app_store_connect_completed must be true after the App Privacy questionnaire is completed in App Store Connect."
         in warnings
     )
+    assert (
+        "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS must be NOT_MEDICAL_DEVICE after the App Store Connect medical-device status is set."
+        in warnings
+    )
 
 
 def test_validator_accepts_submission_ready_manifest() -> None:
-    manifest = json.loads(
-        """
-        {
-          "app": {
-            "name": "Sunclub",
-            "subtitle": "Daily SPF Habit Tracker",
-            "bundle_id": "app.peyton.sunclub",
-            "sku": "sunclub-ios-001",
-            "primary_locale": "en-US",
-            "primary_category": "HEALTH_AND_FITNESS",
-            "secondary_category": "LIFESTYLE",
-            "age_rating": "4+",
-            "device_family": "iphone",
-            "pricing_model": "free",
-            "supports_on_demand_resources": false
-          },
-          "localizations": {
-            "en-US": {
-              "description": "Sunclub helps users keep a sunscreen routine with manual logging, streaks, reminders, and weekly summaries.",
-              "keywords": ["sunscreen","spf","habit","streak","reminder","daily","uv"],
-              "promotional_text": "Build a steady sunscreen routine with reminders and quick logging.",
-              "whats_new": "Initial release."
-            }
-          },
-          "urls": {
-            "support": { "value": "https://support.example.com/sunclub", "ready": true },
-            "marketing": { "value": "https://www.example.com/sunclub", "ready": true },
-            "privacy_policy": { "value": "https://www.example.com/privacy", "ready": true }
-          },
-          "review": {
-            "contact": {
-              "first_name": "Peyton",
-              "last_name": "Randolph",
-              "email": "review@example.com",
-              "phone": "+1-415-555-0100",
-              "ready": true
-            },
-            "demo_account_required": false,
-            "demo_account_notes": "No account required.",
-            "notes": "Reviewers can complete onboarding, log manually from Home, and open Weekly Summary and Settings.",
-            "attachments": []
-          },
-          "privacy": {
-            "tracking": false,
-            "data_collection": "none",
-            "app_store_connect_completed": true,
-            "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
-          },
-          "export_compliance": {
-            "uses_encryption": false,
-            "contains_third_party_content": false,
-            "content_rights_note": "This app does not contain, show, or access third-party content."
-          },
-          "assets": {
-            "icon_source_svg": "icon.svg",
-            "screenshots": {
-              "capture_device": "iPhone 17 Pro Max",
-              "required_size_class": "6.9-inch iPhone",
-              "display_type": "APP_IPHONE_67",
-              "output_directory": ".build/appstore-screenshots",
-              "screens": [
-                {
-                  "id": "home",
-                  "route": "home",
-                  "complete_onboarding": true,
-                  "launch_arguments": []
-                }
-              ]
-            }
-          },
-          "accessibility": {
-            "iphone": {
-              "ready": true,
-              "supports_audio_descriptions": false,
-              "supports_captions": false,
-              "supports_dark_interface": true,
-              "supports_differentiate_without_color_alone": true,
-              "supports_larger_text": true,
-              "supports_reduced_motion": true,
-              "supports_sufficient_contrast": true,
-              "supports_voice_control": true,
-              "supports_voiceover": true
-            }
-          },
-          "submission": {
-            "copyright": "2026 Peyton Randolph",
-            "release_type": "MANUAL",
-            "manual_steps": ["Upload screenshots in App Store Connect."]
-          }
-        }
-        """
-    )
+    manifest = current_manifest()
 
     errors, warnings = validator.validate_manifest(manifest, allow_draft=False)
 
@@ -247,9 +182,7 @@ def test_validator_accepts_submission_ready_manifest() -> None:
 
 
 def test_validator_rejects_submission_automation_shape_errors() -> None:
-    manifest = validator.load_manifest(
-        REPO_ROOT / "scripts" / "appstore" / "metadata.json"
-    )
+    manifest = current_manifest()
     manifest["privacy"]["app_store_connect_completed"] = "yes"
     manifest["assets"]["screenshots"]["display_type"] = "APP_IPHONE_65"
     manifest["submission"]["release_type"] = "AUTO"
@@ -274,3 +207,61 @@ def test_validator_rejects_submission_automation_shape_errors() -> None:
         in errors
     )
     assert warnings == []
+
+
+def test_manifest_resolver_overlays_review_contact_from_env() -> None:
+    manifest = current_manifest()
+
+    assert manifest["review"]["contact"] == {
+        "first_name": "Peyton",
+        "last_name": "Randolph",
+        "email": "review@example.com",
+        "phone": "+1-415-555-0100",
+    }
+    assert manifest["privacy"]["app_store_connect_completed"] is True
+    assert (
+        manifest["regulatory"]["regulated_medical_device"]["app_store_connect_value"]
+        == "NOT_MEDICAL_DEVICE"
+    )
+
+
+def test_strict_validation_requires_privacy_and_medical_gates() -> None:
+    env = {
+        key: value
+        for key, value in READY_ENV.items()
+        if key
+        not in {
+            "SUNCLUB_APP_PRIVACY_COMPLETED",
+            "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS",
+        }
+    }
+    manifest = current_manifest(environment=env)
+
+    errors, warnings = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert (
+        "privacy.app_store_connect_completed must be true after the App Privacy questionnaire is completed in App Store Connect."
+        in errors
+    )
+    assert (
+        "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS must be NOT_MEDICAL_DEVICE after the App Store Connect medical-device status is set."
+        in errors
+    )
+    assert warnings == []
+
+
+def test_public_cloudkit_transport_requires_conservative_privacy_answers() -> None:
+    manifest = current_manifest()
+    manifest["privacy"]["public_cloudkit_accountability_transport"] = True
+    manifest["attestations"]["public_cloudkit_accountability_transport_enabled"] = True
+
+    errors, _warnings = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert (
+        "Public CloudKit accountability transport requires conservative App Privacy data-collection answers, not privacy.data_collection='none'."
+        in errors
+    )
+    assert (
+        "attestations.public_cloudkit_accountability_transport_enabled must be False for the first submission."
+        in errors
+    )

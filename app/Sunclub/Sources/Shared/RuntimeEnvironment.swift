@@ -5,12 +5,14 @@ struct RuntimeEnvironmentSnapshot: Equatable {
     let isRunningTests: Bool
     let isPreviewing: Bool
     let hasAppGroupContainer: Bool
+    let isPublicAccountabilityTransportEnabled: Bool
 
     static var current: Self {
         Self(
             isRunningTests: RuntimeEnvironment.isRunningTests,
             isPreviewing: RuntimeEnvironment.isPreviewing,
-            hasAppGroupContainer: RuntimeEnvironment.hasAppGroupContainer
+            hasAppGroupContainer: RuntimeEnvironment.hasAppGroupContainer,
+            isPublicAccountabilityTransportEnabled: RuntimeEnvironment.isPublicAccountabilityTransportEnabled
         )
     }
 
@@ -144,6 +146,17 @@ enum RuntimeEnvironment {
         FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: SunclubRuntimeConfiguration.appGroupID
         ) != nil
+    }
+
+    static var isPublicAccountabilityTransportEnabled: Bool {
+        let override = ProcessInfo.processInfo.environment["SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED"]
+        if override == "1" || override?.lowercased() == "true" {
+            return true
+        }
+        if override == "0" || override?.lowercased() == "false" {
+            return false
+        }
+        return SunclubRuntimeConfiguration.isPublicAccountabilityTransportEnabled
     }
 
     static func argumentValue(withPrefix prefix: String) -> String? {

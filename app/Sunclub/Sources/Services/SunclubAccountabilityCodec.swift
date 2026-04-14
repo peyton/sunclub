@@ -196,7 +196,7 @@ enum SunclubAccountabilityMessaging {
     }
 
     static func directPokeUnavailableMessage(friendName: String) -> String {
-        "Add \(resolvedName(friendName, fallback: "this friend")) again before direct pokes work."
+        "Use Message to nudge \(resolvedName(friendName, fallback: "this friend"))."
     }
 
     static func latestPokeText(_ poke: SunclubAccountabilityPoke?) -> String? {

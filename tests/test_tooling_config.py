@@ -9,10 +9,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_justfile_exposes_app_review_submission_commands() -> None:
     justfile = (REPO_ROOT / "justfile").read_text()
 
+    assert "appstore-env:" in justfile
+    assert "bash scripts/appstore/review-env.sh" in justfile
+    assert "appstore-validate-strict:" in justfile
+    assert "uv run python -m scripts.appstore.validate_metadata" in justfile
+    assert "appstore-review-package:" in justfile
+    assert "uv run python -m scripts.appstore.review_package" in justfile
     assert "appstore-submit-dry-run:" in justfile
     assert "bash scripts/appstore/submit-review.sh --dry-run" in justfile
     assert "appstore-submit-review:" in justfile
     assert "bash scripts/appstore/submit-review.sh --submit" in justfile
+    assert "appstore-send-review: appstore-submit-review" in justfile
     assert "release-testflight VERSION:" in justfile
     assert "VERSION={{VERSION}} bash scripts/appstore/release-tag.sh" in justfile
 

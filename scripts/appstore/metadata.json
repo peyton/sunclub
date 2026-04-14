@@ -46,11 +46,18 @@
   },
   "review": {
     "contact": {
-      "first_name": "Peyton",
-      "last_name": "Randolph",
-      "email": "review-contact@sunclub.app",
-      "phone": "+1-555-0100",
-      "ready": false
+      "first_name": {
+        "env": "SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME"
+      },
+      "last_name": {
+        "env": "SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME"
+      },
+      "email": {
+        "env": "SUNCLUB_APP_REVIEW_CONTACT_EMAIL"
+      },
+      "phone": {
+        "env": "SUNCLUB_APP_REVIEW_CONTACT_PHONE"
+      }
     },
     "demo_account_required": false,
     "demo_account_notes": "No account required. App data is stored on device and can sync through the user's private iCloud database when iCloud sync is enabled.",
@@ -60,13 +67,58 @@
   "privacy": {
     "tracking": false,
     "data_collection": "none",
-    "app_store_connect_completed": false,
+    "app_store_connect_completed": {
+      "env": "SUNCLUB_APP_PRIVACY_COMPLETED",
+      "equals": "1"
+    },
+    "public_cloudkit_accountability_transport": false,
     "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
+  },
+  "age_rating_questionnaire": {
+    "ads": false,
+    "unrestricted_web_access": false,
+    "broad_user_generated_content": false,
+    "in_app_chat": false,
+    "gambling_or_contests": false,
+    "mature_or_suggestive_content": "none",
+    "sexual_content_or_nudity": "none",
+    "violence": "none",
+    "substance_or_tobacco_content": "none",
+    "medical_or_treatment_information": "none",
+    "health_or_wellness_topics": "sunscreen habit guidance only"
   },
   "export_compliance": {
     "uses_encryption": false,
     "contains_third_party_content": false,
     "content_rights_note": "Sunclub and its app code, product copy, visual assets, and release artifacts are owned by Peyton Randolph. This app does not contain, show, or access third-party content."
+  },
+  "attestations": {
+    "free_only": true,
+    "in_app_purchases": false,
+    "idfa": false,
+    "tracking": false,
+    "ads": false,
+    "analytics_sdks": false,
+    "non_exempt_encryption": false,
+    "third_party_content": false,
+    "kids_category": false,
+    "iphone_only_v1": true,
+    "accessibility_criteria_reviewed": true,
+    "public_cloudkit_accountability_transport_enabled": false
+  },
+  "regulatory": {
+    "regulated_medical_device": {
+      "status": "not_regulated",
+      "app_store_connect_value": {
+        "env": "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS"
+      },
+      "required_app_store_connect_value": "NOT_MEDICAL_DEVICE",
+      "confirmation_completed": {
+        "env": "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS",
+        "equals": "NOT_MEDICAL_DEVICE"
+      },
+      "notes": "Sunclub is sunscreen habit guidance only. It does not diagnose, monitor, prevent, or treat disease and is not a regulated medical device."
+    }
   },
   "assets": {
     "icon_source_svg": "icon.svg",
@@ -127,8 +179,10 @@
     "copyright": "2026 Peyton Randolph",
     "release_type": "MANUAL",
     "manual_steps": [
-      "Replace the draft App Review contact details and mark them ready.",
-      "Answer App Privacy questions in App Store Connect to match this manifest and mark privacy.app_store_connect_completed true."
+      "Run just appstore-env to populate App Store Connect API credentials, App Review contact values, App Privacy confirmation, and medical-device status in .state/appstore/review.env.",
+      "Answer App Privacy questions in App Store Connect to match this manifest, then set SUNCLUB_APP_PRIVACY_COMPLETED=1.",
+      "Set regulated medical device status in App Store Connect to NOT_MEDICAL_DEVICE, then set SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS=NOT_MEDICAL_DEVICE.",
+      "Review docs/app-store-review-package.md before final submission."
     ]
   }
 }

@@ -311,13 +311,15 @@ final class AutomationTests: XCTestCase {
         let importResult = try harness.state.performAutomationAction(.importFriend(code: code), invocation: .url)
         XCTAssertEqual(importResult.friend, "Maya")
         XCTAssertEqual(harness.state.friends.map(\.name), ["Maya"])
+        XCTAssertFalse(harness.state.growthSettings.accountability.connections.first?.canDirectPoke ?? true)
 
         let pokeResult = try harness.state.performAutomationAction(.pokeFriend(id: friendID), invocation: .url)
         XCTAssertEqual(pokeResult.friend, "Maya")
+        XCTAssertEqual(pokeResult.status, "needs-message")
+        XCTAssertEqual(pokeResult.message, "Open Sunclub to message Maya.")
         let savedSettings = automationStore.load()
-        XCTAssertEqual(savedSettings.accountability.pokeHistory.first?.friendName, "Maya")
-        XCTAssertEqual(savedSettings.accountability.pokeHistory.first?.status, .sent)
-        XCTAssertEqual(savedSettings.accountability.connections.first?.lastPokeSentAt, now)
+        XCTAssertTrue(savedSettings.accountability.pokeHistory.isEmpty)
+        XCTAssertNil(savedSettings.accountability.connections.first?.lastPokeSentAt)
     }
 
     private func makeHarness(
@@ -332,7 +334,8 @@ final class AutomationTests: XCTestCase {
         let runtimeEnvironment = RuntimeEnvironmentSnapshot(
             isRunningTests: growthStore == nil,
             isPreviewing: growthStore != nil,
-            hasAppGroupContainer: false
+            hasAppGroupContainer: false,
+            isPublicAccountabilityTransportEnabled: false
         )
         let historyService = SunclubHistoryService(context: context)
         let state = AppState(

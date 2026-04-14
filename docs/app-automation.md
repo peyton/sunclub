@@ -4,7 +4,7 @@
 
 - Default posture: maximum automation for non-destructive writes.
 - Universal Links: deferred for this release. Do not add Associated Domains or `apple-app-site-association`.
-- Direct writes: allowed for logging, reapply, reminders, supported toggles, friend invite import, and friend pokes.
+- Direct writes: allowed for logging, reapply, reminders, supported toggles, and friend invite import. Friend poke automation returns a Message-first foreground route while public accountability transport is disabled for first App Store review.
 - UI-only actions: destructive, review-heavy, permission-only, camera, and file-picker flows open Sunclub instead of running in the background.
 - Storage: automation preferences live in the Codable growth settings store, not SwiftData.
 
@@ -30,7 +30,7 @@
 - `Create Skin Health Report`: returns an `IntentFile`.
 - `Create Streak Card`: returns an `IntentFile`.
 - `Import Friend Invite`: imports a Sunclub friend invite code.
-- `Poke Friend`: uses a friend `AppEntity` query and sends a poke.
+- `Poke Friend`: uses a friend `AppEntity` query. First-review builds do not send a direct CloudKit poke; they return a Friends route so the user can message locally.
 
 ## URL Scheme
 
@@ -50,7 +50,7 @@
 - `set-reapply?enabled=true&interval=120`
 - `set-toggle?name=travelTimeZone|streakRisk|liveUV|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
 - `import-friend?code=...`
-- `poke-friend?id=<uuid>`
+- `poke-friend?id=<uuid>` opens Friends with `status=needs-message` while public accountability transport is disabled.
 - `open?route=home|log|reapply|summary|history|settings|automation|achievements|friends|health-report|product-scanner|recovery`
 
 ## x-callback-url
@@ -100,7 +100,7 @@
 - Unit: automation logging uses revision history and refreshes widget snapshots.
 - Unit: old growth settings payloads decode with default automation preferences.
 - Unit: file-producing intents return expected file metadata.
-- Unit: friend query, invite import, and poke paths work with seeded friends.
+- Unit: friend query, invite import, and Message-first poke paths work with seeded friends.
 - UI: Settings exposes Automation controls, copy buttons, and test buttons.
 - UI: `sunclub-dev://x-callback-url/open?route=automation` opens Automation.
 - UI: URL write disable blocks mutation and routes to foreground UI.

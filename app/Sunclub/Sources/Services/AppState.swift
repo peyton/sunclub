@@ -439,6 +439,9 @@ final class AppState {
         if runtimeEnvironment.isRunningTests || runtimeEnvironment.isPreviewing {
             return NoopSunclubAccountabilityService()
         }
+        if !runtimeEnvironment.isPublicAccountabilityTransportEnabled {
+            return NoopSunclubAccountabilityService()
+        }
 
         return SunclubAccountabilityService()
     }
@@ -1143,6 +1146,10 @@ final class AppState {
         )
     }
 
+    var supportsDirectAccountabilityTransport: Bool {
+        accountabilityService.supportsDirectDelivery
+    }
+
     var accountabilitySummary: SunclubAccountabilitySummary {
         SunclubWidgetSnapshotBuilder.make(
             settings: settings,
@@ -1171,7 +1178,7 @@ final class AppState {
         guard !prioritizedFriends.isEmpty else {
             return HomeAccountabilityPresentation(
                 title: "Bring in backup",
-                detail: "Accountability is on. Add one sunscreen accomplice to start the gentle poking.",
+                detail: "Accountability is on. Add one sunscreen buddy to keep check-ins visible.",
                 openCountText: "0 open",
                 loggedCountText: "0 logged",
                 primaryActionTitle: "Add Friend",
@@ -1190,11 +1197,19 @@ final class AppState {
         let actionFriendID: UUID?
 
         if let topOpenFriend {
-            title = "Poke \(topOpenFriend.name)"
-            detail = "\(topOpenFriend.name) still has an open sunscreen day. One tap sends a quick nudge."
-            actionTitle = "Poke"
-            actionKind = .poke
-            actionFriendID = topOpenFriend.id
+            if supportsDirectAccountabilityTransport {
+                title = "Poke \(topOpenFriend.name)"
+                detail = "\(topOpenFriend.name) still has an open sunscreen day. One tap sends a quick nudge."
+                actionTitle = "Poke"
+                actionKind = .poke
+                actionFriendID = topOpenFriend.id
+            } else {
+                title = "Message \(topOpenFriend.name)"
+                detail = "\(topOpenFriend.name) still has an open sunscreen day. Send a note through Messages when you want to nudge."
+                actionTitle = "Open Friends"
+                actionKind = .view
+                actionFriendID = nil
+            }
         } else {
             title = "Everyone logged"
             detail = "Everyone in your circle logged today. Nice work from the whole crew."
@@ -1422,7 +1437,8 @@ final class AppState {
             context: modelContext,
             growthStore: growthFeatureStore,
             widgetStore: widgetSnapshotStore,
-            now: currentDate()
+            now: currentDate(),
+            supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
         )
         growthSettings = growthFeatureStore.load()
         refresh()
@@ -1557,17 +1573,22 @@ final class AppState {
                 friendSnapshotID: importedSnapshot.id,
                 friendDisplayName: importedSnapshot.name,
                 relationshipToken: envelope.relationshipToken,
-                acceptedAt: currentDate()
+                acceptedAt: currentDate(),
+                canDirectPoke: supportsDirectAccountabilityTransport
             )
         )
         persistGrowthSettings()
         syncWidgetSnapshot()
         reloadWidgetTimelines()
-        friendImportMessage = importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil
-            ? "\(importedSnapshot.name) logged today. Have you?"
-            : "Added \(importedSnapshot.name)."
+        if !supportsDirectAccountabilityTransport {
+            friendImportMessage = "Added \(importedSnapshot.name). Use Message when you want to send a nudge."
+        } else if importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil {
+            friendImportMessage = "\(importedSnapshot.name) logged today. Have you?"
+        } else {
+            friendImportMessage = "Added \(importedSnapshot.name)."
+        }
 
-        if sendsResponse {
+        if sendsResponse, supportsDirectAccountabilityTransport {
             let response = SunclubAccountabilityInviteResponse(
                 recipientProfileID: envelope.profileID,
                 envelope: preparedAccountabilityInviteEnvelope()
@@ -1581,6 +1602,9 @@ final class AppState {
 
     func refreshAccountabilityFriends() {
         guard growthSettings.accountability.isActive else {
+            return
+        }
+        guard supportsDirectAccountabilityTransport else {
             return
         }
 
@@ -1603,6 +1627,11 @@ final class AppState {
 
     func sendDirectPoke(to friendID: UUID) {
         guard let friend = friends.first(where: { $0.id == friendID }) else {
+            return
+        }
+
+        guard supportsDirectAccountabilityTransport else {
+            friendImportMessage = SunclubAccountabilityMessaging.directPokeUnavailableMessage(friendName: friend.name)
             return
         }
 
@@ -1677,6 +1706,7 @@ final class AppState {
 
     func processRemoteAccountabilityEventsNow() async -> Bool {
         guard growthSettings.accountability.isActive else { return false }
+        guard supportsDirectAccountabilityTransport else { return false }
 
         do {
             let events = try await accountabilityService.fetchRemoteEvents(for: growthSettings.accountability.localProfileID)
@@ -1705,6 +1735,7 @@ final class AppState {
     @discardableResult
     func processRemoteAccountabilityEvents() -> Task<Void, Never>? {
         guard growthSettings.accountability.isActive else { return nil }
+        guard supportsDirectAccountabilityTransport else { return nil }
 
         return Task {
             _ = await processRemoteAccountabilityEventsNow()
@@ -1714,6 +1745,7 @@ final class AppState {
     @discardableResult
     func refreshAccountabilityForForeground() -> Task<Void, Never>? {
         guard growthSettings.accountability.isActive else { return nil }
+        guard supportsDirectAccountabilityTransport else { return nil }
 
         let remoteRefreshTask = processRemoteAccountabilityEvents()
         refreshAccountabilityFriends()
@@ -1722,6 +1754,8 @@ final class AppState {
 
     @discardableResult
     func handleIncomingPoke(_ envelope: SunclubAccountabilityPokeEnvelope) -> Task<Void, Never>? {
+        guard supportsDirectAccountabilityTransport else { return nil }
+
         guard envelope.receiverProfileID == growthSettings.accountability.localProfileID,
               let connection = growthSettings.accountability.connections.first(where: {
                 $0.friendProfileID == envelope.senderProfileID
@@ -2423,6 +2457,9 @@ final class AppState {
 
     private func publishAccountabilityProfileIfNeeded() {
         guard growthSettings.accountability.isActive else {
+            return
+        }
+        guard supportsDirectAccountabilityTransport else {
             return
         }
 

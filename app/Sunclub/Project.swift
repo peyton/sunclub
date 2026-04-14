@@ -78,7 +78,8 @@ func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
         "SUNCLUB_ICLOUD_CONTAINER": .string(flavor.cloudKitContainerIdentifier),
         "SUNCLUB_ICLOUD_ENVIRONMENT": .string(cloudKitEnvironment),
         "SUNCLUB_URL_SCHEME": .string(flavor.urlScheme),
-        "SUNCLUB_DISPLAY_NAME": .string(flavor.displayName)
+        "SUNCLUB_DISPLAY_NAME": .string(flavor.displayName),
+        "SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED": .string("NO")
     ]
 }
 
@@ -129,6 +130,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)",
             "SunclubAppGroupID": "$(SUNCLUB_APP_GROUP_ID)",
             "SunclubICloudContainerIdentifier": "$(SUNCLUB_ICLOUD_CONTAINER)",
+            "SunclubPublicAccountabilityTransportEnabled": "$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)",
             "SunclubURLScheme": "$(SUNCLUB_URL_SCHEME)",
             "NSExtension": [
                 "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -177,6 +179,7 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
             "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
+            "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
             "CFBundleIconName": .string("AppIcon"),
             "WKCompanionAppBundleIdentifier": .string(flavor.bundleID)
         ]),
@@ -203,6 +206,7 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
+            "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
             "NSExtension": .dictionary([
                 "NSExtensionPointIdentifier": .string("com.apple.watchkit"),
@@ -263,6 +267,7 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
+            "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
             "NSExtension": .dictionary([
                 "NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")

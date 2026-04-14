@@ -1078,11 +1078,9 @@ private struct HomeAccountabilityCard: View {
                     .accessibilityIdentifier("home.accountabilityLatestPoke")
             }
 
-            if presentation.primaryActionKind != .view {
-                Button(presentation.primaryActionTitle, action: onPrimaryAction)
-                    .buttonStyle(SunPrimaryButtonStyle())
-                    .accessibilityIdentifier("home.accountabilityPoke")
-            }
+            Button(presentation.primaryActionTitle, action: onPrimaryAction)
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier(accountabilityActionIdentifier)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
@@ -1115,6 +1113,15 @@ private struct HomeAccountabilityCard: View {
         }
 
         return parts.joined(separator: ". ")
+    }
+
+    private var accountabilityActionIdentifier: String {
+        switch presentation.primaryActionKind {
+        case .poke:
+            return "home.accountabilityPoke"
+        case .invite, .view:
+            return "home.accountabilityAction"
+        }
     }
 }
 

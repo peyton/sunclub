@@ -11,6 +11,7 @@ set -euo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$ROOT_DIR/scripts/tooling/common.sh"
+source_appstore_review_env
 
 : "${SUNCLUB_FLAVOR:=prod}"
 : "${SUNCLUB_APS_ENVIRONMENT:=production}"
@@ -556,9 +557,9 @@ Resolved versions:
 - CFBundleVersion=$SUNCLUB_BUILD_NUMBER
 
 Next manual steps:
-1. Replace the draft URLs and review contact fields in scripts/appstore/metadata.json.
-2. Capture the 6.9-inch iPhone screenshots with scripts/appstore/capture-screenshots.sh.
-3. Upload the screenshots in App Store Connect.
-4. Complete App Privacy answers in App Store Connect.
+1. Run just appstore-review-package and review docs/app-store-review-package.md.
+2. Capture the 6.9-inch iPhone screenshots with just appstore-screenshots.
+3. Complete App Privacy, age rating, and medical-device status gates in App Store Connect.
+4. Submit with just appstore-submit-review after the checkpoint phrase is confirmed.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF

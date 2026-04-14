@@ -43,6 +43,8 @@
 	<string>$(SUNCLUB_APP_GROUP_ID)</string>
 	<key>SunclubICloudContainerIdentifier</key>
 	<string>$(SUNCLUB_ICLOUD_CONTAINER)</string>
+	<key>SunclubPublicAccountabilityTransportEnabled</key>
+	<string>$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)</string>
 	<key>SunclubURLScheme</key>
 	<string>$(SUNCLUB_URL_SCHEME)</string>
 	<key>CFBundleURLTypes</key>

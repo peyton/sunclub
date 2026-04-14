@@ -156,7 +156,8 @@ final class AchievementTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: true,
-                hasAppGroupContainer: false
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
             )
         )
     }

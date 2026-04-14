@@ -50,6 +50,20 @@ final class SunclubWidgetTests: XCTestCase {
         }
     }
 
+    func testAccountabilityPresentationDoesNotClaimDirectPokeWhenUnavailable() {
+        let summary = makeAccountabilitySummary(includePrimaryPokeFriend: false)
+
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: summary,
+            family: .systemMedium
+        )
+
+        XCTAssertEqual(presentation.actionText, "Open")
+        XCTAssertTrue(presentation.title.hasPrefix("Message"))
+        XCTAssertEqual(presentation.actionURL, SunclubWidgetRoute.accountability.url)
+        XCTAssertNil(presentation.primaryPokeFriendID)
+    }
+
     func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
@@ -293,7 +307,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
-        XCTAssertEqual(snapshot.accountabilitySummary.primaryPokeFriendID, openFriend.id)
+        XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
         XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You poked Maya.")
     }
 
@@ -505,7 +519,7 @@ final class SunclubWidgetTests: XCTestCase {
         )
     }
 
-    private func makeAccountabilitySummary() -> SunclubAccountabilitySummary {
+    private func makeAccountabilitySummary(includePrimaryPokeFriend: Bool = true) -> SunclubAccountabilitySummary {
         let friendID = UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID()
         return SunclubAccountabilitySummary(
             isActive: true,
@@ -524,7 +538,7 @@ final class SunclubWidgetTests: XCTestCase {
                 )
             ],
             latestPoke: nil,
-            primaryPokeFriendID: friendID,
+            primaryPokeFriendID: includePrimaryPokeFriend ? friendID : nil,
             latestPokeText: "You poked Maya."
         )
     }

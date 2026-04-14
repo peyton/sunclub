@@ -157,7 +157,8 @@ final class StoreRecoveryTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: false,
-                hasAppGroupContainer: true
+                hasAppGroupContainer: true,
+                isPublicAccountabilityTransportEnabled: false
             )
         )
 

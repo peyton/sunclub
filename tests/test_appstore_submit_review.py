@@ -8,19 +8,31 @@ from typing import Any
 
 import pytest
 
+from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore.connect_api import AppStoreConnectError
 from scripts.appstore.submit_review import (
+    CHECKPOINT_CONFIRMATION_ENV,
+    CONFIRMATION_ENV,
     AppStoreReviewSubmitter,
     SubmissionContext,
     collect_screenshot_files,
     dry_run_lines,
     local_validation,
     require_confirmation,
+    write_checkpoint_summary,
 )
-from scripts.appstore.validate_metadata import load_manifest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+MANIFEST_PATH = REPO_ROOT / "scripts" / "appstore" / "metadata.json"
+READY_ENV = {
+    "SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME": "Peyton",
+    "SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME": "Randolph",
+    "SUNCLUB_APP_REVIEW_CONTACT_EMAIL": "review@example.com",
+    "SUNCLUB_APP_REVIEW_CONTACT_PHONE": "+1-415-555-0100",
+    "SUNCLUB_APP_PRIVACY_COMPLETED": "1",
+    "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS": "NOT_MEDICAL_DEVICE",
+}
 
 
 class FakeSubmissionClient:
@@ -158,11 +170,12 @@ class FakeSubmissionClient:
 
 
 def ready_manifest(tmp_path: Path) -> dict[str, Any]:
-    manifest = copy.deepcopy(
-        load_manifest(REPO_ROOT / "scripts" / "appstore" / "metadata.json")
+    manifest = appstore_manifest.load_resolved_manifest(
+        MANIFEST_PATH,
+        environment=READY_ENV,
+        load_env_file=False,
     )
-    manifest["review"]["contact"]["ready"] = True
-    manifest["privacy"]["app_store_connect_completed"] = True
+    manifest = copy.deepcopy(manifest)
     manifest["accessibility"]["iphone"]["ready"] = True
     manifest["assets"]["screenshots"]["output_directory"] = "screenshots"
     for screenshot in collect_screenshot_files(manifest, tmp_path):
@@ -218,6 +231,79 @@ def test_final_submit_requires_confirmation() -> None:
         require_confirmation(namespace, {})
 
 
+def test_final_submit_requires_checkpoint_confirmation() -> None:
+    namespace = type("Args", (), {"confirm_submit": True})()
+
+    with pytest.raises(AppStoreConnectError, match="checkpoint gate"):
+        require_confirmation(namespace, {CONFIRMATION_ENV: "1"})
+
+
+def test_final_submit_accepts_noninteractive_ci_bypass_when_all_gates_are_set() -> None:
+    namespace = type("Args", (), {"confirm_submit": False})()
+
+    require_confirmation(
+        namespace,
+        {
+            CONFIRMATION_ENV: "1",
+            CHECKPOINT_CONFIRMATION_ENV: "1",
+        },
+    )
+
+
+def test_checkpoint_summary_redacts_contact_and_prints_exact_phrase(
+    tmp_path: Path,
+) -> None:
+    report = appstore_manifest.load_resolved_manifest_report(
+        MANIFEST_PATH,
+        environment=READY_ENV,
+        load_env_file=False,
+    )
+    output_path = tmp_path / "summary.md"
+
+    write_checkpoint_summary(
+        report,
+        context=SubmissionContext(
+            marketing_version="1.2.3",
+            build_number="20260414.1.1",
+        ),
+        warnings=[],
+        output_path=output_path,
+    )
+
+    summary = output_path.read_text()
+    assert "review@example.com" not in summary
+    assert "r***@example.com" in summary
+    assert "submit Sunclub 1.2.3 (20260414.1.1) to App Review" in summary
+
+
+def test_review_env_file_loads_without_tracked_secret_paths(tmp_path: Path) -> None:
+    key_file = tmp_path / "AuthKey_TEST.p8"
+    key_file.write_text("private key")
+    env_file = tmp_path / "review.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "export SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME=Peyton",
+                "export SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME=Randolph",
+                "export SUNCLUB_APP_REVIEW_CONTACT_EMAIL=review@example.com",
+                "export SUNCLUB_APP_REVIEW_CONTACT_PHONE=+14155550100",
+                "export SUNCLUB_APP_PRIVACY_COMPLETED=1",
+                "export SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS=NOT_MEDICAL_DEVICE",
+                f"export ASC_KEY_FILE={key_file}",
+            ]
+        )
+    )
+
+    manifest = appstore_manifest.load_resolved_manifest(
+        MANIFEST_PATH,
+        environment={},
+        env_file=env_file,
+    )
+
+    assert manifest["review"]["contact"]["email"] == "review@example.com"
+    assert manifest["privacy"]["app_store_connect_completed"] is True
+
+
 def test_submitter_creates_review_submission_flow(tmp_path: Path) -> None:
     manifest = ready_manifest(tmp_path)
     client = FakeSubmissionClient()
@@ -249,6 +335,14 @@ def test_submitter_creates_review_submission_flow(tmp_path: Path) -> None:
         },
     ) in client.patches
     assert any(path == "/accessibilityDeclarations" for path, _body in client.posts)
+    assert any(
+        path == "/appInfos/info-1/relationships/primaryCategory"
+        for path, _body in client.patches
+    )
+    assert any(
+        path == "/appInfos/info-1/relationships/secondaryCategory"
+        for path, _body in client.patches
+    )
 
 
 def test_submitter_rejects_stale_draft_review_submission(tmp_path: Path) -> None:
