@@ -13,6 +13,11 @@ struct RootView: View {
                     destination(for: route)
                 }
         }
+        .overlay(alignment: .leading) {
+            EdgeBackSwipeOverlay(canGoBack: router.canGoBack) {
+                router.goBack()
+            }
+        }
         .interactivePopGestureEnabled()
         .tint(AppPalette.sun)
     }
@@ -75,6 +80,36 @@ struct RootView: View {
             SkinHealthReportView()
         case .productScanner:
             ProductScannerView()
+        }
+    }
+}
+
+private struct EdgeBackSwipeOverlay: View {
+    private let edgeWidth: CGFloat = 32
+    private let minimumHorizontalTravel: CGFloat = 60
+    private let verticalToleranceMultiplier: CGFloat = 2
+
+    let canGoBack: Bool
+    let onBack: () -> Void
+
+    var body: some View {
+        if canGoBack {
+            Color.clear
+                .frame(width: edgeWidth)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 18, coordinateSpace: .global)
+                        .onEnded { value in
+                            guard value.translation.width >= minimumHorizontalTravel,
+                                  value.translation.width > abs(value.translation.height) * verticalToleranceMultiplier else {
+                                return
+                            }
+
+                            onBack()
+                        }
+                )
+                .accessibilityHidden(true)
         }
     }
 }

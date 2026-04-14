@@ -98,6 +98,19 @@ Those CloudKit commands verify Apple-side CloudKit access. The final IPA entitle
 
 The launch-safety gate must keep `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1` and `timeout-minutes` in the workflow. If that pre-archive test step hangs, the job never reaches the archive step and there is no IPA or entitlement artifact to inspect.
 
+Normal master CI has the same Xcode compile-cache failure mode. Keep
+`.github/workflows/ci.yml` macOS iOS test and build jobs cache-disabled and
+bounded with `timeout-minutes`; see `docs/ci-release-stability.md`.
+
+Embedded watch targets must explicitly mirror the app version:
+
+- `CFBundleShortVersionString=$(MARKETING_VERSION)`
+- `CFBundleVersion=$(SUNCLUB_BUILD_NUMBER)`
+
+Do not rely on Tuist default watch `Info.plist` metadata. App Store and CI
+WatchKit validation require the embedded watch app marketing version to exactly
+match the companion app.
+
 `.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review.
 
 Required secrets:
