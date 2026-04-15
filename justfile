@@ -120,6 +120,10 @@ release-testflight VERSION:
     VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
 
 [group('app')]
+release-doctor:
+    uv run python -m scripts.appstore.release_doctor
+
+[group('app')]
 release-preflight:
     just appstore-validate-strict
     just test-python
