@@ -39,7 +39,7 @@ struct WelcomeView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
         }
-        .sensoryFeedback(.impact(.medium), trigger: startFeedbackTrigger)
+        .sensoryFeedback(.impact(weight: .medium), trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
 }
@@ -81,7 +81,7 @@ struct ValuePropsView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("onboarding.valueProps.continue")
         }
-        .sensoryFeedback(.impact(.medium), trigger: feedbackTrigger)
+        .sensoryFeedback(.impact(weight: .medium), trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }

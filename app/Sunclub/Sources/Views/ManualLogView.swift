@@ -74,7 +74,7 @@ struct ManualLogView: View {
             syncInitialStateIfNeeded()
         }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
-        .sensoryFeedback(.impact(.light), trigger: navigationFeedbackTrigger)
+        .sensoryFeedback(.impact(weight: .light), trigger: navigationFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
