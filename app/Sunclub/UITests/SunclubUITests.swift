@@ -22,7 +22,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["home.verifyNow"].exists)
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
-        XCTAssertTrue(app.staticTexts["home.todayStatus"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your first day starts now"].exists)
         XCTAssertFalse(app.buttons["accountabilityOnboarding.next"].exists)
         XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
     }
@@ -35,6 +35,8 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.valueProps.continue"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.valueProps.continue"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -103,7 +105,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.data"].exists)
         XCTAssertTrue(app.buttons["settings.section.automation"].exists)
         XCTAssertTrue(app.buttons["settings.section.advanced"].exists)
-        XCTAssertFalse(app.buttons["settings.weekdayReminderTime"].exists)
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].exists)
 
         expandSettingsSection("reminders", in: app)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
@@ -473,6 +475,8 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.valueProps.continue"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.valueProps.continue"].tap()
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
@@ -499,15 +503,18 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     func testHomeShowsHighUVStatusFromLaunchOverride() throws {
-        let app = launchHome(additionalArguments: ["UITEST_UV_INDEX=7"])
+        let app = launchHome(additionalArguments: [
+            "UITEST_UV_INDEX=7",
+            "UITEST_SEED_HISTORY=todayLogged"
+        ])
 
-        let uvHeadline = app.staticTexts["home.uvHeadline"]
-        XCTAssertTrue(uvHeadline.waitForExistence(timeout: 5))
-        XCTAssertEqual(uvHeadline.label, "UV is high today")
+        let uvStatus = app.descendants(matching: .any)["home.uvStatus"]
+        XCTAssertTrue(uvStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvStatus.label, "UV is high today, estimated")
 
         let detail = app.staticTexts["home.todayDetail"]
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
-        XCTAssertTrue(detail.label.contains("reapply sooner"))
+        XCTAssertTrue(detail.label.localizedCaseInsensitiveContains("reapply sooner"))
     }
 
     @MainActor
@@ -616,10 +623,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Logged"].exists)
         XCTAssertTrue(app.staticTexts["Not logged"].exists)
         XCTAssertTrue(app.staticTexts["Future"].exists)
-        let patternsButton = app.buttons["Show Patterns"]
-        XCTAssertTrue(scrollToElement(patternsButton, in: app, attempts: 8))
-        patternsButton.tap()
-        XCTAssertTrue(app.staticTexts["Best Day"].exists)
+        XCTAssertTrue(scrollToElement(app.staticTexts["Best Day"], in: app, attempts: 8))
         XCTAssertTrue(app.staticTexts["Hardest Day"].exists)
         XCTAssertTrue(app.staticTexts["Most Used SPF"].exists)
     }
@@ -884,6 +888,7 @@ final class SunclubUITests: XCTestCase {
             "UITEST_COMPLETE_ONBOARDING",
             "UITEST_ROUTE=settings",
             "UITEST_CURRENT_TIME=11:00",
+            "UITEST_SEED_HISTORY=todayLogged",
             "UITEST_LIVE_UV_INDEX=8",
             "UITEST_LIVE_UV_PEAK_INDEX=11"
         ]
@@ -901,10 +906,10 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["screen.back"].tap()
 
-        let uvHeadline = app.staticTexts["home.uvHeadline"]
-        XCTAssertTrue(uvHeadline.waitForExistence(timeout: 5))
-        XCTAssertEqual(uvHeadline.label, "UV is very high today")
-        XCTAssertTrue(app.staticTexts["home.todayDetail"].label.contains("reapply sooner"))
+        let uvStatus = app.descendants(matching: .any)["home.uvStatus"]
+        XCTAssertTrue(uvStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(uvStatus.label, "UV is very high today")
+        XCTAssertTrue(app.staticTexts["home.todayDetail"].label.localizedCaseInsensitiveContains("reapply sooner"))
     }
 
     @MainActor
@@ -988,9 +993,11 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
         app.buttons["screen.back"].tap()
 
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Ready for today's log")
+        XCTAssertFalse(todayStatus.exists)
+        XCTAssertFalse(app.buttons["home.loggedPrimaryAction"].exists)
+        XCTAssertTrue(app.staticTexts["Your first day starts now"].exists)
     }
 
     @MainActor
@@ -1109,6 +1116,8 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     private func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
         app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.valueProps.continue"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.valueProps.continue"].tap()
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
@@ -1238,7 +1247,9 @@ final class SunclubUITests: XCTestCase {
     private func expandSettingsSection(_ section: String, in app: XCUIApplication) {
         let sectionButton = app.buttons["settings.section.\(section)"]
         XCTAssertTrue(scrollToHittableElement(sectionButton, in: app, attempts: 8))
-        sectionButton.tap()
+        if stringValue(of: sectionButton) != "Expanded" {
+            sectionButton.tap()
+        }
     }
 
     @MainActor
