@@ -96,10 +96,22 @@ GitHub run cross-check:
   enumerate the archive itself, create any missing App Store profiles through
   App Store Connect, install them locally for export, and preserve
   `.build/release-diagnostics/provisioning-profiles.json` for audit.
+- Keep release-doctor coverage aligned with every production bundle ID emitted
+  by `Project.swift`, including watch extension, watch container, and watch
+  widget identifiers. A release can archive successfully and still fail profile
+  preparation when a nested watch bundle ID was never registered.
+- The App Store Connect API can create Bundle IDs and enable the App Groups
+  capability, but the specific App Group assignment may still need the Apple
+  Developer portal Configure/Assign step before the generated App Store profile
+  includes `group.app.peyton.sunclub`.
 - Treat an existing App Store profile as reusable only after decoding the
   profile content and proving it covers the archived bundle's profile-backed
   entitlements, including app groups. Stale profiles must be skipped and
   regenerated before export.
+- Treat a provisioning profile entitlement value of `*` as satisfying archived
+  list entitlements. App Store Connect can return `*` for profile-backed
+  services such as `com.apple.developer.icloud-services` even when the signed
+  archived app requests `CloudKit` explicitly.
 - When borrowing certificates from existing profiles to create a replacement
   profile, query the profile certificates endpoint, tolerate profile 404s from
   App Store Connect, and keep scanning active profile candidates. The list

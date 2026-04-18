@@ -32,6 +32,7 @@ PROFILE_BACKED_ENTITLEMENTS = (
     "com.apple.developer.weatherkit",
     "com.apple.security.application-groups",
 )
+WILDCARD_LIST_ENTITLEMENTS = {"com.apple.developer.icloud-services"}
 
 
 class ProfilesClient(Protocol):
@@ -48,6 +49,8 @@ class ProfilesClient(Protocol):
     ) -> list[JsonObject]: ...
 
     def post(self, path: str, body: Mapping[str, Any]) -> JsonObject: ...
+
+    def patch(self, path: str, body: Mapping[str, Any]) -> JsonObject: ...
 
 
 @dataclass(frozen=True)
@@ -135,10 +138,16 @@ def ensure_profiles(
     required_entitlements_by_bundle: dict[str, JsonObject] = {}
 
     for bundle in bundles:
+        required_entitlements = read_bundle_profile_entitlements(bundle.path)
         required_entitlements_by_bundle[bundle.bundle_identifier] = (
-            read_bundle_profile_entitlements(bundle.path)
+            required_entitlements
         )
-        bundle_id = find_bundle_id(client, bundle.bundle_identifier)
+        bundle_id = ensure_bundle_id(
+            client,
+            bundle,
+            required_entitlements=required_entitlements,
+            create_missing=create_missing,
+        )
         bundle_ids[bundle.bundle_identifier] = bundle_id
         reusable_certificate_ids_by_profile_type[bundle.profile_type] = (
             append_unique_certificate_ids(
@@ -219,6 +228,22 @@ def ensure_profiles(
     return prepared
 
 
+def ensure_bundle_id(
+    client: ProfilesClient,
+    bundle: ArchivedBundle,
+    *,
+    required_entitlements: Mapping[str, Any],
+    create_missing: bool,
+) -> JsonObject:
+    bundle_id = find_bundle_id_or_none(client, bundle.bundle_identifier)
+    if bundle_id is None:
+        if not create_missing:
+            raise_missing_bundle_id(bundle.bundle_identifier)
+        bundle_id = create_bundle_id(client, bundle)
+        ensure_bundle_id_capabilities(client, bundle_id, required_entitlements)
+    return bundle_id
+
+
 def append_unique_certificate_ids(
     existing: Sequence[str], additional: Sequence[str]
 ) -> list[str]:
@@ -233,6 +258,15 @@ def append_unique_certificate_ids(
 
 
 def find_bundle_id(client: ProfilesClient, identifier: str) -> JsonObject:
+    match = find_bundle_id_or_none(client, identifier)
+    if match is None:
+        raise_missing_bundle_id(identifier)
+    return match
+
+
+def find_bundle_id_or_none(
+    client: ProfilesClient, identifier: str
+) -> JsonObject | None:
     matches = client.get_collection(
         "/bundleIds",
         {
@@ -246,16 +280,214 @@ def find_bundle_id(client: ProfilesClient, identifier: str) -> JsonObject:
         if bundle_id_identifier(bundle_id) == identifier
     ]
     if not exact_matches:
-        raise AppStoreConnectError(
-            "App Store Connect bundle ID is missing for "
-            f"{identifier}. Open the Apple Developer portal or Xcode once to "
-            "register this bundle ID before cutting the release."
-        )
+        return None
     if len(exact_matches) > 1:
         raise AppStoreConnectError(
             f"App Store Connect returned multiple bundle IDs for {identifier}."
         )
     return exact_matches[0]
+
+
+def raise_missing_bundle_id(identifier: str) -> None:
+    raise AppStoreConnectError(
+        "App Store Connect bundle ID is missing for "
+        f"{identifier}. Open the Apple Developer portal or Xcode once to "
+        "register this bundle ID before cutting the release."
+    )
+
+
+def create_bundle_id(client: ProfilesClient, bundle: ArchivedBundle) -> JsonObject:
+    response = client.post(
+        "/bundleIds",
+        {
+            "data": {
+                "type": "bundleIds",
+                "attributes": {
+                    "identifier": bundle.bundle_identifier,
+                    "name": app_id_name(bundle.bundle_identifier),
+                    "platform": "IOS",
+                },
+            }
+        },
+    )
+    data = response.get("data")
+    if not isinstance(data, dict):
+        raise AppStoreConnectError(
+            f"App Store Connect did not return a bundle ID for {bundle.bundle_identifier}."
+        )
+    return data
+
+
+def app_id_name(identifier: str) -> str:
+    suffix = identifier.removeprefix("app.peyton.sunclub").strip(".")
+    if not suffix:
+        return "Sunclub"
+    return f"Sunclub {suffix.replace('.', ' ').title()}"
+
+
+def ensure_bundle_id_capabilities(
+    client: ProfilesClient,
+    bundle_id: JsonObject,
+    required_entitlements: Mapping[str, Any],
+) -> None:
+    required_capabilities = required_capabilities_from_entitlements(
+        required_entitlements
+    )
+    if not required_capabilities:
+        return
+
+    bundle_id_value = str(bundle_id["id"])
+    existing = {
+        str(profile_attributes(capability).get("capabilityType")): capability
+        for capability in client.get_collection(
+            f"/bundleIds/{bundle_id_value}/bundleIdCapabilities"
+        )
+    }
+
+    for capability in required_capabilities:
+        capability_type = str(capability["capabilityType"])
+        existing_capability = existing.get(capability_type)
+        if existing_capability is None:
+            client.post(
+                "/bundleIdCapabilities",
+                create_capability_body(bundle_id_value, capability),
+            )
+            continue
+        if capability_satisfies(existing_capability, capability):
+            continue
+        client.patch(
+            f"/bundleIdCapabilities/{existing_capability['id']}",
+            update_capability_body(str(existing_capability["id"]), capability),
+        )
+
+
+def required_capabilities_from_entitlements(
+    required_entitlements: Mapping[str, Any],
+) -> list[JsonObject]:
+    capabilities: list[JsonObject] = []
+    app_groups = string_list_entitlement(
+        required_entitlements.get("com.apple.security.application-groups")
+    )
+    if app_groups:
+        capabilities.append(
+            {
+                "capabilityType": "APP_GROUPS",
+            }
+        )
+    if required_entitlements.get("aps-environment"):
+        capabilities.append({"capabilityType": "PUSH_NOTIFICATIONS"})
+    if required_entitlements.get("com.apple.developer.healthkit") is True:
+        capabilities.append({"capabilityType": "HEALTHKIT"})
+    if required_entitlements.get("com.apple.developer.weatherkit") is True:
+        capabilities.append({"capabilityType": "WEATHERKIT"})
+    if required_entitlements.get("com.apple.developer.icloud-container-identifiers"):
+        capabilities.append(
+            {
+                "capabilityType": "ICLOUD",
+                "settings": [
+                    {
+                        "key": "ICLOUD_VERSION",
+                        "options": [{"key": "XCODE_6", "enabled": True}],
+                    }
+                ],
+            }
+        )
+    return capabilities
+
+
+def string_list_entitlement(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str) and item]
+    return []
+
+
+def create_capability_body(
+    bundle_id: str,
+    capability: Mapping[str, Any],
+) -> JsonObject:
+    return {
+        "data": {
+            "type": "bundleIdCapabilities",
+            "attributes": capability_attributes(capability),
+            "relationships": {
+                "bundleId": {
+                    "data": {
+                        "type": "bundleIds",
+                        "id": bundle_id,
+                    }
+                }
+            },
+        }
+    }
+
+
+def update_capability_body(
+    capability_id: str,
+    capability: Mapping[str, Any],
+) -> JsonObject:
+    return {
+        "data": {
+            "type": "bundleIdCapabilities",
+            "id": capability_id,
+            "attributes": capability_attributes(capability),
+        }
+    }
+
+
+def capability_attributes(capability: Mapping[str, Any]) -> JsonObject:
+    attributes: JsonObject = {"capabilityType": capability["capabilityType"]}
+    settings = capability.get("settings")
+    if settings:
+        attributes["settings"] = settings
+    return attributes
+
+
+def capability_satisfies(
+    actual: JsonObject,
+    expected: Mapping[str, Any],
+) -> bool:
+    if profile_attributes(actual).get("capabilityType") != expected.get(
+        "capabilityType"
+    ):
+        return False
+    return all(
+        setting_has_option(profile_attributes(actual).get("settings"), setting)
+        for setting in expected.get("settings", [])
+        if isinstance(setting, dict)
+    )
+
+
+def setting_has_option(
+    actual_settings: Any, expected_setting: Mapping[str, Any]
+) -> bool:
+    expected_key = expected_setting.get("key")
+    expected_options = expected_setting.get("options", [])
+    if not expected_key or not isinstance(expected_options, list):
+        return True
+    if not isinstance(actual_settings, list):
+        return False
+
+    for actual_setting in actual_settings:
+        if not isinstance(actual_setting, dict):
+            continue
+        if actual_setting.get("key") != expected_key:
+            continue
+        actual_options = actual_setting.get("options", [])
+        if not isinstance(actual_options, list):
+            return False
+        actual_enabled_keys = {
+            str(option.get("key"))
+            for option in actual_options
+            if isinstance(option, dict) and option.get("enabled", True) is not False
+        }
+        return all(
+            str(option.get("key")) in actual_enabled_keys
+            for option in expected_options
+            if isinstance(option, dict)
+        )
+    return False
 
 
 def bundle_id_identifier(bundle_id: JsonObject) -> str | None:
@@ -450,6 +682,8 @@ def missing_profile_entitlements(
         required_value = required_entitlements[key]
         profile_value = profile_entitlements.get(key)
         if isinstance(required_value, list):
+            if profile_value == "*" and key in WILDCARD_LIST_ENTITLEMENTS:
+                continue
             profile_values = (
                 set(profile_value) if isinstance(profile_value, list) else set()
             )

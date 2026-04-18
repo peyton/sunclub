@@ -32,6 +32,7 @@ struct RootView: View {
     }
 
     @ViewBuilder
+    // swiftlint:disable:next cyclomatic_complexity
     private func destination(for route: AppRoute) -> some View {
         switch route {
         case .welcome:

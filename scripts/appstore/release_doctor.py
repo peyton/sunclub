@@ -39,6 +39,8 @@ BUNDLE_SUFFIXES = {
     "main app": "",
     "widget extension": ".widgets",
     "watch app": ".watch",
+    "watch extension": ".watch.extension",
+    "watch container": ".watch.container",
     "watch widget extension": ".watch.widgets",
 }
 
@@ -557,15 +559,15 @@ def check_github_secrets_reminder(ctx: DoctorContext) -> None:
     """Remind about GitHub Actions secrets that cannot be checked locally."""
     ctx.section("GitHub Actions Secrets (manual check)")
 
-    ctx.info("The following secrets must be set in your GitHub repo")
-    ctx.info("under Settings > Environments > testflight:")
+    ctx.info("The following secrets must be set at repository scope")
+    ctx.info("or under Settings > Environments > testflight:")
     ctx.info("")
     ctx.info("  ASC_KEY_ID       — same value as your local ASC_KEY_ID")
     ctx.info("  ASC_KEY_P8       — full contents of your .p8 key file")
     ctx.info("  ASC_ISSUER_ID    — same value as your local ASC_ISSUER_ID")
     ctx.info("")
-    ctx.info("Also confirm the 'testflight' environment exists in")
-    ctx.info("Settings > Environments.")
+    ctx.info("Also confirm the 'testflight' environment exists if the workflow")
+    ctx.info("keeps using environment: testflight.")
     ctx.warn("Cannot verify GitHub secrets from the CLI — check manually")
 
 

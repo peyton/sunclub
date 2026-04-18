@@ -86,6 +86,9 @@ class FakeProfilesClient:
             }
         }
 
+    def patch(self, path: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        raise AssertionError(f"Unexpected PATCH: {path} {body}")
+
 
 def test_collect_archived_bundles_reads_app_and_nested_extensions(
     tmp_path: Path,
@@ -232,6 +235,115 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
     assert posted_data["relationships"]["certificates"]["data"] == [
         {"type": "certificates", "id": "cert-profile-existing"}
     ]
+
+
+def test_ensure_profiles_registers_missing_bundle_id_with_app_group_capability(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    client = FakeProfilesClient()
+    created_posts: list[tuple[str, dict[str, Any]]] = []
+    required = {"com.apple.security.application-groups": ["group.app.peyton.sunclub"]}
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        query = query or {}
+        if path == "/bundleIds":
+            assert query["filter[identifier]"] == "app.peyton.sunclub.watch.widgets"
+            return []
+        if path == "/bundleIds/bundle-watch-widgets/bundleIdCapabilities":
+            return []
+        if path == "/bundleIds/bundle-watch-widgets/profiles":
+            return []
+        if path == "/certificates":
+            return [certificate("cert-distribution")]
+        raise AssertionError(f"Unexpected collection: {path} {query}")
+
+    def post(path: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        created_posts.append((path, dict(body)))
+        if path == "/bundleIds":
+            return {
+                "data": bundle_id(
+                    "bundle-watch-widgets",
+                    "app.peyton.sunclub.watch.widgets",
+                )
+            }
+        if path == "/bundleIdCapabilities":
+            return {
+                "data": {
+                    "type": "bundleIdCapabilities",
+                    "id": "cap-app-groups",
+                    "attributes": body["data"]["attributes"],  # type: ignore[index]
+                }
+            }
+        if path == "/profiles":
+            attributes = body["data"]["attributes"]  # type: ignore[index]
+            return {
+                "data": {
+                    "type": "profiles",
+                    "id": "profile-watch-widgets",
+                    "attributes": {
+                        "name": attributes["name"],
+                        "profileType": attributes["profileType"],
+                        "profileState": "ACTIVE",
+                        "expirationDate": future_date(),
+                        "uuid": "uuid-watch-widgets",
+                        "profileContent": profile_content(),
+                    },
+                }
+            }
+        raise AssertionError(f"Unexpected POST: {path} {body}")
+
+    client.get_collection = get_collection  # type: ignore[method-assign]
+    client.post = post  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "read_bundle_profile_entitlements",
+        lambda _path: required,
+    )
+    monkeypatch.setattr(
+        provisioning_profiles,
+        "profile_entitlements_from_content",
+        lambda _client, _profile: required,
+    )
+
+    prepared = ensure_profiles(
+        client,
+        [
+            ArchivedBundle(
+                path=tmp_path / "WatchWidget.appex",
+                relative_path="SunclubWatch.app/PlugIns/WatchWidget.appex",
+                bundle_identifier="app.peyton.sunclub.watch.widgets",
+                package_type="XPC!",
+            )
+        ],
+        create_missing=True,
+        install_directory=None,
+    )
+
+    assert [profile.created for profile in prepared] == [True]
+    assert [path for path, _body in created_posts] == [
+        "/bundleIds",
+        "/bundleIdCapabilities",
+        "/profiles",
+    ]
+    assert created_posts[0][1]["data"]["attributes"] == {
+        "identifier": "app.peyton.sunclub.watch.widgets",
+        "name": "Sunclub Watch Widgets",
+        "platform": "IOS",
+    }
+    assert created_posts[1][1]["data"]["attributes"] == {
+        "capabilityType": "APP_GROUPS",
+    }
+    assert created_posts[1][1]["data"]["relationships"]["bundleId"]["data"] == {
+        "type": "bundleIds",
+        "id": "bundle-watch-widgets",
+    }
+    assert created_posts[2][1]["data"]["relationships"]["bundleId"]["data"] == {
+        "type": "bundleIds",
+        "id": "bundle-watch-widgets",
+    }
 
 
 def test_ensure_profiles_creates_one_distribution_certificate_for_missing_profiles(
@@ -489,6 +601,26 @@ def test_missing_profile_entitlements_accepts_superset_arrays() -> None:
     )
 
     assert missing == []
+
+
+def test_missing_profile_entitlements_accepts_wildcard_profile_value() -> None:
+    missing = missing_profile_entitlements(
+        {"com.apple.developer.icloud-services": "*"},
+        {"com.apple.developer.icloud-services": ["CloudKit"]},
+    )
+
+    assert missing == []
+
+
+def test_missing_profile_entitlements_does_not_accept_wildcard_app_groups() -> None:
+    missing = missing_profile_entitlements(
+        {"com.apple.security.application-groups": "*"},
+        {"com.apple.security.application-groups": ["group.app.peyton.sunclub"]},
+    )
+
+    assert missing == [
+        "com.apple.security.application-groups=['group.app.peyton.sunclub']"
+    ]
 
 
 def write_info_plist(path: Path, bundle_identifier: str, package_type: str) -> None:

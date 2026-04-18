@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.appstore.release_doctor import BUNDLE_SUFFIXES
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
@@ -73,6 +75,17 @@ def test_project_reads_versioning_from_tuist_manifest_environment() -> None:
         'let buildNumber = Environment.sunclubBuildNumber.getString(default: "1")'
         in source
     )
+
+
+def test_release_doctor_covers_all_production_bundle_ids() -> None:
+    assert BUNDLE_SUFFIXES == {
+        "main app": "",
+        "widget extension": ".widgets",
+        "watch app": ".watch",
+        "watch extension": ".watch.extension",
+        "watch container": ".watch.container",
+        "watch widget extension": ".watch.widgets",
+    }
 
 
 def test_remote_notification_background_mode_has_push_entitlement() -> None:
