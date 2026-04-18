@@ -200,6 +200,31 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
     def read_bundle_profile_entitlements(_path: Path) -> dict[str, Any]:
         return required
 
+    original_get_collection = client.get_collection
+    capability_posts: list[dict[str, Any]] = []
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        if path == "/bundleIds/bundle-app.peyton.sunclub/bundleIdCapabilities":
+            return []
+        return original_get_collection(path, query)
+
+    original_post = client.post
+
+    def post(path: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        if path == "/bundleIdCapabilities":
+            capability_posts.append(dict(body))
+            return {
+                "data": {
+                    "type": "bundleIdCapabilities",
+                    "id": "cap-app-groups",
+                    "attributes": body["data"]["attributes"],  # type: ignore[index]
+                }
+            }
+        return original_post(path, body)
+
     def profile_entitlements_from_content(
         _client: FakeProfilesClient, profile: dict[str, Any]
     ) -> dict[str, Any]:
@@ -207,6 +232,8 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
             return {"com.apple.security.application-groups": ["group.app.peyton.other"]}
         return required
 
+    client.get_collection = get_collection  # type: ignore[method-assign]
+    client.post = post  # type: ignore[method-assign]
     monkeypatch.setattr(
         provisioning_profiles,
         "read_bundle_profile_entitlements",
@@ -226,6 +253,22 @@ def test_ensure_profiles_skips_stale_profile_missing_required_entitlements(
     )
 
     assert [profile.created for profile in prepared] == [True]
+    assert capability_posts == [
+        {
+            "data": {
+                "type": "bundleIdCapabilities",
+                "attributes": {"capabilityType": "APP_GROUPS"},
+                "relationships": {
+                    "bundleId": {
+                        "data": {
+                            "type": "bundleIds",
+                            "id": "bundle-app.peyton.sunclub",
+                        }
+                    }
+                },
+            }
+        }
+    ]
     assert len(client.posts) == 1
     posted_data = client.posts[0]["data"]
     assert posted_data["relationships"]["bundleId"]["data"] == {

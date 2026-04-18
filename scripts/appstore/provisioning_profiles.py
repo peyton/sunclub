@@ -176,6 +176,7 @@ def ensure_profiles(
                     "No compatible active App Store provisioning profile found for "
                     f"{bundle.bundle_identifier}"
                 )
+            ensure_bundle_id_capabilities(client, bundle_id, required_entitlements)
             certificate_ids = find_reusable_certificate_ids(
                 client, bundle_id["id"], bundle.profile_type
             )
@@ -240,7 +241,6 @@ def ensure_bundle_id(
         if not create_missing:
             raise_missing_bundle_id(bundle.bundle_identifier)
         bundle_id = create_bundle_id(client, bundle)
-        ensure_bundle_id_capabilities(client, bundle_id, required_entitlements)
     return bundle_id
 
 
