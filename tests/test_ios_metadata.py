@@ -544,6 +544,9 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "--unsigned-archive can only be used with --skip-export" not in script
     assert "write_ipa_entitlement_diagnostics" in script
     assert "adhoc_sign_archived_app_with_release_entitlements" in script
+    assert "register_app_groups_with_xcode" in script
+    assert "Registering App Groups with Xcode automatic signing" in script
+    assert "REGISTER_APP_GROUPS=YES" in script
     assert "validate_signed_ipa_nested_bundle_identifiers" in script
     assert "prepare_app_store_provisioning_profiles" in script
     assert "scripts.appstore.provisioning_profiles" in script
