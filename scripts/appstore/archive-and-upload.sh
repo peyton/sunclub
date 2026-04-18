@@ -407,38 +407,6 @@ prepare_app_store_provisioning_profiles() {
     --diagnostics "$RELEASE_DIAGNOSTICS_PATH/provisioning-profiles.json"
 }
 
-register_app_groups_with_xcode() {
-  local registration_derived_data_path="$ROOT_DIR/.DerivedData/appgroup-registration"
-  local xcodebuild_registration_args
-
-  if [ "$HAS_APP_STORE_CONNECT_AUTH" != true ]; then
-    printf 'Skipping App Group registration without App Store Connect authentication.\n'
-    return 0
-  fi
-
-  rm -rf "$registration_derived_data_path"
-
-  xcodebuild_registration_args=(
-    build
-    -workspace "$WORKSPACE"
-    -scheme "$SCHEME"
-    -configuration Release
-    -destination "generic/platform=iOS"
-    -derivedDataPath "$registration_derived_data_path"
-    -allowProvisioningUpdates
-    "${XCODEBUILD_AUTH_ARGS[@]}"
-    DEVELOPMENT_TEAM="$TEAM_ID"
-    REGISTER_APP_GROUPS=YES
-  )
-  if [ "$DISABLE_SWIFT_COMPILE_CACHE" = true ]; then
-    xcodebuild_registration_args+=("${XCODEBUILD_COMPILE_CACHE_ARGS[@]}")
-  fi
-
-  if ! xcodebuild "${xcodebuild_registration_args[@]}"; then
-    fail "Xcode automatic signing could not register the required App Groups. In Apple Developer Certificates, Identifiers & Profiles, assign group.$RELEASE_APP_IDENTIFIER to each production App ID that declares it, then rerun the release."
-  fi
-}
-
 write_ipa_entitlement_diagnostics() {
   local ipa_file="$1"
   local temp_dir
@@ -522,12 +490,6 @@ if [ "$SKIP_GENERATE" = false ]; then
   ok "Workspace generated"
 else
   ok "Skipping workspace generation"
-fi
-
-if [ "$UNSIGNED_ARCHIVE" = true ] && [ "$SKIP_EXPORT" = false ]; then
-  step "Registering App Groups with Xcode automatic signing"
-  register_app_groups_with_xcode
-  ok "Xcode automatic signing checked App Group registrations"
 fi
 
 if [ "$SKIP_ARCHIVE" = false ]; then
