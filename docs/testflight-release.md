@@ -77,7 +77,8 @@ It:
 6. exports the production IPA
 7. writes and validates signed-app entitlement diagnostics before upload
 8. uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
-9. publishes the `.xcarchive`, exported IPA, and `.build/release-diagnostics` as workflow artifacts for 90 days, even when the job fails after artifacts are produced
+9. waits for App Store Connect processing, marks encryption compliance, and adds the processed build to the `Internal` TestFlight tester group
+10. publishes the `.xcarchive`, exported IPA, and `.build/release-diagnostics` as workflow artifacts for 90 days, even when the job fails after artifacts are produced
 
 Before trusting a TestFlight upload, download the workflow artifact and inspect the exported IPA entitlements:
 

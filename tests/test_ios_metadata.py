@@ -408,6 +408,12 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     archive_upload_step = re.search(
         r"- name: Archive and upload to TestFlight\n"
         r"(?P<body>(?:        .*\n)+?)"
+        r"\n      - name: Add Internal testers group",
+        workflow,
+    )
+    internal_group_step = re.search(
+        r"- name: Add Internal testers group\n"
+        r"(?P<body>(?:        .*\n)+?)"
         r"\n      - name: Upload release artifacts",
         workflow,
     )
@@ -431,6 +437,12 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
         in workflow
     )
     assert "--unsigned-archive" in workflow
+    assert internal_group_step is not None
+    internal_group_body = internal_group_step.group("body")
+    assert "timeout-minutes: 60" in internal_group_body
+    assert "python -m scripts.appstore.testflight_groups --group Internal" in (
+        internal_group_body
+    )
     assert "if: always()" in workflow
     assert "retention-days: 90" in workflow
     assert ".build/release-diagnostics" in workflow
