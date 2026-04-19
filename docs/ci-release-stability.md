@@ -80,17 +80,19 @@ GitHub run cross-check:
   `ValidateEmbeddedBinary` requires the embedded watch app marketing version to
   exactly match the companion app.
 - Keep the embedded watch app `Info.plist` App Store-safe. The watch app plist
-  must keep `WKCompanionAppBundleIdentifier`, `CFBundleIconName=AppIcon`, and
-  version fields, but must not inherit iOS app runtime keys like
+  must keep `WKCompanionAppBundleIdentifier` and version fields, but must not
+  inherit iOS app runtime keys like
   `CFBundleURLTypes`, `SunclubAppGroupID`, `SunclubICloudContainerIdentifier`,
-  or `SunclubURLScheme`.
+  `SunclubPublicAccountabilityTransportEnabled`, or `SunclubURLScheme`. App
+  Store Connect also rejects `CFBundleIconName` in the embedded watch app plist,
+  so rely on compiled watch assets instead of that key.
 - Keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset` wired into the
   watch app resources. App Store Connect rejects embedded watch apps that do not
   export compiled icon assets.
 - Keep release IPA validation checking the embedded watch app before upload:
-  code-signing identifier equals `CFBundleIdentifier`, `CFBundleIconName` is
-  `AppIcon`, marketing version and build number match the companion app,
-  compiled `Assets.car` exists, and the iOS-only plist keys are absent.
+  code-signing identifier equals `CFBundleIdentifier`, marketing version and
+  build number match the companion app, compiled `Assets.car` exists, and the
+  App Store-invalid plist keys are absent.
 - Before `xcodebuild -exportArchive`, prepare App Store provisioning profiles
   for every archived `.app` and `.appex` bundle. The release script must
   enumerate the archive itself, create any missing App Store profiles through

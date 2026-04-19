@@ -180,8 +180,6 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
             "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
-            "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
-            "CFBundleIconName": .string("AppIcon"),
             "WKCompanionAppBundleIdentifier": .string(flavor.bundleID)
         ]),
         resources: [

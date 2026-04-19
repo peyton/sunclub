@@ -301,16 +301,17 @@ def test_watch_app_target_uses_app_store_safe_metadata_and_icons() -> None:
         in watch_app_target
     )
     assert '"CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)")' in watch_app_target
-    assert '"CFBundleIconName": .string("AppIcon")' in watch_app_target
     assert (
         '"WKCompanionAppBundleIdentifier": .string(flavor.bundleID)' in watch_app_target
     )
     assert '"WatchApp/Resources/**"' in watch_app_target
 
     for invalid_key in (
+        "CFBundleIconName",
         "CFBundleURLTypes",
         "SunclubAppGroupID",
         "SunclubICloudContainerIdentifier",
+        "SunclubPublicAccountabilityTransportEnabled",
         "SunclubURLScheme",
     ):
         assert invalid_key not in watch_app_target
@@ -603,8 +604,10 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert (
         "$RELEASE_APP_PRODUCT_NAME Watch app is missing compiled icon assets" in script
     )
+    assert 'assert_plist_key_absent "$watch_info_path" "CFBundleIconName"' in script
     assert "CFBundleURLTypes" in script
     assert "SunclubICloudContainerIdentifier" in script
+    assert "SunclubPublicAccountabilityTransportEnabled" in script
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script
     assert "prepare_app_store_provisioning_profiles" in profile_step

@@ -241,12 +241,13 @@ validate_signed_ipa_watch_bundle() {
   assert_info_plist_string "$watch_info_path" "WKCompanionAppBundleIdentifier" "$RELEASE_APP_IDENTIFIER" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_info_plist_string "$watch_info_path" "CFBundleShortVersionString" "$main_marketing_version" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_info_plist_string "$watch_info_path" "CFBundleVersion" "$main_build_number" "$RELEASE_APP_PRODUCT_NAME Watch app"
-  assert_info_plist_string "$watch_info_path" "CFBundleIconName" "AppIcon" "$RELEASE_APP_PRODUCT_NAME Watch app"
   [ -f "$watch_app_path/Assets.car" ] || fail "$RELEASE_APP_PRODUCT_NAME Watch app is missing compiled icon assets"
 
+  assert_plist_key_absent "$watch_info_path" "CFBundleIconName" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "CFBundleURLTypes" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "SunclubAppGroupID" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "SunclubICloudContainerIdentifier" "$RELEASE_APP_PRODUCT_NAME Watch app"
+  assert_plist_key_absent "$watch_info_path" "SunclubPublicAccountabilityTransportEnabled" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "SunclubURLScheme" "$RELEASE_APP_PRODUCT_NAME Watch app"
 
   rm -rf "$temp_dir"

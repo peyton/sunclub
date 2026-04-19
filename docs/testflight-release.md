@@ -114,10 +114,11 @@ match the companion app.
 The embedded watch app plist must stay minimal and App Store-safe:
 
 - keep `WKCompanionAppBundleIdentifier`
-- keep `CFBundleIconName=AppIcon`
 - keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset`
 - do not include `CFBundleURLTypes`, `SunclubAppGroupID`,
-  `SunclubICloudContainerIdentifier`, or `SunclubURLScheme`
+  `SunclubICloudContainerIdentifier`,
+  `SunclubPublicAccountabilityTransportEnabled`, `SunclubURLScheme`, or
+  `CFBundleIconName`
 
 The release script validates the exported IPA before upload. It must fail if the
 watch app code signature identifier does not match its `CFBundleIdentifier`, if
