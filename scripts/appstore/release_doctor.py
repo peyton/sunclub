@@ -11,9 +11,11 @@ Usage:
 from __future__ import annotations
 
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +44,13 @@ BUNDLE_SUFFIXES = {
     "watch extension": ".watch.extension",
     "watch container": ".watch.container",
     "watch widget extension": ".watch.widgets",
+}
+
+PROFILE_ENTITLEMENT_SOURCES = {
+    "main app": "Sunclub.entitlements",
+    "widget extension": "SunclubWidgetsExtension.entitlements",
+    "watch extension": "SunclubWatch.entitlements",
+    "watch widget extension": "SunclubWatchWidgets.entitlements",
 }
 
 
@@ -303,12 +312,21 @@ def check_distribution_certificate(ctx: DoctorContext) -> bool:
 
 
 def check_provisioning_profiles(ctx: DoctorContext) -> bool:
-    """Check that active App Store profiles exist for all bundles."""
+    """Check that active App Store profiles exist and cover release entitlements."""
     ctx.section("Provisioning Profiles")
 
     if ctx.client is None:
         ctx.fail("Skipped (no API connection)")
         return False
+
+    from scripts.appstore.provisioning_profiles import (
+        APP_STORE_PROFILE_TYPE,
+        missing_profile_entitlements,
+        profile_attributes,
+        profile_entitlements_from_content,
+        profile_is_active,
+        profile_matches_type,
+    )
 
     all_ok = True
     for label, suffix in BUNDLE_SUFFIXES.items():
@@ -324,26 +342,57 @@ def check_provisioning_profiles(ctx: DoctorContext) -> bool:
             {"limit": 200},
         )
 
-        from scripts.appstore.provisioning_profiles import (
-            APP_STORE_PROFILE_TYPE,
-            profile_is_active,
-            profile_matches_type,
-        )
-
         active = [
             p
             for p in profiles
             if profile_matches_type(p, APP_STORE_PROFILE_TYPE) and profile_is_active(p)
         ]
+        required_entitlements = expected_profile_entitlements(ctx, label)
 
-        if active:
+        compatible_active: list[dict[str, Any]] = []
+        missing_by_profile: list[tuple[dict[str, Any], list[str]]] = []
+        inspection_errors: list[tuple[dict[str, Any], AppStoreConnectError]] = []
+        for profile in active:
+            if not required_entitlements:
+                compatible_active.append(profile)
+                continue
+            try:
+                entitlements = profile_entitlements_from_content(ctx.client, profile)
+            except AppStoreConnectError as error:
+                inspection_errors.append((profile, error))
+                continue
+            missing = missing_profile_entitlements(
+                entitlements,
+                required_entitlements,
+            )
+            if missing:
+                missing_by_profile.append((profile, missing))
+            else:
+                compatible_active.append(profile)
+
+        if compatible_active:
             best = max(
-                active,
+                compatible_active,
                 key=lambda p: (p.get("attributes") or {}).get("expirationDate", ""),
             )
             name = (best.get("attributes") or {}).get("name", "unknown")
             expiry = (best.get("attributes") or {}).get("expirationDate", "unknown")
             ctx.ok(f"{label}: {name} (expires {expiry})")
+        elif missing_by_profile:
+            profile, missing = missing_by_profile[0]
+            name = profile_attributes(profile).get("name", profile.get("id", "unknown"))
+            ctx.fail(
+                f"{label}: {name} does not cover required entitlements",
+                hint=profile_entitlement_hint(identifier, missing, ctx),
+            )
+            all_ok = False
+        elif inspection_errors:
+            profile, error = inspection_errors[0]
+            name = profile_attributes(profile).get("name", profile.get("id", "unknown"))
+            ctx.warn(
+                f"{label}: could not inspect active profile {name}",
+                hint=str(error),
+            )
         else:
             ctx.warn(
                 f"{label}: no active App Store profile for {identifier}",
@@ -351,6 +400,64 @@ def check_provisioning_profiles(ctx: DoctorContext) -> bool:
             )
 
     return all_ok
+
+
+def entitlement_replacements(ctx: DoctorContext) -> dict[str, str]:
+    aps_env = os.environ.get("SUNCLUB_APS_ENVIRONMENT", "production")
+    return {
+        "SUNCLUB_APS_ENVIRONMENT": aps_env,
+        "SUNCLUB_ICLOUD_ENVIRONMENT": "Production"
+        if aps_env == "production"
+        else "Development",
+        "SUNCLUB_ICLOUD_CONTAINER": ctx.cloudkit_container,
+        "SUNCLUB_APP_GROUP_ID": ctx.app_group,
+    }
+
+
+def expected_profile_entitlements(ctx: DoctorContext, label: str) -> dict[str, Any]:
+    entitlement_file = PROFILE_ENTITLEMENT_SOURCES.get(label)
+    if entitlement_file is None:
+        return {}
+
+    source = REPO_ROOT / "app" / "Sunclub" / entitlement_file
+    if not source.is_file():
+        return {}
+
+    from scripts.appstore.provisioning_profiles import PROFILE_BACKED_ENTITLEMENTS
+    from scripts.appstore.resolve_entitlements import resolve_entitlements
+
+    with tempfile.TemporaryDirectory(prefix="sunclub-doctor-entitlements-") as raw_tmp:
+        output = Path(raw_tmp) / entitlement_file
+        resolve_entitlements(source, output, entitlement_replacements(ctx))
+        with output.open("rb") as output_file:
+            entitlements = plistlib.load(output_file)
+
+    if not isinstance(entitlements, dict):
+        return {}
+    return {
+        key: value
+        for key, value in entitlements.items()
+        if key in PROFILE_BACKED_ENTITLEMENTS
+    }
+
+
+def profile_entitlement_hint(
+    identifier: str, missing: list[str], ctx: DoctorContext
+) -> str:
+    lines = [f"Missing: {', '.join(missing)}"]
+    if any(
+        item.startswith("com.apple.security.application-groups=") for item in missing
+    ):
+        lines.append(
+            "In Apple Developer > Certificates, Identifiers & Profiles > Identifiers,"
+        )
+        lines.append(f"open App ID {identifier}, configure App Groups,")
+        lines.append(f"select {ctx.app_group}, save, then rerun the release.")
+    else:
+        lines.append(
+            "Update the App ID capability settings, then create a fresh profile."
+        )
+    return "\n".join(lines)
 
 
 def check_cloudkit(ctx: DoctorContext) -> None:
@@ -459,19 +566,9 @@ def check_entitlements(ctx: DoctorContext) -> None:
         ctx.fail(f"Entitlements source not found: {source}")
         return
 
-    aps_env = os.environ.get("SUNCLUB_APS_ENVIRONMENT", "production")
-    replacements = {
-        "SUNCLUB_APS_ENVIRONMENT": aps_env,
-        "SUNCLUB_ICLOUD_ENVIRONMENT": "Production"
-        if aps_env == "production"
-        else "Development",
-        "SUNCLUB_ICLOUD_CONTAINER": ctx.cloudkit_container,
-        "SUNCLUB_APP_GROUP_ID": ctx.app_group,
-    }
-
     output = REPO_ROOT / ".build" / "doctor-entitlements" / "Sunclub.entitlements.plist"
     try:
-        resolve_entitlements(source, output, replacements)
+        resolve_entitlements(source, output, entitlement_replacements(ctx))
         ctx.ok("Entitlements resolved without unresolved placeholders")
         output.unlink(missing_ok=True)
         output.parent.rmdir()

@@ -1103,13 +1103,32 @@ def decode_mobileprovision(payload: bytes) -> JsonObject:
     with tempfile.NamedTemporaryFile(suffix=".mobileprovision") as profile_file:
         profile_file.write(payload)
         profile_file.flush()
-        process = subprocess.run(
+        security_process = subprocess.run(
             ["/usr/bin/security", "cms", "-D", "-i", profile_file.name],
             check=False,
             capture_output=True,
         )
+        openssl_process = None
+        if security_process.returncode != 0:
+            openssl_process = subprocess.run(
+                [
+                    "openssl",
+                    "smime",
+                    "-inform",
+                    "der",
+                    "-verify",
+                    "-noverify",
+                    "-in",
+                    profile_file.name,
+                ],
+                check=False,
+                capture_output=True,
+            )
+    process = security_process
+    if openssl_process is not None and openssl_process.returncode == 0:
+        process = openssl_process
     if process.returncode != 0:
-        message = process.stderr.decode("utf-8", errors="replace").strip()
+        message = profile_decode_error_message(security_process, openssl_process)
         raise AppStoreConnectError(
             "Could not decode provisioning profile content"
             + (f": {message}" if message else ".")
@@ -1118,6 +1137,23 @@ def decode_mobileprovision(payload: bytes) -> JsonObject:
     if not isinstance(decoded, dict):
         raise AppStoreConnectError("Provisioning profile content is not a plist.")
     return decoded
+
+
+def profile_decode_error_message(
+    security_process: subprocess.CompletedProcess[bytes],
+    openssl_process: subprocess.CompletedProcess[bytes] | None,
+) -> str:
+    messages = []
+    security_message = security_process.stderr.decode("utf-8", errors="replace").strip()
+    if security_message:
+        messages.append(f"security cms: {security_message}")
+    if openssl_process is not None:
+        openssl_message = openssl_process.stderr.decode(
+            "utf-8", errors="replace"
+        ).strip()
+        if openssl_message:
+            messages.append(f"openssl smime: {openssl_message}")
+    return "; ".join(messages)
 
 
 def profile_is_active(profile: JsonObject) -> bool:

@@ -5,7 +5,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.appstore.release_doctor import BUNDLE_SUFFIXES
+from scripts.appstore.release_doctor import (
+    BUNDLE_SUFFIXES,
+    DoctorContext,
+    expected_profile_entitlements,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -86,6 +90,32 @@ def test_release_doctor_covers_all_production_bundle_ids() -> None:
         "watch container": ".watch.container",
         "watch widget extension": ".watch.widgets",
     }
+
+
+def test_release_doctor_uses_target_entitlement_templates() -> None:
+    ctx = DoctorContext(flavor="prod")
+
+    main_entitlements = expected_profile_entitlements(ctx, "main app")
+    widget_entitlements = expected_profile_entitlements(ctx, "widget extension")
+    watch_extension_entitlements = expected_profile_entitlements(
+        ctx,
+        "watch extension",
+    )
+
+    assert main_entitlements["aps-environment"] == "production"
+    assert main_entitlements["com.apple.developer.icloud-container-identifiers"] == [
+        "iCloud.app.peyton.sunclub"
+    ]
+    assert main_entitlements["com.apple.security.application-groups"] == [
+        "group.app.peyton.sunclub"
+    ]
+    assert widget_entitlements == {
+        "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
+    }
+    assert watch_extension_entitlements == {
+        "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
+    }
+    assert expected_profile_entitlements(ctx, "watch app") == {}
 
 
 def test_remote_notification_background_mode_has_push_entitlement() -> None:

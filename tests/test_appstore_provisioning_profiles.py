@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 import plistlib
 from pathlib import Path
+import subprocess
 from typing import Any
 
 import scripts.appstore.provisioning_profiles as provisioning_profiles
@@ -13,6 +14,7 @@ from scripts.appstore.provisioning_profiles import (
     APP_STORE_PROFILE_TYPE,
     ArchivedBundle,
     collect_archived_bundles,
+    decode_mobileprovision,
     ensure_profiles,
     find_bundle_id,
     find_reusable_certificate_ids,
@@ -664,6 +666,31 @@ def test_missing_profile_entitlements_does_not_accept_wildcard_app_groups() -> N
     assert missing == [
         "com.apple.security.application-groups=['group.app.peyton.sunclub']"
     ]
+
+
+def test_decode_mobileprovision_falls_back_to_openssl(monkeypatch: Any) -> None:
+    plist_payload = plistlib.dumps(
+        {"Entitlements": {"com.apple.security.application-groups": ["group"]}}
+    )
+    calls: list[list[str]] = []
+
+    def run(
+        cmd: list[str],
+        *,
+        check: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[bytes]:
+        calls.append(cmd)
+        if cmd[0] == "/usr/bin/security":
+            return subprocess.CompletedProcess(cmd, 1, b"", b"security decode failed")
+        return subprocess.CompletedProcess(cmd, 0, plist_payload, b"Verification OK")
+
+    monkeypatch.setattr(provisioning_profiles.subprocess, "run", run)
+
+    decoded = decode_mobileprovision(b"mobileprovision")
+
+    assert decoded["Entitlements"]["com.apple.security.application-groups"] == ["group"]
+    assert [call[0] for call in calls] == ["/usr/bin/security", "openssl"]
 
 
 def write_info_plist(path: Path, bundle_identifier: str, package_type: str) -> None:
