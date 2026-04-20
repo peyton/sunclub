@@ -155,20 +155,29 @@ class TestFlightGroupAssigner:
             self.sleep(self.context.poll_interval_seconds)
 
     def mark_encryption_compliance(self, build_id: str) -> None:
-        self.client.patch(
-            f"/builds/{build_id}",
-            {
-                "data": {
-                    "type": "builds",
-                    "id": build_id,
-                    "attributes": {
-                        "usesNonExemptEncryption": (
-                            self.context.uses_non_exempt_encryption
-                        )
-                    },
-                }
-            },
-        )
+        try:
+            self.client.patch(
+                f"/builds/{build_id}",
+                {
+                    "data": {
+                        "type": "builds",
+                        "id": build_id,
+                        "attributes": {
+                            "usesNonExemptEncryption": (
+                                self.context.uses_non_exempt_encryption
+                            )
+                        },
+                    }
+                },
+            )
+        except AppStoreConnectError as error_:
+            if is_already_set_error(error_):
+                print(
+                    "Build encryption compliance is already set; "
+                    "continuing to TestFlight group assignment."
+                )
+                return
+            raise
 
     def add_group_access(self, build_id: str, group_id: str) -> None:
         existing_builds = self.client.get_collection(
@@ -199,6 +208,11 @@ def resource_attributes(resource: Mapping[str, Any]) -> JsonObject:
     if not isinstance(attributes, dict):
         return {}
     return attributes
+
+
+def is_already_set_error(error_: AppStoreConnectError) -> bool:
+    message = str(error_)
+    return "HTTP 409" in message and "value is already set" in message
 
 
 def default_bundle_id() -> str:

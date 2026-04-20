@@ -20,10 +20,12 @@ class FakeTestFlightClient:
         build_states: Sequence[str] = ("PROCESSING", "VALID"),
         group_is_internal: bool = True,
         already_assigned: bool = False,
+        patch_error: AppStoreConnectError | None = None,
     ) -> None:
         self.build_states = list(build_states)
         self.group_is_internal = group_is_internal
         self.already_assigned = already_assigned
+        self.patch_error = patch_error
         self.build_calls = 0
         self.posts: list[tuple[str, Mapping[str, Any]]] = []
         self.patches: list[tuple[str, Mapping[str, Any]]] = []
@@ -76,6 +78,8 @@ class FakeTestFlightClient:
 
     def patch(self, path: str, body: Mapping[str, Any]) -> dict[str, Any]:
         self.patches.append((path, body))
+        if self.patch_error is not None:
+            raise self.patch_error
         return {}
 
     def post(self, path: str, body: Mapping[str, Any]) -> dict[str, Any]:
@@ -130,6 +134,33 @@ def test_assigner_is_idempotent_when_build_is_already_in_group() -> None:
 
     assert result.build_id == "build-1"
     assert client.posts == []
+
+
+def test_assigner_treats_encryption_already_set_as_idempotent() -> None:
+    client = FakeTestFlightClient(
+        build_states=("VALID",),
+        patch_error=AppStoreConnectError(
+            "App Store Connect request failed with HTTP 409: "
+            "The provided entity includes an attribute with an invalid value - "
+            "You cannot update when the value is already set."
+        ),
+    )
+    context = GroupContext(
+        bundle_id="app.peyton.sunclub",
+        marketing_version="1.0.45",
+        build_number="20260419.44.1",
+        poll_interval_seconds=0,
+    )
+
+    result = GroupAssigner(client, context, sleep=lambda _: None).assign()
+
+    assert result.build_id == "build-1"
+    assert client.posts == [
+        (
+            "/builds/build-1/relationships/betaGroups",
+            {"data": [{"type": "betaGroups", "id": "group-1"}]},
+        )
+    ]
 
 
 def test_assigner_rejects_external_group_named_internal() -> None:
