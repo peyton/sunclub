@@ -213,18 +213,7 @@ class AppStoreReviewSubmitter:
                             False,
                         )
                     )
-                    self.client.patch(
-                        f"/builds/{build_id}",
-                        {
-                            "data": {
-                                "type": "builds",
-                                "id": build_id,
-                                "attributes": {
-                                    "usesNonExemptEncryption": uses_encryption
-                                },
-                            }
-                        },
-                    )
+                    self.patch_build_encryption(build_id, uses_encryption)
                     return build_id
                 if state in BUILD_FAILED_STATES:
                     raise AppStoreConnectError(
@@ -238,6 +227,23 @@ class AppStoreReviewSubmitter:
                     f"({self.context.build_number}) to become VALID."
                 )
             self.sleep(self.poll_interval_seconds)
+
+    def patch_build_encryption(self, build_id: str, uses_encryption: bool) -> None:
+        try:
+            self.client.patch(
+                f"/builds/{build_id}",
+                {
+                    "data": {
+                        "type": "builds",
+                        "id": build_id,
+                        "attributes": {"usesNonExemptEncryption": uses_encryption},
+                    }
+                },
+            )
+        except AppStoreConnectError as error:
+            message = str(error)
+            if "usesNonExemptEncryption" not in message or "already set" not in message:
+                raise
 
     def ensure_app_store_version(self, app_id: str, build_id: str) -> str:
         versions = self.client.get_collection(
@@ -340,17 +346,44 @@ class AppStoreReviewSubmitter:
             "supportUrl": self.manifest["urls"]["support"]["value"],
             "whatsNew": locale_payload.get("whats_new"),
         }
-        self.client.patch(
-            f"/appStoreVersionLocalizations/{localization_id}",
-            {
-                "data": {
-                    "type": "appStoreVersionLocalizations",
-                    "id": localization_id,
-                    "attributes": attributes,
-                }
-            },
-        )
+        self.patch_version_localization(localization_id, attributes)
         return localization_id
+
+    def patch_version_localization(
+        self,
+        localization_id: str,
+        attributes: JsonObject,
+    ) -> None:
+        path = f"/appStoreVersionLocalizations/{localization_id}"
+        body = {
+            "data": {
+                "type": "appStoreVersionLocalizations",
+                "id": localization_id,
+                "attributes": attributes,
+            }
+        }
+        try:
+            self.client.patch(path, body)
+        except AppStoreConnectError as error:
+            message = str(error)
+            if (
+                "whatsNew" not in attributes
+                or "whatsNew" not in message
+                or "cannot be edited" not in message
+            ):
+                raise
+            retry_attributes = dict(attributes)
+            retry_attributes.pop("whatsNew", None)
+            self.client.patch(
+                path,
+                {
+                    "data": {
+                        "type": "appStoreVersionLocalizations",
+                        "id": localization_id,
+                        "attributes": retry_attributes,
+                    }
+                },
+            )
 
     def update_app_info(self, app_id: str) -> None:
         locale = primary_locale(self.manifest)
@@ -404,15 +437,37 @@ class AppStoreReviewSubmitter:
         secondary_category = str(app.get("secondary_category", "")).strip()
 
         if primary_category:
-            self.client.patch(
-                f"/appInfos/{app_info_id}/relationships/primaryCategory",
-                {"data": {"type": "appCategories", "id": primary_category}},
+            current_primary = self.category_relationship_id(
+                app_info_id,
+                "primaryCategory",
             )
+            if current_primary != primary_category:
+                self.client.patch(
+                    f"/appInfos/{app_info_id}/relationships/primaryCategory",
+                    {"data": {"type": "appCategories", "id": primary_category}},
+                )
         if secondary_category:
-            self.client.patch(
-                f"/appInfos/{app_info_id}/relationships/secondaryCategory",
-                {"data": {"type": "appCategories", "id": secondary_category}},
+            current_secondary = self.category_relationship_id(
+                app_info_id,
+                "secondaryCategory",
             )
+            if current_secondary != secondary_category:
+                self.client.patch(
+                    f"/appInfos/{app_info_id}/relationships/secondaryCategory",
+                    {"data": {"type": "appCategories", "id": secondary_category}},
+                )
+
+    def category_relationship_id(
+        self, app_info_id: str, relationship: str
+    ) -> str | None:
+        response = self.client.get(
+            f"/appInfos/{app_info_id}/relationships/{relationship}"
+        )
+        data = response.get("data")
+        if isinstance(data, Mapping):
+            value = data.get("id")
+            return value if isinstance(value, str) else None
+        return None
 
     def upload_screenshots(self, version_localization_id: str) -> None:
         screenshot_files = collect_screenshot_files(self.manifest, self.repo_root)
@@ -546,16 +601,42 @@ class AppStoreReviewSubmitter:
         else:
             declaration_id = resource_id(existing)
 
-        self.client.patch(
-            f"/accessibilityDeclarations/{declaration_id}",
-            {
-                "data": {
-                    "type": "accessibilityDeclarations",
-                    "id": declaration_id,
-                    "attributes": {"publish": True, **attributes},
-                }
-            },
-        )
+        self.patch_accessibility_declaration(declaration_id, attributes)
+
+    def patch_accessibility_declaration(
+        self,
+        declaration_id: str,
+        attributes: JsonObject,
+    ) -> None:
+        path = f"/accessibilityDeclarations/{declaration_id}"
+        try:
+            self.client.patch(
+                path,
+                {
+                    "data": {
+                        "type": "accessibilityDeclarations",
+                        "id": declaration_id,
+                        "attributes": {"publish": True, **attributes},
+                    }
+                },
+            )
+        except AppStoreConnectError as error:
+            message = str(error)
+            if (
+                "accessibilityDeclarations" not in message
+                or "must be available on the App Store" not in message
+            ):
+                raise
+            self.client.patch(
+                path,
+                {
+                    "data": {
+                        "type": "accessibilityDeclarations",
+                        "id": declaration_id,
+                        "attributes": attributes,
+                    }
+                },
+            )
 
     def upsert_review_detail(self, app_store_version_id: str) -> str:
         review = self.manifest["review"]

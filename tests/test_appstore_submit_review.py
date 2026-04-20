@@ -36,8 +36,20 @@ READY_ENV = {
 
 
 class FakeSubmissionClient:
-    def __init__(self, *, stale_submission_item: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        stale_submission_item: bool = False,
+        reject_whats_new_once: bool = False,
+        reject_accessibility_publish_once: bool = False,
+        reject_build_encryption_once: bool = False,
+        category_ids: Mapping[str, str] | None = None,
+    ) -> None:
         self.stale_submission_item = stale_submission_item
+        self.reject_whats_new_once = reject_whats_new_once
+        self.reject_accessibility_publish_once = reject_accessibility_publish_once
+        self.reject_build_encryption_once = reject_build_encryption_once
+        self.category_ids = dict(category_ids or {})
         self.build_calls = 0
         self.posts: list[tuple[str, Mapping[str, Any]]] = []
         self.patches: list[tuple[str, Mapping[str, Any]]] = []
@@ -56,6 +68,16 @@ class FakeSubmissionClient:
                     "id": "screenshot-1",
                     "attributes": {"assetDeliveryState": {"state": "COMPLETE"}},
                 }
+            }
+        if path.startswith("/appInfos/info-1/relationships/"):
+            relationship = path.rsplit("/", 1)[-1]
+            category_id = self.category_ids.get(relationship)
+            return {
+                "data": (
+                    {"type": "appCategories", "id": category_id}
+                    if category_id
+                    else None
+                )
             }
         raise AssertionError(f"Unexpected get path: {path}")
 
@@ -156,6 +178,38 @@ class FakeSubmissionClient:
 
     def patch(self, path: str, body: Mapping[str, Any]) -> dict[str, Any]:
         self.patches.append((path, body))
+        attributes = body.get("data", {}).get("attributes", {})
+        if (
+            self.reject_build_encryption_once
+            and path.startswith("/builds/")
+            and isinstance(attributes, Mapping)
+            and "usesNonExemptEncryption" in attributes
+        ):
+            self.reject_build_encryption_once = False
+            raise AppStoreConnectError(
+                "Attribute 'usesNonExemptEncryption' has already set."
+            )
+        if (
+            self.reject_whats_new_once
+            and path.startswith("/appStoreVersionLocalizations/")
+            and isinstance(attributes, Mapping)
+            and "whatsNew" in attributes
+        ):
+            self.reject_whats_new_once = False
+            raise AppStoreConnectError(
+                "Attribute 'whatsNew' cannot be edited at this time"
+            )
+        if (
+            self.reject_accessibility_publish_once
+            and path.startswith("/accessibilityDeclarations/")
+            and isinstance(attributes, Mapping)
+            and attributes.get("publish") is True
+        ):
+            self.reject_accessibility_publish_once = False
+            raise AppStoreConnectError(
+                "An app with the 'iOS' platform must be available on the App Store "
+                "to publish an 'accessibilityDeclarations' with an 'IPHONE' device family."
+            )
         return {"data": {"type": "patched", "id": path.rsplit("/", 1)[-1]}}
 
     def delete(self, path: str) -> None:
@@ -343,6 +397,110 @@ def test_submitter_creates_review_submission_flow(tmp_path: Path) -> None:
         path == "/appInfos/info-1/relationships/secondaryCategory"
         for path, _body in client.patches
     )
+
+
+def test_submitter_retries_initial_version_localization_without_whats_new(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(reject_whats_new_once=True)
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    submitter.ensure_version_localization("version-1")
+
+    localization_patches = [
+        body
+        for path, body in client.patches
+        if path == "/appStoreVersionLocalizations/version-loc-1"
+    ]
+    assert len(localization_patches) == 2
+    assert "whatsNew" in localization_patches[0]["data"]["attributes"]
+    assert "whatsNew" not in localization_patches[1]["data"]["attributes"]
+
+
+def test_submitter_ignores_already_set_build_encryption(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(reject_build_encryption_once=True)
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    assert submitter.wait_for_valid_build("app-1") == "build-1"
+
+    build_patches = [body for path, body in client.patches if path == "/builds/build-1"]
+    assert len(build_patches) == 1
+    assert build_patches[0]["data"]["attributes"]["usesNonExemptEncryption"] is False
+
+
+def test_submitter_skips_category_update_when_relationships_already_match(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(
+        category_ids={
+            "primaryCategory": "HEALTH_AND_FITNESS",
+            "secondaryCategory": "LIFESTYLE",
+        }
+    )
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    submitter.update_app_info("app-1")
+
+    assert not any(
+        path == "/appInfos/info-1/relationships/primaryCategory"
+        for path, _body in client.patches
+    )
+    assert not any(
+        path == "/appInfos/info-1/relationships/secondaryCategory"
+        for path, _body in client.patches
+    )
+
+
+def test_submitter_saves_accessibility_when_first_submission_cannot_publish(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(reject_accessibility_publish_once=True)
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    submitter.publish_accessibility_declaration("app-1")
+
+    accessibility_patches = [
+        body
+        for path, body in client.patches
+        if path == "/accessibilityDeclarations/accessibility-1"
+    ]
+    assert len(accessibility_patches) == 2
+    assert accessibility_patches[0]["data"]["attributes"]["publish"] is True
+    assert "publish" not in accessibility_patches[1]["data"]["attributes"]
 
 
 def test_submitter_rejects_stale_draft_review_submission(tmp_path: Path) -> None:
