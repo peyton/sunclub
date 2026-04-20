@@ -56,3 +56,9 @@ def test_tooling_config_can_resolve_production_flavor_paths() -> None:
     assert CONFIG.app_scheme_for_flavor("prod") == "Sunclub"
     assert CONFIG.app_identifier_for_flavor("prod") == "app.peyton.sunclub"
     assert CONFIG.run_app_path_for_flavor("prod").endswith("Sunclub.app")
+
+
+def test_release_tag_ignores_global_tag_signing() -> None:
+    release_tag_script = (REPO_ROOT / "scripts/appstore/release-tag.sh").read_text()
+
+    assert 'git tag --no-sign -a "$tag" -m "Release $tag"' in release_tag_script

@@ -28,7 +28,7 @@ tag="v$version"
 git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null &&
   fail "tag $tag already exists"
 
-git tag -a "$tag" -m "Release $tag"
+git tag --no-sign -a "$tag" -m "Release $tag"
 git push origin "$tag"
 
 printf 'Created and pushed %s\n' "$tag"

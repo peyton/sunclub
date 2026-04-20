@@ -55,7 +55,7 @@ just release-tag 1.2.3
 just release-testflight 1.2.3
 ```
 
-`just release-tag 1.2.3` validates semver, requires a clean worktree, creates `v1.2.3`, and pushes it.
+`just release-tag 1.2.3` validates semver, requires a clean worktree, creates the unsigned annotated tag `v1.2.3`, and pushes it.
 `just release-testflight 1.2.3` is the same tag-cutting path with a TestFlight-specific name.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
