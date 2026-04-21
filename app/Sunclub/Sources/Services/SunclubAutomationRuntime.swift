@@ -156,7 +156,6 @@ enum SunclubAutomationReminderKind: String, CaseIterable, Codable, Sendable {
 enum SunclubAutomationToggle: String, CaseIterable, Codable, Sendable {
     case travelTimeZone
     case streakRisk
-    case liveUV
     case dailyUVBriefing
     case extremeUVAlert
     case iCloudSync
@@ -168,8 +167,6 @@ enum SunclubAutomationToggle: String, CaseIterable, Codable, Sendable {
             return "Travel Time Zone"
         case .streakRisk:
             return "Streak Risk"
-        case .liveUV:
-            return "Live UV"
         case .dailyUVBriefing:
             return "Daily UV Briefing"
         case .extremeUVAlert:
@@ -789,14 +786,6 @@ enum SunclubAutomationRuntime {
                 summary: "Updated \(toggle.title) from automation.",
                 historyService: runtimeContext.historyService
             )
-        case .liveUV:
-            _ = try runtimeContext.historyService.applySettingsChange(
-                kind: .liveUVSettings,
-                summary: "Updated live UV from automation.",
-                changedFields: [.usesLiveUV]
-            ) { snapshot in
-                snapshot.usesLiveUV = enabled
-            }
         case .dailyUVBriefing:
             growthSettings.uvBriefing.dailyBriefingEnabled = enabled
             runtimeContext.growthStore.save(growthSettings)

@@ -2730,10 +2730,14 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.liveUVStatusPresentation.title, "Estimated UV")
         XCTAssertNil(state.liveUVStatusPresentation.actionKind)
+        XCTAssertEqual(
+            state.liveUVStatusPresentation.detail,
+            "Using Sunclub's built-in UV estimate in this release."
+        )
     }
 
     @MainActor
-    func testUVIndexServiceUsesLiveWeatherProviderWhenAuthorized() async throws {
+    func testUVIndexServiceUsesEstimatedFallbackWhenLivePreferenceEnabled() async throws {
         let locationService = UITestLiveUVLocationService(
             authorizationStatus: .authorizedWhenInUse,
             location: CLLocation(latitude: 34.116, longitude: -118.150)
@@ -2745,14 +2749,13 @@ final class SunclubTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: true)
 
-        XCTAssertEqual(service.currentReading?.index, 8)
-        XCTAssertEqual(service.currentReading?.source, .weatherKit)
-        XCTAssertEqual(service.liveUVAccessState, .live)
-        XCTAssertNil(service.errorMessage)
+        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertEqual(service.liveUVAccessState, .unavailable)
+        XCTAssertEqual(service.errorMessage, "Live UV is unavailable in this release.")
     }
 
     @MainActor
-    func testUVIndexServiceFallsBackWhenLocationPermissionIsMissing() async throws {
+    func testUVIndexServiceIgnoresPermissionStateWhenLiveUVIsUnavailable() async throws {
         let locationService = UITestLiveUVLocationService(
             authorizationStatus: .notDetermined,
             location: CLLocation(latitude: 34.116, longitude: -118.150)
@@ -2765,12 +2768,12 @@ final class SunclubTests: XCTestCase {
         await service.fetchUVIndex(prefersLiveData: true, allowPermissionPrompt: false)
 
         XCTAssertEqual(service.currentReading?.source, .heuristic)
-        XCTAssertEqual(service.liveUVAccessState, .needsPermission)
-        XCTAssertNil(service.errorMessage)
+        XCTAssertEqual(service.liveUVAccessState, .unavailable)
+        XCTAssertEqual(service.errorMessage, "Live UV is unavailable in this release.")
     }
 
     @MainActor
-    func testUVIndexServiceFallsBackWhenLiveProviderFails() async throws {
+    func testUVIndexServiceFallsBackToEstimateWhenProviderFails() async throws {
         let locationService = UITestLiveUVLocationService(
             authorizationStatus: .authorizedWhenInUse,
             location: CLLocation(latitude: -33.8688, longitude: 151.2093)
@@ -2788,11 +2791,11 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(service.currentReading?.source, .heuristic)
         XCTAssertEqual(service.liveUVAccessState, .unavailable)
-        XCTAssertEqual(service.errorMessage, "UITest live UV fixture is unavailable.")
+        XCTAssertEqual(service.errorMessage, "Live UV is unavailable in this release.")
     }
 
     @MainActor
-    func testUVBriefingServiceUsesLiveForecastWhenAvailable() async throws {
+    func testUVBriefingServiceAlwaysReturnsEstimatedForecast() async throws {
         let calendar = Calendar(identifier: .gregorian)
         let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let locationService = UITestLiveUVLocationService(
@@ -2810,9 +2813,9 @@ final class SunclubTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(forecast.sourceLabel, "Live WeatherKit UV")
-        XCTAssertEqual(forecast.peakHour?.index, 10)
-        XCTAssertEqual(Set(forecast.hours.map(\.sourceLabel)), ["WeatherKit"])
+        XCTAssertEqual(forecast.sourceLabel, "Estimated locally")
+        XCTAssertFalse(forecast.hours.isEmpty)
+        XCTAssertEqual(Set(forecast.hours.map(\.sourceLabel)), ["Estimated"])
     }
 
     @MainActor
@@ -2867,12 +2870,13 @@ final class SunclubTests: XCTestCase {
         await waitForMainActorTasks()
 
         XCTAssertTrue(state.settings.usesLiveUV)
-        XCTAssertEqual(state.uvReading?.index, 8)
-        XCTAssertEqual(state.uvReading?.source, .weatherKit)
-        XCTAssertEqual(state.uvForecast?.sourceLabel, "Live WeatherKit UV")
-        XCTAssertEqual(state.uvForecast?.peakHour?.index, 11)
-        XCTAssertEqual(state.liveUVStatusPresentation.title, "Live UV is on")
-        XCTAssertEqual(state.liveUVStatusPresentation.detail, "Live WeatherKit UV")
+        XCTAssertEqual(state.uvReading?.source, .heuristic)
+        XCTAssertEqual(state.uvForecast?.sourceLabel, "Estimated locally")
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "Estimated UV")
+        XCTAssertEqual(
+            state.liveUVStatusPresentation.detail,
+            "Using Sunclub's built-in UV estimate in this release."
+        )
     }
 
     @MainActor

@@ -1,17 +1,13 @@
-import CoreLocation
 import Foundation
 
 @MainActor
 final class SunclubUVBriefingService {
-    private let locationService: SharedLocationManaging
-    private let weatherProvider: any LiveUVWeatherProviding
-
     init(
         locationService: SharedLocationManaging? = nil,
         weatherProvider: (any LiveUVWeatherProviding)? = nil
     ) {
-        self.locationService = locationService ?? SharedLocationManager.shared
-        self.weatherProvider = weatherProvider ?? WeatherKitLiveUVWeatherProvider()
+        _ = locationService
+        _ = weatherProvider
     }
 
     func forecast(
@@ -20,21 +16,8 @@ final class SunclubUVBriefingService {
         referenceDate: Date = Date(),
         calendar: Calendar = .current
     ) async -> SunclubUVForecast {
-        if prefersLiveData {
-            let authorizationStatus = allowPermissionPrompt
-                ? await locationService.requestWhenInUseAuthorizationIfNeeded()
-                : locationService.authorizationStatus
-
-            switch authorizationStatus {
-            case .authorizedAlways, .authorizedWhenInUse:
-                if let liveForecast = await liveForecast(referenceDate: referenceDate, calendar: calendar) {
-                    return liveForecast
-                }
-            default:
-                break
-            }
-        }
-
+        _ = prefersLiveData
+        _ = allowPermissionPrompt
         return heuristicForecast(referenceDate: referenceDate, calendar: calendar)
     }
 
@@ -68,31 +51,6 @@ final class SunclubUVBriefingService {
         let dayStart = calendar.startOfDay(for: date)
         return (6...18).compactMap { hour in
             calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart)
-        }
-    }
-
-    private func liveForecast(
-        referenceDate: Date,
-        calendar: Calendar
-    ) async -> SunclubUVForecast? {
-        do {
-            let location = try await locationService.currentLocation()
-            let hours = try await weatherProvider.hourlyUVForecast(
-                for: location,
-                referenceDate: referenceDate,
-                calendar: calendar
-            )
-            guard !hours.isEmpty else {
-                return nil
-            }
-
-            return makeForecast(
-                generatedAt: referenceDate,
-                sourceLabel: "Live WeatherKit UV",
-                hours: hours
-            )
-        } catch {
-            return nil
         }
     }
 

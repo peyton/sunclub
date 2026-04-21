@@ -1591,52 +1591,12 @@ final class AppState {
     }
 
     var liveUVStatusPresentation: LiveUVStatusPresentation {
-        guard settings.usesLiveUV else {
-            return LiveUVStatusPresentation(
-                title: "Estimated UV",
-                detail: "Using Sunclub's built-in UV estimate.",
-                actionTitle: nil,
-                actionKind: nil
-            )
-        }
-
-        switch uvIndexService.liveUVAccessState {
-        case .live:
-            return LiveUVStatusPresentation(
-                title: "Live UV is on",
-                detail: uvReading?.source.statusLabel ?? "Using live WeatherKit UV for the current reading.",
-                actionTitle: nil,
-                actionKind: nil
-            )
-        case .needsPermission:
-            return LiveUVStatusPresentation(
-                title: "Location permission needed",
-                detail: "Turn on location access to use live UV. Sunclub will use an estimate until then.",
-                actionTitle: "Allow Location",
-                actionKind: .requestPermission
-            )
-        case .denied:
-            return LiveUVStatusPresentation(
-                title: "Location access is off",
-                detail: "Open Settings to turn location access back on for live UV.",
-                actionTitle: "Open Settings",
-                actionKind: .openSettings
-            )
-        case .unavailable:
-            return LiveUVStatusPresentation(
-                title: "Using estimated UV",
-                detail: "Live UV wasn't available, so Sunclub fell back to its estimate.",
-                actionTitle: "Try Again",
-                actionKind: .refresh
-            )
-        case .disabled:
-            return LiveUVStatusPresentation(
-                title: "Estimated UV",
-                detail: "Using Sunclub's built-in UV estimate.",
-                actionTitle: nil,
-                actionKind: nil
-            )
-        }
+        LiveUVStatusPresentation(
+            title: "Estimated UV",
+            detail: "Using Sunclub's built-in UV estimate in this release.",
+            actionTitle: nil,
+            actionKind: nil
+        )
     }
 
     var achievements: [SunclubAchievement] {

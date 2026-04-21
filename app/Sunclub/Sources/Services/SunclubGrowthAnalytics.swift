@@ -157,7 +157,7 @@ enum SunclubGrowthAnalytics {
             maxReapplyCount: records.map(\.reapplyCount).max() ?? 0,
             highUVProtectedDays: highUVProtectedDayCount(records: records, calendar: calendar),
             hasHomeBase: leaveHomeReminder?.isEnabled == true && leaveHomeReminder?.homeLocation != nil,
-            hasLiveSignal: settings?.usesLiveUV == true,
+            hasLiveSignal: growthSettings.uvBriefing.dailyBriefingEnabled,
             productScanUseCount: growthSettings.telemetry.productScanUseCount,
             hasSocialSpark: growthSettings.telemetry.shareActionCount > 0 || !growthSettings.friends.isEmpty
         )
@@ -252,7 +252,7 @@ enum SunclubGrowthAnalytics {
         case .homeBase:
             return isUnlocked ? "Your leave-home reminder has a saved home base." : "Turn on leave-home reminders and save your home base."
         case .liveSignal:
-            return isUnlocked ? "Live UV is turned on for more local guidance." : "Turn on live UV in Settings."
+            return isUnlocked ? "Daily UV briefing is enabled for morning guidance." : "Turn on Daily UV Briefing in Settings."
         case .bottleDetective:
             return isUnlocked ? "You used the product scanner to prefill an SPF log." : "Scan a sunscreen bottle and use the SPF in a log."
         case .socialSpark:

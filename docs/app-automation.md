@@ -27,7 +27,7 @@
 - `Open Sunclub`: opens a supported app route.
 - `Set Sunclub Reminder`: updates weekday or weekend reminder time.
 - `Set Sunclub Reapply Reminder`: turns reapply reminders on or off and can update the interval.
-- `Set Sunclub Toggle`: updates travel timezone, streak-risk, live UV, daily UV briefing, extreme UV alert, iCloud sync, or HealthKit.
+- `Set Sunclub Toggle`: updates travel timezone, streak-risk, daily UV briefing, extreme UV alert, iCloud sync, or HealthKit.
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Create Skin Health Report`: returns an `IntentFile`.
 - `Create Streak Card`: returns an `IntentFile`.
@@ -57,7 +57,7 @@
 - `time-since-last-application`
 - `set-reminder?kind=weekday|weekend&time=HH:mm`
 - `set-reapply?enabled=true&interval=120`
-- `set-toggle?name=travelTimeZone|streakRisk|liveUV|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
+- `set-toggle?name=travelTimeZone|streakRisk|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
 - `import-friend?code=...`
 - `poke-friend?id=<uuid>` opens Friends with `status=needs-message` while public accountability transport is disabled.
 - `open?route=home|log|reapply|summary|history|settings|automation|achievements|friends|health-report|product-scanner|recovery`

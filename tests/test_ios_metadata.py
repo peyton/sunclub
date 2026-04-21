@@ -221,17 +221,17 @@ def test_support_email_uses_mail_subdomain() -> None:
         assert stale_address not in settings
 
 
-def test_app_entitlements_enable_weatherkit_for_live_uv() -> None:
+def test_app_entitlements_do_not_enable_weatherkit() -> None:
     entitlements = load_app_entitlements()
 
-    assert entitlements["com.apple.developer.weatherkit"] is True
+    assert "com.apple.developer.weatherkit" not in entitlements
 
 
-def test_info_plist_explains_location_use_for_live_uv() -> None:
+def test_info_plist_explains_location_use_for_leave_home_reminders() -> None:
     info = load_info_plist()
 
     assert "NSLocationWhenInUseUsageDescription" in info
-    assert "live UV" in info["NSLocationWhenInUseUsageDescription"]
+    assert "leave-home reminders" in info["NSLocationWhenInUseUsageDescription"]
 
 
 def test_widget_extension_inherits_app_version_metadata() -> None:

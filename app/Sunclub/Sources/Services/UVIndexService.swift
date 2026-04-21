@@ -1,9 +1,6 @@
 import CoreLocation
 import Foundation
 import Observation
-#if canImport(WeatherKit)
-import WeatherKit
-#endif
 
 @MainActor
 protocol LiveUVWeatherProviding: AnyObject {
@@ -17,17 +14,9 @@ protocol LiveUVWeatherProviding: AnyObject {
 
 @MainActor
 final class WeatherKitLiveUVWeatherProvider: LiveUVWeatherProviding {
-    #if canImport(WeatherKit)
-    private let weatherService = WeatherService()
-    #endif
-
     func currentUVIndex(for location: CLLocation) async throws -> Int {
-        #if canImport(WeatherKit)
-        let weather = try await weatherService.weather(for: location)
-        return weather.currentWeather.uvIndex.value
-        #else
-        throw UVIndexServiceError.weatherKitUnavailable
-        #endif
+        _ = location
+        throw UVIndexServiceError.liveUVUnavailable
     }
 
     func hourlyUVForecast(
@@ -35,23 +24,10 @@ final class WeatherKitLiveUVWeatherProvider: LiveUVWeatherProviding {
         referenceDate: Date,
         calendar: Calendar
     ) async throws -> [SunclubUVHourForecast] {
-        #if canImport(WeatherKit)
-        let weather = try await weatherService.weather(for: location)
-        let dayStart = calendar.startOfDay(for: referenceDate)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-
-        return weather.hourlyForecast.forecast
-            .filter { $0.date >= dayStart && $0.date < nextDay && $0.isDaylight }
-            .map {
-                SunclubUVHourForecast(
-                    date: $0.date,
-                    index: $0.uvIndex.value,
-                    sourceLabel: "WeatherKit"
-                )
-            }
-        #else
-        throw UVIndexServiceError.weatherKitUnavailable
-        #endif
+        _ = location
+        _ = referenceDate
+        _ = calendar
+        throw UVIndexServiceError.liveUVUnavailable
     }
 }
 
@@ -65,7 +41,6 @@ final class UVIndexService {
 
     private let locationService: SharedLocationManaging
     private let weatherProvider: any LiveUVWeatherProviding
-    private var lastKnownLatitude: Double?
 
     init(
         locationService: SharedLocationManaging? = nil,
@@ -94,27 +69,11 @@ final class UVIndexService {
         defer { isLoading = false }
 
         if prefersLiveData {
-            let authorizationStatus = allowPermissionPrompt
-                ? await locationService.requestWhenInUseAuthorizationIfNeeded()
-                : locationService.authorizationStatus
-
-            switch authorizationStatus {
-            case .authorizedAlways, .authorizedWhenInUse:
-                do {
-                    currentReading = try await fetchWeatherKitReading()
-                    liveUVAccessState = .live
-                    return
-                } catch {
-                    liveUVAccessState = .unavailable
-                    errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                }
-            case .notDetermined:
-                liveUVAccessState = .needsPermission
-            case .denied, .restricted:
-                liveUVAccessState = .denied
-            @unknown default:
-                liveUVAccessState = .unavailable
-            }
+            _ = allowPermissionPrompt
+            _ = locationService
+            _ = weatherProvider
+            liveUVAccessState = .unavailable
+            errorMessage = UVIndexServiceError.liveUVUnavailable.localizedDescription
         } else {
             liveUVAccessState = .disabled
         }
@@ -126,24 +85,12 @@ final class UVIndexService {
         currentReading: UVReading,
         prefersLiveData: Bool
     ) -> Bool {
-        if prefersLiveData {
-            return currentReading.source == .weatherKit
-        }
-
+        _ = prefersLiveData
         return currentReading.source == .heuristic
     }
 
-    private func fetchWeatherKitReading() async throws -> UVReading {
-        let location = try await locationService.currentLocation()
-        lastKnownLatitude = location.coordinate.latitude
-        return UVReading(
-            index: try await weatherProvider.currentUVIndex(for: location),
-            source: .weatherKit
-        )
-    }
-
     private func estimateUVFromTimeAndSeason() -> Int {
-        Self.estimatedUVIndex(at: Date(), latitude: lastKnownLatitude)
+        Self.estimatedUVIndex(at: Date())
     }
 
     nonisolated static func estimatedUVIndex(
@@ -194,15 +141,12 @@ final class UVIndexService {
 }
 
 private enum UVIndexServiceError: LocalizedError {
-    case weatherKitUnavailable
-    case locationUnavailable
+    case liveUVUnavailable
 
     var errorDescription: String? {
         switch self {
-        case .weatherKitUnavailable:
-            return "WeatherKit is unavailable on this build."
-        case .locationUnavailable:
-            return "Sunclub could not determine your location for live UV."
+        case .liveUVUnavailable:
+            return "Live UV is unavailable in this release."
         }
     }
 }

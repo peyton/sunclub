@@ -158,6 +158,7 @@ final class AutomationTests: XCTestCase {
             "sunclub://automation/save-log?date=2026-02-31&spf=50",
             "sunclub://automation/save-log?date=2026-04-13&time=25:30",
             "sunclub://automation/set-reapply?enabled=true&interval=later",
+            "sunclub://automation/set-toggle?name=liveUV&enabled=true",
             "sunclub://automation/open?route=unknown",
             "sunclub://automation/poke-friend?id=not-a-uuid"
         ]

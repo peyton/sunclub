@@ -49,7 +49,7 @@ final class AchievementTests: XCTestCase {
         XCTAssertTrue(try achievement(.reapplyRelay, records: [record(day: date(year: 2026, month: 4, day: 1), reapplyCount: 3)]).isUnlocked)
         XCTAssertTrue(try achievement(.highUVHero, records: records(count: 10, startingAt: date(year: 2026, month: 7, day: 1))).isUnlocked)
         XCTAssertTrue(try achievement(.homeBase, settings: makeSettings(homeBase: true)).isUnlocked)
-        XCTAssertTrue(try achievement(.liveSignal, settings: makeSettings(liveUV: true)).isUnlocked)
+        XCTAssertTrue(try achievement(.liveSignal, growthSettings: makeGrowthSettings(dailyUVBriefingEnabled: true)).isUnlocked)
         XCTAssertTrue(try achievement(.bottleDetective, growthSettings: SunclubGrowthSettings(telemetry: SunclubGrowthTelemetry(productScanUseCount: 1))).isUnlocked)
         XCTAssertTrue(try achievement(.socialSpark, growthSettings: SunclubGrowthSettings(telemetry: SunclubGrowthTelemetry(shareActionCount: 1))).isUnlocked)
     }
@@ -62,7 +62,7 @@ final class AchievementTests: XCTestCase {
         XCTAssertFalse(try achievement(.reapplyRelay, records: [record(day: date(year: 2026, month: 4, day: 1), reapplyCount: 2)]).isUnlocked)
         XCTAssertFalse(try achievement(.highUVHero, records: records(count: 9, startingAt: date(year: 2026, month: 7, day: 1))).isUnlocked)
         XCTAssertFalse(try achievement(.homeBase, settings: makeSettings(homeBase: false)).isUnlocked)
-        XCTAssertFalse(try achievement(.liveSignal, settings: makeSettings(liveUV: false)).isUnlocked)
+        XCTAssertFalse(try achievement(.liveSignal, growthSettings: makeGrowthSettings(dailyUVBriefingEnabled: false)).isUnlocked)
         XCTAssertFalse(try achievement(.bottleDetective, growthSettings: SunclubGrowthSettings()).isUnlocked)
         XCTAssertFalse(try achievement(.socialSpark, growthSettings: SunclubGrowthSettings()).isUnlocked)
     }
@@ -162,9 +162,8 @@ final class AchievementTests: XCTestCase {
         )
     }
 
-    private func makeSettings(homeBase: Bool = false, liveUV: Bool = false) -> Settings {
+    private func makeSettings(homeBase: Bool = false) -> Settings {
         let settings = Settings()
-        settings.usesLiveUV = liveUV
 
         if homeBase {
             var smartReminderSettings = settings.smartReminderSettings
@@ -175,6 +174,14 @@ final class AchievementTests: XCTestCase {
             settings.smartReminderSettings = smartReminderSettings
         }
 
+        return settings
+    }
+
+    private func makeGrowthSettings(
+        dailyUVBriefingEnabled: Bool
+    ) -> SunclubGrowthSettings {
+        var settings = SunclubGrowthSettings()
+        settings.uvBriefing.dailyBriefingEnabled = dailyUVBriefingEnabled
         return settings
     }
 

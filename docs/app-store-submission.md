@@ -56,5 +56,6 @@ These steps still require real App Store Connect data and cannot be faked safely
 - The app is iPhone-only.
 - Sunclub is not a regulated medical device; it is sunscreen habit guidance, not diagnosis, monitoring, prevention, or treatment.
 - Public CloudKit accountability transport is disabled for the first App Store review build. Private iCloud history sync remains enabled.
+- This submitted version does not include WeatherKit functionality.
 - The primary check-in flow is manual logging from Home.
 - Weekly Summary and reminder settings remain part of the submission flow.

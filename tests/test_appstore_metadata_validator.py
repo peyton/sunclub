@@ -128,6 +128,10 @@ def test_validator_rejects_legacy_submission_problems() -> None:
         "privacy.app_store_connect_completed must be true after the App Privacy questionnaire is completed in App Store Connect."
         in errors
     )
+    assert (
+        "review.notes must explicitly disclose WeatherKit functionality status (clear yes/no statement)."
+        in errors
+    )
 
 
 def test_validator_allows_current_manifest_in_draft_mode() -> None:

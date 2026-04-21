@@ -67,7 +67,7 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Sunclub uses your location to save Home for leave-home reminders and to fetch live UV when you turn it on.</string>
+	<string>Sunclub uses your location to save Home for leave-home reminders.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Sunclub uses the local network only while Nearby Add is open so two friends can exchange accountability invites.</string>
 	<key>NSBonjourServices</key>

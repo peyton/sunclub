@@ -133,7 +133,6 @@ final class SunclubUITests: XCTestCase {
 
         expandSettingsSection("advanced", in: app)
         XCTAssertTrue(scrollToElement(app.switches["settings.leaveHomeToggle"], in: app))
-        XCTAssertTrue(app.switches["settings.liveUVToggle"].exists)
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
 
@@ -877,39 +876,21 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
         XCTAssertTrue(app.buttons["settings.notificationHealth.action"].exists)
         expandSettingsSection("advanced", in: app)
-        XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
+        XCTAssertTrue(scrollToElement(app.switches["settings.uvBriefingToggle"], in: app))
     }
 
     @MainActor
-    func testSettingsLiveUVToggleUsesMockedLiveWeatherDataEndToEnd() throws {
+    func testSettingsDoesNotExposeLiveUVToggle() throws {
         let app = XCUIApplication()
         app.launchArguments += [
             "UITEST_MODE",
             "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_ROUTE=settings",
-            "UITEST_CURRENT_TIME=11:00",
-            "UITEST_SEED_HISTORY=todayLogged",
-            "UITEST_LIVE_UV_INDEX=8",
-            "UITEST_LIVE_UV_PEAK_INDEX=11"
+            "UITEST_ROUTE=settings"
         ]
         app.launch()
 
         expandSettingsSection("advanced", in: app)
-        let liveUVToggle = app.switches["settings.liveUVToggle"]
-        XCTAssertTrue(scrollToElement(liveUVToggle, in: app))
-        XCTAssertEqual(stringValue(of: liveUVToggle), "0")
-
-        liveUVToggle.tap()
-
-        XCTAssertTrue(app.staticTexts["Live UV is on"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Live WeatherKit UV"].waitForExistence(timeout: 5))
-
-        app.buttons["screen.back"].tap()
-
-        let uvStatus = app.descendants(matching: .any)["home.uvStatus"]
-        XCTAssertTrue(uvStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(uvStatus.label, "UV is very high today")
-        XCTAssertTrue(app.staticTexts["home.todayDetail"].label.localizedCaseInsensitiveContains("reapply sooner"))
+        XCTAssertFalse(app.switches["settings.liveUVToggle"].exists)
     }
 
     @MainActor

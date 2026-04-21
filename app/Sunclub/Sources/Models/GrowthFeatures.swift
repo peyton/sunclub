@@ -326,7 +326,7 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
         case .reapplyRelay: return "Log 3 reapplies in a single day"
         case .highUVHero: return "Log on 10 high-UV days"
         case .homeBase: return "Set up leave-home reminders"
-        case .liveSignal: return "Turn on live UV data"
+        case .liveSignal: return "Keep daily UV briefing on"
         case .bottleDetective: return "Scan a sunscreen bottle"
         case .socialSpark: return "Share a streak or add a friend"
         }

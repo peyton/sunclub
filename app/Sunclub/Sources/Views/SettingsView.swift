@@ -15,7 +15,6 @@ struct SettingsView: View {
     @State private var followsTravelTimeZone = true
     @State private var streakRiskEnabled = true
     @State private var leaveHomeReminderEnabled = false
-    @State private var usesLiveUV = false
     @State private var healthKitEnabled = false
     @State private var dailyUVBriefingEnabled = true
     @State private var extremeUVAlertsEnabled = false
@@ -440,47 +439,6 @@ struct SettingsView: View {
         }
     }
 
-    private var liveUVSection: some View {
-        let presentation = appState.liveUVStatusPresentation
-
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("UV Data")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            VStack(alignment: .leading, spacing: 14) {
-                Toggle(isOn: $usesLiveUV) {
-                    Text("Use live UV when available")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(AppPalette.ink)
-                }
-                .tint(AppPalette.sun)
-                .onChange(of: usesLiveUV) { _, newValue in
-                    appState.updateLiveUVPreference(enabled: newValue)
-                }
-                .accessibilityIdentifier("settings.liveUVToggle")
-
-                SunStatusCard(
-                    title: presentation.title,
-                    detail: presentation.detail,
-                    tint: AppPalette.sun,
-                    symbol: "sun.max.fill"
-                )
-
-                if let actionTitle = presentation.actionTitle,
-                   let actionKind = presentation.actionKind {
-                    Button(actionTitle) {
-                        handleLiveUVAction(actionKind)
-                    }
-                    .buttonStyle(SunSecondaryButtonStyle())
-                    .accessibilityIdentifier("settings.liveUV.action")
-                }
-            }
-            .padding(18)
-            .background(cardBackground)
-        }
-    }
-
     private var backupSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Backup")
@@ -604,7 +562,6 @@ struct SettingsView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            liveUVSection
             uvBriefingSection
             healthKitSection
         }
@@ -849,9 +806,8 @@ struct SettingsView: View {
             let links = appState.automationPreferences.urlOpenActionsEnabled ? "links on" : "links off"
             return "Shortcuts \(writes), URL \(links)."
         case .advanced:
-            let uv = usesLiveUV ? "Live UV on" : "Live UV off"
             let health = healthKitEnabled ? "Health sync on" : "Health sync off"
-            return "\(uv). \(health)."
+            return "UV briefing controls. \(health)."
         case .help:
             return section.detail
         }
@@ -864,7 +820,6 @@ struct SettingsView: View {
         leaveHomeReminderEnabled = reminderSettings.leaveHomeReminder.isEnabled
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
-        usesLiveUV = appState.settings.usesLiveUV
         healthKitEnabled = appState.growthSettings.healthKit.isEnabled
         dailyUVBriefingEnabled = appState.growthSettings.uvBriefing.dailyBriefingEnabled
         extremeUVAlertsEnabled = appState.growthSettings.uvBriefing.extremeAlertEnabled
@@ -969,17 +924,6 @@ struct SettingsView: View {
             if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
                 openURL(settingsURL)
             }
-        }
-    }
-
-    private func handleLiveUVAction(_ action: LiveUVActionKind) {
-        switch action {
-        case .openSettings:
-            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                openURL(settingsURL)
-            }
-        case .requestPermission, .refresh:
-            appState.performLiveUVAction(action)
         }
     }
 

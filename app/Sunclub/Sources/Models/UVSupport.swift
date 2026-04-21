@@ -116,7 +116,7 @@ enum UVReadingSource: Equatable, Sendable {
         case .heuristic:
             return "Estimated locally"
         case .weatherKit:
-            return "Live WeatherKit UV"
+            return "Estimated locally"
         }
     }
 }

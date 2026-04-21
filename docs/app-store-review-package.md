@@ -62,7 +62,7 @@ What's New: Initial release. Log sunscreen use quickly, keep your streak on trac
 
 - Demo account required: no
 - Demo account notes: No account required. App data is stored on device and can sync through the user's private iCloud database when iCloud sync is enabled.
-- Notes: Sunclub does not require an account. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.
+- Notes: Sunclub does not require an account. This submitted version does not include WeatherKit functionality. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.
 - Contact first name: `SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME`
 - Contact last name: `SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME`
 - Contact email: `SUNCLUB_APP_REVIEW_CONTACT_EMAIL`

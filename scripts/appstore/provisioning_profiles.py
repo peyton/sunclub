@@ -29,7 +29,6 @@ PROFILE_BACKED_ENTITLEMENTS = (
     "com.apple.developer.healthkit",
     "com.apple.developer.icloud-container-identifiers",
     "com.apple.developer.icloud-services",
-    "com.apple.developer.weatherkit",
     "com.apple.security.application-groups",
 )
 WILDCARD_LIST_ENTITLEMENTS = {"com.apple.developer.icloud-services"}
@@ -378,8 +377,6 @@ def required_capabilities_from_entitlements(
         capabilities.append({"capabilityType": "PUSH_NOTIFICATIONS"})
     if required_entitlements.get("com.apple.developer.healthkit") is True:
         capabilities.append({"capabilityType": "HEALTHKIT"})
-    if required_entitlements.get("com.apple.developer.weatherkit") is True:
-        capabilities.append({"capabilityType": "WEATHERKIT"})
     if required_entitlements.get("com.apple.developer.icloud-container-identifiers"):
         capabilities.append(
             {

@@ -33,7 +33,6 @@ REQUIRED_CAPABILITIES = {
     "PUSH_NOTIFICATIONS": "Push Notifications",
     "HEALTHKIT": "HealthKit",
     "APP_GROUPS": "App Groups",
-    "WEATHERKIT": "WeatherKit",
 }
 
 # Bundle ID suffixes relative to the main app identifier.

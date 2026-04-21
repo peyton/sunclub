@@ -87,6 +87,20 @@ FORBIDDEN_STALE_COPY = (
     "fully offline",
     "no cloud",
 )
+WEATHERKIT_DISCLOSURE_ERROR = "review.notes must explicitly disclose WeatherKit functionality status (clear yes/no statement)."
+WEATHERKIT_NEGATIVE_DISCLOSURES = (
+    "does not include weatherkit",
+    "doesn't include weatherkit",
+    "no weatherkit",
+    "weatherkit is not included",
+    "without weatherkit",
+)
+WEATHERKIT_POSITIVE_DISCLOSURES = (
+    "includes weatherkit",
+    "uses weatherkit",
+    "weatherkit is included",
+    "with weatherkit",
+)
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -293,8 +307,24 @@ def validate_manifest(
                 else:
                     errors.append(message)
 
-        if "notes" not in review or not str(review.get("notes", "")).strip():
+        notes = str(review.get("notes", "")).strip()
+        if not notes:
             errors.append("review.notes is required.")
+        else:
+            lowered_notes = notes.lower()
+            if "weatherkit" not in lowered_notes:
+                errors.append(WEATHERKIT_DISCLOSURE_ERROR)
+            else:
+                has_negative = any(
+                    disclosure in lowered_notes
+                    for disclosure in WEATHERKIT_NEGATIVE_DISCLOSURES
+                )
+                has_positive = any(
+                    disclosure in lowered_notes
+                    for disclosure in WEATHERKIT_POSITIVE_DISCLOSURES
+                )
+                if has_negative == has_positive:
+                    errors.append(WEATHERKIT_DISCLOSURE_ERROR)
 
     privacy = manifest.get("privacy")
     if not isinstance(privacy, dict):
