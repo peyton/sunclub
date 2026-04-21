@@ -2908,6 +2908,30 @@ final class AppState {
         records.map { calendar.startOfDay(for: $0.startOfDay) }
     }
 
+    var daysWithExtras: Set<Date> {
+        var set: Set<Date> = []
+        for record in records where record.trimmedNotes != nil || record.reapplyCount > 0 {
+            set.insert(calendar.startOfDay(for: record.startOfDay))
+        }
+        return set
+    }
+
+    var elevatedUVDays: Set<Date> {
+        guard let forecast = uvForecast else {
+            return []
+        }
+        let today = calendar.startOfDay(for: referenceDate)
+        let elevated = forecast.hours.contains { hour in
+            switch hour.level {
+            case .high, .veryHigh, .extreme:
+                return true
+            default:
+                return false
+            }
+        }
+        return elevated ? [today] : []
+    }
+
     func shouldSuppressDailyReminder(on day: Date) -> Bool {
         homeExitReminderMonitor.hasTriggeredReminder(on: day)
     }

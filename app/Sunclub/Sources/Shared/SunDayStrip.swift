@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum SunDayLogEmphasis: Equatable {
+    case none
+    case elevatedUV
+    case hasExtras
+}
+
 struct SunDayStrip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -8,14 +14,16 @@ struct SunDayStrip: View {
     let today: Date
     let recordedDays: Set<Date>
     let currentStreakDays: Set<Date>
+    let elevatedUVDays: Set<Date>
+    let extrasDays: Set<Date>
     let allowsFuture: Bool
 
     private let calendar = Calendar.current
     private let pastDays = 365
     private let futureDays = 60
-    private let chipWidth: CGFloat = 44
-    private let chipHeight: CGFloat = 44
-    private let columnSpacing: CGFloat = 8
+    private let chipWidth: CGFloat = 26
+    private let chipHeight: CGFloat = 38
+    private let columnSpacing: CGFloat = 14
 
     @State private var scrollTargetDay: Date?
 
@@ -28,31 +36,32 @@ struct SunDayStrip: View {
     }
 
     private var stripScrollView: some View {
-        let days = visibleDays
-
-        return VStack(spacing: 6) {
-            pointerHeader
-
+        GeometryReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: columnSpacing) {
-                    ForEach(days, id: \.self) { day in
+                    ForEach(visibleDays, id: \.self) { day in
                         dayColumn(for: day)
                             .id(day)
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, stripHorizontalInset)
+                .padding(.vertical, 4)
             }
+            .contentMargins(
+                .horizontal,
+                max(0, (proxy.size.width - chipWidth) / 2),
+                for: .scrollContent
+            )
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $scrollTargetDay, anchor: .center)
-            .frame(height: chipHeight + 26)
+            .scrollClipDisabled()
             .onAppear {
                 scrollTargetDay = calendar.startOfDay(for: selectedDay)
             }
             .onChange(of: selectedDay) { _, newValue in
                 let normalized = calendar.startOfDay(for: newValue)
                 if scrollTargetDay != normalized {
-                    withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
+                    withAnimation(SunMotion.easeInOut(duration: 0.3, reduceMotion: reduceMotion)) {
                         scrollTargetDay = normalized
                     }
                 }
@@ -66,46 +75,161 @@ struct SunDayStrip: View {
                     selectedDay = normalized
                 }
             }
-            .accessibilityIdentifier("timeline.dayStrip")
+        }
+        .frame(height: chipHeight + 44)
+        .accessibilityIdentifier("timeline.dayStrip")
+    }
+
+    private func dayColumn(for day: Date) -> some View {
+        let state = chipState(for: day)
+        return Button {
+            selectDay(day)
+        } label: {
+            VStack(spacing: 4) {
+                header(for: state)
+
+                chip(for: state)
+
+                footerDot(for: state)
+            }
+            .frame(width: chipWidth)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSelect(day))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(state.accessibilityLabel)
+        .accessibilityHint(accessibilityHint(for: state))
+        .accessibilityAddTraits(state.isSelected ? .isSelected : [])
+        .accessibilityIdentifier("timeline.day.\(Self.dayIdentifierFormatter.string(from: day))")
+    }
+
+    @ViewBuilder
+    private func header(for state: ChipState) -> some View {
+        if state.isSelected {
+            SelectedDayPointer(letter: state.weekdayLetter)
+        } else {
+            Text(state.weekdayLetter)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+                .frame(height: 22)
         }
     }
 
-    private var pointerHeader: some View {
-        HStack {
-            Spacer(minLength: 0)
-            pointerChip
-            Spacer(minLength: 0)
+    @ViewBuilder
+    private func chip(for state: ChipState) -> some View {
+        Group {
+            switch state.visualStyle {
+            case .filled:
+                filledChip(for: state)
+            case .outline(let dashed):
+                outlineChip(for: state, dashed: dashed)
+            case .hatched:
+                hatchedChip(for: state)
+            case .ghost:
+                ghostChip(for: state)
+            }
         }
-        .frame(height: 20)
+        .frame(width: chipWidth, height: chipHeight)
+        .overlay(alignment: .center) {
+            if state.isCurrentStreak, state.status == .applied {
+                Capsule()
+                    .stroke(AppPalette.streakAccent.opacity(0.7), lineWidth: 1.5)
+                    .padding(-3)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
-    private var pointerChip: some View {
-        let letter = selectedDayWeekdayLetter
-        return ZStack {
-            Image(systemName: "arrowtriangle.down.fill")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-                .offset(y: 14)
-
-            Text(letter)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(AppPalette.onAccent)
-                .frame(width: 22, height: 22)
-                .background(AppPalette.ink, in: Circle())
-        }
-        .accessibilityHidden(true)
+    private func filledChip(for state: ChipState) -> some View {
+        Capsule(style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [AppPalette.sun, AppPalette.coral.opacity(0.85)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay {
+                Capsule(style: .continuous)
+                    .stroke(AppPalette.sun.opacity(state.isSelected ? 1 : 0.2), lineWidth: state.isSelected ? 2 : 0.5)
+            }
     }
 
-    private var selectedDayWeekdayLetter: String {
-        let symbols = calendar.veryShortWeekdaySymbols
-        let weekday = calendar.component(.weekday, from: selectedDay)
-        let index = (weekday - 1 + symbols.count) % symbols.count
-        return symbols[index]
+    private func outlineChip(for state: ChipState, dashed: Bool) -> some View {
+        Capsule(style: .continuous)
+            .fill(AppPalette.warmGlow.opacity(0.28))
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        AppPalette.sun.opacity(state.isSelected ? 1 : 0.6),
+                        style: StrokeStyle(
+                            lineWidth: state.isSelected ? 2 : 1.4,
+                            dash: dashed ? [3, 3] : []
+                        )
+                    )
+            }
+    }
+
+    private func hatchedChip(for state: ChipState) -> some View {
+        Capsule(style: .continuous)
+            .fill(AppPalette.coral.opacity(0.12))
+            .overlay {
+                SunDiagonalHatch(color: AppPalette.coral.opacity(0.65))
+                    .clipShape(Capsule(style: .continuous))
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        AppPalette.coral.opacity(state.isSelected ? 0.9 : 0.5),
+                        lineWidth: state.isSelected ? 1.8 : 1
+                    )
+            }
+    }
+
+    private func ghostChip(for state: ChipState) -> some View {
+        Capsule(style: .continuous)
+            .fill(Color.clear)
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        state.isSelected ? AppPalette.ink.opacity(0.55) : AppPalette.muted.opacity(0.55),
+                        lineWidth: state.isSelected ? 1.6 : 1
+                    )
+            }
+    }
+
+    @ViewBuilder
+    private func footerDot(for state: ChipState) -> some View {
+        if state.hasSecondaryActivity {
+            Circle()
+                .fill(AppPalette.pool)
+                .frame(width: 5, height: 5)
+        } else {
+            Color.clear.frame(width: 5, height: 5)
+        }
+    }
+
+    private func selectDay(_ day: Date) {
+        let normalized = calendar.startOfDay(for: day)
+        guard canSelect(normalized) else {
+            return
+        }
+        withAnimation(SunMotion.easeInOut(duration: 0.22, reduceMotion: reduceMotion)) {
+            selectedDay = normalized
+        }
+    }
+
+    private func canSelect(_ day: Date) -> Bool {
+        if allowsFuture {
+            return true
+        }
+        return calendar.startOfDay(for: day) <= calendar.startOfDay(for: today)
     }
 
     private var accessibleList: some View {
         VStack(spacing: 8) {
-            ForEach(visibleDays.reversed(), id: \.self) { day in
+            ForEach(visibleDays.reversed().prefix(14), id: \.self) { day in
                 Button {
                     selectDay(day)
                 } label: {
@@ -120,10 +244,8 @@ struct SunDayStrip: View {
     private func accessibleRow(for day: Date) -> some View {
         let state = chipState(for: day)
         return HStack(spacing: 12) {
-            Image(systemName: state.symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(state.accent)
-                .frame(width: 24)
+            chip(for: state)
+                .frame(width: chipWidth, height: chipHeight)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
@@ -138,14 +260,14 @@ struct SunDayStrip: View {
             Spacer(minLength: 0)
 
             if state.isSelected {
-                Image(systemName: "circle.fill")
-                    .font(.system(size: 8))
+                Image(systemName: "chevron.right.circle.fill")
+                    .font(.system(size: 16))
                     .foregroundStyle(AppPalette.sun)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .frame(minHeight: 44)
+        .frame(minHeight: 48)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(state.isSelected ? AppPalette.warmGlow.opacity(0.5) : AppPalette.cardFill.opacity(0.62))
@@ -156,89 +278,6 @@ struct SunDayStrip: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(state.isSelected ? .isSelected : [])
-    }
-
-    private func dayColumn(for day: Date) -> some View {
-        let state = chipState(for: day)
-        return Button {
-            selectDay(day)
-        } label: {
-            VStack(spacing: 6) {
-                Text(weekdayLetter(for: day))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(state.weekdayColor)
-                    .frame(height: 14)
-
-                chip(for: state)
-
-                dotIndicator(for: state)
-                    .frame(height: 6)
-            }
-            .frame(width: chipWidth)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!canSelect(day))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(state.accessibilityLabel)
-        .accessibilityHint(accessibilityHint(for: state))
-        .accessibilityAddTraits(state.isSelected ? .isSelected : [])
-        .accessibilityIdentifier("timeline.day.\(Self.dayIdentifierFormatter.string(from: day))")
-    }
-
-    private func chip(for state: ChipState) -> some View {
-        ZStack {
-            Circle()
-                .fill(state.fillColor)
-                .frame(width: chipWidth, height: chipHeight)
-
-            Circle()
-                .strokeBorder(state.borderColor, lineWidth: state.borderWidth)
-                .frame(width: chipWidth, height: chipHeight)
-
-            Image(systemName: state.symbol)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(state.symbolColor)
-        }
-    }
-
-    @ViewBuilder
-    private func dotIndicator(for state: ChipState) -> some View {
-        if state.hasSecondaryActivity {
-            Circle()
-                .fill(AppPalette.pool)
-                .frame(width: 5, height: 5)
-        } else {
-            EmptyView()
-        }
-    }
-
-    private func weekdayLetter(for day: Date) -> String {
-        let symbols = calendar.veryShortWeekdaySymbols
-        let weekday = calendar.component(.weekday, from: day)
-        let index = (weekday - 1 + symbols.count) % symbols.count
-        return symbols[index]
-    }
-
-    private func selectDay(_ day: Date) {
-        let normalized = calendar.startOfDay(for: day)
-        guard canSelect(normalized) else {
-            return
-        }
-        withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
-            selectedDay = normalized
-        }
-    }
-
-    private func canSelect(_ day: Date) -> Bool {
-        if allowsFuture {
-            return true
-        }
-        return calendar.startOfDay(for: day) <= calendar.startOfDay(for: today)
-    }
-
-    private var stripHorizontalInset: CGFloat {
-        max(0, (UIScreen.main.bounds.width - chipWidth) / 2)
     }
 
     private var visibleDays: [Date] {
@@ -263,6 +302,8 @@ struct SunDayStrip: View {
         let isFuture = dayStart > todayStart
         let hasRecord = recordedDays.contains(dayStart)
         let isCurrentStreak = currentStreakDays.contains(dayStart)
+        let hasExtras = extrasDays.contains(dayStart)
+        let isElevatedUV = elevatedUVDays.contains(dayStart)
         let isSelected = calendar.isDate(dayStart, inSameDayAs: selectedDay)
 
         let status: DayStatus
@@ -283,8 +324,17 @@ struct SunDayStrip: View {
             isFuture: isFuture,
             isSelected: isSelected,
             isCurrentStreak: isCurrentStreak,
-            hasSecondaryActivity: hasRecord && isCurrentStreak
+            isElevatedUV: isElevatedUV,
+            hasSecondaryActivity: hasExtras,
+            weekdayLetter: weekdayLetter(for: dayStart)
         )
+    }
+
+    private func weekdayLetter(for day: Date) -> String {
+        let symbols = calendar.veryShortWeekdaySymbols
+        let weekday = calendar.component(.weekday, from: day)
+        let index = (weekday - 1 + symbols.count) % symbols.count
+        return symbols[index]
     }
 
     private func accessibilityHint(for state: ChipState) -> String {
@@ -309,6 +359,13 @@ struct SunDayStrip: View {
     }()
 }
 
+private enum ChipVisualStyle: Equatable {
+    case filled
+    case outline(dashed: Bool)
+    case hatched
+    case ghost
+}
+
 private struct ChipState {
     let day: Date
     let status: DayStatus
@@ -316,91 +373,100 @@ private struct ChipState {
     let isFuture: Bool
     let isSelected: Bool
     let isCurrentStreak: Bool
+    let isElevatedUV: Bool
     let hasSecondaryActivity: Bool
+    let weekdayLetter: String
 
-    var symbol: String {
+    var visualStyle: ChipVisualStyle {
         switch status {
-        case .applied: return "checkmark"
-        case .todayPending: return "circle.dashed"
-        case .missed: return "xmark"
-        case .future: return "circle"
+        case .applied:
+            return .filled
+        case .todayPending:
+            return .outline(dashed: true)
+        case .future:
+            return isElevatedUV ? .hatched : .ghost
+        case .missed:
+            return .ghost
         }
-    }
-
-    var fillColor: Color {
-        if isSelected {
-            switch status {
-            case .applied: return AppPalette.sun
-            case .todayPending: return AppPalette.warmGlow.opacity(0.9)
-            case .missed: return AppPalette.coral.opacity(0.22)
-            case .future: return AppPalette.controlFill.opacity(0.85)
-            }
-        }
-        switch status {
-        case .applied: return AppPalette.sun.opacity(0.85)
-        case .todayPending: return AppPalette.warmGlow.opacity(0.6)
-        case .missed: return AppPalette.controlFill.opacity(0.7)
-        case .future: return AppPalette.controlFill.opacity(0.55)
-        }
-    }
-
-    var borderColor: Color {
-        if isSelected {
-            return AppPalette.ink
-        }
-        if isCurrentStreak {
-            return AppPalette.streakAccent.opacity(0.5)
-        }
-        return AppPalette.cardStroke
-    }
-
-    var borderWidth: CGFloat {
-        isSelected ? 2 : 1
-    }
-
-    var symbolColor: Color {
-        switch status {
-        case .applied: return AppPalette.onAccent
-        case .todayPending: return AppPalette.ink
-        case .missed: return AppPalette.coral
-        case .future: return AppPalette.softInk
-        }
-    }
-
-    var accent: Color {
-        switch status {
-        case .applied: return AppPalette.sun
-        case .todayPending: return AppPalette.warmGlow
-        case .missed: return AppPalette.coral
-        case .future: return AppPalette.softInk
-        }
-    }
-
-    var weekdayColor: Color {
-        if isSelected {
-            return AppPalette.ink
-        }
-        return AppPalette.softInk
     }
 
     var statusLabel: String {
         switch status {
-        case .applied: return "Logged"
-        case .todayPending: return "Pending — today"
-        case .missed: return "Not logged"
-        case .future: return "Forecast ahead"
+        case .applied:
+            return isCurrentStreak ? "Logged — current streak" : "Logged"
+        case .todayPending:
+            return "Pending — today"
+        case .missed:
+            return "Not logged"
+        case .future:
+            return isElevatedUV ? "Elevated UV forecast" : "Forecast"
         }
     }
 
     var accessibilityLabel: String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
         var parts = [dateLabel, statusLabel]
-        if isCurrentStreak {
-            parts.append("part of current streak")
+        if isElevatedUV {
+            parts.append("high UV expected")
+        }
+        if hasSecondaryActivity {
+            parts.append("has notes")
         }
         if isSelected {
             parts.append("selected")
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+private struct SelectedDayPointer: View {
+    let letter: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(letter)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(AppPalette.onAccent)
+                .frame(width: 20, height: 18)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(AppPalette.ink)
+                )
+
+            Triangle()
+                .fill(AppPalette.ink)
+                .frame(width: 6, height: 4)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct SunDiagonalHatch: View {
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            let step: CGFloat = 4
+            let diagonal = size.width + size.height
+            var offset: CGFloat = -size.height
+            while offset < diagonal {
+                var path = Path()
+                path.move(to: CGPoint(x: offset, y: size.height))
+                path.addLine(to: CGPoint(x: offset + size.height, y: 0))
+                context.stroke(path, with: .color(color), lineWidth: 1.5)
+                offset += step
+            }
+        }
     }
 }

@@ -50,8 +50,23 @@ struct ValuePropsView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(spacing: 28) {
-                VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 32) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("A daily sun routine")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("Three small habits, zero setup — kept simple so you actually stick with it.")
+                        .font(.system(size: 17))
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 16)
+
+                Spacer(minLength: 12)
+
+                VStack(alignment: .leading, spacing: 26) {
                     valuePropRow(
                         symbol: "flame.fill",
                         title: "Build a streak",
@@ -68,11 +83,10 @@ struct ValuePropsView: View {
                         detail: "Log from widgets, Shortcuts, notifications, or the app."
                     )
                 }
-                .padding(.top, 32)
 
                 Spacer(minLength: 0)
             }
-            .padding(.top, 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         } footer: {
             Button("Continue") {
                 feedbackTrigger += 1
