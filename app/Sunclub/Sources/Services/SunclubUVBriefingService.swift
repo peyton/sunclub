@@ -12,12 +12,19 @@ final class SunclubUVBriefingService {
 
     func forecast(
         prefersLiveData: Bool,
+        liveBundle: SunclubUVForecastBundle? = nil,
         allowPermissionPrompt: Bool = false,
         referenceDate: Date = Date(),
         calendar: Calendar = .current
     ) async -> SunclubUVForecast {
-        _ = prefersLiveData
         _ = allowPermissionPrompt
+
+        if prefersLiveData,
+           let liveBundle,
+           let forecast = liveForecast(from: liveBundle, referenceDate: referenceDate, calendar: calendar) {
+            return forecast
+        }
+
         return heuristicForecast(referenceDate: referenceDate, calendar: calendar)
     }
 
@@ -26,6 +33,28 @@ final class SunclubUVBriefingService {
         calendar: Calendar = .current
     ) -> SunclubUVForecast {
         heuristicForecast(referenceDate: referenceDate, calendar: calendar)
+    }
+
+    private func liveForecast(
+        from bundle: SunclubUVForecastBundle,
+        referenceDate: Date,
+        calendar: Calendar
+    ) -> SunclubUVForecast? {
+        let todayHours = bundle.hourly.filter {
+            calendar.isDate($0.date, inSameDayAs: referenceDate)
+        }
+        guard !todayHours.isEmpty else {
+            return nil
+        }
+
+        let peak = todayHours.max(by: { $0.index < $1.index })
+        return SunclubUVForecast(
+            generatedAt: bundle.generatedAt,
+            sourceLabel: "Apple Weather",
+            hours: todayHours,
+            peakHour: peak,
+            recommendation: recommendation(for: peak?.level ?? .unknown)
+        )
     }
 
     private func heuristicForecast(

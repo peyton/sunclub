@@ -131,45 +131,58 @@ final class UITestLiveUVWeatherProvider: LiveUVWeatherProviding {
         self.shouldReturnEmptyForecast = shouldReturnEmptyForecast
     }
 
-    func currentUVIndex(for location: CLLocation) async throws -> Int {
+    func uvBundle(for location: CLLocation, referenceDate: Date) async throws -> SunclubUVForecastBundle {
         if shouldFail {
             throw UITestLiveUVError.unavailable
         }
 
-        return currentIndex
-    }
-
-    func hourlyUVForecast(
-        for location: CLLocation,
-        referenceDate: Date,
-        calendar: Calendar
-    ) async throws -> [SunclubUVHourForecast] {
-        if shouldFail {
-            throw UITestLiveUVError.unavailable
-        }
-        if shouldReturnEmptyForecast {
-            return []
-        }
-
+        let calendar = Calendar.current
         let dayStart = calendar.startOfDay(for: referenceDate)
-        let hourlyIndexes = [
-            (hour: 9, index: max(0, currentIndex - 2)),
-            (hour: 10, index: currentIndex),
-            (hour: 12, index: peakIndex),
-            (hour: 15, index: max(0, currentIndex - 1))
-        ]
+        let hourlyIndexes: [(hour: Int, index: Int)] = shouldReturnEmptyForecast
+            ? []
+            : [
+                (hour: 9, index: max(0, currentIndex - 2)),
+                (hour: 10, index: currentIndex),
+                (hour: 12, index: peakIndex),
+                (hour: 15, index: max(0, currentIndex - 1))
+            ]
 
-        return hourlyIndexes.compactMap { hour, index in
+        let hours: [SunclubUVHourForecast] = hourlyIndexes.compactMap { hour, index in
             guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart) else {
                 return nil
             }
-
             return SunclubUVHourForecast(
                 date: date,
                 index: index,
                 sourceLabel: "WeatherKit"
             )
         }
+
+        let days: [SunclubUVDayForecast] = (0..<7).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: dayStart) else {
+                return nil
+            }
+            let index = offset == 0 ? peakIndex : max(0, peakIndex - offset)
+            return SunclubUVDayForecast(day: date, maxIndex: index)
+        }
+
+        return SunclubUVForecastBundle(
+            generatedAt: referenceDate,
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            currentIndex: currentIndex,
+            hourly: hours,
+            daily: days
+        )
+    }
+
+    func attributionMarkup() async throws -> SunclubWeatherAttribution {
+        SunclubWeatherAttribution(
+            serviceName: "Weather",
+            legalPageURL: URL(string: "https://weatherkit.apple.com/legal-attribution.html")!,
+            lightMarkURL: nil,
+            darkMarkURL: nil
+        )
     }
 }
 

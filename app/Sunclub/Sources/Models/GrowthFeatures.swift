@@ -453,6 +453,29 @@ struct SunclubUVForecast: Equatable, Sendable {
     }
 }
 
+struct SunclubUVDayForecast: Codable, Equatable, Identifiable, Sendable {
+    var id: Date { day }
+    let day: Date
+    let maxIndex: Int
+
+    var level: UVLevel {
+        UVLevel.from(index: maxIndex)
+    }
+}
+
+struct SunclubUVForecastBundle: Codable, Equatable, Sendable {
+    let generatedAt: Date
+    let latitude: Double
+    let longitude: Double
+    let currentIndex: Int?
+    let hourly: [SunclubUVHourForecast]
+    let daily: [SunclubUVDayForecast]
+
+    func isFresh(now: Date, ttl: TimeInterval) -> Bool {
+        now.timeIntervalSince(generatedAt) < ttl
+    }
+}
+
 struct SunclubSPFDistributionEntry: Equatable, Identifiable, Sendable {
     var id: String { "spf-\(spf)" }
     let spf: Int

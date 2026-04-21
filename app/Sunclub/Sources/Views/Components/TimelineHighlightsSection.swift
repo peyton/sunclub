@@ -195,6 +195,11 @@ struct TimelineHighlightsSection: View {
             Text(forecast.recommendation)
                 .font(.system(size: 13))
                 .foregroundStyle(AppPalette.softInk)
+
+            WeatherKitAttributionFooter(
+                attribution: appState.weatherAttribution,
+                sourceLabel: forecast.sourceLabel
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
