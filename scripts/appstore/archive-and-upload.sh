@@ -205,6 +205,8 @@ validate_signed_ipa_entitlements() {
     "$entitlements_path" \
     "com.apple.security.application-groups" \
     "$expected_app_group"
+  assert_plist_string "$entitlements_path" "com.apple.developer.weatherkit" "true"
+  assert_plist_string "$entitlements_path" "com.apple.developer.healthkit" "true"
 
   rm -rf "$temp_dir"
 }

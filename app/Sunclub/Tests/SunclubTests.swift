@@ -2747,7 +2747,13 @@ final class SunclubTests: XCTestCase {
             cache: SunclubUVForecastCache(
                 appGroupID: "group.test.\(UUID().uuidString)",
                 key: "test-\(UUID().uuidString)"
-            )
+            ),
+            budget: SunclubWeatherKitBudget(
+                appGroupID: "group.test.\(UUID().uuidString)",
+                policyKey: "test-policy-\(UUID().uuidString)",
+                counterKey: "test-counter-\(UUID().uuidString)"
+            ),
+            networkPathProvider: { nil }
         )
 
         await service.fetchUVIndex(prefersLiveData: true)
@@ -2983,6 +2989,102 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testWeatherKitBudgetAllowsInitialFetchAndBlocksWithinInterval() throws {
+        let budget = SunclubWeatherKitBudget(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            policyKey: "policy-\(UUID().uuidString)",
+            counterKey: "counter-\(UUID().uuidString)"
+        )
+        budget.storePolicy(SunclubWeatherKitBudgetPolicy(
+            weatherKitEnabled: true,
+            minFetchIntervalSeconds: 60,
+            maxDailyFetchesPerDevice: 3,
+            maxMonthlyFetchesPerDevice: 20,
+            reason: ""
+        ))
+
+        let start = Date()
+        XCTAssertEqual(budget.check(now: start), .allow)
+        budget.recordFetch(at: start)
+
+        if case .deny = budget.check(now: start.addingTimeInterval(5)) {
+            // expected — rate limited
+        } else {
+            XCTFail("Expected rate-limit deny within min fetch interval")
+        }
+
+        XCTAssertEqual(budget.check(now: start.addingTimeInterval(61)), .allow)
+    }
+
+    @MainActor
+    func testWeatherKitBudgetRespectsDisabledKillSwitch() throws {
+        let budget = SunclubWeatherKitBudget(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            policyKey: "policy-\(UUID().uuidString)",
+            counterKey: "counter-\(UUID().uuidString)"
+        )
+        budget.storePolicy(SunclubWeatherKitBudgetPolicy(
+            weatherKitEnabled: false,
+            minFetchIntervalSeconds: 0,
+            maxDailyFetchesPerDevice: 100,
+            maxMonthlyFetchesPerDevice: 1000,
+            reason: "Server-side disabled for overage protection"
+        ))
+
+        if case .deny(let reason) = budget.check() {
+            XCTAssertTrue(reason.contains("overage") || reason.contains("Apple Weather"))
+        } else {
+            XCTFail("Expected deny when kill switch disables WeatherKit")
+        }
+    }
+
+    @MainActor
+    func testWeatherKitBudgetEnforcesDailyCap() throws {
+        let budget = SunclubWeatherKitBudget(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            policyKey: "policy-\(UUID().uuidString)",
+            counterKey: "counter-\(UUID().uuidString)"
+        )
+        budget.storePolicy(SunclubWeatherKitBudgetPolicy(
+            weatherKitEnabled: true,
+            minFetchIntervalSeconds: 1,
+            maxDailyFetchesPerDevice: 2,
+            maxMonthlyFetchesPerDevice: 50,
+            reason: ""
+        ))
+
+        let anchor = Date()
+        budget.recordFetch(at: anchor)
+        budget.recordFetch(at: anchor.addingTimeInterval(120))
+
+        if case .deny(let reason) = budget.check(now: anchor.addingTimeInterval(600)) {
+            XCTAssertTrue(reason.contains("Daily"))
+        } else {
+            XCTFail("Expected deny when daily cap reached")
+        }
+    }
+
+    @MainActor
+    func testHistoricalUVStoreRoundTripsLogs() throws {
+        let store = SunclubHistoricalUVStore(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            key: "uv-\(UUID().uuidString)"
+        )
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+
+        store.record(uvIndex: 8, for: today)
+        store.record(uvIndex: 5, for: yesterday)
+        XCTAssertEqual(store.uvIndex(for: today), 8)
+        XCTAssertEqual(store.uvIndex(for: yesterday), 5)
+        XCTAssertEqual(store.allEntries().count, 2)
+
+        store.record(uvIndex: 10, for: today)
+        XCTAssertEqual(store.uvIndex(for: today), 10)
+    }
+
+    @MainActor
     func testUVForecastCacheReturnsFreshBundleWithinRadius() throws {
         let key = "test-\(UUID().uuidString)"
         let group = "group.test.\(UUID().uuidString)"
@@ -3030,7 +3132,13 @@ final class SunclubTests: XCTestCase {
                 cache: SunclubUVForecastCache(
                     appGroupID: "group.test.\(UUID().uuidString)",
                     key: "test-\(UUID().uuidString)"
-                )
+                ),
+                budget: SunclubWeatherKitBudget(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    policyKey: "test-policy-\(UUID().uuidString)",
+                    counterKey: "test-counter-\(UUID().uuidString)"
+                ),
+                networkPathProvider: { nil }
             ),
             uvBriefingService: SunclubUVBriefingService(),
             clock: { referenceDate }

@@ -317,6 +317,8 @@ final class AppState {
     var settings: Settings
     var verificationSuccessPresentation: VerificationSuccessPresentation?
     private let verificationStore: VerificationStore
+    private let historicalUVStore: SunclubHistoricalUVStore
+    private let weatherKitKillSwitch: SunclubWeatherKitKillSwitch?
     private let historyService: SunclubHistoryService
     private let cloudSyncCoordinator: CloudSyncControlling
     private let notificationManager: NotificationScheduling
@@ -416,10 +418,14 @@ final class AppState {
         accountabilityService: SunclubAccountabilityServing? = nil,
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
+        historicalUVStore: SunclubHistoricalUVStore? = nil,
+        weatherKitKillSwitch: SunclubWeatherKitKillSwitch? = nil,
         clock: @escaping () -> Date = { RuntimeEnvironment.currentDateOverride ?? Date() }
     ) {
         modelContext = context
         verificationStore = VerificationStore(context: context)
+        self.historicalUVStore = historicalUVStore ?? SunclubHistoricalUVStore()
+        self.weatherKitKillSwitch = weatherKitKillSwitch
         let resolvedHistoryService = historyService ?? SunclubHistoryService(context: context)
         self.historyService = resolvedHistoryService
         self.notificationManager = notificationManager
@@ -3087,6 +3093,25 @@ final class AppState {
         }
         finishDurableChange(batch, reschedulesReminders: false)
         exportHealthKitLogIfNeeded(for: request.day)
+        recordHistoricalUVIfApplicable(for: request.day)
+    }
+
+    private func recordHistoricalUVIfApplicable(for day: Date) {
+        guard calendar.isDate(day, inSameDayAs: referenceDate) else {
+            return
+        }
+        guard let reading = uvReading, reading.source == .weatherKit else {
+            return
+        }
+        historicalUVStore.record(uvIndex: reading.index, for: day)
+    }
+
+    var historicalUVIndexes: [Date: Int] {
+        historicalUVStore.allEntries()
+    }
+
+    func refreshWeatherKitKillSwitchIfNeeded() {
+        weatherKitKillSwitch?.refreshIfStale()
     }
 
     private func defaultVerifiedAt(for day: Date) -> Date {
