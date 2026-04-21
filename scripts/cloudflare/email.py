@@ -24,7 +24,7 @@ def email_setup_permissions_help(config: JsonObject) -> str:
         [
             "Cloudflare Email Routing setup needs a token with:",
             "- Account permission: Email Routing Addresses Edit/Write",
-            f"- Zone {config['zone_name']} permission: DNS Write",
+            f"- Zone {config['zone_name']} permission: Zone Settings Read/Write",
             f"- Zone {config['zone_name']} permission: Email Routing Rules Edit/Write",
             "The deploy-only Pages token is not enough for this setup command.",
         ]

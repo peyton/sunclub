@@ -26,7 +26,10 @@ class FakeCloudflareClient:
         method = method.upper()
         self.calls.append((method, path, body))
         self.queries.append((method, path, query))
-        return self.responses[(method, path)]
+        response = self.responses[(method, path)]
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 def test_cloudflare_config_files_are_valid() -> None:
@@ -330,6 +333,80 @@ def test_pages_dns_setup_rejects_non_cname_conflict() -> None:
         pages.ensure_pages_dns_record(client, config)
 
 
+def test_pages_status_permissions_help_names_required_cloudflare_permissions() -> None:
+    config = common.load_pages_config()
+
+    message = pages.pages_status_permissions_help(config)
+
+    assert "Pages Read/Write" in message
+    assert "DNS Read/Write" in message
+    assert "peyton.app" in message
+
+
+def test_pages_status_reports_permissions_help_when_pages_access_is_missing() -> None:
+    config = common.load_pages_config()
+    project_path = "/accounts/0e32ee7804b102bea6b9d3056d60f980/pages/projects/sunclub"
+    client = FakeCloudflareClient(
+        {
+            (
+                "GET",
+                project_path,
+            ): common.CloudflareAPIError(
+                "GET",
+                project_path,
+                403,
+                [{"message": "Authentication error"}],
+                [],
+            ),
+        }
+    )
+
+    lines = pages.pages_status_lines(client, config)
+
+    assert "Remote Pages project: unavailable with current token" in lines
+    assert any(
+        "Cloudflare Pages remote status needs a token with:" in line for line in lines
+    )
+    assert any("Pages Read/Write" in line for line in lines)
+    assert any("DNS Read/Write" in line for line in lines)
+
+
+def test_pages_status_reports_permissions_help_when_dns_access_is_missing() -> None:
+    config = common.load_pages_config()
+    project_path = "/accounts/0e32ee7804b102bea6b9d3056d60f980/pages/projects/sunclub"
+    domain_path = (
+        "/accounts/0e32ee7804b102bea6b9d3056d60f980/pages/projects/sunclub/domains"
+    )
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    client = FakeCloudflareClient(
+        {
+            ("GET", project_path): {"name": "sunclub"},
+            ("GET", domain_path): [
+                {"name": "sunclub.peyton.app", "status": "active"},
+            ],
+            (
+                "GET",
+                dns_path,
+            ): common.CloudflareAPIError(
+                "GET",
+                dns_path,
+                403,
+                [{"message": "Authentication error"}],
+                [],
+            ),
+        }
+    )
+
+    lines = pages.pages_status_lines(client, config)
+
+    assert "Remote Pages project: present" in lines
+    assert "Remote custom domain: present (sunclub.peyton.app, active)" in lines
+    assert "Remote DNS record: unavailable with current token" in lines
+    assert any(
+        "Cloudflare Pages remote status needs a token with:" in line for line in lines
+    )
+
+
 def test_manual_pages_deploy_env_uses_config_account_id() -> None:
     config = common.load_pages_config()
 
@@ -427,7 +504,7 @@ def test_email_setup_permissions_help_names_required_cloudflare_permissions() ->
     message = email.email_setup_permissions_help(config)
 
     assert "Email Routing Addresses" in message
-    assert "DNS Write" in message
+    assert "Zone Settings Read/Write" in message
     assert "Email Routing Rules" in message
     assert "peyton.app" in message
 

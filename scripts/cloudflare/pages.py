@@ -161,6 +161,18 @@ def pages_dns_permissions_help(config: JsonObject) -> str:
     )
 
 
+def pages_status_permissions_help(config: JsonObject) -> str:
+    zone_name = _zone_name_for_dns(config)
+    return "\n".join(
+        [
+            "Cloudflare Pages remote status needs a token with:",
+            "- Account permission: Pages Read/Write",
+            f"- Zone {zone_name} permission: DNS Read/Write",
+            "An email-routing-only token is enough for email checks, but not full Pages status.",
+        ]
+    )
+
+
 def build_pages_dns_record_payload(config: JsonObject) -> JsonObject:
     dns = config["dns"]
     return {
@@ -301,7 +313,14 @@ def pages_status_lines(
         )
         return lines
 
-    project = get_pages_project(client, config)
+    try:
+        project = get_pages_project(client, config)
+    except CloudflareAPIError as error:
+        if error.status in {401, 403}:
+            lines.append("Remote Pages project: unavailable with current token")
+            lines.append(pages_status_permissions_help(config))
+            return lines
+        raise
     if project is None:
         lines.append("Remote Pages project: missing")
         lines.append(direct_upload_help(str(config["account_id"])))
@@ -320,7 +339,14 @@ def pages_status_lines(
     else:
         lines.append("Remote deployment source: Direct Upload")
 
-    domains = list_pages_domains(client, config)
+    try:
+        domains = list_pages_domains(client, config)
+    except CloudflareAPIError as error:
+        if error.status in {401, 403}:
+            lines.append("Remote custom domain: unavailable with current token")
+            lines.append(pages_status_permissions_help(config))
+            return lines
+        raise
     domain_names = sorted(str(domain.get("name", "")) for domain in domains)
     if config["custom_domain"] in domain_names:
         matching_domain = next(
@@ -340,7 +366,7 @@ def pages_status_lines(
     except CloudflareAPIError as error:
         if error.status in {401, 403}:
             lines.append("Remote DNS record: unavailable with current token")
-            lines.append(pages_dns_permissions_help(config))
+            lines.append(pages_status_permissions_help(config))
             return lines
         raise
 
@@ -441,7 +467,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {error}")
         if error.status in {401, 403}:
             config = load_pages_config()
-            print(pages_dns_permissions_help(config))
+            if args.command == "status":
+                print(pages_status_permissions_help(config))
+            else:
+                print(pages_dns_permissions_help(config))
         return 2
 
     parser.error(f"Unknown command: {args.command}")
