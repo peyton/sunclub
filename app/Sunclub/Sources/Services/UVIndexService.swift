@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import Network
 import Observation
 import os
 import WeatherKit
@@ -78,16 +79,22 @@ final class UVIndexService {
     private let locationService: SharedLocationManaging
     private let weatherProvider: any LiveUVWeatherProviding
     private let cache: SunclubUVForecastCache
+    private let budget: SunclubWeatherKitBudget
+    private let networkPathProvider: () -> NWPath?
     private var inFlightTask: Task<SunclubUVForecastBundle?, Never>?
 
     init(
         locationService: SharedLocationManaging? = nil,
         weatherProvider: (any LiveUVWeatherProviding)? = nil,
-        cache: SunclubUVForecastCache? = nil
+        cache: SunclubUVForecastCache? = nil,
+        budget: SunclubWeatherKitBudget? = nil,
+        networkPathProvider: @escaping () -> NWPath? = { SharedNetworkPathMonitor.shared.currentPath }
     ) {
         self.locationService = locationService ?? SharedLocationManager.shared
         self.weatherProvider = weatherProvider ?? WeatherKitLiveUVWeatherProvider()
         self.cache = cache ?? SunclubUVForecastCache()
+        self.budget = budget ?? SunclubWeatherKitBudget()
+        self.networkPathProvider = networkPathProvider
         self.lastBundle = self.cache.lastBundle()
         if let cachedIndex = self.lastBundle?.currentIndex {
             self.currentReading = UVReading(
@@ -168,7 +175,21 @@ final class UVIndexService {
                 return
             }
 
+            if let path = networkPathProvider(), path.isConstrained {
+                applyLowDataFallback(now: now)
+                return
+            }
+
+            switch budget.check(now: now) {
+            case .allow:
+                break
+            case .deny(let reason):
+                applyBudgetDeny(reason: reason, now: now)
+                return
+            }
+
             let bundle = try await weatherProvider.uvBundle(for: location, referenceDate: now)
+            budget.recordFetch(at: now)
             cache.store(bundle)
             applyBundle(bundle)
             liveUVAccessState = .live
@@ -204,6 +225,28 @@ final class UVIndexService {
             )
         }
         liveUVAccessState = .live
+    }
+
+    private func applyLowDataFallback(now: Date) {
+        liveUVAccessState = .unavailable
+        errorMessage = "Low Data Mode: using Sunclub's local UV estimate."
+        currentReading = UVReading(
+            index: Self.estimatedUVIndex(at: now),
+            timestamp: now,
+            source: .heuristic
+        )
+    }
+
+    private func applyBudgetDeny(reason: String, now: Date) {
+        liveUVAccessState = .unavailable
+        errorMessage = reason
+        if lastBundle == nil {
+            currentReading = UVReading(
+                index: Self.estimatedUVIndex(at: now),
+                timestamp: now,
+                source: .heuristic
+            )
+        }
     }
 
     func setForTestingCurrentReading(_ reading: UVReading?) {
