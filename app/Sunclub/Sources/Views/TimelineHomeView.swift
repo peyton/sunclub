@@ -32,6 +32,8 @@ struct TimelineHomeView: View {
                     today: appState.referenceDate,
                     recordedDays: Set(appState.recordedDays),
                     currentStreakDays: Set(appState.currentStreakDays),
+                    elevatedUVDays: appState.elevatedUVDays,
+                    extrasDays: appState.daysWithExtras,
                     allowsFuture: true
                 )
 
