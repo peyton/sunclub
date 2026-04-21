@@ -110,11 +110,13 @@ def test_release_doctor_uses_target_entitlement_templates() -> None:
         "group.app.peyton.sunclub"
     ]
     assert widget_entitlements == {
-        "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
+        "com.apple.security.application-groups": ["group.app.peyton.sunclub"],
+        "com.apple.developer.weatherkit": True,
     }
     assert watch_extension_entitlements == {
         "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
     }
+    assert main_entitlements["com.apple.developer.weatherkit"] is True
     assert expected_profile_entitlements(ctx, "watch app") == {}
 
 
@@ -221,10 +223,10 @@ def test_support_email_uses_mail_subdomain() -> None:
         assert stale_address not in settings
 
 
-def test_app_entitlements_do_not_enable_weatherkit() -> None:
+def test_app_entitlements_enable_weatherkit_for_live_uv_forecast() -> None:
     entitlements = load_app_entitlements()
 
-    assert "com.apple.developer.weatherkit" not in entitlements
+    assert entitlements.get("com.apple.developer.weatherkit") is True
 
 
 def test_info_plist_explains_location_use_for_leave_home_reminders() -> None:

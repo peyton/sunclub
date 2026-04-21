@@ -29,6 +29,7 @@ PROFILE_BACKED_ENTITLEMENTS = (
     "com.apple.developer.healthkit",
     "com.apple.developer.icloud-container-identifiers",
     "com.apple.developer.icloud-services",
+    "com.apple.developer.weatherkit",
     "com.apple.security.application-groups",
 )
 WILDCARD_LIST_ENTITLEMENTS = {"com.apple.developer.icloud-services"}
