@@ -34,6 +34,13 @@ enum RuntimeEnvironment {
         ProcessInfo.processInfo.arguments.contains("UITEST_MODE")
     }
 
+    static var shouldUseLegacyHome: Bool {
+        guard isUITesting else {
+            return false
+        }
+        return ProcessInfo.processInfo.arguments.contains("UITEST_USE_LEGACY_HOME")
+    }
+
     static var preferredColorSchemeOverride: ColorScheme? {
         guard isUITesting else {
             return nil

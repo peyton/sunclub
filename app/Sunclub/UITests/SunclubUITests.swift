@@ -982,6 +982,47 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testTimelineHomeIsDefaultAfterOnboarding() throws {
+        let app = launchTimelineHome()
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.otherElements["timeline.dayStrip"].exists
+            || app.scrollViews["timeline.dayStrip"].exists
+            || app.descendants(matching: .any)["timeline.dayStrip"].exists)
+    }
+
+    @MainActor
+    func testTimelineLogSectionShowsSunscreenRow() throws {
+        let app = launchTimelineHome()
+        let sunscreenRow = app.buttons["timeline.log.sunscreen"]
+        XCTAssertTrue(sunscreenRow.waitForExistence(timeout: 5))
+        let factorsRow = app.buttons["timeline.log.factors"]
+        XCTAssertTrue(factorsRow.exists)
+    }
+
+    @MainActor
+    func testTimelineFutureDayShowsFutureNotice() throws {
+        let app = launchTimelineHome()
+        let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
+        let tomorrowChip = app.buttons[tomorrowIdentifier]
+        if !tomorrowChip.waitForExistence(timeout: 3) {
+            throw XCTSkip("Tomorrow chip is not visible in the current viewport.")
+        }
+        tomorrowChip.tap()
+        let notice = app.staticTexts["timeline.log.futureNotice"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testTimelineWeeklyPillOpensWeeklySummary() throws {
+        let app = launchTimelineHome()
+        let weeklyPill = app.buttons["home.streakCard"]
+        XCTAssertTrue(weeklyPill.waitForExistence(timeout: 5))
+        weeklyPill.tap()
+        XCTAssertTrue(app.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     private func launchAndCompleteOnboarding() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("UITEST_MODE")
@@ -996,6 +1037,18 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func launchHome(additionalArguments: [String]) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_USE_LEGACY_HOME"
+        ] + additionalArguments
+        app.launch()
+        return app
+    }
+
+    @MainActor
+    private func launchTimelineHome(additionalArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"] + additionalArguments
         app.launch()
