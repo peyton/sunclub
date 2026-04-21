@@ -1628,12 +1628,43 @@ final class AppState {
     }
 
     var liveUVStatusPresentation: LiveUVStatusPresentation {
-        LiveUVStatusPresentation(
-            title: "Estimated UV",
-            detail: "Using Sunclub's built-in UV estimate in this release.",
-            actionTitle: nil,
-            actionKind: nil
-        )
+        switch uvIndexService.liveUVAccessState {
+        case .live:
+            return LiveUVStatusPresentation(
+                title: "Live UV",
+                detail: "Using Apple Weather for your location.",
+                actionTitle: "Refresh",
+                actionKind: .refresh
+            )
+        case .denied:
+            return LiveUVStatusPresentation(
+                title: "Live UV Off",
+                detail: "Location permission denied. Enable in Settings to pull UV from Apple Weather.",
+                actionTitle: "Open Settings",
+                actionKind: .openSettings
+            )
+        case .needsPermission:
+            return LiveUVStatusPresentation(
+                title: "Enable Live UV",
+                detail: "Allow location access to pull UV from Apple Weather.",
+                actionTitle: "Allow Location",
+                actionKind: .requestPermission
+            )
+        case .unavailable:
+            return LiveUVStatusPresentation(
+                title: "Estimated UV",
+                detail: "Live UV is temporarily unavailable. Using Sunclub's local estimate.",
+                actionTitle: "Retry",
+                actionKind: .refresh
+            )
+        case .disabled:
+            return LiveUVStatusPresentation(
+                title: "Estimated UV",
+                detail: "Using Sunclub's local estimate. Turn on Live UV in Settings for Apple Weather.",
+                actionTitle: nil,
+                actionKind: nil
+            )
+        }
     }
 
     var achievements: [SunclubAchievement] {
@@ -1990,8 +2021,15 @@ final class AppState {
 
     func refreshUVForecastIfNeeded(allowPermissionPrompt: Bool = false) {
         Task {
+            if settings.usesLiveUV {
+                await uvIndexService.fetchUVIndex(
+                    prefersLiveData: true,
+                    allowPermissionPrompt: allowPermissionPrompt
+                )
+            }
             uvForecast = await uvBriefingService.forecast(
                 prefersLiveData: settings.usesLiveUV,
+                liveBundle: uvIndexService.lastBundle,
                 allowPermissionPrompt: allowPermissionPrompt,
                 referenceDate: currentDate(),
                 calendar: calendar
@@ -2944,19 +2982,38 @@ final class AppState {
     }
 
     var elevatedUVDays: Set<Date> {
-        guard let forecast = uvForecast else {
-            return []
-        }
-        let today = calendar.startOfDay(for: referenceDate)
-        let elevated = forecast.hours.contains { hour in
-            switch hour.level {
-            case .high, .veryHigh, .extreme:
-                return true
-            default:
-                return false
+        var set: Set<Date> = []
+
+        if let daily = uvIndexService.lastBundle?.daily {
+            for day in daily where day.level == .high || day.level == .veryHigh || day.level == .extreme {
+                set.insert(calendar.startOfDay(for: day.day))
             }
         }
-        return elevated ? [today] : []
+
+        if let forecast = uvForecast {
+            let today = calendar.startOfDay(for: referenceDate)
+            let todayElevated = forecast.hours.contains { hour in
+                switch hour.level {
+                case .high, .veryHigh, .extreme:
+                    return true
+                default:
+                    return false
+                }
+            }
+            if todayElevated {
+                set.insert(today)
+            }
+        }
+
+        return set
+    }
+
+    var dailyUVForecast: [SunclubUVDayForecast] {
+        uvIndexService.lastBundle?.daily ?? []
+    }
+
+    var weatherAttribution: SunclubWeatherAttribution? {
+        uvIndexService.attribution
     }
 
     func shouldSuppressDailyReminder(on day: Date) -> Bool {

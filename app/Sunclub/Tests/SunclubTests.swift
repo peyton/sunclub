@@ -2730,46 +2730,54 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.liveUVStatusPresentation.title, "Estimated UV")
         XCTAssertNil(state.liveUVStatusPresentation.actionKind)
-        XCTAssertEqual(
-            state.liveUVStatusPresentation.detail,
-            "Using Sunclub's built-in UV estimate in this release."
+        XCTAssertTrue(
+            state.liveUVStatusPresentation.detail.contains("Sunclub's local estimate")
         )
     }
 
     @MainActor
-    func testUVIndexServiceUsesEstimatedFallbackWhenLivePreferenceEnabled() async throws {
+    func testUVIndexServiceReturnsLiveReadingWhenPreferenceEnabled() async throws {
         let locationService = UITestLiveUVLocationService(
             authorizationStatus: .authorizedWhenInUse,
             location: CLLocation(latitude: 34.116, longitude: -118.150)
         )
         let service = UVIndexService(
             locationService: locationService,
-            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10),
+            cache: SunclubUVForecastCache(
+                appGroupID: "group.test.\(UUID().uuidString)",
+                key: "test-\(UUID().uuidString)"
+            )
         )
 
         await service.fetchUVIndex(prefersLiveData: true)
 
-        XCTAssertEqual(service.currentReading?.source, .heuristic)
-        XCTAssertEqual(service.liveUVAccessState, .unavailable)
-        XCTAssertEqual(service.errorMessage, "Live UV is unavailable in this release.")
+        XCTAssertEqual(service.currentReading?.source, .weatherKit)
+        XCTAssertEqual(service.currentReading?.index, 8)
+        XCTAssertEqual(service.liveUVAccessState, .live)
+        XCTAssertNil(service.errorMessage)
+        XCTAssertFalse(service.lastBundle?.daily.isEmpty ?? true)
     }
 
     @MainActor
-    func testUVIndexServiceIgnoresPermissionStateWhenLiveUVIsUnavailable() async throws {
+    func testUVIndexServiceReportsNeedsPermissionWhenNotDeterminedAndPromptDisallowed() async throws {
         let locationService = UITestLiveUVLocationService(
             authorizationStatus: .notDetermined,
             location: CLLocation(latitude: 34.116, longitude: -118.150)
         )
         let service = UVIndexService(
             locationService: locationService,
-            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10)
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 10),
+            cache: SunclubUVForecastCache(
+                appGroupID: "group.test.\(UUID().uuidString)",
+                key: "test-\(UUID().uuidString)"
+            )
         )
 
         await service.fetchUVIndex(prefersLiveData: true, allowPermissionPrompt: false)
 
         XCTAssertEqual(service.currentReading?.source, .heuristic)
-        XCTAssertEqual(service.liveUVAccessState, .unavailable)
-        XCTAssertEqual(service.errorMessage, "Live UV is unavailable in this release.")
+        XCTAssertEqual(service.liveUVAccessState, .needsPermission)
     }
 
     @MainActor
@@ -2784,6 +2792,10 @@ final class SunclubTests: XCTestCase {
                 currentIndex: 8,
                 peakIndex: 10,
                 shouldFail: true
+            ),
+            cache: SunclubUVForecastCache(
+                appGroupID: "group.test.\(UUID().uuidString)",
+                key: "test-\(UUID().uuidString)"
             )
         )
 
@@ -2791,7 +2803,7 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(service.currentReading?.source, .heuristic)
         XCTAssertEqual(service.liveUVAccessState, .unavailable)
-        XCTAssertEqual(service.errorMessage, "Live UV is unavailable in this release.")
+        XCTAssertNotNil(service.errorMessage)
     }
 
     @MainActor
@@ -2857,7 +2869,11 @@ final class SunclubTests: XCTestCase {
             notificationManager: MockNotificationManager(),
             uvIndexService: UVIndexService(
                 locationService: locationService,
-                weatherProvider: weatherProvider
+                weatherProvider: weatherProvider,
+                cache: SunclubUVForecastCache(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    key: "test-\(UUID().uuidString)"
+                )
             ),
             uvBriefingService: SunclubUVBriefingService(
                 locationService: locationService,
@@ -2870,13 +2886,8 @@ final class SunclubTests: XCTestCase {
         await waitForMainActorTasks()
 
         XCTAssertTrue(state.settings.usesLiveUV)
-        XCTAssertEqual(state.uvReading?.source, .heuristic)
-        XCTAssertEqual(state.uvForecast?.sourceLabel, "Estimated locally")
-        XCTAssertEqual(state.liveUVStatusPresentation.title, "Estimated UV")
-        XCTAssertEqual(
-            state.liveUVStatusPresentation.detail,
-            "Using Sunclub's built-in UV estimate in this release."
-        )
+        XCTAssertEqual(state.uvReading?.source, .weatherKit)
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "Live UV")
     }
 
     @MainActor
@@ -2969,6 +2980,69 @@ final class SunclubTests: XCTestCase {
         XCTAssertNotNil(summary.record)
         XCTAssertTrue(summary.sunscreenStatusText.contains("SPF 30"))
         XCTAssertEqual(summary.notesStatusText, "Beach")
+    }
+
+    @MainActor
+    func testUVForecastCacheReturnsFreshBundleWithinRadius() throws {
+        let key = "test-\(UUID().uuidString)"
+        let group = "group.test.\(UUID().uuidString)"
+        let cache = SunclubUVForecastCache(
+            appGroupID: group,
+            key: key,
+            policy: SunclubUVForecastCachePolicy(maxAge: 3600, locationRadiusMeters: 5000)
+        )
+        let now = Date()
+        let location = CLLocation(latitude: 34.05, longitude: -118.25)
+        let bundle = SunclubUVForecastBundle(
+            generatedAt: now,
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            currentIndex: 6,
+            hourly: [],
+            daily: []
+        )
+        cache.store(bundle)
+
+        let nearby = CLLocation(latitude: 34.06, longitude: -118.25)
+        XCTAssertNotNil(cache.freshBundle(for: nearby, now: now))
+
+        let far = CLLocation(latitude: 34.50, longitude: -118.25)
+        XCTAssertNil(cache.freshBundle(for: far, now: now))
+
+        let later = now.addingTimeInterval(7200)
+        XCTAssertNil(cache.freshBundle(for: nearby, now: later))
+    }
+
+    @MainActor
+    func testUVForecastBundleElevatedDaysPropagateToAppState() async throws {
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let calendar = Calendar.current
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let weatherProvider = UITestLiveUVWeatherProvider(currentIndex: 9, peakIndex: 10)
+        let state = try makeAppState(
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(
+                locationService: locationService,
+                weatherProvider: weatherProvider,
+                cache: SunclubUVForecastCache(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    key: "test-\(UUID().uuidString)"
+                )
+            ),
+            uvBriefingService: SunclubUVBriefingService(),
+            clock: { referenceDate }
+        )
+
+        state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
+        await waitForMainActorTasks()
+        await waitForMainActorTasks()
+
+        let today = calendar.startOfDay(for: referenceDate)
+        XCTAssertTrue(state.elevatedUVDays.contains(today))
+        XCTAssertFalse(state.dailyUVForecast.isEmpty)
     }
 
     @MainActor
