@@ -2893,6 +2893,95 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testSelectedDayDefaultsToStartOfToday() throws {
+        let appState = try makeAppState()
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        XCTAssertEqual(
+            Calendar.current.startOfDay(for: appState.selectedDay),
+            startOfToday
+        )
+    }
+
+    @MainActor
+    func testSelectDayNormalizesToStartOfDay() throws {
+        let appState = try makeAppState()
+        let noon = Calendar.current.date(bySettingHour: 13, minute: 30, second: 0, of: Date()) ?? Date()
+        appState.selectDay(noon)
+        let expected = Calendar.current.startOfDay(for: noon)
+        XCTAssertEqual(appState.selectedDay, expected)
+    }
+
+    @MainActor
+    func testFutureDayPreviewReturnsNilForTodayAndPast() throws {
+        let appState = try makeAppState()
+        let today = Calendar.current.startOfDay(for: Date())
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
+        XCTAssertNil(appState.futureDayPreview(for: today))
+        XCTAssertNil(appState.futureDayPreview(for: yesterday))
+    }
+
+    @MainActor
+    func testFutureDayPreviewReturnsSuggestionForTomorrow() throws {
+        let appState = try makeAppState()
+        let tomorrow = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: Calendar.current.startOfDay(for: Date())
+        ) ?? Date()
+        let preview = appState.futureDayPreview(for: tomorrow)
+        XCTAssertNotNil(preview)
+        XCTAssertGreaterThanOrEqual(preview?.suggestedSPF ?? 0, 15)
+        XCTAssertTrue(preview?.suggestionText.contains("SPF") ?? false)
+    }
+
+    @MainActor
+    func testTimelineDayLogSummaryFutureCategoryForTomorrow() throws {
+        let appState = try makeAppState()
+        let tomorrow = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: Calendar.current.startOfDay(for: Date())
+        ) ?? Date()
+        let summary = appState.timelineDayLogSummary(for: tomorrow)
+        XCTAssertEqual(summary.category, .future)
+        XCTAssertNil(summary.record)
+        XCTAssertNotNil(summary.futurePreview)
+        XCTAssertTrue(summary.sunscreenStatusText.contains("Plan SPF"))
+    }
+
+    @MainActor
+    func testTimelineDayLogSummaryTodayCategoryWhenUnlogged() throws {
+        let appState = try makeAppState()
+        let summary = appState.timelineDayLogSummary(for: Date())
+        XCTAssertEqual(summary.category, .today)
+        XCTAssertNil(summary.record)
+        XCTAssertTrue(summary.sunscreenStatusText.contains("Not logged"))
+    }
+
+    @MainActor
+    func testTimelineDayLogSummaryPastCategoryForBackfill() throws {
+        let appState = try makeAppState()
+        let calendar = Calendar.current
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())) ?? Date()
+        appState.saveManualRecord(for: yesterday, verifiedAt: yesterday, spfLevel: 30, notes: "Beach")
+        let summary = appState.timelineDayLogSummary(for: yesterday)
+        XCTAssertEqual(summary.category, .past)
+        XCTAssertNotNil(summary.record)
+        XCTAssertTrue(summary.sunscreenStatusText.contains("SPF 30"))
+        XCTAssertEqual(summary.notesStatusText, "Beach")
+    }
+
+    @MainActor
+    func testAdvanceSelectedDayIfStaleClampsFarFuture() throws {
+        let appState = try makeAppState()
+        let today = Calendar.current.startOfDay(for: Date())
+        let farFuture = Calendar.current.date(byAdding: .day, value: 120, to: today) ?? today
+        appState.selectedDay = farFuture
+        appState.advanceSelectedDayIfStale()
+        XCTAssertEqual(appState.selectedDay, today)
+    }
+
+    @MainActor
     private func makeAppState(
         notificationManager: NotificationScheduling? = nil,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,

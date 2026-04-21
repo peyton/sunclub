@@ -257,6 +257,28 @@ struct HomeAccountabilityPresentation: Equatable {
     let friends: [HomeAccountabilityFriendPresentation]
 }
 
+struct FutureDayPreview: Equatable {
+    let suggestedSPF: Int
+    let suggestionText: String
+}
+
+struct TimelineDayLogSummary: Equatable {
+    enum Category: Equatable {
+        case past
+        case today
+        case future
+    }
+
+    let day: Date
+    let category: Category
+    let record: DailyRecord?
+    let futurePreview: FutureDayPreview?
+    let sunscreenStatusText: String
+    let reapplyStatusText: String
+    let notesStatusText: String?
+    let factorsStatusText: String
+}
+
 @MainActor
 @Observable
 final class AppState {
@@ -308,6 +330,7 @@ final class AppState {
     private(set) var achievementCelebration: SunclubAchievement?
     private(set) var friendImportMessage: String?
     var manualLogPrefill: ManualLogPrefill?
+    var selectedDay: Date = Calendar.current.startOfDay(for: Date())
 
     private(set) var lastRefreshError: String?
 
@@ -2630,6 +2653,123 @@ final class AppState {
         }
 
         return (try? verificationStore.record(for: target)).flatMap { $0 }
+    }
+
+    func advanceSelectedDayIfStale() {
+        let today = calendar.startOfDay(for: referenceDate)
+        let normalized = calendar.startOfDay(for: selectedDay)
+        if normalized != selectedDay {
+            selectedDay = normalized
+        }
+        if selectedDay > calendar.date(byAdding: .day, value: 60, to: today) ?? today {
+            selectedDay = today
+        }
+    }
+
+    func selectDay(_ day: Date) {
+        selectedDay = calendar.startOfDay(for: day)
+    }
+
+    func futureDayPreview(for day: Date) -> FutureDayPreview? {
+        let dayStart = calendar.startOfDay(for: day)
+        let today = calendar.startOfDay(for: referenceDate)
+        guard dayStart > today else {
+            return nil
+        }
+
+        let suggestion = ManualLogSuggestionEngine.suggestions(
+            from: records,
+            excluding: dayStart,
+            calendar: calendar,
+            scannedSPFLevels: growthSettings.scannedSPFLevels
+        )
+        let spf = suggestion.defaultSPF ?? 30
+        let interval = settings.reapplyIntervalMinutes
+        let intervalText = interval >= 60
+            ? "every \(interval / 60)h" + (interval % 60 == 0 ? "" : " \(interval % 60)m")
+            : "every \(interval) min"
+        let text = "Plan SPF \(spf)+. Reapply \(intervalText) if you're outside."
+        return FutureDayPreview(suggestedSPF: spf, suggestionText: text)
+    }
+
+    func timelineDayLogSummary(for day: Date) -> TimelineDayLogSummary {
+        let dayStart = calendar.startOfDay(for: day)
+        let today = calendar.startOfDay(for: referenceDate)
+        let record = record(for: dayStart)
+
+        if dayStart > today {
+            let preview = futureDayPreview(for: dayStart)
+            let spf = preview?.suggestedSPF ?? 30
+            return TimelineDayLogSummary(
+                day: dayStart,
+                category: .future,
+                record: nil,
+                futurePreview: preview,
+                sunscreenStatusText: "Plan SPF \(spf)+",
+                reapplyStatusText: "Forecast ahead",
+                notesStatusText: nil,
+                factorsStatusText: "View only"
+            )
+        }
+
+        let isToday = calendar.isDate(dayStart, inSameDayAs: today)
+        let category: TimelineDayLogSummary.Category = isToday ? .today : .past
+
+        if let record {
+            let sunscreenText: String
+            if let spfLevel = record.spfLevel {
+                sunscreenText = "Applied · SPF \(spfLevel)"
+            } else {
+                sunscreenText = "Applied"
+            }
+
+            let reapplyText: String
+            switch record.reapplyCount {
+            case 0:
+                reapplyText = "None"
+            case 1:
+                reapplyText = "1 check-in"
+            default:
+                reapplyText = "\(record.reapplyCount) check-ins"
+            }
+
+            let factorsText: String
+            if isToday, let level = uvReading?.level {
+                factorsText = "UV \(level.displayName)"
+            } else {
+                factorsText = record.method.displayName
+            }
+
+            return TimelineDayLogSummary(
+                day: dayStart,
+                category: category,
+                record: record,
+                futurePreview: nil,
+                sunscreenStatusText: sunscreenText,
+                reapplyStatusText: reapplyText,
+                notesStatusText: record.trimmedNotes,
+                factorsStatusText: factorsText
+            )
+        }
+
+        let sunscreenText = isToday ? "Not logged — tap to log" : "Not logged — tap to backfill"
+        let factorsText: String
+        if isToday, let level = uvReading?.level {
+            factorsText = "UV \(level.displayName)"
+        } else {
+            factorsText = "—"
+        }
+
+        return TimelineDayLogSummary(
+            day: dayStart,
+            category: category,
+            record: nil,
+            futurePreview: nil,
+            sunscreenStatusText: sunscreenText,
+            reapplyStatusText: "None",
+            notesStatusText: nil,
+            factorsStatusText: factorsText
+        )
     }
 
     func refreshUVReadingIfNeeded(allowPermissionPrompt: Bool = false) {
