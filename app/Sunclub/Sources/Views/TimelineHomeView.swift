@@ -34,6 +34,7 @@ struct TimelineHomeView: View {
                     currentStreakDays: Set(appState.currentStreakDays),
                     elevatedUVDays: appState.elevatedUVDays,
                     extrasDays: appState.daysWithExtras,
+                    logDetails: appState.dailyDetailsForTimeline,
                     allowsFuture: true
                 )
 
@@ -102,43 +103,56 @@ struct TimelineHomeView: View {
     }
 
     private var dateHeadline: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 8) {
             Button {
                 feedbackTrigger += 1
                 jumpToToday()
             } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(headlinePrefix)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
+                VStack(spacing: 4) {
+                    Text(headlineText)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(headlineDate)
-                            .font(.system(size: 30, weight: .bold))
-                            .foregroundStyle(AppPalette.ink)
-
-                        if !isSelectedToday {
-                            Image(systemName: "arrow.uturn.backward.circle.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(AppPalette.sun)
-                                .accessibilityHidden(true)
-                        }
+                    if isSelectedToday, appState.record(for: appState.referenceDate) != nil {
+                        Text("Today's log is in")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AppPalette.success)
+                            .accessibilityIdentifier("home.todayStatus")
+                    } else if !isSelectedToday {
+                        Text("Tap to jump back to today")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AppPalette.softInk)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(accessibilityHeadlineLabel)
             .accessibilityHint(isSelectedToday ? "Already viewing today." : "Jumps the day strip back to today.")
             .accessibilityIdentifier("timeline.headline")
 
-            if isSelectedToday, appState.record(for: appState.referenceDate) != nil {
-                Text("Today's log is in")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppPalette.success)
-                    .accessibilityIdentifier("home.todayStatus")
-            }
+            sunConnector
         }
+    }
+
+    private var sunConnector: some View {
+        VStack(spacing: 0) {
+            SunburstMark(size: 14, tint: AppPalette.sun)
+                .frame(width: 16, height: 10)
+
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [AppPalette.sun.opacity(0.45), AppPalette.sun.opacity(0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 1.5, height: 8)
+        }
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -225,36 +239,29 @@ struct TimelineHomeView: View {
         appState.timelineDayLogSummary(for: appState.selectedDay)
     }
 
-    private var headlinePrefix: String {
-        isSelectedToday ? "Today" : relativeSelectedDayLabel
-    }
-
-    private var headlineDate: String {
-        appState.selectedDay.formatted(.dateTime.month(.wide).day())
-    }
-
-    private var relativeSelectedDayLabel: String {
+    private var headlineText: String {
+        let dateString = appState.selectedDay.formatted(.dateTime.month(.wide).day())
+        if isSelectedToday {
+            return "Today, \(dateString)"
+        }
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: appState.referenceDate)
         let selected = calendar.startOfDay(for: appState.selectedDay)
         let dayComponents = calendar.dateComponents([.day], from: today, to: selected)
-        guard let dayDiff = dayComponents.day else {
-            return appState.selectedDay.formatted(.dateTime.weekday(.wide))
-        }
-        switch dayDiff {
-        case -1: return "Yesterday"
-        case 1: return "Tomorrow"
+        switch dayComponents.day ?? 0 {
+        case -1:
+            return "Yesterday, \(dateString)"
+        case 1:
+            return "Tomorrow, \(dateString)"
         default:
-            if dayDiff < 0 {
-                return "\(-dayDiff) days ago"
-            }
-            return "In \(dayDiff) days"
+            return appState.selectedDay.formatted(
+                .dateTime.weekday(.wide).month(.wide).day()
+            )
         }
     }
 
     private var accessibilityHeadlineLabel: String {
-        let dateLabel = appState.selectedDay.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        return "\(headlinePrefix), \(dateLabel)"
+        headlineText
     }
 
     private var isSelectedToday: Bool {
@@ -333,6 +340,46 @@ struct TimelineHomeView: View {
                 scheduleMidnightRefresh()
             }
         }
+    }
+}
+
+private struct SunburstMark: View {
+    let size: CGFloat
+    let tint: Color
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+            let coreRadius = size * 0.18
+            let rayInner = size * 0.28
+            let rayOuter = size * 0.48
+
+            var core = Path()
+            core.addEllipse(
+                in: CGRect(
+                    x: center.x - coreRadius,
+                    y: center.y - coreRadius,
+                    width: coreRadius * 2,
+                    height: coreRadius * 2
+                )
+            )
+            context.fill(core, with: .color(tint))
+
+            let rayCount = 6
+            for index in 0..<rayCount {
+                let angle = (Double(index) / Double(rayCount)) * 2 * .pi
+                let startX = center.x + CGFloat(cos(angle)) * rayInner
+                let startY = center.y + CGFloat(sin(angle)) * rayInner
+                let endX = center.x + CGFloat(cos(angle)) * rayOuter
+                let endY = center.y + CGFloat(sin(angle)) * rayOuter
+                var ray = Path()
+                ray.move(to: CGPoint(x: startX, y: startY))
+                ray.addLine(to: CGPoint(x: endX, y: endY))
+                context.stroke(ray, with: .color(tint.opacity(0.75)), lineWidth: 1.2)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }
 

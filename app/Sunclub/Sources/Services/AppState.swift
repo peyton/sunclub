@@ -262,6 +262,20 @@ struct FutureDayPreview: Equatable {
     let suggestionText: String
 }
 
+struct SunDayDetails: Equatable {
+    let spfLevel: Int?
+    let reapplyCount: Int
+    let hasNotes: Bool
+
+    var isHighProtection: Bool {
+        (spfLevel ?? 0) >= 50
+    }
+
+    var isReapplyDense: Bool {
+        reapplyCount >= 2
+    }
+}
+
 struct TimelineDayLogSummary: Equatable {
     enum Category: Equatable {
         case past
@@ -2914,6 +2928,19 @@ final class AppState {
             set.insert(calendar.startOfDay(for: record.startOfDay))
         }
         return set
+    }
+
+    var dailyDetailsForTimeline: [Date: SunDayDetails] {
+        var map: [Date: SunDayDetails] = [:]
+        for record in records {
+            let day = calendar.startOfDay(for: record.startOfDay)
+            map[day] = SunDayDetails(
+                spfLevel: record.spfLevel,
+                reapplyCount: record.reapplyCount,
+                hasNotes: record.trimmedNotes != nil
+            )
+        }
+        return map
     }
 
     var elevatedUVDays: Set<Date> {

@@ -1,11 +1,5 @@
 import SwiftUI
 
-enum SunDayLogEmphasis: Equatable {
-    case none
-    case elevatedUV
-    case hasExtras
-}
-
 struct SunDayStrip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -16,14 +10,17 @@ struct SunDayStrip: View {
     let currentStreakDays: Set<Date>
     let elevatedUVDays: Set<Date>
     let extrasDays: Set<Date>
+    let logDetails: [Date: SunDayDetails]
     let allowsFuture: Bool
 
     private let calendar = Calendar.current
     private let pastDays = 365
     private let futureDays = 60
-    private let chipWidth: CGFloat = 26
-    private let chipHeight: CGFloat = 38
-    private let columnSpacing: CGFloat = 14
+    private let chipWidth: CGFloat = 30
+    private let chipHeight: CGFloat = 42
+    private let columnSpacing: CGFloat = 18
+    private let letterRowHeight: CGFloat = 14
+    private let pointerRowHeight: CGFloat = 22
 
     @State private var scrollTargetDay: Date?
 
@@ -45,7 +42,7 @@ struct SunDayStrip: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
             }
             .contentMargins(
                 .horizontal,
@@ -76,7 +73,7 @@ struct SunDayStrip: View {
                 }
             }
         }
-        .frame(height: chipHeight + 44)
+        .frame(height: letterRowHeight + pointerRowHeight + chipHeight + 22)
         .accessibilityIdentifier("timeline.dayStrip")
     }
 
@@ -86,11 +83,27 @@ struct SunDayStrip: View {
             selectDay(day)
         } label: {
             VStack(spacing: 4) {
-                header(for: state)
+                Text(state.weekdayLetter)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(state.isSelected ? AppPalette.ink : AppPalette.softInk)
+                    .frame(height: letterRowHeight)
+
+                pointerSlot(for: state)
+                    .frame(height: pointerRowHeight)
 
                 chip(for: state)
+                    .frame(width: chipWidth, height: chipHeight)
+                    .overlay {
+                        if state.isCurrentStreak, state.status == .applied {
+                            Capsule()
+                                .stroke(AppPalette.streakAccent.opacity(0.8), lineWidth: 1.3)
+                                .frame(width: chipWidth + 6, height: chipHeight + 6)
+                                .allowsHitTesting(false)
+                        }
+                    }
 
                 footerDot(for: state)
+                    .frame(height: 8)
             }
             .frame(width: chipWidth)
             .contentShape(Rectangle())
@@ -105,66 +118,103 @@ struct SunDayStrip: View {
     }
 
     @ViewBuilder
-    private func header(for state: ChipState) -> some View {
+    private func pointerSlot(for state: ChipState) -> some View {
         if state.isSelected {
             SelectedDayPointer(letter: state.weekdayLetter)
         } else {
-            Text(state.weekdayLetter)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-                .frame(height: 22)
+            Color.clear
         }
     }
 
     @ViewBuilder
     private func chip(for state: ChipState) -> some View {
-        Group {
-            switch state.visualStyle {
-            case .filled:
-                filledChip(for: state)
-            case .outline(let dashed):
-                outlineChip(for: state, dashed: dashed)
-            case .hatched:
-                hatchedChip(for: state)
-            case .ghost:
-                ghostChip(for: state)
-            }
-        }
-        .frame(width: chipWidth, height: chipHeight)
-        .overlay(alignment: .center) {
-            if state.isCurrentStreak, state.status == .applied {
-                Capsule()
-                    .stroke(AppPalette.streakAccent.opacity(0.7), lineWidth: 1.5)
-                    .padding(-3)
-                    .allowsHitTesting(false)
-            }
+        switch state.visualStyle {
+        case .filled:
+            filledChip(for: state)
+        case .outline(let dashed):
+            outlineChip(for: state, dashed: dashed)
+        case .hatched:
+            hatchedChip(for: state)
+        case .ghost:
+            ghostChip(for: state)
         }
     }
 
     private func filledChip(for state: ChipState) -> some View {
         Capsule(style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [AppPalette.sun, AppPalette.coral.opacity(0.85)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .fill(filledGradient(for: state))
+            .overlay {
+                if state.isHighProtection {
+                    highProtectionOverlay
+                }
+            }
+            .overlay {
+                if state.isReapplyDense {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+                        .padding(3)
+                        .allowsHitTesting(false)
+                }
+            }
             .overlay {
                 Capsule(style: .continuous)
-                    .stroke(AppPalette.sun.opacity(state.isSelected ? 1 : 0.2), lineWidth: state.isSelected ? 2 : 0.5)
+                    .strokeBorder(
+                        state.isSelected ? AppPalette.ink.opacity(0.4) : AppPalette.sun.opacity(0.18),
+                        lineWidth: state.isSelected ? 1.6 : 0.5
+                    )
             }
+            .shadow(
+                color: shadowColor(for: state),
+                radius: state.isHighProtection ? 7 : (state.isSelected ? 4 : 2),
+                x: 0,
+                y: 2
+            )
+    }
+
+    private func filledGradient(for state: ChipState) -> LinearGradient {
+        let colors: [Color]
+        switch state.protectionTier {
+        case .light:
+            colors = [AppPalette.warmGlow, AppPalette.sun.opacity(0.85)]
+        case .standard:
+            colors = [AppPalette.sun, AppPalette.coral.opacity(0.85)]
+        case .peak:
+            colors = [AppPalette.sun, AppPalette.coral, AppPalette.uvExtreme.opacity(0.55)]
+        }
+        return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
+    }
+
+    private func shadowColor(for state: ChipState) -> Color {
+        switch state.protectionTier {
+        case .light: return AppPalette.sun.opacity(0.10)
+        case .standard: return AppPalette.sun.opacity(0.18)
+        case .peak: return AppPalette.coral.opacity(0.28)
+        }
+    }
+
+    private var highProtectionOverlay: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [Color.white.opacity(0.55), Color.white.opacity(0)],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: chipWidth * 0.55
+                )
+            )
+            .frame(width: chipWidth * 0.75, height: chipWidth * 0.75)
+            .allowsHitTesting(false)
     }
 
     private func outlineChip(for state: ChipState, dashed: Bool) -> some View {
         Capsule(style: .continuous)
-            .fill(AppPalette.warmGlow.opacity(0.28))
+            .fill(AppPalette.warmGlow.opacity(0.32))
             .overlay {
                 Capsule(style: .continuous)
                     .strokeBorder(
-                        AppPalette.sun.opacity(state.isSelected ? 1 : 0.6),
+                        AppPalette.sun.opacity(state.isSelected ? 1 : 0.65),
                         style: StrokeStyle(
-                            lineWidth: state.isSelected ? 2 : 1.4,
+                            lineWidth: state.isSelected ? 2 : 1.5,
                             dash: dashed ? [3, 3] : []
                         )
                     )
@@ -173,9 +223,9 @@ struct SunDayStrip: View {
 
     private func hatchedChip(for state: ChipState) -> some View {
         Capsule(style: .continuous)
-            .fill(AppPalette.coral.opacity(0.12))
+            .fill(AppPalette.coral.opacity(0.14))
             .overlay {
-                SunDiagonalHatch(color: AppPalette.coral.opacity(0.65))
+                SunDiagonalHatch(color: AppPalette.coral.opacity(0.62))
                     .clipShape(Capsule(style: .continuous))
             }
             .overlay {
@@ -193,7 +243,9 @@ struct SunDayStrip: View {
             .overlay {
                 Capsule(style: .continuous)
                     .strokeBorder(
-                        state.isSelected ? AppPalette.ink.opacity(0.55) : AppPalette.muted.opacity(0.55),
+                        state.isSelected
+                            ? AppPalette.ink.opacity(0.45)
+                            : AppPalette.muted.opacity(0.5),
                         lineWidth: state.isSelected ? 1.6 : 1
                     )
             }
@@ -305,6 +357,7 @@ struct SunDayStrip: View {
         let hasExtras = extrasDays.contains(dayStart)
         let isElevatedUV = elevatedUVDays.contains(dayStart)
         let isSelected = calendar.isDate(dayStart, inSameDayAs: selectedDay)
+        let details = logDetails[dayStart]
 
         let status: DayStatus
         if hasRecord {
@@ -326,6 +379,9 @@ struct SunDayStrip: View {
             isCurrentStreak: isCurrentStreak,
             isElevatedUV: isElevatedUV,
             hasSecondaryActivity: hasExtras,
+            spfLevel: details?.spfLevel,
+            isHighProtection: details?.isHighProtection ?? false,
+            isReapplyDense: details?.isReapplyDense ?? false,
             weekdayLetter: weekdayLetter(for: dayStart)
         )
     }
@@ -366,6 +422,12 @@ private enum ChipVisualStyle: Equatable {
     case ghost
 }
 
+private enum ProtectionTier: Equatable {
+    case light
+    case standard
+    case peak
+}
+
 private struct ChipState {
     let day: Date
     let status: DayStatus
@@ -375,7 +437,23 @@ private struct ChipState {
     let isCurrentStreak: Bool
     let isElevatedUV: Bool
     let hasSecondaryActivity: Bool
+    let spfLevel: Int?
+    let isHighProtection: Bool
+    let isReapplyDense: Bool
     let weekdayLetter: String
+
+    var protectionTier: ProtectionTier {
+        guard let spfLevel else {
+            return .standard
+        }
+        if spfLevel >= 50 {
+            return .peak
+        }
+        if spfLevel < 30 {
+            return .light
+        }
+        return .standard
+    }
 
     var visualStyle: ChipVisualStyle {
         switch status {
@@ -393,7 +471,17 @@ private struct ChipState {
     var statusLabel: String {
         switch status {
         case .applied:
-            return isCurrentStreak ? "Logged — current streak" : "Logged"
+            var parts = ["Logged"]
+            if isHighProtection {
+                parts.append("high SPF")
+            }
+            if isReapplyDense {
+                parts.append("reapplied")
+            }
+            if isCurrentStreak {
+                parts.append("current streak")
+            }
+            return parts.joined(separator: " · ")
         case .todayPending:
             return "Pending — today"
         case .missed:
@@ -425,9 +513,9 @@ private struct SelectedDayPointer: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(letter)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(AppPalette.onAccent)
-                .frame(width: 20, height: 18)
+                .frame(width: 24, height: 18)
                 .background(
                     Capsule(style: .continuous)
                         .fill(AppPalette.ink)
@@ -435,7 +523,7 @@ private struct SelectedDayPointer: View {
 
             Triangle()
                 .fill(AppPalette.ink)
-                .frame(width: 6, height: 4)
+                .frame(width: 7, height: 4)
         }
         .accessibilityHidden(true)
     }
