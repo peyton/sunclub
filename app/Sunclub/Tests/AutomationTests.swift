@@ -150,6 +150,13 @@ final class AutomationTests: XCTestCase {
         }
     }
 
+    func testToggleIntentValuesMatchAutomationToggleContract() {
+        let intentToggleValues = Set(SunclubToggleIntentValue.caseDisplayRepresentations.keys.map(\.rawValue))
+        let automationToggleValues = Set(SunclubAutomationToggle.allCases.map(\.rawValue))
+
+        XCTAssertEqual(intentToggleValues, automationToggleValues)
+    }
+
     func testMalformedAutomationLinksFailBeforeCreatingRequests() throws {
         let malformedURLs = [
             "sunclub://automation/not-a-real-action",

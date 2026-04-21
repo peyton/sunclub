@@ -184,7 +184,6 @@ enum SunclubReminderKindIntentValue: String, AppEnum {
 enum SunclubToggleIntentValue: String, AppEnum {
     case travelTimeZone
     case streakRisk
-    case liveUV
     case dailyUVBriefing
     case extremeUVAlert
     case iCloudSync
@@ -194,7 +193,6 @@ enum SunclubToggleIntentValue: String, AppEnum {
     static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
         .travelTimeZone: "Travel Time Zone",
         .streakRisk: "Streak Risk",
-        .liveUV: "Live UV",
         .dailyUVBriefing: "Daily UV Briefing",
         .extremeUVAlert: "Extreme UV Alert",
         .iCloudSync: "iCloud Sync",
@@ -202,7 +200,20 @@ enum SunclubToggleIntentValue: String, AppEnum {
     ]
 
     var toggle: SunclubAutomationToggle {
-        SunclubAutomationToggle(rawValue: rawValue) ?? .travelTimeZone
+        switch self {
+        case .travelTimeZone:
+            return .travelTimeZone
+        case .streakRisk:
+            return .streakRisk
+        case .dailyUVBriefing:
+            return .dailyUVBriefing
+        case .extremeUVAlert:
+            return .extremeUVAlert
+        case .iCloudSync:
+            return .iCloudSync
+        case .healthKit:
+            return .healthKit
+        }
     }
 }
 
