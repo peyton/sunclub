@@ -1,6 +1,6 @@
 [tools]
 just = "1.50.0"
-tuist = { version = "4.180.0", os = ["macos"] }
+tuist = { version = "4.183.0", os = ["macos"] }
 hk = "latest"
 actionlint = "latest"
 python = "3.14"
