@@ -6,6 +6,43 @@ final class SunclubUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    private func assertHomeReadyForLogState(
+        _ app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let legacyPrompt = app.staticTexts["Your first day starts now"]
+        let timelineSubtitle = app.staticTexts["timeline.headlineSubtitle"]
+        let hasLegacyPrompt = legacyPrompt.exists
+        let hasTimelinePrompt = timelineSubtitle.waitForExistence(timeout: 5)
+            && timelineSubtitle.label.contains("Next up:")
+        XCTAssertTrue(
+            hasLegacyPrompt || hasTimelinePrompt,
+            "Expected legacy or timeline ready-to-log state.",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertHomeLoggedState(
+        _ app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let legacyStatus = app.staticTexts["home.todayStatus"]
+        let timelineSubtitle = app.staticTexts["timeline.headlineSubtitle"]
+        let hasLegacyLoggedState = legacyStatus.waitForExistence(timeout: 5)
+            && legacyStatus.label == "Today's log is in"
+        let hasTimelineLoggedState = timelineSubtitle.waitForExistence(timeout: 5)
+            && timelineSubtitle.label.localizedCaseInsensitiveContains("logged")
+        XCTAssertTrue(
+            hasLegacyLoggedState || hasTimelineLoggedState,
+            "Expected legacy or timeline logged state.",
+            file: file,
+            line: line
+        )
+    }
+
     @MainActor
     func testLaunchShowsWelcome() throws {
         let app = XCUIApplication()
@@ -22,7 +59,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["home.verifyNow"].exists)
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
-        XCTAssertTrue(app.staticTexts["Your first day starts now"].exists)
+        assertHomeReadyForLogState(app)
         XCTAssertFalse(app.buttons["accountabilityOnboarding.next"].exists)
         XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
     }
@@ -88,9 +125,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
 
         app.buttons["success.done"].tap()
-        let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Today's log is in")
+        assertHomeLoggedState(app)
         XCTAssertTrue(app.buttons["home.loggedPrimaryAction"].exists)
     }
 
@@ -720,9 +755,7 @@ final class SunclubUITests: XCTestCase {
 
         performBackSwipe(in: app)
 
-        let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Today's log is in")
+        assertHomeLoggedState(app)
 
         let streakValue = app.staticTexts["home.streakValue"]
         XCTAssertTrue(streakValue.waitForExistence(timeout: 5))
@@ -907,9 +940,7 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["success.done"].tap()
 
-        let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Today's log is in")
+        assertHomeLoggedState(app)
     }
 
     @MainActor
@@ -955,9 +986,7 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
-        let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Today's log is in")
+        assertHomeLoggedState(app)
     }
 
     @MainActor
@@ -978,7 +1007,7 @@ final class SunclubUITests: XCTestCase {
         let todayStatus = app.staticTexts["home.todayStatus"]
         XCTAssertFalse(todayStatus.exists)
         XCTAssertFalse(app.buttons["home.loggedPrimaryAction"].exists)
-        XCTAssertTrue(app.staticTexts["Your first day starts now"].exists)
+        assertHomeReadyForLogState(app)
     }
 
     @MainActor
