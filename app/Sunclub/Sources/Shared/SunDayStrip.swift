@@ -119,7 +119,6 @@ struct SunDayStrip: View {
         .accessibilityLabel(state.accessibilityLabel)
         .accessibilityHint(accessibilityHint(for: state))
         .accessibilityAddTraits(state.isSelected ? .isSelected : [])
-        .accessibilityAddTraits(!canSelect(day) ? .isDisabled : [])
         .accessibilityIdentifier("timeline.day.\(Self.dayIdentifierFormatter.string(from: day))")
     }
 
