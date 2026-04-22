@@ -757,14 +757,8 @@ final class SunclubUITests: XCTestCase {
 
         assertHomeLoggedState(app)
 
-        let legacyStreakValue = app.staticTexts["home.streakValue"]
-        let timelineStreakCard = app.otherElements["timeline.highlights.streak"]
-        let hasLegacyStreak = legacyStreakValue.waitForExistence(timeout: 5)
-        let hasTimelineStreak = scrollToElement(timelineStreakCard, in: app)
-        XCTAssertTrue(
-            hasLegacyStreak || hasTimelineStreak,
-            "Expected streak summary after undo."
-        )
+        let streakCard = app.buttons["home.streakCard"]
+        XCTAssertTrue(streakCard.waitForExistence(timeout: 5), "Expected streak affordance after undo.")
     }
 
     @MainActor
