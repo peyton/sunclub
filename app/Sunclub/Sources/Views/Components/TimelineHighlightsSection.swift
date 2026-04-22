@@ -198,7 +198,8 @@ struct TimelineHighlightsSection: View {
 
             WeatherKitAttributionFooter(
                 attribution: appState.weatherAttribution,
-                sourceLabel: forecast.sourceLabel
+                sourceLabel: forecast.sourceLabel,
+                showAttributionLink: shouldShowWeatherKitAttribution(for: forecast)
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -206,6 +207,10 @@ struct TimelineHighlightsSection: View {
         .sunGlassCard(cornerRadius: 18)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("timeline.highlights.uvForecast")
+    }
+
+    private func shouldShowWeatherKitAttribution(for forecast: SunclubUVForecast) -> Bool {
+        forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel
     }
 
     private func highlightCard(

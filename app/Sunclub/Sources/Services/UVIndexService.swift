@@ -34,7 +34,7 @@ final class WeatherKitLiveUVWeatherProvider: LiveUVWeatherProviding {
             SunclubUVHourForecast(
                 date: hour.date,
                 index: hour.uvIndex.value,
-                sourceLabel: "Apple Weather"
+                sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
             )
         }
 
