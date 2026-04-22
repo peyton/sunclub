@@ -403,6 +403,12 @@ struct HomeView: View {
                     .foregroundStyle(AppPalette.softInk)
                     .accessibilityIdentifier("home.uvForecastSource")
 
+                WeatherKitAttributionFooter(
+                    attribution: appState.weatherAttribution,
+                    sourceLabel: uvForecast.sourceLabel,
+                    showAttributionLink: shouldShowWeatherKitAttribution(for: uvForecast)
+                )
+
                 if shouldShowExpandedUVForecast(uvForecast), !uvForecast.hours.isEmpty {
                     HStack(alignment: .bottom, spacing: 8) {
                         ForEach(Array(uvForecast.hours.prefix(8))) { hour in
@@ -772,6 +778,10 @@ struct HomeView: View {
         }
         let peak = forecast.peakHour.map { "Peak UV \($0.index) at \($0.date.formatted(date: .omitted, time: .shortened))." } ?? ""
         return "UV forecast. \(forecast.sourceLabel). \(peak) \(forecast.recommendation) \(hours.joined(separator: ". "))"
+    }
+
+    private func shouldShowWeatherKitAttribution(for forecast: SunclubUVForecast) -> Bool {
+        forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel
     }
 
     private var dailyPlanCard: some View {

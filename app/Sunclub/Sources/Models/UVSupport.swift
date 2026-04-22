@@ -111,13 +111,39 @@ enum UVReadingSource: Equatable, Sendable {
     case heuristic
     case weatherKit
 
+    static let heuristicSourceLabel = "Estimated locally"
+    static let heuristicHourlySourceLabel = "Estimated"
+    static let weatherKitSourceLabel = "Apple Weather"
+
     var statusLabel: String {
         switch self {
         case .heuristic:
-            return "Estimated locally"
+            return Self.heuristicSourceLabel
         case .weatherKit:
-            return "Estimated locally"
+            return Self.weatherKitSourceLabel
         }
+    }
+
+    var forecastLabel: String {
+        switch self {
+        case .heuristic:
+            return Self.heuristicSourceLabel
+        case .weatherKit:
+            return Self.weatherKitSourceLabel
+        }
+    }
+
+    var hourlySourceLabel: String {
+        switch self {
+        case .heuristic:
+            return Self.heuristicHourlySourceLabel
+        case .weatherKit:
+            return Self.weatherKitSourceLabel
+        }
+    }
+
+    var shouldDisplayAttribution: Bool {
+        self == .weatherKit
     }
 }
 

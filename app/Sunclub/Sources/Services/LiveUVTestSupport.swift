@@ -154,7 +154,7 @@ final class UITestLiveUVWeatherProvider: LiveUVWeatherProviding {
             return SunclubUVHourForecast(
                 date: date,
                 index: index,
-                sourceLabel: "WeatherKit"
+                sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
             )
         }
 
@@ -178,7 +178,7 @@ final class UITestLiveUVWeatherProvider: LiveUVWeatherProviding {
 
     func attributionMarkup() async throws -> SunclubWeatherAttribution {
         SunclubWeatherAttribution(
-            serviceName: "Weather",
+            serviceName: UVReadingSource.weatherKit.forecastLabel,
             legalPageURL: URL(string: "https://weatherkit.apple.com/legal-attribution.html")!,
             lightMarkURL: nil,
             darkMarkURL: nil

@@ -50,7 +50,7 @@ final class SunclubUVBriefingService {
         let peak = todayHours.max(by: { $0.index < $1.index })
         return SunclubUVForecast(
             generatedAt: bundle.generatedAt,
-            sourceLabel: "Apple Weather",
+            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
             hours: todayHours,
             peakHour: peak,
             recommendation: recommendation(for: peak?.level ?? .unknown)
@@ -65,13 +65,13 @@ final class SunclubUVBriefingService {
             SunclubUVHourForecast(
                 date: hourDate,
                 index: UVIndexService.estimatedUVIndex(at: hourDate, calendar: calendar),
-                sourceLabel: "Estimated"
+                sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
             )
         }
 
         return makeForecast(
             generatedAt: referenceDate,
-            sourceLabel: "Estimated locally",
+            sourceLabel: UVReadingSource.heuristic.forecastLabel,
             hours: hours
         )
     }
