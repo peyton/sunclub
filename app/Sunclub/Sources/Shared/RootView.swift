@@ -64,11 +64,20 @@ struct RootView: View {
         case .history:
             HistoryView()
         case .backfillYesterday:
-            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+            let calendar = Calendar.current
+            let selectedDay = appState.startOfLocalDay(appState.selectedDay)
+            let today = appState.startOfLocalDay(appState.referenceDate)
+            let anchorDay = min(selectedDay, today)
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: anchorDay) ?? anchorDay
             HistoryRecordEditorView(
                 day: yesterday,
                 existingRecord: appState.record(for: yesterday),
-                route: .backfillYesterday
+                route: .backfillYesterday,
+                targetContext: AppLogContext(
+                    date: yesterday,
+                    dayPart: .morning,
+                    source: .history
+                )
             )
         case .historyEditToday:
             HistoryEditorTestHarnessView(day: Calendar.current.startOfDay(for: Date()))
@@ -78,7 +87,7 @@ struct RootView: View {
             let missedDay = calendar.date(byAdding: .day, value: -2, to: today) ?? today
             HistoryEditorTestHarnessView(day: missedDay)
         case .manualLog:
-            ManualLogView()
+            ManualLogView(context: consumeManualLogContext())
         case .achievements:
             AchievementsView()
         case .friends:
@@ -94,6 +103,20 @@ struct RootView: View {
         case .valueProps:
             ValuePropsView()
         }
+    }
+
+    private func consumeManualLogContext() -> AppLogContext {
+        let payload = router.payload
+        router.payload = .empty
+        let baseContext = appState.consumeManualLogRouteContext()
+        guard payload.targetDate != nil || payload.targetDayPart != nil else {
+            return baseContext
+        }
+        return AppLogContext(
+            date: payload.targetDate.map(appState.startOfLocalDay) ?? baseContext.date,
+            dayPart: payload.targetDayPart ?? baseContext.dayPart,
+            source: baseContext.source
+        )
     }
 }
 

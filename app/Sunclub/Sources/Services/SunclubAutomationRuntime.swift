@@ -181,7 +181,7 @@ enum SunclubAutomationToggle: String, CaseIterable, Codable, Sendable {
 
 enum SunclubAutomationAction: Equatable {
     case logToday(spfLevel: Int?, notes: String?)
-    case saveLog(day: Date?, time: ReminderTime?, spfLevel: Int?, notes: String?)
+    case saveLog(day: Date?, time: ReminderTime?, dayPart: DayPart?, spfLevel: Int?, notes: String?)
     case reapply
     case status
     case timeSinceLastApplication
@@ -255,7 +255,7 @@ enum SunclubAutomationAction: Equatable {
         switch self {
         case .logToday:
             return true
-        case let .saveLog(day, _, _, _):
+        case let .saveLog(day, _, _, _, _):
             guard let day else { return true }
             return Calendar.current.isDateInToday(day)
         default:
@@ -396,6 +396,7 @@ enum SunclubAutomationRuntime {
     private struct LogDraft {
         var day: Date
         var time: ReminderTime?
+        var dayPart: DayPart?
         var spfLevel: Int?
         var notes: String?
     }
@@ -475,11 +476,12 @@ enum SunclubAutomationRuntime {
                 runtimeContext: runtimeContext,
                 growthSettings: growthSettings
             )
-        case let .saveLog(day, time, spfLevel, notes):
+        case let .saveLog(day, time, dayPart, spfLevel, notes):
             return try saveLog(
                 LogDraft(
                     day: day ?? runtimeContext.now,
                     time: time,
+                    dayPart: dayPart,
                     spfLevel: normalizedSPF(spfLevel),
                     notes: normalizedNotes(notes)
                 ),
@@ -639,10 +641,15 @@ enum SunclubAutomationRuntime {
         growthSettings: SunclubGrowthSettings
     ) throws -> SunclubAutomationResult {
         let dayStart = calendar.startOfDay(for: draft.day)
+        let today = calendar.startOfDay(for: runtimeContext.now)
+        guard dayStart <= today else {
+            throw SunclubAutomationError.invalidInput("Cannot log future date.")
+        }
         let existingTimestamp = try runtimeContext.historyService.record(for: dayStart)?.verifiedAt
+        let resolvedTime = draft.time ?? draft.dayPart.map { ReminderTime(hour: $0.defaultHour, minute: 0) }
         let verifiedAt = verifiedAt(
             for: dayStart,
-            time: draft.time,
+            time: resolvedTime,
             existingTimestamp: existingTimestamp,
             now: runtimeContext.now
         )

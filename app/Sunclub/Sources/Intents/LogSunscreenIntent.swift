@@ -340,6 +340,7 @@ struct SaveSunscreenLogIntent: AppIntent {
                 .saveLog(
                     day: day,
                     time: SunclubIntentSupport.time(from: time),
+                    dayPart: nil,
                     spfLevel: spfLevel,
                     notes: notes
                 )

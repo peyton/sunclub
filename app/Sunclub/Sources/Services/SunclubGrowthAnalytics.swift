@@ -150,7 +150,7 @@ enum SunclubGrowthAnalytics {
             hasBackfilled: changeBatches.contains { $0.kind == .historyBackfill },
             summerLoggedDays: seasonalLoggedDayCount(.summer, records: records, around: now, calendar: calendar),
             winterLoggedDays: seasonalLoggedDayCount(.winter, records: records, around: now, calendar: calendar),
-            morningLogCount: records.filter { calendar.component(.hour, from: $0.verifiedAt) < 10 }.count,
+            morningLogCount: records.filter { DayPart.resolve(for: $0.verifiedAt, calendar: calendar) == .morning }.count,
             completedWeekendCount: completedWeekendCount(records: records, calendar: calendar),
             distinctSPFCount: Set(records.compactMap(\.spfLevel)).count,
             notedLogCount: records.filter { $0.trimmedNotes != nil }.count,

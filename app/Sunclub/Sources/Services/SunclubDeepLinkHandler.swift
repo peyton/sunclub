@@ -45,7 +45,15 @@ enum SunclubDeepLinkHandler {
             return true
         }
 
-        appState.recordVerificationSuccess(method: .quickLog)
+        let now = appState.referenceDate
+        _ = appState.recordVerificationSuccess(
+            method: .quickLog,
+            context: AppLogContext(
+                date: now,
+                dayPart: appState.dayPart(for: now),
+                source: .widget
+            )
+        )
         if let presentation = appState.verificationSuccessPresentation {
             appState.verificationSuccessPresentation = VerificationSuccessPresentation(
                 streak: presentation.streak,
@@ -188,7 +196,17 @@ enum SunclubDeepLinkHandler {
 
         switch action {
         case .reapply:
-            router.open(.manualLog)
+            let now = appState.referenceDate
+            appState.prepareManualLogRouteContext(
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now),
+                source: .deepLink
+            )
+            router.open(
+                .manualLog,
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now)
+            )
         case .setReminder, .setReapply, .setToggle, .status, .timeSinceLastApplication:
             router.open(.automation)
         case .importFriend, .pokeFriend:
@@ -197,8 +215,30 @@ enum SunclubDeepLinkHandler {
             if error == .urlOpenActionsDisabled {
                 router.open(.automation)
             }
-        case .logToday, .saveLog:
-            router.open(.manualLog)
+        case .logToday:
+            let now = appState.referenceDate
+            appState.prepareManualLogRouteContext(
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now),
+                source: .deepLink
+            )
+            router.open(
+                .manualLog,
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now)
+            )
+        case let .saveLog(day, _, dayPart, _, _):
+            let targetDate = day ?? appState.referenceDate
+            appState.prepareManualLogRouteContext(
+                targetDate: targetDate,
+                targetDayPart: dayPart ?? appState.dayPart(for: targetDate),
+                source: .deepLink
+            )
+            router.open(
+                .manualLog,
+                targetDate: targetDate,
+                targetDayPart: dayPart ?? appState.dayPart(for: targetDate)
+            )
         case .exportBackup, .createSkinHealthReport, .createStreakCard:
             router.open(.skinHealthReport)
         }

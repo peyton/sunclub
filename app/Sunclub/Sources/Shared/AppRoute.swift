@@ -27,15 +27,28 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     var id: String { rawValue }
 }
 
+struct AppRoutePayload: Equatable {
+    var targetDate: Date?
+    var targetDayPart: DayPart?
+
+    static let empty = AppRoutePayload(targetDate: nil, targetDayPart: nil)
+}
+
 @Observable
 final class AppRouter {
     var path: [AppRoute] = []
+    var payload: AppRoutePayload = .empty
 
     var canGoBack: Bool {
         !path.isEmpty
     }
 
-    func open(_ route: AppRoute) {
+    func open(
+        _ route: AppRoute,
+        targetDate: Date? = nil,
+        targetDayPart: DayPart? = nil
+    ) {
+        payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         if route == .home || route == .welcome {
             path.removeAll()
         } else {
@@ -43,7 +56,12 @@ final class AppRouter {
         }
     }
 
-    func push(_ route: AppRoute) {
+    func push(
+        _ route: AppRoute,
+        targetDate: Date? = nil,
+        targetDayPart: DayPart? = nil
+    ) {
+        payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         if route == .home || route == .welcome {
             path.removeAll()
         } else {
@@ -64,10 +82,12 @@ final class AppRouter {
     }
 
     func goHome() {
+        payload = .empty
         path.removeAll()
     }
 
     func goToWelcome() {
+        payload = .empty
         path.removeAll()
     }
 }

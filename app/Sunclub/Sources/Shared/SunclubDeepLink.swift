@@ -130,12 +130,14 @@ enum SunclubDeepLink: Equatable {
         case "save-log":
             guard query.hasValidOptionalDate("date"),
                   query.hasValidOptionalTime("time"),
+                  query.hasValidOptionalDayPart("part"),
                   query.hasValidOptionalInt("spf") else {
                 return nil
             }
             return .saveLog(
                 day: query.date("date"),
                 time: query.time("time"),
+                dayPart: query.string("part").flatMap(DayPart.init(rawValue:)),
                 spfLevel: query.int("spf"),
                 notes: query.string("notes")
             )
@@ -244,10 +246,11 @@ struct SunclubAutomationRequest: Equatable {
                 ("spf", spfLevel.map(String.init)),
                 ("notes", notes)
             ])
-        case let .saveLog(day, time, spfLevel, notes):
+        case let .saveLog(day, time, dayPart, spfLevel, notes):
             return optionalItems([
                 ("date", day.map(Self.dateString)),
                 ("time", time.map(Self.timeString)),
+                ("part", dayPart?.rawValue),
                 ("spf", spfLevel.map(String.init)),
                 ("notes", notes)
             ])
@@ -327,6 +330,10 @@ private struct SunclubDeepLinkQuery {
 
     func hasValidOptionalTime(_ name: String) -> Bool {
         !contains(name) || time(name) != nil
+    }
+
+    func hasValidOptionalDayPart(_ name: String) -> Bool {
+        !contains(name) || string(name).flatMap(DayPart.init(rawValue:)) != nil
     }
 
     func int(_ name: String) -> Int? {

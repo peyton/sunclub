@@ -555,6 +555,81 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testDayPartResolverBoundaries() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        let day = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 4, day: 22)))
+
+        let early = try XCTUnwrap(calendar.date(bySettingHour: 4, minute: 59, second: 0, of: day))
+        let morning = try XCTUnwrap(calendar.date(bySettingHour: 5, minute: 0, second: 0, of: day))
+        let evening = try XCTUnwrap(calendar.date(bySettingHour: 12, minute: 0, second: 0, of: day))
+        let night = try XCTUnwrap(calendar.date(bySettingHour: 18, minute: 0, second: 0, of: day))
+
+        XCTAssertEqual(DayPart.resolve(for: early, calendar: calendar), .night)
+        XCTAssertEqual(DayPart.resolve(for: morning, calendar: calendar), .morning)
+        XCTAssertEqual(DayPart.resolve(for: evening, calendar: calendar), .evening)
+        XCTAssertEqual(DayPart.resolve(for: night, calendar: calendar), .night)
+    }
+
+    @MainActor
+    func testRecordApplicationRejectsFutureDate() throws {
+        let state = try makeAppState()
+        let tomorrow = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: state.referenceDate))
+
+        let didWrite = state.recordApplication(
+            for: .manual,
+            part: .morning,
+            on: tomorrow,
+            source: .manualLog
+        )
+
+        XCTAssertFalse(didWrite)
+        XCTAssertEqual(state.logActionErrorMessage, "Cannot log future date.")
+        XCTAssertTrue(state.records.isEmpty)
+    }
+
+    @MainActor
+    func testRecordVerificationSuccessUsesSelectedDayAfterMidnight() throws {
+        let calendar = Calendar.current
+        let afterMidnight = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 0, minute: 30))
+        )
+        let state = try makeAppState(clock: { afterMidnight })
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: afterMidnight))
+        state.selectDay(yesterday)
+
+        let didWrite = state.recordVerificationSuccess(
+            method: .manual,
+            context: AppLogContext(
+                date: yesterday,
+                dayPart: .night,
+                source: .manualLog
+            )
+        )
+
+        XCTAssertTrue(didWrite)
+        XCTAssertNotNil(state.record(for: yesterday))
+        XCTAssertNil(state.record(for: afterMidnight))
+    }
+
+    @MainActor
+    func testManualLogRouteContextSupportsLegacyFallbackAndExplicitPayload() throws {
+        let state = try makeAppState()
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: state.referenceDate))
+        state.selectDay(yesterday)
+
+        let fallbackContext = state.consumeManualLogRouteContext()
+        XCTAssertTrue(Calendar.current.isDate(fallbackContext.date, inSameDayAs: yesterday))
+        XCTAssertEqual(fallbackContext.source, .manualLog)
+
+        state.prepareManualLogRouteContext(targetDate: yesterday, targetDayPart: .night, source: .timeline)
+        let explicitContext = state.consumeManualLogRouteContext()
+        XCTAssertTrue(Calendar.current.isDate(explicitContext.date, inSameDayAs: yesterday))
+        XCTAssertEqual(explicitContext.dayPart, .night)
+        XCTAssertEqual(explicitContext.source, .timeline)
+    }
+
+    @MainActor
     func testSaveManualRecordBackfillsPastDay() throws {
         let state = try makeAppState()
         let calendar = Calendar.current
@@ -2065,6 +2140,22 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(AppRoute.backfillYesterday.rawValue, "backfillYesterday")
         XCTAssertEqual(AppRoute.weeklySummary.rawValue, "weeklySummary")
         XCTAssertEqual(AppRoute.recovery.rawValue, "recovery")
+    }
+
+    @MainActor
+    func testAppRouterPayloadSupportsLegacyAndExplicitManualLogRoutes() throws {
+        let router = AppRouter()
+        let target = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12)))
+
+        router.open(.manualLog)
+        XCTAssertEqual(router.path, [.manualLog])
+        XCTAssertNil(router.payload.targetDate)
+        XCTAssertNil(router.payload.targetDayPart)
+
+        router.open(.manualLog, targetDate: target, targetDayPart: .night)
+        XCTAssertEqual(router.path, [.manualLog])
+        XCTAssertTrue(Calendar.current.isDate(router.payload.targetDate ?? Date.distantPast, inSameDayAs: target))
+        XCTAssertEqual(router.payload.targetDayPart, .night)
     }
 
     @MainActor

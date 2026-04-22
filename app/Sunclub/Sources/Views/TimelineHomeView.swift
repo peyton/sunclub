@@ -27,6 +27,8 @@ struct TimelineHomeView: View {
 
                 dateHeadline
 
+                quickJumpStrip
+
                 SunDayStrip(
                     selectedDay: $appState.selectedDay,
                     today: appState.referenceDate,
@@ -35,12 +37,14 @@ struct TimelineHomeView: View {
                     elevatedUVDays: appState.elevatedUVDays,
                     extrasDays: appState.daysWithExtras,
                     logDetails: appState.dailyDetailsForTimeline,
-                    allowsFuture: true
+                    allowsFuture: appState.timelineShowsFutureDays
                 )
 
                 attentionBanners
 
-                TimelineLogSection(summary: logSummary)
+                TimelineLogSection(summary: logSummary) { context in
+                    openManualLog(context: context)
+                }
 
                 TimelineHighlightsSection(summary: logSummary)
 
@@ -104,37 +108,74 @@ struct TimelineHomeView: View {
 
     private var dateHeadline: some View {
         VStack(spacing: 8) {
-            Button {
-                feedbackTrigger += 1
-                jumpToToday()
-            } label: {
-                VStack(spacing: 4) {
-                    Text(headlineText)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 4) {
+                Text(headlineText)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("timeline.headline")
 
-                    if isSelectedToday, appState.record(for: appState.referenceDate) != nil {
-                        Text("Today's log is in")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(AppPalette.success)
-                            .accessibilityIdentifier("home.todayStatus")
-                    } else if !isSelectedToday {
-                        Text("Tap to jump back to today")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                }
-                .frame(maxWidth: .infinity)
+                Text(headlineSubtitle)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(headlineSubtitleTint)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("timeline.headlineSubtitle")
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityHeadlineLabel)
-            .accessibilityHint(isSelectedToday ? "Already viewing today." : "Jumps the day strip back to today.")
-            .accessibilityIdentifier("timeline.headline")
 
             sunConnector
         }
+    }
+
+    private var quickJumpStrip: some View {
+        let calendar = Calendar.current
+        let today = appState.startOfLocalDay(appState.referenceDate)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        let selected = appState.startOfLocalDay(appState.selectedDay)
+
+        return HStack(spacing: 10) {
+            quickJumpButton(
+                title: "Today",
+                isDisabled: selected == today
+            ) {
+                appState.selectDay(today)
+            }
+            .accessibilityIdentifier("timeline.jump.today")
+
+            quickJumpButton(
+                title: "Yesterday",
+                isDisabled: selected == yesterday
+            ) {
+                appState.selectDay(yesterday)
+            }
+            .accessibilityIdentifier("timeline.jump.yesterday")
+        }
+    }
+
+    private func quickJumpButton(title: String, isDisabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(title) {
+            feedbackTrigger += 1
+            withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+                action()
+            }
+        }
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(isDisabled ? AppPalette.muted : AppPalette.ink)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AppPalette.cardFill.opacity(isDisabled ? 0.45 : 0.76))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 
     private var sunConnector: some View {
@@ -240,28 +281,31 @@ struct TimelineHomeView: View {
     }
 
     private var headlineText: String {
-        let dateString = appState.selectedDay.formatted(.dateTime.month(.wide).day())
-        if isSelectedToday {
-            return "Today, \(dateString)"
+        appState.selectedDay.formatted(.dateTime.weekday(.wide).month(.wide).day())
+    }
+
+    private var headlineSubtitle: String {
+        if logSummary.category == .future {
+            return "Future date preview only"
         }
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: appState.referenceDate)
-        let selected = calendar.startOfDay(for: appState.selectedDay)
-        let dayComponents = calendar.dateComponents([.day], from: today, to: selected)
-        switch dayComponents.day ?? 0 {
-        case -1:
-            return "Yesterday, \(dateString)"
-        case 1:
-            return "Tomorrow, \(dateString)"
-        default:
-            return appState.selectedDay.formatted(
-                .dateTime.weekday(.wide).month(.wide).day()
-            )
+        if logSummary.record != nil {
+            return "\(logSummary.dayPart.title) logged"
         }
+        return "Next up: \(logSummary.dayPart.title)"
+    }
+
+    private var headlineSubtitleTint: Color {
+        if logSummary.category == .future {
+            return AppPalette.muted
+        }
+        if logSummary.record != nil {
+            return AppPalette.success
+        }
+        return AppPalette.softInk
     }
 
     private var accessibilityHeadlineLabel: String {
-        headlineText
+        "\(headlineText). \(headlineSubtitle)."
     }
 
     private var isSelectedToday: Bool {
@@ -269,7 +313,13 @@ struct TimelineHomeView: View {
     }
 
     private var primaryCTAText: String {
-        appState.homeDailyPlanPresentation.actionTitle
+        let action = appState.homeDailyPlanPresentation.action
+        switch action {
+        case .logToday, .addDetails:
+            return "Log \(logSummary.dayPart.title)"
+        default:
+            return appState.homeDailyPlanPresentation.actionTitle
+        }
     }
 
     private var primaryCTAIdentifier: String {
@@ -285,7 +335,13 @@ struct TimelineHomeView: View {
         let action = appState.homeDailyPlanPresentation.action
         switch action {
         case .logToday, .addDetails:
-            router.open(.manualLog)
+            openManualLog(
+                context: AppLogContext(
+                    date: appState.selectedDay,
+                    dayPart: logSummary.dayPart,
+                    source: .timeline
+                )
+            )
         case .backfillYesterday:
             router.open(.backfillYesterday)
         case .logReapply:
@@ -308,6 +364,19 @@ struct TimelineHomeView: View {
         withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
             appState.selectDay(appState.referenceDate)
         }
+    }
+
+    private func openManualLog(context: AppLogContext) {
+        appState.prepareManualLogRouteContext(
+            targetDate: context.date,
+            targetDayPart: context.dayPart,
+            source: context.source
+        )
+        router.open(
+            .manualLog,
+            targetDate: context.date,
+            targetDayPart: context.dayPart
+        )
     }
 
     private func refresh() {

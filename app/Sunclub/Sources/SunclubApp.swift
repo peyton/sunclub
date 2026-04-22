@@ -648,6 +648,21 @@ struct SunclubApp: App {
             return
         }
 
+        if route == .manualLog {
+            let now = appState.referenceDate
+            appState.prepareManualLogRouteContext(
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now),
+                source: .quickLog
+            )
+            router.open(
+                .manualLog,
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now)
+            )
+            return
+        }
+
         router.open(route)
     }
 

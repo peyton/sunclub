@@ -276,6 +276,90 @@ struct SunDayDetails: Equatable {
     }
 }
 
+enum DayPart: String, Codable, CaseIterable, Identifiable, Sendable {
+    case morning
+    case evening
+    case night
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .morning:
+            return "Morning"
+        case .evening:
+            return "Evening"
+        case .night:
+            return "Night"
+        }
+    }
+
+    var shortTitle: String {
+        title
+    }
+
+    var defaultHour: Int {
+        switch self {
+        case .morning:
+            return 8
+        case .evening:
+            return 15
+        case .night:
+            return 21
+        }
+    }
+
+    var order: Int {
+        switch self {
+        case .morning:
+            return 0
+        case .evening:
+            return 1
+        case .night:
+            return 2
+        }
+    }
+
+    static func resolve(for date: Date, calendar: Calendar = .current) -> DayPart {
+        let hour = calendar.component(.hour, from: date)
+        switch hour {
+        case 5..<12:
+            return .morning
+        case 12..<18:
+            return .evening
+        default:
+            return .night
+        }
+    }
+}
+
+enum LogSource: String, Codable, Sendable {
+    case timeline
+    case manualLog
+    case quickLog
+    case widget
+    case watch
+    case automation
+    case deepLink
+    case history
+    case legacy
+}
+
+struct AppLogContext: Equatable, Codable, Sendable {
+    let date: Date
+    let dayPart: DayPart
+    let source: LogSource
+}
+
+struct TimelineDayPartStatus: Equatable, Identifiable {
+    let dayPart: DayPart
+    let statusText: String
+    let isCompleted: Bool
+    let canLog: Bool
+
+    var id: DayPart { dayPart }
+}
+
 struct TimelineDayLogSummary: Equatable {
     enum Category: Equatable {
         case past
@@ -291,6 +375,11 @@ struct TimelineDayLogSummary: Equatable {
     let reapplyStatusText: String
     let notesStatusText: String?
     let factorsStatusText: String
+    let dayPart: DayPart
+    let loggingContext: AppLogContext
+    let canLog: Bool
+    let partStatuses: [TimelineDayPartStatus]
+    let helperText: String?
 }
 
 @MainActor
@@ -346,7 +435,14 @@ final class AppState {
     private(set) var achievementCelebration: SunclubAchievement?
     private(set) var friendImportMessage: String?
     var manualLogPrefill: ManualLogPrefill?
-    var selectedDay: Date = Calendar.current.startOfDay(for: Date())
+    var selectedDay: Date = Calendar.current.startOfDay(for: Date()) {
+        didSet {
+            normalizeSelectedDayIfNeeded()
+        }
+    }
+    private(set) var pendingManualLogContext: AppLogContext?
+    private(set) var lastLogContext: AppLogContext?
+    private(set) var logActionErrorMessage: String?
 
     private(set) var lastRefreshError: String?
 
@@ -356,6 +452,7 @@ final class AppState {
     private var uvReadingOverride: UVReading?
     private var notificationHealthOverride: NotificationHealthSnapshot?
     private var leaveHomeAuthorizationOverride: LeaveHomeAuthorizationState?
+    private var isNormalizingSelectedDay = false
 
     var referenceDate: Date {
         currentDate()
@@ -679,6 +776,10 @@ final class AppState {
 
     var isUITesting: Bool {
         RuntimeEnvironment.isUITesting
+    }
+
+    var timelineShowsFutureDays: Bool {
+        allowsFutureTimelineSelection
     }
 
     var preferredCheckInRoute: AppRoute {
@@ -2462,6 +2563,51 @@ final class AppState {
         )
     }
 
+    @discardableResult
+    func recordApplication(
+        for method: VerificationMethod,
+        part: DayPart,
+        on day: Date,
+        source: LogSource,
+        verificationDuration: Double? = nil,
+        spfLevel: Int? = nil,
+        notes: String? = nil
+    ) -> Bool {
+        guard let targetDay = validatedLogDate(day) else {
+            return false
+        }
+
+        let now = currentDate()
+        let today = startOfLocalDay(now)
+        let resolvedTimestamp: Date
+        if calendar.isDate(targetDay, inSameDayAs: today), part == dayPart(for: now) {
+            resolvedTimestamp = now
+        } else {
+            resolvedTimestamp = verifiedAt(for: targetDay, in: part)
+        }
+
+        let sourceLabel: String
+        switch source {
+        case .automation, .deepLink, .widget, .watch:
+            sourceLabel = " via \(source.rawValue)"
+        default:
+            sourceLabel = ""
+        }
+        upsertRecord(
+            RecordUpsertRequest(
+                day: targetDay,
+                verifiedAt: resolvedTimestamp,
+                verificationValues: (method, verificationDuration, SunManualLogInput.normalizedSPF(spfLevel), notes),
+                replaceOptionalFields: false,
+                preserveExistingDuration: false,
+                kind: .manualLog,
+                summary: "Logged \(part.shortTitle.lowercased()) sunscreen\(sourceLabel)."
+            )
+        )
+        lastLogContext = AppLogContext(date: targetDay, dayPart: part, source: source)
+        return true
+    }
+
     func markAppliedToday(
         method: VerificationMethod,
         verificationDuration: Double? = nil,
@@ -2469,34 +2615,39 @@ final class AppState {
         notes: String? = nil
     ) {
         let now = currentDate()
-        upsertRecord(
-            RecordUpsertRequest(
-                day: now,
-                verifiedAt: now,
-                verificationValues: (method, verificationDuration, SunManualLogInput.normalizedSPF(spfLevel), notes),
-                replaceOptionalFields: false,
-                preserveExistingDuration: false,
-                kind: .manualLog,
-                summary: "Logged sunscreen for today."
-            )
+        _ = recordApplication(
+            for: method,
+            part: dayPart(for: now),
+            on: now,
+            source: .legacy,
+            verificationDuration: verificationDuration,
+            spfLevel: spfLevel,
+            notes: notes
         )
     }
 
     func saveManualRecord(
         for day: Date,
+        dayPart: DayPart? = nil,
         verifiedAt: Date? = nil,
         spfLevel: Int?,
         notes: String?
     ) {
-        let existingTimestamp = record(for: day)?.verifiedAt
-        let timestamp = verifiedAt ?? existingTimestamp ?? defaultVerifiedAt(for: day)
-        let kind: SunclubChangeKind = record(for: day) == nil ? .historyBackfill : .historyEdit
+        guard let targetDay = validatedLogDate(day) else {
+            return
+        }
+        let existingTimestamp = record(for: targetDay)?.verifiedAt
+        let timestamp = verifiedAt
+            ?? existingTimestamp
+            ?? dayPart.map { verifiedAt(for: targetDay, in: $0) }
+            ?? defaultVerifiedAt(for: targetDay)
+        let kind: SunclubChangeKind = record(for: targetDay) == nil ? .historyBackfill : .historyEdit
         let summary = kind == .historyBackfill
-            ? "Backfilled \(calendar.startOfDay(for: day).formatted(.dateTime.month().day()))."
-            : "Edited \(calendar.startOfDay(for: day).formatted(.dateTime.month().day()))."
+            ? "Backfilled \(startOfLocalDay(targetDay).formatted(.dateTime.month().day()))."
+            : "Edited \(startOfLocalDay(targetDay).formatted(.dateTime.month().day()))."
         upsertRecord(
             RecordUpsertRequest(
-                day: day,
+                day: targetDay,
                 verifiedAt: timestamp,
                 verificationValues: (.manual, nil, SunManualLogInput.normalizedSPF(spfLevel), notes),
                 replaceOptionalFields: true,
@@ -2505,21 +2656,34 @@ final class AppState {
                 summary: summary
             )
         )
+        lastLogContext = AppLogContext(
+            date: targetDay,
+            dayPart: dayPart(for: timestamp),
+            source: .history
+        )
     }
 
+    @discardableResult
     func recordVerificationSuccess(
         method: VerificationMethod,
         verificationDuration: Double? = nil,
         spfLevel: Int? = nil,
-        notes: String? = nil
-    ) {
+        notes: String? = nil,
+        context: AppLogContext? = nil
+    ) -> Bool {
         let previousLongestStreak = settings.longestStreak
-        markAppliedToday(
-            method: method,
+        let resolvedContext = context ?? currentLogContext(for: selectedDay, source: .manualLog)
+        guard recordApplication(
+            for: method,
+            part: resolvedContext.dayPart,
+            on: resolvedContext.date,
+            source: resolvedContext.source,
             verificationDuration: verificationDuration,
             spfLevel: spfLevel,
             notes: notes
-        )
+        ) else {
+            return false
+        }
         var growthSettings = growthFeatureStore.load()
         let (successTitle, updatedSuccessState) = PhraseRotation.nextPhrase(
             from: growthSettings.successPhraseState,
@@ -2533,6 +2697,7 @@ final class AppState {
             canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil,
             title: successTitle
         )
+        return true
     }
 
     func recordWatchSunscreenLog() throws -> SunclubWidgetSnapshot {
@@ -2540,7 +2705,13 @@ final class AppState {
             throw SunclubQuickLogError.onboardingRequired
         }
 
-        markAppliedToday(method: .quickLog)
+        let now = currentDate()
+        _ = recordApplication(
+            for: .quickLog,
+            part: dayPart(for: now),
+            on: now,
+            source: .watch
+        )
         if settings.reapplyReminderEnabled {
             scheduleReapplyReminder()
         }
@@ -2617,7 +2788,10 @@ final class AppState {
 
     func recordReapplication(for day: Date? = nil, performedAt: Date? = nil) {
         let now = performedAt ?? currentDate()
-        let targetDay = day ?? now
+        let targetDay = startOfLocalDay(day ?? now)
+        guard validatedLogDate(targetDay) != nil else {
+            return
+        }
         let batch = try? historyService.applyDayChange(
             for: targetDay,
             kind: .reapply,
@@ -2705,7 +2879,7 @@ final class AppState {
     }
 
     func record(for day: Date) -> DailyRecord? {
-        let target = calendar.startOfDay(for: day)
+        let target = startOfLocalDay(day)
         if let projectedRecord = records.first(where: { calendar.isDate($0.startOfDay, inSameDayAs: target) }) {
             return projectedRecord
         }
@@ -2713,11 +2887,85 @@ final class AppState {
         return (try? verificationStore.record(for: target)).flatMap { $0 }
     }
 
+    func startOfLocalDay(_ date: Date) -> Date {
+        calendar.startOfDay(for: date)
+    }
+
+    func canLog(on day: Date) -> Bool {
+        startOfLocalDay(day) <= startOfLocalDay(referenceDate)
+    }
+
+    func validatedLogDate(_ day: Date) -> Date? {
+        let target = startOfLocalDay(day)
+        guard canLog(on: target) else {
+            logActionErrorMessage = "Cannot log future date."
+            return nil
+        }
+        logActionErrorMessage = nil
+        return target
+    }
+
+    func dayPart(for date: Date) -> DayPart {
+        DayPart.resolve(for: date, calendar: calendar)
+    }
+
+    var allowsFutureTimelineSelection: Bool {
+        RuntimeEnvironment.isPreviewing || RuntimeEnvironment.isUITesting
+    }
+
+    func currentLogContext(
+        for day: Date? = nil,
+        source: LogSource = .manualLog,
+        dayPart: DayPart? = nil
+    ) -> AppLogContext {
+        let targetDay = startOfLocalDay(day ?? selectedDay)
+        let resolvedPart: DayPart
+        if let dayPart {
+            resolvedPart = dayPart
+        } else if let existingRecord = record(for: targetDay) {
+            resolvedPart = existingRecord.loggedDayPart(calendar: calendar)
+        } else if calendar.isDate(targetDay, inSameDayAs: referenceDate) {
+            resolvedPart = self.dayPart(for: referenceDate)
+        } else {
+            resolvedPart = .morning
+        }
+
+        return AppLogContext(date: targetDay, dayPart: resolvedPart, source: source)
+    }
+
+    func prepareManualLogRouteContext(
+        targetDate: Date? = nil,
+        targetDayPart: DayPart? = nil,
+        source: LogSource = .manualLog
+    ) {
+        pendingManualLogContext = currentLogContext(
+            for: targetDate ?? selectedDay,
+            source: source,
+            dayPart: targetDayPart
+        )
+    }
+
+    func consumeManualLogRouteContext() -> AppLogContext {
+        defer { pendingManualLogContext = nil }
+        if let pendingManualLogContext {
+            return pendingManualLogContext
+        }
+        return currentLogContext(for: selectedDay, source: .manualLog)
+    }
+
+    func clearLogActionError() {
+        logActionErrorMessage = nil
+    }
+
     func advanceSelectedDayIfStale() {
-        let today = calendar.startOfDay(for: referenceDate)
-        let normalized = calendar.startOfDay(for: selectedDay)
+        let today = startOfLocalDay(referenceDate)
+        let normalized = startOfLocalDay(selectedDay)
         if normalized != selectedDay {
             selectedDay = normalized
+        }
+        if !allowsFutureTimelineSelection, selectedDay > today {
+            selectedDay = today
+            return
         }
         if selectedDay > calendar.date(byAdding: .day, value: 60, to: today) ?? today {
             selectedDay = today
@@ -2725,12 +2973,39 @@ final class AppState {
     }
 
     func selectDay(_ day: Date) {
-        selectedDay = calendar.startOfDay(for: day)
+        let normalized = startOfLocalDay(day)
+        if !allowsFutureTimelineSelection, normalized > startOfLocalDay(referenceDate) {
+            selectedDay = startOfLocalDay(referenceDate)
+            return
+        }
+        selectedDay = normalized
+    }
+
+    private func normalizeSelectedDayIfNeeded() {
+        guard !isNormalizingSelectedDay else {
+            return
+        }
+
+        let today = startOfLocalDay(referenceDate)
+        var normalized = startOfLocalDay(selectedDay)
+        if !allowsFutureTimelineSelection, normalized > today {
+            normalized = today
+        }
+        if normalized > calendar.date(byAdding: .day, value: 60, to: today) ?? today {
+            normalized = today
+        }
+        guard normalized != selectedDay else {
+            return
+        }
+
+        isNormalizingSelectedDay = true
+        selectedDay = normalized
+        isNormalizingSelectedDay = false
     }
 
     func futureDayPreview(for day: Date) -> FutureDayPreview? {
-        let dayStart = calendar.startOfDay(for: day)
-        let today = calendar.startOfDay(for: referenceDate)
+        let dayStart = startOfLocalDay(day)
+        let today = startOfLocalDay(referenceDate)
         guard dayStart > today else {
             return nil
         }
@@ -2751,9 +3026,11 @@ final class AppState {
     }
 
     func timelineDayLogSummary(for day: Date) -> TimelineDayLogSummary {
-        let dayStart = calendar.startOfDay(for: day)
-        let today = calendar.startOfDay(for: referenceDate)
+        let dayStart = startOfLocalDay(day)
+        let today = startOfLocalDay(referenceDate)
         let record = record(for: dayStart)
+        let resolvedDayPart = resolvedTimelineDayPart(for: dayStart, record: record)
+        let loggingContext = currentLogContext(for: dayStart, source: .timeline, dayPart: resolvedDayPart)
 
         if dayStart > today {
             let preview = futureDayPreview(for: dayStart)
@@ -2766,7 +3043,16 @@ final class AppState {
                 sunscreenStatusText: "Plan SPF \(spf)+",
                 reapplyStatusText: "Forecast ahead",
                 notesStatusText: nil,
-                factorsStatusText: "View only"
+                factorsStatusText: "View only",
+                dayPart: resolvedDayPart,
+                loggingContext: loggingContext,
+                canLog: false,
+                partStatuses: timelinePartStatuses(
+                    for: dayStart,
+                    record: nil,
+                    canLog: false
+                ),
+                helperText: "Cannot log future date. Choose today or earlier."
             )
         }
 
@@ -2806,7 +3092,16 @@ final class AppState {
                 sunscreenStatusText: sunscreenText,
                 reapplyStatusText: reapplyText,
                 notesStatusText: record.trimmedNotes,
-                factorsStatusText: factorsText
+                factorsStatusText: factorsText,
+                dayPart: resolvedDayPart,
+                loggingContext: loggingContext,
+                canLog: true,
+                partStatuses: timelinePartStatuses(
+                    for: dayStart,
+                    record: record,
+                    canLog: true
+                ),
+                helperText: nil
             )
         }
 
@@ -2826,8 +3121,89 @@ final class AppState {
             sunscreenStatusText: sunscreenText,
             reapplyStatusText: "None",
             notesStatusText: nil,
-            factorsStatusText: factorsText
+            factorsStatusText: factorsText,
+            dayPart: resolvedDayPart,
+            loggingContext: loggingContext,
+            canLog: true,
+            partStatuses: timelinePartStatuses(
+                for: dayStart,
+                record: nil,
+                canLog: true
+            ),
+            helperText: nil
         )
+    }
+
+    private func resolvedTimelineDayPart(for day: Date, record: DailyRecord?) -> DayPart {
+        if let record {
+            return record.loggedDayPart(calendar: calendar)
+        }
+        if calendar.isDate(day, inSameDayAs: referenceDate) {
+            return dayPart(for: referenceDate)
+        }
+        return .morning
+    }
+
+    private func timelinePartStatuses(
+        for day: Date,
+        record: DailyRecord?,
+        canLog: Bool
+    ) -> [TimelineDayPartStatus] {
+        let isToday = calendar.isDate(day, inSameDayAs: referenceDate)
+        let currentPart = dayPart(for: referenceDate)
+
+        return DayPart.allCases.map { part in
+            if !canLog {
+                return TimelineDayPartStatus(
+                    dayPart: part,
+                    statusText: "Cannot log future date",
+                    isCompleted: false,
+                    canLog: false
+                )
+            }
+
+            if let record, record.isLogged(in: part, calendar: calendar) {
+                let suffix = record.spfLevel.map { " · SPF \($0)" } ?? ""
+                return TimelineDayPartStatus(
+                    dayPart: part,
+                    statusText: "Logged\(suffix)",
+                    isCompleted: true,
+                    canLog: true
+                )
+            }
+
+            if isToday {
+                if part.order < currentPart.order {
+                    return TimelineDayPartStatus(
+                        dayPart: part,
+                        statusText: "Missed window",
+                        isCompleted: false,
+                        canLog: true
+                    )
+                }
+                if part.order > currentPart.order {
+                    return TimelineDayPartStatus(
+                        dayPart: part,
+                        statusText: "Later today",
+                        isCompleted: false,
+                        canLog: true
+                    )
+                }
+                return TimelineDayPartStatus(
+                    dayPart: part,
+                    statusText: "Ready now",
+                    isCompleted: false,
+                    canLog: true
+                )
+            }
+
+            return TimelineDayPartStatus(
+                dayPart: part,
+                statusText: "Not logged",
+                isCompleted: false,
+                canLog: true
+            )
+        }
     }
 
     func refreshUVReadingIfNeeded(allowPermissionPrompt: Bool = false) {
@@ -2912,7 +3288,7 @@ final class AppState {
     }
 
     func dayStatus(for date: Date, now: Date? = nil) -> DayStatus {
-        let set = Set(records.map { calendar.startOfDay(for: $0.startOfDay) })
+        let set = Set(records.map { startOfLocalDay($0.startOfDay) })
         return CalendarAnalytics.status(for: date, with: set, now: now ?? currentDate(), calendar: calendar)
     }
 
@@ -2943,7 +3319,7 @@ final class AppState {
     func manualLogSuggestionState(for day: Date) -> ManualLogSuggestionState {
         ManualLogSuggestionEngine.suggestions(
             from: records,
-            excluding: day,
+            excluding: startOfLocalDay(day),
             calendar: calendar,
             scannedSPFLevels: growthSettings.scannedSPFLevels
         )
@@ -2963,13 +3339,13 @@ final class AppState {
     }
 
     var recordedDays: [Date] {
-        records.map { calendar.startOfDay(for: $0.startOfDay) }
+        records.map { startOfLocalDay($0.startOfDay) }
     }
 
     var daysWithExtras: Set<Date> {
         var set: Set<Date> = []
         for record in records where record.trimmedNotes != nil || record.reapplyCount > 0 {
-            set.insert(calendar.startOfDay(for: record.startOfDay))
+            set.insert(startOfLocalDay(record.startOfDay))
         }
         return set
     }
@@ -2977,7 +3353,7 @@ final class AppState {
     var dailyDetailsForTimeline: [Date: SunDayDetails] {
         var map: [Date: SunDayDetails] = [:]
         for record in records {
-            let day = calendar.startOfDay(for: record.startOfDay)
+            let day = startOfLocalDay(record.startOfDay)
             map[day] = SunDayDetails(
                 spfLevel: record.spfLevel,
                 reapplyCount: record.reapplyCount,
@@ -3051,8 +3427,9 @@ final class AppState {
     }
 
     private func upsertRecord(_ request: RecordUpsertRequest) {
+        let targetDay = startOfLocalDay(request.day)
         let batch = try? historyService.applyDayChange(
-            for: request.day,
+            for: targetDay,
             kind: request.kind,
             summary: request.summary,
             changedFields: [.verifiedAt, .methodRawValue, .verificationDuration, .spfLevel, .notes]
@@ -3081,7 +3458,7 @@ final class AppState {
             }
 
             return DailyRecordProjectionSnapshot(
-                startOfDay: self.calendar.startOfDay(for: request.day),
+                startOfDay: self.startOfLocalDay(targetDay),
                 verifiedAt: request.verifiedAt,
                 methodRawValue: request.verificationValues.method.rawValue,
                 verificationDuration: request.verificationValues.duration,
@@ -3092,12 +3469,12 @@ final class AppState {
             )
         }
         finishDurableChange(batch, reschedulesReminders: false)
-        exportHealthKitLogIfNeeded(for: request.day)
-        recordHistoricalUVIfApplicable(for: request.day)
+        exportHealthKitLogIfNeeded(for: targetDay)
+        recordHistoricalUVIfApplicable(for: targetDay)
     }
 
     private func recordHistoricalUVIfApplicable(for day: Date) {
-        guard calendar.isDate(day, inSameDayAs: referenceDate) else {
+        guard calendar.isDate(startOfLocalDay(day), inSameDayAs: startOfLocalDay(referenceDate)) else {
             return
         }
         guard let reading = uvReading, reading.source == .weatherKit else {
@@ -3115,7 +3492,7 @@ final class AppState {
     }
 
     private func defaultVerifiedAt(for day: Date) -> Date {
-        let targetDay = calendar.startOfDay(for: day)
+        let targetDay = startOfLocalDay(day)
         let nowComponents = calendar.dateComponents([.hour, .minute, .second], from: currentDate())
         let dayComponents = calendar.dateComponents([.year, .month, .day], from: targetDay)
 
@@ -3128,6 +3505,16 @@ final class AppState {
                 minute: nowComponents.minute,
                 second: nowComponents.second
             )
+        ) ?? targetDay
+    }
+
+    private func verifiedAt(for day: Date, in dayPart: DayPart) -> Date {
+        let targetDay = startOfLocalDay(day)
+        return calendar.date(
+            bySettingHour: dayPart.defaultHour,
+            minute: 0,
+            second: 0,
+            of: targetDay
         ) ?? targetDay
     }
 

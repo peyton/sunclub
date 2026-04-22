@@ -51,7 +51,7 @@
 ## Direct URL Actions
 
 - `log-today?spf=50&notes=Beach%20bag`
-- `save-log?date=YYYY-MM-DD&time=HH:mm&spf=50&notes=Morning`
+- `save-log?date=YYYY-MM-DD&time=HH:mm&part=morning|evening|night&spf=50&notes=Morning`
 - `reapply`
 - `status`
 - `time-since-last-application`
@@ -62,7 +62,9 @@
 - `poke-friend?id=<uuid>` opens Friends with `status=needs-message` while public accountability transport is disabled.
 - `open?route=home|log|reapply|summary|history|settings|automation|achievements|friends|health-report|product-scanner|recovery`
 
-URL validation is strict for typed fields. Malformed dates, times, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
+URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
+
+Future dates are always view-only. `log-today` and `save-log` reject future targets at write time with an explicit error.
 
 ## x-callback-url
 
@@ -103,6 +105,7 @@ URL validation is strict for typed fields. Malformed dates, times, non-numeric S
 - Logging, save-log, and reapply write through `SunclubHistoryService`.
 - Outside-app writes must refresh projected state and widget snapshots.
 - Duplicate same-day logs update the existing day rather than adding another visible day.
+- Timeline/manual logging uses an explicit `{date, dayPart, source}` context and does not silently fall back to wall-clock `Date()`.
 - Optional SPF and notes behavior must match the manual log flows, including SPF clamping and the 280-character note limit.
 
 ## Testing Requirements
