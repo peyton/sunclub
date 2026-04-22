@@ -1137,15 +1137,22 @@ struct HistoryRecordEditorView: View {
     let day: Date
     let existingRecord: DailyRecord?
     let route: AppRoute?
+    let targetContext: AppLogContext?
 
     @State private var selectedSPF: Int?
     @State private var notes: String
     @State private var hasLoadedInitialState = false
 
-    init(day: Date, existingRecord: DailyRecord?, route: AppRoute? = nil) {
+    init(
+        day: Date,
+        existingRecord: DailyRecord?,
+        route: AppRoute? = nil,
+        targetContext: AppLogContext? = nil
+    ) {
         self.day = day
         self.existingRecord = existingRecord
         self.route = route
+        self.targetContext = targetContext
         _selectedSPF = State(initialValue: existingRecord?.spfLevel)
         _notes = State(initialValue: existingRecord?.notes ?? "")
     }
@@ -1179,7 +1186,8 @@ struct HistoryRecordEditorView: View {
         } footer: {
             Button(primaryActionTitle) {
                 appState.saveManualRecord(
-                    for: day,
+                    for: targetContext?.date ?? day,
+                    dayPart: targetContext?.dayPart,
                     verifiedAt: existingRecord?.verifiedAt,
                     spfLevel: selectedSPF,
                     notes: notes

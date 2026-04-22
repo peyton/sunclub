@@ -15,10 +15,10 @@ struct SunDayStrip: View {
 
     private let calendar = Calendar.current
     private let pastDays = 365
-    private let futureDays = 60
-    private let chipWidth: CGFloat = 30
-    private let chipHeight: CGFloat = 42
-    private let columnSpacing: CGFloat = 18
+    private let futureDays = 14
+    private let chipWidth: CGFloat = 44
+    private let chipHeight: CGFloat = 44
+    private let columnSpacing: CGFloat = 16
     private let letterRowHeight: CGFloat = 14
     private let pointerRowHeight: CGFloat = 22
 
@@ -68,6 +68,10 @@ struct SunDayStrip: View {
                     return
                 }
                 let normalized = calendar.startOfDay(for: newValue)
+                guard canSelect(normalized) else {
+                    scrollTargetDay = calendar.startOfDay(for: selectedDay)
+                    return
+                }
                 if selectedDay != normalized {
                     selectedDay = normalized
                 }
@@ -105,15 +109,17 @@ struct SunDayStrip: View {
                 footerDot(for: state)
                     .frame(height: 8)
             }
-            .frame(width: chipWidth)
+            .frame(width: chipWidth, height: 96)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!canSelect(day))
+        .opacity(state.isFuture && !canSelect(day) ? 0.5 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(state.accessibilityLabel)
         .accessibilityHint(accessibilityHint(for: state))
         .accessibilityAddTraits(state.isSelected ? .isSelected : [])
+        .accessibilityAddTraits(!canSelect(day) ? .isDisabled : [])
         .accessibilityIdentifier("timeline.day.\(Self.dayIdentifierFormatter.string(from: day))")
     }
 
@@ -265,6 +271,7 @@ struct SunDayStrip: View {
     private func selectDay(_ day: Date) {
         let normalized = calendar.startOfDay(for: day)
         guard canSelect(normalized) else {
+            scrollTargetDay = calendar.startOfDay(for: selectedDay)
             return
         }
         withAnimation(SunMotion.easeInOut(duration: 0.22, reduceMotion: reduceMotion)) {
@@ -335,9 +342,7 @@ struct SunDayStrip: View {
     private var visibleDays: [Date] {
         let todayStart = calendar.startOfDay(for: today)
         let pastStart = calendar.date(byAdding: .day, value: -pastDays, to: todayStart) ?? todayStart
-        let futureEnd = allowsFuture
-            ? (calendar.date(byAdding: .day, value: futureDays, to: todayStart) ?? todayStart)
-            : todayStart
+        let futureEnd = calendar.date(byAdding: .day, value: futureDays, to: todayStart) ?? todayStart
         var days: [Date] = []
         var cursor = pastStart
         while cursor <= futureEnd {
@@ -395,7 +400,7 @@ struct SunDayStrip: View {
 
     private func accessibilityHint(for state: ChipState) -> String {
         if state.isFuture {
-            return allowsFuture ? "Views the forecast for this day." : "Future days cannot be viewed."
+            return allowsFuture ? "Views the forecast for this future day." : "Future days are view only."
         }
         if state.status == .applied {
             return "Opens this day's log for edits."
@@ -494,6 +499,9 @@ private struct ChipState {
     var accessibilityLabel: String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
         var parts = [dateLabel, statusLabel]
+        if isFuture {
+            parts.append("future date")
+        }
         if isElevatedUV {
             parts.append("high UV expected")
         }

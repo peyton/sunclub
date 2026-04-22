@@ -285,7 +285,16 @@ struct WeeklyReportView: View {
 
     private func openBackfill(for day: Date) {
         if isToday(day) {
-            router.open(.manualLog)
+            appState.prepareManualLogRouteContext(
+                targetDate: day,
+                targetDayPart: appState.dayPart(for: appState.referenceDate),
+                source: .manualLog
+            )
+            router.open(
+                .manualLog,
+                targetDate: day,
+                targetDayPart: appState.dayPart(for: appState.referenceDate)
+            )
         } else {
             editorPresentation = WeeklyEditorPresentation(day: day)
         }

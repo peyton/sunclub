@@ -303,7 +303,7 @@ struct AutomationSettingsPanel: View {
                 id: "saveLog",
                 title: "Save Log",
                 detail: "Backfill or update a day.",
-                urlString: "\(scheme)://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning"
+                urlString: "\(scheme)://automation/save-log?date=2026-04-13&time=08:30&part=morning&spf=50&notes=Morning"
             ),
             AutomationExample(
                 id: "reapply",

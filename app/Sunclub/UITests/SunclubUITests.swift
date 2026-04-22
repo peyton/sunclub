@@ -767,7 +767,7 @@ final class SunclubUITests: XCTestCase {
 
         let logButton = app.buttons["manualLog.logToday"]
         XCTAssertTrue(logButton.waitForExistence(timeout: 5))
-        XCTAssertEqual(logButton.label, "Update Today")
+        XCTAssertEqual(logButton.label, "Update Morning")
     }
 
     @MainActor
@@ -992,25 +992,46 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testTimelineLogSectionShowsSunscreenRow() throws {
+    func testTimelineLogSectionShowsDayPartRows() throws {
         let app = launchTimelineHome()
-        let sunscreenRow = app.buttons["timeline.log.sunscreen"]
-        XCTAssertTrue(sunscreenRow.waitForExistence(timeout: 5))
-        let factorsRow = app.buttons["timeline.log.factors"]
-        XCTAssertTrue(factorsRow.exists)
+        XCTAssertTrue(app.buttons["timeline.log.part.morning"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["timeline.log.part.evening"].exists)
+        XCTAssertTrue(app.buttons["timeline.log.part.night"].exists)
     }
 
     @MainActor
-    func testTimelineFutureDayShowsFutureNotice() throws {
-        let app = launchTimelineHome()
+    func testTimelineFutureDayDisablesPartActions() throws {
+        let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=13:00"])
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
         let tomorrowChip = app.buttons[tomorrowIdentifier]
         if !tomorrowChip.waitForExistence(timeout: 3) {
             throw XCTSkip("Tomorrow chip is not visible in the current viewport.")
         }
         tomorrowChip.tap()
+
+        let morningRow = app.buttons["timeline.log.part.morning"]
+        XCTAssertTrue(morningRow.waitForExistence(timeout: 3))
+        XCTAssertFalse(morningRow.isEnabled)
         let notice = app.staticTexts["timeline.log.futureNotice"]
         XCTAssertTrue(notice.waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testTimelineAfterMidnightManualLogUsesSelectedDayContext() throws {
+        let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=00:30"])
+        let yesterdayIdentifier = "timeline.day.\(dayIdentifier(offset: -1))"
+        let yesterdayChip = app.buttons[yesterdayIdentifier]
+        if !yesterdayChip.waitForExistence(timeout: 3) {
+            throw XCTSkip("Yesterday chip is not visible in the current viewport.")
+        }
+        yesterdayChip.tap()
+
+        let nightRow = app.buttons["timeline.log.part.night"]
+        XCTAssertTrue(nightRow.waitForExistence(timeout: 3))
+        nightRow.tap()
+
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Log Night")
     }
 
     @MainActor

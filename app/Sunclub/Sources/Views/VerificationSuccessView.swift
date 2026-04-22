@@ -80,7 +80,18 @@ struct VerificationSuccessView: View {
                 if presentation.canAddDetails {
                     Button("Add SPF or Note") {
                         appState.clearVerificationSuccessPresentation()
-                        router.open(.manualLog)
+                        let context = appState.lastLogContext
+                            ?? appState.currentLogContext(for: appState.selectedDay, source: .manualLog)
+                        appState.prepareManualLogRouteContext(
+                            targetDate: context.date,
+                            targetDayPart: context.dayPart,
+                            source: .manualLog
+                        )
+                        router.open(
+                            .manualLog,
+                            targetDate: context.date,
+                            targetDayPart: context.dayPart
+                        )
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
                     .accessibilityIdentifier("success.addDetails")

@@ -255,7 +255,17 @@ struct ProductScannerView: View {
             .accessibilityIdentifier("productScanner.openSettings")
 
             Button("Enter SPF Manually") {
-                router.open(.manualLog)
+                let now = appState.referenceDate
+                appState.prepareManualLogRouteContext(
+                    targetDate: now,
+                    targetDayPart: appState.dayPart(for: now),
+                    source: .manualLog
+                )
+                router.open(
+                    .manualLog,
+                    targetDate: now,
+                    targetDayPart: appState.dayPart(for: now)
+                )
             }
             .buttonStyle(SunSecondaryButtonStyle())
             .accessibilityIdentifier("productScanner.manualLog")
@@ -425,7 +435,17 @@ struct ProductScannerView: View {
         let note = result.expirationText.map { "Bottle expiry: \($0)" } ?? ""
         appState.setManualLogPrefill(spfLevel: result.spfLevel, notes: note)
         appState.recordProductScanUsedForLog(spfLevel: result.spfLevel)
-        router.open(.manualLog)
+        let now = appState.referenceDate
+        appState.prepareManualLogRouteContext(
+            targetDate: now,
+            targetDayPart: appState.dayPart(for: now),
+            source: .manualLog
+        )
+        router.open(
+            .manualLog,
+            targetDate: now,
+            targetDayPart: appState.dayPart(for: now)
+        )
     }
 }
 

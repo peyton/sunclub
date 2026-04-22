@@ -89,7 +89,17 @@ struct ReapplyCheckInView: View {
             .accessibilityIdentifier("reapply.log")
         } else {
             Button("Log Today") {
-                router.open(.manualLog)
+                let now = appState.referenceDate
+                appState.prepareManualLogRouteContext(
+                    targetDate: now,
+                    targetDayPart: appState.dayPart(for: now),
+                    source: .manualLog
+                )
+                router.open(
+                    .manualLog,
+                    targetDate: now,
+                    targetDayPart: appState.dayPart(for: now)
+                )
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("reapply.logTodayFallback")

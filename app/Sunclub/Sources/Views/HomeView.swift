@@ -946,7 +946,7 @@ struct HomeView: View {
             if appState.record(for: now) != nil, presentation.action != .addDetails {
                 Button("Edit Today's Log") {
                     feedbackTrigger += 1
-                    router.open(.manualLog)
+                    openManualLog(source: .manualLog)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
                 .accessibilityIdentifier("home.editToday")
@@ -958,7 +958,7 @@ struct HomeView: View {
         feedbackTrigger += 1
         switch action {
         case .logToday, .addDetails:
-            router.open(.manualLog)
+            openManualLog(source: .manualLog)
         case .backfillYesterday:
             router.open(.backfillYesterday)
         case .logReapply:
@@ -986,10 +986,24 @@ struct HomeView: View {
     private func performRecoveryAction(_ action: HomeRecoveryAction) {
         switch action.kind {
         case .logToday:
-            router.open(.manualLog)
+            openManualLog(source: .manualLog)
         case .backfillYesterday:
             router.open(.backfillYesterday)
         }
+    }
+
+    private func openManualLog(source: LogSource) {
+        let now = appState.referenceDate
+        appState.prepareManualLogRouteContext(
+            targetDate: now,
+            targetDayPart: appState.dayPart(for: now),
+            source: source
+        )
+        router.open(
+            .manualLog,
+            targetDate: now,
+            targetDayPart: appState.dayPart(for: now)
+        )
     }
 
     private func performAccountabilityAction(_ presentation: HomeAccountabilityPresentation) {

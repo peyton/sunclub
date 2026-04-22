@@ -17,7 +17,7 @@ final class AutomationTests: XCTestCase {
 
         var actions: [SunclubAutomationAction] = [
             .logToday(spfLevel: 50, notes: "Beach walk"),
-            .saveLog(day: day, time: ReminderTime(hour: 7, minute: 45), spfLevel: 30, notes: "Before run"),
+            .saveLog(day: day, time: ReminderTime(hour: 7, minute: 45), dayPart: .morning, spfLevel: 30, notes: "Before run"),
             .reapply,
             .status,
             .timeSinceLastApplication,
@@ -132,7 +132,8 @@ final class AutomationTests: XCTestCase {
             ("sunclub://automation/status", .status),
             ("sunclub://automation/time-since-last-application", .timeSinceLastApplication),
             ("sunclub://automation/open?route=settings", .open(.settings)),
-            ("sunclub://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: ReminderTime(hour: 8, minute: 30), spfLevel: 50, notes: "Morning")),
+            ("sunclub://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: ReminderTime(hour: 8, minute: 30), dayPart: nil, spfLevel: 50, notes: "Morning")),
+            ("sunclub://automation/save-log?date=2026-04-13&part=night&spf=45", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: nil, dayPart: .night, spfLevel: 45, notes: nil)),
             ("sunclub://automation/reapply", .reapply),
             ("sunclub://automation/set-reminder?kind=weekday&time=08:30", .setReminder(kind: .weekday, time: ReminderTime(hour: 8, minute: 30))),
             ("sunclub://automation/set-reapply?enabled=true&interval=90", .setReapply(enabled: true, intervalMinutes: 90)),
@@ -164,6 +165,7 @@ final class AutomationTests: XCTestCase {
             "sunclub://automation/save-log?date=tomorrow&spf=50",
             "sunclub://automation/save-log?date=2026-02-31&spf=50",
             "sunclub://automation/save-log?date=2026-04-13&time=25:30",
+            "sunclub://automation/save-log?date=2026-04-13&part=noon",
             "sunclub://automation/set-reapply?enabled=true&interval=later",
             "sunclub://automation/set-toggle?name=liveUV&enabled=true",
             "sunclub://automation/open?route=unknown",
@@ -279,6 +281,7 @@ final class AutomationTests: XCTestCase {
             .saveLog(
                 day: yesterday,
                 time: ReminderTime(hour: 8, minute: 45),
+                dayPart: nil,
                 spfLevel: 30,
                 notes: "Backfilled"
             ),
@@ -294,7 +297,7 @@ final class AutomationTests: XCTestCase {
         XCTAssertTrue(harness.state.changeBatches.contains { $0.kind == .historyBackfill })
 
         let editResult = try harness.state.performAutomationAction(
-            .saveLog(day: yesterday, time: nil, spfLevel: nil, notes: nil),
+            .saveLog(day: yesterday, time: nil, dayPart: nil, spfLevel: nil, notes: nil),
             invocation: .url
         )
         XCTAssertEqual(editResult.message, "Updated sunscreen log.")
@@ -327,13 +330,30 @@ final class AutomationTests: XCTestCase {
 
         let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
         _ = try harness.state.performAutomationAction(
-            .saveLog(day: yesterday, time: nil, spfLevel: 500, notes: "  Shortcut note  "),
+            .saveLog(day: yesterday, time: nil, dayPart: nil, spfLevel: 500, notes: "  Shortcut note  "),
             invocation: .shortcut
         )
 
         let yesterdayRecord = try XCTUnwrap(harness.state.record(for: yesterday))
         XCTAssertEqual(yesterdayRecord.spfLevel, 100)
         XCTAssertEqual(yesterdayRecord.notes, "Shortcut note")
+    }
+
+    func testSaveLogAutomationRejectsFutureDate() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let futureDay = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: now))
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+
+        XCTAssertThrowsError(
+            try harness.state.performAutomationAction(
+                .saveLog(day: futureDay, time: nil, dayPart: .morning, spfLevel: 50, notes: "Future"),
+                invocation: .url
+            )
+        ) { error in
+            XCTAssertEqual(error as? SunclubAutomationError, .invalidInput("Cannot log future date."))
+        }
+        XCTAssertTrue(harness.state.records.isEmpty)
     }
 
     func testStatusBackupReportAndStreakCardAutomationReturnExpectedValuesOrFiles() throws {
@@ -377,7 +397,7 @@ final class AutomationTests: XCTestCase {
         XCTAssertNil(empty.minutesSinceLastApplication)
 
         _ = try harness.state.performAutomationAction(
-            .saveLog(day: now, time: ReminderTime(hour: 10, minute: 15), spfLevel: 50, notes: "Morning"),
+            .saveLog(day: now, time: ReminderTime(hour: 10, minute: 15), dayPart: nil, spfLevel: 50, notes: "Morning"),
             invocation: .url
         )
 

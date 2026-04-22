@@ -51,4 +51,12 @@ final class DailyRecord {
     var hasReapplied: Bool {
         reapplyCount > 0
     }
+
+    func loggedDayPart(calendar: Calendar = .current) -> DayPart {
+        DayPart.resolve(for: verifiedAt, calendar: calendar)
+    }
+
+    func isLogged(in part: DayPart, calendar: Calendar = .current) -> Bool {
+        loggedDayPart(calendar: calendar) == part
+    }
 }
