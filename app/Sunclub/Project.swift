@@ -157,6 +157,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Services/SunclubWeatherKitBudget.swift",
             "Sources/Services/SunscreenUsageInsights.swift",
             "Sources/Shared/AppRoute.swift",
+            "Sources/Shared/DayPart.swift",
             "Sources/Shared/AppTheme.swift",
             "Sources/Shared/RuntimeEnvironment.swift",
             "Sources/Shared/SunManualLogInput.swift",
@@ -229,6 +230,7 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Services/SunclubWatchSyncCoordinator.swift",
             "Sources/Services/SunscreenUsageInsights.swift",
             "Sources/Shared/AppRoute.swift",
+            "Sources/Shared/DayPart.swift",
             "Sources/Shared/SunclubRuntimeConfiguration.swift",
             "Sources/WidgetSupport/SunclubWidgetSupport.swift"
         ],
@@ -286,6 +288,7 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Services/CalendarAnalytics.swift",
             "Sources/Services/SunscreenUsageInsights.swift",
             "Sources/Shared/AppRoute.swift",
+            "Sources/Shared/DayPart.swift",
             "Sources/Shared/SunclubRuntimeConfiguration.swift",
             "Sources/WidgetSupport/SunclubWidgetSupport.swift"
         ],
