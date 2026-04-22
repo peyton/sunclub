@@ -7,7 +7,7 @@ struct WeatherKitAttributionFooter: View {
 
     let attribution: SunclubWeatherAttribution?
     let sourceLabel: String
-    let showAttributionLink: Bool = false
+    let showAttributionLink: Bool
 
     var body: some View {
         HStack(spacing: 4) {
