@@ -383,9 +383,16 @@ def test_tests_plist_uses_resolved_version_placeholders() -> None:
 def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     workflow = CI_WORKFLOW.read_text()
 
+    assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
     assert "xcode-version: latest" not in workflow
-    assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
-    assert workflow.count("xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}") == 2
+    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+    assert workflow.count("Select Xcode 26.4") == 2
+    assert (
+        workflow.count(
+            'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
+        )
+        == 2
+    )
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
     assert "timeout-minutes: 45" in workflow
 
@@ -394,9 +401,14 @@ def test_ios_workflows_share_single_xcode_version_pin() -> None:
     for workflow_path in IOS_XCODE_WORKFLOWS:
         workflow = workflow_path.read_text()
 
+        assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
         assert "xcode-version: latest" not in workflow
-        assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
-        assert "xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}" in workflow
+        assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+        assert "Select Xcode 26.4" in workflow
+        assert (
+            'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
+            in workflow
+        )
 
 
 def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
@@ -421,8 +433,12 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     )
 
     assert '- "v*.*.*"' in workflow
-    assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
-    assert "xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}" in workflow
+    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+    assert "Select Xcode 26.4" in workflow
+    assert (
+        'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
+        in workflow
+    )
     assert "environment: testflight" in workflow
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert release_safety_step is not None
@@ -470,8 +486,12 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         workflow,
     )
 
-    assert 'SUNCLUB_XCODE_VERSION: "26.3"' in workflow
-    assert "xcode-version: ${{ env.SUNCLUB_XCODE_VERSION }}" in workflow
+    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+    assert "Select Xcode 26.4" in workflow
+    assert (
+        'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
+        in workflow
+    )
     assert "environment: app-store-review" in workflow
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
 
