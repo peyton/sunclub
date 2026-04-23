@@ -82,19 +82,21 @@ struct TimelineHomeView: View {
             VStack(alignment: .leading, spacing: 24) {
                 headerBar
 
-                dateHeadline(for: presentation)
+                VStack(spacing: 10) {
+                    dateHeadline(for: presentation)
 
-                SunDayStrip(
-                    selectedDay: $appState.selectedDay,
-                    today: presentation.today,
-                    visibleDays: presentation.visibleDays,
-                    recordedDays: presentation.recordedDays,
-                    currentStreakDays: presentation.currentStreakDays,
-                    elevatedUVDays: presentation.elevatedUVDays,
-                    extrasDays: presentation.extrasDays,
-                    logDetails: presentation.logDetails,
-                    allowsFuture: presentation.allowsFuture
-                )
+                    SunDayStrip(
+                        selectedDay: $appState.selectedDay,
+                        today: presentation.today,
+                        visibleDays: presentation.visibleDays,
+                        recordedDays: presentation.recordedDays,
+                        currentStreakDays: presentation.currentStreakDays,
+                        elevatedUVDays: presentation.elevatedUVDays,
+                        extrasDays: presentation.extrasDays,
+                        logDetails: presentation.logDetails,
+                        allowsFuture: presentation.allowsFuture
+                    )
+                }
 
                 attentionBanners
 
@@ -175,27 +177,7 @@ struct TimelineHomeView: View {
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
-
-            sunConnector
         }
-    }
-
-    private var sunConnector: some View {
-        VStack(spacing: 0) {
-            SunburstMark(size: 14, tint: AppPalette.sun)
-                .frame(width: 16, height: 10)
-
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [AppPalette.sun.opacity(0.45), AppPalette.sun.opacity(0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 1.5, height: 8)
-        }
-        .accessibilityHidden(true)
     }
 
     @ViewBuilder
