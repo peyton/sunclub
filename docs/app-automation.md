@@ -51,7 +51,7 @@
 ## Direct URL Actions
 
 - `log-today?spf=50&notes=Beach%20bag`
-- `save-log?date=YYYY-MM-DD&time=HH:mm&part=morning|evening|night&spf=50&notes=Morning`
+- `save-log?date=YYYY-MM-DD&time=HH:mm&part=morning|afternoon|evening|night&spf=50&notes=Morning`
 - `reapply`
 - `status`
 - `time-since-last-application`
@@ -106,6 +106,7 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Outside-app writes must refresh projected state and widget snapshots.
 - Duplicate same-day logs update the existing day rather than adding another visible day.
 - Timeline/manual logging uses an explicit `{date, dayPart, source}` context and does not silently fall back to wall-clock `Date()`.
+- Day parts are morning 5 AM-12 PM, afternoon 12-6 PM, evening 6-9 PM, and night 9 PM-5 AM.
 - Optional SPF and notes behavior must match the manual log flows, including SPF clamping and the 280-character note limit.
 
 ## Testing Requirements

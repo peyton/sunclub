@@ -133,6 +133,7 @@ final class AutomationTests: XCTestCase {
             ("sunclub://automation/time-since-last-application", .timeSinceLastApplication),
             ("sunclub://automation/open?route=settings", .open(.settings)),
             ("sunclub://automation/save-log?date=2026-04-13&time=08:30&spf=50&notes=Morning", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: ReminderTime(hour: 8, minute: 30), dayPart: nil, spfLevel: 50, notes: "Morning")),
+            ("sunclub://automation/save-log?date=2026-04-13&part=afternoon&spf=45", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: nil, dayPart: .afternoon, spfLevel: 45, notes: nil)),
             ("sunclub://automation/save-log?date=2026-04-13&part=night&spf=45", .saveLog(day: try makeDate(year: 2026, month: 4, day: 13), time: nil, dayPart: .night, spfLevel: 45, notes: nil)),
             ("sunclub://automation/reapply", .reapply),
             ("sunclub://automation/set-reminder?kind=weekday&time=08:30", .setReminder(kind: .weekday, time: ReminderTime(hour: 8, minute: 30))),

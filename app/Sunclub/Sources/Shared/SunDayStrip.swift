@@ -6,6 +6,7 @@ struct SunDayStrip: View {
 
     @Binding var selectedDay: Date
     let today: Date
+    let visibleDays: [Date]
     let recordedDays: Set<Date>
     let currentStreakDays: Set<Date>
     let elevatedUVDays: Set<Date>
@@ -14,13 +15,12 @@ struct SunDayStrip: View {
     let allowsFuture: Bool
 
     private let calendar = Calendar.current
-    private let pastDays = 365
-    private let futureDays = 14
-    private let chipWidth: CGFloat = 44
-    private let chipHeight: CGFloat = 44
-    private let columnSpacing: CGFloat = 16
-    private let letterRowHeight: CGFloat = 14
-    private let pointerRowHeight: CGFloat = 22
+    private let columnWidth: CGFloat = 54
+    private let chipBaseSize: CGFloat = 40
+    private let selectedChipSize: CGFloat = 52
+    private let columnSpacing: CGFloat = 12
+    private let letterRowHeight: CGFloat = 16
+    private let connectorRowHeight: CGFloat = 18
 
     @State private var scrollTargetDay: Date?
 
@@ -46,7 +46,7 @@ struct SunDayStrip: View {
             }
             .contentMargins(
                 .horizontal,
-                max(0, (proxy.size.width - chipWidth) / 2),
+                max(0, (proxy.size.width - columnWidth) / 2),
                 for: .scrollContent
             )
             .scrollTargetBehavior(.viewAligned)
@@ -77,7 +77,7 @@ struct SunDayStrip: View {
                 }
             }
         }
-        .frame(height: letterRowHeight + pointerRowHeight + chipHeight + 22)
+        .frame(height: letterRowHeight + connectorRowHeight + selectedChipSize + 18)
         .accessibilityIdentifier("timeline.dayStrip")
     }
 
@@ -87,29 +87,24 @@ struct SunDayStrip: View {
             selectDay(day)
         } label: {
             VStack(spacing: 4) {
-                Text(state.weekdayLetter)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(state.isSelected ? AppPalette.ink : AppPalette.softInk)
-                    .frame(height: letterRowHeight)
-
-                pointerSlot(for: state)
-                    .frame(height: pointerRowHeight)
+                weekdayLabel(for: state)
 
                 chip(for: state)
-                    .frame(width: chipWidth, height: chipHeight)
+                    .frame(width: chipSize(for: state), height: chipSize(for: state))
                     .overlay {
                         if state.isCurrentStreak, state.status == .applied {
                             Capsule()
                                 .stroke(AppPalette.streakAccent.opacity(0.8), lineWidth: 1.3)
-                                .frame(width: chipWidth + 6, height: chipHeight + 6)
+                                .frame(width: chipSize(for: state) + 6, height: chipSize(for: state) + 6)
                                 .allowsHitTesting(false)
                         }
                     }
+                    .animation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion), value: state.isSelected)
 
                 footerDot(for: state)
                     .frame(height: 8)
             }
-            .frame(width: chipWidth, height: 96)
+            .frame(width: columnWidth, height: 102)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -123,12 +118,51 @@ struct SunDayStrip: View {
     }
 
     @ViewBuilder
-    private func pointerSlot(for state: ChipState) -> some View {
+    private func weekdayLabel(for state: ChipState) -> some View {
         if state.isSelected {
-            SelectedDayPointer(letter: state.weekdayLetter)
+            VStack(spacing: 0) {
+                Text(state.weekdayLetter)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+                    .frame(width: 24, height: letterRowHeight)
+                    .background {
+                        selectedDayNeedle
+                    }
+
+                Color.clear
+                    .frame(height: connectorRowHeight)
+            }
+            .frame(width: columnWidth, height: letterRowHeight + connectorRowHeight)
         } else {
-            Color.clear
+            VStack(spacing: 0) {
+                Text(state.weekdayLetter)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+                    .frame(height: letterRowHeight)
+
+                Color.clear
+                    .frame(height: connectorRowHeight)
+            }
+            .frame(width: columnWidth, height: letterRowHeight + connectorRowHeight)
         }
+    }
+
+    private var selectedDayNeedle: some View {
+        Capsule(style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [AppPalette.sun.opacity(0.95), AppPalette.sun.opacity(0.18)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: 2, height: letterRowHeight + connectorRowHeight + 58)
+            .offset(y: -10)
+            .accessibilityHidden(true)
+    }
+
+    private func chipSize(for state: ChipState) -> CGFloat {
+        state.isSelected ? selectedChipSize : chipBaseSize
     }
 
     @ViewBuilder
@@ -198,17 +232,21 @@ struct SunDayStrip: View {
     }
 
     private var highProtectionOverlay: some View {
-        Circle()
-            .fill(
-                RadialGradient(
-                    colors: [Color.white.opacity(0.55), Color.white.opacity(0)],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: chipWidth * 0.55
+        GeometryReader { proxy in
+            let size = min(proxy.size.width, proxy.size.height)
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.55), Color.white.opacity(0)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: size * 0.55
+                    )
                 )
-            )
-            .frame(width: chipWidth * 0.75, height: chipWidth * 0.75)
-            .allowsHitTesting(false)
+                .frame(width: size * 0.75, height: size * 0.75)
+                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                .allowsHitTesting(false)
+        }
     }
 
     private func outlineChip(for state: ChipState, dashed: Bool) -> some View {
@@ -261,7 +299,8 @@ struct SunDayStrip: View {
         if state.hasSecondaryActivity {
             Circle()
                 .fill(AppPalette.pool)
-                .frame(width: 5, height: 5)
+                .frame(width: state.isSelected ? 7 : 5, height: state.isSelected ? 7 : 5)
+                .animation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion), value: state.isSelected)
         } else {
             Color.clear.frame(width: 5, height: 5)
         }
@@ -303,7 +342,7 @@ struct SunDayStrip: View {
         let state = chipState(for: day)
         return HStack(spacing: 12) {
             chip(for: state)
-                .frame(width: chipWidth, height: chipHeight)
+                .frame(width: selectedChipSize, height: selectedChipSize)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
@@ -336,19 +375,6 @@ struct SunDayStrip: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(state.isSelected ? .isSelected : [])
-    }
-
-    private var visibleDays: [Date] {
-        let todayStart = calendar.startOfDay(for: today)
-        let pastStart = calendar.date(byAdding: .day, value: -pastDays, to: todayStart) ?? todayStart
-        let futureEnd = calendar.date(byAdding: .day, value: futureDays, to: todayStart) ?? todayStart
-        var days: [Date] = []
-        var cursor = pastStart
-        while cursor <= futureEnd {
-            days.append(cursor)
-            cursor = calendar.date(byAdding: .day, value: 1, to: cursor) ?? futureEnd.addingTimeInterval(86400)
-        }
-        return days
     }
 
     private func chipState(for day: Date) -> ChipState {
@@ -511,39 +537,6 @@ private struct ChipState {
             parts.append("selected")
         }
         return parts.joined(separator: ", ")
-    }
-}
-
-private struct SelectedDayPointer: View {
-    let letter: String
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text(letter)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(AppPalette.onAccent)
-                .frame(width: 24, height: 18)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(AppPalette.ink)
-                )
-
-            Triangle()
-                .fill(AppPalette.ink)
-                .frame(width: 7, height: 4)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-private struct Triangle: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.closeSubpath()
-        return path
     }
 }
 

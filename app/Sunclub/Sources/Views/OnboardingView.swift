@@ -11,15 +11,13 @@ struct WelcomeView: View {
     @State private var startFeedbackTrigger = 0
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(contentAlignment: .center) {
             VStack(spacing: 0) {
                 SunBrandLockup(
                     layout: .stacked,
-                    markSize: 104,
-                    subtitle: SunclubCopy.Brand.welcomeTitle
+                    markSize: 104
                 )
                 .frame(maxWidth: .infinity)
-                .padding(.top, 96)
 
                 VStack(alignment: .leading, spacing: 26) {
                     welcomeValuePropRow(
@@ -41,10 +39,9 @@ struct WelcomeView: View {
                 .frame(maxWidth: 320, alignment: .leading)
                 .padding(.top, 56)
                 .frame(maxWidth: .infinity)
-
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 32)
         } footer: {
             Button("Get Started") {
                 startFeedbackTrigger += 1
@@ -73,6 +70,7 @@ struct WelcomeView: View {
                 Text(detail)
                     .font(AppTypography.body)
                     .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)

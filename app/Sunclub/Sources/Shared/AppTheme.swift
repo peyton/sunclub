@@ -286,11 +286,14 @@ struct SunDarkBackdrop: View {
 struct SunLightScreen<Content: View, Footer: View>: View {
     let content: Content
     let footer: Footer
+    let contentAlignment: Alignment
 
     init(
+        contentAlignment: Alignment = .topLeading,
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
+        self.contentAlignment = contentAlignment
         self.content = content()
         self.footer = footer()
     }
@@ -307,7 +310,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
                         .padding(.bottom, 18)
-                        .frame(minHeight: proxy.size.height - 120, alignment: .top)
+                        .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
                     }
                     .scrollDismissesKeyboard(.interactively)
 
@@ -326,8 +329,8 @@ struct SunLightScreen<Content: View, Footer: View>: View {
 }
 
 extension SunLightScreen where Footer == EmptyView {
-    init(@ViewBuilder content: () -> Content) {
-        self.init(content: content) { EmptyView() }
+    init(contentAlignment: Alignment = .topLeading, @ViewBuilder content: () -> Content) {
+        self.init(contentAlignment: contentAlignment, content: content) { EmptyView() }
     }
 }
 

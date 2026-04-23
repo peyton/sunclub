@@ -126,7 +126,7 @@ struct ManualLogView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             Picker("Day Part", selection: $selectedDayPart) {
-                ForEach(DayPart.allCases) { dayPart in
+                ForEach(DayPart.logPickerParts(including: selectedDayPart)) { dayPart in
                     Text(dayPart.title).tag(dayPart)
                 }
             }

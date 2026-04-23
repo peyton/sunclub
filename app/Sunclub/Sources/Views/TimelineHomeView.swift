@@ -9,6 +9,62 @@ private struct TimelineAttentionContent {
     let identifier: String
 }
 
+@MainActor
+private struct TimelineHomePresentation {
+    let selectedDay: Date
+    let today: Date
+    let logSummary: TimelineDayLogSummary
+    let homeDailyPlanPresentation: HomeDailyPlanPresentation
+    let recordedDays: Set<Date>
+    let currentStreakDays: Set<Date>
+    let elevatedUVDays: Set<Date>
+    let extrasDays: Set<Date>
+    let logDetails: [Date: SunDayDetails]
+    let visibleDays: [Date]
+    let allowsFuture: Bool
+    let uvForecast: SunclubUVForecast?
+    let weatherAttribution: SunclubWeatherAttribution?
+    let currentStreak: Int
+    let longestStreak: Int
+
+    init(appState: AppState) {
+        let selected = appState.selectedDay
+        let referenceDate = appState.referenceDate
+
+        selectedDay = selected
+        today = referenceDate
+        logSummary = appState.timelineDayLogSummary(for: selected)
+        homeDailyPlanPresentation = appState.homeDailyPlanPresentation
+        recordedDays = Set(appState.recordedDays)
+        currentStreakDays = Set(appState.currentStreakDays)
+        elevatedUVDays = appState.elevatedUVDays
+        extrasDays = appState.daysWithExtras
+        logDetails = appState.dailyDetailsForTimeline
+        visibleDays = Self.timelineDays(centeredOn: referenceDate)
+        allowsFuture = appState.timelineShowsFutureDays
+        uvForecast = appState.uvForecast
+        weatherAttribution = appState.weatherAttribution
+        currentStreak = appState.currentStreak
+        longestStreak = appState.longestStreak
+    }
+
+    private static func timelineDays(centeredOn today: Date) -> [Date] {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: today)
+        let pastStart = calendar.date(byAdding: .day, value: -365, to: todayStart) ?? todayStart
+        let futureEnd = calendar.date(byAdding: .day, value: 14, to: todayStart) ?? todayStart
+        var days: [Date] = []
+        var cursor = pastStart
+
+        while cursor <= futureEnd {
+            days.append(cursor)
+            cursor = calendar.date(byAdding: .day, value: 1, to: cursor) ?? futureEnd.addingTimeInterval(86_400)
+        }
+
+        return days
+    }
+}
+
 struct TimelineHomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
@@ -20,39 +76,45 @@ struct TimelineHomeView: View {
 
     var body: some View {
         @Bindable var appState = appState
+        let presentation = TimelineHomePresentation(appState: appState)
 
         SunLightScreen {
             VStack(alignment: .leading, spacing: 24) {
                 headerBar
 
-                dateHeadline
+                dateHeadline(for: presentation)
 
                 SunDayStrip(
                     selectedDay: $appState.selectedDay,
-                    today: appState.referenceDate,
-                    recordedDays: Set(appState.recordedDays),
-                    currentStreakDays: Set(appState.currentStreakDays),
-                    elevatedUVDays: appState.elevatedUVDays,
-                    extrasDays: appState.daysWithExtras,
-                    logDetails: appState.dailyDetailsForTimeline,
-                    allowsFuture: appState.timelineShowsFutureDays
+                    today: presentation.today,
+                    visibleDays: presentation.visibleDays,
+                    recordedDays: presentation.recordedDays,
+                    currentStreakDays: presentation.currentStreakDays,
+                    elevatedUVDays: presentation.elevatedUVDays,
+                    extrasDays: presentation.extrasDays,
+                    logDetails: presentation.logDetails,
+                    allowsFuture: presentation.allowsFuture
                 )
 
                 attentionBanners
 
-                TimelineLogSection(summary: logSummary)
-
-                TimelineHighlightsSection(summary: logSummary)
+                TimelineLogSection(
+                    summary: presentation.logSummary,
+                    uvForecast: presentation.uvForecast,
+                    weatherAttribution: presentation.weatherAttribution,
+                    currentStreak: presentation.currentStreak,
+                    longestStreak: presentation.longestStreak
+                )
 
                 Spacer(minLength: 0)
             }
         } footer: {
             TimelineFooterBar(
-                primaryTitle: primaryCTAText,
-                primaryIdentifier: primaryCTAIdentifier,
+                primaryTitle: primaryCTAText(for: presentation),
+                primaryIdentifier: primaryCTAIdentifier(for: presentation),
                 onPrimaryTap: {
                     feedbackTrigger += 1
-                    performPrimaryAction()
+                    performPrimaryAction(using: presentation)
                 }
             )
         }
@@ -102,9 +164,9 @@ struct TimelineHomeView: View {
         }
     }
 
-    private var dateHeadline: some View {
+    private func dateHeadline(for presentation: TimelineHomePresentation) -> some View {
         VStack(spacing: 8) {
-            Text(headlineText)
+            Text(headlineText(for: presentation))
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .multilineTextAlignment(.center)
@@ -112,7 +174,7 @@ struct TimelineHomeView: View {
                 .accessibilityIdentifier("timeline.headline")
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(accessibilityHeadlineLabel)
+                .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
 
             sunConnector
         }
@@ -216,38 +278,34 @@ struct TimelineHomeView: View {
         .sunGlassCard(cornerRadius: 18)
     }
 
-    private var logSummary: TimelineDayLogSummary {
-        appState.timelineDayLogSummary(for: appState.selectedDay)
+    private func headlineText(for presentation: TimelineHomePresentation) -> String {
+        relativeHeadline(for: presentation.selectedDay)
     }
 
-    private var headlineText: String {
-        relativeHeadline(for: appState.selectedDay)
+    private func accessibilityHeadlineLabel(for presentation: TimelineHomePresentation) -> String {
+        headlineText(for: presentation)
     }
 
-    private var accessibilityHeadlineLabel: String {
-        headlineText
-    }
-
-    private var primaryCTAText: String {
-        if logSummary.category == .future {
+    private func primaryCTAText(for presentation: TimelineHomePresentation) -> String {
+        if presentation.logSummary.category == .future {
             return "Back to Today"
         }
 
-        let action = appState.homeDailyPlanPresentation.action
+        let action = presentation.homeDailyPlanPresentation.action
         switch action {
         case .logToday, .addDetails:
-            return "Log \(logSummary.dayPart.title)"
+            return "Log \(presentation.logSummary.dayPart.title)"
         default:
-            return appState.homeDailyPlanPresentation.actionTitle
+            return presentation.homeDailyPlanPresentation.actionTitle
         }
     }
 
-    private var primaryCTAIdentifier: String {
-        if logSummary.category == .future {
+    private func primaryCTAIdentifier(for presentation: TimelineHomePresentation) -> String {
+        if presentation.logSummary.category == .future {
             return "timeline.backToToday"
         }
 
-        switch appState.homeDailyPlanPresentation.action {
+        switch presentation.homeDailyPlanPresentation.action {
         case .logToday:
             return "home.logManually"
         case .backfillYesterday, .logReapply, .addDetails, .viewProgress, .reviewRecovery, .repairReminders, .openSettings:
@@ -255,19 +313,19 @@ struct TimelineHomeView: View {
         }
     }
 
-    private func performPrimaryAction() {
-        if logSummary.category == .future {
+    private func performPrimaryAction(using presentation: TimelineHomePresentation) {
+        if presentation.logSummary.category == .future {
             jumpToToday()
             return
         }
 
-        let action = appState.homeDailyPlanPresentation.action
+        let action = presentation.homeDailyPlanPresentation.action
         switch action {
         case .logToday, .addDetails:
             openManualLog(
                 context: AppLogContext(
-                    date: appState.selectedDay,
-                    dayPart: logSummary.dayPart,
+                    date: presentation.selectedDay,
+                    dayPart: presentation.logSummary.dayPart,
                     source: .timeline
                 )
             )
