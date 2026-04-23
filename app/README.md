@@ -21,12 +21,12 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
    - Control Center exposes `Log Today`, `Summary`, and `History`.
    - Apple Shortcuts and URL actions expose supported non-destructive reads and writes.
 2. `Welcome`
-   - Intro screen with the Sunclub mark and `Get Started`.
+   - Intro screen with the Sunclub mark, core habit value props, and `Get Started`.
 3. `Enable Notifications`
    - Requests local notification permission.
    - Onboarding completes whether permission is allowed or denied.
 4. `Home Dashboard`
-   - Shows the greeting, current streak card, manual logging, product scanner, and a gear button for Settings.
+   - Shows the relative selected date, horizontal timeline, UV forecast blocks, manual logging, product scanner, and a gear button for Settings.
 5. `Verify Success`
    - Confirms the verification and shows the updated streak.
 6. `Weekly Summary`

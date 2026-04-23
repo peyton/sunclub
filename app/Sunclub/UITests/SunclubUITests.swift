@@ -12,10 +12,10 @@ final class SunclubUITests: XCTestCase {
         line: UInt = #line
     ) {
         let legacyPrompt = app.staticTexts["Your first day starts now"]
-        let timelineSubtitle = app.staticTexts["timeline.headlineSubtitle"]
+        let timelineHeadline = app.staticTexts["timeline.headline"]
         let hasLegacyPrompt = legacyPrompt.exists
-        let hasTimelinePrompt = timelineSubtitle.waitForExistence(timeout: 5)
-            && timelineSubtitle.label.contains("Next up:")
+        let hasTimelinePrompt = timelineHeadline.waitForExistence(timeout: 5)
+            && timelineHeadline.label.hasPrefix("Today,")
         XCTAssertTrue(
             hasLegacyPrompt || hasTimelinePrompt,
             "Expected legacy or timeline ready-to-log state.",
@@ -30,11 +30,11 @@ final class SunclubUITests: XCTestCase {
         line: UInt = #line
     ) {
         let legacyStatus = app.staticTexts["home.todayStatus"]
-        let timelineSubtitle = app.staticTexts["timeline.headlineSubtitle"]
+        let timelineHeadline = app.staticTexts["timeline.headline"]
         let hasLegacyLoggedState = legacyStatus.waitForExistence(timeout: 5)
             && legacyStatus.label == "Today's log is in"
-        let hasTimelineLoggedState = timelineSubtitle.waitForExistence(timeout: 5)
-            && timelineSubtitle.label.localizedCaseInsensitiveContains("logged")
+        let hasTimelineLoggedState = timelineHeadline.waitForExistence(timeout: 5)
+            && app.buttons["home.loggedPrimaryAction"].exists
         XCTAssertTrue(
             hasLegacyLoggedState || hasTimelineLoggedState,
             "Expected legacy or timeline logged state.",
@@ -72,8 +72,6 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.valueProps.continue"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.valueProps.continue"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -509,8 +507,6 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.valueProps.continue"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.valueProps.continue"].tap()
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
@@ -1020,46 +1016,45 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testTimelineLogSectionShowsDayPartRows() throws {
+    func testTimelineForecastSectionShowsDayPartForecasts() throws {
         let app = launchTimelineHome()
-        XCTAssertTrue(app.buttons["timeline.log.part.morning"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.log.part.evening"].exists)
-        XCTAssertTrue(app.buttons["timeline.log.part.night"].exists)
+        XCTAssertTrue(app.staticTexts["UV Forecast"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
     }
 
     @MainActor
-    func testTimelineFutureDayDisablesPartActions() throws {
+    func testTimelineFutureDayShowsTomorrowForecast() throws {
         let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=13:00"])
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
-        let tomorrowChip = app.buttons[tomorrowIdentifier]
-        if !tomorrowChip.waitForExistence(timeout: 3) {
-            throw XCTSkip("Tomorrow chip is not visible in the current viewport.")
-        }
+        let tomorrowChip = timelineDayChip(tomorrowIdentifier, in: app, direction: .future)
+        XCTAssertTrue(tomorrowChip.exists)
         tomorrowChip.tap()
 
-        let morningRow = app.buttons["timeline.log.part.morning"]
-        XCTAssertTrue(morningRow.waitForExistence(timeout: 3))
-        XCTAssertFalse(morningRow.isEnabled)
-        let notice = app.staticTexts["timeline.log.futureNotice"]
-        XCTAssertTrue(notice.waitForExistence(timeout: 3))
+        let headline = app.staticTexts["timeline.headline"]
+        XCTAssertTrue(headline.waitForExistence(timeout: 3))
+        XCTAssertTrue(headline.label.hasPrefix("Tomorrow,"))
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertTrue(app.buttons["timeline.backToToday"].exists)
     }
 
     @MainActor
     func testTimelineAfterMidnightManualLogUsesSelectedDayContext() throws {
         let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=00:30"])
         let yesterdayIdentifier = "timeline.day.\(dayIdentifier(offset: -1))"
-        let yesterdayChip = app.buttons[yesterdayIdentifier]
-        if !yesterdayChip.waitForExistence(timeout: 3) {
-            throw XCTSkip("Yesterday chip is not visible in the current viewport.")
-        }
+        let yesterdayChip = timelineDayChip(yesterdayIdentifier, in: app, direction: .past)
+        XCTAssertTrue(yesterdayChip.exists)
         yesterdayChip.tap()
 
-        let nightRow = app.buttons["timeline.log.part.night"]
-        XCTAssertTrue(nightRow.waitForExistence(timeout: 3))
-        nightRow.tap()
+        let headline = app.staticTexts["timeline.headline"]
+        XCTAssertTrue(headline.waitForExistence(timeout: 3))
+        XCTAssertTrue(headline.label.hasPrefix("Yesterday,"))
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 3))
+        app.buttons["home.logManually"].tap()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Log Night")
+        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Log Morning")
     }
 
     @MainActor
@@ -1199,8 +1194,6 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     private func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.valueProps.continue"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.valueProps.continue"].tap()
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
@@ -1243,6 +1236,39 @@ final class SunclubUITests: XCTestCase {
         let today = calendar.startOfDay(for: Date())
         let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
         return Self.dayIdentifierFormatter.string(from: day)
+    }
+
+    @MainActor
+    private func timelineDayChip(
+        _ identifier: String,
+        in app: XCUIApplication,
+        direction: TimelineDayScrollDirection
+    ) -> XCUIElement {
+        let chip = app.descendants(matching: .any)[identifier]
+        if chip.waitForExistence(timeout: 2) {
+            return chip
+        }
+
+        let strip = app.descendants(matching: .any)["timeline.dayStrip"]
+        XCTAssertTrue(strip.waitForExistence(timeout: 5), "Expected timeline day strip to exist.")
+
+        for _ in 0..<6 {
+            dragTimelineStrip(strip, direction: direction)
+            if chip.waitForExistence(timeout: 1) {
+                return chip
+            }
+        }
+
+        return chip
+    }
+
+    @MainActor
+    private func dragTimelineStrip(_ strip: XCUIElement, direction: TimelineDayScrollDirection) {
+        let startX: CGFloat = direction == .future ? 0.82 : 0.18
+        let endX: CGFloat = direction == .future ? 0.18 : 0.82
+        let start = strip.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: 0.5))
+        let end = strip.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private static let dayIdentifierFormatter: DateFormatter = {
@@ -1393,4 +1419,9 @@ final class SunclubUITests: XCTestCase {
 private enum CalendarGridDragDirection {
     case left
     case right
+}
+
+private enum TimelineDayScrollDirection {
+    case past
+    case future
 }

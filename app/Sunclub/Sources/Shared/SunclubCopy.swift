@@ -3,9 +3,8 @@ import Foundation
 enum SunclubCopy {
     enum Brand {
         static let welcomeTitle = "Daily sunscreen, made routine."
-        static let welcomeDetail = "A quick check-in, a clear streak, and reminders that help you stay steady."
-        static let reminderTitle = "Set the daily nudge"
-        static let reminderDetail = "Turn on reminders and Sunclub will catch you before the day gets moving. You can change the time later."
+        static let reminderTitle = "Smart reminders"
+        static let reminderDetail = "Get a sunscreen nudge before the day gets moving. You can change timing later in Settings."
         static let homeSubtitle = "Make sunscreen the easy part of the day."
     }
 

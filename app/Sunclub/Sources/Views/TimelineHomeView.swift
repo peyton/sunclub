@@ -27,8 +27,6 @@ struct TimelineHomeView: View {
 
                 dateHeadline
 
-                quickJumpStrip
-
                 SunDayStrip(
                     selectedDay: $appState.selectedDay,
                     today: appState.referenceDate,
@@ -42,9 +40,7 @@ struct TimelineHomeView: View {
 
                 attentionBanners
 
-                TimelineLogSection(summary: logSummary) { context in
-                    openManualLog(context: context)
-                }
+                TimelineLogSection(summary: logSummary)
 
                 TimelineHighlightsSection(summary: logSummary)
 
@@ -108,74 +104,18 @@ struct TimelineHomeView: View {
 
     private var dateHeadline: some View {
         VStack(spacing: 8) {
-            VStack(spacing: 4) {
-                Text(headlineText)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("timeline.headline")
-
-                Text(headlineSubtitle)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(headlineSubtitleTint)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("timeline.headlineSubtitle")
-            }
-            .frame(maxWidth: .infinity)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(accessibilityHeadlineLabel)
+            Text(headlineText)
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("timeline.headline")
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(accessibilityHeadlineLabel)
 
             sunConnector
         }
-    }
-
-    private var quickJumpStrip: some View {
-        let calendar = Calendar.current
-        let today = appState.startOfLocalDay(appState.referenceDate)
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        let selected = appState.startOfLocalDay(appState.selectedDay)
-
-        return HStack(spacing: 10) {
-            quickJumpButton(
-                title: "Today",
-                isDisabled: selected == today
-            ) {
-                appState.selectDay(today)
-            }
-            .accessibilityIdentifier("timeline.jump.today")
-
-            quickJumpButton(
-                title: "Yesterday",
-                isDisabled: selected == yesterday
-            ) {
-                appState.selectDay(yesterday)
-            }
-            .accessibilityIdentifier("timeline.jump.yesterday")
-        }
-    }
-
-    private func quickJumpButton(title: String, isDisabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(title) {
-            feedbackTrigger += 1
-            withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
-                action()
-            }
-        }
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(isDisabled ? AppPalette.muted : AppPalette.ink)
-        .frame(maxWidth: .infinity, minHeight: 44)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(isDisabled ? 0.45 : 0.76))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
-        .buttonStyle(.plain)
-        .disabled(isDisabled)
     }
 
     private var sunConnector: some View {
@@ -281,38 +221,18 @@ struct TimelineHomeView: View {
     }
 
     private var headlineText: String {
-        appState.selectedDay.formatted(.dateTime.weekday(.wide).month(.wide).day())
-    }
-
-    private var headlineSubtitle: String {
-        if logSummary.category == .future {
-            return "Future date preview only"
-        }
-        if logSummary.record != nil {
-            return "\(logSummary.dayPart.title) logged"
-        }
-        return "Next up: \(logSummary.dayPart.title)"
-    }
-
-    private var headlineSubtitleTint: Color {
-        if logSummary.category == .future {
-            return AppPalette.muted
-        }
-        if logSummary.record != nil {
-            return AppPalette.success
-        }
-        return AppPalette.softInk
+        relativeHeadline(for: appState.selectedDay)
     }
 
     private var accessibilityHeadlineLabel: String {
-        "\(headlineText). \(headlineSubtitle)."
-    }
-
-    private var isSelectedToday: Bool {
-        Calendar.current.isDate(appState.selectedDay, inSameDayAs: appState.referenceDate)
+        headlineText
     }
 
     private var primaryCTAText: String {
+        if logSummary.category == .future {
+            return "Back to Today"
+        }
+
         let action = appState.homeDailyPlanPresentation.action
         switch action {
         case .logToday, .addDetails:
@@ -323,6 +243,10 @@ struct TimelineHomeView: View {
     }
 
     private var primaryCTAIdentifier: String {
+        if logSummary.category == .future {
+            return "timeline.backToToday"
+        }
+
         switch appState.homeDailyPlanPresentation.action {
         case .logToday:
             return "home.logManually"
@@ -332,6 +256,11 @@ struct TimelineHomeView: View {
     }
 
     private func performPrimaryAction() {
+        if logSummary.category == .future {
+            jumpToToday()
+            return
+        }
+
         let action = appState.homeDailyPlanPresentation.action
         switch action {
         case .logToday, .addDetails:
@@ -358,12 +287,39 @@ struct TimelineHomeView: View {
     }
 
     private func jumpToToday() {
-        guard !isSelectedToday else {
+        guard !Calendar.current.isDate(appState.selectedDay, inSameDayAs: appState.referenceDate) else {
             return
         }
         withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
             appState.selectDay(appState.referenceDate)
         }
+    }
+
+    private func relativeHeadline(for day: Date) -> String {
+        let calendar = Calendar.current
+        let selected = calendar.startOfDay(for: day)
+        let today = calendar.startOfDay(for: appState.referenceDate)
+        let offset = calendar.dateComponents([.day], from: today, to: selected).day
+        let dateText = formattedHeadlineDate(selected, relativeTo: today)
+
+        switch offset {
+        case -1:
+            return "Yesterday, \(dateText)"
+        case 0:
+            return "Today, \(dateText)"
+        case 1:
+            return "Tomorrow, \(dateText)"
+        default:
+            return dateText
+        }
+    }
+
+    private func formattedHeadlineDate(_ day: Date, relativeTo referenceDay: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(day, equalTo: referenceDay, toGranularity: .year) {
+            return day.formatted(.dateTime.month(.wide).day())
+        }
+        return day.formatted(.dateTime.month(.wide).day().year())
     }
 
     private func openManualLog(context: AppLogContext) {
