@@ -55,6 +55,9 @@ printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env.pop("CI", None)
+    env.pop("GITHUB_ACTIONS", None)
+    env.pop("ACT", None)
 
     subprocess.run(
         [
@@ -324,6 +327,9 @@ printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env.pop("CI", None)
+    env.pop("GITHUB_ACTIONS", None)
+    env.pop("ACT", None)
 
     subprocess.run(
         [
@@ -392,6 +398,9 @@ printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env.pop("CI", None)
+    env.pop("GITHUB_ACTIONS", None)
+    env.pop("ACT", None)
 
     subprocess.run(
         [
