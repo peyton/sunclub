@@ -562,13 +562,21 @@ final class SunclubTests: XCTestCase {
 
         let early = try XCTUnwrap(calendar.date(bySettingHour: 4, minute: 59, second: 0, of: day))
         let morning = try XCTUnwrap(calendar.date(bySettingHour: 5, minute: 0, second: 0, of: day))
-        let evening = try XCTUnwrap(calendar.date(bySettingHour: 12, minute: 0, second: 0, of: day))
-        let night = try XCTUnwrap(calendar.date(bySettingHour: 18, minute: 0, second: 0, of: day))
+        let afternoon = try XCTUnwrap(calendar.date(bySettingHour: 12, minute: 0, second: 0, of: day))
+        let evening = try XCTUnwrap(calendar.date(bySettingHour: 18, minute: 0, second: 0, of: day))
+        let night = try XCTUnwrap(calendar.date(bySettingHour: 21, minute: 0, second: 0, of: day))
 
         XCTAssertEqual(DayPart.resolve(for: early, calendar: calendar), .night)
         XCTAssertEqual(DayPart.resolve(for: morning, calendar: calendar), .morning)
+        XCTAssertEqual(DayPart.resolve(for: afternoon, calendar: calendar), .afternoon)
         XCTAssertEqual(DayPart.resolve(for: evening, calendar: calendar), .evening)
         XCTAssertEqual(DayPart.resolve(for: night, calendar: calendar), .night)
+    }
+
+    func testDayPartPickerHidesNightByDefault() {
+        XCTAssertEqual(DayPart.standardLogParts, [.morning, .afternoon, .evening])
+        XCTAssertEqual(DayPart.logPickerParts(including: .morning), [.morning, .afternoon, .evening])
+        XCTAssertEqual(DayPart.logPickerParts(including: .night), [.morning, .afternoon, .evening, .night])
     }
 
     @MainActor
@@ -3077,6 +3085,20 @@ final class SunclubTests: XCTestCase {
         XCTAssertNotNil(summary.record)
         XCTAssertTrue(summary.sunscreenStatusText.contains("SPF 30"))
         XCTAssertEqual(summary.notesStatusText, "Beach")
+    }
+
+    @MainActor
+    func testTimelineDayLogSummaryPreservesNightLogContext() throws {
+        let appState = try makeAppState()
+        let calendar = Calendar.current
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())))
+
+        appState.saveManualRecord(for: yesterday, dayPart: .night, spfLevel: 30, notes: "Late application")
+
+        let summary = appState.timelineDayLogSummary(for: yesterday)
+        XCTAssertEqual(summary.record?.loggedDayPart(calendar: calendar), .night)
+        XCTAssertEqual(summary.dayPart, .night)
+        XCTAssertTrue(summary.partStatuses.contains { $0.dayPart == .night && $0.isCompleted })
     }
 
     @MainActor

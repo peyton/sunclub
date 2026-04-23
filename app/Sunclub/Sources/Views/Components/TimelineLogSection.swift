@@ -1,22 +1,33 @@
 import SwiftUI
 
 struct TimelineLogSection: View {
-    @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
 
     let summary: TimelineDayLogSummary
+    let uvForecast: SunclubUVForecast?
+    let weatherAttribution: SunclubWeatherAttribution?
+    let currentStreak: Int
+    let longestStreak: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader
 
             forecastBlockGroup
+
+            if summary.category == .future, let futurePreview = summary.futurePreview {
+                futurePlanCard(futurePreview)
+            }
+
+            if summary.category != .future {
+                streakHighlight
+            }
         }
     }
 
     private var sectionHeader: some View {
         HStack {
-            Text("UV Forecast")
+            Text(sectionTitle)
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
@@ -33,12 +44,19 @@ struct TimelineLogSection: View {
         }
     }
 
+    private var sectionTitle: String {
+        summary.category == .future ? "UV Forecast" : "Log"
+    }
+
     private var forecastBlockGroup: some View {
         let blocks = forecastBlocks
         return VStack(spacing: 0) {
             ForEach(blocks) { block in
-                forecastRow(for: block)
-                if block.dayPart != DayPart.allCases.last {
+                forecastRow(
+                    for: block,
+                    status: summary.category == .future ? nil : status(for: block.dayPart)
+                )
+                if block.id != blocks.last?.id {
                     rowDivider
                 }
             }
@@ -63,7 +81,9 @@ struct TimelineLogSection: View {
     }
 
     private var forecastBlocks: [TimelineUVForecastBlock] {
-        DayPart.allCases.map { forecastBlock(for: $0) }
+        let hasNightLog = summary.record?.isLogged(in: .night) ?? false
+        let dayParts = hasNightLog ? DayPart.standardLogParts + [.night] : DayPart.standardLogParts
+        return dayParts.map { forecastBlock(for: $0) }
     }
 
     private func forecastBlock(for dayPart: DayPart) -> TimelineUVForecastBlock {
@@ -81,7 +101,7 @@ struct TimelineLogSection: View {
     private func forecastHours(for dayPart: DayPart) -> [SunclubUVHourForecast] {
         let calendar = Calendar.current
         let selectedDay = calendar.startOfDay(for: summary.day)
-        let liveOrCachedHours = appState.uvForecast?.hours.filter { hour in
+        let liveOrCachedHours = uvForecast?.hours.filter { hour in
             calendar.isDate(hour.date, inSameDayAs: selectedDay)
                 && dayPart.forecastHours.contains(calendar.component(.hour, from: hour.date))
         } ?? []
@@ -122,14 +142,20 @@ struct TimelineLogSection: View {
         switch dayPart {
         case .morning:
             return "6-11 AM"
-        case .evening:
+        case .afternoon:
             return "12-5 PM"
-        case .night:
+        case .evening:
             return "6-9 PM"
+        case .night:
+            return "9 PM-5 AM"
         }
     }
 
-    private func forecastRow(for block: TimelineUVForecastBlock) -> some View {
+    private func status(for dayPart: DayPart) -> TimelineDayPartStatus? {
+        summary.partStatuses.first { $0.dayPart == dayPart }
+    }
+
+    private func forecastRow(for block: TimelineUVForecastBlock, status: TimelineDayPartStatus?) -> some View {
         HStack(spacing: 12) {
             Image(systemName: block.level.symbolName)
                 .font(.system(size: 16, weight: .semibold))
@@ -146,6 +172,12 @@ struct TimelineLogSection: View {
                 Text(block.timeRange)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
+
+                if let status {
+                    Text(status.statusText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(status.isCompleted ? AppPalette.success : AppPalette.softInk)
+                }
             }
 
             Spacer(minLength: 8)
@@ -164,11 +196,90 @@ struct TimelineLogSection: View {
         .padding(.vertical, 16)
         .frame(minHeight: 60)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(block.dayPart.title) UV forecast")
+        .accessibilityLabel("\(block.dayPart.title) \(summary.category == .future ? "UV forecast" : "log and UV context")")
         .accessibilityValue(
-            "\(block.timeRange). UV \(block.uvIndex), \(block.level.displayName). \(block.sourceLabel)."
+            forecastAccessibilityValue(for: block, status: status)
         )
         .accessibilityIdentifier("timeline.forecast.part.\(block.dayPart.rawValue)")
+    }
+
+    private func forecastAccessibilityValue(
+        for block: TimelineUVForecastBlock,
+        status: TimelineDayPartStatus?
+    ) -> String {
+        var parts = [
+            block.timeRange,
+            "UV \(block.uvIndex), \(block.level.displayName)",
+            block.sourceLabel
+        ]
+        if let status {
+            parts.append(status.statusText)
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    private func futurePlanCard(_ preview: FutureDayPreview) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Suggested routine")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            Text("SPF \(preview.suggestedSPF)+")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+
+            Text(preview.suggestionText)
+                .font(.system(size: 14))
+                .foregroundStyle(AppPalette.softInk)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let sourceLabel = uvForecast?.sourceLabel {
+                WeatherKitAttributionFooter(
+                    attribution: weatherAttribution,
+                    sourceLabel: sourceLabel,
+                    showAttributionLink: sourceLabel == UVReadingSource.weatherKit.forecastLabel
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .sunGlassCard(cornerRadius: 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("timeline.futurePlan")
+    }
+
+    private var streakHighlight: some View {
+        let detail: String
+        if currentStreak == 0 {
+            detail = "Log once today to start a streak."
+        } else {
+            detail = "\(currentStreak)-day streak. Personal best: \(longestStreak)."
+        }
+
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppPalette.streakAccent)
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Streak")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                Text(detail)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .sunGlassCard(cornerRadius: 18)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Streak")
+        .accessibilityValue(detail)
+        .accessibilityIdentifier("timeline.highlights.streak")
     }
 }
 
@@ -187,10 +298,12 @@ private extension DayPart {
         switch self {
         case .morning:
             return Array(6...11)
-        case .evening:
+        case .afternoon:
             return Array(12...17)
+        case .evening:
+            return Array(18...20)
         case .night:
-            return Array(18...21)
+            return [21, 22, 23, 0, 1, 2, 3, 4]
         }
     }
 }

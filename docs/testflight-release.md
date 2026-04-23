@@ -68,7 +68,7 @@ Before merging to `master` and before cutting a TestFlight tag, verify timeline 
 
 - Logging cannot write to future dates.
 - Midnight rollover does not silently move a selected-day log to the next day.
-- Morning, evening, and night actions stay explicit and route with the selected target date.
+- Morning, afternoon, evening, and night actions stay explicit and route with the selected target date.
 
 ## GitHub Automation
 

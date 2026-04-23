@@ -22,7 +22,9 @@ struct WeeklyReportView: View {
 
                 streakContextRow
 
-                usageInsightsSection
+                if insights.hasContent {
+                    usageInsightsSection
+                }
 
                 Spacer(minLength: 0)
             }
@@ -102,10 +104,6 @@ struct WeeklyReportView: View {
                             Text(entry.date.formatted(.dateTime.day()))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(AppPalette.softInk)
-
-                            Text(entry.applied ? "Logged" : "Open")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(entry.applied ? AppPalette.success : AppPalette.softInk)
                         }
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
@@ -118,40 +116,10 @@ struct WeeklyReportView: View {
                 }
             }
 
-            Text(report.missedDays.isEmpty ? "All 7 days are logged." : "Backfill missing days")
+            Text(report.missedDays.isEmpty ? "Every day is logged." : "Tap a blank day to backfill.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : AppPalette.ink)
                 .multilineTextAlignment(.leading)
-
-            if !notLoggedEntries.isEmpty {
-                VStack(spacing: 8) {
-                    ForEach(notLoggedEntries) { entry in
-                        Button {
-                            openBackfill(for: entry.date)
-                        } label: {
-                            HStack {
-                                Text(backfillTitle(for: entry.date))
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(AppPalette.ink)
-
-                                Spacer(minLength: 0)
-
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(AppPalette.softInk)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(AppPalette.cardFill.opacity(0.72))
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("weekly.backfill.\(Self.dayIdentifierFormatter.string(from: entry.date))")
-                    }
-                }
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
@@ -215,10 +183,6 @@ struct WeeklyReportView: View {
         }
     }
 
-    private var notLoggedEntries: [WeeklyEntry] {
-        weekEntries.filter { !$0.applied && !$0.isFuture }
-    }
-
     private var usageInsightsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("From Your Logs")
@@ -252,12 +216,6 @@ struct WeeklyReportView: View {
                 .accessibilityIdentifier("weekly.recentNotes")
             }
 
-            if !insights.hasContent {
-                Text("Add SPF or a note while logging to see what you use most often.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(AppPalette.softInk)
-                    .accessibilityIdentifier("weekly.usageInsightsPlaceholder")
-            }
         }
         .accessibilityIdentifier("weekly.usageInsights")
     }
@@ -298,14 +256,6 @@ struct WeeklyReportView: View {
         } else {
             editorPresentation = WeeklyEditorPresentation(day: day)
         }
-    }
-
-    private func backfillTitle(for day: Date) -> String {
-        if isToday(day) {
-            return "Log Today"
-        }
-
-        return "Backfill \(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
     }
 
     private func weekEntryAccessibilityLabel(_ entry: WeeklyEntry) -> String {

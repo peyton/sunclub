@@ -50,6 +50,8 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["sunclub"].exists)
+        XCTAssertFalse(app.staticTexts["Daily sunscreen, made routine."].exists)
     }
 
     @MainActor
@@ -1018,10 +1020,12 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineForecastSectionShowsDayPartForecasts() throws {
         let app = launchTimelineHome()
-        XCTAssertTrue(app.staticTexts["UV Forecast"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Log"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
     }
 
     @MainActor
@@ -1035,6 +1039,7 @@ final class SunclubUITests: XCTestCase {
         let headline = app.staticTexts["timeline.headline"]
         XCTAssertTrue(headline.waitForExistence(timeout: 3))
         XCTAssertTrue(headline.label.hasPrefix("Tomorrow,"))
+        XCTAssertTrue(app.staticTexts["UV Forecast"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertTrue(app.buttons["timeline.backToToday"].exists)
     }

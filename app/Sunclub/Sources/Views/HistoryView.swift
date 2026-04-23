@@ -45,20 +45,10 @@ struct HistoryView: View {
                     .id(displayedMonth)
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
 
-                if presentation.monthStats.appliedCount == 0 &&
-                    calendar.isDate(displayedMonth, equalTo: appState.referenceDate, toGranularity: .month) {
-                    Text("Days you log sunscreen will appear here.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-
                 historyLegend(presentation: presentation)
 
                 if selectedDay == nil {
-                    historyEmptyHint
+                    historyEmptyHint(presentation: presentation)
                 }
 
                 statsSection(stats: presentation.monthStats)
@@ -364,10 +354,13 @@ struct HistoryView: View {
         )
     }
 
-    private var historyEmptyHint: some View {
-        SunStatusCard(
-            title: "Pick a day",
-            detail: "Use the month arrows or swipe the calendar to move between months. Tap a logged day to edit it or a missed day to backfill it.",
+    private func historyEmptyHint(presentation: HistoryPresentation) -> some View {
+        let hasLogs = presentation.monthStats.appliedCount > 0
+        return SunStatusCard(
+            title: hasLogs ? "Tap a day" : "No logs this month",
+            detail: hasLogs
+                ? "Logged days open for editing. Blank past days can be backfilled."
+                : "Tap any past day to add a sunscreen log.",
             tint: AppPalette.sun,
             symbol: "calendar.badge.plus"
         )
@@ -700,57 +693,51 @@ struct HistoryView: View {
         }
     }
 
+    @ViewBuilder
     private func statsSection(stats: HistoryMonthStats) -> some View {
-        if stats.appliedCount == 0 {
-            return AnyView(
-                Text("No sunscreen logged this month.")
-                    .font(.system(size: 15, weight: .medium))
+        if stats.appliedCount > 0 {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Month Stats")
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            )
-        }
 
-        return AnyView(VStack(alignment: .leading, spacing: 12) {
-            Text("Month Stats")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            HStack(spacing: 20) {
-                statBubble(value: "\(stats.appliedCount)", label: "Applied")
-                statBubble(value: "\(stats.openCount)", label: "Open")
-                statBubble(value: "\(stats.rate)", label: "Rate")
-            }
-
-            if isShowingMonthlyInsights {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 4) {
-                        Text("\(stats.appliedCount) of \(stats.totalDays) days logged")
-                            .font(AppTypography.metric)
-                            .foregroundStyle(AppPalette.ink)
-                    }
-
-                    Text("Consistency: \(stats.rate)")
-                        .font(AppTypography.metric)
-                        .foregroundStyle(AppPalette.ink)
-
-                    if stats.bestStreak > 0 {
-                        Text("Best streak: \(stats.bestStreak) days")
-                            .font(AppTypography.metric)
-                            .foregroundStyle(AppPalette.ink)
-                    }
+                HStack(spacing: 20) {
+                    statBubble(value: "\(stats.appliedCount)", label: "Applied")
+                    statBubble(value: "\(stats.openCount)", label: "Open")
+                    statBubble(value: "\(stats.rate)", label: "Rate")
                 }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                        .fill(AppPalette.warmGlow.opacity(0.3))
-                )
-                .accessibilityIdentifier("history.monthSummary")
-            }
 
-            monthlyInsightDisclosure(stats.insights)
+                if isShowingMonthlyInsights {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 4) {
+                            Text("\(stats.appliedCount) of \(stats.totalDays) days logged")
+                                .font(AppTypography.metric)
+                                .foregroundStyle(AppPalette.ink)
+                        }
+
+                        Text("Consistency: \(stats.rate)")
+                            .font(AppTypography.metric)
+                            .foregroundStyle(AppPalette.ink)
+
+                        if stats.bestStreak > 0 {
+                            Text("Best streak: \(stats.bestStreak) days")
+                                .font(AppTypography.metric)
+                                .foregroundStyle(AppPalette.ink)
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
+                            .fill(AppPalette.warmGlow.opacity(0.3))
+                    )
+                    .accessibilityIdentifier("history.monthSummary")
+                }
+
+                monthlyInsightDisclosure(stats.insights)
+            }
+            .accessibilityIdentifier("history.monthStats")
         }
-        .accessibilityIdentifier("history.monthStats"))
     }
 
     private var historyPresentation: HistoryPresentation {
