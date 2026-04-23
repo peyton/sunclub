@@ -72,7 +72,7 @@ Common setup from the repo root:
 - `just release-tag 1.2.3`
 - `just ci`
 
-`just bootstrap` installs repo-local tooling into `.mise/`, syncs the Python environment into `.venv/`, and prepares repo-local caches under `.cache/`.
+`just bootstrap` installs repo-local tooling into `.mise/`, syncs the Python environment into `.venv/`, prepares repo-local caches under `.cache/`, and primes Tuist's local Xcode cache service from `app/` on local machines.
 
 Sunclub stays local-first, but the app now ships with default-on iCloud sync for revision history plus local backup export/import. Local imports stay recoverable on-device and do not change iCloud until the user explicitly publishes the imported batches from `Recovery & Changes`.
 
