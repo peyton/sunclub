@@ -47,7 +47,7 @@ The first-time experience should move the user from zero setup to a ready-to-use
 
 Expected sequence:
 
-1. Welcome screen introduces Sunclub and offers a single `Get Started` action.
+1. Welcome screen introduces Sunclub, explains the three core habit benefits, and offers a single `Get Started` action.
 2. Notification prompt asks the user to enable reminders.
 3. User lands on Home once onboarding is complete.
 
@@ -107,6 +107,7 @@ Expected sequence:
 
 - Introduce the product clearly.
 - Establish that Sunclub is about daily sunscreen consistency.
+- Show the core value props: streaks, smart reminders, and one-tap logging.
 - Offer one primary action: start onboarding.
 
 ### Enable Notifications
@@ -119,6 +120,8 @@ Expected sequence:
 
 - Serve as the app's main dashboard.
 - Show current streak prominently.
+- Show the selected day as relative date copy, such as `Today, April 22` or `Tomorrow, April 23`.
+- Use the horizontal timeline for day selection and show UV forecast blocks for morning, evening, and night.
 - Surface elevated UV days when protection needs are stronger.
 - Provide a single primary call to action: `Log Manually`.
 - Provide quick access to weekly summary and settings.

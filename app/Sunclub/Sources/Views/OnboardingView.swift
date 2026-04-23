@@ -12,29 +12,43 @@ struct WelcomeView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(spacing: 22) {
+            VStack(spacing: 0) {
                 SunBrandLockup(
                     layout: .stacked,
                     markSize: 104,
                     subtitle: SunclubCopy.Brand.welcomeTitle
                 )
                 .frame(maxWidth: .infinity)
-                .padding(.top, 72)
+                .padding(.top, 96)
 
-                Text(SunclubCopy.Brand.welcomeDetail)
-                    .font(.system(size: 17))
-                    .foregroundStyle(AppPalette.softInk)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 26) {
+                    welcomeValuePropRow(
+                        symbol: "flame.fill",
+                        title: "Build a streak",
+                        detail: "Log sunscreen daily and watch your consistency grow."
+                    )
+                    welcomeValuePropRow(
+                        symbol: "bell.badge.fill",
+                        title: "Smart reminders",
+                        detail: "Separate weekday and weekend times, plus streak-risk nudges."
+                    )
+                    welcomeValuePropRow(
+                        symbol: "hand.tap.fill",
+                        title: "One-tap logging",
+                        detail: "Log from widgets, Shortcuts, notifications, or the app."
+                    )
+                }
+                .frame(maxWidth: 320, alignment: .leading)
+                .padding(.top, 56)
+                .frame(maxWidth: .infinity)
 
                 Spacer(minLength: 0)
             }
-            .padding(.top, 24)
             .frame(maxWidth: .infinity)
         } footer: {
             Button("Get Started") {
                 startFeedbackTrigger += 1
-                router.open(.valueProps)
+                router.open(.enableNotifications)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
@@ -42,71 +56,15 @@ struct WelcomeView: View {
         .sensoryFeedback(.impact(weight: .medium), trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
-}
 
-struct ValuePropsView: View {
-    @Environment(AppRouter.self) private var router
-    @State private var feedbackTrigger = 0
-
-    var body: some View {
-        SunLightScreen {
-            VStack(alignment: .leading, spacing: 32) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("A daily sun routine")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text("Three small habits, zero setup — kept simple so you actually stick with it.")
-                        .font(.system(size: 17))
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.top, 16)
-
-                Spacer(minLength: 12)
-
-                VStack(alignment: .leading, spacing: 26) {
-                    valuePropRow(
-                        symbol: "flame.fill",
-                        title: "Build a streak",
-                        detail: "Log sunscreen daily and watch your consistency grow."
-                    )
-                    valuePropRow(
-                        symbol: "bell.badge.fill",
-                        title: "Smart reminders",
-                        detail: "Separate weekday and weekend times, plus streak-risk nudges."
-                    )
-                    valuePropRow(
-                        symbol: "hand.tap.fill",
-                        title: "One-tap logging",
-                        detail: "Log from widgets, Shortcuts, notifications, or the app."
-                    )
-                }
-
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } footer: {
-            Button("Continue") {
-                feedbackTrigger += 1
-                router.open(.enableNotifications)
-            }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("onboarding.valueProps.continue")
-        }
-        .sensoryFeedback(.impact(weight: .medium), trigger: feedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
-        .interactivePopGestureEnabled()
-    }
-
-    private func valuePropRow(symbol: String, title: String, detail: String) -> some View {
+    private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: symbol)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
                 .frame(width: 36, height: 36)
                 .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -117,6 +75,7 @@ struct ValuePropsView: View {
                     .foregroundStyle(AppPalette.softInk)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -128,22 +87,9 @@ struct EnableNotificationsView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(spacing: 24) {
-                SunAssetHero(
-                    asset: .heroNotificationNudge,
-                    height: 232,
-                    glowColor: AppPalette.pool
-                )
-                .overlay(alignment: .topTrailing) {
-                    Image(systemName: "bell.badge.fill")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(AppPalette.onAccent)
-                        .frame(width: 58, height: 58)
-                        .background(AppPalette.sun, in: Circle())
-                        .shadow(color: AppPalette.sun.opacity(0.28), radius: 16, x: 0, y: 8)
-                        .offset(x: -18, y: 18)
-                        .accessibilityHidden(true)
-                }
+            VStack(spacing: 18) {
+                notificationIcon
+                    .padding(.top, 128)
 
                 VStack(spacing: 14) {
                     Text(SunclubCopy.Brand.reminderTitle)
@@ -154,10 +100,6 @@ struct EnableNotificationsView: View {
                         .font(.system(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
-
-                    Text("You can change reminder times later in Settings.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -196,6 +138,25 @@ struct EnableNotificationsView: View {
         .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+    }
+
+    private var notificationIcon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [AppPalette.pearl, AppPalette.warmGlow.opacity(0.65)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 104, height: 104)
+
+            Image(systemName: "bell.badge.fill")
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+        }
+        .accessibilityHidden(true)
     }
 
     private var reminderDescription: String {

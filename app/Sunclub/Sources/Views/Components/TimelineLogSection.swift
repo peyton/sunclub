@@ -1,42 +1,22 @@
 import SwiftUI
 
 struct TimelineLogSection: View {
+    @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
 
     let summary: TimelineDayLogSummary
-    let onOpenManualLog: (AppLogContext) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader
 
-            VStack(spacing: 0) {
-                ForEach(summary.partStatuses) { status in
-                    logRow(for: status)
-                    if status.dayPart != DayPart.allCases.last {
-                        rowDivider
-                    }
-                }
-            }
-            .background(rowGroupBackground)
-
-            if let helperText = summary.helperText {
-                Text(helperText)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AppPalette.softInk)
-                    .accessibilityIdentifier("timeline.log.futureNotice")
-            } else if summary.record == nil {
-                Text("Pick a day part and log once. You can update SPF or notes later.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AppPalette.softInk)
-                    .accessibilityIdentifier("timeline.log.emptyHint")
-            }
+            forecastBlockGroup
         }
     }
 
     private var sectionHeader: some View {
         HStack {
-            Text("Timeline Log")
+            Text("UV Forecast")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
@@ -51,6 +31,19 @@ struct TimelineLogSection: View {
             .accessibilityIdentifier("home.historyCard")
             .accessibilityHint("Opens history and calendar options.")
         }
+    }
+
+    private var forecastBlockGroup: some View {
+        let blocks = forecastBlocks
+        return VStack(spacing: 0) {
+            ForEach(blocks) { block in
+                forecastRow(for: block)
+                if block.dayPart != DayPart.allCases.last {
+                    rowDivider
+                }
+            }
+        }
+        .background(rowGroupBackground)
     }
 
     private var rowDivider: some View {
@@ -69,64 +62,135 @@ struct TimelineLogSection: View {
             }
     }
 
-    private func logRow(for status: TimelineDayPartStatus) -> some View {
-        let actionTitle: String
-        if !summary.canLog {
-            actionTitle = status.dayPart.title
-        } else if status.isCompleted {
-            actionTitle = "Update \(status.dayPart.title)"
-        } else {
-            actionTitle = "Log \(status.dayPart.title)"
-        }
-        return Button {
-            onOpenManualLog(
-                AppLogContext(
-                    date: summary.day,
-                    dayPart: status.dayPart,
-                    source: .timeline
-                )
-            )
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: status.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(status.isCompleted ? AppPalette.success : AppPalette.sun)
-                    .frame(width: 22, height: 22)
-                    .accessibilityHidden(true)
+    private var forecastBlocks: [TimelineUVForecastBlock] {
+        DayPart.allCases.map { forecastBlock(for: $0) }
+    }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(actionTitle)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(status.statusText)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                }
-
-                Spacer(minLength: 8)
-
-                if summary.canLog, status.canLog {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-                        .accessibilityHidden(true)
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .frame(minHeight: 60)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!summary.canLog || !status.canLog)
-        .accessibilityLabel(actionTitle)
-        .accessibilityHint(
-            summary.canLog && status.canLog
-                ? "Opens manual logging for this day part."
-                : "Cannot log future date."
+    private func forecastBlock(for dayPart: DayPart) -> TimelineUVForecastBlock {
+        let hours = forecastHours(for: dayPart)
+        let peakHour = hours.max(by: { $0.index < $1.index }) ?? fallbackForecastHour(for: dayPart)
+        return TimelineUVForecastBlock(
+            dayPart: dayPart,
+            timeRange: timeRange(for: dayPart),
+            uvIndex: peakHour.index,
+            level: peakHour.level,
+            sourceLabel: peakHour.sourceLabel
         )
-        .accessibilityValue("\(status.statusText). \(status.isCompleted ? "Complete" : "Incomplete")")
-        .accessibilityIdentifier("timeline.log.part.\(status.dayPart.rawValue)")
+    }
+
+    private func forecastHours(for dayPart: DayPart) -> [SunclubUVHourForecast] {
+        let calendar = Calendar.current
+        let selectedDay = calendar.startOfDay(for: summary.day)
+        let liveOrCachedHours = appState.uvForecast?.hours.filter { hour in
+            calendar.isDate(hour.date, inSameDayAs: selectedDay)
+                && dayPart.forecastHours.contains(calendar.component(.hour, from: hour.date))
+        } ?? []
+
+        if !liveOrCachedHours.isEmpty {
+            return liveOrCachedHours
+        }
+
+        return dayPart.forecastHours.compactMap { hour in
+            estimatedForecastHour(on: selectedDay, hour: hour)
+        }
+    }
+
+    private func fallbackForecastHour(for dayPart: DayPart) -> SunclubUVHourForecast {
+        estimatedForecastHour(
+            on: Calendar.current.startOfDay(for: summary.day),
+            hour: dayPart.defaultHour
+        ) ?? SunclubUVHourForecast(
+            date: summary.day,
+            index: 0,
+            sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
+        )
+    }
+
+    private func estimatedForecastHour(on day: Date, hour: Int) -> SunclubUVHourForecast? {
+        let calendar = Calendar.current
+        guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day) else {
+            return nil
+        }
+        return SunclubUVHourForecast(
+            date: date,
+            index: UVIndexService.estimatedUVIndex(at: date, calendar: calendar),
+            sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
+        )
+    }
+
+    private func timeRange(for dayPart: DayPart) -> String {
+        switch dayPart {
+        case .morning:
+            return "6-11 AM"
+        case .evening:
+            return "12-5 PM"
+        case .night:
+            return "6-9 PM"
+        }
+    }
+
+    private func forecastRow(for block: TimelineUVForecastBlock) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: block.level.symbolName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+                .frame(width: 24, height: 24)
+                .background(AppPalette.warmGlow.opacity(0.45), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(block.dayPart.title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(block.timeRange)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("UV \(block.uvIndex)")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(block.level.displayName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .frame(minHeight: 60)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(block.dayPart.title) UV forecast")
+        .accessibilityValue(
+            "\(block.timeRange). UV \(block.uvIndex), \(block.level.displayName). \(block.sourceLabel)."
+        )
+        .accessibilityIdentifier("timeline.forecast.part.\(block.dayPart.rawValue)")
+    }
+}
+
+private struct TimelineUVForecastBlock: Identifiable {
+    let dayPart: DayPart
+    let timeRange: String
+    let uvIndex: Int
+    let level: UVLevel
+    let sourceLabel: String
+
+    var id: DayPart { dayPart }
+}
+
+private extension DayPart {
+    var forecastHours: [Int] {
+        switch self {
+        case .morning:
+            return Array(6...11)
+        case .evening:
+            return Array(12...17)
+        case .night:
+            return Array(18...21)
+        }
     }
 }

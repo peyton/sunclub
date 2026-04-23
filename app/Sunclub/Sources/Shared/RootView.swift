@@ -101,7 +101,7 @@ struct RootView: View {
         case .yearInReview:
             YearInReviewView()
         case .valueProps:
-            ValuePropsView()
+            WelcomeView()
         }
     }
 
