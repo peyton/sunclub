@@ -68,6 +68,20 @@ export_tuist_manifest_env() {
   export TUIST_TEAM_ID="${TEAM_ID:-}"
 }
 
+should_setup_local_tuist_cache() {
+  [ -z "${CI:-}" ] &&
+    [ "${GITHUB_ACTIONS:-}" != "true" ] &&
+    [ "${ACT:-}" != "true" ]
+}
+
+setup_local_tuist_cache() {
+  if ! should_setup_local_tuist_cache; then
+    return 0
+  fi
+
+  run_in_app run_mise_exec tuist setup cache
+}
+
 ensure_local_state() {
   mkdir -p \
     "$REPO_ROOT/.build" \
@@ -105,6 +119,7 @@ setup_local_tooling_env() {
   apply_flavor_defaults
   resolve_version_metadata
   export_tuist_manifest_env
+  setup_local_tuist_cache
 }
 
 run_mise() {

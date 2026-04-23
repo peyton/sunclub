@@ -72,7 +72,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 
 ## Build and Run
 
-1. From the repo root, run `just bootstrap`.
+1. From the repo root, run `just bootstrap` to install tools, sync Python, and prime Tuist's local Xcode cache service.
 2. Run `just generate`.
 3. Run `just run` to build the `SunclubDev` debug app, install it on the dedicated run simulator, and launch it.
 4. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.

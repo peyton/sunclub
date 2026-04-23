@@ -170,6 +170,7 @@ printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
 
     env = os.environ.copy()
     env["SUNCLUB_TUIST_SHARE"] = "0"
+    env["CI"] = "true"
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
 
@@ -230,6 +231,7 @@ printf '%s\\n' "$@" > {shlex.quote(str(mise_log))}
 
     env = os.environ.copy()
     env["SUNCLUB_TUIST_SHARE"] = "0"
+    env["CI"] = "true"
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
 
@@ -281,6 +283,7 @@ printf 'team=%s\\n' "$TUIST_TEAM_ID"
         ],
         check=True,
         cwd=repo_root,
+        env={**os.environ, "CI": "true"},
         text=True,
         capture_output=True,
     )
@@ -290,6 +293,60 @@ printf 'team=%s\\n' "$TUIST_TEAM_ID"
     assert "build=20260402.201417.0" in result.stdout
     assert "aps=production" in result.stdout
     assert "team=TEAM123" in result.stdout
+
+
+def test_setup_local_tooling_env_starts_tuist_cache_in_app(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / "app").mkdir(parents=True)
+    (repo_root / "scripts" / "tooling").mkdir(parents=True)
+
+    for script_name in ("common.sh", "sunclub.env"):
+        _copy_tooling_script(repo_root, script_name)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+
+    mise_log = tmp_path / "mise.log"
+
+    _write_executable(
+        bin_dir / "mise",
+        f"""#!/bin/sh
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+printf 'cwd=%s\\n' "$PWD" >> {shlex.quote(str(mise_log))}
+printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
+""",
+    )
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+
+    subprocess.run(
+        [
+            "bash",
+            "-c",
+            """
+source scripts/tooling/common.sh
+setup_local_tooling_env
+""",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+
+    assert mise_log.read_text().splitlines() == [
+        f"cwd={repo_root / 'app'}",
+        "exec",
+        "--",
+        "tuist",
+        "setup",
+        "cache",
+    ]
 
 
 def test_ensure_workspace_generated_regenerates_when_scheme_is_missing(
@@ -352,6 +409,11 @@ ensure_workspace_generated
     )
 
     assert mise_log.read_text().splitlines() == [
+        "exec",
+        "--",
+        "tuist",
+        "setup",
+        "cache",
         "exec",
         "--",
         "tuist",
@@ -430,6 +492,11 @@ ensure_workspace_generated
     )
 
     assert mise_log.read_text().splitlines() == [
+        "exec",
+        "--",
+        "tuist",
+        "setup",
+        "cache",
         "exec",
         "--",
         "tuist",
