@@ -67,6 +67,9 @@ GitHub run cross-check:
   each workflow's `SUNCLUB_XCODE_VERSION` env value instead of relying on
   `latest`, which can move before Tuist, simulators, or App Store validation
   behavior is verified for Sunclub.
+- When a workflow pins an Xcode version that `macos-latest` does not carry,
+  pin the macOS runner label too. Xcode `26.4` currently requires
+  `runs-on: macos-26` on GitHub-hosted runners.
 - If an in-progress GitHub iOS job has no downloadable logs, inspect job step
   metadata with `gh run view <run-id> --json jobs` or
   `gh api /repos/peyton/sunclub/actions/jobs/<job-id>`.

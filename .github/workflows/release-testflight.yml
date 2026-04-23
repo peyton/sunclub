@@ -20,7 +20,7 @@ env:
 jobs:
   release:
     name: Archive and Upload
-    runs-on: macos-latest
+    runs-on: macos-26
     environment: testflight
     steps:
       - name: Select Xcode 26.4

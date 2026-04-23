@@ -386,6 +386,7 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
     assert "xcode-version: latest" not in workflow
     assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+    assert workflow.count("runs-on: macos-26") == 2
     assert workflow.count("Select Xcode 26.4") == 2
     assert (
         workflow.count(
@@ -404,6 +405,7 @@ def test_ios_workflows_share_single_xcode_version_pin() -> None:
         assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
         assert "xcode-version: latest" not in workflow
         assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+        assert "runs-on: macos-26" in workflow
         assert "Select Xcode 26.4" in workflow
         assert (
             'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
