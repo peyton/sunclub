@@ -62,15 +62,12 @@ struct ProductScannerView: View {
                     router.goBack()
                 })
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Know your SPF")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text("Point the camera at a sunscreen label or import a photo. Sunclub reads the SPF and keeps the final edit in your hands.")
-                        .font(.system(size: 15))
-                        .foregroundStyle(AppPalette.softInk)
-                }
+                SunScreenTitleBlock(
+                    title: "Know your SPF",
+                    detail: "Scan the front label to save SPF, water resistance, and product name.",
+                    symbolName: "viewfinder",
+                    tint: AppPalette.sun
+                )
 
                 actionRow
 
@@ -171,7 +168,7 @@ struct ProductScannerView: View {
     @ViewBuilder
     private var scannerActions: some View {
         if Self.isCameraSourceAvailable, cameraAuthorizationState != .denied {
-            Button("Use Camera") {
+            Button("Scan product") {
                 requestCameraAccess()
             }
             .buttonStyle(SunPrimaryButtonStyle())
@@ -180,12 +177,19 @@ struct ProductScannerView: View {
         }
 
         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-            Text("Pick Photo")
+            Text("Choose photo")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(SunSecondaryButtonStyle())
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.pickPhoto")
+
+        Button("Enter manually") {
+            router.open(.manualLog)
+        }
+        .buttonStyle(SunSecondaryButtonStyle())
+        .disabled(isScanning)
+        .accessibilityIdentifier("productScanner.enterManually")
     }
 
     private static var isCameraSourceAvailable: Bool {

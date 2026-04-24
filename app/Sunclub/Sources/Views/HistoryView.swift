@@ -39,11 +39,7 @@ struct HistoryView: View {
                     dayDetailCard(for: selectedDay, presentation: presentation)
                 }
 
-                weekdayHeader
-
-                calendarGrid(presentation: presentation)
-                    .id(displayedMonth)
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+                calendarMonthCard(presentation: presentation)
 
                 historyLegend(presentation: presentation)
 
@@ -153,7 +149,7 @@ struct HistoryView: View {
             Spacer()
 
             Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("history.monthTitle")
 
@@ -312,7 +308,7 @@ struct HistoryView: View {
             )
             historyLegendItem(
                 title: "Not logged",
-                color: Color.red.opacity(0.45),
+                color: AppPalette.softInk.opacity(0.58),
                 symbol: "xmark.circle",
                 accessibilityIdentifier: "history.legend.notLogged"
             )
@@ -354,15 +350,40 @@ struct HistoryView: View {
         )
     }
 
+    private func calendarMonthCard(presentation: HistoryPresentation) -> some View {
+        VStack(spacing: 12) {
+            weekdayHeader
+
+            calendarGrid(presentation: presentation)
+                .id(displayedMonth)
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+        }
+        .padding(14)
+        .sunGlassCard(cornerRadius: AppRadius.card)
+    }
+
     private func historyEmptyHint(presentation: HistoryPresentation) -> some View {
         let hasLogs = presentation.monthStats.appliedCount > 0
-        return SunStatusCard(
-            title: hasLogs ? "Tap a day" : "No logs this month",
-            detail: hasLogs
-                ? "Logged days open for editing. Blank past days can be backfilled."
-                : "Tap any past day to add a sunscreen log.",
-            tint: AppPalette.sun,
-            symbol: "calendar.badge.plus"
+        let text = hasLogs
+            ? "Tap a logged day to edit, or a blank past day to backfill."
+            : "Tap any past day to add a sunscreen log."
+
+        return HStack(spacing: 10) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(AppTypography.captionMedium)
+                .foregroundStyle(AppPalette.softInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(AppPalette.warmGlow.opacity(0.32))
         )
         .accessibilityIdentifier("history.emptyHint")
     }
@@ -554,7 +575,7 @@ struct HistoryView: View {
         switch status {
         case .applied: return AppPalette.sun
         case .todayPending: return AppPalette.sun.opacity(0.55)
-        case .missed: return Color.red.opacity(0.45)
+        case .missed: return AppPalette.softInk.opacity(0.58)
         case .future: return AppPalette.muted
         }
     }
@@ -693,51 +714,81 @@ struct HistoryView: View {
         }
     }
 
-    @ViewBuilder
     private func statsSection(stats: HistoryMonthStats) -> some View {
-        if stats.appliedCount > 0 {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Month Stats")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Month summary")
+                .font(AppTypography.sectionLabel)
+                .foregroundStyle(AppPalette.softInk)
 
-                HStack(spacing: 20) {
-                    statBubble(value: "\(stats.appliedCount)", label: "Applied")
-                    statBubble(value: "\(stats.openCount)", label: "Open")
-                    statBubble(value: "\(stats.rate)", label: "Rate")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    monthMetricPills(stats: stats)
                 }
 
-                if isShowingMonthlyInsights {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 4) {
-                            Text("\(stats.appliedCount) of \(stats.totalDays) days logged")
-                                .font(AppTypography.metric)
-                                .foregroundStyle(AppPalette.ink)
-                        }
+                VStack(spacing: 10) {
+                    monthMetricPills(stats: stats)
+                }
+            }
 
-                        Text("Consistency: \(stats.rate)")
+            if isShowingMonthlyInsights, stats.appliedCount > 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("\(stats.appliedCount) of \(stats.totalDays) active days logged")
+                        .font(AppTypography.metric)
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text("Consistency: \(stats.rate)")
+                        .font(AppTypography.metric)
+                        .foregroundStyle(AppPalette.ink)
+
+                    if stats.bestStreak > 0 {
+                        Text("Best streak: \(stats.bestStreak) days")
                             .font(AppTypography.metric)
                             .foregroundStyle(AppPalette.ink)
-
-                        if stats.bestStreak > 0 {
-                            Text("Best streak: \(stats.bestStreak) days")
-                                .font(AppTypography.metric)
-                                .foregroundStyle(AppPalette.ink)
-                        }
                     }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                            .fill(AppPalette.warmGlow.opacity(0.3))
-                    )
-                    .accessibilityIdentifier("history.monthSummary")
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
+                        .fill(AppPalette.warmGlow.opacity(0.3))
+                )
+                .accessibilityIdentifier("history.monthSummary")
+            }
 
+            if stats.appliedCount > 0 {
                 monthlyInsightDisclosure(stats.insights)
             }
-            .accessibilityIdentifier("history.monthStats")
         }
+        .padding(16)
+        .sunGlassCard(cornerRadius: AppRadius.card)
+        .accessibilityIdentifier("history.monthStats")
+    }
+
+    @ViewBuilder
+    private func monthMetricPills(stats: HistoryMonthStats) -> some View {
+        SunMetricPill(
+            value: "\(stats.appliedCount)",
+            label: "days applied",
+            symbolName: "checkmark.circle.fill",
+            tint: AppPalette.success,
+            accessibilityIdentifier: "history.month.applied"
+        )
+
+        SunMetricPill(
+            value: "\(stats.totalDays)",
+            label: "active days",
+            symbolName: "calendar",
+            tint: AppPalette.sun,
+            accessibilityIdentifier: "history.month.active"
+        )
+
+        SunMetricPill(
+            value: stats.rate,
+            label: "month",
+            symbolName: "chart.bar.fill",
+            tint: AppPalette.pool,
+            accessibilityIdentifier: "history.month.rate"
+        )
     }
 
     private var historyPresentation: HistoryPresentation {
@@ -1074,7 +1125,7 @@ struct HistoryView: View {
         switch status {
         case .applied: return AppPalette.success
         case .todayPending: return AppPalette.sun
-        case .missed: return Color.red.opacity(0.6)
+        case .missed: return AppPalette.softInk
         case .future: return AppPalette.muted
         }
     }
@@ -1146,29 +1197,29 @@ struct HistoryRecordEditorView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: editorTitle, showsBack: true, onBack: {
                     closeEditor()
                 })
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(day.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(editorMessage)
-                        .font(.system(size: 15))
-                        .foregroundStyle(AppPalette.softInk)
-                }
+                SunScreenTitleBlock(
+                    eyebrow: day.formatted(.dateTime.weekday(.wide).month(.wide).day()),
+                    title: existingRecord == nil ? "No sunscreen logged" : "Day logged",
+                    detail: editorMessage,
+                    symbolName: existingRecord == nil ? "calendar.badge.plus" : "checkmark.circle.fill",
+                    tint: existingRecord == nil ? AppPalette.sun : AppPalette.success
+                )
                 .accessibilityIdentifier("historyEditor.title")
 
-                SunManualLogFields(
-                    selectedSPF: $selectedSPF,
-                    notes: $notes,
-                    accessibilityPrefix: "historyEditor",
-                    suggestions: appState.manualLogSuggestionState(for: day),
-                    showsOptionalDisclosure: false
-                )
+                SunclubCard(cornerRadius: 20, padding: 16) {
+                    SunManualLogFields(
+                        selectedSPF: $selectedSPF,
+                        notes: $notes,
+                        accessibilityPrefix: "historyEditor",
+                        suggestions: appState.manualLogSuggestionState(for: day),
+                        showsOptionalDisclosure: false
+                    )
+                }
             }
         } footer: {
             Button(primaryActionTitle) {

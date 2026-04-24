@@ -215,6 +215,21 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: baseDate)
     }
 
+    func nextTimelineRefreshDate(after now: Date = Date(), calendar: Calendar = Calendar.current) -> Date {
+        let nextMidnightRefresh = calendar.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 1),
+            matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(3_600)
+
+        guard let reapplyDeadline = reapplyDeadline(now: now, calendar: calendar),
+              reapplyDeadline > now else {
+            return nextMidnightRefresh
+        }
+
+        return min(reapplyDeadline, nextMidnightRefresh)
+    }
+
     private func monthInterval(now: Date, calendar: Calendar) -> DateInterval {
         guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)),
               let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
@@ -254,6 +269,8 @@ enum SunclubWidgetSnapshotBuilder {
         let effectiveMonthEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? monthEnd)
         let monthlyAppliedCount = normalizedRecordedDays.filter { $0 >= monthStart && $0 < effectiveMonthEnd }.count
         let monthlyDayCount = max(calendar.dateComponents([.day], from: monthStart, to: effectiveMonthEnd).day ?? 0, 0)
+        let compactUVReading = compactSurfaceReading(from: uvReading, now: now, calendar: calendar)
+        let compactUVPeakHour = compactSurfacePeakHour(from: uvForecast, now: now, calendar: calendar)
 
         return SunclubWidgetSnapshot(
             isOnboardingComplete: settings.hasCompletedOnboarding,
@@ -268,13 +285,65 @@ enum SunclubWidgetSnapshotBuilder {
             monthlyDayCount: monthlyDayCount,
             todaySPFLevel: todayRecord?.spfLevel,
             mostUsedSPF: SunscreenUsageAnalytics.mostUsedSPFInsight(from: records)?.level,
-            currentUVIndex: uvReading?.index,
-            peakUVIndex: uvForecast?.peakHour?.index,
-            peakUVHour: uvForecast?.peakHour?.date,
+            currentUVIndex: compactUVReading?.index,
+            peakUVIndex: compactUVPeakHour?.index,
+            peakUVHour: compactUVPeakHour?.date,
             reapplyReminderEnabled: settings.reapplyReminderEnabled,
             reapplyIntervalMinutes: settings.reapplyIntervalMinutes,
             accountabilitySummary: accountabilitySummary(from: growthSettings)
         )
+    }
+
+    private static func compactSurfaceReading(
+        from reading: UVReading?,
+        now: Date,
+        calendar: Calendar
+    ) -> UVReading? {
+        guard let reading else {
+            return nil
+        }
+
+        guard reading.source == .weatherKit else {
+            return reading
+        }
+
+        return UVReading(
+            index: SunclubUVEstimator.estimatedIndex(at: now, calendar: calendar),
+            timestamp: now,
+            source: .heuristic
+        )
+    }
+
+    private static func compactSurfacePeakHour(
+        from forecast: SunclubUVForecast?,
+        now: Date,
+        calendar: Calendar
+    ) -> SunclubUVHourForecast? {
+        guard let forecast else {
+            return nil
+        }
+
+        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel else {
+            return forecast.peakHour
+        }
+
+        return heuristicPeakHour(now: now, calendar: calendar)
+    }
+
+    private static func heuristicPeakHour(now: Date, calendar: Calendar) -> SunclubUVHourForecast? {
+        let dayStart = calendar.startOfDay(for: now)
+        return (6...18)
+            .compactMap { hour in
+                calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart)
+            }
+            .map { hourDate in
+                SunclubUVHourForecast(
+                    date: hourDate,
+                    index: SunclubUVEstimator.estimatedIndex(at: hourDate, calendar: calendar),
+                    sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
+                )
+            }
+            .max(by: { $0.index < $1.index })
     }
 
     private static func accountabilitySummary(from settings: SunclubGrowthSettings) -> SunclubAccountabilitySummary {

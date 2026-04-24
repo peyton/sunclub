@@ -1110,13 +1110,13 @@ private enum SettingsSection: String, Hashable {
         case .reminders:
             return "Reminders"
         case .progress:
-            return "Progress"
+            return "Streaks"
         case .data:
-            return "Data & Sync"
+            return "Data & Export"
         case .automation:
-            return "Automation"
+            return "Connect Shortcuts"
         case .advanced:
-            return "Advanced"
+            return "Travel & Health"
         case .help:
             return "Help & Legal"
         }
@@ -1125,15 +1125,15 @@ private enum SettingsSection: String, Hashable {
     var detail: String {
         switch self {
         case .reminders:
-            return "Daily times and travel behavior."
+            return "Daily reminder times."
         case .progress:
-            return "Reapply reminders and progress helpers."
+            return "Reapply reminders and streak helpers."
         case .data:
-            return "iCloud, backup, import, and recovery."
+            return "iCloud, backups, imports, and exports."
         case .automation:
-            return "Shortcuts, URL actions, and x-callback-url."
+            return "Let trusted automations log for you."
         case .advanced:
-            return "Location, UV data, and Health settings."
+            return "Travel, location, UV data, and Health."
         case .help:
             return "Support, privacy, and contact links."
         }

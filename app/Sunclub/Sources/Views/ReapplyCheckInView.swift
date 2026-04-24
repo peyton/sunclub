@@ -29,21 +29,27 @@ struct ReapplyCheckInView: View {
     }
 
     private func reapplyContent(presentation: ReapplyCheckInPresentation) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(presentation.title)
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-
-            Text(presentation.detail)
-                .font(.system(size: 15))
-                .foregroundStyle(AppPalette.softInk)
-
-            SunStatusCard(
-                title: "Today stays one log",
-                detail: "This adds a reapply check-in without changing the daily streak count.",
-                tint: AppPalette.sun,
-                symbol: "arrow.clockwise.circle.fill"
+        VStack(alignment: .leading, spacing: 18) {
+            SunScreenTitleBlock(
+                eyebrow: "Reapply check-in",
+                title: "Time to reapply?",
+                detail: lastLogDetail,
+                symbolName: "timer",
+                tint: AppPalette.sun
             )
+
+            SunclubCard(cornerRadius: 20, padding: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Today stays one log", systemImage: "arrow.clockwise.circle.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(presentation.detail)
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
             if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
                 HStack(spacing: 8) {
@@ -67,26 +73,27 @@ struct ReapplyCheckInView: View {
 
     private var fallbackContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("No daily log yet")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-
-            Text("Reapply works after you've logged sunscreen for today. Log today first, then come back if you reapply.")
-                .font(.system(size: 15))
-                .foregroundStyle(AppPalette.softInk)
+            SunScreenTitleBlock(
+                title: "No daily log yet",
+                detail: "Reapply works after you've logged sunscreen for today. Log today first, then come back if you reapply.",
+                symbolName: "sun.max.fill",
+                tint: AppPalette.sun
+            )
         }
     }
 
     @ViewBuilder
     private var footerAction: some View {
         if let presentation = appState.reapplyCheckInPresentation {
-            Button(presentation.actionTitle) {
-                appState.recordReapplication()
-                successFeedbackTrigger += 1
-                router.goHome()
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    reapplyButtons(presentation: presentation)
+                }
+
+                VStack(spacing: 10) {
+                    reapplyButtons(presentation: presentation)
+                }
             }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("reapply.log")
         } else {
             Button("Log Today") {
                 let now = appState.referenceDate
@@ -104,6 +111,35 @@ struct ReapplyCheckInView: View {
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("reapply.logTodayFallback")
         }
+    }
+
+    @ViewBuilder
+    private func reapplyButtons(presentation: ReapplyCheckInPresentation) -> some View {
+        Button(primaryReapplyTitle(for: presentation)) {
+            appState.recordReapplication()
+            successFeedbackTrigger += 1
+            router.goHome()
+        }
+        .buttonStyle(SunPrimaryButtonStyle())
+        .accessibilityIdentifier("reapply.log")
+
+        Button("Skip Today") {
+            router.goHome()
+        }
+        .buttonStyle(SunSecondaryButtonStyle())
+        .accessibilityIdentifier("reapply.skip")
+    }
+
+    private var lastLogDetail: String {
+        guard let record = appState.record(for: appState.referenceDate) else {
+            return "Your sunscreen log is not saved yet."
+        }
+
+        return "Your last SPF log was \(record.verifiedAt.formatted(date: .omitted, time: .shortened))."
+    }
+
+    private func primaryReapplyTitle(for presentation: ReapplyCheckInPresentation) -> String {
+        presentation.actionTitle.contains("Another") ? "Reapplied again" : "Reapplied"
     }
 }
 

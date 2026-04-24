@@ -6,7 +6,6 @@ struct TimelineLogSection: View {
     let summary: TimelineDayLogSummary
     let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
-    let timelineForecastSourceLabel: String?
     let currentStreak: Int
     let longestStreak: Int
 
@@ -59,13 +58,11 @@ struct TimelineLogSection: View {
     }
 
     private var weatherKitAttributionSourceLabel: String? {
-        if timelineForecastSourceLabel == UVReadingSource.weatherKit.forecastLabel {
-            return timelineForecastSourceLabel
-        }
-        if uvForecast?.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
-            return uvForecast?.sourceLabel
-        }
-        return nil
+        Self.attributionSourceLabel(forDisplayedSourceLabels: forecastBlocks.map(\.sourceLabel))
+    }
+
+    static func attributionSourceLabel(forDisplayedSourceLabels sourceLabels: [String]) -> String? {
+        sourceLabels.first { $0 == UVReadingSource.weatherKit.forecastLabel }
     }
 
     private var forecastBlockGroup: some View {

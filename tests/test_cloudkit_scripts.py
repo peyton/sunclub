@@ -50,6 +50,29 @@ def _prepare_cloudkit_repo(tmp_path: Path) -> tuple[Path, Path]:
     open_log = tmp_path / "open.log"
 
     _write_executable(
+        bin_dir / "mise",
+        """#!/bin/sh
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+
+if [ "$1" = "exec" ]; then
+  shift
+  if [ "${1:-}" = "--" ]; then
+    shift
+  fi
+  if [ "${1:-}" = "tuist" ]; then
+    exit 0
+  fi
+  exec "$@"
+fi
+
+echo "unsupported mise command: $*" >&2
+exit 64
+""",
+    )
+
+    _write_executable(
         bin_dir / "xcrun",
         """#!/bin/sh
 if [ "$1" != "cktool" ]; then

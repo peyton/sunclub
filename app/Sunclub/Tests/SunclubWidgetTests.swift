@@ -289,6 +289,25 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.mostUsedSPF, 50)
     }
 
+    func testSnapshotNextTimelineRefreshUsesReapplyDeadlineBeforeMidnight() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 11)
+        let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2],
+            longestStreak: 6,
+            now: now,
+            calendar: calendar,
+            lastReappliedAt: lastReappliedAt,
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90
+        )
+
+        let refreshDate = snapshot.nextTimelineRefreshDate(after: now, calendar: calendar)
+
+        XCTAssertEqual(refreshDate, try fixedDate(calendar: calendar, hour: 11, minute: 30))
+    }
+
     func testWidgetSnapshotDecodesLegacyPayloadWithoutAccountabilitySummary() throws {
         let data = Data("""
         {
@@ -706,6 +725,12 @@ final class SunclubWidgetTests: XCTestCase {
     private func fixedDate(calendar: Calendar, hour: Int = 12) throws -> Date {
         try XCTUnwrap(
             calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: hour))
+        )
+    }
+
+    private func fixedDate(calendar: Calendar, hour: Int, minute: Int) throws -> Date {
+        try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: hour, minute: minute))
         )
     }
 

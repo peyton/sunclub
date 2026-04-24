@@ -185,6 +185,16 @@ def test_validator_accepts_submission_ready_manifest() -> None:
     assert warnings == []
 
 
+def test_validator_requires_complete_weatherkit_positive_review_notes() -> None:
+    manifest = current_manifest()
+    manifest["review"]["notes"] = "Sunclub uses WeatherKit for live UV."
+
+    errors, warnings = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert validator.WEATHERKIT_POSITIVE_DETAIL_ERROR in errors
+    assert warnings == []
+
+
 def test_validator_rejects_submission_automation_shape_errors() -> None:
     manifest = current_manifest()
     manifest["privacy"]["app_store_connect_completed"] = "yes"

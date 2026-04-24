@@ -35,17 +35,9 @@ private struct SunclubSnapshotProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SunclubSnapshotEntry>) -> Void) {
         let now = Date()
-        let entry = SunclubSnapshotEntry(date: now, snapshot: store.load())
-        completion(Timeline(entries: [entry], policy: .after(nextRefreshDate(after: now))))
-    }
-
-    private func nextRefreshDate(after date: Date) -> Date {
-        let calendar = Calendar.current
-        return calendar.nextDate(
-            after: date,
-            matching: DateComponents(hour: 0, minute: 1),
-            matchingPolicy: .nextTime
-        ) ?? date.addingTimeInterval(3_600)
+        let snapshot = store.load()
+        let entry = SunclubSnapshotEntry(date: now, snapshot: snapshot)
+        completion(Timeline(entries: [entry], policy: .after(snapshot.nextTimelineRefreshDate(after: now))))
     }
 }
 

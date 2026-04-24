@@ -1,9 +1,9 @@
 {
-  "$schema": "https://sunclub.app/schemas/weatherkit-config.v1.json",
+  "$schema": "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json",
   "version": 1,
   "weatherkit_enabled": true,
-  "min_fetch_interval_seconds": 1800,
-  "max_daily_fetches_per_device": 48,
-  "max_monthly_fetches_per_device": 900,
+  "min_fetch_interval_seconds": 10800,
+  "max_daily_fetches_per_device": 4,
+  "max_monthly_fetches_per_device": 90,
   "reason": ""
 }
