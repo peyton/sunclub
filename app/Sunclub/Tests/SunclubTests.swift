@@ -3218,6 +3218,28 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testTimelineLogSectionAttributionUsesDisplayedForecastSources() {
+        XCTAssertEqual(
+            TimelineLogSection.attributionSourceLabel(
+                forDisplayedSourceLabels: [
+                    UVReadingSource.weatherKit.hourlySourceLabel,
+                    UVReadingSource.heuristic.hourlySourceLabel
+                ]
+            ),
+            UVReadingSource.weatherKit.forecastLabel
+        )
+
+        XCTAssertNil(
+            TimelineLogSection.attributionSourceLabel(
+                forDisplayedSourceLabels: [
+                    UVReadingSource.heuristic.hourlySourceLabel,
+                    UVReadingSource.heuristic.forecastLabel
+                ]
+            )
+        )
+    }
+
+    @MainActor
     func testWeatherKitBudgetAllowsInitialFetchAndBlocksWithinInterval() throws {
         let budget = SunclubWeatherKitBudget(
             appGroupID: "group.test.\(UUID().uuidString)",

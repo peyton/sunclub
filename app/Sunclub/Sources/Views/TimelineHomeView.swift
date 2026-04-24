@@ -25,7 +25,6 @@ private struct TimelineHomePresentation {
     let allowsFuture: Bool
     let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
-    let timelineForecastSourceLabel: String?
     let currentStreak: Int
     let longestStreak: Int
 
@@ -52,9 +51,6 @@ private struct TimelineHomePresentation {
         allowsFuture = appState.timelineShowsFutureDays
         uvForecast = appState.uvForecast
         weatherAttribution = appState.weatherAttribution
-        timelineForecastSourceLabel = appState.dailyUVForecast.isEmpty
-            ? appState.uvForecast?.sourceLabel
-            : UVReadingSource.weatherKit.forecastLabel
         currentStreak = appState.currentStreak
         longestStreak = appState.longestStreak
     }
@@ -145,7 +141,6 @@ struct TimelineHomeView: View {
                     summary: presentation.logSummary,
                     uvForecast: presentation.uvForecast,
                     weatherAttribution: presentation.weatherAttribution,
-                    timelineForecastSourceLabel: presentation.timelineForecastSourceLabel,
                     currentStreak: presentation.currentStreak,
                     longestStreak: presentation.longestStreak
                 )
