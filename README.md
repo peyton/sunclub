@@ -20,7 +20,8 @@ Repository layout:
 - TestFlight flow: [docs/testflight-release.md](docs/testflight-release.md)
 
 The iOS app lives in [app/](app). Product and design notes live in [docs/](docs).
-Tooling is pinned in [mise.toml](mise.toml).
+Tooling is pinned in [mise.toml](mise.toml). All GitHub Actions workflows that
+run repo tools use `mise --locked exec`, so CI enforces `mise.lock` consistency.
 
 Common setup from the repo root:
 

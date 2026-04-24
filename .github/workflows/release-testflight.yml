@@ -36,6 +36,7 @@ jobs:
         with:
           cache: false
           cache_save: false
+      # Tool resolution is lockfile-enforced so CI fails fast when cached metadata is missing.
 
       - name: Materialize App Store Connect key
         shell: bash

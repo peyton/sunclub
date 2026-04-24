@@ -1,5 +1,7 @@
 min_version = { soft = '2026.4.20' }
 
+# CI and release workflows enforce lockfile installation with `mise --locked`.
+# Keep `mise.toml` and `mise.lock` aligned whenever tool versions change.
 [tools]
 just = "1.50.0"
 tuist = { version = "4.183.0", os = ["macos"] }

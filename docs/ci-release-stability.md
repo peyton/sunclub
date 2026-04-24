@@ -75,6 +75,8 @@ GitHub run cross-check:
   `gh api /repos/peyton/sunclub/actions/jobs/<job-id>`.
 - Cancel superseded stalled CI runs after pushing a fix so the newest commit can
   own the release gate.
+- CI and release workflows enforce `mise --locked` execution, so changing
+  pinned versions in `mise.toml` requires regenerating `mise.lock` before merge.
 - Keep generated iOS, widget, watch app, watch extension, watch container, and
   watch widget `Info.plist` values aligned:
   - `CFBundleShortVersionString=$(MARKETING_VERSION)`

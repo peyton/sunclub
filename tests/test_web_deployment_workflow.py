@@ -110,9 +110,9 @@ def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
     assert 'SUNCLUB_APP_PRIVACY_COMPLETED: "1"' in workflow
     assert 'SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS: "NOT_MEDICAL_DEVICE"' in workflow
     assert 'SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED: "1"' in workflow
-    assert "mise exec -- just appstore-screenshots" in workflow
+    assert "mise --locked exec -- just appstore-screenshots" in workflow
     assert (
-        "mise exec -- uv run python -m scripts.appstore.review_package --checkpoint"
+        "mise --locked exec -- uv run python -m scripts.appstore.review_package --checkpoint"
         in workflow
     )
     assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in workflow

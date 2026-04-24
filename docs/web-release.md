@@ -8,6 +8,9 @@ packages, and deploys it to Cloudflare Pages with Wrangler Direct Upload.
 `.github/workflows/deploy-web-cloudflare.yml` runs for pushes and pull requests
 to `master` only when files under `web/` change.
 
+Web automation runs tools through `mise --locked exec` so deployment jobs fail
+fast if `mise.lock` is missing metadata for required tool versions.
+
 - Pull requests run `just web-package` and upload a rollback artifact.
 - Pushes to `master` run the same packaging step, then deploy `.build/web` to
   the Cloudflare Pages project `sunclub`.
