@@ -65,3 +65,25 @@ These steps still require real App Store Connect data and cannot be faked safely
 - Sunclub falls back to local UV estimates when location, network, remote config, or Apple Weather is unavailable.
 - The primary check-in flow is manual logging from Home.
 - Weekly Summary and reminder settings remain part of the submission flow.
+
+## WeatherKit Reviewer Reply Draft
+
+Use this text when replying to App Review's WeatherKit information request:
+
+```text
+Yes, Sunclub includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
+
+Live UV is off by default. The app's core features, including manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces, work without WeatherKit and without location access.
+
+To navigate to the WeatherKit functionality:
+1. Complete onboarding.
+2. Open Settings.
+3. Open Live UV.
+4. Enable Live UV.
+5. Grant location permission if prompted.
+6. Return to Home or Timeline.
+
+When Live UV is enabled, Apple Weather UV data is shown only in the main app on surfaces that include Apple Weather attribution and a visible Data Sources/legal attribution link. Widgets, watch, and Live Activities use Sunclub's local UV estimates instead of WeatherKit-derived values.
+
+WeatherKit requests are foreground/user-initiated, cached, rate-limited, and fall back to local UV estimates if location, network, remote config, or Apple Weather is unavailable.
+```
