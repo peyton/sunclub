@@ -386,16 +386,27 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
     assert "xcode-version: latest" not in workflow
     assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
-    assert workflow.count("runs-on: macos-26") == 2
-    assert workflow.count("Select Xcode 26.4") == 2
+    assert workflow.count("runs-on: macos-26") == 3
+    assert workflow.count("Select Xcode 26.4") == 3
     assert (
         workflow.count(
             'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
         )
-        == 2
+        == 3
     )
-    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
-    assert "timeout-minutes: 45" in workflow
+    assert workflow.count('SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"') == 3
+    assert workflow.count("timeout-minutes: 45") == 3
+    assert "test-ios-unit:" in workflow
+    assert "name: iOS Unit Tests" in workflow
+    assert "run: mise exec -- just test-unit" in workflow
+    assert "test-ios-ui:" in workflow
+    assert "name: iOS UI Tests" in workflow
+    assert "run: mise exec -- just test-ui" in workflow
+    assert "test-ios:\n    name: iOS Tests\n    runs-on: ubuntu-latest" in workflow
+    assert "needs: [test-ios-unit, test-ios-ui]" in workflow
+    assert "if: ${{ always() }}" in workflow
+    assert 'unit_result="${{ needs.test-ios-unit.result }}"' in workflow
+    assert 'ui_result="${{ needs.test-ios-ui.result }}"' in workflow
 
 
 def test_ios_workflows_share_single_xcode_version_pin() -> None:
