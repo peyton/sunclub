@@ -76,21 +76,21 @@ jobs:
         run: |
           {
             echo "SUNCLUB_RELEASE_TAG=$SUNCLUB_RELEASE_TAG"
-            mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
+            mise --locked exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
             echo "SUNCLUB_FLAVOR=prod"
             echo "SUNCLUB_APS_ENVIRONMENT=production"
             echo "SUNCLUB_TUIST_SHARE=0"
           } >> "$GITHUB_ENV"
 
       - name: Validate App Store metadata
-        run: mise exec -- uv run python -m scripts.appstore.validate_metadata scripts/appstore/metadata.json
+        run: mise --locked exec -- uv run python -m scripts.appstore.validate_metadata scripts/appstore/metadata.json
 
       - name: Capture App Store screenshots
         timeout-minutes: 45
-        run: mise exec -- just appstore-screenshots
+        run: mise --locked exec -- just appstore-screenshots
 
       - name: Write App Review checkpoint
-        run: mise exec -- uv run python -m scripts.appstore.review_package --checkpoint
+        run: mise --locked exec -- uv run python -m scripts.appstore.review_package --checkpoint
 
       - name: Archive and upload to TestFlight
         timeout-minutes: 90

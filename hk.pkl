@@ -1,7 +1,5 @@
-/// Sunclub tooling checks.
-/// The root wrappers choose which steps run so local and CI behavior stays explicit.
-amends "package://github.com/jdx/hk/releases/download/v1.42.0/hk@1.42.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.42.0/hk@1.42.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.44.1/hk@1.44.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.44.1/hk@1.44.1#/Builtins.pkl"
 
 local toolSteps = new Mapping<String, Step> {
   ["markdown"] = (Builtins.rumdl) {}

@@ -42,7 +42,7 @@ jobs:
           cache: true
 
       - name: Run lint shard
-        run: mise exec -- just ci-lint
+        run: mise --locked exec -- just ci-lint
 
   test-python:
     name: Python Tests
@@ -68,7 +68,7 @@ jobs:
           cache: true
 
       - name: Run Python shard
-        run: mise exec -- just ci-python
+        run: mise --locked exec -- just ci-python
 
   test-ios-unit:
     name: iOS Unit Tests
@@ -103,7 +103,7 @@ jobs:
           cache: true
       - name: Run unit tests
         timeout-minutes: 45
-        run: mise exec -- just test-unit
+        run: mise --locked exec -- just test-unit
 
   test-ios-ui:
     name: iOS UI Tests
@@ -138,7 +138,7 @@ jobs:
           cache: true
       - name: Run UI tests
         timeout-minutes: 45
-        run: mise exec -- just test-ui
+        run: mise --locked exec -- just test-ui
 
   test-ios:
     name: iOS Tests
@@ -196,7 +196,7 @@ jobs:
       - name: Set CI build metadata
         shell: bash
         run: |
-          mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env >> "$GITHUB_ENV"
+          mise --locked exec -- uv run python -m scripts.tooling.resolve_versions --format github-env >> "$GITHUB_ENV"
 
           if [ "${ACT:-}" = "true" ]; then
             echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"
@@ -207,4 +207,4 @@ jobs:
           fi
       - name: Run iOS build shard
         timeout-minutes: 45
-        run: mise exec -- just ci-build
+        run: mise --locked exec -- just ci-build
