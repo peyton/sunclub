@@ -141,9 +141,9 @@ struct TimelineHomeView: View {
             VStack(alignment: .leading, spacing: 24) {
                 headerBar
 
-                TimelineTodayStatusCard(presentation: presentation)
-
                 timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
+
+                TimelineTodayStatusCard(presentation: presentation)
 
                 attentionBanners
 
@@ -241,8 +241,7 @@ struct TimelineHomeView: View {
                 allowsFuture: presentation.allowsFuture
             )
         }
-        .padding(16)
-        .sunGlassCard(cornerRadius: AppRadius.card)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func dateHeadline(for presentation: TimelineHomePresentation) -> some View {
