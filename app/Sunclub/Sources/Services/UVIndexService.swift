@@ -258,43 +258,10 @@ final class UVIndexService {
         calendar: Calendar = .current,
         latitude: Double? = nil
     ) -> Int {
-        let hour = calendar.component(.hour, from: date)
-        let rawMonth = calendar.component(.month, from: date)
-
-        let isSouthernHemisphere = latitude.map { $0 < 0 } ?? false
-        let month = isSouthernHemisphere ? ((rawMonth + 5) % 12) + 1 : rawMonth
-
-        let seasonalBase: Int
-        switch month {
-        case 6, 7, 8:
-            seasonalBase = 8
-        case 5, 9:
-            seasonalBase = 6
-        case 4, 10:
-            seasonalBase = 4
-        case 3, 11:
-            seasonalBase = 3
-        default:
-            seasonalBase = 2
-        }
-
-        let timeMultiplier: Double
-        switch hour {
-        case 0...5: timeMultiplier = 0.0
-        case 6: timeMultiplier = 0.1
-        case 7: timeMultiplier = 0.2
-        case 8: timeMultiplier = 0.4
-        case 9: timeMultiplier = 0.6
-        case 10: timeMultiplier = 0.8
-        case 11, 12, 13: timeMultiplier = 1.0
-        case 14: timeMultiplier = 0.9
-        case 15: timeMultiplier = 0.7
-        case 16: timeMultiplier = 0.5
-        case 17: timeMultiplier = 0.3
-        case 18: timeMultiplier = 0.1
-        default: timeMultiplier = 0.0
-        }
-
-        return max(0, Int(Double(seasonalBase) * timeMultiplier))
+        SunclubUVEstimator.estimatedIndex(
+            at: date,
+            calendar: calendar,
+            latitude: latitude
+        )
     }
 }

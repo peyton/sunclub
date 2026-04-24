@@ -88,6 +88,11 @@ FORBIDDEN_STALE_COPY = (
     "no cloud",
 )
 WEATHERKIT_DISCLOSURE_ERROR = "review.notes must explicitly disclose WeatherKit functionality status (clear yes/no statement)."
+WEATHERKIT_POSITIVE_DETAIL_ERROR = (
+    "review.notes positive WeatherKit disclosure must mention off by default, "
+    "foreground/user-initiated use, caching or rate limits, fallback behavior, "
+    "Apple Weather attribution, and a legal/data-source link."
+)
 WEATHERKIT_NEGATIVE_DISCLOSURES = (
     "does not include weatherkit",
     "doesn't include weatherkit",
@@ -101,6 +106,21 @@ WEATHERKIT_POSITIVE_DISCLOSURES = (
     "weatherkit is included",
     "with weatherkit",
 )
+WEATHERKIT_POSITIVE_REQUIREMENTS = {
+    "off by default": ("off by default",),
+    "foreground": ("foreground",),
+    "user-initiated": ("user-initiated",),
+    "settings navigation": ("settings",),
+    "live uv navigation": ("enable live uv", "live uv"),
+    "home or timeline navigation": ("home", "timeline"),
+    "cached": ("cached",),
+    "rate-limited": ("rate-limited", "rate limited"),
+    "fallback": ("fallback", "fall back"),
+    "apple weather": ("apple weather",),
+    "attribution": ("attribution",),
+    "legal": ("legal",),
+    "data-source": ("data-source", "data source"),
+}
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -323,8 +343,16 @@ def validate_manifest(
                     disclosure in lowered_notes
                     for disclosure in WEATHERKIT_POSITIVE_DISCLOSURES
                 )
-                if has_negative == has_positive:
+                if not has_negative and not has_positive:
                     errors.append(WEATHERKIT_DISCLOSURE_ERROR)
+                elif has_positive:
+                    missing_positive_details = [
+                        label
+                        for label, phrases in WEATHERKIT_POSITIVE_REQUIREMENTS.items()
+                        if not any(phrase in lowered_notes for phrase in phrases)
+                    ]
+                    if missing_positive_details:
+                        errors.append(WEATHERKIT_POSITIVE_DETAIL_ERROR)
 
     privacy = manifest.get("privacy")
     if not isinstance(privacy, dict):

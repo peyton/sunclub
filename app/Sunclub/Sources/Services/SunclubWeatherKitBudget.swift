@@ -9,11 +9,19 @@ struct SunclubWeatherKitBudgetPolicy: Codable, Equatable, Sendable {
 
     static let builtInDefault = SunclubWeatherKitBudgetPolicy(
         weatherKitEnabled: true,
-        minFetchIntervalSeconds: 30 * 60,
-        maxDailyFetchesPerDevice: 48,
-        maxMonthlyFetchesPerDevice: 900,
+        minFetchIntervalSeconds: 3 * 60 * 60,
+        maxDailyFetchesPerDevice: 4,
+        maxMonthlyFetchesPerDevice: 90,
         reason: ""
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case weatherKitEnabled = "weatherkit_enabled"
+        case minFetchIntervalSeconds = "min_fetch_interval_seconds"
+        case maxDailyFetchesPerDevice = "max_daily_fetches_per_device"
+        case maxMonthlyFetchesPerDevice = "max_monthly_fetches_per_device"
+        case reason
+    }
 }
 
 enum SunclubWeatherKitBudgetDecision: Equatable {
@@ -22,10 +30,10 @@ enum SunclubWeatherKitBudgetDecision: Equatable {
 }
 
 /// Per-device rate limiter and kill-switch enforcer.
-/// Backed by the shared App Group UserDefaults so widgets/Watch
-/// read the same counters. Never hands out permission to fetch
-/// without a live policy — if the policy can't be loaded, built-in
-/// defaults enforce a conservative cap.
+/// Backed by App Group UserDefaults so the main app keeps one durable
+/// policy/counter set. Never hands out permission to fetch without a live
+/// policy; if the policy can't be loaded, built-in defaults enforce a
+/// conservative cap.
 final class SunclubWeatherKitBudget: @unchecked Sendable {
     private let defaults: UserDefaults
     private let lock = NSLock()
