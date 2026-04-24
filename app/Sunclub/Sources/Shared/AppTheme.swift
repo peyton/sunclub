@@ -58,6 +58,10 @@ enum AppPalette {
         light: uiColor(red: 0.151, green: 0.772, blue: 0.353),
         dark: uiColor(red: 0.360, green: 0.875, blue: 0.540)
     )
+    static let warning = adaptive(
+        light: uiColor(red: 0.775, green: 0.176, blue: 0.137),
+        dark: uiColor(red: 1.000, green: 0.380, blue: 0.300)
+    )
     static let muted = adaptive(
         light: uiColor(red: 0.832, green: 0.832, blue: 0.842),
         dark: uiColor(red: 0.430, green: 0.395, blue: 0.360)
@@ -87,7 +91,7 @@ enum AppPalette {
         dark: uiColor(red: 0.139, green: 0.122, blue: 0.104)
     )
     static let cardStroke = adaptive(
-        light: uiColor(red: 1, green: 1, blue: 1, alpha: 0.62),
+        light: uiColor(red: 0.886, green: 0.804, blue: 0.678, alpha: 0.58),
         dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.16)
     )
     static let hairlineStroke = adaptive(
@@ -99,11 +103,11 @@ enum AppPalette {
 }
 
 enum AppTypography {
-    static let screenTitle = Font.system(size: 26, weight: .bold)
+    static let screenTitle = Font.system(size: 28, weight: .semibold)
     static let sectionLabel = Font.system(size: 14, weight: .semibold)
     static let cardTitle = Font.system(size: 18, weight: .semibold)
-    static let body = Font.system(size: 15)
-    static let bodyMedium = Font.system(size: 15, weight: .medium)
+    static let body = Font.system(size: 16)
+    static let bodyMedium = Font.system(size: 16, weight: .medium)
     static let caption = Font.system(size: 13)
     static let captionMedium = Font.system(size: 13, weight: .medium)
     static let metric = Font.system(size: 14, weight: .medium)
@@ -112,8 +116,8 @@ enum AppTypography {
 }
 
 enum AppRadius {
-    static let card: CGFloat = 22
-    static let insetCard: CGFloat = 18
+    static let card: CGFloat = 20
+    static let insetCard: CGFloat = 16
     static let control: CGFloat = 14
 }
 
@@ -397,28 +401,28 @@ struct SunScreen<Content: View>: View {
 
 struct SunPrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(AppPalette.onAccent)
-            .frame(maxWidth: .infinity, minHeight: 58)
+            .foregroundStyle(isEnabled ? AppPalette.onAccent : AppPalette.softInk)
+            .frame(maxWidth: .infinity, minHeight: 56)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [AppPalette.coral, AppPalette.sun],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                    .fill(isEnabled ? AppPalette.sun : AppPalette.muted.opacity(0.28))
+                    .shadow(
+                        color: AppPalette.sun.opacity(isEnabled ? (configuration.isPressed ? 0.08 : 0.18) : 0),
+                        radius: configuration.isPressed ? 3 : 10,
+                        x: 0,
+                        y: configuration.isPressed ? 2 : 6
                     )
-                    .shadow(color: AppPalette.sun.opacity(configuration.isPressed ? 0.12 : 0.30), radius: configuration.isPressed ? 4 : 16, x: 0, y: configuration.isPressed ? 3 : 10)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
             )
-            .opacity(configuration.isPressed ? 0.90 : 1)
+            .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.976 : 1))
             .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
@@ -426,16 +430,22 @@ struct SunPrimaryButtonStyle: ButtonStyle {
 
 struct SunSecondaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 16, weight: .medium))
             .foregroundStyle(AppPalette.ink)
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity, minHeight: 50)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(AppPalette.controlFill.opacity(0.82))
-                    .shadow(color: AppPalette.ink.opacity(configuration.isPressed ? 0.02 : 0.06), radius: configuration.isPressed ? 2 : 10, x: 0, y: configuration.isPressed ? 1 : 5)
+                    .fill(AppPalette.controlFill.opacity(isEnabled ? 0.86 : 0.48))
+                    .shadow(
+                        color: AppPalette.ink.opacity(configuration.isPressed ? 0.015 : 0.045),
+                        radius: configuration.isPressed ? 2 : 8,
+                        x: 0,
+                        y: configuration.isPressed ? 1 : 4
+                    )
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -444,6 +454,294 @@ struct SunSecondaryButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.92 : 1)
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.982 : 1))
             .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+    }
+}
+
+struct SunTextButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(AppPalette.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(configuration.isPressed ? AppPalette.warmGlow.opacity(0.54) : Color.clear)
+            )
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+    }
+}
+
+struct SunclubCard<Content: View>: View {
+    let cornerRadius: CGFloat
+    let padding: CGFloat
+    let fillOpacity: Double
+    let content: Content
+
+    init(
+        cornerRadius: CGFloat = AppRadius.card,
+        padding: CGFloat = 16,
+        fillOpacity: Double = 0.86,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.cornerRadius = cornerRadius
+        self.padding = padding
+        self.fillOpacity = fillOpacity
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(padding)
+            .sunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
+    }
+}
+
+struct SunScreenTitleBlock: View {
+    let eyebrow: String?
+    let title: String
+    let detail: String?
+    var symbolName: String?
+    var tint: Color = AppPalette.sun
+    var titleFont: Font = AppTypography.screenTitle
+
+    init(
+        eyebrow: String? = nil,
+        title: String,
+        detail: String? = nil,
+        symbolName: String? = nil,
+        tint: Color = AppPalette.sun,
+        titleFont: Font = AppTypography.screenTitle
+    ) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.detail = detail
+        self.symbolName = symbolName
+        self.tint = tint
+        self.titleFont = titleFont
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let eyebrow {
+                Text(eyebrow)
+                    .font(AppTypography.sectionLabel)
+                    .foregroundStyle(AppPalette.softInk)
+                    .textCase(.uppercase)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(title)
+                    .font(titleFont)
+                    .foregroundStyle(AppPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let symbolName {
+                    Image(systemName: symbolName)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(tint)
+                        .accessibilityHidden(true)
+                }
+            }
+
+            if let detail {
+                Text(detail)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct SunMetricPill: View {
+    let value: String
+    let label: String
+    var symbolName: String?
+    var tint: Color = AppPalette.sun
+    var accessibilityIdentifier: String?
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            if let symbolName {
+                Image(systemName: symbolName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(label)
+                    .font(AppTypography.captionMedium)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
+                .fill(AppPalette.controlFill.opacity(0.72))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
+                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(accessibilityIdentifier ?? "sunclub.metricPill")
+    }
+}
+
+struct SunWeekProgressDay: Identifiable, Equatable {
+    let date: Date
+    let isLogged: Bool
+    let isToday: Bool
+    let isFuture: Bool
+
+    var id: Date { date }
+}
+
+struct SunWeekProgressRow: View {
+    let days: [SunWeekProgressDay]
+    var calendar: Calendar = .current
+    var loggedTint: Color = AppPalette.success
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(days) { day in
+                VStack(spacing: 7) {
+                    Text(weekdayLetter(for: day.date))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(day.isToday ? AppPalette.ink : AppPalette.softInk)
+
+                    ZStack {
+                        Circle()
+                            .fill(circleFill(for: day))
+                            .overlay {
+                                Circle()
+                                    .stroke(circleStroke(for: day), lineWidth: day.isToday ? 1.5 : 1)
+                            }
+
+                        if day.isLogged {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(AppPalette.onAccent)
+                        } else if day.isToday {
+                            Circle()
+                                .stroke(
+                                    AppPalette.sun.opacity(0.75),
+                                    style: StrokeStyle(lineWidth: 1.4, dash: [3, 3])
+                                )
+                                .padding(6)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .frame(width: 34, height: 34)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityLabel(for: day))
+            }
+        }
+        .accessibilityIdentifier("sunclub.weekProgressRow")
+    }
+
+    private func circleFill(for day: SunWeekProgressDay) -> Color {
+        if day.isLogged {
+            return loggedTint
+        }
+        if day.isToday {
+            return AppPalette.warmGlow.opacity(0.44)
+        }
+        if day.isFuture {
+            return AppPalette.muted.opacity(0.10)
+        }
+        return AppPalette.cardFill.opacity(0.72)
+    }
+
+    private func circleStroke(for day: SunWeekProgressDay) -> Color {
+        if day.isLogged {
+            return loggedTint.opacity(0.42)
+        }
+        if day.isToday {
+            return AppPalette.sun.opacity(0.56)
+        }
+        return AppPalette.hairlineStroke
+    }
+
+    private func weekdayLetter(for date: Date) -> String {
+        let symbols = calendar.veryShortWeekdaySymbols
+        let weekday = calendar.component(.weekday, from: date)
+        let index = (weekday - 1 + symbols.count) % symbols.count
+        return symbols[index]
+    }
+
+    private func accessibilityLabel(for day: SunWeekProgressDay) -> String {
+        let dateText = day.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+        if day.isLogged {
+            return "\(dateText), logged"
+        }
+        if day.isToday {
+            return "\(dateText), not yet logged"
+        }
+        if day.isFuture {
+            return "\(dateText), upcoming"
+        }
+        return "\(dateText), not logged"
+    }
+}
+
+struct SunEmptyStateView: View {
+    let title: String
+    let detail: String
+    var asset: SunclubVisualAsset?
+    var symbolName: String?
+    var tint: Color = AppPalette.sun
+
+    var body: some View {
+        VStack(spacing: 16) {
+            if let asset {
+                asset.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 128)
+                    .accessibilityHidden(true)
+            } else if let symbolName {
+                Image(systemName: symbolName)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 64, height: 64)
+                    .background(AppPalette.warmGlow.opacity(0.46), in: Circle())
+                    .accessibilityHidden(true)
+            }
+
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(AppTypography.cardTitle)
+                    .foregroundStyle(AppPalette.ink)
+                    .multilineTextAlignment(.center)
+
+                Text(detail)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppPalette.softInk)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .sunGlassCard(cornerRadius: AppRadius.card)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -669,10 +967,7 @@ struct SunStatusCard: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(AppPalette.elevatedCardFill.opacity(0.86))
-        )
+        .sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
         .accessibilityElement(children: .combine)
     }
 }
@@ -870,12 +1165,12 @@ struct SunclubBadgeMedallion: View {
 }
 
 extension View {
-    func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.72) -> some View {
+    func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.86) -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(AppPalette.cardFill.opacity(fillOpacity))
-                    .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
+                    .shadow(color: AppPalette.ink.opacity(0.045), radius: 12, x: 0, y: 6)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

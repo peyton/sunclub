@@ -12,10 +12,10 @@ struct VerificationSuccessView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(spacing: 28) {
+            VStack(spacing: 22) {
                 ZStack(alignment: .bottomTrailing) {
                     SunSuccessBurst(
-                        size: 186,
+                        size: 168,
                         milestone: SunSuccessBurst.milestoneLevel(for: presentation.streak)
                     )
 
@@ -52,18 +52,11 @@ struct VerificationSuccessView: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                if appState.settings.reapplyReminderEnabled {
-                    reapplyConfirmation
-                } else {
-                    Text(successProgressNote)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                        .multilineTextAlignment(.center)
-                }
+                successNextStepCard
 
                 Spacer(minLength: 0)
             }
-            .padding(.top, 56)
+            .padding(.top, 34)
             .frame(maxWidth: .infinity)
         } footer: {
             VStack(spacing: 10) {
@@ -78,7 +71,7 @@ struct VerificationSuccessView: View {
                 .accessibilityIdentifier("success.done")
 
                 if presentation.canAddDetails {
-                    Button("Add SPF or Note") {
+                    Button("Edit log") {
                         appState.clearVerificationSuccessPresentation()
                         let context = appState.lastLogContext
                             ?? appState.currentLogContext(for: appState.selectedDay, source: .manualLog)
@@ -93,7 +86,7 @@ struct VerificationSuccessView: View {
                             targetDayPart: context.dayPart
                         )
                     }
-                    .buttonStyle(SunSecondaryButtonStyle())
+                    .buttonStyle(SunTextButtonStyle())
                     .accessibilityIdentifier("success.addDetails")
                 }
             }
@@ -111,6 +104,59 @@ struct VerificationSuccessView: View {
         }
 
         return "Your streak and progress are saved."
+    }
+
+    private var successNextStepCard: some View {
+        SunclubCard(cornerRadius: 20, padding: 16) {
+            VStack(alignment: .leading, spacing: 14) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        successMetricPills
+                    }
+
+                    VStack(spacing: 10) {
+                        successMetricPills
+                    }
+                }
+
+                if appState.settings.reapplyReminderEnabled {
+                    reapplyConfirmation
+                } else {
+                    Text(successProgressNote)
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityIdentifier("success.nextStepCard")
+    }
+
+    @ViewBuilder
+    private var successMetricPills: some View {
+        SunMetricPill(
+            value: "\(presentation.streak)",
+            label: presentation.streak == 1 ? "day in a row" : "days in a row",
+            symbolName: "flame.fill",
+            tint: AppPalette.streakAccent,
+            accessibilityIdentifier: "success.streakMetric"
+        )
+
+        SunMetricPill(
+            value: nextReminderValue,
+            label: "next reminder",
+            symbolName: "bell.fill",
+            tint: AppPalette.sun,
+            accessibilityIdentifier: "success.nextReminderMetric"
+        )
+    }
+
+    private var nextReminderValue: String {
+        guard let preview = appState.nextDailyReminderPreview else {
+            return "Off"
+        }
+
+        return preview.fireDate.formatted(.dateTime.weekday(.abbreviated).hour().minute())
     }
 
     private var reapplyConfirmation: some View {

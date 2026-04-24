@@ -76,7 +76,7 @@ struct AccountabilityOnboardingView: View {
     private var title: String {
         switch step {
         case 1:
-            return "Keep it optional"
+            return "Use accountability only if it helps."
         case 2:
             return "Add one friend"
         default:
@@ -87,7 +87,7 @@ struct AccountabilityOnboardingView: View {
     private var detail: String {
         switch step {
         case 1:
-            return "Friends only see whether today is logged, your current streak, your best streak, and when you last updated."
+            return "Friends can see whether you logged, not your exact SPF or notes."
         case 2:
             return "Bring two phones together with Nearby Add, or send your invite through Messages and the share sheet."
         default:
@@ -132,21 +132,12 @@ struct FriendsView: View {
                 })
 
                 if appState.friends.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 32, weight: .medium))
-                            .foregroundStyle(AppPalette.sun)
-
-                        Text("Better together")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(AppPalette.ink)
-
-                        Text("Add a friend to keep each other on track. You'll see their streak and can send nudges.")
-                            .font(.system(size: 15))
-                            .foregroundStyle(AppPalette.softInk)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(24)
+                    SunEmptyStateView(
+                        title: "Use accountability only if it helps",
+                        detail: "Friends can see whether you logged, not your exact SPF or notes.",
+                        asset: .illustrationFriendsPair,
+                        tint: AppPalette.sun
+                    )
 
                     statusCard
                     addFriendsCard
@@ -213,7 +204,7 @@ struct FriendsView: View {
                     .background(Capsule().fill(AppPalette.cardFill.opacity(0.8)))
             }
 
-            Text("Friends see your display name, logged-today status, streaks, and last update.")
+            Text("Friends see your display name, whether today is logged, streaks, and last update. SPF and notes stay private.")
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)

@@ -43,7 +43,7 @@ struct RecoveryView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             SunStatusCard(
-                title: appState.cloudSyncStatusPresentation.title,
+                title: hasRecoveryTasks ? "Review recent changes" : appState.cloudSyncStatusPresentation.title,
                 detail: overviewDetail,
                 tint: statusTint,
                 symbol: overviewSymbol
@@ -242,7 +242,7 @@ struct RecoveryView: View {
 
     private var statusTint: Color {
         if !appState.conflicts.isEmpty {
-            return Color.red.opacity(0.75)
+            return AppPalette.warning
         }
         if appState.pendingImportedBatchCount > 0 {
             return AppPalette.sun
