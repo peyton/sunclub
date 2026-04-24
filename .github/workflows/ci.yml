@@ -70,8 +70,8 @@ jobs:
       - name: Run Python shard
         run: mise exec -- just ci-python
 
-  test-ios:
-    name: iOS Tests
+  test-ios-unit:
+    name: iOS Unit Tests
     runs-on: macos-26
     needs: lint
     env:
@@ -104,9 +104,60 @@ jobs:
       - name: Run unit tests
         timeout-minutes: 45
         run: mise exec -- just test-unit
+
+  test-ios-ui:
+    name: iOS UI Tests
+    runs-on: macos-26
+    needs: lint
+    env:
+      SUNCLUB_FLAVOR: dev
+      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
+    steps:
+      - name: Select Xcode 26.4
+        if: ${{ !env.ACT }}
+        shell: bash
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"
+          xcodebuild -version
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Repair git checkout for act
+        if: ${{ env.ACT }}
+        run: bash scripts/tooling/repair_act_git_checkout.sh
+      - name: Install tools for act
+        if: ${{ env.ACT }}
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        with:
+          cache: false
+          cache_save: false
+      - name: Install tools
+        if: ${{ !env.ACT }}
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        with:
+          cache: true
       - name: Run UI tests
         timeout-minutes: 45
         run: mise exec -- just test-ui
+
+  test-ios:
+    name: iOS Tests
+    runs-on: ubuntu-latest
+    needs: [test-ios-unit, test-ios-ui]
+    if: ${{ always() }}
+    steps:
+      - name: Validate iOS test shards
+        shell: bash
+        run: |
+          unit_result="${{ needs.test-ios-unit.result }}"
+          ui_result="${{ needs.test-ios-ui.result }}"
+
+          printf 'iOS Unit Tests: %s\n' "$unit_result"
+          printf 'iOS UI Tests: %s\n' "$ui_result"
+
+          if [ "$unit_result" != "success" ] || [ "$ui_result" != "success" ]; then
+            exit 1
+          fi
 
   build:
     name: Build iOS
