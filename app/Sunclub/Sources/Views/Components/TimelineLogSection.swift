@@ -6,6 +6,7 @@ struct TimelineLogSection: View {
     let summary: TimelineDayLogSummary
     let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
+    let timelineForecastSourceLabel: String?
     let currentStreak: Int
     let longestStreak: Int
 
@@ -14,6 +15,15 @@ struct TimelineLogSection: View {
             sectionHeader
 
             forecastBlockGroup
+
+            if let weatherKitAttributionSourceLabel {
+                WeatherKitAttributionFooter(
+                    attribution: weatherAttribution,
+                    sourceLabel: weatherKitAttributionSourceLabel,
+                    showAttributionLink: true
+                )
+                .padding(.horizontal, 2)
+            }
 
             if summary.category == .future, let futurePreview = summary.futurePreview {
                 futurePlanCard(futurePreview)
@@ -46,6 +56,16 @@ struct TimelineLogSection: View {
 
     private var sectionTitle: String {
         summary.category == .future ? "UV Forecast" : "Log"
+    }
+
+    private var weatherKitAttributionSourceLabel: String? {
+        if timelineForecastSourceLabel == UVReadingSource.weatherKit.forecastLabel {
+            return timelineForecastSourceLabel
+        }
+        if uvForecast?.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
+            return uvForecast?.sourceLabel
+        }
+        return nil
     }
 
     private var forecastBlockGroup: some View {
@@ -232,14 +252,6 @@ struct TimelineLogSection: View {
                 .font(.system(size: 14))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
-
-            if let sourceLabel = uvForecast?.sourceLabel {
-                WeatherKitAttributionFooter(
-                    attribution: weatherAttribution,
-                    sourceLabel: sourceLabel,
-                    showAttributionLink: sourceLabel == UVReadingSource.weatherKit.forecastLabel
-                )
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

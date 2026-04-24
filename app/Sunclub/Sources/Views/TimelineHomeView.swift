@@ -18,18 +18,21 @@ private struct TimelineHomePresentation {
     let recordedDays: Set<Date>
     let currentStreakDays: Set<Date>
     let elevatedUVDays: Set<Date>
+    let forecastUVLevels: [Date: UVLevel]
     let extrasDays: Set<Date>
     let logDetails: [Date: SunDayDetails]
     let visibleDays: [Date]
     let allowsFuture: Bool
     let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
+    let timelineForecastSourceLabel: String?
     let currentStreak: Int
     let longestStreak: Int
 
     init(appState: AppState) {
         let selected = appState.selectedDay
         let referenceDate = appState.referenceDate
+        let days = Self.timelineDays(centeredOn: referenceDate)
 
         selectedDay = selected
         today = referenceDate
@@ -38,12 +41,20 @@ private struct TimelineHomePresentation {
         recordedDays = Set(appState.recordedDays)
         currentStreakDays = Set(appState.currentStreakDays)
         elevatedUVDays = appState.elevatedUVDays
+        forecastUVLevels = Self.forecastUVLevels(
+            for: days,
+            today: referenceDate,
+            dailyForecast: appState.dailyUVForecast
+        )
         extrasDays = appState.daysWithExtras
         logDetails = appState.dailyDetailsForTimeline
-        visibleDays = Self.timelineDays(centeredOn: referenceDate)
+        visibleDays = days
         allowsFuture = appState.timelineShowsFutureDays
         uvForecast = appState.uvForecast
         weatherAttribution = appState.weatherAttribution
+        timelineForecastSourceLabel = appState.dailyUVForecast.isEmpty
+            ? appState.uvForecast?.sourceLabel
+            : UVReadingSource.weatherKit.forecastLabel
         currentStreak = appState.currentStreak
         longestStreak = appState.longestStreak
     }
@@ -62,6 +73,35 @@ private struct TimelineHomePresentation {
         }
 
         return days
+    }
+
+    private static func forecastUVLevels(
+        for visibleDays: [Date],
+        today: Date,
+        dailyForecast: [SunclubUVDayForecast]
+    ) -> [Date: UVLevel] {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: today)
+        var levels: [Date: UVLevel] = [:]
+
+        for forecast in dailyForecast {
+            let dayStart = calendar.startOfDay(for: forecast.day)
+            guard dayStart > todayStart else {
+                continue
+            }
+            levels[dayStart] = forecast.level
+        }
+
+        for day in visibleDays {
+            let dayStart = calendar.startOfDay(for: day)
+            guard dayStart > todayStart, levels[dayStart] == nil else {
+                continue
+            }
+            let midday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: dayStart) ?? dayStart
+            levels[dayStart] = UVLevel.from(index: UVIndexService.estimatedUVIndex(at: midday, calendar: calendar))
+        }
+
+        return levels
     }
 }
 
@@ -92,6 +132,7 @@ struct TimelineHomeView: View {
                         recordedDays: presentation.recordedDays,
                         currentStreakDays: presentation.currentStreakDays,
                         elevatedUVDays: presentation.elevatedUVDays,
+                        forecastUVLevels: presentation.forecastUVLevels,
                         extrasDays: presentation.extrasDays,
                         logDetails: presentation.logDetails,
                         allowsFuture: presentation.allowsFuture
@@ -104,6 +145,7 @@ struct TimelineHomeView: View {
                     summary: presentation.logSummary,
                     uvForecast: presentation.uvForecast,
                     weatherAttribution: presentation.weatherAttribution,
+                    timelineForecastSourceLabel: presentation.timelineForecastSourceLabel,
                     currentStreak: presentation.currentStreak,
                     longestStreak: presentation.longestStreak
                 )
@@ -167,16 +209,51 @@ struct TimelineHomeView: View {
     }
 
     private func dateHeadline(for presentation: TimelineHomePresentation) -> some View {
-        VStack(spacing: 8) {
-            Text(headlineText(for: presentation))
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("timeline.headline")
-                .frame(maxWidth: .infinity)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
+        let isToday = Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 7) {
+                headlineLabel(for: presentation, isToday: isToday)
+
+                if !isToday {
+                    Image(systemName: "arrow.uturn.backward.circle.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppPalette.pool)
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !isToday else {
+                    return
+                }
+                feedbackTrigger += 1
+                jumpToToday()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func headlineLabel(for presentation: TimelineHomePresentation, isToday: Bool) -> some View {
+        let text = Text(headlineText(for: presentation))
+            .font(.system(size: 28, weight: .bold))
+            .foregroundStyle(AppPalette.ink)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("timeline.headline")
+            .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
+
+        if isToday {
+            text
+        } else {
+            text
+                .accessibilityHint("Returns to today's date.")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction {
+                    feedbackTrigger += 1
+                    jumpToToday()
+                }
         }
     }
 
@@ -343,15 +420,19 @@ struct TimelineHomeView: View {
         let dateText = formattedHeadlineDate(selected, relativeTo: today)
 
         switch offset {
-        case -1:
-            return "Yesterday, \(dateText)"
         case 0:
             return "Today, \(dateText)"
-        case 1:
-            return "Tomorrow, \(dateText)"
         default:
-            return dateText
+            return formattedWeekdayHeadlineDate(selected, relativeTo: today)
         }
+    }
+
+    private func formattedWeekdayHeadlineDate(_ day: Date, relativeTo referenceDay: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(day, equalTo: referenceDay, toGranularity: .year) {
+            return day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        }
+        return day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
     }
 
     private func formattedHeadlineDate(_ day: Date, relativeTo referenceDay: Date) -> String {
