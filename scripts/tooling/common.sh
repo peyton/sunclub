@@ -207,7 +207,6 @@ prepare_ci_workspace() {
     run_in_app run_mise_exec tuist setup cache
     ;;
   xcode-cloud)
-    run_in_app run_mise_exec tuist setup insights
     run_in_app run_mise_exec tuist setup cache
     ;;
   *)
