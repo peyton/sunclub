@@ -15,29 +15,38 @@ struct WelcomeView: View {
             VStack(spacing: 0) {
                 SunBrandLockup(
                     layout: .stacked,
-                    markSize: 104
+                    markSize: 96,
+                    subtitle: "Build a sunscreen habit that actually sticks."
                 )
                 .frame(maxWidth: .infinity)
+
+                Text("Track applications, get gentle reminders, and see your sun-care streak.")
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppPalette.softInk)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 320)
+                    .padding(.top, 18)
 
                 VStack(alignment: .leading, spacing: 26) {
                     welcomeValuePropRow(
                         symbol: "flame.fill",
-                        title: "Build a streak",
-                        detail: "Log sunscreen daily and watch your consistency grow."
+                        title: "Stay consistent",
+                        detail: "Keep the routine visible without making it a chore."
                     )
                     welcomeValuePropRow(
                         symbol: "bell.badge.fill",
-                        title: "Smart reminders",
-                        detail: "Separate weekday and weekend times, plus streak-risk nudges."
+                        title: "Get nudged at the right time",
+                        detail: "Use gentle reminders that fit weekdays, weekends, and travel."
                     )
                     welcomeValuePropRow(
                         symbol: "hand.tap.fill",
-                        title: "One-tap logging",
-                        detail: "Log from widgets, Shortcuts, notifications, or the app."
+                        title: "Log in seconds",
+                        detail: "Save the day from the app, widgets, Shortcuts, or notifications."
                     )
                 }
                 .frame(maxWidth: 320, alignment: .leading)
-                .padding(.top, 56)
+                .padding(.top, 44)
                 .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
@@ -90,7 +99,7 @@ struct EnableNotificationsView: View {
                     .padding(.top, 128)
 
                 VStack(spacing: 14) {
-                    Text(SunclubCopy.Brand.reminderTitle)
+                    Text("Turn on gentle reminders")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
@@ -158,7 +167,7 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        SunclubCopy.Brand.reminderDetail
+        "Sunclub only sends sunscreen reminders. No marketing, no upsells, no spam."
     }
 
     private func completeOnboarding(requestsNotifications: Bool) {

@@ -22,6 +22,7 @@ private struct TimelineHomePresentation {
     let extrasDays: Set<Date>
     let logDetails: [Date: SunDayDetails]
     let visibleDays: [Date]
+    let weekProgressDays: [SunWeekProgressDay]
     let allowsFuture: Bool
     let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
@@ -36,9 +37,11 @@ private struct TimelineHomePresentation {
 
         selectedDay = selected
         today = referenceDate
+        let recordSet = Set(appState.recordedDays)
+
         logSummary = appState.timelineDayLogSummary(for: selected)
         homeDailyPlanPresentation = appState.homeDailyPlanPresentation
-        recordedDays = Set(appState.recordedDays)
+        recordedDays = recordSet
         currentStreakDays = Set(appState.currentStreakDays)
         elevatedUVDays = appState.elevatedUVDays
         forecastUVLevels = Self.forecastUVLevels(
@@ -49,6 +52,7 @@ private struct TimelineHomePresentation {
         extrasDays = appState.daysWithExtras
         logDetails = appState.dailyDetailsForTimeline
         visibleDays = days
+        weekProgressDays = Self.weekProgressDays(today: referenceDate, recordedDays: recordSet)
         allowsFuture = appState.timelineShowsFutureDays
         uvForecast = appState.uvForecast
         weatherAttribution = appState.weatherAttribution
@@ -73,6 +77,25 @@ private struct TimelineHomePresentation {
         }
 
         return days
+    }
+
+    private static func weekProgressDays(today: Date, recordedDays: Set<Date>) -> [SunWeekProgressDay] {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: today)
+        let start = calendar.date(byAdding: .day, value: -6, to: todayStart) ?? todayStart
+
+        return (0..<7).compactMap { offset in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: start) else {
+                return nil
+            }
+            let dayStart = calendar.startOfDay(for: day)
+            return SunWeekProgressDay(
+                date: dayStart,
+                isLogged: recordedDays.contains(dayStart),
+                isToday: dayStart == todayStart,
+                isFuture: dayStart > todayStart
+            )
+        }
     }
 
     private static func forecastUVLevels(
@@ -122,22 +145,9 @@ struct TimelineHomeView: View {
             VStack(alignment: .leading, spacing: 24) {
                 headerBar
 
-                VStack(spacing: 10) {
-                    dateHeadline(for: presentation)
+                TimelineTodayStatusCard(presentation: presentation)
 
-                    SunDayStrip(
-                        selectedDay: $appState.selectedDay,
-                        today: presentation.today,
-                        visibleDays: presentation.visibleDays,
-                        recordedDays: presentation.recordedDays,
-                        currentStreakDays: presentation.currentStreakDays,
-                        elevatedUVDays: presentation.elevatedUVDays,
-                        forecastUVLevels: presentation.forecastUVLevels,
-                        extrasDays: presentation.extrasDays,
-                        logDetails: presentation.logDetails,
-                        allowsFuture: presentation.allowsFuture
-                    )
-                }
+                timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
 
                 attentionBanners
 
@@ -208,10 +218,42 @@ struct TimelineHomeView: View {
         }
     }
 
+    private func timelineSelector(
+        for presentation: TimelineHomePresentation,
+        selectedDay: Binding<Date>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Timeline")
+                    .font(AppTypography.sectionLabel)
+                    .foregroundStyle(AppPalette.softInk)
+
+                Spacer(minLength: 0)
+
+                dateHeadline(for: presentation)
+            }
+
+            SunDayStrip(
+                selectedDay: selectedDay,
+                today: presentation.today,
+                visibleDays: presentation.visibleDays,
+                recordedDays: presentation.recordedDays,
+                currentStreakDays: presentation.currentStreakDays,
+                elevatedUVDays: presentation.elevatedUVDays,
+                forecastUVLevels: presentation.forecastUVLevels,
+                extrasDays: presentation.extrasDays,
+                logDetails: presentation.logDetails,
+                allowsFuture: presentation.allowsFuture
+            )
+        }
+        .padding(16)
+        .sunGlassCard(cornerRadius: AppRadius.card)
+    }
+
     private func dateHeadline(for presentation: TimelineHomePresentation) -> some View {
         let isToday = Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
 
-        return VStack(spacing: 8) {
+        return VStack(spacing: 0) {
             HStack(spacing: 7) {
                 headlineLabel(for: presentation, isToday: isToday)
 
@@ -222,7 +264,6 @@ struct TimelineHomeView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .onTapGesture {
                 guard !isToday else {
@@ -237,9 +278,9 @@ struct TimelineHomeView: View {
     @ViewBuilder
     private func headlineLabel(for presentation: TimelineHomePresentation, isToday: Bool) -> some View {
         let text = Text(headlineText(for: presentation))
-            .font(.system(size: 28, weight: .bold))
+            .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(AppPalette.ink)
-            .multilineTextAlignment(.center)
+            .multilineTextAlignment(.trailing)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("timeline.headline")
             .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
@@ -486,6 +527,183 @@ struct TimelineHomeView: View {
                 scheduleMidnightRefresh()
             }
         }
+    }
+}
+
+private struct TimelineTodayStatusCard: View {
+    let presentation: TimelineHomePresentation
+
+    private var isToday: Bool {
+        Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
+    }
+
+    private var weekLoggedCount: Int {
+        presentation.weekProgressDays.filter(\.isLogged).count
+    }
+
+    var body: some View {
+        SunclubCard(cornerRadius: 20, padding: 18, fillOpacity: 0.90) {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(dateText)
+                            .font(AppTypography.captionMedium)
+                            .foregroundStyle(AppPalette.softInk)
+                            .accessibilityIdentifier("timeline.statusDate")
+
+                        Text(statusTitle)
+                            .font(.system(size: 29, weight: .semibold))
+                            .foregroundStyle(AppPalette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier(statusAccessibilityIdentifier)
+
+                        Label(statusDetail, systemImage: statusSymbolName)
+                            .font(AppTypography.body)
+                            .foregroundStyle(statusTint)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("timeline.statusDetail")
+                    }
+
+                    Spacer(minLength: 0)
+
+                    statusRing
+                        .frame(width: 112, height: 112)
+                }
+
+                SunWeekProgressRow(days: presentation.weekProgressDays)
+                    .accessibilityIdentifier("timeline.weekProgress")
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        statusMetricPills
+                    }
+
+                    VStack(spacing: 10) {
+                        statusMetricPills
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var statusMetricPills: some View {
+        SunMetricPill(
+            value: "\(presentation.currentStreak)",
+            label: presentation.currentStreak == 1 ? "day streak" : "day streak",
+            symbolName: "flame.fill",
+            tint: AppPalette.streakAccent,
+            accessibilityIdentifier: "timeline.status.currentStreak"
+        )
+
+        SunMetricPill(
+            value: "\(weekLoggedCount)/7",
+            label: "this week",
+            symbolName: "calendar",
+            tint: AppPalette.sun,
+            accessibilityIdentifier: "timeline.status.week"
+        )
+    }
+
+    private var statusRing: some View {
+        ZStack {
+            if presentation.logSummary.record != nil {
+                SunSuccessBurst(size: 108, milestone: SunSuccessBurst.milestoneLevel(for: presentation.currentStreak))
+            } else {
+                SunclubVisualAsset.motifSunRing.image
+                    .resizable()
+                    .scaledToFit()
+                    .opacity(0.48)
+
+                Circle()
+                    .stroke(
+                        AppPalette.sun.opacity(0.62),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [8, 6])
+                    )
+                    .padding(12)
+            }
+
+            VStack(spacing: 3) {
+                Image(systemName: statusSymbolName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(statusTint)
+                    .accessibilityHidden(true)
+
+                Text(ringLabel)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var dateText: String {
+        presentation.selectedDay.formatted(.dateTime.weekday(.wide).month(.wide).day())
+    }
+
+    private var statusTitle: String {
+        switch presentation.logSummary.category {
+        case .today:
+            return presentation.logSummary.record == nil ? "Not yet logged" : "Protected today"
+        case .past:
+            return presentation.logSummary.record == nil ? "No sunscreen logged" : "Day logged"
+        case .future:
+            return "Forecast only"
+        }
+    }
+
+    private var statusAccessibilityIdentifier: String {
+        if presentation.logSummary.category == .today, presentation.logSummary.record != nil {
+            return "home.todayStatus"
+        }
+        return "timeline.todayStatus"
+    }
+
+    private var statusDetail: String {
+        switch presentation.logSummary.category {
+        case .today:
+            if presentation.logSummary.record != nil {
+                return presentation.homeDailyPlanPresentation.detail
+            }
+            return "Log once before outdoor time to keep today covered."
+        case .past:
+            return presentation.logSummary.record == nil
+                ? "Backfill this day if you applied sunscreen."
+                : presentation.logSummary.sunscreenStatusText
+        case .future:
+            return presentation.logSummary.futurePreview?.suggestionText
+                ?? "Use the forecast to plan SPF before the day starts."
+        }
+    }
+
+    private var statusSymbolName: String {
+        switch presentation.logSummary.category {
+        case .today:
+            return presentation.logSummary.record == nil ? "sun.max" : "checkmark.shield.fill"
+        case .past:
+            return presentation.logSummary.record == nil ? "calendar.badge.plus" : "checkmark.circle.fill"
+        case .future:
+            return "sparkles"
+        }
+    }
+
+    private var ringLabel: String {
+        switch presentation.logSummary.category {
+        case .today:
+            return presentation.logSummary.record == nil ? "Open" : "Done"
+        case .past:
+            return presentation.logSummary.record == nil ? "Open" : "Saved"
+        case .future:
+            return "Plan"
+        }
+    }
+
+    private var statusTint: Color {
+        if presentation.logSummary.record != nil {
+            return AppPalette.success
+        }
+        return presentation.logSummary.category == .future ? AppPalette.pool : AppPalette.sun
     }
 }
 
