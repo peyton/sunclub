@@ -12,7 +12,7 @@ final class SunclubUITests: XCTestCase {
         line: UInt = #line
     ) {
         let legacyPrompt = app.staticTexts["Your first day starts now"]
-        let timelineHeadline = app.staticTexts["timeline.headline"]
+        let timelineHeadline = timelineHeadline(in: app)
         let hasLegacyPrompt = legacyPrompt.exists
         let hasTimelinePrompt = timelineHeadline.waitForExistence(timeout: 5)
             && timelineHeadline.label.hasPrefix("Today,")
@@ -30,7 +30,7 @@ final class SunclubUITests: XCTestCase {
         line: UInt = #line
     ) {
         let legacyStatus = app.staticTexts["home.todayStatus"]
-        let timelineHeadline = app.staticTexts["timeline.headline"]
+        let timelineHeadline = timelineHeadline(in: app)
         let hasLegacyLoggedState = legacyStatus.waitForExistence(timeout: 5)
             && legacyStatus.label == "Today's log is in"
         let hasTimelineLoggedState = timelineHeadline.waitForExistence(timeout: 5)
@@ -41,6 +41,10 @@ final class SunclubUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    private func timelineHeadline(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)["timeline.headline"]
     }
 
     @MainActor
@@ -1036,12 +1040,15 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(tomorrowChip.exists)
         tomorrowChip.tap()
 
-        let headline = app.staticTexts["timeline.headline"]
+        let headline = timelineHeadline(in: app)
         XCTAssertTrue(headline.waitForExistence(timeout: 3))
-        XCTAssertTrue(headline.label.hasPrefix("Tomorrow,"))
+        XCTAssertEqual(headline.label, weekdayHeadline(offset: 1))
         XCTAssertTrue(app.staticTexts["UV Forecast"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertTrue(app.buttons["timeline.backToToday"].exists)
+
+        headline.tap()
+        XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
     }
 
     @MainActor
@@ -1052,9 +1059,9 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(yesterdayChip.exists)
         yesterdayChip.tap()
 
-        let headline = app.staticTexts["timeline.headline"]
+        let headline = timelineHeadline(in: app)
         XCTAssertTrue(headline.waitForExistence(timeout: 3))
-        XCTAssertTrue(headline.label.hasPrefix("Yesterday,"))
+        XCTAssertEqual(headline.label, weekdayHeadline(offset: -1))
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 3))
         app.buttons["home.logManually"].tap()
 
@@ -1221,6 +1228,13 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    private func waitForLabelPrefix(_ prefix: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "label BEGINSWITH %@", prefix)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
     private func waitForDifferentLabel(from label: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: "label != %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
@@ -1241,6 +1255,16 @@ final class SunclubUITests: XCTestCase {
         let today = calendar.startOfDay(for: Date())
         let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
         return Self.dayIdentifierFormatter.string(from: day)
+    }
+
+    private func weekdayHeadline(offset: Int) -> String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
+        if calendar.isDate(day, equalTo: today, toGranularity: .year) {
+            return day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        }
+        return day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
     }
 
     @MainActor

@@ -11,6 +11,7 @@ struct SunDayStrip: View {
     let recordedDays: Set<Date>
     let currentStreakDays: Set<Date>
     let elevatedUVDays: Set<Date>
+    let forecastUVLevels: [Date: UVLevel]
     let extrasDays: Set<Date>
     let logDetails: [Date: SunDayDetails]
     let allowsFuture: Bool
@@ -184,8 +185,8 @@ struct SunDayStrip: View {
             filledChip(for: state)
         case .outline(let dashed):
             outlineChip(for: state, dashed: dashed)
-        case .hatched:
-            hatchedChip(for: state)
+        case .forecast:
+            forecastChip(for: state)
         case .ghost:
             ghostChip(for: state)
         }
@@ -243,20 +244,38 @@ struct SunDayStrip: View {
             }
     }
 
-    private func hatchedChip(for state: ChipState) -> some View {
-        Capsule(style: .continuous)
-            .fill(AppPalette.coral.opacity(state.isSelected ? 0.22 : 0.14))
+    private func forecastChip(for state: ChipState) -> some View {
+        let color = uvForecastColor(for: state.forecastUVLevel)
+        return Capsule(style: .continuous)
+            .fill(color.opacity(state.isSelected ? 0.18 : 0.11))
             .overlay {
-                SunDiagonalHatch(color: AppPalette.coral.opacity(0.62))
+                SunDiagonalHatch(color: color.opacity(state.isSelected ? 0.56 : 0.42))
                     .clipShape(Capsule(style: .continuous))
             }
             .overlay {
                 Capsule(style: .continuous)
                     .strokeBorder(
-                        AppPalette.coral.opacity(state.isSelected ? 0.9 : 0.5),
+                        color.opacity(state.isSelected ? 0.82 : 0.45),
                         lineWidth: state.isSelected ? 1.8 : 1
                     )
             }
+    }
+
+    private func uvForecastColor(for level: UVLevel?) -> Color {
+        switch level {
+        case .low:
+            return Color(red: 0.18, green: 0.62, blue: 0.32)
+        case .moderate:
+            return Color(red: 0.93, green: 0.74, blue: 0.10)
+        case .high:
+            return Color(red: 0.94, green: 0.48, blue: 0.12)
+        case .veryHigh:
+            return Color(red: 0.82, green: 0.16, blue: 0.18)
+        case .extreme:
+            return Color(red: 0.48, green: 0.26, blue: 0.74)
+        case .unknown, nil:
+            return AppPalette.muted
+        }
     }
 
     private func ghostChip(for state: ChipState) -> some View {
@@ -364,7 +383,8 @@ struct SunDayStrip: View {
         let hasRecord = recordedDays.contains(dayStart)
         let isCurrentStreak = currentStreakDays.contains(dayStart)
         let hasExtras = extrasDays.contains(dayStart)
-        let isElevatedUV = elevatedUVDays.contains(dayStart)
+        let forecastUVLevel = forecastUVLevels[dayStart]
+        let isElevatedUV = elevatedUVDays.contains(dayStart) || (forecastUVLevel?.shouldShowBanner ?? false)
         let isSelected = calendar.isDate(dayStart, inSameDayAs: selectedDay)
         let details = logDetails[dayStart]
 
@@ -387,6 +407,7 @@ struct SunDayStrip: View {
             isSelected: isSelected,
             isCurrentStreak: isCurrentStreak,
             isElevatedUV: isElevatedUV,
+            forecastUVLevel: forecastUVLevel,
             hasSecondaryActivity: hasExtras,
             spfLevel: details?.spfLevel,
             isHighProtection: details?.isHighProtection ?? false,
@@ -427,7 +448,7 @@ struct SunDayStrip: View {
 private enum ChipVisualStyle: Equatable {
     case filled
     case outline(dashed: Bool)
-    case hatched
+    case forecast
     case ghost
 }
 
@@ -456,6 +477,7 @@ private struct ChipState {
     let isSelected: Bool
     let isCurrentStreak: Bool
     let isElevatedUV: Bool
+    let forecastUVLevel: UVLevel?
     let hasSecondaryActivity: Bool
     let spfLevel: Int?
     let isHighProtection: Bool
@@ -482,7 +504,7 @@ private struct ChipState {
         case .todayPending:
             return .outline(dashed: true)
         case .future:
-            return isElevatedUV ? .hatched : .ghost
+            return forecastUVLevel == nil ? .ghost : .forecast
         case .missed:
             return .ghost
         }
@@ -507,7 +529,7 @@ private struct ChipState {
         case .missed:
             return "Not logged"
         case .future:
-            return isElevatedUV ? "Elevated UV forecast" : "Forecast"
+            return forecastUVLevel.map { "\($0.displayName) UV forecast" } ?? "Forecast"
         }
     }
 
@@ -517,8 +539,10 @@ private struct ChipState {
         if isFuture {
             parts.append("future date")
         }
-        if isElevatedUV {
-            parts.append("high UV expected")
+        if let forecastUVLevel {
+            parts.append("\(forecastUVLevel.displayName) UV expected")
+        } else if isElevatedUV {
+            parts.append("Elevated UV expected")
         }
         if hasSecondaryActivity {
             parts.append("has notes")
