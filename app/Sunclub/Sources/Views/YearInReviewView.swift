@@ -140,22 +140,12 @@ struct YearInReviewView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 36, weight: .medium))
-                .foregroundStyle(AppPalette.softInk)
-                .accessibilityHidden(true)
-
-            Text("Not enough data yet")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-
-            Text("Log at least 30 days to unlock your Year in Review.")
-                .font(AppTypography.body)
-                .foregroundStyle(AppPalette.softInk)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(32)
+        SunEmptyStateView(
+            title: "Your year in review is building",
+            detail: "Log sunscreen throughout the year to unlock your annual sun-care recap.",
+            symbolName: "calendar.badge.clock",
+            tint: AppPalette.sun
+        )
+        .accessibilityIdentifier("yearInReview.emptyState")
     }
 }

@@ -77,34 +77,34 @@ struct AutomationSettingsPanel: View {
     private var preferenceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "Automation Access",
-                detail: "URL actions can be called by other apps. Turn off writes if you only want links to open Sunclub screens."
+                "Connect shortcuts",
+                detail: "Choose which trusted shortcuts and links can update Sunclub."
             )
 
             preferenceToggle(
                 title: "Allow Shortcut writes",
-                detail: "Shortcuts can log sunscreen, reapply, update reminders, and change supported toggles.",
+                detail: "Let Apple Shortcuts log sunscreen for you.",
                 keyPath: \.shortcutWritesEnabled,
                 accessibilityIdentifier: "automation.shortcutWritesToggle"
             )
 
             preferenceToggle(
                 title: "Allow URL open actions",
-                detail: "Links can open Sunclub to supported screens.",
+                detail: "Let links open Sunclub screens.",
                 keyPath: \.urlOpenActionsEnabled,
                 accessibilityIdentifier: "automation.urlOpenToggle"
             )
 
             preferenceToggle(
                 title: "Allow URL write actions",
-                detail: "Links can log sunscreen, reapply, import invites, open Friends for a message nudge, and update supported settings.",
+                detail: "Let trusted links save logs or supported settings.",
                 keyPath: \.urlWriteActionsEnabled,
                 accessibilityIdentifier: "automation.urlWriteToggle"
             )
 
             preferenceToggle(
                 title: "Include callback result details",
-                detail: "x-callback-url responses can include streak, record date, weekly count, and friend names.",
+                detail: "Return status details to apps that ask for them.",
                 keyPath: \.callbackResultDetailsEnabled,
                 accessibilityIdentifier: "automation.callbackDetailsToggle"
             )
@@ -399,13 +399,13 @@ private struct AutomationHeroCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Choose what other apps can do.")
+                Text("Connect shortcuts")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Logging and status can run from Shortcuts or URLs. Review-heavy flows open Sunclub first.")
-                    .font(.system(size: 14))
+                Text("Let Apple Shortcuts and trusted links log sunscreen or read your status when you want them to.")
+                    .font(AppTypography.body)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
             }

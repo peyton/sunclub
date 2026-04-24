@@ -3,7 +3,6 @@ import SwiftUI
 struct ManualLogView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let context: AppLogContext?
 
@@ -38,28 +37,20 @@ struct ManualLogView: View {
 
     var body: some View {
         SunLightScreen {
-            VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
                     router.goBack()
                 })
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(existingRecord == nil ? "Ready to save \(selectedDayPart.title.lowercased())" : "Update this \(selectedDayPart.title.lowercased()) log")
-                        .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-
-                    Text(
-                        existingRecord == nil
-                            ? "SPF and notes can be added now or later."
-                            : "SPF and notes can be changed before saving."
-                    )
-                        .font(.system(size: 15))
-                        .foregroundStyle(AppPalette.softInk)
-                }
+                SunScreenTitleBlock(
+                    eyebrow: targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day()),
+                    title: existingRecord == nil ? "Ready to log" : "Update this log",
+                    detail: existingRecord == nil
+                        ? "Save the day now. Add SPF or a note if it helps."
+                        : "Adjust timing, SPF, or notes before saving.",
+                    symbolName: existingRecord == nil ? "sun.max.fill" : "checkmark.circle.fill",
+                    tint: existingRecord == nil ? AppPalette.sun : AppPalette.success
+                )
 
                 if let validationMessage {
                     SunStatusCard(
@@ -71,15 +62,6 @@ struct ManualLogView: View {
                     .accessibilityIdentifier("manualLog.validation")
                 }
 
-                dayPartPicker
-
-                SunAssetHero(
-                    asset: .illustrationLogBottle,
-                    height: heroHeight,
-                    glowColor: AppPalette.aloe
-                )
-                .accessibilityLabel("Sunscreen bottle")
-
                 if let existingRecord {
                     SunStatusCard(
                         title: "Logged at \(existingRecord.verifiedAt.formatted(date: .omitted, time: .shortened))",
@@ -89,13 +71,20 @@ struct ManualLogView: View {
                     )
                 }
 
-                SunManualLogFields(
-                    selectedSPF: $selectedSPF,
-                    notes: $notes,
-                    accessibilityPrefix: "manualLog",
-                    suggestions: appState.manualLogSuggestionState(for: targetDate),
-                    detailsInitiallyExpanded: existingRecord != nil || appState.manualLogPrefill != nil
-                )
+                SunclubCard(cornerRadius: 20, padding: 16) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        dayPartPicker
+
+                        SunManualLogFields(
+                            selectedSPF: $selectedSPF,
+                            notes: $notes,
+                            accessibilityPrefix: "manualLog",
+                            suggestions: appState.manualLogSuggestionState(for: targetDate),
+                            showsOptionalDisclosure: true,
+                            detailsInitiallyExpanded: false
+                        )
+                    }
+                }
 
                 if !isFutureTarget {
                     scanSPFButton
@@ -120,9 +109,9 @@ struct ManualLogView: View {
     }
 
     private var dayPartPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Day Part")
-                .font(.system(size: 14, weight: .semibold))
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Timing")
+                .font(AppTypography.sectionLabel)
                 .foregroundStyle(AppPalette.softInk)
 
             Picker("Day Part", selection: $selectedDayPart) {
@@ -132,7 +121,7 @@ struct ManualLogView: View {
             }
             .pickerStyle(.segmented)
             .disabled(isFutureTarget)
-            .accessibilityIdentifier("manualLog.dayPartPicker")
+                .accessibilityIdentifier("manualLog.dayPartPicker")
         }
     }
 
@@ -180,10 +169,6 @@ struct ManualLogView: View {
         return "\(verb) \(selectedDayPart.title)"
     }
 
-    private var heroHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 80 : 112
-    }
-
     private var scanSPFButton: some View {
         Button {
             navigationFeedbackTrigger += 1
@@ -195,19 +180,14 @@ struct ManualLogView: View {
             router.push(.productScanner)
         } label: {
             HStack(spacing: 12) {
-                SunclubVisualAsset.illustrationScannerLabel.image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 50, height: 50)
-                    .accessibilityHidden(true)
-
                 Image(systemName: "camera.viewfinder")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 34, height: 34)
+                    .background(AppPalette.warmGlow.opacity(0.45), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Scan Bottle SPF")
+                    Text("Scan bottle SPF")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
@@ -222,8 +202,8 @@ struct ManualLogView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
-            .padding(18)
-            .sunGlassCard(cornerRadius: 18)
+            .padding(14)
+            .sunGlassCard(cornerRadius: 18, fillOpacity: 0.72)
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the SPF scanner.")

@@ -150,6 +150,11 @@ struct WeeklyReportView: View {
                 Text("Last 7 days")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
+
+                Text(weeklyPlainSummary)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -162,6 +167,19 @@ struct WeeklyReportView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .sunGlassCard(cornerRadius: 24, fillOpacity: 0.52)
+    }
+
+    private var weeklyPlainSummary: String {
+        if report.appliedCount == 0 {
+            return "No sunscreen logs yet this week."
+        }
+        if report.appliedCount == 1 {
+            return "You logged sunscreen once this week."
+        }
+        if report.appliedCount == report.totalDays {
+            return "You logged sunscreen every day this week."
+        }
+        return "You logged sunscreen \(report.appliedCount) times this week."
     }
 
     private var weekEntries: [WeeklyEntry] {

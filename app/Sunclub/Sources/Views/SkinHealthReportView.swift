@@ -48,11 +48,11 @@ struct SkinHealthReportView: View {
 
     private var introCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Report preview")
+            Text("Skin Health Report")
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
-            Text("Choose a date range, review the summary, then export the on-device PDF.")
+            Text("Choose a date range, review your key metrics, then export or share the summary.")
                 .font(.system(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }
@@ -176,12 +176,12 @@ struct SkinHealthReportView: View {
                 .multilineTextAlignment(.center)
         } else {
             VStack(spacing: 12) {
-                Button("Export PDF Report") {
+                Button("Export report") {
                     exportPDFReport()
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
 
-                Button("Share Streak Card") {
+                Button("Share summary") {
                     shareStreakCard()
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
