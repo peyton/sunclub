@@ -355,6 +355,52 @@ setup_local_tooling_env
     ]
 
 
+def test_setup_local_tooling_env_can_skip_local_tuist_cache(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / "app").mkdir(parents=True)
+    (repo_root / "scripts" / "tooling").mkdir(parents=True)
+
+    for script_name in ("common.sh", "sunclub.env"):
+        _copy_tooling_script(repo_root, script_name)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+
+    mise_log = tmp_path / "mise.log"
+
+    _write_executable(
+        bin_dir / "mise",
+        f"""#!/bin/sh
+printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
+exit 64
+""",
+    )
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env.pop("CI", None)
+    env.pop("GITHUB_ACTIONS", None)
+    env.pop("ACT", None)
+
+    subprocess.run(
+        [
+            "bash",
+            "-c",
+            """
+source scripts/tooling/common.sh
+setup_local_tooling_env
+""",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+
+    assert not mise_log.exists()
+
+
 def test_ensure_workspace_generated_regenerates_when_scheme_is_missing(
     tmp_path: Path,
 ) -> None:

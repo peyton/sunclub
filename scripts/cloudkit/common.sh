@@ -8,6 +8,7 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/tooling/common.sh"
 
 : "${SUNCLUB_FLAVOR:=prod}"
+export SUNCLUB_SKIP_LOCAL_TUIST_CACHE="${SUNCLUB_SKIP_LOCAL_TUIST_CACHE:-1}"
 setup_local_tooling_env
 
 CLOUDKIT_CONTAINER_ID="${CLOUDKIT_CONTAINER_ID:-iCloud.app.peyton.sunclub}"

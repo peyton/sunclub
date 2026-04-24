@@ -69,7 +69,8 @@ export_tuist_manifest_env() {
 }
 
 should_setup_local_tuist_cache() {
-  [ -z "${CI:-}" ] &&
+  [ "${SUNCLUB_SKIP_LOCAL_TUIST_CACHE:-0}" != "1" ] &&
+    [ -z "${CI:-}" ] &&
     [ "${GITHUB_ACTIONS:-}" != "true" ] &&
     [ "${ACT:-}" != "true" ]
 }
