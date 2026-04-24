@@ -45,10 +45,11 @@ Use the default strict archive path when you are preparing the actual App Store 
 These steps still require real App Store Connect data and cannot be faked safely inside the repo:
 
 1. Run `just appstore-env` and provide App Store Connect API key values plus App Review contact values.
-2. Complete App Privacy answers in App Store Connect so they match `docs/app-store-review-package.md`, then set `SUNCLUB_APP_PRIVACY_COMPLETED=1`.
-3. Set regulated medical device status to `NOT_MEDICAL_DEVICE`, then set `SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS=NOT_MEDICAL_DEVICE`.
-4. Re-audit the Accessibility Nutrition Label answers if the supported accessibility criteria change before submission.
-5. Review `.build/appstore-review-checkpoint/summary.md` before typing the final local confirmation phrase.
+2. Deploy the web directory to Cloudflare Pages, then verify `https://sunclub.peyton.app/config/weatherkit.json` and `https://sunclub.peyton.app/schemas/weatherkit-config.v1.json` return the current canonical WeatherKit policy/schema.
+3. Complete App Privacy answers in App Store Connect so they match `docs/app-store-review-package.md`, then set `SUNCLUB_APP_PRIVACY_COMPLETED=1`.
+4. Set regulated medical device status to `NOT_MEDICAL_DEVICE`, then set `SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS=NOT_MEDICAL_DEVICE`.
+5. Re-audit the Accessibility Nutrition Label answers if the supported accessibility criteria change before submission.
+6. Review `.build/appstore-review-checkpoint/summary.md` before typing the final local confirmation phrase.
 
 ## Review Notes
 
@@ -56,6 +57,33 @@ These steps still require real App Store Connect data and cannot be faked safely
 - The app is iPhone-only.
 - Sunclub is not a regulated medical device; it is sunscreen habit guidance, not diagnosis, monitoring, prevention, or treatment.
 - Public CloudKit accountability transport is disabled for the first App Store review build. Private iCloud history sync remains enabled.
-- This submitted version uses WeatherKit for live UV forecasts powered by Apple Weather when enabled, with fallback estimated UV when live weather is unavailable.
+- This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
+- Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
+- To navigate to WeatherKit functionality: complete onboarding, open Settings, open Live UV, enable Live UV, grant location permission if prompted, then return to Home or Timeline.
+- WeatherKit requests are foreground/user-initiated from the main app, cached, rate-limited, and covered by the remote config at `https://sunclub.peyton.app/config/weatherkit.json`.
+- Main-app Apple Weather values show Apple Weather attribution and a visible legal/data-source link. Widgets, watch, and Live Activities use local estimates instead of WeatherKit-derived UV values.
+- Sunclub falls back to local UV estimates when location, network, remote config, or Apple Weather is unavailable.
 - The primary check-in flow is manual logging from Home.
 - Weekly Summary and reminder settings remain part of the submission flow.
+
+## WeatherKit Reviewer Reply Draft
+
+Use this text when replying to App Review's WeatherKit information request:
+
+```text
+Yes, Sunclub includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
+
+Live UV is off by default. The app's core features, including manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces, work without WeatherKit and without location access.
+
+To navigate to the WeatherKit functionality:
+1. Complete onboarding.
+2. Open Settings.
+3. Open Live UV.
+4. Enable Live UV.
+5. Grant location permission if prompted.
+6. Return to Home or Timeline.
+
+When Live UV is enabled, Apple Weather UV data is shown only in the main app on surfaces that include Apple Weather attribution and a visible Data Sources/legal attribution link. Widgets, watch, and Live Activities use Sunclub's local UV estimates instead of WeatherKit-derived values.
+
+WeatherKit requests are foreground/user-initiated, cached, rate-limited, and fall back to local UV estimates if location, network, remote config, or Apple Weather is unavailable.
+```

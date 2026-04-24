@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
@@ -48,6 +49,8 @@ REQUIRED_FILES = (
     "support/index.html",
     "privacy/index.html",
     "404.html",
+    "config/weatherkit.json",
+    "schemas/weatherkit-config.v1.json",
     "robots.txt",
     "sitemap.xml",
 )
@@ -67,6 +70,16 @@ FORBIDDEN_PHRASES = (
     "sunclub@peyton.app",
     "@sunclub.peyton.app",
 )
+WEATHERKIT_SCHEMA_URL = "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json"
+WEATHERKIT_CONFIG_EXPECTED_VALUES = {
+    "$schema": WEATHERKIT_SCHEMA_URL,
+    "version": 1,
+    "weatherkit_enabled": True,
+    "min_fetch_interval_seconds": 10800,
+    "max_daily_fetches_per_device": 4,
+    "max_monthly_fetches_per_device": 90,
+    "reason": "",
+}
 
 
 @dataclass
@@ -218,6 +231,62 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
     return errors
 
 
+def read_json_file(
+    root: Path, relative_path: Path
+) -> tuple[dict[str, object] | None, list[str]]:
+    path = root / relative_path
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as error:
+        return None, [f"{relative_path}: could not read JSON: {error}."]
+    except json.JSONDecodeError as error:
+        return None, [f"{relative_path}: invalid JSON: {error.msg}."]
+
+    if not isinstance(payload, dict):
+        return None, [f"{relative_path}: top-level JSON value must be an object."]
+
+    return payload, []
+
+
+def validate_weatherkit_config(root: Path) -> list[str]:
+    errors: list[str] = []
+    config_path = Path("config/weatherkit.json")
+    schema_path = Path("schemas/weatherkit-config.v1.json")
+    config, config_errors = read_json_file(root, config_path)
+    schema, schema_errors = read_json_file(root, schema_path)
+    errors.extend(config_errors)
+    errors.extend(schema_errors)
+
+    if config is not None:
+        unexpected_keys = set(config) - set(WEATHERKIT_CONFIG_EXPECTED_VALUES)
+        missing_keys = set(WEATHERKIT_CONFIG_EXPECTED_VALUES) - set(config)
+        if unexpected_keys:
+            errors.append(f"{config_path}: unexpected keys {sorted(unexpected_keys)}.")
+        if missing_keys:
+            errors.append(f"{config_path}: missing keys {sorted(missing_keys)}.")
+
+        for key, expected in WEATHERKIT_CONFIG_EXPECTED_VALUES.items():
+            if config.get(key) != expected:
+                errors.append(
+                    f"{config_path}: {key} must be {expected!r}; got {config.get(key)!r}."
+                )
+
+    if schema is not None:
+        if schema.get("$id") != WEATHERKIT_SCHEMA_URL:
+            errors.append(f"{schema_path}: $id must be {WEATHERKIT_SCHEMA_URL}.")
+        if schema.get("type") != "object":
+            errors.append(f"{schema_path}: type must be 'object'.")
+        if schema.get("additionalProperties") is not False:
+            errors.append(f"{schema_path}: additionalProperties must be false.")
+        required = schema.get("required")
+        if required != list(WEATHERKIT_CONFIG_EXPECTED_VALUES):
+            errors.append(
+                f"{schema_path}: required keys must match config keys in order."
+            )
+
+    return errors
+
+
 def validate_site(root: Path) -> list[str]:
     resolved_root = root.resolve()
     errors: list[str] = []
@@ -255,6 +324,8 @@ def validate_site(root: Path) -> list[str]:
 
     for path in html_files(resolved_root):
         errors.extend(validate_html_file(resolved_root, path))
+
+    errors.extend(validate_weatherkit_config(resolved_root))
 
     return errors
 

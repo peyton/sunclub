@@ -2003,6 +2003,122 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testWeatherKitPolicyDecodesHostedSnakeCaseConfig() throws {
+        let payload = """
+        {
+          "$schema": "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json",
+          "version": 1,
+          "weatherkit_enabled": true,
+          "min_fetch_interval_seconds": 10800,
+          "max_daily_fetches_per_device": 4,
+          "max_monthly_fetches_per_device": 90,
+          "reason": ""
+        }
+        """
+
+        let policy = try JSONDecoder().decode(
+            SunclubWeatherKitBudgetPolicy.self,
+            from: Data(payload.utf8)
+        )
+
+        XCTAssertTrue(policy.weatherKitEnabled)
+        XCTAssertEqual(policy.minFetchIntervalSeconds, 10_800)
+        XCTAssertEqual(policy.maxDailyFetchesPerDevice, 4)
+        XCTAssertEqual(policy.maxMonthlyFetchesPerDevice, 90)
+        XCTAssertEqual(policy.reason, "")
+        XCTAssertEqual(SunclubWeatherKitBudgetPolicy.builtInDefault, policy)
+    }
+
+    @MainActor
+    func testWidgetSnapshotPublishesEstimatedUVForCompactSurfacesWhenLiveUVIsWeatherKit() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let peakHour = SunclubUVHourForecast(
+            date: now.addingTimeInterval(3_600),
+            index: 10,
+            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+        )
+        let forecast = SunclubUVForecast(
+            generatedAt: now,
+            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+            hours: [peakHour],
+            peakHour: peakHour,
+            recommendation: "Very high UV today."
+        )
+
+        let snapshot = SunclubWidgetSnapshotBuilder.make(
+            settings: Settings(),
+            records: [],
+            uvReading: UVReading(index: 9, timestamp: now, source: .weatherKit),
+            uvForecast: forecast,
+            now: now
+        )
+
+        XCTAssertEqual(
+            snapshot.currentUVIndex,
+            SunclubUVEstimator.estimatedIndex(at: now)
+        )
+        XCTAssertNotEqual(snapshot.currentUVIndex, 9)
+        XCTAssertNotEqual(snapshot.peakUVIndex, 10)
+        XCTAssertNotNil(snapshot.peakUVHour)
+    }
+
+    @MainActor
+    func testWidgetSnapshotKeepsEstimatedUVForCompactSurfaces() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let peakHour = SunclubUVHourForecast(
+            date: now.addingTimeInterval(3_600),
+            index: 7,
+            sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
+        )
+        let forecast = SunclubUVForecast(
+            generatedAt: now,
+            sourceLabel: UVReadingSource.heuristic.forecastLabel,
+            hours: [peakHour],
+            peakHour: peakHour,
+            recommendation: "High UV today."
+        )
+
+        let snapshot = SunclubWidgetSnapshotBuilder.make(
+            settings: Settings(),
+            records: [],
+            uvReading: UVReading(index: 6, timestamp: now, source: .heuristic),
+            uvForecast: forecast,
+            now: now
+        )
+
+        XCTAssertEqual(snapshot.currentUVIndex, 6)
+        XCTAssertEqual(snapshot.peakUVIndex, 7)
+        XCTAssertEqual(snapshot.peakUVHour, peakHour.date)
+    }
+
+    @MainActor
+    func testLiveActivityPayloadPublishesEstimatedUVWhenLiveUVIsWeatherKit() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let peakHour = SunclubUVHourForecast(
+            date: now.addingTimeInterval(3_600),
+            index: 10,
+            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+        )
+        let forecast = SunclubUVForecast(
+            generatedAt: now,
+            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+            hours: [peakHour],
+            peakHour: peakHour,
+            recommendation: "Very high UV today."
+        )
+
+        let payload = SunclubLiveActivityCoordinator.compactSurfaceUVPayload(
+            reading: UVReading(index: 9, timestamp: now, source: .weatherKit),
+            forecast: forecast,
+            now: now
+        )
+
+        XCTAssertNotNil(payload)
+        XCTAssertNotEqual(payload?.currentUVIndex, 9)
+        XCTAssertNotEqual(payload?.peakUVIndex, 10)
+    }
+
+    @MainActor
     func testSettingsDefaultValues() {
         let settings = Settings()
         XCTAssertFalse(settings.hasCompletedOnboarding)
