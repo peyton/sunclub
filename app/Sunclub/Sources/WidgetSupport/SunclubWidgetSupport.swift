@@ -215,6 +215,21 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: baseDate)
     }
 
+    func nextTimelineRefreshDate(after now: Date = Date(), calendar: Calendar = Calendar.current) -> Date {
+        let nextMidnightRefresh = calendar.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 1),
+            matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(3_600)
+
+        guard let reapplyDeadline = reapplyDeadline(now: now, calendar: calendar),
+              reapplyDeadline > now else {
+            return nextMidnightRefresh
+        }
+
+        return min(reapplyDeadline, nextMidnightRefresh)
+    }
+
     private func monthInterval(now: Date, calendar: Calendar) -> DateInterval {
         guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)),
               let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
