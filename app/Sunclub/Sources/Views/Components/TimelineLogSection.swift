@@ -43,14 +43,14 @@ struct TimelineLogSection: View {
 
             Spacer(minLength: 0)
 
-            Button("Options") {
+            Button("History") {
                 router.open(.history)
             }
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(AppPalette.pool)
             .buttonStyle(.plain)
             .accessibilityIdentifier("home.historyCard")
-            .accessibilityHint("Opens history and calendar options.")
+            .accessibilityHint("Opens your full calendar history.")
         }
     }
 
