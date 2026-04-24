@@ -41,6 +41,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let weeklyAppliedCount: Int
     let monthlyAppliedCount: Int
     let monthlyDayCount: Int
+    let todaySPFLevel: Int?
     let mostUsedSPF: Int?
     let currentUVIndex: Int?
     let peakUVIndex: Int?
@@ -60,6 +61,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         weeklyAppliedCount: 0,
         monthlyAppliedCount: 0,
         monthlyDayCount: 0,
+        todaySPFLevel: nil,
         mostUsedSPF: nil,
         currentUVIndex: nil,
         peakUVIndex: nil,
@@ -80,6 +82,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         case weeklyAppliedCount
         case monthlyAppliedCount
         case monthlyDayCount
+        case todaySPFLevel
         case mostUsedSPF
         case currentUVIndex
         case peakUVIndex
@@ -100,6 +103,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         weeklyAppliedCount: Int,
         monthlyAppliedCount: Int,
         monthlyDayCount: Int,
+        todaySPFLevel: Int? = nil,
         mostUsedSPF: Int?,
         currentUVIndex: Int?,
         peakUVIndex: Int?,
@@ -118,6 +122,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         self.weeklyAppliedCount = weeklyAppliedCount
         self.monthlyAppliedCount = monthlyAppliedCount
         self.monthlyDayCount = monthlyDayCount
+        self.todaySPFLevel = todaySPFLevel
         self.mostUsedSPF = mostUsedSPF
         self.currentUVIndex = currentUVIndex
         self.peakUVIndex = peakUVIndex
@@ -139,6 +144,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         weeklyAppliedCount = try container.decode(Int.self, forKey: .weeklyAppliedCount)
         monthlyAppliedCount = try container.decode(Int.self, forKey: .monthlyAppliedCount)
         monthlyDayCount = try container.decode(Int.self, forKey: .monthlyDayCount)
+        todaySPFLevel = try container.decodeIfPresent(Int.self, forKey: .todaySPFLevel)
         mostUsedSPF = try container.decodeIfPresent(Int.self, forKey: .mostUsedSPF)
         currentUVIndex = try container.decodeIfPresent(Int.self, forKey: .currentUVIndex)
         peakUVIndex = try container.decodeIfPresent(Int.self, forKey: .peakUVIndex)
@@ -159,6 +165,13 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
 
     func weeklyValue(now: Date = Date(), calendar: Calendar = Calendar.current) -> Int {
         CalendarAnalytics.weeklyReport(records: recordedDays, now: now, calendar: calendar).appliedCount
+    }
+
+    func currentWeekAppliedValue(now: Date = Date(), calendar: Calendar = Calendar.current) -> Int {
+        let appliedDays = recordedDaySet(calendar: calendar)
+        return currentWeekDays(now: now, calendar: calendar).filter { day in
+            appliedDays.contains(calendar.startOfDay(for: day))
+        }.count
     }
 
     func monthlyAppliedValue(now: Date = Date(), calendar: Calendar = Calendar.current) -> Int {
@@ -231,10 +244,13 @@ enum SunclubWidgetSnapshotBuilder {
         let latestRecord = records.max { lhs, rhs in
             lhs.verifiedAt < rhs.verifiedAt
         }
+        let today = calendar.startOfDay(for: now)
+        let todayRecord = records.first { record in
+            calendar.isDate(record.startOfDay, inSameDayAs: today)
+        }
 
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
         let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? now
-        let today = calendar.startOfDay(for: now)
         let effectiveMonthEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? monthEnd)
         let monthlyAppliedCount = normalizedRecordedDays.filter { $0 >= monthStart && $0 < effectiveMonthEnd }.count
         let monthlyDayCount = max(calendar.dateComponents([.day], from: monthStart, to: effectiveMonthEnd).day ?? 0, 0)
@@ -250,6 +266,7 @@ enum SunclubWidgetSnapshotBuilder {
             weeklyAppliedCount: weeklyAppliedCount,
             monthlyAppliedCount: monthlyAppliedCount,
             monthlyDayCount: monthlyDayCount,
+            todaySPFLevel: todayRecord?.spfLevel,
             mostUsedSPF: SunscreenUsageAnalytics.mostUsedSPFInsight(from: records)?.level,
             currentUVIndex: uvReading?.index,
             peakUVIndex: uvForecast?.peakHour?.index,
