@@ -40,36 +40,64 @@ url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_
 provenance = "github-attestations"
 
 [[tools.hk]]
-version = "1.42.0"
+version = "1.44.1"
 backend = "aqua:jdx/hk"
 
 [tools.hk."platforms.linux-arm64"]
-checksum = "sha256:291ed6215703fc3aa6a9fcbb96a72b88751c50888a00a6a73140ae0fbc3eef70"
-url = "https://github.com/jdx/hk/releases/download/v1.42.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:248fae1d0cbc859c67f9e867e67e0cf69e5f93404c62c96efbe83f9ffe691442"
+url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-aarch64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.linux-arm64-musl"]
-checksum = "sha256:291ed6215703fc3aa6a9fcbb96a72b88751c50888a00a6a73140ae0fbc3eef70"
-url = "https://github.com/jdx/hk/releases/download/v1.42.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:248fae1d0cbc859c67f9e867e67e0cf69e5f93404c62c96efbe83f9ffe691442"
+url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-aarch64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.linux-x64"]
-checksum = "sha256:a4f8898a83c1521c3e184b8af613ddf8d121df21a4026c679b18b54e8b5953db"
-url = "https://github.com/jdx/hk/releases/download/v1.42.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:6c50ef086268b5470a0da421505f0694d6cefcc8271abb8b50f2e4e4ded35eb6"
+url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-x86_64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.linux-x64-musl"]
-checksum = "sha256:a4f8898a83c1521c3e184b8af613ddf8d121df21a4026c679b18b54e8b5953db"
-url = "https://github.com/jdx/hk/releases/download/v1.42.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:6c50ef086268b5470a0da421505f0694d6cefcc8271abb8b50f2e4e4ded35eb6"
+url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-x86_64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.macos-arm64"]
-checksum = "sha256:29c4d4aabda87ed8e0a3bcd97cffe288a6932f22ae0a49d77f8a1bb9430afdbe"
-url = "https://github.com/jdx/hk/releases/download/v1.42.0/hk-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:c8e317df71ef6f2faa646db1e433b2208e2a4de54a6298e0c510f27d8191924b"
+url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-aarch64-apple-darwin.tar.gz"
 
 [tools.hk."platforms.windows-x64"]
-checksum = "sha256:9706dab06f3ed468bb1247ce540dad677acea7bc9a023e8cdbdc5f79b2e4015a"
-url = "https://github.com/jdx/hk/releases/download/v1.42.0/hk-x86_64-pc-windows-msvc.zip"
+checksum = "sha256:1ded329d70266fc3c4fe319ca48678614532ea7187ffd785d820e01bcdbf7f58"
+url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-x86_64-pc-windows-msvc.zip"
 
 [[tools.just]]
 version = "1.50.0"
 backend = "aqua:casey/just"
+
+[tools.just."platforms.linux-arm64"]
+checksum = "sha256:3beb4967ce05883cf09ac12d6d128166eb4c6d0b03eff74b61018a6880655d7d"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-aarch64-unknown-linux-musl.tar.gz"
+
+[tools.just."platforms.linux-arm64-musl"]
+checksum = "sha256:3beb4967ce05883cf09ac12d6d128166eb4c6d0b03eff74b61018a6880655d7d"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-aarch64-unknown-linux-musl.tar.gz"
+
+[tools.just."platforms.linux-x64"]
+checksum = "sha256:27e011cd6328fadd632e59233d2cf5f18460b8a8c4269acd324c1a8669f34db0"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-x86_64-unknown-linux-musl.tar.gz"
+
+[tools.just."platforms.linux-x64-musl"]
+checksum = "sha256:27e011cd6328fadd632e59233d2cf5f18460b8a8c4269acd324c1a8669f34db0"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-x86_64-unknown-linux-musl.tar.gz"
+
+[tools.just."platforms.macos-arm64"]
+checksum = "sha256:891262207663bff1aa422dbe799a76deae4064eaa445f14eb28aef7a388222cd"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-aarch64-apple-darwin.tar.gz"
+
+[tools.just."platforms.macos-x64"]
+checksum = "sha256:e4fa28fe63381ca32fad101e86d4a1da7cd2d34d1b080985a37ec9dc951922fe"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-x86_64-apple-darwin.tar.gz"
+
+[tools.just."platforms.windows-x64"]
+checksum = "sha256:5dc713f049e174e22de41fd06292a26c9b90f2d37c1be9390d2082fe6928b376"
+url = "https://github.com/casey/just/releases/download/1.50.0/just-1.50.0-x86_64-pc-windows-msvc.zip"
 
 [[tools.node]]
 version = "25.9.0"
@@ -104,7 +132,7 @@ checksum = "sha256:929552b8305effac843ba7b4270c437aefb702fc3fbd73fcd1bffd35d4ac2
 url = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip"
 
 [[tools."npm:prettier"]]
-version = "3.8.2"
+version = "3.8.3"
 backend = "npm:prettier"
 
 [[tools."npm:wrangler"]]
@@ -148,123 +176,123 @@ version = "3.14.4"
 backend = "core:python"
 
 [tools.python."platforms.linux-arm64"]
-checksum = "sha256:c84d61ae07e3b255f8bac6a28147bd373c3c1862d1d5598a9543a5b103fcb595"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:b8b597fdb2f8dccdc502c11947b60a4b65eb6bce79cfa60c7ccf9b6e8352c60a"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-arm64-musl"]
-checksum = "sha256:c84d61ae07e3b255f8bac6a28147bd373c3c1862d1d5598a9543a5b103fcb595"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:b8b597fdb2f8dccdc502c11947b60a4b65eb6bce79cfa60c7ccf9b6e8352c60a"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:c838ac128a6e9c944b30301880472349eca8cd1abc79fb0d359ac2a358569389"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:fe9a9c32d13870af632cbac3dfc7528ae53597e94472aa4c7d6a42e8166136cd"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64-musl"]
-checksum = "sha256:c838ac128a6e9c944b30301880472349eca8cd1abc79fb0d359ac2a358569389"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:fe9a9c32d13870af632cbac3dfc7528ae53597e94472aa4c7d6a42e8166136cd"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:f1ce5d79bceecbed25a37b611d6dae147b27857dda8181e3a5e29e73dd1c57c3"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:6f304f4ec30854611f23316578302235fb517cd970519ecdd11a8c4db87fd843"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-x64"]
-checksum = "sha256:1c9615f872058332b74b2be1b248078c636b6f4b116eed3e17f50eb7efe1a989"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-x86_64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:d51250a32fa5d9f0799c7bcb71720c27b10a3afd4a7de288120f96085d508a5a"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-x86_64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.windows-x64"]
-checksum = "sha256:472f4f0d91429661db1b28a72e36adc593b6bd5d19db222d7faca635b3005313"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260408/cpython-3.14.4+20260408-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+checksum = "sha256:a976991dcd085c1bb5d9a8084823a6bc8b7f9b079d8c432574a6ddd68c3a6fe1"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.ruff]]
-version = "0.15.10"
+version = "0.15.12"
 backend = "aqua:astral-sh/ruff"
 
 [tools.ruff."platforms.linux-arm64"]
-checksum = "sha256:84754f0e58f58fb123ea49b8d22b8ce2cc96e4046b7c1b1ed99f6af7fe76f8ef"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:8996fe01814d00480c81da2b8ce9e8274f63eb07992318f082f7071772699635"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.linux-arm64-musl"]
-checksum = "sha256:84754f0e58f58fb123ea49b8d22b8ce2cc96e4046b7c1b1ed99f6af7fe76f8ef"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:8996fe01814d00480c81da2b8ce9e8274f63eb07992318f082f7071772699635"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.linux-x64"]
-checksum = "sha256:8b0a16bae81e371c9b6176a27fdb9db1deaa04c4cfe87e8604a898cc31686500"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:e0b074f722f87efe2e09de3a77820a012d1417ebabbd308cccdf6b98ba8d4bb3"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.linux-x64-musl"]
-checksum = "sha256:8b0a16bae81e371c9b6176a27fdb9db1deaa04c4cfe87e8604a898cc31686500"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:e0b074f722f87efe2e09de3a77820a012d1417ebabbd308cccdf6b98ba8d4bb3"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.macos-arm64"]
-checksum = "sha256:77c1df502dcfaaec52c6ce203b504b8554c88ab66ac01313410fa68ad9aafd5b"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:bd59107e125f9c9f64a75be13b6ff21bf7cbc61c4b9529bbb75c8184e3dd6c3c"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-aarch64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.macos-x64"]
-checksum = "sha256:7210e06196de876771cc0bad0f1d57678e709d039f184b491fdaa600d6a95a5e"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-x86_64-apple-darwin.tar.gz"
+checksum = "sha256:f88b6ad8338ad7acf83497e4bc2f2b5d3cac46c3e71363b7263c1bb9027c9b37"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-x86_64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.windows-x64"]
-checksum = "sha256:6f8f9a445102107ee3c0a05c8f386bacb32238199ecbc0983b9b06c5ea3d7c5e"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.10/ruff-x86_64-pc-windows-msvc.zip"
+checksum = "sha256:d378033392042377491ef2541457af47cc4652c4e984639c95413b0c4876b0f1"
+url = "https://github.com/astral-sh/ruff/releases/download/0.15.12/ruff-x86_64-pc-windows-msvc.zip"
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.1.71"
+version = "0.1.80"
 backend = "github:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:b4215f34d823871bb8da6ad822af0e4ff369c6a46d3274010b28849cb8957cbc"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318486"
+checksum = "sha256:a6bb603c291cc9c7c2034fe8646f5f8c6d2b89754b676ff67293088e23f73944"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753111"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-arm64-musl"]
-checksum = "sha256:d6ae5c776966155f75a3de922c175b04162ee743d2ec8cc4a02689c0602442ff"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318478"
+checksum = "sha256:12c2e749f2a46d76ad30acaafdfed9114e10f7d752ceb364f154e4a9997af5a5"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753103"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:9d7e9619f2480ba0e96d7ebd13759bfca55f385f56c3198b264f1575d6b710c0"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318481"
+checksum = "sha256:697a692cfbd148a498c8e00cd1b2f05fcde00078f31128cfca74db3505590a71"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753108"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64-musl"]
-checksum = "sha256:cbc356551ec66e8676f7d5207c9c25c07c7811d9d7696e4d1b6686deb9a8a6b6"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318476"
+checksum = "sha256:fbcf3ce4c96247ddff62f9549df06dfafe49cbd12224c59e5370b9a7184894c4"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753105"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:7f989ef3f5868aa59d24716cc7c3ea412681c9ab87e7ae9c4b30194ce3bc3167"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318483"
+checksum = "sha256:ceda068c9ad386e17aa368180e3d632e0b535629964fcbf72418bf3328f16c03"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753116"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-x64"]
-checksum = "sha256:58bb17d516e424470d058f9e91efd8400ccdadbb153deb2def238e07373962e7"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318480"
+checksum = "sha256:83f62d4e33e775f4bdd51a20d221546944d77242c91a3fdfa25de3863ca8739e"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753114"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.windows-x64"]
-checksum = "sha256:c00a0258f2e88f0b8c782941e09544060f37ffb938b307a7e41f8efa4c9a6bdd"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.71/rumdl-v0.1.71-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/395318487"
+checksum = "sha256:87dc9daeb6a9d9efb0a99bc5766a28a0875bbf58982763139d77fe1e6e34cbb4"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.80/rumdl-v0.1.80-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/402753109"
 provenance = "github-attestations"
 
 [[tools.shellcheck]]
@@ -363,43 +391,67 @@ url = "https://github.com/realm/SwiftLint/releases/download/0.63.2/portable_swif
 version = "4.183.0"
 backend = "aqua:tuist/tuist"
 
+[tools.tuist."platforms.linux-arm64"]
+checksum = "sha256:943163be5101baa444392f9c15d97387ee8bd6314eaee0bd2f93a23c04e8550d"
+url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-aarch64.tar.gz"
+
+[tools.tuist."platforms.linux-arm64-musl"]
+checksum = "sha256:943163be5101baa444392f9c15d97387ee8bd6314eaee0bd2f93a23c04e8550d"
+url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-aarch64.tar.gz"
+
+[tools.tuist."platforms.linux-x64"]
+checksum = "sha256:0a0293c65e4b9d34eca15bb0399c1023784776e37e591e7ab6cf3d5f3085a7b4"
+url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-x86_64.tar.gz"
+
+[tools.tuist."platforms.linux-x64-musl"]
+checksum = "sha256:0a0293c65e4b9d34eca15bb0399c1023784776e37e591e7ab6cf3d5f3085a7b4"
+url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-x86_64.tar.gz"
+
+[tools.tuist."platforms.macos-arm64"]
+checksum = "sha256:9d7ddd0e56a53dcc257cb521ca3bdc8bf5c10f30dfe1e04c70162564ffd7b16e"
+url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist.zip"
+
+[tools.tuist."platforms.macos-x64"]
+checksum = "sha256:9d7ddd0e56a53dcc257cb521ca3bdc8bf5c10f30dfe1e04c70162564ffd7b16e"
+url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist.zip"
+
 [[tools.uv]]
-version = "0.11.6"
+version = "0.11.7"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:d14ebd6f200047264152daaf97b8bd36c7885a5033e9e8bba8366cb0049c0d00"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:46647dc16cbb7d6700f762fdd7a67d220abe18570914732bc310adc91308d272"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-arm64-musl"]
-checksum = "sha256:d14ebd6f200047264152daaf97b8bd36c7885a5033e9e8bba8366cb0049c0d00"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:46647dc16cbb7d6700f762fdd7a67d220abe18570914732bc310adc91308d272"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:aa342a53abe42364093506d7704214d2cdca30b916843e520bc67759a5d20132"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:64ddb5f1087649e3f75aa50d139aa4f36ddde728a5295a141e0fa9697bfb7b0f"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64-musl"]
-checksum = "sha256:aa342a53abe42364093506d7704214d2cdca30b916843e520bc67759a5d20132"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:64ddb5f1087649e3f75aa50d139aa4f36ddde728a5295a141e0fa9697bfb7b0f"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:4b69a4e366ec38cd5f305707de95e12951181c448679a00dce2a78868dfc9f5b"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:66e37d91f839e12481d7b932a1eccbfe732560f42c1cfb89faddfa2454534ba8"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-aarch64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-x64"]
-checksum = "sha256:8e0ed5035eaa28c7c8cd2a46b5b9a05bfff1ef01dbdc090a010eb8fdf193a457"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-x86_64-apple-darwin.tar.gz"
+checksum = "sha256:0a4bc8fcde4974ea3560be21772aeecab600a6f43fa6e58169f9fa7b3b71d302"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.uv."platforms.windows-x64"]
-checksum = "sha256:99aa60edd017a256dbf378f372d1cff3292dbc6696e0ea01716d9158d773ab77"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.6/uv-x86_64-pc-windows-msvc.zip"
+checksum = "sha256:fe0c7815acf4fc45f8a5eff58ed3cf7ae2e15c3cf1dceadbd10c816ec1690cc1"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-pc-windows-msvc.zip"
 provenance = "github-attestations"
 
 [[tools.zizmor]]

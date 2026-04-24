@@ -426,10 +426,10 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert workflow.count("timeout-minutes: 45") == 3
     assert "test-ios-unit:" in workflow
     assert "name: iOS Unit Tests" in workflow
-    assert "run: mise exec -- just test-unit" in workflow
+    assert "run: mise --locked exec -- just test-unit" in workflow
     assert "test-ios-ui:" in workflow
     assert "name: iOS UI Tests" in workflow
-    assert "run: mise exec -- just test-ui" in workflow
+    assert "run: mise --locked exec -- just test-ui" in workflow
     assert "test-ios:\n    name: iOS Tests\n    runs-on: ubuntu-latest" in workflow
     assert "needs: [test-ios-unit, test-ios-ui]" in workflow
     assert "if: ${{ always() }}" in workflow
@@ -486,7 +486,7 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     release_safety_body = release_safety_step.group("body")
     assert "timeout-minutes: 45" in release_safety_body
     assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in release_safety_body
-    assert "mise exec -- just test-unit" in release_safety_body
+    assert "mise --locked exec -- just test-unit" in release_safety_body
     assert archive_upload_step is not None
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
@@ -539,7 +539,7 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
     assert screenshot_step is not None
     screenshot_body = screenshot_step.group("body")
     assert "timeout-minutes: 45" in screenshot_body
-    assert "mise exec -- just appstore-screenshots" in screenshot_body
+    assert "mise --locked exec -- just appstore-screenshots" in screenshot_body
 
     assert archive_upload_step is not None
     archive_upload_body = archive_upload_step.group("body")

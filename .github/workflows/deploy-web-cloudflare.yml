@@ -43,9 +43,10 @@ jobs:
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           cache: true
+      # Tool resolution is lockfile-enforced so CI fails fast when cached metadata is missing.
 
       - name: Build and package static site
-        run: mise exec -- just web-package VERSION=${{ github.sha }}
+        run: mise --locked exec -- just web-package VERSION=${{ github.sha }}
 
       - name: Upload web rollback artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

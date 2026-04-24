@@ -74,6 +74,9 @@ Before merging to `master` and before cutting a TestFlight tag, verify timeline 
 
 `.github/workflows/release-testflight.yml` runs on pushed tags matching `v*.*.*`.
 
+All release and screenshot tasks in this workflow run through `mise --locked exec`,
+so a stale/missing lock entry fails the workflow before archive or upload.
+
 It:
 
 1. resolves release versions

@@ -36,6 +36,7 @@ jobs:
         with:
           cache: false
           cache_save: false
+      # Tool resolution is lockfile-enforced so CI fails fast when cached metadata is missing.
 
       - name: Materialize App Store Connect key
         shell: bash
@@ -54,20 +55,20 @@ jobs:
         shell: bash
         run: |
           {
-            mise exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
+            mise --locked exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
             echo "SUNCLUB_FLAVOR=prod"
             echo "SUNCLUB_APS_ENVIRONMENT=production"
             echo "SUNCLUB_TUIST_SHARE=0"
           } >> "$GITHUB_ENV"
 
       - name: Validate App Store metadata
-        run: mise exec -- just appstore-validate
+        run: mise --locked exec -- just appstore-validate
 
       - name: Run release launch safety tests
         timeout-minutes: 45
         env:
           SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
-        run: mise exec -- just test-unit
+        run: mise --locked exec -- just test-unit
 
       - name: Archive and upload to TestFlight
         timeout-minutes: 90
@@ -84,7 +85,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
-        run: mise exec -- uv run python -m scripts.appstore.testflight_groups --group Internal
+        run: mise --locked exec -- uv run python -m scripts.appstore.testflight_groups --group Internal
 
       - name: Upload release artifacts
         if: always()

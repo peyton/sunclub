@@ -34,6 +34,7 @@ jobs:
         with:
           cache: false
           cache_save: false
+      # Lockfile is required for all tool resolution to prevent CI drift.
 
       - name: Resolve web release version
         shell: bash
@@ -45,7 +46,7 @@ jobs:
       - name: Build and package static site
         env:
           WEB_VERSION: ${{ env.WEB_VERSION }}
-        run: mise exec -- just web-package VERSION="$WEB_VERSION"
+        run: mise --locked exec -- just web-package VERSION="$WEB_VERSION"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3

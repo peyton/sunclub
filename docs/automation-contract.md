@@ -15,7 +15,8 @@ Run all human and CI automation from the repo root with `just`.
 
 - Root `just` recipes are the canonical interface.
 - Shared wrappers live in `scripts/tooling/`.
-- GitHub Actions calls only the root CI shard and web recipes.
+- GitHub Actions calls only the root CI shard and web recipes, and uses
+  `mise --locked exec` so runs fail fast when `mise.lock` is missing or stale.
 - Xcode Cloud scripts stay in `app/ci_scripts/`, but only as provider glue that delegates back to `scripts/tooling/`.
 
 ## Environment
