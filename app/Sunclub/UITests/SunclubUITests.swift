@@ -1016,6 +1016,7 @@ final class SunclubUITests: XCTestCase {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertEqual(app.buttons["home.historyCard"].label, "History")
         XCTAssertTrue(app.otherElements["timeline.dayStrip"].exists
             || app.scrollViews["timeline.dayStrip"].exists
             || app.descendants(matching: .any)["timeline.dayStrip"].exists)
