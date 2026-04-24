@@ -55,7 +55,15 @@ struct SunclubApp: App {
         }
         #endif
 
-        let state = AppState(context: modelContext, notificationManager: NotificationManager.shared)
+        let weatherKitBudget = SunclubWeatherKitBudget()
+        let uvIndexService = UVIndexService(budget: weatherKitBudget)
+        let weatherKitKillSwitch = SunclubWeatherKitKillSwitch(budget: weatherKitBudget)
+        let state = AppState(
+            context: modelContext,
+            notificationManager: NotificationManager.shared,
+            uvIndexService: uvIndexService,
+            weatherKitKillSwitch: weatherKitKillSwitch
+        )
         _appState = State(initialValue: state)
         Self.registerRemoteNotificationHandler(for: state)
         Self.registerWatchSyncHandler(for: state)
@@ -619,6 +627,7 @@ struct SunclubApp: App {
         appState.refresh()
         appState.refreshNotificationHealth()
         appState.refreshLeaveHomeReminderStatus()
+        appState.refreshWeatherKitKillSwitchIfNeeded()
         appState.refreshUVReadingIfNeeded()
         appState.refreshAccountabilityForForeground()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {

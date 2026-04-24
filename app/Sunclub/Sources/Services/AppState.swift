@@ -506,6 +506,7 @@ final class AppState {
             self
         }
         refresh()
+        refreshWeatherKitKillSwitchIfNeeded()
         refreshUVReadingIfNeeded()
         refreshUVForecastIfNeeded()
         refreshNotificationHealth()
@@ -2774,6 +2775,7 @@ final class AppState {
             snapshot.usesLiveUV = enabled
         }
         finishDurableChange(batch, reschedulesReminders: false)
+        refreshWeatherKitKillSwitchIfNeeded()
         refreshUVReadingIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
         refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
     }
@@ -2781,11 +2783,13 @@ final class AppState {
     func performLiveUVAction(_ action: LiveUVActionKind) {
         switch action {
         case .requestPermission:
+            refreshWeatherKitKillSwitchIfNeeded()
             refreshUVReadingIfNeeded(allowPermissionPrompt: true)
             refreshUVForecastIfNeeded(allowPermissionPrompt: true)
         case .openSettings:
             break
         case .refresh:
+            refreshWeatherKitKillSwitchIfNeeded()
             refreshUVReadingIfNeeded()
             refreshUVForecastIfNeeded()
         }

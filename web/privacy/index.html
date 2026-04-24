@@ -134,10 +134,14 @@
       <h2>Location and UV Features</h2>
       <p>
         Optional UV and leave-home reminder features may request location
-        permission. Location is used to estimate local UV context, save a Home
-        location for leave-home reminders, and decide when those reminders
-        should run. You can deny or revoke location access in Apple system
-        settings and continue using manual logging.
+        permission. Manual sunscreen logging works without location. Location is
+        used to estimate local UV context, request local UV forecasts from Apple
+        Weather through WeatherKit when Live UV is enabled, save a Home location
+        for leave-home reminders, and decide when those reminders should run.
+        Live UV is off by default, cached, rate-limited, and falls back to local
+        estimates when location, network, or Apple Weather is unavailable. You
+        can deny or revoke location access in Apple system settings and continue
+        using manual logging.
       </p>
 
       <h2>HealthKit</h2>

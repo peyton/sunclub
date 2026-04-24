@@ -16,7 +16,7 @@ import os
 final class SunclubWeatherKitKillSwitch {
     static let configURLKey = "SunclubWeatherKitConfigURL"
     static let defaultConfigURL = URL(
-        string: "https://sunclub.app/config/weatherkit.json"
+        string: "https://sunclub.peyton.app/config/weatherkit.json"
     )!
 
     private let budget: SunclubWeatherKitBudget

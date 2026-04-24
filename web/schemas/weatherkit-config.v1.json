@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json",
+  "title": "Sunclub WeatherKit Remote Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "version",
+    "weatherkit_enabled",
+    "min_fetch_interval_seconds",
+    "max_daily_fetches_per_device",
+    "max_monthly_fetches_per_device",
+    "reason"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json"
+    },
+    "version": {
+      "const": 1
+    },
+    "weatherkit_enabled": {
+      "type": "boolean"
+    },
+    "min_fetch_interval_seconds": {
+      "type": "integer",
+      "minimum": 10800
+    },
+    "max_daily_fetches_per_device": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "max_monthly_fetches_per_device": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 90
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 240
+    }
+  }
+}

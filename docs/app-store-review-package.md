@@ -62,7 +62,7 @@ What's New: Initial release. Log sunscreen use quickly, keep your streak on trac
 
 - Demo account required: no
 - Demo account notes: No account required. App data is stored on device and can sync through the user's private iCloud database when iCloud sync is enabled.
-- Notes: Sunclub uses WeatherKit for live UV data powered by Apple Weather when Live UV is enabled. A fallback locally estimated UV forecast is available when location or network access is unavailable. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.
+- Notes: Yes, Sunclub includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather. Live UV is off by default; core manual logging, weekly summaries, reminders, widgets, and watch surfaces work without WeatherKit or location. To navigate to the WeatherKit functionality: complete onboarding, open Settings, open Live UV, enable Live UV, grant location permission if prompted, then return to Home or Timeline. When Live UV is enabled, WeatherKit requests happen from foreground/user-initiated main-app refreshes, are cached and rate-limited, and fall back to local UV estimates if location, network, remote config, or Apple Weather is unavailable. Apple Weather data appears only in main-app surfaces that display Apple Weather attribution plus a visible legal/data-source link. Widgets, watch, and Live Activities use local estimates instead of WeatherKit-derived UV values. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.
 - Contact first name: `SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME`
 - Contact last name: `SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME`
 - Contact email: `SUNCLUB_APP_REVIEW_CONTACT_EMAIL`
@@ -166,6 +166,7 @@ Manual App Store Connect answer: data not collected for the default release buil
 ## Remaining Manual Steps
 
 - Run just appstore-env to populate App Store Connect API credentials, App Review contact values, App Privacy confirmation, and medical-device status in .state/appstore/review.env.
+- Deploy the web directory to Cloudflare Pages and verify <https://sunclub.peyton.app/config/weatherkit.json> plus <https://sunclub.peyton.app/schemas/weatherkit-config.v1.json> before resubmitting.
 - Answer App Privacy questions in App Store Connect to match this manifest, then set SUNCLUB_APP_PRIVACY_COMPLETED=1.
 - Set regulated medical device status in App Store Connect to NOT_MEDICAL_DEVICE, then set SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS=NOT_MEDICAL_DEVICE.
 - Review docs/app-store-review-package.md before final submission.

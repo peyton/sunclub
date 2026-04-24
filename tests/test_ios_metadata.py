@@ -15,9 +15,17 @@ from scripts.appstore.release_doctor import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
 APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
+WIDGET_ENTITLEMENTS = (
+    REPO_ROOT / "app" / "Sunclub" / "SunclubWidgetsExtension.entitlements"
+)
+WATCH_EXTENSION_ENTITLEMENTS = (
+    REPO_ROOT / "app" / "Sunclub" / "SunclubWatch.entitlements"
+)
+WATCH_WIDGET_ENTITLEMENTS = (
+    REPO_ROOT / "app" / "Sunclub" / "SunclubWatchWidgets.entitlements"
+)
 PRIVACY_MANIFEST = REPO_ROOT / "app" / "Sunclub" / "Resources" / "PrivacyInfo.xcprivacy"
 PROJECT_SWIFT = REPO_ROOT / "app" / "Sunclub" / "Project.swift"
-APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
@@ -49,6 +57,11 @@ def load_info_plist() -> dict:
 
 def load_app_entitlements() -> dict:
     with APP_ENTITLEMENTS.open("rb") as plist_file:
+        return plistlib.load(plist_file)
+
+
+def load_entitlements(path: Path) -> dict:
+    with path.open("rb") as plist_file:
         return plistlib.load(plist_file)
 
 
@@ -110,8 +123,7 @@ def test_release_doctor_uses_target_entitlement_templates() -> None:
         "group.app.peyton.sunclub"
     ]
     assert widget_entitlements == {
-        "com.apple.security.application-groups": ["group.app.peyton.sunclub"],
-        "com.apple.developer.weatherkit": True,
+        "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
     }
     assert watch_extension_entitlements == {
         "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
@@ -227,6 +239,22 @@ def test_app_entitlements_enable_weatherkit_for_live_uv_forecast() -> None:
     entitlements = load_app_entitlements()
 
     assert entitlements.get("com.apple.developer.weatherkit") is True
+
+
+def test_weatherkit_entitlement_is_main_app_only() -> None:
+    app_entitlements = load_entitlements(APP_ENTITLEMENTS)
+    extension_entitlements = [
+        load_entitlements(path)
+        for path in (
+            WIDGET_ENTITLEMENTS,
+            WATCH_EXTENSION_ENTITLEMENTS,
+            WATCH_WIDGET_ENTITLEMENTS,
+        )
+    ]
+
+    assert app_entitlements.get("com.apple.developer.weatherkit") is True
+    for entitlements in extension_entitlements:
+        assert "com.apple.developer.weatherkit" not in entitlements
 
 
 def test_info_plist_explains_location_use_for_leave_home_reminders() -> None:
