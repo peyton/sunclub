@@ -21,6 +21,7 @@ Sunclub should make accountability easy to find after the user has started build
 - [x] (2026-04-12T08:06Z) Re-audited direct poke, accountability friend tiles, Home accountability card actions, and accountability copy after screenshot/user report.
 - [x] (2026-04-12T08:06Z) Fixed reciprocal direct-poke token validation, background push handling, subscription retry state, friend-tile actions, name-save feedback, press feedback, and "coated" language.
 - [x] (2026-04-12T08:34Z) Ran focused unit tests, Home accountability UI coverage, copy scan, and repo lint for the accountability changes.
+- [x] (2026-04-24) Reworked the accountability widget gallery label to `Buddies` and redesigned inactive/no-friend widget states as intentional setup cards instead of zero-count dashboards.
 
 ## Surprises & Discoveries
 
@@ -85,6 +86,10 @@ Sunclub should make accountability easy to find after the user has started build
   Rationale: Friend state should update from publish/foreground/push paths, while message fallback must stay obvious when direct delivery is unavailable.
   Date/Author: 2026-04-12 / Codex
 
+- Decision: Keep the small Buddies widget available, but treat inactive and no-friend states as setup status rather than empty analytics.
+  Rationale: Home Screen widgets should show current value, not onboarding grids. With no active friend data, Buddies now says `Add a sunscreen buddy`, `Share check-ins, not streak pressure`, uses `person.badge.plus.fill`, and hides the `0 open / 0 logged / 0 friends` grid.
+  Date/Author: 2026-04-24 / Codex
+
 ## Context And Orientation
 
 The central app state lives in `app/Sunclub/Sources/Services/AppState.swift`. Existing growth models live in `app/Sunclub/Sources/Models/GrowthFeatures.swift`, and the current friend-code codec lives in `app/Sunclub/Sources/Services/SunclubGrowthAnalytics.swift`. The existing accountability UI is `app/Sunclub/Sources/Views/FriendsView.swift`. Deep links live in `app/Sunclub/Sources/Shared/SunclubDeepLink.swift`; widget support lives in `app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift`; widget rendering lives in `app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift`.
@@ -138,7 +143,7 @@ Upgrade behavior:
 21. Poke notifications use a dedicated category.
 22. CloudKit poke subscription alert copy is silent/content-available.
 23. Stable CloudKit profile/invite records fetch before saving to avoid create-only conflicts.
-24. Accountability widgets show friend status, cheekier copy, latest poke text, and direct-poke deep links when safe.
+24. Buddies widgets show private friend status, intentional empty states, latest poke text, and direct-poke deep links when safe.
 25. Direct reciprocal pokes validate against the sender's invite token.
 26. Background push completion waits for accountability event processing.
 27. Subscription install is versioned and only marked installed after success.
@@ -165,6 +170,7 @@ Upgrade behavior:
 15. A full `just test-ui` run before the final Home accessibility fix exposed the `home.accountabilityFriendStrip` regression. Later full UI reruns were blocked before app assertions by CoreSimulator/xctrunner launch failures, so the full UI suite was not completed again in this session.
 16. Accountability copy scan passed for the audited phrases: no production "coated", "coating", "Poke by Message", "SPF fugitive", "shiny side", or "SPF chaos" strings remain.
 17. Earlier implementation validation also covered `just build`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema` against the development container.
+18. The 2026-04-24 Buddies widget polish is covered by `SunclubWidgetTests` for inactive, no-friend, and active-friend presentations. `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit`, `just lint`, and `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build` passed.
 
 ## Outcomes & Retrospective
 
@@ -174,3 +180,4 @@ Upgrade behavior:
 - Direct pokes now use varied cheeky copy, incoming notifications differentiate open vs already-logged recipients, and notification taps open Accountability.
 - Friends are surfaced on Home for opted-in users, and friend removal is no longer a prominent row action.
 - Upgrade safety is covered without a SwiftData migration by defaulting the extended JSON payloads and preserving existing local friend snapshots.
+- Buddies widgets now avoid zero-count metric grids until accountability is active with friends; inactive and no-friend states show a quiet setup affordance instead.

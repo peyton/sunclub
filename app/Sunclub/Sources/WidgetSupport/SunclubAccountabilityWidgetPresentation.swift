@@ -33,6 +33,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
     let latestPokeText: String
     let primaryPokeFriendID: UUID?
     let friends: [SunclubAccountabilityWidgetFriend]
+    let showsFriendStats: Bool
 
     private struct Content {
         let title: String
@@ -55,7 +56,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             SunclubAccountabilityWidgetFriend(
                 id: friend.id,
                 name: friend.name,
-                status: friend.hasLoggedToday ? "Logged" : "Needs SPF",
+                status: friend.hasLoggedToday ? "Protected" : "Needs SPF",
                 streak: "\(friend.currentStreak)d"
             )
         }
@@ -71,11 +72,12 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             openCountText: "\(summary.openCount)",
             loggedCountText: "\(summary.loggedCount)",
             inlineText: inlineText(summary: summary),
-            circularText: summary.openCount > 0 ? "\(summary.openCount)" : "\(summary.loggedCount)",
+            circularText: circularText(summary: summary),
             actionURL: actionURL(summary: summary),
             latestPokeText: summary.latestPokeText,
             primaryPokeFriendID: summary.primaryPokeFriendID,
-            friends: friends
+            friends: friends,
+            showsFriendStats: summary.isActive && summary.friendCount > 0
         )
     }
 
@@ -85,44 +87,44 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
     ) -> Content {
         if !summary.isActive {
             return Content(
-                title: family == .systemSmall ? "Invite" : "Add accountability",
-                subtitle: "Optional",
-                detail: "Share an invite when you want SPF witnesses.",
-                actionText: "Set up",
+                title: "Add a sunscreen buddy",
+                subtitle: "Invite a friend",
+                detail: "Share check-ins, not streak pressure.",
+                actionText: "Set up in app",
                 iconName: "person.badge.plus.fill"
             )
         }
         if summary.friendCount == 0 {
             return Content(
-                title: family == .systemSmall ? "Add" : "Add a friend",
-                subtitle: "No friends yet",
-                detail: "Recruit one SPF accomplice.",
-                actionText: "Invite",
+                title: "Add a sunscreen buddy",
+                subtitle: "Invite a friend",
+                detail: "Share check-ins, not streak pressure.",
+                actionText: "Set up in app",
                 iconName: "person.badge.plus.fill"
             )
         }
         if let topOpenFriend = summary.topFriends.first(where: { !$0.hasLoggedToday }) {
             guard summary.primaryPokeFriendID != nil else {
                 return Content(
-                    title: family == .systemSmall ? "Open" : "Message \(topOpenFriend.name)",
-                    subtitle: "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")",
+                    title: family == .systemSmall ? "\(topOpenFriend.name) needs SPF" : "Message \(topOpenFriend.name)",
+                    subtitle: "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") open",
                     detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
                     actionText: "Open",
-                    iconName: "message.fill"
+                    iconName: "person.2.fill"
                 )
             }
             return Content(
-                title: family == .systemSmall ? "Poke" : "Poke \(topOpenFriend.name)",
-                subtitle: "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")",
+                title: family == .systemSmall ? "\(topOpenFriend.name) needs SPF" : "Poke \(topOpenFriend.name)",
+                subtitle: "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") open",
                 detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
                 actionText: "Poke",
-                iconName: "hand.tap.fill"
+                iconName: "person.2.fill"
             )
         }
         return Content(
-            title: family == .systemSmall ? "Logged" : "All logged",
+            title: family == .systemSmall ? "Protected" : "All buddies protected",
             subtitle: "\(summary.loggedCount)/\(summary.friendCount) logged",
-            detail: "The circle is suspiciously responsible today.",
+            detail: "Everyone checked in today.",
             actionText: "View",
             iconName: "checkmark.seal.fill"
         )
@@ -130,15 +132,25 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
 
     private static func inlineText(summary: SunclubAccountabilitySummary) -> String {
         guard summary.isActive else {
-            return "Sunclub accountability"
+            return "Add a sunscreen buddy"
         }
         guard summary.friendCount > 0 else {
-            return "Invite a Sunclub friend"
+            return "Add a sunscreen buddy"
         }
         if summary.openCount > 0 {
-            return "\(summary.openCount) open sunscreen day\(summary.openCount == 1 ? "" : "s")"
+            return "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") need SPF"
         }
-        return "All friends logged"
+        return "All buddies protected"
+    }
+
+    private static func circularText(summary: SunclubAccountabilitySummary) -> String {
+        guard summary.isActive, summary.friendCount > 0 else {
+            return "+"
+        }
+        if summary.openCount > 0 {
+            return "\(summary.openCount)"
+        }
+        return "OK"
     }
 
     private static func actionURL(summary: SunclubAccountabilitySummary) -> URL {

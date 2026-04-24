@@ -18,6 +18,8 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-04-12) Reworked `Log Today` into an icon-led layout with compact copy and added medium, large, and extra-large Home Screen variants.
 - [x] (2026-04-12) Added presentation unit coverage for every `Log Today` family and UI coverage for the logged-state widget update route.
 - [x] (2026-04-12) Ran the unit, lint, and UI validation suites to completion.
+- [x] (2026-04-24) Reworked the widget suite around at-a-glance status and trend value: `Today`, `Streak`, `Stats`, `History`, and `Buddies` gallery names; simpler stat hierarchy; Today reapply-due copy; and a large History flagship calendar.
+- [x] (2026-04-24) Added `todaySPFLevel` to the app-group snapshot with legacy decode defaults and added presentation coverage for Today, History, current-week counts, and Buddies empty/active states.
 - [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
@@ -38,6 +40,18 @@ Sunclub's product loop is stronger when the user can see daily state before open
   Rationale: Today's open/logged state and streak continuity can roll over without an app launch, so time-derived widget state should be recomputed at day boundaries.
   Date/Author: 2026-04-02 / Codex
 
+- Decision: Use short public gallery/control labels while keeping widget kind strings, widget routes, and deep links stable.
+  Rationale: Gallery labels now read `Today`, `Streak`, `Stats`, `History`, and `Buddies` without repeating `Sunclub`; internal identifiers remain stable for existing widgets and route handling.
+  Date/Author: 2026-04-24 / Codex
+
+- Decision: Add optional `todaySPFLevel` only to the widget snapshot JSON.
+  Rationale: Today widgets should say `SPF 50 logged` only when the value is known for the current day. Legacy snapshot payloads decode this field as `nil`, so no SwiftData migration is needed.
+  Date/Author: 2026-04-24 / Codex
+
+- Decision: Make medium Today the default habit widget and large History the flagship trend widget.
+  Rationale: Medium Today answers "Am I protected today?" with status, streak, this-week progress, and week dots. Large History leans into the product-specific calendar language with month title, grid, and week/streak/month summary row.
+  Date/Author: 2026-04-24 / Codex
+
 ## Context And Orientation
 
 The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Project.swift). Shared widget snapshot and route logic lives in [app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift). App state sync lives in [app/Sunclub/Sources/Services/AppState.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Services/AppState.swift). Widget and control surfaces live in [app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift). App routes and deep-link parsing live in [app/Sunclub/Sources/Shared/SunclubDeepLink.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Shared/SunclubDeepLink.swift).
@@ -46,15 +60,15 @@ The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.code
 
 Supported widget families:
 
-- `Log Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
+- `Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
 - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
 - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
-- `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
+- `History`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
 
 Supported Control Center controls:
 
-- `Log Today`
-- `Summary`
+- `Today`
+- `Stats`
 - `History`
 
 Out of scope:
@@ -74,10 +88,10 @@ Out of scope:
 ## Validation And Acceptance
 
 1. Every iPhone Home Screen and Lock Screen family listed above is exposed by the widget bundle.
-2. `Log Today` logs in place only when the current day is still open.
-3. When today is already logged, the log widget shows useful completion/streak state and routes into the app instead of re-logging.
-4. Stats and calendar widgets derive current-day state from stored dates plus current time, not stale strings.
-5. Control Center exposes `Log Today`, `Summary`, and `History`.
+2. `Today` logs in place only when the current day is still open.
+3. When today is already logged, the Today widget shows useful completion/streak state and routes into the app instead of re-logging.
+4. Stats and History widgets derive current-day state from stored dates plus current time, not stale strings.
+5. Control Center exposes `Today`, `Stats`, and `History`.
 6. Unit tests cover snapshot rollover math and new widget/control deep-link routes.
 7. Repo validation commands pass from the repo root.
 
@@ -85,10 +99,11 @@ Out of scope:
 
 - Outcome: Shared snapshot-backed widget suite implemented with Home Screen, Lock Screen, and Control Center coverage.
 - Outcome: `Log Today` now uses an icon-led compact small layout, expands into metrics/history on larger Home Screen sizes, and keeps Lock Screen copy short enough for accessory families.
+- Outcome: The 2026-04-24 polish pass made the public suite `Today`, `Streak`, `Stats`, `History`, and `Buddies`; Today now has open/protected/reapply-due states; Stats/Streak are one-stat-forward; and large History is the flagship calendar surface.
 - Verification:
   - `just generate` passed
-  - `just test-unit` passed
-  - `just lint` passed with existing warnings
-  - `just test-ui` passed
+  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit` passed: 273 tests, 0 failures
+  - `just lint` passed with non-serious existing SwiftLint warnings
+  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build` passed
 - Follow-up:
-  - Manually add each widget/control in Simulator and confirm the visible state and tap behavior match the supported-family matrix above.
+  - Manually add each widget/control in Simulator and confirm the visible state and tap behavior match the supported-family matrix above. WidgetKit Simulator was attempted on 2026-04-24 against the freshly built extension, but it did not create an inspectable window in this desktop session.

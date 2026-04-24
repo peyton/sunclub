@@ -14,6 +14,7 @@ enum SunclubLogTodayWidgetState: String, Sendable {
     case needsSetup
     case open
     case logged
+    case reapplyDue
 }
 
 struct SunclubLogTodayWidgetMetric: Equatable, Identifiable, Sendable {
@@ -64,17 +65,18 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             reapplyText: reapplyText,
             family: family
         )
+        let subtitle = subtitle(for: state, snapshot: snapshot, streak: streak)
 
         return SunclubLogTodayWidgetPresentation(
             family: family,
             state: state,
             eyebrow: eyebrow(for: state),
-            title: title(for: state, family: family),
-            subtitle: subtitle(for: state, streak: streak, uvText: uvText),
+            title: title(for: state),
+            subtitle: subtitle,
             detail: detail,
-            actionText: actionText(for: state, family: family),
+            actionText: actionText(for: state),
             iconName: iconName(for: state),
-            inlineText: inlineText(for: state, streak: streak, uvText: uvText, reapplyText: reapplyText),
+            inlineText: inlineText(for: state, subtitle: subtitle, streak: streak, uvText: uvText, reapplyText: reapplyText),
             circularText: circularText(for: state, snapshot: snapshot, streak: streak),
             metrics: metrics(for: snapshot, now: now, calendar: calendar)
         )
@@ -88,45 +90,50 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         guard snapshot.isOnboardingComplete else {
             return .needsSetup
         }
+        guard snapshot.hasLoggedToday(now: now, calendar: calendar) else {
+            return .open
+        }
+        if let reapplyDeadline = snapshot.reapplyDeadline(now: now, calendar: calendar),
+           reapplyDeadline <= now {
+            return .reapplyDue
+        }
 
-        return snapshot.hasLoggedToday(now: now, calendar: calendar) ? .logged : .open
+        return .logged
     }
 
     private static func eyebrow(for state: SunclubLogTodayWidgetState) -> String {
         switch state {
-        case .needsSetup:
-            return "Sunclub"
-        case .open, .logged:
+        case .needsSetup, .open, .logged, .reapplyDue:
             return "Today"
         }
     }
 
-    private static func title(
-        for state: SunclubLogTodayWidgetState,
-        family: SunclubLogTodayWidgetFamily
-    ) -> String {
+    private static func title(for state: SunclubLogTodayWidgetState) -> String {
         switch state {
         case .needsSetup:
-            return family == .systemSmall ? "Open" : "Set up Sunclub"
+            return "Set up"
         case .open:
-            return family == .systemSmall ? "Log" : "Log sunscreen"
+            return "Log sunscreen"
         case .logged:
-            return family == .systemSmall ? "Done" : "Logged today"
+            return "Protected"
+        case .reapplyDue:
+            return "SPF due?"
         }
     }
 
     private static func subtitle(
         for state: SunclubLogTodayWidgetState,
-        streak: Int,
-        uvText: String
+        snapshot: SunclubWidgetSnapshot,
+        streak: Int
     ) -> String {
         switch state {
         case .needsSetup:
             return "Start tracking"
         case .open:
-            return uvText
-        case .logged:
-            return "\(streak)d streak"
+            return "No SPF logged today"
+        case .logged, .reapplyDue:
+            let loggedText = snapshot.todaySPFLevel.map { "SPF \($0) logged" } ?? "Protected today"
+            return "\(loggedText) - \(streak)d streak"
         }
     }
 
@@ -141,37 +148,35 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .needsSetup:
             return "Open the app to finish setup."
         case .open:
-            if family == .systemSmall {
-                return "Tap to add SPF"
-            }
             if let mostUsedSPF = snapshot.mostUsedSPF {
-                return "Usual SPF \(mostUsedSPF)"
+                return family == .systemSmall ? uvText : "Usual SPF \(mostUsedSPF)"
             }
-            return uvText == "Today open" ? "Add sunscreen in one tap." : "Add sunscreen before peak sun."
+            return uvText == "Today open" ? "Tap to add SPF" : uvText
         case .logged:
-            return reapplyText ?? "You're covered for today."
+            return reapplyText ?? "Protected today"
+        case .reapplyDue:
+            return "Reapply now"
         }
     }
 
-    private static func actionText(
-        for state: SunclubLogTodayWidgetState,
-        family: SunclubLogTodayWidgetFamily
-    ) -> String {
+    private static func actionText(for state: SunclubLogTodayWidgetState) -> String {
         switch state {
         case .needsSetup:
             return "Open"
         case .open:
-            return family == .systemSmall ? "Tap" : "Tap to log"
+            return "Log"
         case .logged:
             return "Update"
+        case .reapplyDue:
+            return "Reapply"
         }
     }
 
     private static func iconName(for state: SunclubLogTodayWidgetState) -> String {
         switch state {
         case .needsSetup:
-            return "sun.horizon.fill"
-        case .open:
+            return "sun.max.fill"
+        case .open, .reapplyDue:
             return "sun.max.fill"
         case .logged:
             return "checkmark.seal.fill"
@@ -180,17 +185,20 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
 
     private static func inlineText(
         for state: SunclubLogTodayWidgetState,
+        subtitle: String,
         streak: Int,
         uvText: String,
         reapplyText: String?
     ) -> String {
         switch state {
         case .needsSetup:
-            return "Open Sunclub"
+            return "Open Today"
         case .open:
             return "Log SPF - \(uvText)"
         case .logged:
-            return reapplyText ?? "Logged - \(streak)d streak"
+            return reapplyText ?? "\(subtitle)"
+        case .reapplyDue:
+            return reapplyText ?? "SPF due - \(streak)d streak"
         }
     }
 
@@ -204,7 +212,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             return "Open"
         case .open:
             return snapshot.currentUVIndex.map { "UV\($0)" } ?? "Log"
-        case .logged:
+        case .logged, .reapplyDue:
             return "\(streak)d"
         }
     }
@@ -218,34 +226,34 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             SunclubLogTodayWidgetMetric(
                 title: "Streak",
                 value: "\(snapshot.streakValue(now: now, calendar: calendar))d",
-                systemImageName: "flame.fill"
+                systemImageName: "checkmark.seal.fill"
             ),
             SunclubLogTodayWidgetMetric(
-                title: "Week",
-                value: "\(snapshot.weeklyValue(now: now, calendar: calendar))/7",
+                title: "This week",
+                value: "\(snapshot.currentWeekAppliedValue(now: now, calendar: calendar))/7",
                 systemImageName: "calendar"
             ),
             SunclubLogTodayWidgetMetric(
-                title: "Month",
-                value: "\(snapshot.monthlyAppliedValue(now: now, calendar: calendar))/\(snapshot.monthlyDayValue(now: now, calendar: calendar))",
-                systemImageName: "chart.bar.fill"
+                title: "Best",
+                value: "\(max(snapshot.longestStreak, snapshot.streakValue(now: now, calendar: calendar)))d",
+                systemImageName: "calendar.badge.checkmark"
             )
         ]
 
-        if let peakUVIndex = snapshot.peakUVIndex ?? snapshot.currentUVIndex {
+        if let todaySPFLevel = snapshot.todaySPFLevel {
+            metrics.append(
+                SunclubLogTodayWidgetMetric(
+                    title: "SPF",
+                    value: "\(todaySPFLevel)",
+                    systemImageName: "sun.max.fill"
+                )
+            )
+        } else if let peakUVIndex = snapshot.peakUVIndex ?? snapshot.currentUVIndex {
             metrics.append(
                 SunclubLogTodayWidgetMetric(
                     title: "UV",
                     value: "\(peakUVIndex)",
                     systemImageName: "sun.max.fill"
-                )
-            )
-        } else if let mostUsedSPF = snapshot.mostUsedSPF {
-            metrics.append(
-                SunclubLogTodayWidgetMetric(
-                    title: "SPF",
-                    value: "\(mostUsedSPF)",
-                    systemImageName: "drop.fill"
                 )
             )
         }

@@ -64,6 +64,56 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertNil(presentation.primaryPokeFriendID)
     }
 
+    func testAccountabilityInactivePresentationUsesBuddyEmptyState() {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: .empty,
+            family: .systemSmall
+        )
+
+        XCTAssertEqual(presentation.title, "Add a sunscreen buddy")
+        XCTAssertEqual(presentation.detail, "Share check-ins, not streak pressure.")
+        XCTAssertEqual(presentation.actionText, "Set up in app")
+        XCTAssertEqual(presentation.iconName, "person.badge.plus.fill")
+        XCTAssertFalse(presentation.showsFriendStats)
+        XCTAssertEqual(presentation.circularText, "+")
+    }
+
+    func testAccountabilityActiveEmptyPresentationDoesNotShowZeroMetricGrid() {
+        let summary = SunclubAccountabilitySummary(
+            isActive: true,
+            friendCount: 0,
+            loggedCount: 0,
+            openCount: 0,
+            topFriends: [],
+            latestPoke: nil,
+            primaryPokeFriendID: nil,
+            latestPokeText: ""
+        )
+
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: summary,
+            family: .systemMedium
+        )
+
+        XCTAssertEqual(presentation.title, "Add a sunscreen buddy")
+        XCTAssertEqual(presentation.detail, "Share check-ins, not streak pressure.")
+        XCTAssertEqual(presentation.actionText, "Set up in app")
+        XCTAssertFalse(presentation.showsFriendStats)
+    }
+
+    func testAccountabilityActiveFriendPresentationShowsPrivateStatus() {
+        let presentation = SunclubAccountabilityWidgetPresentation.make(
+            summary: makeAccountabilitySummary(),
+            family: .systemMedium
+        )
+
+        XCTAssertEqual(presentation.title, "Poke Maya")
+        XCTAssertEqual(presentation.subtitle, "1 friend open")
+        XCTAssertEqual(presentation.iconName, "person.2.fill")
+        XCTAssertTrue(presentation.showsFriendStats)
+        XCTAssertEqual(presentation.friends.first?.status, "Needs SPF")
+    }
+
     func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
@@ -85,11 +135,11 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.state, .open)
         XCTAssertEqual(presentation.iconName, "sun.max.fill")
-        XCTAssertEqual(presentation.title, "Log")
-        XCTAssertEqual(presentation.subtitle, "Peak UV 9")
-        XCTAssertEqual(presentation.actionText, "Tap")
+        XCTAssertEqual(presentation.title, "Log sunscreen")
+        XCTAssertEqual(presentation.subtitle, "No SPF logged today")
+        XCTAssertEqual(presentation.detail, "Peak UV 9")
+        XCTAssertEqual(presentation.actionText, "Log")
         XCTAssertFalse(presentation.title.contains("Today"))
-        XCTAssertLessThanOrEqual(presentation.title.count, 4)
     }
 
     func testLogTodayMediumPresentationAddsHabitMetrics() throws {
@@ -114,8 +164,8 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.title, "Log sunscreen")
         XCTAssertEqual(presentation.detail, "Usual SPF 50")
-        XCTAssertEqual(presentation.metrics.map(\.title), ["Streak", "Week", "Month", "UV"])
-        XCTAssertEqual(presentation.metrics.map(\.value), ["3d", "3/7", "3/15", "9"])
+        XCTAssertEqual(presentation.metrics.map(\.title), ["Streak", "This week", "Best", "UV"])
+        XCTAssertEqual(presentation.metrics.map(\.value), ["3d", "3/7", "9d", "9"])
     }
 
     func testLogTodayLargeLoggedPresentationShowsUpdateStateAndReapply() throws {
@@ -141,10 +191,64 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.state, .logged)
         XCTAssertEqual(presentation.iconName, "checkmark.seal.fill")
-        XCTAssertEqual(presentation.title, "Logged today")
-        XCTAssertEqual(presentation.subtitle, "4d streak")
+        XCTAssertEqual(presentation.title, "Protected")
+        XCTAssertEqual(presentation.subtitle, "Protected today - 4d streak")
         XCTAssertEqual(presentation.actionText, "Update")
         XCTAssertTrue(presentation.detail.hasPrefix("Reapply "))
+    }
+
+    func testLogTodayLoggedPresentationUsesTodaySPFOnly() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 11)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2, 3],
+            longestStreak: 9,
+            now: now,
+            calendar: calendar,
+            todaySPFLevel: 50,
+            mostUsedSPF: 30
+        )
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemSmall,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.state, .logged)
+        XCTAssertEqual(presentation.title, "Protected")
+        XCTAssertEqual(presentation.subtitle, "SPF 50 logged - 4d streak")
+        XCTAssertEqual(presentation.metrics.last?.title, "SPF")
+        XCTAssertEqual(presentation.metrics.last?.value, "50")
+    }
+
+    func testLogTodayPresentationShowsReapplyDueStateAfterDeadline() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 12)
+        let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2, 3],
+            longestStreak: 9,
+            now: now,
+            calendar: calendar,
+            lastReappliedAt: lastReappliedAt,
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90
+        )
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemMedium,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.state, .reapplyDue)
+        XCTAssertEqual(presentation.iconName, "sun.max.fill")
+        XCTAssertEqual(presentation.title, "SPF due?")
+        XCTAssertEqual(presentation.actionText, "Reapply")
+        XCTAssertEqual(presentation.detail, "Reapply now")
     }
 
     func testSnapshotShowsTodayOpenWhenLatestRecordIsYesterday() {
@@ -181,6 +285,7 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(snapshot.monthlyAppliedValue(now: today, calendar: calendar), 1)
         XCTAssertGreaterThanOrEqual(snapshot.monthlyDayValue(now: today, calendar: calendar), 1)
+        XCTAssertEqual(snapshot.todaySPFLevel, 50)
         XCTAssertEqual(snapshot.mostUsedSPF, 50)
     }
 
@@ -209,6 +314,7 @@ final class SunclubWidgetTests: XCTestCase {
         let snapshot = try JSONDecoder().decode(SunclubWidgetSnapshot.self, from: data)
 
         XCTAssertEqual(snapshot.longestStreak, 3)
+        XCTAssertNil(snapshot.todaySPFLevel)
         XCTAssertEqual(snapshot.accountabilitySummary, .empty)
     }
 
@@ -252,49 +358,7 @@ final class SunclubWidgetTests: XCTestCase {
     func testWidgetSnapshotBuilderIncludesAccountabilitySummary() {
         let settings = Settings()
         settings.hasCompletedOnboarding = true
-        let openFriend = SunclubFriendSnapshot(
-            id: UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID(),
-            name: "Maya",
-            currentStreak: 2,
-            longestStreak: 5,
-            hasLoggedToday: false,
-            lastSharedAt: Date(),
-            seasonStyle: .summerGlow
-        )
-        let loggedFriend = SunclubFriendSnapshot(
-            name: "Rae",
-            currentStreak: 4,
-            longestStreak: 9,
-            hasLoggedToday: true,
-            lastSharedAt: Date(),
-            seasonStyle: .summerGlow
-        )
-        let growthSettings = SunclubGrowthSettings(
-            friends: [loggedFriend, openFriend],
-            accountability: SunclubAccountabilitySettings(
-                activatedAt: Date(),
-                connections: [
-                    SunclubFriendConnection(
-                        friendProfileID: UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID(),
-                        friendSnapshotID: openFriend.id,
-                        friendDisplayName: "Maya",
-                        relationshipToken: "widget-token",
-                        acceptedAt: Date()
-                    )
-                ],
-                pokeHistory: [
-                    SunclubAccountabilityPoke(
-                        friendProfileID: UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID(),
-                        friendName: "Maya",
-                        direction: .sent,
-                        channel: .direct,
-                        status: .sent,
-                        message: "Widget poke",
-                        createdAt: Date()
-                    )
-                ]
-            )
-        )
+        let growthSettings = makeAccountabilityGrowthSettings()
 
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: settings,
@@ -321,6 +385,42 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.dayStatus(for: today, now: today, calendar: calendar), .todayPending)
         XCTAssertEqual(snapshot.dayStatus(for: yesterday, now: today, calendar: calendar), .applied)
         XCTAssertEqual(snapshot.dayStatus(for: tomorrow, now: today, calendar: calendar), .future)
+    }
+
+    func testCurrentWeekAppliedValueMatchesWeekStripDays() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2, 3, 7],
+            longestStreak: 6,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(snapshot.currentWeekAppliedValue(now: now, calendar: calendar), 4)
+    }
+
+    func testHistoryPresentationSummarizesMonthAndCurrentWeek() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0, 1, 2, 3, 7],
+            longestStreak: 6,
+            now: now,
+            calendar: calendar
+        )
+
+        let presentation = SunclubHistoryWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.title, "July sunscreen history")
+        XCTAssertEqual(presentation.compactTitle, "July history")
+        XCTAssertEqual(presentation.weekSummary, "4/7 this week")
+        XCTAssertEqual(presentation.streakSummary, "4d current streak")
+        XCTAssertEqual(presentation.monthSummary, "33% month")
     }
 
     func testSunclubDeepLinkParsesWidgetRoutes() throws {
@@ -486,6 +586,7 @@ final class SunclubWidgetTests: XCTestCase {
         isOnboardingComplete: Bool = true,
         currentUVIndex: Int? = nil,
         peakUVIndex: Int? = nil,
+        todaySPFLevel: Int? = nil,
         mostUsedSPF: Int? = nil,
         lastReappliedAt: Date? = nil,
         reapplyReminderEnabled: Bool = false,
@@ -510,6 +611,7 @@ final class SunclubWidgetTests: XCTestCase {
             weeklyAppliedCount: 0,
             monthlyAppliedCount: 0,
             monthlyDayCount: 0,
+            todaySPFLevel: todaySPFLevel,
             mostUsedSPF: mostUsedSPF,
             currentUVIndex: currentUVIndex,
             peakUVIndex: peakUVIndex,
@@ -540,6 +642,57 @@ final class SunclubWidgetTests: XCTestCase {
             latestPoke: nil,
             primaryPokeFriendID: includePrimaryPokeFriend ? friendID : nil,
             latestPokeText: "You poked Maya."
+        )
+    }
+
+    private func makeAccountabilityGrowthSettings() -> SunclubGrowthSettings {
+        let openFriendID = UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID()
+        let profileID = UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID()
+        let openFriend = makeFriendSnapshot(id: openFriendID, name: "Maya", streak: 2, hasLoggedToday: false)
+        let loggedFriend = makeFriendSnapshot(name: "Rae", streak: 4, hasLoggedToday: true)
+
+        return SunclubGrowthSettings(
+            friends: [loggedFriend, openFriend],
+            accountability: SunclubAccountabilitySettings(
+                activatedAt: Date(),
+                connections: [
+                    SunclubFriendConnection(
+                        friendProfileID: profileID,
+                        friendSnapshotID: openFriend.id,
+                        friendDisplayName: "Maya",
+                        relationshipToken: "widget-token",
+                        acceptedAt: Date()
+                    )
+                ],
+                pokeHistory: [
+                    SunclubAccountabilityPoke(
+                        friendProfileID: profileID,
+                        friendName: "Maya",
+                        direction: .sent,
+                        channel: .direct,
+                        status: .sent,
+                        message: "Widget poke",
+                        createdAt: Date()
+                    )
+                ]
+            )
+        )
+    }
+
+    private func makeFriendSnapshot(
+        id: UUID = UUID(),
+        name: String,
+        streak: Int,
+        hasLoggedToday: Bool
+    ) -> SunclubFriendSnapshot {
+        SunclubFriendSnapshot(
+            id: id,
+            name: name,
+            currentStreak: streak,
+            longestStreak: streak + 3,
+            hasLoggedToday: hasLoggedToday,
+            lastSharedAt: Date(),
+            seasonStyle: .summerGlow
         )
     }
 
