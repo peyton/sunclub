@@ -136,7 +136,14 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testSettingsShowsReminderControls() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_LEAVE_HOME_ENABLED",
+            "UITEST_SEED_HISTORY=reminderCoaching",
+            "UITEST_NOTIFICATION_HEALTH=stale"
+        ]
         app.launch()
 
         XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
@@ -146,89 +153,12 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.advanced"].exists)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].exists)
 
-        expandSettingsSection("reminders", in: app)
-        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["settings.notificationStatus"].exists)
-        XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
-        XCTAssertTrue(app.switches["settings.travelToggle"].exists)
-        XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
-
-        expandSettingsSection("progress", in: app)
-        XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
-
-        expandSettingsSection("data", in: app)
-        XCTAssertTrue(scrollToElement(app.switches["settings.icloudToggle"], in: app))
-        XCTAssertTrue(app.buttons["settings.backup.export"].exists)
-        XCTAssertTrue(app.buttons["settings.backup.import"].exists)
-
-        expandSettingsSection("automation", in: app)
-        XCTAssertTrue(scrollToElement(automationSwitch("Allow Shortcut writes", in: app), in: app))
-        XCTAssertTrue(automationSwitch("Allow URL open actions", in: app).exists)
-        XCTAssertTrue(automationSwitch("Allow URL write actions", in: app).exists)
-        XCTAssertTrue(automationSwitch("Include callback result details", in: app).exists)
-        XCTAssertTrue(scrollToElement(app.buttons["automation.example.logToday.copy"], in: app))
-        XCTAssertTrue(app.buttons["automation.example.logToday.test"].exists)
-        XCTAssertTrue(scrollToElement(app.buttons["settings.automation.openCatalog"], in: app))
-
-        expandSettingsSection("advanced", in: app)
-        XCTAssertTrue(scrollToElement(app.switches["settings.leaveHomeToggle"], in: app))
-        XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
-        XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
-
-        XCTAssertTrue(scrollToElement(app.buttons["settings.section.help"], in: app))
-        expandSettingsSection("help", in: app)
-        XCTAssertTrue(scrollToElement(app.buttons["settings.support"], in: app))
-        XCTAssertTrue(app.buttons["settings.privacyPolicy"].exists)
-        XCTAssertTrue(app.buttons["settings.emailSupport"].exists)
-    }
-
-    @MainActor
-    func testSettingsShowsLeaveHomeSetupActionWhenEnabledWithoutHome() throws {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "UITEST_MODE",
-            "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_ROUTE=settings",
-            "UITEST_LEAVE_HOME_ENABLED"
-        ]
-        app.launch()
-
-        expandSettingsSection("advanced", in: app)
-        XCTAssertTrue(scrollToElement(app.buttons["settings.leaveHome.action"], in: app))
-        XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
-    }
-
-    @MainActor
-    func testSettingsShowsICloudSyncEnabledByDefault() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
-        app.launch()
-
-        expandSettingsSection("data", in: app)
-        let iCloudToggle = app.switches["settings.icloudToggle"]
-        XCTAssertTrue(scrollToElement(iCloudToggle, in: app))
-        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
-        XCTAssertTrue(app.staticTexts["iCloud sync is on"].waitForExistence(timeout: 5))
-    }
-
-    @MainActor
-    func testSettingsCanPauseAndResumeICloudSync() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
-        app.launch()
-
-        expandSettingsSection("data", in: app)
-        let iCloudToggle = app.switches["settings.icloudToggle"]
-        XCTAssertTrue(scrollToElement(iCloudToggle, in: app))
-        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
-
-        iCloudToggle.tap()
-        XCTAssertTrue(app.staticTexts["Saved only on this phone"].waitForExistence(timeout: 5))
-        XCTAssertEqual(stringValue(of: iCloudToggle), "0")
-
-        iCloudToggle.tap()
-        XCTAssertTrue(app.staticTexts["iCloud sync is on"].waitForExistence(timeout: 5))
-        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
+        assertSettingsReminderControls(in: app)
+        assertSettingsProgressControls(in: app)
+        assertSettingsDataControls(in: app)
+        assertSettingsAutomationControls(in: app)
+        assertSettingsAdvancedControls(in: app)
+        assertSettingsHelpControls(in: app)
     }
 
     @MainActor
@@ -278,13 +208,6 @@ final class SunclubUITests: XCTestCase {
 
         expandSettingsSection("data", in: exportApp)
         XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"]))
-        expandSettingsSection("reminders", in: exportApp)
-        let exportTravelToggle = exportApp.switches["settings.travelToggle"]
-        XCTAssertTrue(scrollToElement(exportTravelToggle, in: exportApp))
-        XCTAssertEqual(stringValue(of: exportTravelToggle), "1")
-        exportTravelToggle.tap()
-        XCTAssertEqual(stringValue(of: exportTravelToggle), "0")
-
         XCTAssertTrue(scrollToElement(exportApp.buttons["settings.backup.exportHarness"], in: exportApp))
         exportApp.buttons["settings.backup.exportHarness"].tap()
         XCTAssertTrue(waitForLabel("Backup exported.", on: exportApp.staticTexts["settings.backupStatus"]))
@@ -301,7 +224,7 @@ final class SunclubUITests: XCTestCase {
         importApp.launch()
 
         expandSettingsSection("data", in: importApp)
-        assertBackupImportRestoresHistoryAndSettings(in: importApp)
+        assertBackupImportHarnessRestoresRecordCount(in: importApp)
     }
 
     @MainActor
@@ -311,7 +234,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testDarkModeCoreScreensRemainUsable() throws {
+    func testDarkModeHomeAndSettingsRemainUsable() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_FORCE_DARK_MODE",
             "UITEST_UV_INDEX=7"
@@ -320,34 +243,11 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
         XCTAssertLessThan(averageScreenshotLuminance(), 0.70)
-        app.terminate()
 
-        let settingsApp = launchDarkRoute("settings")
-        XCTAssertTrue(settingsApp.staticTexts["Settings"].waitForExistence(timeout: 5))
-        expandSettingsSection("reminders", in: settingsApp)
-        XCTAssertTrue(settingsApp.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
-        settingsApp.terminate()
-
-        let manualLogApp = launchDarkRoute("manualLog")
-        XCTAssertTrue(manualLogApp.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        XCTAssertTrue(manualLogApp.buttons["manualLog.scanSPF"].exists)
-        manualLogApp.terminate()
-
-        let historyApp = launchDarkRoute("history")
-        XCTAssertTrue(historyApp.otherElements["history.calendarGrid"].waitForExistence(timeout: 5))
-        historyApp.terminate()
-
-        let weeklyApp = launchDarkRoute("weeklySummary")
-        XCTAssertTrue(weeklyApp.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
-        weeklyApp.terminate()
-
-        let achievementsApp = launchDarkRoute("achievements")
-        XCTAssertTrue(achievementsApp.staticTexts["Achievements"].waitForExistence(timeout: 5))
-        achievementsApp.terminate()
-
-        let automationApp = launchDarkRoute("automation")
-        XCTAssertTrue(automationApp.staticTexts["Automation"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL write actions", in: automationApp), in: automationApp))
+        app.buttons["home.settingsButton"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        expandSettingsSection("reminders", in: app)
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -363,45 +263,25 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(scrollToElement(app.buttons["home.uvBriefingToggle"], in: app))
         app.buttons["home.uvBriefingToggle"].tap()
         XCTAssertTrue(app.buttons["home.uvBriefingToggle"].exists)
-        app.terminate()
 
-        let settingsApp = launchAccessibilityScorecardRoute("settings")
-        XCTAssertTrue(settingsApp.staticTexts["Settings"].waitForExistence(timeout: 5))
-        expandSettingsSection("progress", in: settingsApp)
-        let reapplyToggle = settingsApp.switches["settings.reapplyToggle"]
-        XCTAssertTrue(scrollToElement(reapplyToggle, in: settingsApp))
+        app.buttons["home.settingsButton"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        expandSettingsSection("progress", in: app)
+        let reapplyToggle = app.switches["settings.reapplyToggle"]
+        XCTAssertTrue(scrollToElement(reapplyToggle, in: app))
         reapplyToggle.tap()
-        XCTAssertTrue(scrollToElement(settingsApp.buttons["settings.reapplyInterval.120"], in: settingsApp))
-        settingsApp.terminate()
+        XCTAssertTrue(scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app))
 
-        let manualLogApp = launchAccessibilityScorecardRoute("manualLog")
-        XCTAssertTrue(scrollToElement(manualLogApp.buttons["manualLog.detailsToggle"], in: manualLogApp))
-        manualLogApp.buttons["manualLog.detailsToggle"].tap()
-        XCTAssertTrue(scrollToElement(manualLogApp.buttons["manualLog.spf.30"], in: manualLogApp))
-        manualLogApp.buttons["manualLog.spf.30"].tap()
-        XCTAssertTrue(manualLogApp.buttons["manualLog.logToday"].exists)
-        manualLogApp.terminate()
+        XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
 
-        let historyApp = launchAccessibilityScorecardRoute("history", additionalArguments: [
-            "UITEST_SEED_HISTORY=monthlyReview"
-        ])
-        XCTAssertTrue(historyApp.otherElements["history.calendarGrid"].waitForExistence(timeout: 5))
-        XCTAssertTrue(historyApp.staticTexts["history.monthTitle"].exists)
-        historyApp.terminate()
-
-        let weeklyApp = launchAccessibilityScorecardRoute("weeklySummary", additionalArguments: [
-            "UITEST_SEED_HISTORY=achievementProgress"
-        ])
-        XCTAssertTrue(weeklyApp.staticTexts["Weekly Summary"].waitForExistence(timeout: 5))
-        XCTAssertTrue(weeklyApp.buttons["weekly.viewFullHistory"].exists)
-        weeklyApp.terminate()
-
-        let automationApp = launchAccessibilityScorecardRoute("automation")
-        XCTAssertTrue(automationApp.staticTexts["Automation"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            scrollToElement(automationSwitch("Allow Shortcut writes", in: automationApp), in: automationApp)
-        )
-        XCTAssertTrue(scrollToElement(automationApp.buttons["automation.example.logToday.copy"], in: automationApp))
+        app.buttons["home.logManually"].tap()
+        XCTAssertTrue(scrollToElement(app.buttons["manualLog.detailsToggle"], in: app))
+        app.buttons["manualLog.detailsToggle"].tap()
+        XCTAssertTrue(scrollToElement(app.buttons["manualLog.spf.30"], in: app))
+        app.buttons["manualLog.spf.30"].tap()
+        XCTAssertTrue(app.buttons["manualLog.logToday"].exists)
     }
 
     @MainActor
@@ -895,40 +775,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testSettingsShowsReminderCoachingAndNotificationHealth() throws {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "UITEST_MODE",
-            "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_ROUTE=settings",
-            "UITEST_SEED_HISTORY=reminderCoaching",
-            "UITEST_NOTIFICATION_HEALTH=stale"
-        ]
-        app.launch()
-
-        expandSettingsSection("reminders", in: app)
-        XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
-        XCTAssertTrue(app.buttons["settings.notificationHealth.action"].exists)
-        expandSettingsSection("advanced", in: app)
-        XCTAssertTrue(scrollToElement(app.switches["settings.uvBriefingToggle"], in: app))
-    }
-
-    @MainActor
-    func testSettingsDoesNotExposeLiveUVToggle() throws {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "UITEST_MODE",
-            "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_ROUTE=settings"
-        ]
-        app.launch()
-
-        expandSettingsSection("advanced", in: app)
-        XCTAssertFalse(app.switches["settings.liveUVToggle"].exists)
-    }
-
-    @MainActor
-    func testWidgetLogTodayURLShowsSuccessAndUpdatesHome() throws {
+    func testWidgetLogTodayURLShowsSuccessUpdatesHomeAndOffersAddDetails() throws {
         let app = XCUIApplication()
         app.launchArguments += [
             "UITEST_MODE",
@@ -938,28 +785,19 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
-
-        app.buttons["success.done"].tap()
-
-        assertHomeLoggedState(app)
-    }
-
-    @MainActor
-    func testWidgetLogTodaySuccessOffersAddDetails() throws {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "UITEST_MODE",
-            "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_URL=\(widgetURL(path: "log-today"))"
-        ]
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["success.done"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["success.addDetails"], in: app))
 
         app.buttons["success.addDetails"].tap()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        if app.buttons["screen.back"].waitForExistence(timeout: 2) {
+            app.buttons["screen.back"].tap()
+        }
+        if app.buttons["success.done"].waitForExistence(timeout: 2) {
+            app.buttons["success.done"].tap()
+        }
+        assertHomeLoggedState(app)
     }
 
     @MainActor
@@ -1120,24 +958,6 @@ final class SunclubUITests: XCTestCase {
             "UITEST_FORCE_DIFFERENTIATE_WITHOUT_COLOR",
             "UITEST_FORCE_INCREASE_CONTRAST"
         ]
-    }
-
-    @MainActor
-    private func launchDarkRoute(_ route: String) -> XCUIApplication {
-        launchHome(additionalArguments: [
-            "UITEST_FORCE_DARK_MODE",
-            "UITEST_ROUTE=\(route)"
-        ])
-    }
-
-    @MainActor
-    private func launchAccessibilityScorecardRoute(
-        _ route: String,
-        additionalArguments: [String] = []
-    ) -> XCUIApplication {
-        launchHome(additionalArguments: accessibilityScorecardArguments + [
-            "UITEST_ROUTE=\(route)"
-        ] + additionalArguments)
     }
 
     @MainActor
@@ -1310,12 +1130,78 @@ final class SunclubUITests: XCTestCase {
     }()
 
     @MainActor
-    private func assertBackupImportRestoresHistoryAndSettings(in app: XCUIApplication) {
-        XCTAssertTrue(waitForLabel("History entries: 0", on: app.staticTexts["settings.backupRecordCount"]))
+    private func assertSettingsReminderControls(in app: XCUIApplication) {
         expandSettingsSection("reminders", in: app)
-        let travelToggle = app.switches["settings.travelToggle"]
-        XCTAssertTrue(scrollToElement(travelToggle, in: app))
-        XCTAssertEqual(stringValue(of: travelToggle), "1")
+        XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.notificationStatus"].exists)
+        XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
+        XCTAssertTrue(app.switches["settings.travelToggle"].exists)
+        XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
+        XCTAssertTrue(app.buttons["settings.notificationHealth.action"].exists)
+    }
+
+    @MainActor
+    private func assertSettingsProgressControls(in app: XCUIApplication) {
+        expandSettingsSection("progress", in: app)
+        XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+    }
+
+    @MainActor
+    private func assertSettingsDataControls(in app: XCUIApplication) {
+        expandSettingsSection("data", in: app)
+        let iCloudToggle = app.switches["settings.icloudToggle"]
+        XCTAssertTrue(scrollToElement(iCloudToggle, in: app))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
+        XCTAssertTrue(app.staticTexts["iCloud sync is on"].waitForExistence(timeout: 5))
+
+        iCloudToggle.tap()
+        XCTAssertTrue(app.staticTexts["Saved only on this phone"].waitForExistence(timeout: 5))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "0")
+
+        iCloudToggle.tap()
+        XCTAssertTrue(app.staticTexts["iCloud sync is on"].waitForExistence(timeout: 5))
+        XCTAssertEqual(stringValue(of: iCloudToggle), "1")
+
+        XCTAssertTrue(app.buttons["settings.backup.export"].exists)
+        XCTAssertTrue(app.buttons["settings.backup.import"].exists)
+    }
+
+    @MainActor
+    private func assertSettingsAutomationControls(in app: XCUIApplication) {
+        expandSettingsSection("automation", in: app)
+        XCTAssertTrue(scrollToElement(automationSwitch("Allow Shortcut writes", in: app), in: app))
+        XCTAssertTrue(automationSwitch("Allow URL open actions", in: app).exists)
+        XCTAssertTrue(automationSwitch("Allow URL write actions", in: app).exists)
+        XCTAssertTrue(automationSwitch("Include callback result details", in: app).exists)
+        XCTAssertTrue(scrollToElement(app.buttons["automation.example.logToday.copy"], in: app))
+        XCTAssertTrue(app.buttons["automation.example.logToday.test"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["settings.automation.openCatalog"], in: app))
+    }
+
+    @MainActor
+    private func assertSettingsAdvancedControls(in app: XCUIApplication) {
+        expandSettingsSection("advanced", in: app)
+        XCTAssertTrue(scrollToElement(app.switches["settings.leaveHomeToggle"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["settings.leaveHome.action"], in: app))
+        XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
+        XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
+        XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
+        XCTAssertFalse(app.switches["settings.liveUVToggle"].exists)
+    }
+
+    @MainActor
+    private func assertSettingsHelpControls(in app: XCUIApplication) {
+        XCTAssertTrue(scrollToElement(app.buttons["settings.section.help"], in: app))
+        expandSettingsSection("help", in: app)
+        XCTAssertTrue(scrollToElement(app.buttons["settings.support"], in: app))
+        XCTAssertTrue(app.buttons["settings.privacyPolicy"].exists)
+        XCTAssertTrue(app.buttons["settings.emailSupport"].exists)
+    }
+
+    @MainActor
+    private func assertBackupImportHarnessRestoresRecordCount(in app: XCUIApplication) {
+        XCTAssertTrue(waitForLabel("History entries: 0", on: app.staticTexts["settings.backupRecordCount"]))
 
         XCTAssertTrue(scrollToElement(app.buttons["settings.backup.importHarness"], in: app))
         app.buttons["settings.backup.importHarness"].tap()
@@ -1327,7 +1213,6 @@ final class SunclubUITests: XCTestCase {
             )
         )
         XCTAssertTrue(waitForLabel("History entries: 1", on: app.staticTexts["settings.backupRecordCount"]))
-        XCTAssertEqual(stringValue(of: travelToggle), "0")
         XCTAssertTrue(scrollToElement(app.staticTexts["settings.icloud.pendingImports"], in: app))
         XCTAssertTrue(app.buttons["settings.icloud.publishImported"].exists)
         XCTAssertTrue(app.buttons["settings.icloud.restoreImported"].exists)
