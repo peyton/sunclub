@@ -51,7 +51,7 @@ struct AutomationSettingsPanel: View {
         VStack(alignment: .leading, spacing: 18) {
             if style == .settings {
                 Text("Automation")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
 
@@ -62,7 +62,7 @@ struct AutomationSettingsPanel: View {
             callbackSection
 
             Text(feedbackMessage)
-                .font(.system(size: 13, weight: .medium))
+                .font(AppFont.rounded(size: 13, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("automation.feedback")
@@ -200,11 +200,11 @@ struct AutomationSettingsPanel: View {
     private func sectionHeader(_ title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.system(size: 18, weight: .semibold))
+                .font(AppFont.rounded(size: 18, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(detail)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -219,20 +219,20 @@ struct AutomationSettingsPanel: View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: preferenceBinding(keyPath)) {
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
             }
             .tint(AppPalette.sun)
             .accessibilityIdentifier(accessibilityIdentifier)
 
             Text(detail)
-                .font(.system(size: 13))
+                .font(AppFont.rounded(size: 13))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                 .fill(AppPalette.controlFill.opacity(0.58))
         )
     }
@@ -383,10 +383,10 @@ struct AutomationSettingsPanel: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.82))
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                     .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
     }
@@ -396,14 +396,14 @@ private struct AutomationHeroCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: "wand.and.stars")
-                .font(.system(size: 26, weight: .semibold))
+                .font(AppFont.rounded(size: 26, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
                 .frame(width: 36, height: 36)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Connect shortcuts")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(AppFont.rounded(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -442,18 +442,18 @@ private struct AutomationActionRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: row.symbolName)
-                .font(.system(size: 15, weight: .semibold))
+                .font(AppFont.rounded(size: 15, weight: .semibold))
                 .foregroundStyle(AppPalette.success)
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.rounded(size: 15, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(row.detail)
-                    .font(.system(size: 13))
+                    .font(AppFont.rounded(size: 13))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -495,22 +495,22 @@ private struct AutomationExampleCard: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(example.title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(example.detail)
-                    .font(.system(size: 13))
+                    .font(AppFont.rounded(size: 13))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Text(example.urlString)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .font(AppFont.monospace(size: 12, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .fill(AppPalette.editorFill.opacity(0.82))
                 )
                 .textSelection(.enabled)
@@ -540,7 +540,7 @@ private struct AutomationExampleCard: View {
                     .accessibilityIdentifier("automation.example.\(example.id).test")
                 } else {
                     Text("Paste your own value before testing.")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(AppFont.rounded(size: 13, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("automation.example.\(example.id).requiresValue")
@@ -549,7 +549,7 @@ private struct AutomationExampleCard: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                 .fill(AppPalette.controlFill.opacity(0.58))
         )
         .accessibilityElement(children: .contain)

@@ -37,7 +37,7 @@ struct TimelineLogSection: View {
     private var sectionHeader: some View {
         HStack {
             Text(sectionTitle)
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Spacer(minLength: 0)
@@ -45,10 +45,10 @@ struct TimelineLogSection: View {
             Button("History") {
                 router.open(.history)
             }
-            .font(.system(size: 15, weight: .semibold))
+            .font(AppFont.rounded(size: 15, weight: .semibold))
             .foregroundStyle(AppPalette.pool)
             .buttonStyle(.plain)
-            .accessibilityIdentifier("home.historyCard")
+            .accessibilityIdentifier("timeline.forecast.history")
             .accessibilityHint("Opens your full calendar history.")
         }
     }
@@ -89,10 +89,10 @@ struct TimelineLogSection: View {
     }
 
     private var rowGroupBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.76))
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                     .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
     }
@@ -175,7 +175,7 @@ struct TimelineLogSection: View {
     private func forecastRow(for block: TimelineUVForecastBlock, status: TimelineDayPartStatus?) -> some View {
         HStack(spacing: 12) {
             Image(systemName: block.level.symbolName)
-                .font(.system(size: 16, weight: .semibold))
+                .font(AppFont.rounded(size: 16, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
                 .frame(width: 24, height: 24)
                 .background(AppPalette.warmGlow.opacity(0.45), in: Circle())
@@ -183,16 +183,16 @@ struct TimelineLogSection: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(block.dayPart.title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(block.timeRange)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppFont.rounded(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
 
                 if let status {
                     Text(status.statusText)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(status.isCompleted ? AppPalette.success : AppPalette.softInk)
                 }
             }
@@ -201,11 +201,11 @@ struct TimelineLogSection: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text("UV \(block.uvIndex)")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(AppFont.rounded(size: 16, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(block.level.displayName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
         }
@@ -238,15 +238,15 @@ struct TimelineLogSection: View {
     private func futurePlanCard(_ preview: FutureDayPreview) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Suggested routine")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             Text("SPF \(preview.suggestedSPF)+")
-                .font(.system(size: 20, weight: .bold))
+                .font(AppFont.rounded(size: 20, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(preview.suggestionText)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -267,17 +267,17 @@ struct TimelineLogSection: View {
 
         return HStack(alignment: .top, spacing: 12) {
             Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
-                .font(.system(size: 16, weight: .semibold))
+                .font(AppFont.rounded(size: 16, weight: .semibold))
                 .foregroundStyle(AppPalette.streakAccent)
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Streak")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.rounded(size: 15, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                 Text(detail)
-                    .font(.system(size: 14))
+                    .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             }
             Spacer(minLength: 0)

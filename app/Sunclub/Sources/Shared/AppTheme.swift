@@ -17,26 +17,26 @@ enum AppPalette {
         UIColor(red: red, green: green, blue: blue, alpha: alpha)
     }
 
-    static let cream = Color(red: 0.982, green: 0.965, blue: 0.939)
-    static let pearl = Color(red: 1.000, green: 0.988, blue: 0.960)
+    static let cream = AppColor.background
+    static let pearl = Color(red: 1.000, green: 0.993, blue: 0.976)
     static let warmGlow = adaptive(
-        light: uiColor(red: 1.000, green: 0.930, blue: 0.760),
+        light: uiColor(red: 1.000, green: 0.910, blue: 0.690),
         dark: uiColor(red: 0.430, green: 0.286, blue: 0.126)
     )
     static let sun = adaptive(
-        light: uiColor(red: 0.980, green: 0.643, blue: 0.012),
+        light: uiColor(red: 0.965, green: 0.610, blue: 0.035),
         dark: uiColor(red: 1.000, green: 0.705, blue: 0.145)
     )
     static let coral = adaptive(
-        light: uiColor(red: 0.960, green: 0.365, blue: 0.255),
+        light: uiColor(red: 0.890, green: 0.350, blue: 0.270),
         dark: uiColor(red: 1.000, green: 0.450, blue: 0.340)
     )
     static let aloe = adaptive(
-        light: uiColor(red: 0.365, green: 0.720, blue: 0.510),
+        light: uiColor(red: 0.330, green: 0.680, blue: 0.500),
         dark: uiColor(red: 0.485, green: 0.830, blue: 0.620)
     )
     static let pool = adaptive(
-        light: uiColor(red: 0.260, green: 0.655, blue: 0.850),
+        light: uiColor(red: 0.285, green: 0.620, blue: 0.805),
         dark: uiColor(red: 0.385, green: 0.745, blue: 0.940)
     )
     static let uvExtreme = adaptive(
@@ -47,19 +47,19 @@ enum AppPalette {
     static let darkCanvas = Color(red: 0.114, green: 0.098, blue: 0.086)
     static let darkSurface = Color(red: 0.171, green: 0.150, blue: 0.129)
     static let ink = adaptive(
-        light: uiColor(red: 0.129, green: 0.114, blue: 0.102),
+        light: uiColor(red: 0.075, green: 0.071, blue: 0.067),
         dark: uiColor(red: 0.964, green: 0.925, blue: 0.855)
     )
     static let softInk = adaptive(
-        light: uiColor(red: 0.514, green: 0.459, blue: 0.427),
+        light: uiColor(red: 0.400, green: 0.372, blue: 0.345),
         dark: uiColor(red: 0.745, green: 0.690, blue: 0.620)
     )
     static let success = adaptive(
-        light: uiColor(red: 0.151, green: 0.772, blue: 0.353),
+        light: uiColor(red: 0.155, green: 0.715, blue: 0.330),
         dark: uiColor(red: 0.360, green: 0.875, blue: 0.540)
     )
     static let warning = adaptive(
-        light: uiColor(red: 0.775, green: 0.176, blue: 0.137),
+        light: uiColor(red: 0.760, green: 0.240, blue: 0.180),
         dark: uiColor(red: 1.000, green: 0.380, blue: 0.300)
     )
     static let muted = adaptive(
@@ -67,7 +67,7 @@ enum AppPalette {
         dark: uiColor(red: 0.430, green: 0.395, blue: 0.360)
     )
     static let streakAccent = adaptive(
-        light: uiColor(red: 0.870, green: 0.482, blue: 0.000),
+        light: uiColor(red: 0.855, green: 0.470, blue: 0.045),
         dark: uiColor(red: 1.000, green: 0.590, blue: 0.110)
     )
     static let streakBackground = adaptive(
@@ -75,15 +75,15 @@ enum AppPalette {
         dark: uiColor(red: 0.244, green: 0.171, blue: 0.092)
     )
     static let cardFill = adaptive(
-        light: uiColor(red: 1, green: 1, blue: 1),
+        light: uiColor(red: 1.000, green: 0.998, blue: 0.992),
         dark: uiColor(red: 0.205, green: 0.178, blue: 0.150)
     )
     static let elevatedCardFill = adaptive(
-        light: uiColor(red: 1, green: 1, blue: 1),
+        light: uiColor(red: 1.000, green: 1.000, blue: 1.000),
         dark: uiColor(red: 0.252, green: 0.220, blue: 0.184)
     )
     static let controlFill = adaptive(
-        light: uiColor(red: 1, green: 1, blue: 1),
+        light: uiColor(red: 1.000, green: 0.968, blue: 0.910),
         dark: uiColor(red: 0.294, green: 0.252, blue: 0.207)
     )
     static let editorFill = adaptive(
@@ -91,34 +91,28 @@ enum AppPalette {
         dark: uiColor(red: 0.139, green: 0.122, blue: 0.104)
     )
     static let cardStroke = adaptive(
-        light: uiColor(red: 0.886, green: 0.804, blue: 0.678, alpha: 0.58),
+        light: uiColor(red: 0.075, green: 0.071, blue: 0.067, alpha: 0.075),
         dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.16)
     )
     static let hairlineStroke = adaptive(
         light: uiColor(red: 0, green: 0, blue: 0, alpha: 0.06),
         dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.14)
     )
-    static let onAccent = Color(red: 0.129, green: 0.114, blue: 0.102)
+    static let onAccent = AppColor.onAccent
     static let white = Color.white
 }
 
 enum AppTypography {
-    static let screenTitle = Font.system(size: 28, weight: .semibold)
-    static let sectionLabel = Font.system(size: 14, weight: .semibold)
-    static let cardTitle = Font.system(size: 18, weight: .semibold)
-    static let body = Font.system(size: 16)
-    static let bodyMedium = Font.system(size: 16, weight: .medium)
-    static let caption = Font.system(size: 13)
-    static let captionMedium = Font.system(size: 13, weight: .medium)
-    static let metric = Font.system(size: 14, weight: .medium)
-    static let streakNumber = Font.system(size: 64, weight: .heavy)
-    static let pillLabel = Font.system(size: 13, weight: .semibold)
-}
-
-enum AppRadius {
-    static let card: CGFloat = 20
-    static let insetCard: CGFloat = 16
-    static let control: CGFloat = 14
+    static let screenTitle = AppTextStyle.largeTitle.font
+    static let sectionLabel = AppTextStyle.captionMedium.font
+    static let cardTitle = AppTextStyle.sectionHeader.font
+    static let body = AppTextStyle.body.font
+    static let bodyMedium = AppTextStyle.bodyMedium.font
+    static let caption = AppTextStyle.caption.font
+    static let captionMedium = AppTextStyle.captionMedium.font
+    static let metric = AppTextStyle.metric.font
+    static let streakNumber = Font.system(size: 56, weight: .semibold, design: .rounded)
+    static let pillLabel = AppTextStyle.pillLabel.font
 }
 
 enum SunLayout {
@@ -451,26 +445,17 @@ struct SunPrimaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(isEnabled ? AppPalette.onAccent : AppPalette.softInk)
+            .font(AppTextStyle.bodyMedium.font)
+            .foregroundStyle(isEnabled ? AppColor.onColor : AppPalette.softInk)
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                     .fill(isEnabled ? AppPalette.sun : AppPalette.muted.opacity(0.28))
-                    .shadow(
-                        color: AppPalette.sun.opacity(isEnabled ? (configuration.isPressed ? 0.08 : 0.18) : 0),
-                        radius: configuration.isPressed ? 3 : 10,
-                        x: 0,
-                        y: configuration.isPressed ? 2 : 6
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
+                    .appShadow(isEnabled ? AppShadow.soft : nil)
             )
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.976 : 1))
-            .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -480,26 +465,21 @@ struct SunSecondaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 16, weight: .medium))
+            .font(AppTextStyle.pillLabel.font)
             .foregroundStyle(AppPalette.ink)
             .frame(maxWidth: .infinity, minHeight: 50)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                     .fill(AppPalette.controlFill.opacity(isEnabled ? 0.86 : 0.48))
-                    .shadow(
-                        color: AppPalette.ink.opacity(configuration.isPressed ? 0.015 : 0.045),
-                        radius: configuration.isPressed ? 2 : 8,
-                        x: 0,
-                        y: configuration.isPressed ? 1 : 4
-                    )
+                    .appShadow(isEnabled ? AppShadow.soft : nil)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                     .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.92 : 1)
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.982 : 1))
-            .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -508,7 +488,7 @@ struct SunTextButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .font(AppTextStyle.captionMedium.font)
             .foregroundStyle(AppPalette.ink)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -517,7 +497,7 @@ struct SunTextButtonStyle: ButtonStyle {
                     .fill(configuration.isPressed ? AppPalette.warmGlow.opacity(0.54) : Color.clear)
             )
             .opacity(configuration.isPressed ? 0.82 : 1)
-            .animation(SunMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -540,10 +520,13 @@ struct SunclubCard<Content: View>: View {
     }
 
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(padding)
-            .sunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
+        AppCard(
+            padding: padding,
+            cornerRadius: cornerRadius,
+            fill: AppPalette.cardFill.opacity(fillOpacity)
+        ) {
+            content
+        }
     }
 }
 
@@ -1216,7 +1199,7 @@ extension View {
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(AppPalette.cardFill.opacity(fillOpacity))
-                    .shadow(color: AppPalette.ink.opacity(0.045), radius: 12, x: 0, y: 6)
+                    .appShadow(AppShadow.soft)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

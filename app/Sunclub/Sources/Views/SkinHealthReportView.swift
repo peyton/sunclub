@@ -53,11 +53,11 @@ struct SkinHealthReportView: View {
     private var introCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Skin Health Report")
-                .font(.system(size: 26, weight: .bold))
+                .font(AppFont.rounded(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Text("Choose a date range, review your key metrics, then export or share the summary.")
-                .font(.system(size: 15))
+                .font(AppFont.rounded(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }
         .padding(18)
@@ -67,7 +67,7 @@ struct SkinHealthReportView: View {
     private var dateRangeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Date range")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             DatePicker("Start", selection: $startDate, displayedComponents: .date)
@@ -80,7 +80,7 @@ struct SkinHealthReportView: View {
     private func metricsCard(summary: SunclubSkinHealthReportSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Summary")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             reportMetricRow(label: "Protected days in range", value: "\(summary.totalProtectedDays)")
@@ -95,18 +95,18 @@ struct SkinHealthReportView: View {
     private func monthlyConsistencyCard(summary: SunclubSkinHealthReportSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Monthly consistency")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             LazyVGrid(columns: monthlyConsistencyColumns, spacing: 10) {
                 ForEach(summary.monthlyConsistency) { month in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(month.monthLabel)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(AppFont.rounded(size: 13, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
 
                         Text("\(month.protectedDays)/\(month.totalDays)")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(AppFont.rounded(size: 14, weight: .medium))
                             .foregroundStyle(AppPalette.softInk)
 
                         ProgressView(value: month.ratio)
@@ -115,7 +115,7 @@ struct SkinHealthReportView: View {
                     }
                     .padding(14)
                     .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                             .fill(AppPalette.cardFill.opacity(0.9))
                     )
                     .accessibilityElement(children: .ignore)
@@ -131,12 +131,12 @@ struct SkinHealthReportView: View {
     private func spfDistributionCard(summary: SunclubSkinHealthReportSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SPF mix")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             if summary.spfDistribution.isEmpty {
                 Text("Add SPF details to your logs to build this section.")
-                    .font(.system(size: 14))
+                    .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             } else {
                 ForEach(summary.spfDistribution) { entry in
@@ -151,13 +151,13 @@ struct SkinHealthReportView: View {
     private func reportMetricRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 15))
+                .font(AppFont.rounded(size: 15))
                 .foregroundStyle(AppPalette.softInk)
 
             Spacer(minLength: 0)
 
             Text(value)
-                .font(.system(size: 18, weight: .semibold))
+                .font(AppFont.rounded(size: 18, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
         }
         .accessibilityElement(children: .combine)
@@ -175,7 +175,7 @@ struct SkinHealthReportView: View {
     private var footerActions: some View {
         if appState.records.isEmpty {
             Text("Log at least one day before exporting or sharing a report.")
-                .font(.system(size: 14, weight: .medium))
+                .font(AppFont.rounded(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
                 .multilineTextAlignment(.center)
         } else {
@@ -210,11 +210,11 @@ struct SkinHealthReportView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.72))
-            .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
+            .appShadow(AppShadow.soft)
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                     .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
     }

@@ -22,15 +22,15 @@ struct AccountabilityOnboardingView: View {
 
                 VStack(alignment: .leading, spacing: 14) {
                     Image(systemName: symbolName)
-                        .font(.system(size: 34, weight: .semibold))
+                        .font(AppFont.rounded(size: 34, weight: .semibold))
                         .foregroundStyle(AppPalette.sun)
 
                     Text(title)
-                        .font(.system(size: 30, weight: .bold))
+                        .font(AppFont.rounded(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(detail)
-                        .font(.system(size: 17))
+                        .font(AppFont.rounded(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -111,7 +111,7 @@ struct AccountabilityOnboardingView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.72))
     }
 }
@@ -195,13 +195,13 @@ struct FriendsView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Label("Your sharing", systemImage: "person.2.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(AppFont.rounded(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Spacer(minLength: 0)
 
                 Text(appState.growthSettings.accountability.isActive ? "On" : "Off")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(AppFont.rounded(size: 13, weight: .bold))
                     .foregroundStyle(appState.growthSettings.accountability.isActive ? AppPalette.success : AppPalette.softInk)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -209,7 +209,7 @@ struct FriendsView: View {
             }
 
             Text("Friends see your display name, whether today is logged, streaks, and last update. SPF and notes stay private.")
-                .font(.system(size: 15))
+                .font(AppFont.rounded(size: 15))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -243,7 +243,7 @@ struct FriendsView: View {
     private var addFriendsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Add friends")
-                .font(.system(size: 17, weight: .semibold))
+                .font(AppFont.rounded(size: 17, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
             addFriendActions
@@ -261,24 +261,24 @@ struct FriendsView: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "person.badge.plus.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(AppFont.rounded(size: 18, weight: .semibold))
                         .foregroundStyle(AppPalette.sun)
                         .frame(width: 28)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Add another friend")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(AppFont.rounded(size: 17, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
 
                         Text("Nearby, Messages, invite link, or backup code.")
-                            .font(.system(size: 14))
+                            .font(AppFont.rounded(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                     }
 
                     Spacer(minLength: 0)
 
                     Image(systemName: isAddFriendsExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
                 }
             }
@@ -338,23 +338,23 @@ struct FriendsView: View {
     private var inviteCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Your invite link")
-                .font(.system(size: 17, weight: .semibold))
+                .font(AppFont.rounded(size: 17, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
             if let url = appState.accountabilityInviteURL {
                 Text(url.absoluteString)
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(AppFont.monospace(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .textSelection(.enabled)
                     .accessibilityIdentifier("friends.inviteLink")
             }
 
             Text("Backup code")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             Text(appState.accountabilityInviteCode)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .font(AppFont.monospace(size: 12, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
@@ -384,18 +384,18 @@ struct FriendsView: View {
     private var importCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Paste invite or backup code")
-                .font(.system(size: 17, weight: .semibold))
+                .font(AppFont.rounded(size: 17, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
             TextEditor(text: $importCode)
                 .frame(minHeight: 92)
                 .padding(10)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .fill(AppPalette.cardFill.opacity(0.9))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .stroke(AppPalette.ink.opacity(0.08), lineWidth: 1)
                 )
                 .accessibilityLabel("Invite or backup code")
@@ -405,7 +405,7 @@ struct FriendsView: View {
                 SunStatusCard(
                     title: "Invite not imported",
                     detail: importErrorMessage,
-                    tint: Color.red.opacity(0.72),
+                    tint: AppColor.warning.opacity(0.72),
                     symbol: "exclamationmark.triangle.fill"
                 )
                 .accessibilityIdentifier("friends.importError")
@@ -424,7 +424,7 @@ struct FriendsView: View {
     private var friendsListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Friends")
-                .font(.system(size: 17, weight: .semibold))
+                .font(AppFont.rounded(size: 17, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
             if appState.friends.isEmpty {
@@ -437,7 +437,7 @@ struct FriendsView: View {
                         .accessibilityHidden(true)
 
                     Text("Add a friend to see who has logged today and who needs a sunscreen poke.")
-                        .font(.system(size: 15))
+                        .font(AppFont.rounded(size: 15))
                         .foregroundStyle(AppPalette.softInk)
                 }
                 .padding(18)
@@ -505,29 +505,29 @@ struct FriendsView: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(AppFont.rounded(size: 20, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
                     .frame(width: 30)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(AppFont.rounded(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(detail)
-                        .font(.system(size: 14))
+                        .font(AppFont.rounded(size: 14))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                     .fill(AppPalette.cardFill.opacity(0.72))
             )
         }
@@ -535,11 +535,11 @@ struct FriendsView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.72))
-            .shadow(color: AppPalette.ink.opacity(0.055), radius: 18, x: 0, y: 10)
+            .appShadow(AppShadow.soft)
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                     .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
     }
@@ -573,23 +573,23 @@ private struct FriendAccountabilityRow: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(friend.name)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(AppFont.rounded(size: 18, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(friend.hasLoggedToday ? "Logged today" : "Still open today")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(friend.hasLoggedToday ? AppPalette.success : AppPalette.softInk)
                 }
 
                 Spacer(minLength: 0)
 
                 Text("\(friend.currentStreak)d")
-                    .font(.system(size: 26, weight: .bold))
+                    .font(AppFont.rounded(size: 26, weight: .bold))
                     .foregroundStyle(AppPalette.sun)
             }
 
             Text("Best streak \(friend.longestStreak). Updated \(friend.lastSharedAt.formatted(date: .abbreviated, time: .shortened)).")
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
 
             ViewThatFits(in: .horizontal) {
@@ -604,11 +604,11 @@ private struct FriendAccountabilityRow: View {
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
@@ -644,7 +644,7 @@ private struct FriendAccountabilityRow: View {
             .accessibilityIdentifier("friends.remove.\(friend.id.uuidString)")
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 18, weight: .semibold))
+                .font(AppFont.rounded(size: 18, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
                 .frame(width: 44, height: 44)
                 .background(
@@ -675,7 +675,7 @@ private struct FriendAvatar: View {
                 )
 
             Text(initial)
-                .font(.system(size: 18, weight: .bold))
+                .font(AppFont.rounded(size: 18, weight: .bold))
                 .foregroundStyle(AppPalette.onAccent)
 
             if isLogged {
@@ -714,11 +714,11 @@ private struct NearbyAccountabilitySheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Nearby Add")
-                    .font(.system(size: 30, weight: .bold))
+                    .font(AppFont.rounded(size: 30, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text("Both people open this screen and keep the phones close. Sunclub exchanges the same invite link and backup code you can share by Messages.")
-                    .font(.system(size: 16))
+                    .font(AppFont.rounded(size: 16))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -781,21 +781,21 @@ private struct NearbyAccountabilitySheet: View {
     private func nearbyStatus(_ title: String, detail: String, symbol: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: symbol)
-                .font(.system(size: 34, weight: .semibold))
+                .font(AppFont.rounded(size: 34, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
 
             Text(title)
-                .font(.system(size: 20, weight: .semibold))
+                .font(AppFont.rounded(size: 20, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(detail)
-                .font(.system(size: 15))
+                .font(AppFont.rounded(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
     }

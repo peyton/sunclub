@@ -138,7 +138,7 @@ struct TimelineHomeView: View {
         let presentation = TimelineHomePresentation(appState: appState)
 
         SunLightScreen {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
                 headerBar
 
                 timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
@@ -147,13 +147,15 @@ struct TimelineHomeView: View {
 
                 attentionBanners
 
-                TimelineLogSection(
-                    summary: presentation.logSummary,
-                    uvForecast: presentation.uvForecast,
-                    weatherAttribution: presentation.weatherAttribution,
-                    currentStreak: presentation.currentStreak,
-                    longestStreak: presentation.longestStreak
-                )
+                if presentation.logSummary.category == .future {
+                    TimelineLogSection(
+                        summary: presentation.logSummary,
+                        uvForecast: presentation.uvForecast,
+                        weatherAttribution: presentation.weatherAttribution,
+                        currentStreak: presentation.currentStreak,
+                        longestStreak: presentation.longestStreak
+                    )
+                }
 
                 Spacer(minLength: 0)
             }
@@ -189,7 +191,7 @@ struct TimelineHomeView: View {
 
     private var headerBar: some View {
         HStack(alignment: .center) {
-            SunBrandLockup(layout: .inline, markSize: 28)
+            SunBrandLockup(layout: .inline, markSize: 42)
 
             Spacer(minLength: 0)
 
@@ -198,13 +200,9 @@ struct TimelineHomeView: View {
                 router.open(.settings)
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 19, weight: .medium))
+                    .font(AppFont.rounded(size: 28, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                     .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(AppPalette.cardFill.opacity(0.72))
-                    )
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
@@ -217,11 +215,9 @@ struct TimelineHomeView: View {
         for presentation: TimelineHomePresentation,
         selectedDay: Binding<Date>
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Timeline")
-                    .font(AppTypography.sectionLabel)
-                    .foregroundStyle(AppPalette.softInk)
+                AppText("Timeline", style: .sectionHeader)
 
                 Spacer(minLength: 0)
 
@@ -253,7 +249,7 @@ struct TimelineHomeView: View {
 
                 if !isToday {
                     Image(systemName: "arrow.uturn.backward.circle.fill")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(AppFont.rounded(size: 15, weight: .semibold))
                         .foregroundStyle(AppPalette.pool)
                         .accessibilityHidden(true)
                 }
@@ -272,8 +268,9 @@ struct TimelineHomeView: View {
     @ViewBuilder
     private func headlineLabel(for presentation: TimelineHomePresentation, isToday: Bool) -> some View {
         let text = Text(headlineText(for: presentation))
-            .font(.system(size: 15, weight: .semibold))
+            .font(AppTextStyle.sectionHeader.font)
             .foregroundStyle(AppPalette.ink)
+            .tracking(AppTextStyle.sectionHeader.tracking)
             .multilineTextAlignment(.trailing)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("timeline.headline")
@@ -300,7 +297,7 @@ struct TimelineHomeView: View {
                     title: notificationHealth.title,
                     detail: notificationHealth.detail,
                     symbol: "bell.badge.fill",
-                    tint: Color.red.opacity(0.75),
+                    tint: AppColor.warning.opacity(0.75),
                     actionTitle: notificationHealth.actionTitle,
                     identifier: "timeline.notificationHealthAction"
                 )
@@ -324,7 +321,7 @@ struct TimelineHomeView: View {
                     symbol: !appState.conflicts.isEmpty
                         ? "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
                         : "icloud.and.arrow.up",
-                    tint: !appState.conflicts.isEmpty ? Color.red.opacity(0.75) : AppPalette.sun,
+                    tint: !appState.conflicts.isEmpty ? AppColor.warning.opacity(0.75) : AppPalette.sun,
                     actionTitle: "Review",
                     identifier: "timeline.syncRecoveryCard"
                 )
@@ -341,25 +338,25 @@ struct TimelineHomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: content.symbol)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.onAccent)
                     .frame(width: 30, height: 30)
                     .background(content.tint, in: Circle())
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(content.title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(AppFont.rounded(size: 15, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(content.detail)
-                        .font(.system(size: 13))
+                        .font(AppFont.rounded(size: 13))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
             Button(content.actionTitle, action: action)
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.rounded(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -525,6 +522,8 @@ struct TimelineHomeView: View {
 }
 
 private struct TimelineTodayStatusCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let presentation: TimelineHomePresentation
 
     private var isToday: Bool {
@@ -536,44 +535,41 @@ private struct TimelineTodayStatusCard: View {
     }
 
     var body: some View {
-        SunclubCard(cornerRadius: 20, padding: 18, fillOpacity: 0.90) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(dateText)
-                            .font(AppTypography.captionMedium)
-                            .foregroundStyle(AppPalette.softInk)
-                            .accessibilityIdentifier("timeline.statusDate")
-
-                        Text(statusTitle)
-                            .font(.system(size: 29, weight: .semibold))
-                            .foregroundStyle(AppPalette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
+        AppCard(padding: AppSpacing.md) {
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                HStack(alignment: .top, spacing: AppSpacing.md) {
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        AppText(statusTitle, style: .largeTitle)
                             .accessibilityIdentifier(statusAccessibilityIdentifier)
 
-                        Label(statusDetail, systemImage: statusSymbolName)
-                            .font(AppTypography.body)
-                            .foregroundStyle(statusTint)
-                            .fixedSize(horizontal: false, vertical: true)
+                        AppText(statusDetail, style: .body, color: AppColor.Text.secondary)
                             .accessibilityIdentifier("timeline.statusDetail")
                     }
 
                     Spacer(minLength: 0)
 
-                    statusRing
-                        .frame(width: 112, height: 112)
+                    StatusBadge(
+                        title: ringLabel,
+                        systemImage: statusSymbolName,
+                        tint: statusTint
+                    )
                 }
+
+                Rectangle()
+                    .fill(AppPalette.hairlineStroke)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
 
                 SunWeekProgressRow(days: presentation.weekProgressDays)
                     .accessibilityIdentifier("timeline.weekProgress")
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        statusMetricPills
-                    }
-
+                if dynamicTypeSize.isAccessibilitySize {
                     VStack(spacing: 10) {
-                        statusMetricPills
+                        statusMetricCards
+                    }
+                } else {
+                    HStack(spacing: 10) {
+                        statusMetricCards
                     }
                 }
             }
@@ -582,54 +578,22 @@ private struct TimelineTodayStatusCard: View {
     }
 
     @ViewBuilder
-    private var statusMetricPills: some View {
-        SunMetricPill(
+    private var statusMetricCards: some View {
+        StatCard(
             value: "\(presentation.currentStreak)",
             label: presentation.currentStreak == 1 ? "day streak" : "day streak",
-            symbolName: "flame.fill",
-            tint: AppPalette.streakAccent,
-            accessibilityIdentifier: "timeline.status.currentStreak"
+            systemImage: "flame.fill",
+            tint: AppPalette.streakAccent
         )
+        .accessibilityIdentifier("timeline.status.currentStreak")
 
-        SunMetricPill(
+        StatCard(
             value: "\(weekLoggedCount)/7",
             label: "this week",
-            symbolName: "calendar",
-            tint: AppPalette.sun,
-            accessibilityIdentifier: "timeline.status.week"
+            systemImage: "calendar",
+            tint: AppPalette.sun
         )
-    }
-
-    private var statusRing: some View {
-        ZStack {
-            if presentation.logSummary.record != nil {
-                SunSuccessBurst(size: 108, milestone: SunSuccessBurst.milestoneLevel(for: presentation.currentStreak))
-            } else {
-                SunclubVisualAsset.motifSunRing.image
-                    .resizable()
-                    .scaledToFit()
-                    .opacity(0.48)
-
-                Circle()
-                    .stroke(
-                        AppPalette.sun.opacity(0.62),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [8, 6])
-                    )
-                    .padding(12)
-            }
-
-            VStack(spacing: 3) {
-                Image(systemName: statusSymbolName)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(statusTint)
-                    .accessibilityHidden(true)
-
-                Text(ringLabel)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-            }
-        }
-        .accessibilityHidden(true)
+        .accessibilityIdentifier("timeline.status.week")
     }
 
     private var dateText: String {
@@ -639,9 +603,9 @@ private struct TimelineTodayStatusCard: View {
     private var statusTitle: String {
         switch presentation.logSummary.category {
         case .today:
-            return presentation.logSummary.record == nil ? "Not yet logged" : "Protected today"
+            return presentation.logSummary.record == nil ? "Not applied" : "Applied"
         case .past:
-            return presentation.logSummary.record == nil ? "No sunscreen logged" : "Day logged"
+            return presentation.logSummary.record == nil ? "No log" : "Applied"
         case .future:
             return "Forecast only"
         }
@@ -658,13 +622,13 @@ private struct TimelineTodayStatusCard: View {
         switch presentation.logSummary.category {
         case .today:
             if presentation.logSummary.record != nil {
-                return presentation.homeDailyPlanPresentation.detail
+                return "Optional: add SPF or a note"
             }
-            return "Log once before outdoor time to keep today covered."
+            return "Log sunscreen when you apply today."
         case .past:
             return presentation.logSummary.record == nil
                 ? "Backfill this day if you applied sunscreen."
-                : presentation.logSummary.sunscreenStatusText
+                : "SPF and notes are saved for this day."
         case .future:
             return presentation.logSummary.futurePreview?.suggestionText
                 ?? "Use the forecast to plan SPF before the day starts."
@@ -674,7 +638,7 @@ private struct TimelineTodayStatusCard: View {
     private var statusSymbolName: String {
         switch presentation.logSummary.category {
         case .today:
-            return presentation.logSummary.record == nil ? "sun.max" : "checkmark.shield.fill"
+            return presentation.logSummary.record == nil ? "sun.max.fill" : "checkmark.shield.fill"
         case .past:
             return presentation.logSummary.record == nil ? "calendar.badge.plus" : "checkmark.circle.fill"
         case .future:

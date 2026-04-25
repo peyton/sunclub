@@ -135,17 +135,17 @@ struct SettingsView: View {
             } label: {
                 HStack(spacing: 14) {
                     Image(systemName: section.symbolName)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(AppFont.rounded(size: 18, weight: .semibold))
                         .foregroundStyle(AppPalette.sun)
                         .frame(width: 28, height: 28)
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(section.title)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(AppFont.rounded(size: 18, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
 
                         Text(sectionDetail(for: section))
-                            .font(.system(size: 14))
+                            .font(AppFont.rounded(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -153,7 +153,7 @@ struct SettingsView: View {
                     Spacer(minLength: 0)
 
                     Image(systemName: isSectionExpanded(section) ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
                 }
                 .padding(18)
@@ -173,21 +173,21 @@ struct SettingsView: View {
     private var smarterReminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Daily Reminders")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             Text(reminderHeadline)
-                .font(.system(size: 28, weight: .bold))
+                .font(AppFont.rounded(size: 28, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("settings.reminderSummary")
 
             Text(reminderDescription)
-                .font(.system(size: 15))
+                .font(AppFont.rounded(size: 15))
                 .foregroundStyle(AppPalette.softInk)
 
             if let preview = appState.nextDailyReminderPreview {
                 Text(preview.summary)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppFont.rounded(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("settings.nextReminderPreview")
@@ -197,7 +197,7 @@ struct SettingsView: View {
                 SunStatusCard(
                     title: status.title,
                     detail: status.detail,
-                    tint: status.needsAttention ? Color.red.opacity(0.72) : AppPalette.success,
+                    tint: status.needsAttention ? AppColor.warning.opacity(0.72) : AppPalette.success,
                     symbol: status.symbolName
                 )
                 .accessibilityIdentifier("settings.notificationStatus")
@@ -242,11 +242,11 @@ struct SettingsView: View {
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(kind.title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(AppFont.rounded(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(detail)
-                        .font(.system(size: 13))
+                        .font(AppFont.rounded(size: 13))
                         .foregroundStyle(AppPalette.softInk)
                 }
 
@@ -254,11 +254,11 @@ struct SettingsView: View {
 
                 HStack(spacing: 8) {
                     Text(formattedReminderTime(for: kind))
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(AppFont.rounded(size: 18, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(AppFont.rounded(size: 12, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
                 }
             }
@@ -275,7 +275,7 @@ struct SettingsView: View {
         return VStack(alignment: .leading, spacing: 14) {
             Toggle(isOn: $leaveHomeReminderEnabled) {
                 Text("Remind me when I leave home")
-                    .font(.system(size: 17, weight: .medium))
+                    .font(AppFont.rounded(size: 17, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
             }
             .tint(AppPalette.sun)
@@ -285,7 +285,7 @@ struct SettingsView: View {
             .accessibilityIdentifier("settings.leaveHomeToggle")
 
             Text("Use your first trip out as the day's reminder.")
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
 
             if leaveHomeReminderEnabled || appState.settings.smartReminderSettings.leaveHomeReminder.homeLocation != nil {
@@ -323,11 +323,11 @@ struct SettingsView: View {
     private var leaveHomeReminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Leave-Home Reminder")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             Text("Optional. Use this only if you want Sunclub to remind you when you first head out.")
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
 
             leaveHomeReminderCard
@@ -337,13 +337,13 @@ struct SettingsView: View {
     private var reapplySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Reapply Reminder")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $reapplyEnabled) {
                     Text("Remind to reapply")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
                 .tint(AppPalette.sun)
@@ -355,7 +355,7 @@ struct SettingsView: View {
                 if reapplyEnabled {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Interval")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppFont.rounded(size: 13, weight: .medium))
                             .foregroundStyle(AppPalette.softInk)
 
                         LazyVGrid(columns: reapplyIntervalColumns, spacing: 8) {
@@ -368,7 +368,7 @@ struct SettingsView: View {
                 }
 
                 Text("Interval reminders are timing aids, not medical advice. Sunclub stops scheduling them after the estimated sunset cutoff.")
-                    .font(.system(size: 14))
+                    .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(18)
@@ -383,18 +383,18 @@ struct SettingsView: View {
         if !suggestions.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Suggested Times")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 VStack(spacing: 12) {
                     ForEach(suggestions) { suggestion in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(suggestion.title)
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(AppFont.rounded(size: 17, weight: .semibold))
                                 .foregroundStyle(AppPalette.ink)
 
                             Text(suggestion.detail)
-                                .font(.system(size: 14))
+                                .font(AppFont.rounded(size: 14))
                                 .foregroundStyle(AppPalette.softInk)
 
                             Button(suggestion.actionTitle) {
@@ -418,14 +418,14 @@ struct SettingsView: View {
             if let presentation = appState.notificationHealthPresentation {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Notification Help")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(AppFont.rounded(size: 14, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
 
                     VStack(alignment: .leading, spacing: 14) {
                         SunStatusCard(
                             title: presentation.title,
                             detail: presentation.detail,
-                            tint: Color.red.opacity(0.72),
+                            tint: AppColor.warning.opacity(0.72),
                             symbol: "bell.badge.fill"
                         )
 
@@ -445,12 +445,12 @@ struct SettingsView: View {
     private var backupSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Backup")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
                 Text("Export a backup before you reinstall the app or move to a new device. Import restores this phone first and leaves iCloud unchanged until you send those changes.")
-                    .font(.system(size: 14))
+                    .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
 
                 backupActionButton(
@@ -468,7 +468,7 @@ struct SettingsView: View {
                 )
 
                 Text("Imports stay reversible. Use Recovery & Changes if you want to undo one or send it to iCloud later.")
-                    .font(.system(size: 13))
+                    .font(AppFont.rounded(size: 13))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -478,7 +478,7 @@ struct SettingsView: View {
 
                 if let backupStatus {
                     Text(backupStatus.message)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(AppFont.rounded(size: 13, weight: .medium))
                         .foregroundStyle(backupStatus.tint)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("settings.backupStatus")
@@ -492,13 +492,13 @@ struct SettingsView: View {
     private var healthKitSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("HealthKit")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $healthKitEnabled) {
                     Text("Sync sunscreen logs to Apple Health")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
                 .tint(AppPalette.sun)
@@ -526,7 +526,7 @@ struct SettingsView: View {
     private var uvBriefingSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Daily UV Briefing")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
@@ -562,7 +562,7 @@ struct SettingsView: View {
     private var uvAndHealthSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("UV & Health")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             uvBriefingSection
@@ -573,7 +573,7 @@ struct SettingsView: View {
     private var helpAndLegalSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Support")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 12) {
@@ -603,7 +603,7 @@ struct SettingsView: View {
             }
 
             Text("Sunclub is a habit tracker, not medical advice.")
-                .font(.system(size: 13))
+                .font(AppFont.rounded(size: 13))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -641,13 +641,13 @@ struct SettingsView: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             Text("iCloud")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $iCloudSyncEnabled) {
                     Text("Sync history with iCloud")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
                 .tint(AppPalette.sun)
@@ -659,11 +659,11 @@ struct SettingsView: View {
                 if iCloudSyncEnabled {
                     if let lastSyncAt = appState.syncPreference?.lastSyncAt {
                         Text("Last synced \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppFont.rounded(size: 13, weight: .medium))
                             .foregroundStyle(AppPalette.softInk)
                     } else {
                         Text("iCloud sync is on")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppFont.rounded(size: 13, weight: .medium))
                             .foregroundStyle(AppPalette.softInk)
                     }
                 }
@@ -704,7 +704,7 @@ struct SettingsView: View {
     private func pendingImportActions(for session: SunclubImportSession) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(SunclubCopy.Sync.savedOnlyOnThisPhone(appState.cloudSyncStatusPresentation.pendingImportedBatchCount))
-                .font(.system(size: 14, weight: .medium))
+                .font(AppFont.rounded(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings.icloud.pendingImports")
@@ -726,7 +726,7 @@ struct SettingsView: View {
     private var iCloudStatusTint: Color {
         switch appState.syncPreference?.status ?? .idle {
         case .error:
-            return Color.red.opacity(0.75)
+            return AppColor.warning.opacity(0.75)
         case .paused:
             return AppPalette.softInk
         case .syncing:
@@ -750,10 +750,10 @@ struct SettingsView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.82))
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                     .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
     }
@@ -778,7 +778,7 @@ struct SettingsView: View {
         case .success:
             return AppPalette.success
         case .warning:
-            return Color.red.opacity(0.72)
+            return AppColor.warning.opacity(0.72)
         }
     }
 
@@ -883,17 +883,17 @@ struct SettingsView: View {
             HStack(spacing: 5) {
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(AppFont.rounded(size: 10, weight: .bold))
                 }
 
                 Text(formatInterval(minutes))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(AppFont.rounded(size: 13, weight: .medium))
             }
             .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
             .frame(maxWidth: .infinity, minHeight: 34)
             .padding(.horizontal, 10)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                     .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
             )
         }
@@ -1005,18 +1005,18 @@ struct SettingsView: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: symbolName)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
                     .frame(width: 24, height: 24)
 
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Spacer(minLength: 8)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppFont.rounded(size: 12, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(.vertical, 6)
@@ -1037,17 +1037,17 @@ struct SettingsView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: symbolName)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
                     .frame(width: 24, height: 24)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(AppFont.rounded(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(detail)
-                        .font(.system(size: 13))
+                        .font(AppFont.rounded(size: 13))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1055,7 +1055,7 @@ struct SettingsView: View {
                 Spacer(minLength: 8)
 
                 Image(systemName: "arrow.up.forward")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppFont.rounded(size: 12, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(18)
@@ -1093,7 +1093,7 @@ struct SettingsView: View {
             }
 
             Text("History entries: \(appState.records.count)")
-                .font(.system(size: 12, weight: .medium))
+                .font(AppFont.rounded(size: 12, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
                 .accessibilityIdentifier("settings.backupRecordCount")
         }
@@ -1170,23 +1170,23 @@ private struct ReminderToggleCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $isOn) {
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
             }
             .tint(AppPalette.sun)
             .accessibilityIdentifier(accessibilityIdentifier)
 
             Text(detail)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.82))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                         .stroke(AppPalette.hairlineStroke, lineWidth: 1)
                 }
         )

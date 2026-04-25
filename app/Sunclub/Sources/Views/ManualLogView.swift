@@ -60,7 +60,7 @@ struct ManualLogView: View {
                     SunStatusCard(
                         title: "Can't save this log yet",
                         detail: validationMessage,
-                        tint: Color.red.opacity(0.8),
+                        tint: AppColor.warning.opacity(0.8),
                         symbol: "exclamationmark.triangle.fill"
                     )
                     .accessibilityIdentifier("manualLog.validation")
@@ -75,7 +75,7 @@ struct ManualLogView: View {
                     )
                 }
 
-                SunclubCard(cornerRadius: 20, padding: 16) {
+                AppCard(padding: AppSpacing.sm) {
                     VStack(alignment: .leading, spacing: 20) {
                         dayPartPicker
 
@@ -97,10 +97,8 @@ struct ManualLogView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            Button(primaryActionTitle, action: saveLog)
-                .buttonStyle(SunPrimaryButtonStyle())
+            PrimaryButton(primaryActionTitle, systemImage: "sun.max", identifier: "manualLog.logToday", action: saveLog)
                 .disabled(isFutureTarget)
-                .accessibilityIdentifier("manualLog.logToday")
         }
         .onAppear {
             applyResolvedContext()
@@ -185,29 +183,37 @@ struct ManualLogView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
                     .frame(width: 34, height: 34)
                     .background(AppPalette.warmGlow.opacity(0.45), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Scan bottle SPF")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(AppFont.rounded(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text("Read a label and confirm before using it.")
-                        .font(.system(size: 13))
+                        .font(AppFont.rounded(size: 13))
                         .foregroundStyle(AppPalette.softInk)
                 }
 
                 Spacer(minLength: 0)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppFont.rounded(size: 12, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(14)
-            .sunGlassCard(cornerRadius: 18, fillOpacity: 0.72)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
+                    .fill(AppPalette.cardFill.opacity(0.72))
+                    .appShadow(AppShadow.soft)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the SPF scanner.")

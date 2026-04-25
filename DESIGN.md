@@ -1,57 +1,83 @@
 # Sunclub Design System
 
-## Palette
+## Source Of Truth
 
-| Token        | Hex                      | Usage                       |
-| ------------ | ------------------------ | --------------------------- |
-| Sun          | `#FAA402`                | Primary brand, CTAs, icon   |
-| Sun Light    | `#FFDD80`                | Highlights, glows           |
-| Cream        | `#FBF7EF`                | Page background             |
-| Warm Glow    | `#FFEDBD`                | Ambient gradient blobs      |
-| Ink          | `#1D1A16`                | Headlines, primary text     |
-| Soft Ink     | `#837568`                | Secondary text              |
-| Surface      | `rgba(255,255,255,0.82)` | Cards, overlays             |
-| Dark         | `#1D1916`                | Dark mode background        |
-| Dark Surface | `#2C2621`                | Dark mode cards             |
-| Success      | `#26C55A`                | Positive states             |
-| White        | `#FFFFFF`                | Contrast text on dark fills |
+The app design system lives in `app/Sunclub/Sources/Shared/AppDesignSystem.swift`.
+Use those tokens and components for iOS, Watch, and shared SwiftUI surfaces.
+
+Legacy brand helpers in `AppTheme.swift` remain for the Sunclub mark, warm screen
+backgrounds, and compatibility wrappers, but new screen styling should route
+through `AppColor`, `AppText`, `AppCard`, and the shared button/card primitives.
 
 ## Typography
 
-System font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+Use San Francisco rounded everywhere:
 
-| Scale | Size | Weight | Use               |
-| ----- | ---- | ------ | ----------------- |
-| Hero  | 60px | 800    | Landing headlines |
-| 3XL   | 44px | 800    | Section titles    |
-| 2XL   | 32px | 800    | Card titles       |
-| XL    | 24px | 700    | Subtitles         |
-| LG    | 18px | 600    | Nav, buttons      |
-| Base  | 16px | 400    | Body text         |
-| SM    | 14px | 500    | Captions          |
-| XS    | 12px | 600    | Badges, labels    |
+```swift
+.system(size: value, weight: weight, design: .rounded)
+```
 
-## Spacing
+Screen code should not call `.font(.system(...))` directly. Use `AppText` for
+copy and `AppFont.rounded(...)` only for compact visual primitives such as icons,
+calendar cells, and charts.
 
-4px grid. Common values: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80.
+| Token | Size | Weight | Notes |
+| --- | ---: | --- | --- |
+| `AppTextStyle.largeTitle` | 32 | semibold | main screen titles |
+| `AppTextStyle.title` | 26 | semibold | card titles and modal titles |
+| `AppTextStyle.sectionHeader` | 21 | semibold | section headers |
+| `AppTextStyle.body` | 17 | regular | default body copy |
+| `AppTextStyle.caption` | 14 | regular | secondary labels |
 
-## Radii
+Heading styles apply slight negative tracking.
 
-| Token | Value  | Use             |
-| ----- | ------ | --------------- |
-| SM    | 10px   | Feature icons   |
-| MD    | 16px   | Buttons, inputs |
-| LG    | 24px   | Cards           |
-| XL    | 32px   | Large panels    |
-| Full  | 9999px | Badges, dots    |
+## Color
 
-## Icon / Logo
+Semantic color tokens:
 
-The Sunclub mark is a solid `#FAA402` circle. On light backgrounds it sits alone; on dark backgrounds it may carry subtle concentric glow rings at 12% and 6% opacity.
+| Token | Usage |
+| --- | --- |
+| `AppColor.Text.primary` | primary text, near-black |
+| `AppColor.Text.secondary` | secondary text |
+| `AppColor.background` | page background |
+| `AppColor.surface` | soft panels |
+| `AppColor.surfaceElevated` | cards and sheets |
+| `AppColor.accent` | primary Sunclub action |
+| `AppColor.success` | completed/applied states |
+| `AppColor.warning` | destructive or attention states |
+| `AppColor.muted` | inactive UI |
+| `AppColor.stroke` | low-contrast borders |
 
-The wordmark uses the system font at weight 800, lowercase, tracking -0.02em.
+Avoid hardcoded `Color.red`, direct RGB values, and one-off foreground colors in
+screen files.
 
-## Files
+## Radius, Spacing, Shadow
 
-- `icon.svg` — App icon (512x512, rounded square)
-- `landing.html` — Reference landing page using all tokens
+Use the 8-point spacing rhythm:
+
+`AppSpacing.xxs` 8, `xs` 12, `sm` 16, `md` 20, `lg` 24, `xl` 32.
+
+Canonical radii:
+
+| Token | Value | Usage |
+| --- | ---: | --- |
+| `AppRadius.card` | 22 | cards and large panels |
+| `AppRadius.button` | 18 | buttons and compact controls |
+| `AppRadius.pill` | infinity | capsules |
+
+`AppShadow.soft` is the single reusable elevation style. Screen code should use
+`.appShadow(AppShadow.soft)` or components that apply it internally.
+
+## Components
+
+Required shared components:
+
+- `AppText`
+- `AppCard`
+- `PrimaryButton`
+- `SecondaryPillButton`
+- `StatusBadge`
+- `DayCapsule`
+- `StatCard`
+
+Use these before creating bespoke card, button, badge, or stat treatments.

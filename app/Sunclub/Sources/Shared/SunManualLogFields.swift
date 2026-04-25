@@ -47,11 +47,11 @@ struct SunManualLogFields: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Add details")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(AppFont.rounded(size: 17, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
 
                         Text(detailsSummary)
-                            .font(.system(size: 14))
+                            .font(AppFont.rounded(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -59,12 +59,12 @@ struct SunManualLogFields: View {
                     Spacer(minLength: 0)
 
                     Image(systemName: isShowingDetails ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
                 }
                 .padding(18)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                         .fill(AppPalette.cardFill.opacity(0.72))
                 )
             }
@@ -106,12 +106,12 @@ struct SunManualLogFields: View {
     private var spfSelector: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SPF (optional)")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             HStack(spacing: 10) {
                 Text(selectedSPF.map { "SPF \($0) selected" } ?? "No SPF selected")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(AppFont.rounded(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .accessibilityIdentifier("\(accessibilityPrefix).spfState")
 
@@ -119,7 +119,7 @@ struct SunManualLogFields: View {
                     Button("Clear SPF") {
                         selectedSPF = nil
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("\(accessibilityPrefix).clearSPF")
@@ -136,7 +136,7 @@ struct SunManualLogFields: View {
                     }
                 } label: {
                     Text(sameAsLastTime.chipTitle)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -157,7 +157,7 @@ struct SunManualLogFields: View {
                     }
                 } label: {
                     Label("Usual SPF \(defaultSPF)", systemImage: "clock.arrow.circlepath")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -205,7 +205,7 @@ struct SunManualLogFields: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(AppFont.rounded(size: 12, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk.opacity(0.85))
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -234,21 +234,21 @@ struct SunManualLogFields: View {
             HStack(spacing: 5) {
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(AppFont.rounded(size: 10, weight: .bold))
                 }
 
                 Text(title)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(AppFont.rounded(size: 15, weight: .medium))
             }
             .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
             .frame(minWidth: 48, minHeight: 40)
             .padding(.horizontal, title.count > 3 || isSelected ? 12 : 0)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                     .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                     .stroke(isSelected ? Color.clear : AppPalette.hairlineStroke, lineWidth: 1)
             }
         }
@@ -263,7 +263,7 @@ struct SunManualLogFields: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("Notes (optional)")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 Spacer(minLength: 0)
@@ -272,7 +272,7 @@ struct SunManualLogFields: View {
                     Button("Clear Note") {
                         notes = ""
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("\(accessibilityPrefix).clearNote")
@@ -287,7 +287,7 @@ struct SunManualLogFields: View {
                                 notes = SunManualLogInput.clampedNotes(noteSnippet)
                             } label: {
                                 Text(noteSnippet)
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(AppFont.rounded(size: 13, weight: .medium))
                                     .foregroundStyle(AppPalette.ink)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .padding(.horizontal, 12)
@@ -310,16 +310,16 @@ struct SunManualLogFields: View {
             }
 
             TextField("e.g. Applied before morning run", text: $notes, axis: .vertical)
-                .font(.system(size: 15))
+                .font(AppFont.rounded(size: 15))
                 .textInputAutocapitalization(.sentences)
                 .submitLabel(.done)
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .fill(AppPalette.cardFill.opacity(0.72))
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .stroke(AppPalette.hairlineStroke, lineWidth: 1)
                 }
                 .accessibilityLabel("Notes")
@@ -332,7 +332,7 @@ struct SunManualLogFields: View {
                 }
 
             Text(noteCountText)
-                .font(.system(size: 12, weight: .medium))
+                .font(AppFont.rounded(size: 12, weight: .medium))
                 .foregroundStyle(AppPalette.softInk.opacity(0.86))
                 .accessibilityIdentifier("\(accessibilityPrefix).noteCount")
         }
