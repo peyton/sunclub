@@ -62,10 +62,17 @@ GitHub run cross-check:
 - Swift compile caching is enabled by default. Keep `timeout-minutes` on every
   macOS GitHub Actions job that runs `just test-unit`, `just test-ui`,
   `just ci-build`, screenshot capture, or release archive/test commands.
+- Normal CI must keep building both app flavors. The required `Build iOS` check
+  is an aggregate job; the macOS build matrix behind it must compile the
+  development `SunclubDev` flavor and the production `Sunclub` flavor.
 - Run Xcode builds through Tuist. Repo scripts should invoke
   `tuist xcodebuild` via `run_tuist_xcodebuild`, and GitHub macOS test/release
   jobs should run `scripts/tooling/prepare_ci_workspace.sh` before heavy Xcode
   steps so Tuist auth and the local cache service are ready.
+- Restore repo-local GitHub Actions caches before lint, Python, and Xcode work.
+  Cache `.cache/uv`, `.cache/npm`, `.cache/hk`, `.cache/swiftlint`, and `.venv`;
+  do not cache `.DerivedData` or `.build` because Tuist's Xcode cache owns
+  compilation artifacts.
 - `tuist share` is opt-in for local builds. GitHub keeps pull-request builds
   local-only and enables sharing only where the workflow explicitly sets
   `SUNCLUB_TUIST_SHARE=1`.

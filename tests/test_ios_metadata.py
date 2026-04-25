@@ -426,13 +426,16 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert workflow.count("timeout-minutes: 45") == 3
     assert "test-ios-unit:" in workflow
     assert "name: iOS Unit Tests" in workflow
-    assert workflow.count("Prepare Tuist cache") == 2
+    assert workflow.count("Prepare Tuist cache") == 3
     assert (
         workflow.count(
             "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
         )
-        == 2
+        == 3
     )
+    assert workflow.count("Resolve build metadata") == 2
+    assert "SUNCLUB_FLAVOR: prod" in workflow
+    assert "TEST_APP_SCHEME: Sunclub" in workflow
     assert "run: mise --locked exec -- just test-unit" in workflow
     assert "test-ios-ui:" in workflow
     assert "name: iOS UI Tests" in workflow
@@ -442,6 +445,50 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert "if: ${{ always() }}" in workflow
     assert 'unit_result="${{ needs.test-ios-unit.result }}"' in workflow
     assert 'ui_result="${{ needs.test-ios-ui.result }}"' in workflow
+    assert "build-ios:" in workflow
+    assert "name: Build iOS (${{ matrix.name }})" in workflow
+    assert "fail-fast: false" in workflow
+    assert "flavor: dev" in workflow
+    assert "aps_environment: development" in workflow
+    assert "flavor: prod" in workflow
+    assert "aps_environment: production" in workflow
+    assert 'echo "SUNCLUB_FLAVOR=${{ matrix.flavor }}"' in workflow
+    assert 'echo "SUNCLUB_APS_ENVIRONMENT=${{ matrix.aps_environment }}"' in workflow
+    assert 'elif [ "${{ matrix.flavor }}" != "prod" ]; then' in workflow
+    assert "build:\n    name: Build iOS\n    runs-on: ubuntu-latest" in workflow
+    assert "needs: build-ios" in workflow
+    assert 'build_result="${{ needs.build-ios.result }}"' in workflow
+
+
+def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> None:
+    workflow = CI_WORKFLOW.read_text()
+    cache_dir_setup = (
+        "mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk"
+    )
+
+    assert workflow.count("Configure repo caches") == 5
+    assert workflow.count("Restore repo caches") == 5
+    assert (
+        workflow.count(
+            "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5"
+        )
+        == 5
+    )
+    assert workflow.count("UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv") == 5
+    assert workflow.count("UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv") == 5
+    assert workflow.count("HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk") == 5
+    assert workflow.count("HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk") == 5
+    assert workflow.count("npm_config_cache=$GITHUB_WORKSPACE/.cache/npm") == 5
+    assert workflow.count(cache_dir_setup) == 5
+    assert workflow.count("            .cache/uv\n") == 5
+    assert workflow.count("            .cache/npm\n") == 5
+    assert workflow.count("            .cache/hk\n") == 5
+    assert workflow.count("            .cache/swiftlint\n") == 5
+    assert workflow.count("            .venv\n") == 5
+    assert "key: ${{ runner.os }}-sunclub-repo-${{ hashFiles(" in workflow
+    assert "restore-keys:" in workflow
+    assert ".DerivedData" not in workflow
+    assert "\n            .build\n" not in workflow
 
 
 def test_ios_workflows_share_single_xcode_version_pin() -> None:
