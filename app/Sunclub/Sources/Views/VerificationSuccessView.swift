@@ -11,7 +11,11 @@ struct VerificationSuccessView: View {
     }
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.form,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.form
+        ) {
             VStack(spacing: 22) {
                 ZStack(alignment: .bottomTrailing) {
                     SunSuccessBurst(

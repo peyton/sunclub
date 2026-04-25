@@ -8,7 +8,11 @@ struct AccountabilityOnboardingView: View {
     @State private var shareSheetItem: ShareSheetItem?
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.form,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.form
+        ) {
             VStack(alignment: .leading, spacing: 24) {
                 SunLightHeader(title: "Accountability", showsBack: true, onBack: {
                     router.goBack()

@@ -7,7 +7,10 @@ struct YearInReviewView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.readable,
+            contentFrameAlignment: .center
+        ) {
             VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "Year in Review", showsBack: true, onBack: {
                     router.goBack()
@@ -140,12 +143,21 @@ struct YearInReviewView: View {
     }
 
     private var emptyState: some View {
-        SunEmptyStateView(
-            title: "Your year in review is building",
-            detail: "Log sunscreen throughout the year to unlock your annual sun-care recap.",
-            symbolName: "calendar.badge.clock",
-            tint: AppPalette.sun
-        )
+        VStack(spacing: 18) {
+            SunAssetHero(
+                asset: .illustrationHistoryCalendar,
+                height: 168,
+                glowColor: AppPalette.sun
+            )
+
+            SunEmptyStateView(
+                title: "Your year in review is building",
+                detail: "Log sunscreen throughout the year to unlock your annual sun-care recap.",
+                symbolName: "calendar.badge.clock",
+                tint: AppPalette.sun
+            )
+        }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("yearInReview.emptyState")
     }
 }

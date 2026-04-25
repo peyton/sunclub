@@ -36,7 +36,11 @@ struct ManualLogView: View {
     }
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.form,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.form
+        ) {
             VStack(alignment: .leading, spacing: 22) {
                 SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
                     router.goBack()

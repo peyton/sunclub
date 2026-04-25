@@ -30,7 +30,10 @@ struct SettingsView: View {
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.wideReadable,
+            contentFrameAlignment: .center
+        ) {
             VStack(alignment: .leading, spacing: 30) {
                 SunLightHeader(title: "Settings", showsBack: true, onBack: {
                     router.goBack()

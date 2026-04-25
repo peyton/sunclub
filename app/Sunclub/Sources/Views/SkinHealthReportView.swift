@@ -16,7 +16,11 @@ struct SkinHealthReportView: View {
         let reportInterval = interval
         let summary = appState.skinHealthReportSummary(for: reportInterval)
 
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.readable,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.readable
+        ) {
             VStack(alignment: .leading, spacing: 24) {
                 SunLightHeader(title: "Skin Health Report", showsBack: true, onBack: {
                     router.goBack()

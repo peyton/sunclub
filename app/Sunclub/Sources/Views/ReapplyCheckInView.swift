@@ -6,7 +6,11 @@ struct ReapplyCheckInView: View {
     @State private var successFeedbackTrigger = 0
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.form,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.form
+        ) {
             VStack(alignment: .leading, spacing: 26) {
                 SunLightHeader(title: "Reapply Check-In", showsBack: true, onBack: {
                     router.goBack()

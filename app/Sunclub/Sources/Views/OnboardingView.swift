@@ -11,46 +11,14 @@ struct WelcomeView: View {
     @State private var startFeedbackTrigger = 0
 
     var body: some View {
-        SunLightScreen(contentAlignment: .center) {
-            VStack(spacing: 0) {
-                SunBrandLockup(
-                    layout: .stacked,
-                    markSize: 96,
-                    subtitle: "Build a sunscreen habit that actually sticks."
-                )
-                .frame(maxWidth: .infinity)
-
-                Text("Track applications, get gentle reminders, and see your sun-care streak.")
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppPalette.softInk)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 320)
-                    .padding(.top, 18)
-
-                VStack(alignment: .leading, spacing: 26) {
-                    welcomeValuePropRow(
-                        symbol: "flame.fill",
-                        title: "Stay consistent",
-                        detail: "Keep the routine visible without making it a chore."
-                    )
-                    welcomeValuePropRow(
-                        symbol: "bell.badge.fill",
-                        title: "Get nudged at the right time",
-                        detail: "Use gentle reminders that fit weekdays, weekends, and travel."
-                    )
-                    welcomeValuePropRow(
-                        symbol: "hand.tap.fill",
-                        title: "Log in seconds",
-                        detail: "Save the day from the app, widgets, Shortcuts, or notifications."
-                    )
-                }
-                .frame(maxWidth: 320, alignment: .leading)
-                .padding(.top, 44)
-                .frame(maxWidth: .infinity)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 32)
+        SunLightScreen(
+            contentAlignment: .center,
+            contentMaxWidth: SunLayout.ContentWidth.wideReadable,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.wizard
+        ) {
+            welcomeContent
+                .padding(.vertical, 32)
         } footer: {
             Button("Get Started") {
                 startFeedbackTrigger += 1
@@ -61,6 +29,67 @@ struct WelcomeView: View {
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    @ViewBuilder
+    private var welcomeContent: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 56) {
+                welcomeHero
+                    .frame(minWidth: 400, maxWidth: 440)
+
+                welcomeValueProps
+                    .frame(minWidth: 360, maxWidth: 420, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            VStack(spacing: 0) {
+                welcomeHero
+                welcomeValueProps
+                    .padding(.top, 44)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var welcomeHero: some View {
+        VStack(spacing: 0) {
+            SunBrandLockup(
+                layout: .stacked,
+                markSize: 96,
+                subtitle: "Build a sunscreen habit that actually sticks."
+            )
+            .frame(maxWidth: .infinity)
+
+            Text("Track applications, get gentle reminders, and see your sun-care streak.")
+                .font(AppTypography.body)
+                .foregroundStyle(AppPalette.softInk)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 320)
+                .padding(.top, 18)
+        }
+    }
+
+    private var welcomeValueProps: some View {
+        VStack(alignment: .leading, spacing: 26) {
+            welcomeValuePropRow(
+                symbol: "flame.fill",
+                title: "Stay consistent",
+                detail: "Keep the routine visible without making it a chore."
+            )
+            welcomeValuePropRow(
+                symbol: "bell.badge.fill",
+                title: "Get nudged at the right time",
+                detail: "Use gentle reminders that fit weekdays, weekends, and travel."
+            )
+            welcomeValuePropRow(
+                symbol: "hand.tap.fill",
+                title: "Log in seconds",
+                detail: "Save the day from the app, widgets, Shortcuts, or notifications."
+            )
+        }
+        .frame(maxWidth: 360, alignment: .leading)
     }
 
     private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
@@ -93,10 +122,15 @@ struct EnableNotificationsView: View {
     @State private var completionFeedbackTrigger = 0
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentAlignment: .center,
+            contentMaxWidth: SunLayout.ContentWidth.wizard,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.wizard
+        ) {
             VStack(spacing: 18) {
                 notificationIcon
-                    .padding(.top, 128)
+                    .padding(.top, 24)
 
                 VStack(spacing: 14) {
                     Text("Turn on gentle reminders")
@@ -109,10 +143,8 @@ struct EnableNotificationsView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-
-                Spacer(minLength: 0)
             }
-            .padding(.top, 24)
+            .padding(.vertical, 32)
             .frame(maxWidth: .infinity)
         } footer: {
             VStack(spacing: 10) {
