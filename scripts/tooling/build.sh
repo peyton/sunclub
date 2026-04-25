@@ -13,11 +13,11 @@ result_bundle_path=""
 build_root=""
 build_root_explicit=0
 code_signing="none"
-share_scheme=1
+share_scheme=0
 run_generate=1
 
-if [ "${SUNCLUB_TUIST_SHARE:-1}" = "0" ]; then
-  share_scheme=0
+if [ "${SUNCLUB_TUIST_SHARE:-0}" = "1" ]; then
+  share_scheme=1
 fi
 
 while [ $# -gt 0 ]; do
@@ -51,6 +51,10 @@ while [ $# -gt 0 ]; do
     share_scheme=0
     shift
     ;;
+  --share)
+    share_scheme=1
+    shift
+    ;;
   --skip-generate)
     run_generate=0
     shift
@@ -82,7 +86,7 @@ mkdir -p "$(dirname "$derived_data_path")" "$(dirname "$result_bundle_path")"
 rm -rf "$result_bundle_path"
 
 if [ "$run_generate" -eq 1 ]; then
-  generate_workspace
+  ensure_workspace_generated
 fi
 
 printf 'BUILD_ROOT=%s\n' "$build_root"
@@ -102,19 +106,7 @@ if [ "$code_signing" = "none" ]; then
   build_args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
 fi
 
-if should_disable_swift_compile_cache; then
-  printf 'Disabling compiler caches for this build.\n'
-  build_args+=(
-    SWIFT_ENABLE_COMPILE_CACHE=NO
-    COMPILATION_CACHE_ENABLE_CACHING=NO
-    COMPILATION_CACHE_ENABLE_PLUGIN=NO
-    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
-    COMPILATION_CACHE_KEEP_CAS_DIRECTORY=NO
-    COMPILATION_CACHE_REMOTE_SERVICE_PATH=
-  )
-fi
-
-xcodebuild "${build_args[@]}" build
+run_tuist_xcodebuild "${build_args[@]}" build
 
 if [ "$share_scheme" -eq 1 ]; then
   share_exit=0

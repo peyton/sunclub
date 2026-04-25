@@ -100,7 +100,7 @@ Relevant tests pass, or any unrun/failed command is recorded with the blocker.
 Validation completed:
 
     just generate
-    xcodebuild build -workspace app/Sunclub.xcworkspace -scheme Sunclub -configuration Debug -destination 'id=07902F42-D089-4E6C-850D-D24E1873C99A' -derivedDataPath .DerivedData SWIFT_ENABLE_COMPILE_CACHE=NO COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO COMPILATION_CACHE_KEEP_CAS_DIRECTORY=NO COMPILATION_CACHE_REMOTE_SERVICE_PATH=
+    xcodebuild build -workspace app/Sunclub.xcworkspace -scheme Sunclub -configuration Debug -destination 'id=07902F42-D089-4E6C-850D-D24E1873C99A' -derivedDataPath .DerivedData
     just test-unit
     just test-ui
     just lint

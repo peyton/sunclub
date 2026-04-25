@@ -60,21 +60,6 @@ if has_app_store_connect_auth; then
   )
 fi
 
-XCODEBUILD_COMPILE_CACHE_ARGS=()
-DISABLE_SWIFT_COMPILE_CACHE=false
-if should_disable_swift_compile_cache; then
-  DISABLE_SWIFT_COMPILE_CACHE=true
-  printf 'Disabling compiler caches for this archive build.\n'
-  XCODEBUILD_COMPILE_CACHE_ARGS=(
-    SWIFT_ENABLE_COMPILE_CACHE=NO
-    COMPILATION_CACHE_ENABLE_CACHING=NO
-    COMPILATION_CACHE_ENABLE_PLUGIN=NO
-    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
-    COMPILATION_CACHE_KEEP_CAS_DIRECTORY=NO
-    COMPILATION_CACHE_REMOTE_SERVICE_PATH=
-  )
-fi
-
 XCODEBUILD_ARCHIVE_PROVISIONING_ARGS=()
 XCODEBUILD_ARCHIVE_SIGNING_ARGS=()
 if [ "$UNSIGNED_ARCHIVE" = true ]; then
@@ -472,7 +457,6 @@ write_ipa_entitlement_diagnostics() {
 }
 
 [ -f "$EXPORT_OPTIONS_PATHNAME" ] || fail "Missing export options: $EXPORT_OPTIONS_PATHNAME"
-command -v xcodebuild >/dev/null || fail "xcodebuild is required."
 command -v xcrun >/dev/null || fail "xcrun is required."
 
 if [ "$UPLOAD_TESTFLIGHT" = true ] && [ "$SKIP_EXPORT" = true ]; then
@@ -515,14 +499,11 @@ if [ "$SKIP_ARCHIVE" = false ]; then
   if [ "$UNSIGNED_ARCHIVE" = false ]; then
     xcodebuild_archive_args+=("${XCODEBUILD_ARCHIVE_PROVISIONING_ARGS[@]}")
   fi
-  if [ "$DISABLE_SWIFT_COMPILE_CACHE" = true ]; then
-    xcodebuild_archive_args+=("${XCODEBUILD_COMPILE_CACHE_ARGS[@]}")
-  fi
   if [ "$UNSIGNED_ARCHIVE" = true ]; then
     xcodebuild_archive_args+=("${XCODEBUILD_ARCHIVE_SIGNING_ARGS[@]}")
   fi
 
-  xcodebuild "${xcodebuild_archive_args[@]}"
+  run_tuist_xcodebuild "${xcodebuild_archive_args[@]}"
 
   ok "Archive created at $ARCHIVE_OUTPUT_PATH"
 else
@@ -557,7 +538,7 @@ if [ "$SKIP_EXPORT" = false ]; then
     xcodebuild_export_args+=("${XCODEBUILD_AUTH_ARGS[@]}")
   fi
 
-  xcodebuild "${xcodebuild_export_args[@]}"
+  run_tuist_xcodebuild "${xcodebuild_export_args[@]}"
 
   IPA_FILE="$(find "$EXPORT_OUTPUT_PATH" -name '*.ipa' -print -quit)"
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"

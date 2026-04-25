@@ -79,7 +79,7 @@ Edit:
 
 Build with:
 
-    SUNCLUB_FLAVOR=dev SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 SUNCLUB_TUIST_SHARE=0 bash scripts/tooling/build.sh --configuration Debug --destination 'id=61FACDF7-C039-408B-AC7A-9B4EDA48306E' --derived-data-path '/Users/peyton/.codex/worktrees/2dc9/sunclub/.DerivedData/run' --result-bundle-path '/Users/peyton/.codex/worktrees/2dc9/sunclub/.build/run.xcresult' --skip-generate --skip-share
+    SUNCLUB_FLAVOR=dev SUNCLUB_TUIST_SHARE=0 bash scripts/tooling/build.sh --configuration Debug --destination 'id=61FACDF7-C039-408B-AC7A-9B4EDA48306E' --derived-data-path '/Users/peyton/.codex/worktrees/2dc9/sunclub/.DerivedData/run' --result-bundle-path '/Users/peyton/.codex/worktrees/2dc9/sunclub/.build/run.xcresult' --skip-generate --skip-share
 
 Relaunch with:
 

@@ -25,8 +25,9 @@ def test_justfile_exposes_app_review_submission_commands() -> None:
     assert "release-preflight:" in justfile
     assert "just appstore-validate-strict" in justfile
     assert "just test-python" in justfile
-    assert "SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit" in justfile
-    assert "SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build" in justfile
+    assert "just test-unit" in justfile
+    assert "just ci-build" in justfile
+    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in justfile
 
 
 def test_tooling_config_matches_repo_contract() -> None:

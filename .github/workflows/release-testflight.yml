@@ -64,10 +64,12 @@ jobs:
       - name: Validate App Store metadata
         run: mise --locked exec -- just appstore-validate
 
+      - name: Prepare Tuist cache
+        timeout-minutes: 10
+        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
+
       - name: Run release launch safety tests
         timeout-minutes: 45
-        env:
-          SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
         run: mise --locked exec -- just test-unit
 
       - name: Archive and upload to TestFlight
@@ -76,7 +78,6 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
-          SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
         run: bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight
 
       - name: Add Internal testers group

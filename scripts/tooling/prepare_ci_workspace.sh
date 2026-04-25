@@ -5,7 +5,4 @@ set -euo pipefail
 source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
 setup_local_tooling_env
-prepare_ci_workspace github-actions
-
-export SUNCLUB_SKIP_LOCAL_TUIST_CACHE="${SUNCLUB_SKIP_LOCAL_TUIST_CACHE:-1}"
-"$TOOLING_DIR/build.sh"
+prepare_ci_workspace "${1:-github-actions}"

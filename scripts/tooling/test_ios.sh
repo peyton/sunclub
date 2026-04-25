@@ -73,18 +73,6 @@ xcodebuild_args=(
   "${test_xcodebuild_args[@]}"
 )
 
-if should_disable_swift_compile_cache; then
-  printf 'Disabling compiler caches for this test run.\n'
-  xcodebuild_args+=(
-    SWIFT_ENABLE_COMPILE_CACHE=NO
-    COMPILATION_CACHE_ENABLE_CACHING=NO
-    COMPILATION_CACHE_ENABLE_PLUGIN=NO
-    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
-    COMPILATION_CACHE_KEEP_CAS_DIRECTORY=NO
-    COMPILATION_CACHE_REMOTE_SERVICE_PATH=
-  )
-fi
-
 mkdir -p "$REPO_ROOT/.build"
 max_attempts="${TEST_XCODEBUILD_MAX_ATTEMPTS:-3}"
 attempt=1
@@ -93,7 +81,7 @@ while true; do
   rm -rf "$result_bundle_path"
 
   set +e
-  xcodebuild "${xcodebuild_args[@]}" 2>&1 | tee "$xcodebuild_log_path"
+  run_tuist_xcodebuild "${xcodebuild_args[@]}" 2>&1 | tee "$xcodebuild_log_path"
   status=${PIPESTATUS[0]}
   set -e
 

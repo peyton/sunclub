@@ -25,14 +25,14 @@ Recent churn was high:
 - Release metadata guard tests accumulated around `tests/test_ios_metadata.py`
   but did not cover embedded watch app plist/icon/signing invariants until the
   `v1.0.27` upload failure.
-- Xcode compile cache handling changed in `dad9575`, then release-only timeout
-  and cache guards were added in `0d19f6f`.
-- Normal CI did not get those Xcode cache guards until `7afbd71`.
+- Xcode build stability handling changed in `dad9575`, then release-only timeout
+  guards were added in `0d19f6f`.
+- Normal CI did not get those Xcode timeout guards until `7afbd71`.
 
 GitHub run cross-check:
 
 - `v1.0.26`, run `24383578595`, succeeded after the TestFlight launch-safety
-  unit test disabled Xcode compile caches and had a timeout. That tag points to
+  unit test received a timeout guard. That tag points to
   `0d19f6f`, before `a00d38e` embedded the watch app into the iOS app target.
 - Master CI run `24386961134` for `5d93e0a` failed in `Build iOS` because
   WatchKit validation saw `SunclubWatch.app` at marketing version `1.0` while
@@ -40,7 +40,7 @@ GitHub run cross-check:
 - Master CI run `24387310082` for `4ef874e` passed the build but stalled in
   `iOS Tests` after `Run unit tests` started. The job exposed no live logs for
   the in-progress step.
-- Master CI run `24387713866` for `7afbd71` completed the cache-disabled unit
+- Master CI run `24387713866` for `7afbd71` completed the bounded unit
   tests in about 3.5 minutes, then failed UI tests because the simulator did
   not trigger the UIKit interactive-pop gesture from the left edge.
 - Master CI run `24389570894` for `a9122a3` passed all jobs after the app-owned
@@ -59,10 +59,16 @@ GitHub run cross-check:
   `timeout-minutes`. This includes TestFlight archive/upload, App Review
   screenshot capture, App Review archive/upload, and final review submission
   steps.
-- Set `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1` on every macOS GitHub Actions job
-  that runs `just test-unit`, `just test-ui`, `just ci-build`, or release
-  archive/test commands. Screenshot capture is also Xcode-heavy and should keep
-  this guard.
+- Swift compile caching is enabled by default. Keep `timeout-minutes` on every
+  macOS GitHub Actions job that runs `just test-unit`, `just test-ui`,
+  `just ci-build`, screenshot capture, or release archive/test commands.
+- Run Xcode builds through Tuist. Repo scripts should invoke
+  `tuist xcodebuild` via `run_tuist_xcodebuild`, and GitHub macOS test/release
+  jobs should run `scripts/tooling/prepare_ci_workspace.sh` before heavy Xcode
+  steps so Tuist auth and the local cache service are ready.
+- `tuist share` is opt-in for local builds. GitHub keeps pull-request builds
+  local-only and enables sharing only where the workflow explicitly sets
+  `SUNCLUB_TUIST_SHARE=1`.
 - Pin CI and release jobs to the same supported stable Xcode version through
   each workflow's `SUNCLUB_XCODE_VERSION` env value instead of relying on
   `latest`, which can move before Tuist, simulators, or App Store validation
@@ -98,8 +104,8 @@ GitHub run cross-check:
   code-signing identifier equals `CFBundleIdentifier`, marketing version and
   build number match the companion app, compiled `Assets.car` exists, and the
   App Store-invalid plist keys are absent.
-- Before `xcodebuild -exportArchive`, prepare App Store provisioning profiles
-  for every archived `.app` and `.appex` bundle. The release script must
+- Before the App Store export step, prepare App Store provisioning profiles for
+  every archived `.app` and `.appex` bundle. The release script must
   enumerate the archive itself, create any missing App Store profiles through
   App Store Connect, install them locally for export, and preserve
   `.build/release-diagnostics/provisioning-profiles.json` for audit.

@@ -83,6 +83,32 @@ setup_local_tuist_cache() {
   run_in_app run_mise_exec tuist setup cache
 }
 
+run_tuist_xcodebuild() {
+  local log_file exit_code
+
+  log_file="$(mktemp "${TMPDIR:-/tmp}/sunclub-tuist-xcodebuild.XXXXXX.log")"
+
+  set +e
+  run_in_app run_mise_exec tuist xcodebuild "$@" 2>&1 | tee "$log_file"
+  exit_code="${PIPESTATUS[0]}"
+  set -e
+
+  if [ "$exit_code" -eq 0 ]; then
+    rm -f "$log_file"
+    return 0
+  fi
+
+  if [ "$exit_code" -eq 133 ] &&
+    grep -Eq '(^|[[:space:]])Build Succeeded($|[[:space:]])|(^|[[:space:]])Test Succeeded($|[[:space:]])|\*\* TEST SUCCEEDED \*\*' "$log_file"; then
+    printf 'Warning: tuist xcodebuild exited with Trace/BPT trap after a successful Xcode result; treating as success.\n' >&2
+    rm -f "$log_file"
+    return 0
+  fi
+
+  rm -f "$log_file"
+  return "$exit_code"
+}
+
 ensure_local_state() {
   mkdir -p \
     "$REPO_ROOT/.build" \
@@ -220,17 +246,6 @@ resolve_simulator_udid() {
   run_repo_python_module scripts.resolve_simulator \
     --name "$1" \
     --device-type-name "$2"
-}
-
-is_beta_xcode() {
-  xcodebuild -version 2>/dev/null | grep -qi 'beta' ||
-    xcode-select -p 2>/dev/null | grep -qi 'beta'
-}
-
-should_disable_swift_compile_cache() {
-  [ "${ACT:-}" = "true" ] ||
-    [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-0}" = "1" ] ||
-    is_beta_xcode
 }
 
 has_app_store_connect_auth() {

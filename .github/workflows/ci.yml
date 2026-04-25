@@ -78,7 +78,9 @@ jobs:
     needs: lint
     env:
       SUNCLUB_FLAVOR: dev
-      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Select Xcode 26.4
         if: ${{ !env.ACT }}
@@ -104,6 +106,9 @@ jobs:
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           cache: true
+      - name: Prepare Tuist cache
+        timeout-minutes: 10
+        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
       - name: Run unit tests
         timeout-minutes: 45
         run: mise --locked exec -- just test-unit
@@ -114,7 +119,9 @@ jobs:
     needs: lint
     env:
       SUNCLUB_FLAVOR: dev
-      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Select Xcode 26.4
         if: ${{ !env.ACT }}
@@ -140,6 +147,9 @@ jobs:
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           cache: true
+      - name: Prepare Tuist cache
+        timeout-minutes: 10
+        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
       - name: Run UI tests
         timeout-minutes: 45
         run: mise --locked exec -- just test-ui
@@ -169,7 +179,6 @@ jobs:
     needs: lint
     env:
       SUNCLUB_FLAVOR: prod
-      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
     permissions:
       contents: read
       id-token: write

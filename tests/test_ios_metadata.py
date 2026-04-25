@@ -422,10 +422,17 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
         )
         == 3
     )
-    assert workflow.count('SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"') == 3
+    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in workflow
     assert workflow.count("timeout-minutes: 45") == 3
     assert "test-ios-unit:" in workflow
     assert "name: iOS Unit Tests" in workflow
+    assert workflow.count("Prepare Tuist cache") == 2
+    assert (
+        workflow.count(
+            "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
+        )
+        == 2
+    )
     assert "run: mise --locked exec -- just test-unit" in workflow
     assert "test-ios-ui:" in workflow
     assert "name: iOS UI Tests" in workflow
@@ -481,16 +488,27 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
         in workflow
     )
     assert "environment: testflight" in workflow
+    assert "Prepare Tuist cache" in workflow
+    assert (
+        "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
+        in workflow
+    )
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert release_safety_step is not None
     release_safety_body = release_safety_step.group("body")
     assert "timeout-minutes: 45" in release_safety_body
-    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in release_safety_body
+    assert (
+        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        not in release_safety_body
+    )
     assert "mise --locked exec -- just test-unit" in release_safety_body
     assert archive_upload_step is not None
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
-    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in archive_upload_body
+    assert (
+        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        not in archive_upload_body
+    )
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
         in workflow
@@ -534,7 +552,12 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         in workflow
     )
     assert "environment: app-store-review" in workflow
-    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in workflow
+    assert "Prepare Tuist cache" in workflow
+    assert (
+        "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
+        in workflow
+    )
+    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in workflow
 
     assert screenshot_step is not None
     screenshot_body = screenshot_step.group("body")
@@ -544,7 +567,10 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
     assert archive_upload_step is not None
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
-    assert 'SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"' in archive_upload_body
+    assert (
+        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        not in archive_upload_body
+    )
     assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in (
         archive_upload_body
     )
@@ -644,7 +670,7 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "XCODEBUILD_ARCHIVE_PROVISIONING_ARGS=(" in script
     assert "-allowProvisioningUpdates" in script
     assert '"${XCODEBUILD_ARCHIVE_PROVISIONING_ARGS[@]}"' in archive_step
-    assert 'xcodebuild "${xcodebuild_archive_args[@]}"' in archive_step
+    assert 'run_tuist_xcodebuild "${xcodebuild_archive_args[@]}"' in archive_step
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in script
     assert "XCODEBUILD_ARCHIVE_SIGNING_ARGS=(" in script
     assert "--unsigned-archive can only be used with --skip-export" not in script
@@ -696,12 +722,15 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "-exportArchive" in export_step
     assert "-allowProvisioningUpdates" in export_step
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in export_step
-    assert 'xcodebuild "${xcodebuild_export_args[@]}"' in export_step
+    assert 'run_tuist_xcodebuild "${xcodebuild_export_args[@]}"' in export_step
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
-    assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in script
-    assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in script
+    assert "_".join(("SWIFT", "ENABLE", "COMPILE", "CACHE")) + "=NO" not in script
+    assert (
+        "_".join(("COMPILATION", "CACHE", "REMOTE", "SERVICE", "PATH")) + "="
+        not in script
+    )
     assert "APPLE_TEAM_ID" not in script
     assert "CODE_SIGN_STYLE=Automatic" not in script
     assert "CODE_SIGN_IDENTITY" not in script

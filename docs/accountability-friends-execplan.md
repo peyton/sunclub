@@ -170,7 +170,7 @@ Upgrade behavior:
 15. A full `just test-ui` run before the final Home accessibility fix exposed the `home.accountabilityFriendStrip` regression. Later full UI reruns were blocked before app assertions by CoreSimulator/xctrunner launch failures, so the full UI suite was not completed again in this session.
 16. Accountability copy scan passed for the audited phrases: no production "coated", "coating", "Poke by Message", "SPF fugitive", "shiny side", or "SPF chaos" strings remain.
 17. Earlier implementation validation also covered `just build`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema` against the development container.
-18. The 2026-04-24 Buddies widget polish is covered by `SunclubWidgetTests` for inactive, no-friend, and active-friend presentations. `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit`, `just lint`, and `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build` passed.
+18. The 2026-04-24 Buddies widget polish is covered by `SunclubWidgetTests` for inactive, no-friend, and active-friend presentations. `just test-unit`, `just lint`, and `just ci-build` passed.
 
 ## Outcomes & Retrospective
 

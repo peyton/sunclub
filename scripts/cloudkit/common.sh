@@ -105,7 +105,7 @@ run_cloudkit_signed_build() {
   mkdir -p "$(dirname -- "$derived_data_path")"
 
   if has_app_store_connect_auth; then
-    xcodebuild \
+    run_tuist_xcodebuild \
       -workspace "$REPO_ROOT/$APP_WORKSPACE" \
       -scheme "$RELEASE_APP_SCHEME" \
       -configuration Debug \
@@ -118,7 +118,7 @@ run_cloudkit_signed_build() {
       DEVELOPMENT_TEAM="$CLOUDKIT_TEAM_ID" \
       build
   else
-    xcodebuild \
+    run_tuist_xcodebuild \
       -workspace "$REPO_ROOT/$APP_WORKSPACE" \
       -scheme "$RELEASE_APP_SCHEME" \
       -configuration Debug \

@@ -4,6 +4,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
+export SUNCLUB_SKIP_LOCAL_TUIST_CACHE="${SUNCLUB_SKIP_LOCAL_TUIST_CACHE:-1}"
 setup_local_tooling_env
 
 sh_files=()
