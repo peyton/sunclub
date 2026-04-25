@@ -127,8 +127,8 @@ release-doctor:
 release-preflight:
     just appstore-validate-strict
     just test-python
-    SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit
-    SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build
+    just test-unit
+    just ci-build
 
 [group('app')]
 generate:

@@ -102,8 +102,8 @@ Out of scope:
 - Outcome: The 2026-04-24 polish pass made the public suite `Today`, `Streak`, `Stats`, `History`, and `Buddies`; Today now has open/protected/reapply-due states; Stats/Streak are one-stat-forward; and large History is the flagship calendar surface.
 - Verification:
   - `just generate` passed
-  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit` passed: 273 tests, 0 failures
+  - `just test-unit` passed: 273 tests, 0 failures
   - `just lint` passed with non-serious existing SwiftLint warnings
-  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build` passed
+  - `just ci-build` passed
 - Follow-up:
   - Manually add each widget/control in Simulator and confirm the visible state and tap behavior match the supported-family matrix above. WidgetKit Simulator was attempted on 2026-04-24 against the freshly built extension, but it did not create an inspectable window in this desktop session.

@@ -62,6 +62,11 @@ if [ "$1" = "exec" ]; then
     shift
   fi
   if [ "${1:-}" = "tuist" ]; then
+    shift
+    if [ "${1:-}" = "xcodebuild" ]; then
+      shift
+      exec xcodebuild "$@"
+    fi
     exit 0
   fi
   exec "$@"

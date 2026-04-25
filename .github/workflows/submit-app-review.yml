@@ -39,7 +39,6 @@ jobs:
       SUNCLUB_APP_PRIVACY_COMPLETED: "1"
       SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS: "NOT_MEDICAL_DEVICE"
       SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED: "1"
-      SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
     steps:
       - name: Select Xcode 26.4
         shell: bash
@@ -86,6 +85,10 @@ jobs:
       - name: Validate App Store metadata
         run: mise --locked exec -- uv run python -m scripts.appstore.validate_metadata scripts/appstore/metadata.json
 
+      - name: Prepare Tuist cache
+        timeout-minutes: 10
+        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
+
       - name: Capture App Store screenshots
         timeout-minutes: 45
         run: mise --locked exec -- just appstore-screenshots
@@ -99,7 +102,6 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
-          SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE: "1"
         run: bash scripts/appstore/archive-and-upload.sh --upload-testflight
 
       - name: Submit app for review

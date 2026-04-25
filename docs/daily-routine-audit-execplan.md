@@ -19,7 +19,7 @@ Sunclub already has the foundations of a daily sunscreen habit app: local-first 
 - [x] (2026-04-14 17:18Z) Continued the low-risk implementation pass: Home plan now prioritizes recovery and notification repair, Settings shows the next actual reminder fire time, manual and automation logs share SPF/note normalization, malformed automation URLs fail before writes, Recovery conflict cards show changed fields, History has a delete-undo banner, Scanner has manual fallback and confirmation copy, and automation docs were updated.
 - [x] (2026-04-14 18:10Z) Asked Claude Code for a focused no-tools triage of the remaining candidates. Claude ranked tests, History context actions, stronger delete confirmation, Settings notification-health status, reduced-motion success, read-only status/time-since automation, and CSV/JSON export as safe-no-schema work; it cautioned on notification snooze and any persisted interval/preferences work.
 - [x] (2026-04-14 18:18Z) Implemented the next safe continuation: added a read-only "time since last sunscreen" automation action, URL route, x-callback fields, App Intent, App Shortcut, in-app catalog row, docs, and runtime tests; added Settings notification status for healthy and quiet states; added History context-menu and VoiceOver custom actions plus more specific delete confirmation copy; extended UI tests for Settings notification status and scanner manual fallback.
-- [x] (2026-04-14 18:34Z) Re-ran verification. `just lint`, `just test-python`, `git diff --check`, `rumdl check docs/daily-routine-audit-execplan.md`, targeted Swift parse checks, and direct `swiftc -typecheck` across app sources passed. A bounded `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit` run again stalled in Xcode build-service setup and was terminated by timeout before the XCTest runner started.
+- [x] (2026-04-14 18:34Z) Re-ran verification. `just lint`, `just test-python`, `git diff --check`, `rumdl check docs/daily-routine-audit-execplan.md`, targeted Swift parse checks, and direct `swiftc -typecheck` across app sources passed. A bounded `TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit` run again stalled in Xcode build-service setup and was terminated by timeout before the XCTest runner started.
 
 ## Surprises & Discoveries
 
@@ -33,8 +33,8 @@ Sunclub already has the foundations of a daily sunscreen habit app: local-first 
   Evidence: `/Users/peyton/.local/bin/claude --disallowedTools Edit,MultiEdit,Write -p ...` returned `You've hit your limit · resets 11am (America/Los_Angeles)`.
 - Observation: Claude Code became available later, but direct repo inspection remained too slow for this turn.
   Evidence: A full read-only repo prompt ran for more than 11 minutes without output, and a narrower direct-inspection prompt timed out after 120 seconds. A self-contained prompt with the diff summary completed and produced review output.
-- Observation: Xcode builds in this environment can stall before compiling Swift, even with compile caches disabled.
-  Evidence: `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit` and a generic simulator `xcodebuild build` both stopped after `ExecuteExternalTool ... clang -v -E -dM ... WatchSimulator...` and produced no compiler diagnostics before the bounded timeout terminated them.
+- Observation: Xcode builds in this environment can stall before compiling Swift.
+  Evidence: `TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit` and a generic simulator `xcodebuild build` both stopped after `ExecuteExternalTool ... clang -v -E -dM ... WatchSimulator...` and produced no compiler diagnostics before the bounded timeout terminated them.
 
 ## Decision Log
 
@@ -318,13 +318,13 @@ Observed verification for this implementation:
     xcrun --sdk iphonesimulator swiftc -parse -target arm64-apple-ios18.0-simulator app/Sunclub/Sources/Services/AppState.swift app/Sunclub/Sources/Views/HomeView.swift app/Sunclub/Tests/SunclubTests.swift
     # Passed.
 
-    SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit
+    TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit
     # Timed out after 240 seconds in Xcode build-service setup before Swift compiler diagnostics.
 
-    SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit
+    TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit
     # Timed out again after 360 seconds in Xcode build-service setup before Swift compiler diagnostics.
 
-    xcodebuild build -workspace app/Sunclub.xcworkspace -scheme Sunclub -configuration Debug -destination "generic/platform=iOS Simulator" -derivedDataPath .DerivedData/build-check CODE_SIGNING_ALLOWED=NO SWIFT_ENABLE_COMPILE_CACHE=NO COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO
+    xcodebuild build -workspace app/Sunclub.xcworkspace -scheme Sunclub -configuration Debug -destination "generic/platform=iOS Simulator" -derivedDataPath .DerivedData/build-check CODE_SIGNING_ALLOWED=NO
     # Timed out after 180 seconds in the same build-service setup phase.
 
     xcrun swiftc -typecheck -target arm64-apple-ios18.0-simulator -sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" $(rg --files app/Sunclub/Sources | rg "\.swift$")

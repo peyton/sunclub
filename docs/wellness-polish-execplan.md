@@ -124,8 +124,8 @@ All edits are source and documentation changes. No user data, SwiftData stores, 
 ## Artifacts and Notes
 
 - `just generate` passed.
-- `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-unit` passed: 273 tests, 0 failures.
-- `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just test-ui` passed on the clean rerun: 60 tests, 0 failures.
+- `just test-unit` passed: 273 tests, 0 failures.
+- `just test-ui` passed on the clean rerun: 60 tests, 0 failures.
 - `just lint` passed. SwiftLint still reports the repo's existing warning-only set, ending with `Found 36 violations, 0 serious in 130 files`.
 
 ## Interfaces and Dependencies

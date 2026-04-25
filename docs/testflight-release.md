@@ -40,7 +40,7 @@ Resolved values:
   - marketing version: latest reachable `vX.Y.Z`, fallback `1.0.0`
   - build number: `YYYYMMDD.HHMMSS.0`
 
-Normal build commands regenerate the workspace before `xcodebuild` so the resolved version always reaches the generated project.
+Normal build commands ensure the Tuist workspace is current before `tuist xcodebuild` so the resolved version always reaches the generated project without regenerating on every no-op build.
 
 ## Release Commands
 
@@ -82,7 +82,7 @@ It:
 1. resolves release versions
 2. validates App Store metadata
    - uses draft mode for TestFlight-only fields
-3. runs the Swift unit suite as a launch-safety gate with Xcode compile caches disabled and a timeout
+3. runs the Swift unit suite as a launch-safety gate with a timeout
 4. archives the production app on the pinned `macos-26` runner with stable Xcode `26.4`
 5. ad-hoc signs the unsigned archive with resolved release entitlements before export
 6. exports the production IPA
@@ -108,11 +108,11 @@ just cloudkit-validate-schema
 
 Those CloudKit commands verify Apple-side CloudKit access. The final IPA entitlement report verifies what testers actually receive.
 
-The launch-safety gate must keep `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1` and `timeout-minutes` in the workflow. If that pre-archive test step hangs, the job never reaches the archive step and there is no IPA or entitlement artifact to inspect.
+The launch-safety gate must keep `timeout-minutes` in the workflow. If that pre-archive test step hangs, the job never reaches the archive step and there is no IPA or entitlement artifact to inspect.
 
-Normal master CI has the same Xcode compile-cache failure mode. Keep
-`.github/workflows/ci.yml` macOS iOS test and build jobs cache-disabled and
-bounded with `timeout-minutes`; see `docs/ci-release-stability.md`.
+Normal master CI has the same Xcode stall risk. Keep `.github/workflows/ci.yml`
+macOS iOS test and build jobs bounded with `timeout-minutes`; see
+`docs/ci-release-stability.md`.
 
 Embedded watch targets must explicitly mirror the app version:
 
@@ -147,5 +147,5 @@ Required secrets:
 ## Simulator Notes
 
 - Local simulator builds are unsigned by default.
-- The build scripts disable Xcode compilation caches automatically on beta Xcode installations because the cache service can fail and leave incomplete app bundles.
+- Swift compile caching is enabled by default. The GitHub macOS jobs prepare Tuist's cache service before Xcode-heavy steps and rely on step timeouts plus job-log inspection for stall protection.
 - Unsigned simulator runs fall back to the no-op Cloud sync coordinator when the app-group container is unavailable, which keeps local launch logs clean without changing signed release behavior.

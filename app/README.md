@@ -140,4 +140,4 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
 - The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
 - UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=manualLog` so the flow can be exercised end to end in automation and screenshot capture.
-- Normal build commands regenerate the workspace before building so resolved version metadata reaches the Tuist-generated project.
+- Normal build commands ensure the workspace is current before building through `tuist xcodebuild`, so repeated no-op builds skip unnecessary project regeneration.

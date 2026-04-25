@@ -21,6 +21,15 @@ def _copy_tooling_script(repo_root: Path, name: str) -> None:
     shutil.copy2(REPO_ROOT / "scripts" / "tooling" / name, tooling_dir / name)
 
 
+def _assert_no_compile_cache_overrides(xcodebuild_args: list[str]) -> None:
+    compile_cache = "COMPILE_" + "CACHE"
+    compilation_cache = "COMPILATION_" + "CACHE"
+
+    assert not any(
+        compile_cache in arg or compilation_cache in arg for arg in xcodebuild_args
+    )
+
+
 def test_build_script_forwards_derived_data_path_to_tuist_share(
     tmp_path: Path,
 ) -> None:
@@ -37,15 +46,21 @@ def test_build_script_forwards_derived_data_path_to_tuist_share(
     mise_log = tmp_path / "mise.log"
 
     _write_executable(
-        bin_dir / "xcodebuild",
-        f"""#!/bin/sh
-printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
-""",
-    )
-    _write_executable(
         bin_dir / "mise",
         f"""#!/bin/sh
-printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  shift 4
+  printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "share" ]; then
+  printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
+  exit 0
+fi
+printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
 """,
     )
 
@@ -55,6 +70,8 @@ printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["SUNCLUB_TUIST_SHARE"] = "1"
     env.pop("CI", None)
     env.pop("GITHUB_ACTIONS", None)
     env.pop("ACT", None)
@@ -88,7 +105,9 @@ printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
     assert shared_configuration == "Release"
 
 
-def test_build_script_disables_swift_compile_cache_under_act(tmp_path: Path) -> None:
+def test_build_script_keeps_compile_cache_settings_default_under_act(
+    tmp_path: Path,
+) -> None:
     repo_root = tmp_path / "repo"
     (repo_root / "app").mkdir(parents=True)
 
@@ -102,15 +121,17 @@ def test_build_script_disables_swift_compile_cache_under_act(tmp_path: Path) -> 
     mise_log = tmp_path / "mise.log"
 
     _write_executable(
-        bin_dir / "xcodebuild",
-        f"""#!/bin/sh
-printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
-""",
-    )
-    _write_executable(
         bin_dir / "mise",
         f"""#!/bin/sh
-printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  shift 4
+  printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
+  exit 0
+fi
+printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
 """,
     )
 
@@ -132,14 +153,12 @@ printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
     )
 
     xcodebuild_args = xcodebuild_log.read_text().splitlines()
-    assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_ENABLE_CACHING=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_ENABLE_PLUGIN=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in xcodebuild_args
+    _assert_no_compile_cache_overrides(xcodebuild_args)
+    assert xcodebuild_args[0] == "-workspace"
     assert not mise_log.exists()
 
 
-def test_build_script_disables_swift_compile_cache_on_beta_xcode(
+def test_build_script_treats_post_success_tuist_trace_trap_as_success(
     tmp_path: Path,
 ) -> None:
     repo_root = tmp_path / "repo"
@@ -152,108 +171,45 @@ def test_build_script_disables_swift_compile_cache_on_beta_xcode(
     bin_dir.mkdir()
 
     xcodebuild_log = tmp_path / "xcodebuild.log"
-    mise_log = tmp_path / "mise.log"
 
-    _write_executable(
-        bin_dir / "xcodebuild",
-        f"""#!/bin/sh
-if [ "$1" = "-version" ]; then
-  printf 'Xcode 26.5 Beta\\nBuild version 17F5012f\\n'
-  exit 0
-fi
-printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
-""",
-    )
     _write_executable(
         bin_dir / "mise",
         f"""#!/bin/sh
-printf '%s\n' "$@" > {shlex.quote(str(mise_log))}
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  shift 4
+  printf '%s\\n' "$@" > {shlex.quote(str(xcodebuild_log))}
+  printf 'Build Succeeded\\n'
+  exit 133
+fi
+exit 0
 """,
     )
 
     env = os.environ.copy()
-    env["SUNCLUB_TUIST_SHARE"] = "0"
-    env["CI"] = "true"
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["SUNCLUB_TUIST_SHARE"] = "0"
 
-    subprocess.run(
+    result = subprocess.run(
         [
             "bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
         ],
-        check=True,
+        check=False,
         cwd=repo_root,
         env=env,
+        text=True,
+        capture_output=True,
     )
 
-    xcodebuild_args = xcodebuild_log.read_text().splitlines()
-    assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_ENABLE_CACHING=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_ENABLE_PLUGIN=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in xcodebuild_args
-    assert not mise_log.exists()
-
-
-def test_build_script_detects_beta_xcode_from_developer_dir(tmp_path: Path) -> None:
-    repo_root = tmp_path / "repo"
-    (repo_root / "app").mkdir(parents=True)
-
-    for script_name in ("build.sh", "common.sh", "sunclub.env"):
-        _copy_tooling_script(repo_root, script_name)
-
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-
-    xcodebuild_log = tmp_path / "xcodebuild.log"
-    mise_log = tmp_path / "mise.log"
-
-    _write_executable(
-        bin_dir / "xcodebuild",
-        f"""#!/bin/sh
-if [ "$1" = "-version" ]; then
-  printf 'Xcode 26.5\\nBuild version 17F5012f\\n'
-  exit 0
-fi
-printf '%s\\n' "$@" > {shlex.quote(str(xcodebuild_log))}
-""",
-    )
-    _write_executable(
-        bin_dir / "xcode-select",
-        """#!/bin/sh
-printf '/Applications/Xcode-26.5.0-Beta.app/Contents/Developer\\n'
-""",
-    )
-    _write_executable(
-        bin_dir / "mise",
-        f"""#!/bin/sh
-printf '%s\\n' "$@" > {shlex.quote(str(mise_log))}
-""",
-    )
-
-    env = os.environ.copy()
-    env["SUNCLUB_TUIST_SHARE"] = "0"
-    env["CI"] = "true"
-    env["PATH"] = f"{bin_dir}:{env['PATH']}"
-    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
-
-    subprocess.run(
-        [
-            "bash",
-            str(repo_root / "scripts" / "tooling" / "build.sh"),
-            "--skip-generate",
-        ],
-        check=True,
-        cwd=repo_root,
-        env=env,
-    )
-
-    xcodebuild_args = xcodebuild_log.read_text().splitlines()
-    assert "COMPILATION_CACHE_ENABLE_CACHING=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_ENABLE_PLUGIN=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_REMOTE_SERVICE_PATH=" in xcodebuild_args
-    assert not mise_log.exists()
+    assert result.returncode == 0
+    assert "Trace/BPT trap after a successful Xcode result" in result.stderr
+    assert xcodebuild_log.read_text().splitlines()[0] == "-workspace"
 
 
 def test_setup_local_tooling_env_exports_tuist_manifest_variables(
@@ -581,7 +537,7 @@ def test_test_ios_script_uses_release_scheme_for_tests_by_default(
 
     _write_executable(
         bin_dir / "xcodebuild",
-        f"""#!/bin/sh
+        """#!/bin/sh
 if [ "$1" = "-version" ]; then
   printf 'Xcode 26.5 Beta\\nBuild version 17F5012f\\n'
   exit 0
@@ -605,12 +561,17 @@ exit 0
     )
     _write_executable(
         bin_dir / "mise",
-        """#!/bin/sh
+        f"""#!/bin/sh
 if [ "$1" = "trust" ]; then
   exit 0
 fi
 if [ "$1" = "exec" ] && [ "$3" = "uv" ] && [ "$4" = "run" ] && [ "$5" = "python" ] && [ "$6" = "-m" ] && [ "$7" = "scripts.resolve_simulator" ]; then
   printf 'SIM-UDID\n'
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  shift 4
+  printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
   exit 0
 fi
 exit 0
@@ -620,6 +581,7 @@ exit 0
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
 
     subprocess.run(
         [
@@ -636,8 +598,7 @@ exit 0
     xcodebuild_args = xcodebuild_log.read_text().splitlines()
     assert xcodebuild_args[xcodebuild_args.index("-scheme") + 1] == "Sunclub"
     assert "-only-testing:SunclubTests" in xcodebuild_args
-    assert "SWIFT_ENABLE_COMPILE_CACHE=NO" in xcodebuild_args
-    assert "COMPILATION_CACHE_ENABLE_CACHING=NO" in xcodebuild_args
+    _assert_no_compile_cache_overrides(xcodebuild_args)
 
 
 def test_test_ios_script_does_not_retry_after_xctest_assertion(
@@ -657,7 +618,7 @@ def test_test_ios_script_does_not_retry_after_xctest_assertion(
 
     _write_executable(
         bin_dir / "xcodebuild",
-        f"""#!/bin/sh
+        """#!/bin/sh
 if [ "$1" = "-version" ]; then
   printf 'Xcode 26.5 Beta\\nBuild version 17F5012f\\n'
   exit 0
@@ -670,12 +631,7 @@ Information about workspace "Sunclub":
 EOF
   exit 0
 fi
-printf 'attempt\\n' >> {shlex.quote(str(attempt_log))}
-cat <<'EOF'
-/repo/app/Sunclub/UITests/SunclubUITests.swift:322: error: -[SunclubUITests.SunclubUITests testAccessibilityScorecardCoreTasksRemainUsable] : XCTAssertTrue failed
-Simulator device failed to launch app.peyton.sunclub.dev.UITests.xctrunner.
-EOF
-exit 65
+exit 1
 """,
     )
     _write_executable(
@@ -686,13 +642,21 @@ exit 0
     )
     _write_executable(
         bin_dir / "mise",
-        """#!/bin/sh
+        f"""#!/bin/sh
 if [ "$1" = "trust" ]; then
   exit 0
 fi
 if [ "$1" = "exec" ] && [ "$3" = "uv" ] && [ "$4" = "run" ] && [ "$5" = "python" ] && [ "$6" = "-m" ] && [ "$7" = "scripts.resolve_simulator" ]; then
   printf 'SIM-UDID\n'
   exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  printf 'attempt\\n' >> {shlex.quote(str(attempt_log))}
+  cat <<'EOF'
+/repo/app/Sunclub/UITests/SunclubUITests.swift:322: error: -[SunclubUITests.SunclubUITests testAccessibilityScorecardCoreTasksRemainUsable] : XCTAssertTrue failed
+Simulator device failed to launch app.peyton.sunclub.dev.UITests.xctrunner.
+EOF
+  exit 65
 fi
 exit 0
 """,
@@ -701,6 +665,7 @@ exit 0
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
 
     result = subprocess.run(
         [
@@ -731,15 +696,14 @@ def test_build_script_ignores_tuist_share_failures(tmp_path: Path) -> None:
     xcodebuild_log = tmp_path / "xcodebuild.log"
 
     _write_executable(
-        bin_dir / "xcodebuild",
-        f"""#!/bin/sh
-printf '%s\\n' "$@" > {shlex.quote(str(xcodebuild_log))}
-""",
-    )
-    _write_executable(
         bin_dir / "mise",
-        """#!/bin/sh
+        f"""#!/bin/sh
 if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  shift 4
+  printf '%s\\n' "$@" > {shlex.quote(str(xcodebuild_log))}
   exit 0
 fi
 if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "share" ]; then
@@ -752,6 +716,8 @@ exit 0
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["SUNCLUB_TUIST_SHARE"] = "1"
 
     subprocess.run(
         [
