@@ -121,6 +121,15 @@ enum AppRadius {
     static let control: CGFloat = 14
 }
 
+enum SunLayout {
+    enum ContentWidth {
+        static let wizard: CGFloat = 640
+        static let form: CGFloat = 720
+        static let readable: CGFloat = 860
+        static let wideReadable: CGFloat = 1040
+    }
+}
+
 enum SunMotion {
     static func easeInOut(duration: Double, reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeInOut(duration: duration)
@@ -291,13 +300,25 @@ struct SunLightScreen<Content: View, Footer: View>: View {
     let content: Content
     let footer: Footer
     let contentAlignment: Alignment
+    let contentMaxWidth: CGFloat?
+    let contentFrameAlignment: Alignment
+    let footerMaxWidth: CGFloat?
+    let footerFrameAlignment: Alignment
 
     init(
         contentAlignment: Alignment = .topLeading,
+        contentMaxWidth: CGFloat? = nil,
+        contentFrameAlignment: Alignment = .leading,
+        footerMaxWidth: CGFloat? = nil,
+        footerFrameAlignment: Alignment = .center,
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
         self.contentAlignment = contentAlignment
+        self.contentMaxWidth = contentMaxWidth
+        self.contentFrameAlignment = contentFrameAlignment
+        self.footerMaxWidth = footerMaxWidth
+        self.footerFrameAlignment = footerFrameAlignment
         self.content = content()
         self.footer = footer()
     }
@@ -310,7 +331,8 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         VStack(alignment: .leading, spacing: 28) {
                             content
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: contentMaxWidth ?? .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
                         .padding(.bottom, 18)
@@ -319,9 +341,23 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                     .scrollDismissesKeyboard(.interactively)
 
                     footer
+                        .frame(maxWidth: footerMaxWidth ?? .infinity)
+                        .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
                         .padding(.horizontal, 24)
                         .padding(.top, 6)
                         .padding(.bottom, 24)
+                        .background {
+                            LinearGradient(
+                                colors: [
+                                    AppPalette.cardFill.opacity(0),
+                                    AppPalette.cardFill.opacity(0.92),
+                                    AppPalette.cardFill.opacity(0.98)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .ignoresSafeArea(edges: .bottom)
+                        }
                 }
             }
 
@@ -333,8 +369,18 @@ struct SunLightScreen<Content: View, Footer: View>: View {
 }
 
 extension SunLightScreen where Footer == EmptyView {
-    init(contentAlignment: Alignment = .topLeading, @ViewBuilder content: () -> Content) {
-        self.init(contentAlignment: contentAlignment, content: content) { EmptyView() }
+    init(
+        contentAlignment: Alignment = .topLeading,
+        contentMaxWidth: CGFloat? = nil,
+        contentFrameAlignment: Alignment = .leading,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(
+            contentAlignment: contentAlignment,
+            contentMaxWidth: contentMaxWidth,
+            contentFrameAlignment: contentFrameAlignment,
+            content: content
+        ) { EmptyView() }
     }
 }
 

@@ -9,7 +9,10 @@ struct AutomationView: View {
     @State private var feedbackMessage = "Ready"
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.wideReadable,
+            contentFrameAlignment: .center
+        ) {
             VStack(alignment: .leading, spacing: 24) {
                 SunLightHeader(title: "Automation", showsBack: true, onBack: {
                     router.goBack()

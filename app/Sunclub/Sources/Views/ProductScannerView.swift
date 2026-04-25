@@ -56,7 +56,10 @@ struct ProductScannerView: View {
     }
 
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.form,
+            contentFrameAlignment: .center
+        ) {
             VStack(alignment: .leading, spacing: 24) {
                 SunLightHeader(title: "Product Scanner", showsBack: true, onBack: {
                     router.goBack()
