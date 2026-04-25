@@ -25,11 +25,7 @@ struct RootView: View {
     @ViewBuilder
     private var rootScreen: some View {
         if appState.settings.hasCompletedOnboarding {
-            if RuntimeEnvironment.shouldUseLegacyHome {
-                HomeView()
-            } else {
-                TimelineHomeView()
-            }
+            TimelineHomeView()
         } else {
             WelcomeView()
         }
@@ -44,11 +40,7 @@ struct RootView: View {
         case .enableNotifications:
             EnableNotificationsView()
         case .home:
-            if RuntimeEnvironment.shouldUseLegacyHome {
-                HomeView()
-            } else {
-                TimelineHomeView()
-            }
+            TimelineHomeView()
         case .verifySuccess:
             VerificationSuccessView()
         case .reapplyCheckIn:

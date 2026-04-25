@@ -45,7 +45,7 @@ struct ReapplyCheckInView: View {
             SunclubCard(cornerRadius: 20, padding: 16) {
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Today stays one log", systemImage: "arrow.clockwise.circle.fill")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(AppFont.rounded(size: 17, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(presentation.detail)
@@ -58,16 +58,16 @@ struct ReapplyCheckInView: View {
             if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
                 HStack(spacing: 8) {
                     Image(systemName: "drop.fill")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.sun)
 
                     Text("Reapply #\(record.reapplyCount) today")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
 
                     if let lastReapplied = record.lastReappliedAt {
                         Text("· \(lastReapplied, style: .relative) ago")
-                            .font(.system(size: 13))
+                            .font(AppFont.rounded(size: 13))
                             .foregroundStyle(AppPalette.softInk)
                     }
                 }

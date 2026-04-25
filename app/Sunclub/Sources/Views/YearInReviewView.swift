@@ -56,12 +56,12 @@ struct YearInReviewView: View {
     private func bigNumberCard(value: String, label: String, symbol: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: symbol)
-                .font(.system(size: 22, weight: .semibold))
+                .font(AppFont.rounded(size: 22, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
                 .accessibilityHidden(true)
 
             Text(value)
-                .font(.system(size: 42, weight: .heavy))
+                .font(AppFont.rounded(size: 42, weight: .heavy))
                 .foregroundStyle(AppPalette.ink)
 
             Text(label)
@@ -79,11 +79,11 @@ struct YearInReviewView: View {
         if let spf = summary.mostUsedSPF {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Most Used SPF")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 Text(spf.title)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(AppFont.rounded(size: 26, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(spf.detail)
@@ -104,7 +104,7 @@ struct YearInReviewView: View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Monthly Consistency")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 HStack(alignment: .bottom, spacing: 4) {
@@ -114,7 +114,7 @@ struct YearInReviewView: View {
                                 .accessibilityHidden(true)
 
                             Text(entry.monthLabel.prefix(1))
-                                .font(.system(size: 10, weight: .medium))
+                                .font(AppFont.rounded(size: 10, weight: .medium))
                                 .foregroundStyle(AppPalette.softInk)
                         }
                         .frame(maxWidth: .infinity)
@@ -135,7 +135,7 @@ struct YearInReviewView: View {
             let barHeight = max(geo.size.height * ratio, 4)
             VStack {
                 Spacer(minLength: 0)
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.tiny, style: .continuous)
                     .fill(AppPalette.sun)
                     .frame(height: barHeight)
             }

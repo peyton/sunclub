@@ -17,14 +17,14 @@ struct SunDayStrip: View {
     let allowsFuture: Bool
 
     private let calendar = Calendar.current
-    private let columnWidth: CGFloat = 56
-    private let chipBaseWidth: CGFloat = 40
+    private let columnWidth: CGFloat = 60
+    private let chipBaseWidth: CGFloat = 48
     private let chipBaseHeight: CGFloat = 56
-    private let currentChipWidth: CGFloat = 44
-    private let currentChipHeight: CGFloat = 60
-    private let selectedChipWidth: CGFloat = 48
-    private let selectedChipHeight: CGFloat = 66
-    private let columnSpacing: CGFloat = 10
+    private let currentChipWidth: CGFloat = 50
+    private let currentChipHeight: CGFloat = 58
+    private let selectedChipWidth: CGFloat = 54
+    private let selectedChipHeight: CGFloat = 64
+    private let columnSpacing: CGFloat = 8
     private let weekdayRowHeight: CGFloat = 32
 
     @State private var scrollTargetDay: Date?
@@ -94,21 +94,9 @@ struct SunDayStrip: View {
             VStack(spacing: 4) {
                 weekdayLabel(for: state)
 
-                chip(for: state)
-                    .frame(width: chipWidth(for: state), height: chipHeight(for: state))
-                    .overlay {
-                        if state.isCurrentStreak, state.status == .applied {
-                            Capsule()
-                                .stroke(AppPalette.streakAccent.opacity(0.8), lineWidth: 1.3)
-                                .frame(width: chipWidth(for: state) + 6, height: chipHeight(for: state) + 6)
-                                .allowsHitTesting(false)
-                        }
-                    }
+                dayCapsule(for: state)
                     .animation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion), value: state.isSelected)
                     .animation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion), value: state.isToday)
-
-                footerDot(for: state)
-                    .frame(height: 8)
             }
             .frame(width: columnWidth, height: weekdayRowHeight + selectedChipHeight + 14)
             .contentShape(Rectangle())
@@ -133,13 +121,9 @@ struct SunDayStrip: View {
                     .accessibilityHidden(true)
 
                 Text(state.weekdayLetter)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(selectedIndicatorForeground)
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppPalette.ink)
                     .frame(width: 24, height: 24)
-                    .background {
-                        Circle()
-                            .fill(selectedIndicatorFill)
-                    }
             }
             .frame(width: columnWidth, height: weekdayRowHeight)
         } else {
@@ -148,7 +132,7 @@ struct SunDayStrip: View {
                     .frame(width: 10, height: 7)
 
                 Text(state.weekdayLetter)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppTextStyle.captionMedium.font)
                     .foregroundStyle(state.isToday ? AppPalette.ink : AppPalette.softInk)
                     .frame(width: 24, height: 24)
             }
@@ -162,6 +146,48 @@ struct SunDayStrip: View {
 
     private var selectedIndicatorForeground: Color {
         colorScheme == .dark ? AppPalette.onAccent : AppPalette.white
+    }
+
+    private func dayCapsule(for state: ChipState) -> some View {
+        DayCapsule(
+            fill: dayCapsuleFill(for: state),
+            stroke: dayCapsuleStroke(for: state),
+            isSelected: state.isSelected,
+            isFuture: state.status == .future,
+            isComplete: state.status == .applied,
+            showsSecondaryDot: state.hasSecondaryActivity,
+            size: chipWidth(for: state)
+        )
+    }
+
+    private func dayCapsuleFill(for state: ChipState) -> Color {
+        switch state.status {
+        case .applied:
+            return filledColor(for: state)
+        case .todayPending:
+            return AppPalette.warmGlow.opacity(0.62)
+        case .future:
+            return AppPalette.cardFill.opacity(0.40)
+        case .missed:
+            return AppPalette.muted.opacity(0.10)
+        }
+    }
+
+    private func dayCapsuleStroke(for state: ChipState) -> Color {
+        if state.isSelected {
+            return selectedIndicatorFill
+        }
+
+        switch state.status {
+        case .applied:
+            return filledColor(for: state).opacity(0.78)
+        case .todayPending:
+            return AppPalette.sun.opacity(0.66)
+        case .future:
+            return AppPalette.muted.opacity(0.26)
+        case .missed:
+            return AppPalette.hairlineStroke
+        }
     }
 
     private func chipWidth(for state: ChipState) -> CGFloat {
@@ -210,12 +236,7 @@ struct SunDayStrip: View {
                         lineWidth: state.isSelected ? 2 : 0.8
                     )
             }
-            .shadow(
-                color: state.isSelected ? selectedIndicatorFill.opacity(colorScheme == .dark ? 0.18 : 0.12) : .clear,
-                radius: state.isSelected ? 4 : 0,
-                x: 0,
-                y: 2
-            )
+            .appShadow(state.isSelected ? AppShadow.soft : nil)
     }
 
     private func filledColor(for state: ChipState) -> Color {
@@ -264,15 +285,15 @@ struct SunDayStrip: View {
     private func uvForecastColor(for level: UVLevel?) -> Color {
         switch level {
         case .low:
-            return Color(red: 0.18, green: 0.62, blue: 0.32)
+            return AppColor.success
         case .moderate:
-            return Color(red: 0.93, green: 0.74, blue: 0.10)
+            return AppColor.accentSoft
         case .high:
-            return Color(red: 0.94, green: 0.48, blue: 0.12)
+            return AppColor.accent
         case .veryHigh:
-            return Color(red: 0.82, green: 0.16, blue: 0.18)
+            return AppColor.warning
         case .extreme:
-            return Color(red: 0.48, green: 0.26, blue: 0.74)
+            return AppPalette.pool
         case .unknown, nil:
             return AppPalette.muted
         }
@@ -339,16 +360,16 @@ struct SunDayStrip: View {
     private func accessibleRow(for day: Date) -> some View {
         let state = chipState(for: day)
         return HStack(spacing: 12) {
-            chip(for: state)
+            dayCapsule(for: state)
                 .frame(width: selectedChipWidth, height: selectedChipHeight)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
 
                 Text(state.statusLabel)
-                    .font(.system(size: 13))
+                    .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
             }
 
@@ -356,7 +377,7 @@ struct SunDayStrip: View {
 
             if state.isSelected {
                 Image(systemName: "chevron.right.circle.fill")
-                    .font(.system(size: 16))
+                    .font(AppFont.rounded(size: 16))
                     .foregroundStyle(AppPalette.sun)
             }
         }
@@ -364,11 +385,11 @@ struct SunDayStrip: View {
         .padding(.vertical, 10)
         .frame(minHeight: 48)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .fill(state.isSelected ? AppPalette.warmGlow.opacity(0.5) : AppPalette.cardFill.opacity(0.62))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)

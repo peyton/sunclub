@@ -28,7 +28,7 @@ struct VerificationSuccessView: View {
                         .frame(width: 42, height: 42)
                         .overlay {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 18, weight: .bold))
+                                .font(AppFont.rounded(size: 18, weight: .bold))
                                 .foregroundStyle(AppPalette.onAccent)
                         }
                         .offset(x: 10, y: 8)
@@ -38,18 +38,18 @@ struct VerificationSuccessView: View {
 
                 VStack(spacing: 10) {
                     Text(presentation.title)
-                        .font(.system(size: 30, weight: .bold))
+                        .font(AppFont.rounded(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("success.title")
 
                     Text(presentation.detail)
-                        .font(.system(size: 17))
+                        .font(AppFont.rounded(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
 
                     if presentation.isPersonalBest && presentation.streak > 1 {
                         Text("New personal best!")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(AppFont.rounded(size: 15, weight: .semibold))
                             .foregroundStyle(AppPalette.sun)
                             .accessibilityIdentifier("success.personalBest")
                     }
@@ -166,23 +166,23 @@ struct VerificationSuccessView: View {
     private var reapplyConfirmation: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Next up")
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.rounded(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             HStack(spacing: 10) {
                 Image(systemName: appState.reapplyReminderPlan.confirmationSymbolName)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(AppFont.rounded(size: 16, weight: .medium))
                     .foregroundStyle(AppPalette.sun)
 
                 Text(appState.reapplyReminderPlan.confirmationText)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppFont.rounded(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .accessibilityIdentifier("success.reapplyMessage")
             }
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.4))
         )
         .accessibilityElement(children: .combine)

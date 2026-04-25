@@ -102,11 +102,11 @@ struct HistoryView: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Entry deleted")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(AppFont.rounded(size: 14, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(lastDeletedDay.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(AppFont.rounded(size: 13, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
                 }
 
@@ -118,18 +118,18 @@ struct HistoryView: View {
                     self.lastDeletedBatchID = nil
                     self.lastDeletedDay = nil
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("history.undoDelete")
             }
             .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                     .fill(AppPalette.cardFill.opacity(0.76))
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                     .stroke(AppPalette.cardStroke, lineWidth: 1)
             }
             .accessibilityElement(children: .contain)
@@ -149,7 +149,7 @@ struct HistoryView: View {
             Spacer()
 
             Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
-                .font(.system(size: 24, weight: .semibold))
+                .font(AppFont.rounded(size: 24, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("history.monthTitle")
 
@@ -171,7 +171,7 @@ struct HistoryView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
+                .font(AppFont.rounded(size: 16, weight: .semibold))
                 .foregroundStyle(isEnabled ? AppPalette.ink : AppPalette.muted)
         }
         .buttonStyle(HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))
@@ -188,23 +188,23 @@ struct HistoryView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(AppFont.rounded(size: 20, weight: .semibold))
                     .foregroundStyle(AppPalette.sun)
                     .frame(width: 30, height: 30)
                     .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(currentStreak > 0 ? "Current Streak" : "No Current Streak")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(AppFont.rounded(size: 14, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
 
                     Text(currentStreak == 1 ? "1 day" : "\(currentStreak) days")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(AppFont.rounded(size: 28, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("history.currentStreakValue")
 
                     Text(startText)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
                         .accessibilityIdentifier("history.currentStreakStart")
                 }
@@ -222,11 +222,11 @@ struct HistoryView: View {
                 Button("Jump to Today") {
                     jumpToToday()
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.ink)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .fill(AppPalette.warmGlow.opacity(0.5))
                 )
                 .buttonStyle(.plain)
@@ -237,7 +237,7 @@ struct HistoryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityElement(children: .contain)
@@ -251,16 +251,16 @@ struct HistoryView: View {
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(value)
-                .font(.system(size: 18, weight: .bold))
+                .font(AppFont.rounded(size: 18, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(label)
-                .font(.system(size: 12, weight: .semibold))
+                .font(AppFont.rounded(size: 12, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.76))
         )
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -277,7 +277,7 @@ struct HistoryView: View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
             ForEach(weekdaySymbols, id: \.self) { symbol in
                 Text(symbol)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(AppFont.rounded(size: 12, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .frame(maxWidth: .infinity)
             }
@@ -330,11 +330,11 @@ struct HistoryView: View {
     ) -> some View {
         HStack(spacing: 5) {
             Image(systemName: symbol)
-                .font(.system(size: 10, weight: .semibold))
+                .font(AppFont.rounded(size: 10, weight: .semibold))
                 .foregroundStyle(color)
 
             Text(title)
-                .font(.system(size: 11, weight: .medium))
+                .font(AppFont.rounded(size: 11, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier(accessibilityIdentifier)
@@ -370,7 +370,7 @@ struct HistoryView: View {
 
         return HStack(spacing: 10) {
             Image(systemName: "calendar.badge.plus")
-                .font(.system(size: 15, weight: .semibold))
+                .font(AppFont.rounded(size: 15, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
                 .accessibilityHidden(true)
 
@@ -495,7 +495,7 @@ struct HistoryView: View {
     private func calendarDayContent(day: Date, state: HistoryDayCellState) -> some View {
         VStack(spacing: 2) {
             Text("\(calendar.component(.day, from: day))")
-                .font(.system(size: 15, weight: state.isToday ? .bold : .regular))
+                .font(AppFont.rounded(size: 15, weight: state.isToday ? .bold : .regular))
                 .foregroundStyle(
                     dayTextColor(
                         isCurrentMonth: state.isCurrentMonth,
@@ -505,17 +505,17 @@ struct HistoryView: View {
                 )
 
             Image(systemName: dayMarkerSymbol(for: state.status))
-                .font(.system(size: 7, weight: .semibold))
+                .font(AppFont.rounded(size: 7, weight: .semibold))
                 .foregroundStyle(state.isCurrentMonth ? dayMarkerColor(for: state.status) : Color.clear)
                 .frame(height: 8)
         }
         .frame(maxWidth: .infinity, minHeight: 46)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .fill(dayBackgroundColor(isSelected: state.isSelected, isCurrentStreak: state.isCurrentStreak))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .stroke(
                     dayBorderColor(isSelected: state.isSelected, isCurrentStreak: state.isCurrentStreak),
                     lineWidth: state.isSelected ? 1.5 : 1
@@ -595,12 +595,12 @@ struct HistoryView: View {
 
         VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             if isCurrentStreak {
                 Label("Part of your current streak", systemImage: "flame.fill")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.streakAccent)
                     .accessibilityIdentifier("history.currentStreakBadge")
             }
@@ -609,11 +609,11 @@ struct HistoryView: View {
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
@@ -625,12 +625,12 @@ struct HistoryView: View {
     ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: statusSymbol(for: status))
-                .font(.system(size: 18, weight: .semibold))
+                .font(AppFont.rounded(size: 18, weight: .semibold))
                 .foregroundStyle(statusColor(for: status))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(statusTitle(for: status))
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(AppFont.rounded(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                     .accessibilityIdentifier("history.statusTitle")
 
@@ -647,11 +647,11 @@ struct HistoryView: View {
     private func dayRecordMetadata(_ record: DailyRecord?) -> some View {
         if let record {
             Text("Verified via \(record.method.displayName) at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
         } else {
             Text("No entry for this day yet.")
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
         }
     }
@@ -660,13 +660,13 @@ struct HistoryView: View {
     private func dayRecordDetails(_ record: DailyRecord?) -> some View {
         if let spf = record?.spfLevel {
             Text("SPF \(spf)")
-                .font(.system(size: 13, weight: .medium))
+                .font(AppFont.rounded(size: 13, weight: .medium))
                 .foregroundStyle(AppPalette.sun)
         }
 
         if let notes = record?.trimmedNotes {
             Text(notes)
-                .font(.system(size: 13))
+                .font(AppFont.rounded(size: 13))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("history.dayNote")
@@ -678,11 +678,11 @@ struct HistoryView: View {
         if let conflict {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Merged for review")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(conflict.summary)
-                    .font(.system(size: 13))
+                    .font(AppFont.rounded(size: 13))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -917,27 +917,25 @@ struct HistoryView: View {
             }
             .accessibilityLabel("\(statusTitle(for: status)) entry actions")
         } else {
-            Button(isToday(day) ? "Log Today" : "Backfill Day") {
+            PrimaryButton(
+                isToday(day) ? "Log Today" : "Backfill Day",
+                systemImage: isToday(day) ? "sun.max" : "calendar.badge.plus",
+                identifier: "history.backfillRecord"
+            ) {
                 editorPresentation = HistoryEditorPresentation(day: day)
             }
-            .buttonStyle(SunPrimaryButtonStyle())
-            .accessibilityIdentifier("history.backfillRecord")
         }
     }
 
     @ViewBuilder
     private func loggedDayActions(for day: Date) -> some View {
-        Button("Edit Entry") {
+        PrimaryButton("Edit Entry", systemImage: "pencil", identifier: "history.editRecord") {
             editorPresentation = HistoryEditorPresentation(day: day)
         }
-        .buttonStyle(SunPrimaryButtonStyle())
-        .accessibilityIdentifier("history.editRecord")
 
-        Button("Delete") {
+        SecondaryPillButton("Delete", systemImage: "trash", identifier: "history.deleteRecord") {
             dayPendingDeletion = day
         }
-        .buttonStyle(SunSecondaryButtonStyle())
-        .accessibilityIdentifier("history.deleteRecord")
     }
 
     private func isToday(_ day: Date) -> Bool {
@@ -1065,20 +1063,20 @@ struct HistoryView: View {
     private func statBubble(value: String, label: String) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(AppFont.rounded(size: 12, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                 .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
@@ -1091,21 +1089,21 @@ struct HistoryView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.rounded(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             Text(value)
-                .font(.system(size: 20, weight: .bold))
+                .font(AppFont.rounded(size: 20, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(detail)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityElement(children: .combine)
@@ -1294,12 +1292,12 @@ struct HistoryEditorTestHarnessView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 12) {
                 Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                    .font(.system(size: 20, weight: .bold))
+                    .font(AppFont.rounded(size: 20, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .accessibilityIdentifier("historyHarness.day")
 
                 Text(spfSummary)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(AppFont.rounded(size: 16, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .accessibilityIdentifier("historyHarness.spf")
             }
@@ -1361,11 +1359,11 @@ private struct HistoryMonthNavigationButtonStyle: ButtonStyle {
         configuration.label
             .frame(width: 44, height: 44)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                     .fill(controlFill)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                     .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.88 : 1)

@@ -829,42 +829,6 @@ final class SunclubTests: XCTestCase {
         XCTAssertTrue(settings.accountability.pokeHistory.isEmpty)
     }
 
-    func testHomeGreetingFormatterUsesPreferredDisplayNameWhenPresent() throws {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
-
-        func date(hour: Int) throws -> Date {
-            try XCTUnwrap(
-                calendar.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: hour))
-            )
-        }
-
-        XCTAssertEqual(
-            HomeGreetingFormatter.greeting(for: try date(hour: 8), preferredDisplayName: "", calendar: calendar),
-            "Good morning"
-        )
-        XCTAssertEqual(
-            HomeGreetingFormatter.greeting(for: try date(hour: 8), preferredDisplayName: "   ", calendar: calendar),
-            "Good morning"
-        )
-        XCTAssertEqual(
-            HomeGreetingFormatter.greeting(for: try date(hour: 8), preferredDisplayName: "Peyton", calendar: calendar),
-            "Good morning, Peyton"
-        )
-        XCTAssertEqual(
-            HomeGreetingFormatter.greeting(
-                for: try date(hour: 13),
-                preferredDisplayName: "Peyton Appleseed",
-                calendar: calendar
-            ),
-            "Good afternoon, Peyton Appleseed"
-        )
-        XCTAssertEqual(
-            HomeGreetingFormatter.greeting(for: try date(hour: 20), preferredDisplayName: "Peyton", calendar: calendar),
-            "Good evening, Peyton"
-        )
-    }
-
     @MainActor
     func testPreferredDisplayNameStoresTrimmedShareProfileName() throws {
         let state = try makeAppState()

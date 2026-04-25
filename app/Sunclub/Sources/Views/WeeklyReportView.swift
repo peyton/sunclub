@@ -29,12 +29,10 @@ struct WeeklyReportView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            Button("View Full History") {
+            SecondaryPillButton("View Full History", systemImage: "calendar", identifier: "weekly.viewFullHistory") {
                 router.push(.history)
             }
-            .buttonStyle(SunSecondaryButtonStyle())
             .accessibilityHint("Opens your full calendar history with your current streak highlighted.")
-            .accessibilityIdentifier("weekly.viewFullHistory")
         }
         .sheet(item: $editorPresentation, onDismiss: refreshReport) { presentation in
             HistoryRecordEditorView(
@@ -70,7 +68,7 @@ struct WeeklyReportView: View {
     private var weeklyChart: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("This week")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             LazyVGrid(columns: weekEntryColumns, spacing: 10) {
@@ -80,21 +78,21 @@ struct WeeklyReportView: View {
                     } label: {
                         VStack(spacing: 8) {
                             Text(entry.date.formatted(.dateTime.weekday(.narrow)))
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(AppFont.rounded(size: 12, weight: .semibold))
                                 .foregroundStyle(AppPalette.softInk)
 
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                                 .fill(entry.applied ? AppPalette.sun : AppPalette.cardFill.opacity(0.9))
                                 .overlay {
                                     if entry.applied {
                                         Image(systemName: "checkmark")
-                                            .font(.system(size: 14, weight: .bold))
+                                            .font(AppFont.rounded(size: 14, weight: .bold))
                                             .foregroundStyle(AppPalette.onAccent)
                                     }
                                 }
                                 .overlay {
                                     if isToday(entry.date) {
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                                             .stroke(AppPalette.ink.opacity(0.18), lineWidth: 1)
                                     }
                                 }
@@ -102,7 +100,7 @@ struct WeeklyReportView: View {
                                 .frame(height: 46)
 
                             Text(entry.date.formatted(.dateTime.day()))
-                                .font(.system(size: 12, weight: .medium))
+                                .font(AppFont.rounded(size: 12, weight: .medium))
                                 .foregroundStyle(AppPalette.softInk)
                         }
                         .frame(minWidth: 44, minHeight: 44)
@@ -117,13 +115,21 @@ struct WeeklyReportView: View {
             }
 
             Text(report.missedDays.isEmpty ? "Every day is logged." : "Tap a blank day to backfill.")
-                .font(.system(size: 14, weight: .medium))
+                .font(AppFont.rounded(size: 14, weight: .medium))
                 .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : AppPalette.ink)
                 .multilineTextAlignment(.leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .sunGlassCard(cornerRadius: 20)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .fill(AppPalette.cardFill.opacity(0.86))
+                .appShadow(AppShadow.soft)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
+        }
     }
 
     private var weeklyPostcard: some View {
@@ -137,7 +143,7 @@ struct WeeklyReportView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(report.appliedSummaryText)
-                    .font(.system(size: 58, weight: .light))
+                    .font(AppFont.rounded(size: 58, weight: .light))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [AppPalette.streakAccent, AppPalette.coral],
@@ -148,7 +154,7 @@ struct WeeklyReportView: View {
                     .accessibilityIdentifier("weekly.summaryValue")
 
                 Text("Last 7 days")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(AppFont.rounded(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(weeklyPlainSummary)
@@ -164,7 +170,7 @@ struct WeeklyReportView: View {
                 .resizable()
                 .scaledToFill()
                 .opacity(0.36)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         }
         .sunGlassCard(cornerRadius: 24, fillOpacity: 0.52)
     }
@@ -204,7 +210,7 @@ struct WeeklyReportView: View {
     private var usageInsightsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("From Your Logs")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             if let mostUsedSPF = insights.mostUsedSPF {
@@ -219,7 +225,7 @@ struct WeeklyReportView: View {
             if !insights.recentNotes.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Recent Notes")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.rounded(size: 13, weight: .semibold))
                         .foregroundStyle(AppPalette.softInk)
 
                     VStack(spacing: 10) {
@@ -316,22 +322,22 @@ private struct WeeklyInsightCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(eyebrow)
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.rounded(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             Text(value)
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier(valueAccessibilityIdentifier)
 
             Text(detail)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityIdentifier("weekly.mostUsedSPFCard")
@@ -345,18 +351,18 @@ private struct WeeklyRecentNoteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(note.date.formatted(.dateTime.month(.abbreviated).day()))
-                .font(.system(size: 12, weight: .semibold))
+                .font(AppFont.rounded(size: 12, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
 
             Text(note.text)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("weekly.recentNoteText.\(index)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
     }
@@ -370,18 +376,18 @@ private struct WeeklyMetricPill: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(value)
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(label)
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.rounded(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
         .accessibilityIdentifier(accessibilityIdentifier)

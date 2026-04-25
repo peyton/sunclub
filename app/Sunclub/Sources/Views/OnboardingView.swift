@@ -95,7 +95,7 @@ struct WelcomeView: View {
     private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: symbol)
-                .font(.system(size: 20, weight: .semibold))
+                .font(AppFont.rounded(size: 20, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
                 .frame(width: 36, height: 36)
                 .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
@@ -103,7 +103,7 @@ struct WelcomeView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(AppFont.rounded(size: 17, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                 Text(detail)
                     .font(AppTypography.body)
@@ -134,11 +134,11 @@ struct EnableNotificationsView: View {
 
                 VStack(spacing: 14) {
                     Text("Turn on gentle reminders")
-                        .font(.system(size: 30, weight: .bold))
+                        .font(AppFont.rounded(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(reminderDescription)
-                        .font(.system(size: 17))
+                        .font(AppFont.rounded(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
                 }
@@ -181,7 +181,7 @@ struct EnableNotificationsView: View {
 
     private var notificationIcon: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [AppPalette.pearl, AppPalette.warmGlow.opacity(0.65)],
@@ -192,7 +192,7 @@ struct EnableNotificationsView: View {
                 .frame(width: 104, height: 104)
 
             Image(systemName: "bell.badge.fill")
-                .font(.system(size: 36, weight: .semibold))
+                .font(AppFont.rounded(size: 36, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
         }
         .accessibilityHidden(true)

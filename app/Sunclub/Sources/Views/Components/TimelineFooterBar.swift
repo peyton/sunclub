@@ -9,10 +9,23 @@ struct TimelineFooterBar: View {
     let onPrimaryTap: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            Button(primaryTitle, action: onPrimaryTap)
-                .buttonStyle(SunPrimaryButtonStyle())
-                .accessibilityIdentifier(primaryIdentifier)
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                AppText("Log", style: .sectionHeader)
+
+                Spacer(minLength: 0)
+
+                Button("History") {
+                    router.open(.history)
+                }
+                .font(AppTextStyle.bodyMedium.font)
+                .foregroundStyle(AppPalette.success)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.historyCard")
+                .accessibilityHint("Opens your full calendar history.")
+            }
+
+            PrimaryButton(primaryTitle, systemImage: "sun.max", identifier: primaryIdentifier, action: onPrimaryTap)
 
             pillTabs
         }
@@ -21,7 +34,7 @@ struct TimelineFooterBar: View {
     @ViewBuilder
     private var pillTabs: some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: 10) {
+            VStack(spacing: AppSpacing.xs) {
                 pillButton(
                     title: "Weekly",
                     systemImage: "chart.bar.fill",
@@ -36,7 +49,7 @@ struct TimelineFooterBar: View {
                 )
             }
         } else {
-            HStack(spacing: 8) {
+            HStack(spacing: AppSpacing.md) {
                 pillButton(
                     title: "Weekly",
                     systemImage: "chart.bar.fill",
@@ -50,15 +63,6 @@ struct TimelineFooterBar: View {
                     action: { router.open(.friends) }
                 )
             }
-            .padding(4)
-            .background(
-                Capsule()
-                    .fill(AppPalette.cardFill.opacity(0.72))
-            )
-            .overlay {
-                Capsule()
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
-            }
         }
     }
 
@@ -71,20 +75,15 @@ struct TimelineFooterBar: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 22, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
             }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.horizontal, 16)
-            .background(
-                Capsule()
-                    .fill(AppPalette.warmGlow.opacity(0.45))
-            )
+            .frame(maxWidth: .infinity, minHeight: 58)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppSecondaryPillButtonStyle())
         .accessibilityIdentifier(identifier)
         .accessibilityHint("Opens \(title).")
     }

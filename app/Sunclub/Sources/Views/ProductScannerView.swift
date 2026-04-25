@@ -100,7 +100,7 @@ struct ProductScannerView: View {
                     SunStatusCard(
                         title: "Scan issue",
                         detail: errorMessage,
-                        tint: Color.red.opacity(0.8),
+                        tint: AppColor.warning.opacity(0.8),
                         symbol: "exclamationmark.triangle.fill"
                     )
                 }
@@ -247,7 +247,7 @@ struct ProductScannerView: View {
             SunStatusCard(
                 title: "Camera access denied",
                 detail: "Turn on camera access in Settings to scan sunscreen labels. You can still pick a photo or enter SPF manually.",
-                tint: Color.red.opacity(0.8),
+                tint: AppColor.warning.opacity(0.8),
                 symbol: "camera.fill"
             )
             .accessibilityIdentifier("productScanner.cameraDenied")
@@ -282,18 +282,18 @@ struct ProductScannerView: View {
     private func resultCard(for result: SunclubProductScanResult) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(result.summary)
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             Text(result.confirmationDetail)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("productScanner.confirmationDetail")
 
             if let expirationText = result.expirationText {
                 Text("Detected expiry: \(expirationText)")
-                    .font(.system(size: 15))
+                    .font(AppFont.rounded(size: 15))
                     .foregroundStyle(AppPalette.softInk)
             }
 
@@ -307,11 +307,11 @@ struct ProductScannerView: View {
 
             if !result.recognizedText.isEmpty {
                 Text("Read from label")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 Text(result.recognizedText.joined(separator: "\n"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(AppFont.rounded(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("productScanner.recognizedText")
@@ -329,9 +329,9 @@ struct ProductScannerView: View {
             .scaledToFit()
             .frame(maxWidth: .infinity)
             .frame(maxHeight: 280)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                     .stroke(AppPalette.sun.opacity(0.64), lineWidth: 2)
             }
             .overlay {
@@ -348,7 +348,7 @@ struct ProductScannerView: View {
                         ),
                         value: scanSheenActive
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
                     .accessibilityHidden(true)
             }
             .overlay(alignment: .topLeading) {
