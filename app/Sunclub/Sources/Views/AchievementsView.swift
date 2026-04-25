@@ -39,13 +39,13 @@ struct AchievementsView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Progress Badges")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
 
                 Spacer(minLength: 0)
 
                 Text(presentation.unlockedCountText)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(AppFont.rounded(size: 13, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -66,7 +66,7 @@ struct AchievementsView: View {
     private func challengesSection(presentation: AchievementsPresentation) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Challenges")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             ForEach(presentation.challenges) { challenge in
@@ -84,11 +84,11 @@ struct AchievementsView: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(presentation.nextAchievement == nil ? "Badge shelf complete" : "Next badge")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(AppFont.rounded(size: 20, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
                     Text(presentation.nextBadgeDetail)
-                        .font(.system(size: 14))
+                        .font(AppFont.rounded(size: 14))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -128,7 +128,7 @@ struct AchievementsView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.72))
     }
 
@@ -252,7 +252,7 @@ private struct AchievementCelebrationCard: View {
         .padding(18)
         .background { celebrationBackground }
         .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(AppPalette.cardStroke, lineWidth: 1)
         }
     }
@@ -260,7 +260,7 @@ private struct AchievementCelebrationCard: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 10) {
             Label("New Badge", systemImage: "sparkles")
-                .font(.system(size: 13, weight: .bold))
+                .font(AppFont.rounded(size: 13, weight: .bold))
                 .foregroundStyle(AppPalette.streakAccent)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -269,7 +269,7 @@ private struct AchievementCelebrationCard: View {
             Spacer(minLength: 0)
 
             Button("Dismiss", action: onDismiss)
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.rounded(size: 13, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
                 .buttonStyle(.plain)
         }
@@ -277,21 +277,21 @@ private struct AchievementCelebrationCard: View {
 
     private var title: some View {
         Text(achievement.title)
-            .font(.system(size: 23, weight: .bold))
+            .font(AppFont.rounded(size: 23, weight: .bold))
             .foregroundStyle(AppPalette.ink)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private var detail: some View {
         Text(achievement.detail)
-            .font(.system(size: 14))
+            .font(AppFont.rounded(size: 14))
             .foregroundStyle(AppPalette.softInk)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private var celebrationBackground: some View {
         ZStack(alignment: .bottomTrailing) {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.48))
 
             SunclubVisualAsset.motifSunRing.image
@@ -314,7 +314,7 @@ private struct BadgeShelfPreview: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.34))
                 .frame(width: 104, height: 78)
 
@@ -348,7 +348,7 @@ private struct AchievementCard: View {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .top, spacing: 8) {
                         Text(achievement.title)
-                            .font(.system(size: 18, weight: .bold))
+                            .font(AppFont.rounded(size: 18, weight: .bold))
                             .foregroundStyle(AppPalette.ink)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -361,7 +361,7 @@ private struct AchievementCard: View {
                     }
 
                     Text(achievement.detail)
-                        .font(.system(size: 14))
+                        .font(AppFont.rounded(size: 14))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -378,7 +378,7 @@ private struct AchievementCard: View {
 
             if !achievement.isUnlocked {
                 Text(achievement.id.hint)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(AppFont.rounded(size: 12, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
             }
 
@@ -387,27 +387,27 @@ private struct AchievementCard: View {
                     onShare()
                 } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(AppFont.rounded(size: 14, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .fill(AppPalette.warmGlow.opacity(0.65))
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .stroke(AppPalette.sun.opacity(0.35), lineWidth: 1)
                 }
             }
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.78))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .stroke(achievement.isUnlocked ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
         }
         .symbolEffect(.bounce, value: reduceMotion ? false : achievement.isUnlocked)
@@ -433,7 +433,7 @@ private struct ChallengeCard: View {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .top, spacing: 8) {
                         Text(challenge.title)
-                            .font(.system(size: 18, weight: .bold))
+                            .font(AppFont.rounded(size: 18, weight: .bold))
                             .foregroundStyle(AppPalette.ink)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -445,7 +445,7 @@ private struct ChallengeCard: View {
                     }
 
                     Text(challenge.detail)
-                        .font(.system(size: 14))
+                        .font(AppFont.rounded(size: 14))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -465,23 +465,23 @@ private struct ChallengeCard: View {
                     onShare()
                 } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(AppFont.rounded(size: 14, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
                         .fill(AppPalette.warmGlow.opacity(0.65))
                 )
             }
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(challenge.isComplete ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.76))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .stroke(challenge.isComplete ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
         }
     }
@@ -493,7 +493,7 @@ private struct AchievementStatusPill: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 12, weight: .bold))
+            .font(AppFont.rounded(size: 12, weight: .bold))
             .foregroundStyle(tint)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
@@ -539,10 +539,10 @@ private struct MilestoneProgressMeter: View {
         VStack(alignment: .leading, spacing: 9) {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.tiny, style: .continuous)
                         .fill(AppPalette.ink.opacity(0.20))
 
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.tiny, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: isComplete
@@ -557,21 +557,21 @@ private struct MilestoneProgressMeter: View {
             }
             .frame(height: 10)
             .overlay {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.tiny, style: .continuous)
                     .stroke(AppPalette.ink.opacity(0.10), lineWidth: 1)
             }
             .accessibilityHidden(true)
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(summaryLabel)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(AppFont.rounded(size: 12, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .accessibilityIdentifier("\(accessibilityID).summary")
 
                 Spacer(minLength: 0)
 
                 Text(statusLabel)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(AppFont.rounded(size: 12, weight: .bold))
                     .foregroundStyle(isComplete ? AppPalette.success : AppPalette.streakAccent)
                     .accessibilityIdentifier("\(accessibilityID).status")
             }

@@ -8,7 +8,7 @@ struct TimelineHighlightsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Highlights")
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
             ForEach(summary.partStatuses) { status in
@@ -28,18 +28,18 @@ struct TimelineHighlightsSection: View {
         return HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(status.dayPart.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.rounded(size: 15, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(status.statusText)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppFont.rounded(size: 14, weight: .medium))
                     .foregroundStyle(AppPalette.softInk)
             }
 
             Spacer(minLength: 0)
 
             Text(badgeTitle)
-                .font(.system(size: 12, weight: .bold))
+                .font(AppFont.rounded(size: 12, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -69,17 +69,17 @@ struct TimelineHighlightsSection: View {
 
         return HStack(alignment: .top, spacing: 12) {
             Image(systemName: streak > 0 ? "flame.fill" : "flame")
-                .font(.system(size: 16, weight: .semibold))
+                .font(AppFont.rounded(size: 16, weight: .semibold))
                 .foregroundStyle(AppPalette.streakAccent)
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Streak")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.rounded(size: 15, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                 Text(detail)
-                    .font(.system(size: 14))
+                    .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
             }
             Spacer(minLength: 0)
@@ -96,13 +96,13 @@ struct TimelineHighlightsSection: View {
     private func uvForecastCard(forecast: SunclubUVForecast) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("UV Forecast")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
             Text(forecast.headline)
-                .font(.system(size: 20, weight: .bold))
+                .font(AppFont.rounded(size: 20, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
             Text(forecast.recommendation)
-                .font(.system(size: 14))
+                .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
             WeatherKitAttributionFooter(
                 attribution: appState.weatherAttribution,

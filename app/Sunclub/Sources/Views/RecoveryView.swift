@@ -39,7 +39,7 @@ struct RecoveryView: View {
     private var overviewSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Status")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             SunStatusCard(
@@ -65,16 +65,16 @@ struct RecoveryView: View {
     private func importSection(for session: SunclubImportSession) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Imported Backup")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
                 Text(importTitle(for: session))
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(AppFont.rounded(size: 18, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
 
                 Text(importDetail(for: session))
-                    .font(.system(size: 14))
+                    .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("recovery.importDetail")
@@ -101,26 +101,26 @@ struct RecoveryView: View {
     private var conflictsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Needs Review")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(spacing: 12) {
                 ForEach(Array(appState.conflicts.prefix(5))) { conflict in
                     VStack(alignment: .leading, spacing: 12) {
                         Text(conflict.summary)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(AppFont.rounded(size: 16, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
                             .accessibilityIdentifier("recovery.conflict.summary")
 
                         Text("Sunclub kept the visible result and saved the merge so you can review it here.")
-                            .font(.system(size: 14))
+                            .font(AppFont.rounded(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
 
                         let changedFields = appState.conflictChangedFieldNames(for: conflict)
                         if !changedFields.isEmpty {
                             Text("Changed: \(changedFields.joined(separator: ", "))")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(AppFont.rounded(size: 13, weight: .medium))
                                 .foregroundStyle(AppPalette.ink)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .accessibilityIdentifier("recovery.conflict.changedFields")
@@ -150,7 +150,7 @@ struct RecoveryView: View {
     private var changesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Recent Updates")
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(spacing: 12) {
@@ -158,22 +158,22 @@ struct RecoveryView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: batchSymbol(for: batch))
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(AppFont.rounded(size: 16, weight: .semibold))
                                 .foregroundStyle(AppPalette.sun)
                                 .frame(width: 24, height: 24)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(batch.kind.displayTitle)
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .font(AppFont.rounded(size: 16, weight: .semibold))
                                     .foregroundStyle(AppPalette.ink)
 
                                 Text(batch.summary)
-                                    .font(.system(size: 14))
+                                    .font(AppFont.rounded(size: 14))
                                     .foregroundStyle(AppPalette.softInk)
                                     .fixedSize(horizontal: false, vertical: true)
 
                                 Text(batch.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(AppFont.rounded(size: 12, weight: .medium))
                                     .foregroundStyle(AppPalette.softInk)
                             }
 
@@ -294,10 +294,10 @@ struct RecoveryView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
             .fill(AppPalette.cardFill.opacity(0.82))
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                     .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
     }

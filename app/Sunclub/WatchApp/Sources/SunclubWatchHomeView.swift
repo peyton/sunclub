@@ -13,12 +13,12 @@ struct SunclubWatchHomeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
             header
             logButton
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                     statusCard
                     uvCard
                     reapplyCard
@@ -48,12 +48,17 @@ struct SunclubWatchHomeView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(snapshot.hasLoggedToday() ? "Protected today" : "Still open")
-                .font(.headline)
-            Text(currentStreak == 1 ? "1 day streak" : "\(currentStreak) day streak")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.orange)
+        VStack(alignment: .leading, spacing: 3) {
+            AppText(
+                snapshot.hasLoggedToday() ? "Applied" : "Open",
+                style: .sectionHeader,
+                color: AppColor.surfaceElevated
+            )
+            AppText(
+                currentStreak == 1 ? "1 day streak" : "\(currentStreak) day streak",
+                style: .captionMedium,
+                color: AppColor.accent
+            )
         }
     }
 
@@ -66,12 +71,12 @@ struct SunclubWatchHomeView: View {
                     .frame(maxWidth: .infinity)
             } else {
                 Label(snapshot.hasLoggedToday() ? "Refresh Log" : "Log Sunscreen", systemImage: "sun.max.fill")
+                    .font(AppTextStyle.bodyMedium.font)
                     .frame(maxWidth: .infinity)
             }
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(AppPrimaryButtonStyle())
         .controlSize(.large)
-        .tint(.orange)
         .disabled(isLogging)
         .accessibilityLabel(snapshot.hasLoggedToday() ? "Refresh wrist log" : "Log sunscreen")
         .accessibilityHint("Sends today's sunscreen log to your paired iPhone.")
@@ -79,70 +84,66 @@ struct SunclubWatchHomeView: View {
     }
 
     private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Today", systemImage: snapshot.hasLoggedToday() ? "checkmark.circle.fill" : "sun.max")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(snapshot.hasLoggedToday() ? .green : .orange)
+        AppCard(padding: AppSpacing.xs, showsShadow: false) {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Today", systemImage: snapshot.hasLoggedToday() ? "checkmark.circle.fill" : "sun.max")
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(snapshot.hasLoggedToday() ? AppColor.success : AppColor.accent)
 
-            Text(snapshot.hasLoggedToday() ? "Logged from wrist or phone." : "Button above logs from your wrist.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                AppText(
+                    snapshot.hasLoggedToday() ? "Logged from wrist or phone." : "Button above logs from your wrist.",
+                    style: .caption,
+                    color: AppColor.Text.secondary
+                )
 
-            if let syncStatus = syncCoordinator.syncStatus, !syncStatus.isEmpty {
-                Text(syncStatus)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.secondary)
+                if let syncStatus = syncCoordinator.syncStatus, !syncStatus.isEmpty {
+                    AppText(syncStatus, style: .captionMedium, color: AppColor.Text.secondary)
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var uvCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("UV", systemImage: "sun.max")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+        AppCard(padding: AppSpacing.xs, showsShadow: false) {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("UV", systemImage: "sun.max")
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppColor.Text.secondary)
 
-            if let currentUVIndex = snapshot.currentUVIndex {
-                Text("Current UV \(currentUVIndex)")
-                    .font(.body.weight(.semibold))
-                if let peakUVIndex = snapshot.peakUVIndex,
-                   let peakUVHour = snapshot.peakUVHour {
-                    Text("Peak \(peakUVIndex) at \(peakUVHour.formatted(date: .omitted, time: .shortened))")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                if let currentUVIndex = snapshot.currentUVIndex {
+                    AppText("Current UV \(currentUVIndex)", style: .bodyMedium)
+                    if let peakUVIndex = snapshot.peakUVIndex,
+                       let peakUVHour = snapshot.peakUVHour {
+                        AppText(
+                            "Peak \(peakUVIndex) at \(peakUVHour.formatted(date: .omitted, time: .shortened))",
+                            style: .caption,
+                            color: AppColor.Text.secondary
+                        )
+                    }
+                } else {
+                    AppText("Waiting for iPhone forecast", style: .caption, color: AppColor.Text.secondary)
                 }
-            } else {
-                Text("Waiting for iPhone forecast")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var reapplyCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Reapply", systemImage: "timer")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+        AppCard(padding: AppSpacing.xs, showsShadow: false) {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Reapply", systemImage: "timer")
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppColor.Text.secondary)
 
-            if let deadline = snapshot.reapplyDeadline() {
-                Text(deadline > Date() ? "Haptic reminder at \(deadline.formatted(date: .omitted, time: .shortened))" : "Reapply now")
-                    .font(.footnote.weight(.medium))
-            } else {
-                Text("No wrist reminder scheduled")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                if let deadline = snapshot.reapplyDeadline() {
+                    AppText(
+                        deadline > Date() ? "Haptic reminder at \(deadline.formatted(date: .omitted, time: .shortened))" : "Reapply now",
+                        style: .captionMedium
+                    )
+                } else {
+                    AppText("No wrist reminder scheduled", style: .caption, color: AppColor.Text.secondary)
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func logFromWrist() {

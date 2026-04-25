@@ -11,14 +11,12 @@ final class SunclubUITests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let legacyPrompt = app.staticTexts["Your first day starts now"]
         let timelineHeadline = timelineHeadline(in: app)
-        let hasLegacyPrompt = legacyPrompt.exists
         let hasTimelinePrompt = timelineHeadline.waitForExistence(timeout: 5)
             && timelineHeadline.label.hasPrefix("Today,")
         XCTAssertTrue(
-            hasLegacyPrompt || hasTimelinePrompt,
-            "Expected legacy or timeline ready-to-log state.",
+            hasTimelinePrompt && app.buttons["home.logManually"].exists,
+            "Expected timeline ready-to-log state.",
             file: file,
             line: line
         )
@@ -29,15 +27,13 @@ final class SunclubUITests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let legacyStatus = app.staticTexts["home.todayStatus"]
-        let timelineHeadline = timelineHeadline(in: app)
-        let hasLegacyLoggedState = legacyStatus.waitForExistence(timeout: 5)
-            && legacyStatus.label == "Today's log is in"
-        let hasTimelineLoggedState = timelineHeadline.waitForExistence(timeout: 5)
+        let timelineStatus = app.staticTexts["home.todayStatus"]
+        let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 5)
+            && timelineStatus.label == "Applied"
             && app.buttons["home.loggedPrimaryAction"].exists
         XCTAssertTrue(
-            hasLegacyLoggedState || hasTimelineLoggedState,
-            "Expected legacy or timeline logged state.",
+            hasTimelineLoggedState,
+            "Expected timeline logged state.",
             file: file,
             line: line
         )
@@ -260,9 +256,17 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
         XCTAssertTrue(app.buttons["home.streakCard"].exists)
-        XCTAssertTrue(scrollToElement(app.buttons["home.uvBriefingToggle"], in: app))
-        app.buttons["home.uvBriefingToggle"].tap()
-        XCTAssertTrue(app.buttons["home.uvBriefingToggle"].exists)
+        XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Log"].exists)
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+
+        app.buttons["timeline.footer.accountability"].tap()
+        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["home.settingsButton"], in: app))
 
         app.buttons["home.settingsButton"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
@@ -285,25 +289,20 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testHomeKeepsAdvancedActionsBehindExplore() throws {
+    func testHomeKeepsAdvancedActionsOffSimplifiedSurface() throws {
         let app = launchHome()
 
         XCTAssertTrue(app.buttons["home.streakCard"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.exploreToggle"].exists)
+        XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.accountability"].exists)
+        XCTAssertFalse(app.buttons["home.exploreToggle"].exists)
+        XCTAssertFalse(app.buttons["home.uvBriefingToggle"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
         XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
         XCTAssertFalse(app.buttons["home.feature.friends"].exists)
         XCTAssertFalse(app.buttons["home.feature.skinHealthReport"].exists)
         XCTAssertFalse(app.buttons["home.feature.productScanner"].exists)
         XCTAssertFalse(app.buttons["home.feature.automation"].exists)
-
-        app.buttons["home.exploreToggle"].tap()
-
-        XCTAssertTrue(app.otherElements["home.exploreGrid"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.feature.achievements"].exists)
-        XCTAssertTrue(scrollToElement(app.buttons["home.feature.friends"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["home.feature.automation"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["home.feature.skinHealthReport"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["home.feature.productScanner"], in: app))
     }
 
     @MainActor
@@ -322,42 +321,55 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testHomeShowsOptionalAccountabilityNudgeAfterThreeLoggedDays() throws {
+    func testHomeKeepsAccountabilityAsFooterPillAfterProgress() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_RESET_ACCOUNTABILITY",
             "UITEST_SEED_HISTORY=achievementProgress"
         ])
 
-        XCTAssertTrue(scrollToElement(app.buttons["home.accountabilityNudge.setup"], in: app))
-        XCTAssertTrue(app.buttons["home.accountabilityNudge.dismiss"].exists)
-    }
+        let hasPrimaryHomeAction = app.buttons["home.logManually"].waitForExistence(timeout: 5)
+            || app.buttons["home.loggedPrimaryAction"].waitForExistence(timeout: 2)
+        XCTAssertTrue(hasPrimaryHomeAction)
+        XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
+        XCTAssertFalse(app.buttons["home.accountabilityNudge.dismiss"].exists)
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
 
-    @MainActor
-    func testHomeShowsAccountabilityCardFrontAndCenterForFriends() throws {
-        let app = launchHome(additionalArguments: [
-            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
-        ])
-
-        XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.accountabilityAction"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
-        XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
-
-        let accountabilityTile = app.descendants(matching: .any)["home.accountabilityOpen"]
-        XCTAssertTrue(accountabilityTile.exists)
-        accountabilityTile.tap()
+        app.buttons["timeline.footer.accountability"].tap()
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
     }
 
     @MainActor
-    func testHomeShowsActiveAccountabilitySetupFrontAndCenter() throws {
+    func testHomeFooterAccountabilityOpensFriendsForSeededFriends() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
+        ])
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.otherElements["home.accountabilityCard"].exists)
+        XCTAssertFalse(app.buttons["home.accountabilityAction"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
+        XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
+
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+        app.buttons["timeline.footer.accountability"].tap()
+        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["Message"], in: app))
+    }
+
+    @MainActor
+    func testHomeFooterAccountabilityOpensActiveSetup() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_SEED_ACCOUNTABILITY_ACTIVE"
         ])
 
-        XCTAssertTrue(app.otherElements["home.accountabilityCard"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Bring in backup"].exists)
-        XCTAssertTrue(app.buttons["home.accountabilityAction"].exists)
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.otherElements["home.accountabilityCard"].exists)
+        XCTAssertFalse(app.staticTexts["Bring in backup"].exists)
+        XCTAssertFalse(app.buttons["home.accountabilityAction"].exists)
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+
+        app.buttons["timeline.footer.accountability"].tap()
+        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -418,19 +430,21 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testHomeShowsHighUVStatusFromLaunchOverride() throws {
+    func testHomeKeepsLoggedStateSimpleWithHighUVOverride() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_UV_INDEX=7",
             "UITEST_SEED_HISTORY=todayLogged"
         ])
 
-        let uvStatus = app.descendants(matching: .any)["home.uvStatus"]
-        XCTAssertTrue(uvStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(uvStatus.label, "UV is high today, estimated")
+        let todayStatus = app.staticTexts["home.todayStatus"]
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(todayStatus.label, "Applied")
 
-        let detail = app.staticTexts["home.todayDetail"]
+        let detail = app.staticTexts["timeline.statusDetail"]
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
-        XCTAssertTrue(detail.label.localizedCaseInsensitiveContains("reapply sooner"))
+        XCTAssertEqual(detail.label, "Optional: add SPF or a note")
+        XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
+        XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
     }
 
     @MainActor
@@ -861,13 +875,16 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testTimelineForecastSectionShowsDayPartForecasts() throws {
+    func testTimelineHomeKeepsDefaultLogSurfaceSimple() throws {
         let app = launchTimelineHome()
         XCTAssertTrue(app.staticTexts["Log"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
+        XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
+            || app.staticTexts["home.todayStatus"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
     }
 
@@ -935,8 +952,7 @@ final class SunclubUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [
             "UITEST_MODE",
-            "UITEST_COMPLETE_ONBOARDING",
-            "UITEST_USE_LEGACY_HOME"
+            "UITEST_COMPLETE_ONBOARDING"
         ] + additionalArguments
         app.launch()
         return app
