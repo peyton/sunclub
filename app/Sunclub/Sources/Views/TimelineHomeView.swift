@@ -542,8 +542,10 @@ private struct TimelineTodayStatusCard: View {
                         AppText(statusTitle, style: .largeTitle)
                             .accessibilityIdentifier(statusAccessibilityIdentifier)
 
-                        AppText(statusDetail, style: .body, color: AppColor.Text.secondary)
-                            .accessibilityIdentifier("timeline.statusDetail")
+                        if let statusDetail {
+                            AppText(statusDetail, style: .body, color: AppColor.Text.secondary)
+                                .accessibilityIdentifier("timeline.statusDetail")
+                        }
                     }
 
                     Spacer(minLength: 0)
@@ -618,13 +620,13 @@ private struct TimelineTodayStatusCard: View {
         return "timeline.todayStatus"
     }
 
-    private var statusDetail: String {
+    private var statusDetail: String? {
         switch presentation.logSummary.category {
         case .today:
             if presentation.logSummary.record != nil {
                 return "Optional: add SPF or a note"
             }
-            return "Log sunscreen when you apply today."
+            return nil
         case .past:
             return presentation.logSummary.record == nil
                 ? "Backfill this day if you applied sunscreen."

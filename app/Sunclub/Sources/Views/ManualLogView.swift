@@ -167,8 +167,7 @@ struct ManualLogView: View {
     }
 
     private var primaryActionTitle: String {
-        let verb = existingRecord == nil ? "Log" : "Update"
-        return "\(verb) \(selectedDayPart.title)"
+        existingRecord == nil ? "Save" : "Save Changes"
     }
 
     private var scanSPFButton: some View {

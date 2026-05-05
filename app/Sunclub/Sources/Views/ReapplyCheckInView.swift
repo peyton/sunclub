@@ -37,22 +37,16 @@ struct ReapplyCheckInView: View {
             SunScreenTitleBlock(
                 eyebrow: "Reapply check-in",
                 title: "Time to reapply?",
-                detail: lastLogDetail,
+                detail: "Add a reapply check-in when you put more sunscreen on. Today still stays one log.",
                 symbolName: "timer",
                 tint: AppPalette.sun
             )
 
-            SunclubCard(cornerRadius: 20, padding: 16) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Today stays one log", systemImage: "arrow.clockwise.circle.fill")
-                        .font(AppFont.rounded(size: 17, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(presentation.detail)
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            if let record = appState.record(for: appState.referenceDate) {
+                ReapplyTimelineCard(
+                    record: record,
+                    plan: appState.reapplyReminderPlan
+                )
             }
 
             if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
@@ -127,23 +121,128 @@ struct ReapplyCheckInView: View {
         .buttonStyle(SunPrimaryButtonStyle())
         .accessibilityIdentifier("reapply.log")
 
-        Button("Skip Today") {
+        Button("Not Now") {
             router.goHome()
         }
         .buttonStyle(SunSecondaryButtonStyle())
         .accessibilityIdentifier("reapply.skip")
     }
 
-    private var lastLogDetail: String {
-        guard let record = appState.record(for: appState.referenceDate) else {
-            return "Your sunscreen log is not saved yet."
-        }
-
-        return "Your last SPF log was \(record.verifiedAt.formatted(date: .omitted, time: .shortened))."
-    }
-
     private func primaryReapplyTitle(for presentation: ReapplyCheckInPresentation) -> String {
         presentation.actionTitle.contains("Another") ? "Reapplied again" : "Reapplied"
+    }
+}
+
+private struct ReapplyTimelineCard: View {
+    let record: DailyRecord
+    let plan: ReapplyReminderPlan
+
+    var body: some View {
+        SunclubCard(cornerRadius: 20, padding: 18) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Today's timeline")
+                    .font(AppFont.rounded(size: 17, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    ReapplyTimelineStep(
+                        title: "First log",
+                        detail: "Logged at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))",
+                        symbolName: "checkmark",
+                        tint: AppPalette.success
+                    )
+
+                    ReapplyTimelineConnector()
+
+                    ReapplyTimelineStep(
+                        title: "Reapply now",
+                        detail: "Tap Reapplied after you put more sunscreen on.",
+                        symbolName: "timer",
+                        tint: AppPalette.sun,
+                        isCurrent: true
+                    )
+
+                    ReapplyTimelineConnector()
+
+                    ReapplyTimelineStep(
+                        title: nextStepTitle,
+                        detail: nextStepDetail,
+                        symbolName: plan.shouldScheduleNotification ? "bell.fill" : "moon.stars.fill",
+                        tint: plan.shouldScheduleNotification ? AppPalette.sun : AppPalette.softInk
+                    )
+                }
+
+                Text("Reapply check-ins update the same day instead of creating a second sunscreen log.")
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reapply.timeline")
+    }
+
+    private var nextStepTitle: String {
+        plan.shouldScheduleNotification ? "Next reminder" : "After sunset"
+    }
+
+    private var nextStepDetail: String {
+        if let fireDate = plan.fireDate {
+            return "Sunclub can remind you again around \(fireDate.formatted(date: .omitted, time: .shortened))."
+        }
+
+        return "Sunclub will stay quiet for the rest of today."
+    }
+}
+
+private struct ReapplyTimelineStep: View {
+    let title: String
+    let detail: String
+    let symbolName: String
+    let tint: Color
+    var isCurrent = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(isCurrent ? 0.18 : 0.12))
+                    .frame(width: 34, height: 34)
+
+                Circle()
+                    .stroke(tint.opacity(isCurrent ? 0.85 : 0.30), lineWidth: isCurrent ? 2 : 1)
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: symbolName)
+                    .font(AppFont.rounded(size: 13, weight: .bold))
+                    .foregroundStyle(tint)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(AppFont.rounded(size: 15, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(detail)
+                    .font(AppFont.rounded(size: 13))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(detail)")
+    }
+}
+
+private struct ReapplyTimelineConnector: View {
+    var body: some View {
+        Rectangle()
+            .fill(AppPalette.hairlineStroke)
+            .frame(width: 2, height: 22)
+            .padding(.leading, 16)
+            .accessibilityHidden(true)
     }
 }
 
