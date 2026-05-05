@@ -8,7 +8,7 @@ enum SunclubCopy {
     }
 
     enum Success {
-        static let defaultTitle = "Day logged"
+        static let defaultTitle = "Completed"
         static let actionTitle = "Back to Home"
 
         static func streakDetail(_ streak: Int) -> String {
@@ -62,7 +62,7 @@ enum SunclubCopy {
         ]
 
         static let success: [String] = [
-            "Day logged",
+            "Completed",
             "Covered",
             "Protected",
             "Streak saved",

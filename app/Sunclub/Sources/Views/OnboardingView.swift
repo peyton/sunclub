@@ -60,23 +60,15 @@ struct WelcomeView: View {
                 subtitle: "Build a sunscreen habit that actually sticks."
             )
             .frame(maxWidth: .infinity)
-
-            Text("Track applications, get gentle reminders, and see your sun-care streak.")
-                .font(AppTypography.body)
-                .foregroundStyle(AppPalette.softInk)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 320)
-                .padding(.top, 18)
         }
     }
 
     private var welcomeValueProps: some View {
         VStack(alignment: .leading, spacing: 26) {
             welcomeValuePropRow(
-                symbol: "flame.fill",
-                title: "Stay consistent",
-                detail: "Keep the routine visible without making it a chore."
+                symbol: "hand.tap.fill",
+                title: "Log in seconds",
+                detail: "Save the day from the app, widgets, Shortcuts, or notifications."
             )
             welcomeValuePropRow(
                 symbol: "bell.badge.fill",
@@ -84,9 +76,9 @@ struct WelcomeView: View {
                 detail: "Use gentle reminders that fit weekdays, weekends, and travel."
             )
             welcomeValuePropRow(
-                symbol: "hand.tap.fill",
-                title: "Log in seconds",
-                detail: "Save the day from the app, widgets, Shortcuts, or notifications."
+                symbol: "flame.fill",
+                title: "Track your progress",
+                detail: "View your streak, history, and weekly progress so the routine is easy to follow."
             )
         }
         .frame(maxWidth: 360, alignment: .leading)
@@ -199,7 +191,7 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        "Sunclub only sends sunscreen reminders. No marketing, no upsells, no spam."
+        "Sunclub sends only sunscreen reminders and reports.\n\nSunclub does not send promotional notifications."
     }
 
     private func completeOnboarding(requestsNotifications: Bool) {

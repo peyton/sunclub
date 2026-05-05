@@ -194,13 +194,24 @@ struct SettingsView: View {
             }
 
             if let status = appState.notificationHealthStatusPresentation {
-                SunStatusCard(
-                    title: status.title,
-                    detail: status.detail,
-                    tint: status.needsAttention ? AppColor.warning.opacity(0.72) : AppPalette.success,
-                    symbol: status.symbolName
-                )
-                .accessibilityIdentifier("settings.notificationStatus")
+                VStack(alignment: .leading, spacing: 10) {
+                    SunStatusCard(
+                        title: status.title,
+                        detail: status.detail,
+                        tint: notificationStatusTint(for: status),
+                        symbol: status.symbolName
+                    )
+                    .accessibilityIdentifier("settings.notificationStatus")
+
+                    if let actionTitle = status.actionTitle,
+                       let actionKind = status.actionKind {
+                        Button(actionTitle) {
+                            handleNotificationStatusAction(actionKind)
+                        }
+                        .buttonStyle(SunSecondaryButtonStyle())
+                        .accessibilityIdentifier("settings.notificationStatus.action")
+                    }
+                }
             }
 
             VStack(spacing: 12) {
@@ -915,6 +926,21 @@ struct SettingsView: View {
         case .healthy:
             break
         }
+    }
+
+    private func handleNotificationStatusAction(_ action: NotificationHealthStatusAction) {
+        switch action {
+        case .requestPermission:
+            appState.requestNotificationAuthorizationAndSchedule()
+        }
+    }
+
+    private func notificationStatusTint(for status: NotificationHealthStatusPresentation) -> Color {
+        if status.actionKind != nil {
+            return AppPalette.sun
+        }
+
+        return status.needsAttention ? AppColor.warning.opacity(0.72) : AppPalette.success
     }
 
     private func handleLeaveHomeReminderAction(_ action: LeaveHomeReminderActionKind) {
