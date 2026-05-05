@@ -86,7 +86,7 @@ setup_local_tuist_cache() {
 run_tuist_xcodebuild() {
   local log_file exit_code
 
-  log_file="$(mktemp "${TMPDIR:-/tmp}/sunclub-tuist-xcodebuild.XXXXXX.log")"
+  log_file="$(mktemp "${TMPDIR:-/tmp}/sunclub-tuist-xcodebuild.XXXXXX")"
 
   set +e
   run_in_app run_mise_exec tuist xcodebuild "$@" 2>&1 | tee "$log_file"
