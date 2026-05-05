@@ -56,7 +56,7 @@ enum SunclubWidgetRouteIntentValue: String, AppEnum {
         .summary: "Summary",
         .history: "History",
         .updateToday: "Update Today",
-        .accountability: "Accountability"
+        .accountability: "Activity Sharing"
     ]
 
     var route: SunclubWidgetRoute {

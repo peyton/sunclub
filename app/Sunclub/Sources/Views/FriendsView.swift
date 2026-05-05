@@ -14,7 +14,7 @@ struct AccountabilityOnboardingView: View {
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Accountability", showsBack: true, onBack: {
+                SunLightHeader(title: "Activity Sharing", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -80,7 +80,7 @@ struct AccountabilityOnboardingView: View {
     private var title: String {
         switch step {
         case 1:
-            return "Use accountability only if it helps."
+            return "Set up activity sharing"
         case 2:
             return "Add one friend"
         default:
@@ -91,7 +91,7 @@ struct AccountabilityOnboardingView: View {
     private var detail: String {
         switch step {
         case 1:
-            return "Friends can see whether you logged, not your exact SPF or notes."
+            return "Share whether you logged with people you choose. SPF and notes stay private."
         case 2:
             return "Bring two phones together with Nearby Add, or send your invite through Messages and the share sheet."
         default:
@@ -131,14 +131,14 @@ struct FriendsView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
-                SunLightHeader(title: "Accountability", showsBack: true, onBack: {
+                SunLightHeader(title: "Activity Sharing", showsBack: true, onBack: {
                     router.goBack()
                 })
 
                 if appState.friends.isEmpty {
                     SunEmptyStateView(
-                        title: "Use accountability only if it helps",
-                        detail: "Friends can see whether you logged, not your exact SPF or notes.",
+                        title: "Set up activity sharing",
+                        detail: "Share whether you logged with people you choose. SPF and notes stay private.",
                         asset: .illustrationFriendsPair,
                         tint: AppPalette.sun
                     )
@@ -200,12 +200,11 @@ struct FriendsView: View {
 
                 Spacer(minLength: 0)
 
-                Text(appState.growthSettings.accountability.isActive ? "On" : "Off")
-                    .font(AppFont.rounded(size: 13, weight: .bold))
-                    .foregroundStyle(appState.growthSettings.accountability.isActive ? AppPalette.success : AppPalette.softInk)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(AppPalette.cardFill.opacity(0.8)))
+                SunLabelPill(
+                    title: appState.growthSettings.accountability.isActive ? "On" : "Off",
+                    tint: appState.growthSettings.accountability.isActive ? AppPalette.success : AppPalette.softInk,
+                    fill: AppPalette.cardFill.opacity(0.8)
+                )
             }
 
             Text("Friends see your display name, whether today is logged, streaks, and last update. SPF and notes stay private.")

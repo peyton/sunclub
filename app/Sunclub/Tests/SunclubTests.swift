@@ -2879,6 +2879,20 @@ final class SunclubTests: XCTestCase {
         )
         XCTAssertEqual(denied?.title, "Notifications are off")
         XCTAssertEqual(denied?.needsAttention, true)
+
+        let notDetermined = NotificationHealthEvaluator.statusPresentation(
+            from: NotificationHealthSnapshot(
+                authorizationState: .notDetermined,
+                pendingDailyReminderCount: 0,
+                pendingStreakRiskReminderCount: 0,
+                pendingReapplyReminderCount: 0,
+                lastScheduledAt: nil
+            ),
+            onboardingComplete: true
+        )
+        XCTAssertEqual(notDetermined?.title, "Allow notifications?")
+        XCTAssertEqual(notDetermined?.actionTitle, "Allow Notifications")
+        XCTAssertEqual(notDetermined?.actionKind, .requestPermission)
     }
 
     @MainActor

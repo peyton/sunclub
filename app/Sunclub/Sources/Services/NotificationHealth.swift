@@ -56,6 +56,12 @@ struct NotificationHealthStatusPresentation: Equatable {
     let detail: String
     let symbolName: String
     let needsAttention: Bool
+    let actionTitle: String?
+    let actionKind: NotificationHealthStatusAction?
+}
+
+enum NotificationHealthStatusAction: Equatable {
+    case requestPermission
 }
 
 enum NotificationHealthEvaluator {
@@ -113,7 +119,9 @@ enum NotificationHealthEvaluator {
                 title: presentation.title,
                 detail: presentation.detail,
                 symbolName: presentation.state == .denied ? "bell.slash.fill" : "bell.badge.fill",
-                needsAttention: true
+                needsAttention: true,
+                actionTitle: nil,
+                actionKind: nil
             )
         }
 
@@ -123,28 +131,36 @@ enum NotificationHealthEvaluator {
                 title: "Notifications are ready",
                 detail: "Sunclub has an active daily reminder scheduled on this phone.",
                 symbolName: "bell.fill",
-                needsAttention: false
+                needsAttention: false,
+                actionTitle: nil,
+                actionKind: nil
             )
         case .provisional, .ephemeral:
             return NotificationHealthStatusPresentation(
                 title: "Quiet reminders are ready",
                 detail: "Sunclub can deliver quiet daily reminders on this phone.",
                 symbolName: "bell.fill",
-                needsAttention: false
+                needsAttention: false,
+                actionTitle: nil,
+                actionKind: nil
             )
         case .notDetermined:
             return NotificationHealthStatusPresentation(
-                title: "Notification permission not asked",
-                detail: "You can still log manually. Sunclub will ask before scheduling reminders.",
-                symbolName: "bell",
-                needsAttention: false
+                title: "Allow notifications?",
+                detail: "Sunclub can send sunscreen reminders and reports. You can keep logging manually either way.",
+                symbolName: "bell.badge.fill",
+                needsAttention: false,
+                actionTitle: "Allow Notifications",
+                actionKind: .requestPermission
             )
         case .unknown:
             return NotificationHealthStatusPresentation(
                 title: "Notification status unknown",
                 detail: "Sunclub will refresh this status when reminders are checked.",
                 symbolName: "bell",
-                needsAttention: false
+                needsAttention: false,
+                actionTitle: nil,
+                actionKind: nil
             )
         case .denied:
             return nil
