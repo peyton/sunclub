@@ -59,7 +59,7 @@ These steps still require real App Store Connect data and cannot be faked safely
 - Public CloudKit accountability transport is disabled for the first App Store review build. Private iCloud history sync remains enabled.
 - This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
 - Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
-- To navigate to WeatherKit functionality: complete onboarding, open Settings, open Live UV, enable Live UV, grant location permission if prompted, then return to Home or Timeline.
+- To navigate to WeatherKit functionality: complete onboarding, open Settings, expand Travel & Health, find UV & Health, enable Live UV with the Use Apple Weather for Live UV switch, grant location permission if prompted, then return to Timeline/Home.
 - WeatherKit requests are foreground/user-initiated from the main app, cached, rate-limited, and covered by the remote config at `https://sunclub.peyton.app/config/weatherkit.json`.
 - Main-app Apple Weather values show Apple Weather attribution and a visible legal/data-source link. Widgets, watch, and Live Activities use local estimates instead of WeatherKit-derived UV values.
 - Sunclub falls back to local UV estimates when location, network, remote config, or Apple Weather is unavailable.
@@ -78,10 +78,11 @@ Live UV is off by default. The app's core features, including manual sunscreen l
 To navigate to the WeatherKit functionality:
 1. Complete onboarding.
 2. Open Settings.
-3. Open Live UV.
-4. Enable Live UV.
-5. Grant location permission if prompted.
-6. Return to Home or Timeline.
+3. Expand Travel & Health.
+4. Find UV & Health.
+5. Enable Live UV with the Use Apple Weather for Live UV switch.
+6. Grant location permission if prompted.
+7. Return to Timeline/Home.
 
 When Live UV is enabled, Apple Weather UV data is shown only in the main app on surfaces that include Apple Weather attribution and a visible Data Sources/legal attribution link. Widgets, watch, and Live Activities use Sunclub's local UV estimates instead of WeatherKit-derived values.
 

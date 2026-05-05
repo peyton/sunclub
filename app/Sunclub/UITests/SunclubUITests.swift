@@ -158,6 +158,37 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsLiveUVToggleShowsWeatherKitAttributionOnTimeline() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_LIVE_UV_INDEX=8",
+            "UITEST_LIVE_UV_AUTH=always",
+            "UITEST_LIVE_UV_PEAK_INDEX=10"
+        ]
+        app.launch()
+
+        expandSettingsSection("advanced", in: app)
+
+        let liveUVToggle = app.switches["settings.liveUVToggle"]
+        XCTAssertTrue(scrollToHittableElement(liveUVToggle, in: app))
+        liveUVToggle.tap()
+
+        let liveUVAction = app.buttons["settings.liveUV.action"]
+        XCTAssertTrue(scrollToElement(liveUVAction, in: app))
+        XCTAssertTrue(waitForLabel("Refresh", on: liveUVAction))
+
+        let backButton = app.buttons["screen.back"]
+        XCTAssertTrue(scrollToHittableElement(backButton, in: app))
+        backButton.tap()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["timeline.weatherKitAttribution"], in: app))
+    }
+
+    @MainActor
     func testWeekdayReminderPickerOpensFromSettings() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
@@ -1203,7 +1234,8 @@ final class SunclubUITests: XCTestCase {
         XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
-        XCTAssertFalse(app.switches["settings.liveUVToggle"].exists)
+        XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
+        XCTAssertTrue(app.otherElements["settings.liveUV.status"].exists)
     }
 
     @MainActor

@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var followsTravelTimeZone = true
     @State private var streakRiskEnabled = true
     @State private var leaveHomeReminderEnabled = false
+    @State private var liveUVEnabled = false
     @State private var healthKitEnabled = false
     @State private var dailyUVBriefingEnabled = true
     @State private var extremeUVAlertsEnabled = false
@@ -115,7 +116,6 @@ struct SettingsView: View {
             syncLocalState()
             appState.refreshNotificationHealth()
             appState.refreshLeaveHomeReminderStatus()
-            appState.refreshUVReadingIfNeeded()
             appState.refreshUVForecastIfNeeded()
             appState.refreshHealthKitStatus()
         }
@@ -570,12 +570,68 @@ struct SettingsView: View {
         }
     }
 
+    private var liveUVSection: some View {
+        let presentation = appState.liveUVStatusPresentation
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("Live UV")
+                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: $liveUVEnabled) {
+                    Text("Use Apple Weather for Live UV")
+                        .font(AppFont.rounded(size: 17, weight: .medium))
+                        .foregroundStyle(AppPalette.ink)
+                }
+                .tint(AppPalette.sun)
+                .onChange(of: liveUVEnabled) { _, newValue in
+                    appState.updateLiveUVPreference(
+                        enabled: newValue,
+                        allowPermissionPrompt: newValue
+                    )
+                }
+                .accessibilityIdentifier("settings.liveUVToggle")
+
+                Text("Optional and off by default. Manual logging, reminders, widgets, and watch surfaces keep using Sunclub's local estimate if Live UV is off or unavailable.")
+                    .font(AppFont.rounded(size: 14))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                SunStatusCard(
+                    title: presentation.title,
+                    detail: presentation.detail,
+                    tint: liveUVStatusTint(for: presentation),
+                    symbol: "sun.max.circle.fill"
+                )
+                .accessibilityIdentifier("settings.liveUV.status")
+
+                Text("When Apple Weather UV appears in Sunclub, the main app shows Apple Weather attribution and a Data Sources link.")
+                    .font(AppFont.rounded(size: 13))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let actionTitle = presentation.actionTitle,
+                   let actionKind = presentation.actionKind {
+                    Button(actionTitle) {
+                        handleLiveUVAction(actionKind)
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("settings.liveUV.action")
+                }
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    }
+
     private var uvAndHealthSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("UV & Health")
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
+            liveUVSection
             uvBriefingSection
             healthKitSection
         }
@@ -821,7 +877,8 @@ struct SettingsView: View {
             return "Shortcuts \(writes), URL \(links)."
         case .advanced:
             let health = healthKitEnabled ? "Health sync on" : "Health sync off"
-            return "UV briefing controls. \(health)."
+            let liveUV = liveUVEnabled ? "Live UV on" : "Live UV off"
+            return "\(liveUV). \(health)."
         case .help:
             return section.detail
         }
@@ -832,6 +889,7 @@ struct SettingsView: View {
         followsTravelTimeZone = reminderSettings.followsTravelTimeZone
         streakRiskEnabled = reminderSettings.streakRiskEnabled
         leaveHomeReminderEnabled = reminderSettings.leaveHomeReminder.isEnabled
+        liveUVEnabled = appState.settings.usesLiveUV
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
         healthKitEnabled = appState.growthSettings.healthKit.isEnabled
@@ -932,6 +990,28 @@ struct SettingsView: View {
         switch action {
         case .requestPermission:
             appState.requestNotificationAuthorizationAndSchedule()
+        }
+    }
+
+    private func liveUVStatusTint(for presentation: LiveUVStatusPresentation) -> Color {
+        switch presentation.actionKind {
+        case .some(.openSettings), .some(.requestPermission):
+            return AppColor.warning.opacity(0.72)
+        case .some(.refresh):
+            return liveUVEnabled ? AppPalette.sun : AppPalette.softInk
+        case .none:
+            return liveUVEnabled ? AppPalette.sun : AppPalette.softInk
+        }
+    }
+
+    private func handleLiveUVAction(_ action: LiveUVActionKind) {
+        switch action {
+        case .openSettings:
+            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                openURL(settingsURL)
+            }
+        case .requestPermission, .refresh:
+            appState.performLiveUVAction(action)
         }
     }
 

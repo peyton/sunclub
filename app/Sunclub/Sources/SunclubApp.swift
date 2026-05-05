@@ -628,7 +628,7 @@ struct SunclubApp: App {
         appState.refreshNotificationHealth()
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshWeatherKitKillSwitchIfNeeded()
-        appState.refreshUVReadingIfNeeded()
+        appState.refreshUVForecastIfNeeded()
         appState.refreshAccountabilityForForeground()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
             openExternalRoute(route)
