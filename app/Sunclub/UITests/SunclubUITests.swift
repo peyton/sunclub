@@ -1235,7 +1235,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
         XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
-        XCTAssertTrue(app.otherElements["settings.liveUV.status"].exists)
+        XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["settings.liveUV.status"], in: app))
     }
 
     @MainActor
