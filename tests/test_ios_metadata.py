@@ -455,9 +455,10 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert 'echo "SUNCLUB_FLAVOR=${{ matrix.flavor }}"' in workflow
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=${{ matrix.aps_environment }}"' in workflow
     assert 'elif [ "${{ matrix.flavor }}" != "prod" ]; then' in workflow
-    assert "build:\n    name: Build iOS\n    runs-on: ubuntu-latest" in workflow
-    assert "needs: build-ios" in workflow
-    assert 'build_result="${{ needs.build-ios.result }}"' in workflow
+    assert workflow.count("name: Build iOS") == 1
+    assert "\n  build:\n    name: Build iOS\n    runs-on: ubuntu-latest" not in workflow
+    assert "needs: build-ios" not in workflow
+    assert 'build_result="${{ needs.build-ios.result }}"' not in workflow
 
 
 def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> None:
