@@ -44,15 +44,11 @@ struct AchievementsView: View {
 
                 Spacer(minLength: 0)
 
-                Text(presentation.unlockedCountText)
-                    .font(AppFont.rounded(size: 13, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(AppPalette.warmGlow.opacity(0.75))
-                    )
+                SunLabelPill(
+                    title: presentation.unlockedCountText,
+                    tint: AppPalette.ink,
+                    fill: AppPalette.warmGlow.opacity(0.75)
+                )
             }
 
             ForEach(presentation.achievements) { achievement in
@@ -259,12 +255,12 @@ private struct AchievementCelebrationCard: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 10) {
-            Label("New Badge", systemImage: "sparkles")
-                .font(AppFont.rounded(size: 13, weight: .bold))
-                .foregroundStyle(AppPalette.streakAccent)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(AppPalette.warmGlow.opacity(0.68), in: Capsule())
+            SunLabelPill(
+                title: "New Badge",
+                systemImage: "sparkles",
+                tint: AppPalette.streakAccent,
+                fill: AppPalette.warmGlow.opacity(0.68)
+            )
 
             Spacer(minLength: 0)
 
@@ -492,12 +488,11 @@ private struct AchievementStatusPill: View {
     let tint: Color
 
     var body: some View {
-        Text(text)
-            .font(AppFont.rounded(size: 12, weight: .bold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(tint.opacity(0.12), in: Capsule())
+        SunLabelPill(
+            title: text,
+            tint: tint,
+            fill: tint.opacity(0.12)
+        )
     }
 }
 

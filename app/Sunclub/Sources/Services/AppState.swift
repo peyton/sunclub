@@ -1791,7 +1791,7 @@ final class AppState {
         guard !prioritizedFriends.isEmpty else {
             return HomeAccountabilityPresentation(
                 title: "Bring in backup",
-                detail: "Accountability is on. Add one sunscreen buddy to keep check-ins visible.",
+                detail: "Activity sharing is on. Add one sunscreen buddy to keep check-ins visible.",
                 openCountText: "0 open",
                 loggedCountText: "0 logged",
                 primaryActionTitle: "Add Friend",
@@ -3231,6 +3231,16 @@ final class AppState {
         Task {
             _ = await notificationManager.requestAuthorizationIfNeeded()
             await notificationManager.scheduleReminders(using: self)
+            notificationHealthSnapshot = await notificationManager.notificationHealthSnapshot(using: self)
+        }
+    }
+
+    func requestNotificationAuthorizationAndSchedule() {
+        Task {
+            let granted = await notificationManager.requestAuthorizationIfNeeded()
+            if granted {
+                await notificationManager.scheduleReminders(using: self)
+            }
             notificationHealthSnapshot = await notificationManager.notificationHealthSnapshot(using: self)
         }
     }

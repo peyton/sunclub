@@ -695,7 +695,7 @@ final class SunclubUITests: XCTestCase {
 
         let logButton = app.buttons["manualLog.logToday"]
         XCTAssertTrue(logButton.waitForExistence(timeout: 5))
-        XCTAssertEqual(logButton.label, "Update Morning")
+        XCTAssertEqual(logButton.label, "Save Changes")
     }
 
     @MainActor
@@ -922,7 +922,7 @@ final class SunclubUITests: XCTestCase {
         app.buttons["home.logManually"].tap()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Log Morning")
+        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Save")
     }
 
     @MainActor
@@ -1080,11 +1080,11 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func dragCalendarGrid(_ calendarGrid: XCUIElement, toward direction: CalendarGridDragDirection) {
-        let startX = direction == .left ? 0.76 : 0.24
-        let endX = direction == .left ? 0.24 : 0.76
+        let startX = direction == .left ? 0.88 : 0.12
+        let endX = direction == .left ? 0.12 : 0.88
         let start = calendarGrid.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: 0.5))
         let end = calendarGrid.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: end)
+        start.press(forDuration: 0.15, thenDragTo: end)
     }
 
     private func dayIdentifier(offset: Int = 0) -> String {
