@@ -4,14 +4,14 @@ min_version = { soft = '2026.4.20' }
 # Keep `mise.toml` and `mise.lock` aligned whenever tool versions change.
 [tools]
 just = "1.50.0"
-tuist = { version = "4.191.4", os = ["macos"] }
+tuist = { version = "4.191.5", os = ["macos"] }
 hk = "1.44.3"
 actionlint = "1.7.12"
 python = "3.14.4"
 uv = "0.11.8"
 node = "25.9.0"
 "npm:prettier" = "3.8.3"
-"npm:wrangler" = "4.86.0"
+"npm:wrangler" = "4.87.0"
 ruff = "0.15.12"
 shellcheck = "0.11.0"
 rumdl = "0.1.80"
