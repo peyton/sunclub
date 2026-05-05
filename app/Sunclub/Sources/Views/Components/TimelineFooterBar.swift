@@ -42,7 +42,7 @@ struct TimelineFooterBar: View {
                     action: { router.open(.weeklySummary) }
                 )
                 pillButton(
-                    title: "Accountability",
+                    title: "Sharing",
                     systemImage: "person.2.fill",
                     identifier: "timeline.footer.accountability",
                     action: { router.open(.friends) }
@@ -57,7 +57,7 @@ struct TimelineFooterBar: View {
                     action: { router.open(.weeklySummary) }
                 )
                 pillButton(
-                    title: "Accountability",
+                    title: "Sharing",
                     systemImage: "person.2.fill",
                     identifier: "timeline.footer.accountability",
                     action: { router.open(.friends) }

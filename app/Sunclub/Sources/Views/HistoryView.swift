@@ -400,6 +400,7 @@ struct HistoryView: View {
                 )
             }
         }
+        .contentShape(Rectangle())
         .simultaneousGesture(
             DragGesture(minimumDistance: 24)
                 .onEnded(handleCalendarSwipe)
@@ -1206,7 +1207,7 @@ struct HistoryRecordEditorView: View {
 
                 SunScreenTitleBlock(
                     eyebrow: day.formatted(.dateTime.weekday(.wide).month(.wide).day()),
-                    title: existingRecord == nil ? "No sunscreen logged" : "Day logged",
+                    title: existingRecord == nil ? "No sunscreen logged" : "Completed",
                     detail: editorMessage,
                     symbolName: existingRecord == nil ? "calendar.badge.plus" : "checkmark.circle.fill",
                     tint: existingRecord == nil ? AppPalette.sun : AppPalette.success

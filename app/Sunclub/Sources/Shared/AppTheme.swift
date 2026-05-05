@@ -631,6 +631,34 @@ struct SunMetricPill: View {
     }
 }
 
+struct SunLabelPill: View {
+    let title: String
+    var systemImage: String?
+    var tint: Color = AppPalette.ink
+    var fill: Color = AppPalette.warmGlow.opacity(0.70)
+    var minWidth: CGFloat = 112
+
+    var body: some View {
+        HStack(spacing: 5) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(AppFont.rounded(size: 11, weight: .bold))
+                    .accessibilityHidden(true)
+            }
+
+            Text(title)
+                .font(AppFont.rounded(size: 12, weight: .bold))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(minWidth: minWidth)
+        .background(fill, in: Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+    }
+}
+
 struct SunWeekProgressDay: Identifiable, Equatable {
     let date: Date
     let isLogged: Bool

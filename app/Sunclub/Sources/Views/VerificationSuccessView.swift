@@ -42,10 +42,11 @@ struct VerificationSuccessView: View {
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier("success.title")
 
-                    Text(presentation.detail)
+                    Text(loggedDateText)
                         .font(AppFont.rounded(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("success.loggedDate")
 
                     if presentation.isPersonalBest && presentation.streak > 1 {
                         Text("New personal best!")
@@ -102,14 +103,6 @@ struct VerificationSuccessView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var successProgressNote: String {
-        if presentation.canAddDetails {
-            return "Your streak is saved. SPF is optional; add it only if it helps later."
-        }
-
-        return "Your streak and progress are saved."
-    }
-
     private var successNextStepCard: some View {
         SunclubCard(cornerRadius: 20, padding: 16) {
             VStack(alignment: .leading, spacing: 14) {
@@ -125,11 +118,6 @@ struct VerificationSuccessView: View {
 
                 if appState.settings.reapplyReminderEnabled {
                     reapplyConfirmation
-                } else {
-                    Text(successProgressNote)
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -161,6 +149,11 @@ struct VerificationSuccessView: View {
         }
 
         return preview.fireDate.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+    }
+
+    private var loggedDateText: String {
+        let loggedDate = appState.lastLogContext?.date ?? appState.selectedDay
+        return loggedDate.formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
 
     private var reapplyConfirmation: some View {
