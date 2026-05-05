@@ -40,32 +40,32 @@ url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_
 provenance = "github-attestations"
 
 [[tools.hk]]
-version = "1.44.1"
+version = "1.44.3"
 backend = "aqua:jdx/hk"
 
 [tools.hk."platforms.linux-arm64"]
-checksum = "sha256:248fae1d0cbc859c67f9e867e67e0cf69e5f93404c62c96efbe83f9ffe691442"
-url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-aarch64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:85e0f8b7c3107f5b7853390bf8201d3d9839021e3f2d7629f5457f7569218fcc"
+url = "https://github.com/jdx/hk/releases/download/v1.44.3/hk-aarch64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.linux-arm64-musl"]
-checksum = "sha256:248fae1d0cbc859c67f9e867e67e0cf69e5f93404c62c96efbe83f9ffe691442"
-url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-aarch64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:85e0f8b7c3107f5b7853390bf8201d3d9839021e3f2d7629f5457f7569218fcc"
+url = "https://github.com/jdx/hk/releases/download/v1.44.3/hk-aarch64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.linux-x64"]
-checksum = "sha256:6c50ef086268b5470a0da421505f0694d6cefcc8271abb8b50f2e4e4ded35eb6"
-url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:8ff22722b831acae2ac61eddbe349497f9538ac7ac28f4b1a2e3dd7c0e43ee8c"
+url = "https://github.com/jdx/hk/releases/download/v1.44.3/hk-x86_64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.linux-x64-musl"]
-checksum = "sha256:6c50ef086268b5470a0da421505f0694d6cefcc8271abb8b50f2e4e4ded35eb6"
-url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:8ff22722b831acae2ac61eddbe349497f9538ac7ac28f4b1a2e3dd7c0e43ee8c"
+url = "https://github.com/jdx/hk/releases/download/v1.44.3/hk-x86_64-unknown-linux-gnu.tar.gz"
 
 [tools.hk."platforms.macos-arm64"]
-checksum = "sha256:c8e317df71ef6f2faa646db1e433b2208e2a4de54a6298e0c510f27d8191924b"
-url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:e9000438928e7c66fd7790f0b47ca9b1c0b971c834238c1fa5faffae7fd92625"
+url = "https://github.com/jdx/hk/releases/download/v1.44.3/hk-aarch64-apple-darwin.tar.gz"
 
 [tools.hk."platforms.windows-x64"]
-checksum = "sha256:1ded329d70266fc3c4fe319ca48678614532ea7187ffd785d820e01bcdbf7f58"
-url = "https://github.com/jdx/hk/releases/download/v1.44.1/hk-x86_64-pc-windows-msvc.zip"
+checksum = "sha256:c59c6bf1c45157903ce58a5572257a959ca5e3895b6b9cbfb808a744d4858fb9"
+url = "https://github.com/jdx/hk/releases/download/v1.44.3/hk-x86_64-pc-windows-msvc.zip"
 
 [[tools.just]]
 version = "1.50.0"
@@ -136,7 +136,7 @@ version = "3.8.3"
 backend = "npm:prettier"
 
 [[tools."npm:wrangler"]]
-version = "4.84.1"
+version = "4.86.0"
 backend = "npm:wrangler"
 
 [[tools.pkl]]
@@ -388,71 +388,36 @@ checksum = "sha256:c59a405c85f95b92ced677a500804e081596a4cae4a6a485af76065557d6e
 url = "https://github.com/realm/SwiftLint/releases/download/0.63.2/portable_swiftlint.zip"
 
 [[tools.tuist]]
-version = "4.183.0"
+version = "4.191.4"
 backend = "aqua:tuist/tuist"
 
 [tools.tuist."platforms.linux-arm64"]
-checksum = "sha256:943163be5101baa444392f9c15d97387ee8bd6314eaee0bd2f93a23c04e8550d"
-url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-aarch64.tar.gz"
+checksum = "sha256:908e2a58d5803ae8fca3f58429a97bd6a6971985c6112265424257a79593f4f1"
+url = "https://github.com/tuist/tuist/releases/download/4.191.4/tuist-linux-aarch64.tar.gz"
 
 [tools.tuist."platforms.linux-arm64-musl"]
-checksum = "sha256:943163be5101baa444392f9c15d97387ee8bd6314eaee0bd2f93a23c04e8550d"
-url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-aarch64.tar.gz"
+checksum = "sha256:908e2a58d5803ae8fca3f58429a97bd6a6971985c6112265424257a79593f4f1"
+url = "https://github.com/tuist/tuist/releases/download/4.191.4/tuist-linux-aarch64.tar.gz"
 
 [tools.tuist."platforms.linux-x64"]
-checksum = "sha256:0a0293c65e4b9d34eca15bb0399c1023784776e37e591e7ab6cf3d5f3085a7b4"
-url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-x86_64.tar.gz"
+checksum = "sha256:43180150236676ef0fd68aea7dfae8014119e751984584101b4a9414c92f3a46"
+url = "https://github.com/tuist/tuist/releases/download/4.191.4/tuist-linux-x86_64.tar.gz"
 
 [tools.tuist."platforms.linux-x64-musl"]
-checksum = "sha256:0a0293c65e4b9d34eca15bb0399c1023784776e37e591e7ab6cf3d5f3085a7b4"
-url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist-linux-x86_64.tar.gz"
+checksum = "sha256:43180150236676ef0fd68aea7dfae8014119e751984584101b4a9414c92f3a46"
+url = "https://github.com/tuist/tuist/releases/download/4.191.4/tuist-linux-x86_64.tar.gz"
 
 [tools.tuist."platforms.macos-arm64"]
-checksum = "sha256:9d7ddd0e56a53dcc257cb521ca3bdc8bf5c10f30dfe1e04c70162564ffd7b16e"
-url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist.zip"
+checksum = "sha256:b915b32750a02063d7b9722e94b7d2291afb73592b2eaa1d17bb46c4ac363196"
+url = "https://github.com/tuist/tuist/releases/download/4.191.4/tuist.zip"
 
 [tools.tuist."platforms.macos-x64"]
-checksum = "sha256:9d7ddd0e56a53dcc257cb521ca3bdc8bf5c10f30dfe1e04c70162564ffd7b16e"
-url = "https://github.com/tuist/tuist/releases/download/4.183.0/tuist.zip"
+checksum = "sha256:b915b32750a02063d7b9722e94b7d2291afb73592b2eaa1d17bb46c4ac363196"
+url = "https://github.com/tuist/tuist/releases/download/4.191.4/tuist.zip"
 
 [[tools.uv]]
-version = "0.11.7"
+version = "0.11.8"
 backend = "aqua:astral-sh/uv"
-
-[tools.uv."platforms.linux-arm64"]
-checksum = "sha256:46647dc16cbb7d6700f762fdd7a67d220abe18570914732bc310adc91308d272"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-aarch64-unknown-linux-musl.tar.gz"
-provenance = "github-attestations"
-
-[tools.uv."platforms.linux-arm64-musl"]
-checksum = "sha256:46647dc16cbb7d6700f762fdd7a67d220abe18570914732bc310adc91308d272"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-aarch64-unknown-linux-musl.tar.gz"
-provenance = "github-attestations"
-
-[tools.uv."platforms.linux-x64"]
-checksum = "sha256:64ddb5f1087649e3f75aa50d139aa4f36ddde728a5295a141e0fa9697bfb7b0f"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-unknown-linux-musl.tar.gz"
-provenance = "github-attestations"
-
-[tools.uv."platforms.linux-x64-musl"]
-checksum = "sha256:64ddb5f1087649e3f75aa50d139aa4f36ddde728a5295a141e0fa9697bfb7b0f"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-unknown-linux-musl.tar.gz"
-provenance = "github-attestations"
-
-[tools.uv."platforms.macos-arm64"]
-checksum = "sha256:66e37d91f839e12481d7b932a1eccbfe732560f42c1cfb89faddfa2454534ba8"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-aarch64-apple-darwin.tar.gz"
-provenance = "github-attestations"
-
-[tools.uv."platforms.macos-x64"]
-checksum = "sha256:0a4bc8fcde4974ea3560be21772aeecab600a6f43fa6e58169f9fa7b3b71d302"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-apple-darwin.tar.gz"
-provenance = "github-attestations"
-
-[tools.uv."platforms.windows-x64"]
-checksum = "sha256:fe0c7815acf4fc45f8a5eff58ed3cf7ae2e15c3cf1dceadbd10c816ec1690cc1"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.7/uv-x86_64-pc-windows-msvc.zip"
-provenance = "github-attestations"
 
 [[tools.zizmor]]
 version = "1.24.1"
