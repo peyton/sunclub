@@ -401,9 +401,10 @@ struct HistoryView: View {
             }
         }
         .contentShape(Rectangle())
-        .simultaneousGesture(
+        .highPriorityGesture(
             DragGesture(minimumDistance: 24)
-                .onEnded(handleCalendarSwipe)
+                .onEnded(handleCalendarSwipe),
+            including: .all
         )
         .accessibilityAction(named: "Previous Month") {
             changeMonth(by: -1)
