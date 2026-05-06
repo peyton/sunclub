@@ -292,7 +292,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Log"].exists)
         XCTAssertTrue(
             scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app, attempts: 10),
-            "Expected Accountability footer to remain reachable with accessibility settings enabled."
+            "Expected Activity sharing footer to remain reachable with accessibility settings enabled."
         )
 
         app.buttons["timeline.footer.accountability"].tap()
@@ -302,7 +302,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(
             scrollToHittableElement(app.buttons["home.settingsButton"], in: app, attempts: 10),
-            "Expected Settings button to remain reachable after returning from Accountability."
+            "Expected Settings button to remain reachable after returning from Activity sharing."
         )
 
         app.buttons["home.settingsButton"].tap()
@@ -354,7 +354,7 @@ final class SunclubUITests: XCTestCase {
             "UITEST_CAMERA_AUTH=denied"
         ])
 
-        XCTAssertTrue(app.staticTexts["Camera access denied"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Camera access is off"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["productScanner.openSettings"].exists)
         XCTAssertTrue(app.buttons["productScanner.manualLog"].exists)
         let pickerByIdentifier = app.buttons["productScanner.pickPhoto"]
@@ -426,7 +426,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Poke"].exists)
         XCTAssertFalse(app.buttons["Refresh"].exists)
         XCTAssertFalse(app.buttons["Poke by Message"].exists)
-        XCTAssertFalse(app.buttons["Remove Friend"].exists)
+        XCTAssertFalse(app.buttons["Remove friend"].exists)
 
         XCTAssertTrue(scrollToElement(app.buttons["friends.add.toggle"], in: app))
         app.buttons["friends.add.toggle"].tap()
@@ -866,7 +866,7 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Automation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Shortcuts"].waitForExistence(timeout: 5))
         XCTAssertTrue(automationElement("automation.hero", in: app).exists)
         XCTAssertTrue(scrollToElement(automationSwitch("Allow URL write actions", in: app), in: app))
     }

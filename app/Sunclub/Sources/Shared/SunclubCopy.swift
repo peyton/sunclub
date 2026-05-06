@@ -3,13 +3,13 @@ import Foundation
 enum SunclubCopy {
     enum Brand {
         static let reminderTitle = "Smart reminders"
-        static let reminderDetail = "Get a sunscreen nudge before the day gets moving. You can change timing later in Settings."
+        static let reminderDetail = "Get a sunscreen reminder before the day gets moving. You can change timing later in Settings."
         static let homeSubtitle = "Make sunscreen the easy part of the day."
     }
 
     enum Success {
-        static let defaultTitle = "Completed"
-        static let actionTitle = "Back to Home"
+        static let defaultTitle = "Applied"
+        static let actionTitle = "Done"
 
         static func streakDetail(_ streak: Int) -> String {
             if streak == 1 {
@@ -62,16 +62,14 @@ enum SunclubCopy {
         ]
 
         static let success: [String] = [
-            "Completed",
-            "Covered",
-            "Protected",
-            "Streak saved",
-            "Logged and locked in",
-            "Another day, another layer",
-            "Sunscreen: done",
-            "Today's covered",
-            "Shield up",
-            "One more in the books"
+            "Applied",
+            "Logged",
+            "Saved",
+            "Today is logged",
+            "Done",
+            "Logged today",
+            "Sunscreen logged",
+            "All set"
         ]
     }
 

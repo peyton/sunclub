@@ -45,19 +45,19 @@ enum SunclubAutomationError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .onboardingRequired:
-            return "Open Sunclub once to finish setup before using automation."
+            return "Open Sunclub once to finish setup before using Shortcuts."
         case .shortcutWritesDisabled:
-            return "Shortcut writes are off in Sunclub Automation settings."
+            return "Shortcut writes are off in Sunclub Shortcuts settings."
         case .urlOpenActionsDisabled:
-            return "URL open actions are off in Sunclub Automation settings."
+            return "URL open actions are off in Sunclub Shortcuts settings."
         case .urlWriteActionsDisabled:
-            return "URL write actions are off in Sunclub Automation settings."
+            return "URL write actions are off in Sunclub Shortcuts settings."
         case let .unsupportedAction(action):
-            return "Sunclub does not support the automation action \(action)."
+            return "Sunclub does not support the Shortcuts action \(action)."
         case .recordRequired:
-            return "Log sunscreen for today before using this automation."
+            return "Log sunscreen for today before using this shortcut."
         case .friendNotFound:
-            return "Sunclub could not find that accountability friend."
+            return "Sunclub could not find that Activity sharing friend."
         case let .invalidInput(message):
             return message
         case let .unavailable(message):
@@ -124,7 +124,7 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
         case .settings:
             return "Settings"
         case .automation:
-            return "Automation"
+            return "Shortcuts"
         case .achievements:
             return "Achievements"
         case .friends:
@@ -922,7 +922,7 @@ enum SunclubAutomationRuntime {
         return SunclubAutomationResult(
             action: "poke-friend",
             status: "ok",
-            message: "Poked \(friend.name).",
+            message: "Reminded \(friend.name).",
             friend: friend.name
         )
     }

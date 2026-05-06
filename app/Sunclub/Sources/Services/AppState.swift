@@ -1790,8 +1790,8 @@ final class AppState {
 
         guard !prioritizedFriends.isEmpty else {
             return HomeAccountabilityPresentation(
-                title: "Bring in backup",
-                detail: "Activity sharing is on. Add one sunscreen buddy to keep check-ins visible.",
+                title: "Set up sharing",
+                detail: "Activity sharing is on. Add a friend when you want to share logged days.",
                 openCountText: "0 open",
                 loggedCountText: "0 logged",
                 primaryActionTitle: "Add Friend",
@@ -1811,22 +1811,22 @@ final class AppState {
 
         if let topOpenFriend {
             if supportsDirectAccountabilityTransport {
-                title = "Poke \(topOpenFriend.name)"
-                detail = "\(topOpenFriend.name) still has an open sunscreen day. One tap sends a quick nudge."
-                actionTitle = "Poke"
+                title = "Remind \(topOpenFriend.name)"
+                detail = "\(topOpenFriend.name) has not logged today."
+                actionTitle = "Remind"
                 actionKind = .poke
                 actionFriendID = topOpenFriend.id
             } else {
                 title = "Message \(topOpenFriend.name)"
-                detail = "\(topOpenFriend.name) still has an open sunscreen day. Send a note through Messages when you want to nudge."
-                actionTitle = "Open Friends"
+                detail = "\(topOpenFriend.name) has not logged today."
+                actionTitle = "View sharing"
                 actionKind = .view
                 actionFriendID = nil
             }
         } else {
             title = "Everyone logged"
-            detail = "Everyone in your circle logged today. Nice work from the whole crew."
-            actionTitle = "View Friends"
+            detail = "Everyone in Activity sharing logged today."
+            actionTitle = "View sharing"
             actionKind = .view
             actionFriendID = nil
         }
@@ -1844,7 +1844,7 @@ final class AppState {
                 HomeAccountabilityFriendPresentation(
                     id: friend.id,
                     name: friend.name,
-                    status: friend.hasLoggedToday ? "Logged" : "Needs SPF",
+                    status: friend.hasLoggedToday ? "Logged" : "Open today",
                     streak: "\(friend.currentStreak)d",
                     hasLoggedToday: friend.hasLoggedToday
                 )
@@ -2219,7 +2219,7 @@ final class AppState {
         syncWidgetSnapshot()
         reloadWidgetTimelines()
         if !supportsDirectAccountabilityTransport {
-            friendImportMessage = "Added \(importedSnapshot.name). Use Message when you want to send a nudge."
+            friendImportMessage = "Added \(importedSnapshot.name). Use Message when you want to send a reminder."
         } else if importedSnapshot.hasLoggedToday && record(for: currentDate()) == nil {
             friendImportMessage = "\(importedSnapshot.name) logged today. Have you?"
         } else {
@@ -2258,7 +2258,7 @@ final class AppState {
                 syncWidgetSnapshot()
                 reloadWidgetTimelines()
             } catch {
-                friendImportMessage = "Accountability updates did not sync yet. You can still use Message."
+                friendImportMessage = "Activity sharing did not sync yet. You can still use Message."
             }
         }
     }
@@ -2365,7 +2365,7 @@ final class AppState {
             }
             return didProcessEvent
         } catch {
-            friendImportMessage = "Accountability updates did not sync yet."
+            friendImportMessage = "Activity sharing did not sync yet."
             return false
         }
     }

@@ -50,6 +50,8 @@ private struct AssetSpec {
     let draw: (CGContext, CGSize) -> Void
 }
 
+private let assetScales = [1, 2, 3]
+
 private func roundedRect(_ rect: CGRect, radius: CGFloat) -> CGPath {
     CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
 }
@@ -131,23 +133,48 @@ private func drawGrain(_ context: CGContext, size: CGSize, seed: UInt64, alpha: 
 }
 
 private func drawLightLeakBackground(_ context: CGContext, size: CGSize, dark: Bool) {
-    let bounds = CGRect(origin: .zero, size: size)
     if dark {
-        gradient(context, colors: [Palette.night, Palette.nightAmber, RGBA(0.085, 0.075, 0.071)], start: .zero, end: CGPoint(x: size.width, y: size.height))
-        radial(context, colors: [RGBA(1, 0.62, 0.18, 0.42), RGBA(1, 0.62, 0.18, 0)], center: CGPoint(x: size.width * 0.18, y: size.height * 0.1), endRadius: size.width * 0.65)
-        radial(context, colors: [RGBA(0.95, 0.22, 0.3, 0.18), RGBA(0.95, 0.22, 0.3, 0)], center: CGPoint(x: size.width * 0.92, y: size.height * 0.72), endRadius: size.width * 0.58)
-        drawGrain(context, size: size, seed: 44, alpha: 0.07)
+        gradient(
+            context,
+            colors: [RGBA(0.120, 0.104, 0.094), RGBA(0.172, 0.132, 0.098), RGBA(0.095, 0.086, 0.080)],
+            start: .zero,
+            end: CGPoint(x: size.width, y: size.height)
+        )
+        for index in 0..<7 {
+            let offset = CGFloat(index) * size.height / 6
+            strokeLine(
+                context,
+                RGBA(1, 0.80, 0.45, 0.035),
+                from: CGPoint(x: -size.width * 0.10, y: offset),
+                to: CGPoint(x: size.width * 1.10, y: offset + size.height * 0.24),
+                width: 1.5
+            )
+        }
+        drawGrain(context, size: size, seed: 44, alpha: 0.045)
     } else {
-        gradient(context, colors: [Palette.cream, Palette.pearl, RGBA(1, 0.945, 0.825)], start: .zero, end: CGPoint(x: size.width, y: size.height))
-        radial(context, colors: [RGBA(1, 0.72, 0.12, 0.42), RGBA(1, 0.72, 0.12, 0)], center: CGPoint(x: size.width * 0.14, y: size.height * 0.02), endRadius: size.width * 0.72)
-        radial(context, colors: [RGBA(0.36, 0.72, 0.51, 0.18), RGBA(0.36, 0.72, 0.51, 0)], center: CGPoint(x: size.width * 0.88, y: size.height * 0.68), endRadius: size.width * 0.52)
-        drawGrain(context, size: size, seed: 19, alpha: 0.06)
+        gradient(
+            context,
+            colors: [Palette.cream, Palette.pearl, RGBA(1, 0.956, 0.884)],
+            start: .zero,
+            end: CGPoint(x: size.width, y: size.height)
+        )
+        for index in 0..<5 {
+            let inset = CGFloat(index) * 72
+            let rect = CGRect(
+                x: -size.width * 0.44 + inset,
+                y: -size.width * 0.52 + inset,
+                width: size.width * 1.10,
+                height: size.width * 1.10
+            )
+            stroke(
+                context,
+                RGBA(Palette.sun.r, Palette.sun.g, Palette.sun.b, 0.075 - CGFloat(index) * 0.010),
+                path: CGPath(ellipseIn: rect, transform: nil),
+                width: 2
+            )
+        }
+        drawGrain(context, size: size, seed: 19, alpha: 0.04)
     }
-
-    context.setBlendMode(.softLight)
-    context.setFillColor(RGBA(1, 1, 1, dark ? 0.07 : 0.28).cgColor)
-    context.fillEllipse(in: bounds.insetBy(dx: -size.width * 0.2, dy: size.height * 0.18).offsetBy(dx: -size.width * 0.3, dy: -size.height * 0.45))
-    context.setBlendMode(.normal)
 }
 
 private func drawBottle(_ context: CGContext, center: CGPoint, scale: CGFloat, labelColor: RGBA = Palette.sun) {
@@ -371,39 +398,28 @@ private func drawPerson(
 }
 
 private func drawFriendsPair(_ context: CGContext, size: CGSize) {
-    radial(context, colors: [RGBA(0.26, 0.65, 0.85, 0.20), RGBA(0.26, 0.65, 0.85, 0)], center: CGPoint(x: 300, y: 148), endRadius: 250)
-    radial(context, colors: [RGBA(0.98, 0.64, 0.01, 0.20), RGBA(0.98, 0.64, 0.01, 0)], center: CGPoint(x: 300, y: 222), endRadius: 225)
-    context.setFillColor(RGBA(0.13, 0.11, 0.10, 0.07).cgColor)
-    context.fillEllipse(in: CGRect(x: 86, y: 36, width: size.width - 172, height: 42))
+    let card = CGRect(x: 102, y: 78, width: size.width - 204, height: size.height - 156)
+    fillPath(context, RGBA(1, 1, 1, 0.82), path: roundedRect(card, radius: 38))
+    stroke(context, RGBA(0.13, 0.11, 0.10, 0.08), path: roundedRect(card, radius: 38), width: 2)
 
-    let skin = RGBA(0.95, 0.73, 0.56)
-    drawPerson(
-        context,
-        headCenter: CGPoint(x: 142, y: 294),
-        torso: CGRect(x: 66, y: 72, width: 152, height: 174),
-        shirt: Palette.sun,
-        skin: skin
-    )
-    drawPerson(
-        context,
-        headCenter: CGPoint(x: 458, y: 294),
-        torso: CGRect(x: 382, y: 72, width: 152, height: 174),
-        shirt: Palette.aloe,
-        skin: RGBA(0.80, 0.58, 0.44)
-    )
+    let tokenA = CGPoint(x: 226, y: 220)
+    let tokenB = CGPoint(x: 374, y: 220)
+    context.setFillColor(RGBA(Palette.sun.r, Palette.sun.g, Palette.sun.b, 0.16).cgColor)
+    context.fillEllipse(in: CGRect(x: tokenA.x - 62, y: tokenA.y - 62, width: 124, height: 124))
+    context.setFillColor(RGBA(Palette.aloe.r, Palette.aloe.g, Palette.aloe.b, 0.16).cgColor)
+    context.fillEllipse(in: CGRect(x: tokenB.x - 62, y: tokenB.y - 62, width: 124, height: 124))
+    context.setFillColor(Palette.sun.cgColor)
+    context.fillEllipse(in: CGRect(x: tokenA.x - 34, y: tokenA.y - 34, width: 68, height: 68))
+    context.setFillColor(Palette.aloe.cgColor)
+    context.fillEllipse(in: CGRect(x: tokenB.x - 34, y: tokenB.y - 34, width: 68, height: 68))
 
-    strokeLine(context, skin, from: CGPoint(x: 184, y: 204), to: CGPoint(x: 264, y: 218), width: 24)
-    strokeLine(context, RGBA(0.80, 0.58, 0.44), from: CGPoint(x: 416, y: 204), to: CGPoint(x: 336, y: 218), width: 24)
-    context.setFillColor(skin.cgColor)
-    context.fillEllipse(in: CGRect(x: 251, y: 204, width: 28, height: 28))
-    context.setFillColor(RGBA(0.80, 0.58, 0.44).cgColor)
-    context.fillEllipse(in: CGRect(x: 321, y: 204, width: 28, height: 28))
+    let center = CGPoint(x: 300, y: 220)
+    drawSunRing(context, center: center, radius: 42, tint: Palette.warmGlow)
+    strokeLine(context, RGBA(0.13, 0.11, 0.10, 0.16), from: CGPoint(x: tokenA.x + 42, y: tokenA.y), to: CGPoint(x: center.x - 34, y: center.y), width: 5)
+    strokeLine(context, RGBA(0.13, 0.11, 0.10, 0.16), from: CGPoint(x: center.x + 34, y: center.y), to: CGPoint(x: tokenB.x - 42, y: tokenB.y), width: 5)
 
-    drawTiltedPhone(context, center: CGPoint(x: 282, y: 210), size: CGSize(width: 72, height: 120), rotation: -0.12, accent: Palette.sun)
-    drawTiltedPhone(context, center: CGPoint(x: 318, y: 210), size: CGSize(width: 72, height: 120), rotation: 0.12, accent: Palette.aloe)
-
-    drawSunRing(context, center: CGPoint(x: 300, y: 204), radius: 30, tint: Palette.warmGlow)
-    strokeLine(context, Palette.pool, from: CGPoint(x: 288, y: 142), to: CGPoint(x: 312, y: 142), width: 6)
+    fill(context, RGBA(0.13, 0.11, 0.10, 0.10), in: CGRect(x: card.minX + 74, y: card.minY + 62, width: card.width - 148, height: 10))
+    fill(context, RGBA(0.13, 0.11, 0.10, 0.06), in: CGRect(x: card.minX + 118, y: card.minY + 84, width: card.width - 236, height: 10))
 }
 
 private func drawReport(_ context: CGContext, rect: CGRect) {
@@ -417,15 +433,9 @@ private func drawReport(_ context: CGContext, rect: CGRect) {
     }
 }
 
-private func drawAsset(_ spec: AssetSpec) throws {
-    let imageset = assetCatalog.appendingPathComponent("\(spec.name).imageset", isDirectory: true)
-    if FileManager.default.fileExists(atPath: imageset.path) {
-        try FileManager.default.removeItem(at: imageset)
-    }
-    try FileManager.default.createDirectory(at: imageset, withIntermediateDirectories: true)
-
-    let width = spec.width
-    let height = spec.height
+private func renderPNG(_ spec: AssetSpec, scale: Int) throws -> Data {
+    let width = spec.width * scale
+    let height = spec.height * scale
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
     guard let context = CGContext(
@@ -437,35 +447,59 @@ private func drawAsset(_ spec: AssetSpec) throws {
         space: colorSpace,
         bitmapInfo: bitmapInfo
     ) else {
-        throw NSError(domain: "SunclubVisualAssets", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not create bitmap context for \(spec.name)."])
+        throw NSError(domain: "SunclubVisualAssets", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not create \(scale)x bitmap context for \(spec.name)."])
     }
 
     context.setAllowsAntialiasing(true)
     context.setShouldAntialias(true)
+    context.interpolationQuality = .high
     context.clear(CGRect(x: 0, y: 0, width: width, height: height))
+    context.scaleBy(x: CGFloat(scale), y: CGFloat(scale))
+    let logicalSize = CGSize(width: spec.width, height: spec.height)
     if spec.isOpaque {
-        fill(context, Palette.cream, in: CGRect(x: 0, y: 0, width: width, height: height))
+        fill(context, Palette.cream, in: CGRect(origin: .zero, size: logicalSize))
     }
-    spec.draw(context, CGSize(width: width, height: height))
+    spec.draw(context, logicalSize)
 
     guard let cgImage = context.makeImage() else {
-        throw NSError(domain: "SunclubVisualAssets", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not make image for \(spec.name)."])
+        throw NSError(domain: "SunclubVisualAssets", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not make \(scale)x image for \(spec.name)."])
     }
     let rep = NSBitmapImageRep(cgImage: cgImage)
     guard let png = rep.representation(using: .png, properties: [:]) else {
-        throw NSError(domain: "SunclubVisualAssets", code: 3, userInfo: [NSLocalizedDescriptionKey: "Could not encode PNG for \(spec.name)."])
+        throw NSError(domain: "SunclubVisualAssets", code: 3, userInfo: [NSLocalizedDescriptionKey: "Could not encode \(scale)x PNG for \(spec.name)."])
+    }
+    return png
+}
+
+private func filename(for spec: AssetSpec, scale: Int) -> String {
+    scale == 1 ? "\(spec.name).png" : "\(spec.name)@\(scale)x.png"
+}
+
+private func drawAsset(_ spec: AssetSpec) throws {
+    let imageset = assetCatalog.appendingPathComponent("\(spec.name).imageset", isDirectory: true)
+    if FileManager.default.fileExists(atPath: imageset.path) {
+        try FileManager.default.removeItem(at: imageset)
+    }
+    try FileManager.default.createDirectory(at: imageset, withIntermediateDirectories: true)
+
+    for scale in assetScales {
+        let png = try renderPNG(spec, scale: scale)
+        try png.write(to: imageset.appendingPathComponent(filename(for: spec, scale: scale)))
     }
 
-    let filename = "\(spec.name).png"
-    try png.write(to: imageset.appendingPathComponent(filename))
+    let imageEntries = assetScales.map { scale in
+        """
+            {
+              "filename" : "\(filename(for: spec, scale: scale))",
+              "idiom" : "universal",
+              "scale" : "\(scale)x"
+            }
+        """
+    }.joined(separator: ",\n")
     let contents = """
     {
       "images" : [
-        {
-          "filename" : "\(filename)",
-          "idiom" : "universal",
-          "scale" : "1x"
-        }
+    \(imageEntries)
       ],
       "info" : {
         "author" : "xcode",
@@ -489,8 +523,22 @@ private func specs() -> [AssetSpec] {
             drawLightLeakBackground(context, size: size, dark: true)
         },
         AssetSpec(name: "BackgroundUVBands", width: 900, height: 500, isOpaque: false) { context, size in
-            gradient(context, colors: [RGBA(0.36, 0.72, 0.51, 0.55), RGBA(1, 0.78, 0.24, 0.58), RGBA(0.96, 0.36, 0.25, 0.48), RGBA(0.78, 0.25, 0.56, 0.38)], start: .zero, end: CGPoint(x: size.width, y: size.height))
-            drawGrain(context, size: size, seed: 77, alpha: 0.045)
+            let colors = [
+                RGBA(Palette.aloe.r, Palette.aloe.g, Palette.aloe.b, 0.32),
+                RGBA(Palette.sun.r, Palette.sun.g, Palette.sun.b, 0.28),
+                RGBA(Palette.coral.r, Palette.coral.g, Palette.coral.b, 0.22),
+                RGBA(Palette.magenta.r, Palette.magenta.g, Palette.magenta.b, 0.18)
+            ]
+            for (index, color) in colors.enumerated() {
+                let rect = CGRect(
+                    x: 54 + CGFloat(index) * 34,
+                    y: 80 + CGFloat(index) * 70,
+                    width: size.width - 108 - CGFloat(index) * 68,
+                    height: 42
+                )
+                fillPath(context, color, path: roundedRect(rect, radius: 21))
+            }
+            drawGrain(context, size: size, seed: 77, alpha: 0.025)
         },
         AssetSpec(name: "HeroWelcomeMorningKit", width: heroSize.0, height: heroSize.1, isOpaque: false) { context, size in
             drawHeroWelcome(context, size: size)
@@ -504,11 +552,12 @@ private func specs() -> [AssetSpec] {
         },
         AssetSpec(name: "IllustrationScannerLabel", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, _ in
             let card = CGRect(x: 130, y: 104, width: 340, height: 212)
-            fill(context, Palette.white, in: card)
-            stroke(context, Palette.sun, path: roundedRect(card, radius: 28), width: 5)
-            fill(context, Palette.pool, in: CGRect(x: card.minX + 38, y: card.minY + 48, width: card.width - 76, height: 28))
-            fill(context, RGBA(0.13, 0.11, 0.10, 0.12), in: CGRect(x: card.minX + 38, y: card.minY + 96, width: card.width - 104, height: 16))
-            fill(context, RGBA(0.13, 0.11, 0.10, 0.08), in: CGRect(x: card.minX + 38, y: card.minY + 126, width: card.width - 144, height: 16))
+            fillPath(context, RGBA(1, 1, 1, 0.92), path: roundedRect(card, radius: 28))
+            stroke(context, RGBA(Palette.sun.r, Palette.sun.g, Palette.sun.b, 0.58), path: roundedRect(card, radius: 28), width: 4)
+            fillPath(context, RGBA(Palette.sun.r, Palette.sun.g, Palette.sun.b, 0.12), path: roundedRect(CGRect(x: card.minX + 38, y: card.minY + 44, width: card.width - 76, height: 34), radius: 17))
+            fill(context, RGBA(0.13, 0.11, 0.10, 0.12), in: CGRect(x: card.minX + 42, y: card.minY + 108, width: card.width - 108, height: 12))
+            fill(context, RGBA(0.13, 0.11, 0.10, 0.08), in: CGRect(x: card.minX + 42, y: card.minY + 136, width: card.width - 152, height: 12))
+            strokeLine(context, RGBA(Palette.pool.r, Palette.pool.g, Palette.pool.b, 0.72), from: CGPoint(x: card.minX + 34, y: card.midY), to: CGPoint(x: card.maxX - 34, y: card.midY), width: 3)
         },
         AssetSpec(name: "IllustrationHistoryCalendar", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, _ in
             drawCalendar(context, rect: CGRect(x: 136, y: 82, width: 328, height: 266))

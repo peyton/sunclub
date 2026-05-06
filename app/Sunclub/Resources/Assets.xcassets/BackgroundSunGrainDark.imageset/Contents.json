@@ -4,6 +4,16 @@
       "filename" : "BackgroundSunGrainDark.png",
       "idiom" : "universal",
       "scale" : "1x"
+    },
+    {
+      "filename" : "BackgroundSunGrainDark@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "BackgroundSunGrainDark@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {

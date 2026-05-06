@@ -282,8 +282,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     func scheduleAccountabilityPokeNotification(friendName: String, message: String, route: AppRoute) async {
         let content = makeContent(
-            title: "\(friendName) poked you",
-            body: message.isEmpty ? "Sunscreen check?" : message,
+            title: "\(friendName) sent a reminder",
+            body: message.isEmpty ? "Sunscreen reminder." : message,
             categoryIdentifier: NotificationConstants.accountabilityCategoryID,
             route: notificationRoute(for: route),
             type: "accountability_poke",
