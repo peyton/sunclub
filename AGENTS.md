@@ -6,25 +6,37 @@ iOS sunscreen tracking app with AI validation.
 
 ```text
 just bootstrap
-just download-model
+just icons
 just generate
-open app/Sunclub.xcworkspace
+just build
+just run
 ```
 
-Scheme: **Sunclub** | Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.
+Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.
 
 ## Test Commands
 
-| Surface           | Command                 |
-| ----------------- | ----------------------- |
-| Unit tests        | `just test-unit`        |
-| UI tests          | `just test-ui`          |
-| All tests         | `just test`             |
-| CI validation     | `just ci`               |
-| Lint              | `just lint`             |
-| Format            | `just fmt`              |
-| Python eval tests | `just test-python`      |
-| Benchmark         | `just benchmark-strict` |
+| Surface           | Command                  |
+| ----------------- | ------------------------ |
+| Unit tests        | `just test-unit`         |
+| UI tests          | `just test-ui`           |
+| All tests         | `just test`              |
+| CI validation     | `just ci`                |
+| Lint              | `just lint`              |
+| Format            | `just fmt`               |
+| CI build shard    | `just ci-build`          |
+| Release preflight | `just release-preflight` |
+| Visual assets     | `just visual-assets`     |
+| Python tests      | `just test-python`       |
+
+## Release & App Store Commands
+
+| Surface            | Command                         |
+| ------------------ | ------------------------------- |
+| App Review env     | `just appstore-env`             |
+| App Review dry run | `just appstore-submit-dry-run`  |
+| App Review submit  | `just appstore-submit-review`   |
+| TestFlight tag     | `just release-testflight 1.2.3` |
 
 ## Verification Rules
 
@@ -73,10 +85,9 @@ Every future user-facing feature must preserve Sunclub's always-automatable post
 
 ```text
 app/          iOS Apps, Swift source, iOS tests, UI tests
-evals/        Benchmark suite and eval harness
 scripts/      All project-level scripts.
 tests/        Other tests and test runners
-docs/         One place for all documentation on the app, evals, scripts, and tests.
+docs/         One place for all documentation on the app, scripts, and tests.
 ```
 
 ## Architecture Conventions
@@ -126,7 +137,6 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 ## Things to Avoid
 
 - Don't add external dependencies — the app is intentionally self-contained
-- Don't change matching thresholds without running the benchmark
 - Don't change persisted SwiftData models without bumping the schema version and adding/updating a migration test that opens the previous shipped store
 - Don't bypass `UITEST_MODE` in UI tests — they must work without real camera/notifications
 - Don't put documentation anywhere other than `docs/`
@@ -141,3 +151,6 @@ docs/         One place for all documentation on the app, evals, scripts, and te
 - App Store Connect rejects embedded watch apps when the watch app bundle carries iOS-only Info.plist keys, lacks compiled watch icon assets, or is signed with the WatchKit stub identifier `com.apple.WK`. Keep the watch app plist minimal, keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset` in the target resources, and keep release IPA validation checking the watch app code-signing identifier, `CFBundleIconName`, compiled `Assets.car`, and plist key denylist before upload.
 - Hidden SwiftUI navigation bars need both the visible `screen.back` button and the app-owned left-edge drag fallback in `RootView`. Do not rely only on UIKit `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed `testSettingsEdgeSwipeReturnsHome` and `testRecoveryUndoRestoresTodayAndStreak` even though button back navigation still worked.
 - Keep the historical CI and release stability notes in `docs/ci-release-stability.md` current whenever touching `.github/workflows/ci.yml`, `.github/workflows/release-testflight.yml`, release tooling, or watch target generation.
+- Normal CI exposes the iOS build matrix directly as `Build iOS (Development)` and `Build iOS (Production)`. Do not re-add a separate aggregate `Build iOS` job unless required-check naming deliberately changes.
+- Generated non-logo art assets are owned by `scripts/generate-visual-assets.swift` and regenerated with `just visual-assets`. The generator must keep app icons, watch icons, `icon.svg`, and `web/assets/app-icon.svg` untouched, and generated non-logo imagesets should include valid `1x`, `2x`, and `3x` PNGs plus `Contents.json` scale entries.
+- App Review submission runs through `just appstore-submit-dry-run` before `just appstore-submit-review` or `just appstore-send-review`. Final submission requires strict metadata, screenshots, `.build/appstore-review-checkpoint/summary.md` review, a valid TestFlight build upload, and the checkpoint confirmation gate; never submit a draft review submission that already contains a different app version.
