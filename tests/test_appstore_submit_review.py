@@ -144,6 +144,16 @@ class FakeSubmissionClient:
             return []
         if path == "/apps/app-1/reviewSubmissions":
             requested_state = query.get("filter[state]") if query is not None else None
+            if self.stale_submission_item:
+                if requested_state != "READY_FOR_REVIEW":
+                    return []
+                return [
+                    {
+                        "type": "reviewSubmissions",
+                        "id": "review-1",
+                        "attributes": {"state": "READY_FOR_REVIEW"},
+                    }
+                ]
             if self.rejected_submission_item:
                 if requested_state != "UNRESOLVED_ISSUES":
                     return []
@@ -167,15 +177,7 @@ class FakeSubmissionClient:
                         },
                     }
                 ]
-            if requested_state == "UNRESOLVED_ISSUES":
-                return []
-            return [
-                {
-                    "type": "reviewSubmissions",
-                    "id": "review-1",
-                    "attributes": {"state": "READY_FOR_REVIEW"},
-                }
-            ]
+            return []
         if path == "/reviewSubmissions/review-1/items":
             if self.rejected_submission_item:
                 version_id = (
@@ -758,5 +760,6 @@ def test_submitter_rejects_stale_draft_review_submission(tmp_path: Path) -> None
         poll_interval_seconds=0,
     )
 
-    with pytest.raises(AppStoreConnectError, match="different app version"):
+    with pytest.raises(AppStoreConnectError, match="not associated"):
         submitter.submit()
+    assert not any(path == "/reviewSubmissionItems" for path, _body in client.posts)
