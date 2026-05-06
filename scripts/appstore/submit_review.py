@@ -250,7 +250,7 @@ class AppStoreReviewSubmitter:
             )
         except AppStoreConnectError as error:
             message = str(error)
-            if "usesNonExemptEncryption" not in message or "already set" not in message:
+            if "already set" not in message:
                 raise
 
     def ensure_app_store_version(self, app_id: str, build_id: str) -> str:
