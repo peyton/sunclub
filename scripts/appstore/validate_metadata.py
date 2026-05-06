@@ -46,6 +46,7 @@ REQUIRED_AGE_RATING_FIELDS = {
     "substance_or_tobacco_content": "none",
     "medical_or_treatment_information": "none",
 }
+EXISTING_REVIEW_CONTACT_ENV = "SUNCLUB_APP_REVIEW_USE_EXISTING_CONTACT"
 REQUIRED_ATTESTATIONS = {
     "free_only": True,
     "in_app_purchases": False,
@@ -145,7 +146,10 @@ def lower_strings(values: list[str]) -> str:
 
 
 def validate_manifest(
-    manifest: dict[str, Any], *, allow_draft: bool = False
+    manifest: dict[str, Any],
+    *,
+    allow_draft: bool = False,
+    allow_existing_review_contact: bool = False,
 ) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -317,6 +321,11 @@ def validate_manifest(
                 message = "review.contact is still marked as not ready for submission."
                 if allow_draft:
                     warnings.append(message)
+                elif allow_existing_review_contact:
+                    warnings.append(
+                        "review.contact will be reused from the existing App Store "
+                        "Connect version."
+                    )
                 else:
                     for field in missing_contact_fields:
                         errors.append(f"review.contact.{field} is required.")
@@ -580,6 +589,14 @@ def main() -> int:
         action="store_true",
         help="Do not auto-load .state/appstore/review.env before resolving env-backed metadata.",
     )
+    parser.add_argument(
+        "--allow-existing-review-contact",
+        action="store_true",
+        help=(
+            "Allow missing review.contact values when the submission step will reuse "
+            "the existing App Store Connect review contact."
+        ),
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.manifest)
@@ -600,7 +617,17 @@ def main() -> int:
         print(f"Invalid App Store review environment: {error}", file=sys.stderr)
         return 2
 
-    errors, warnings = validate_manifest(manifest, allow_draft=args.allow_draft)
+    merged_env, _loaded = appstore_manifest.merged_review_environment(
+        load_env_file=not args.no_env_file
+    )
+    errors, warnings = validate_manifest(
+        manifest,
+        allow_draft=args.allow_draft,
+        allow_existing_review_contact=(
+            args.allow_existing_review_contact
+            or merged_env.get(EXISTING_REVIEW_CONTACT_ENV) == "1"
+        ),
+    )
 
     if errors:
         print(f"Metadata validation failed for {manifest_path}:")
