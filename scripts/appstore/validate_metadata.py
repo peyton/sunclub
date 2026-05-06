@@ -319,13 +319,13 @@ def validate_manifest(
                     missing_contact_fields.append(field)
             if missing_contact_fields:
                 message = "review.contact is still marked as not ready for submission."
-                if allow_draft:
-                    warnings.append(message)
-                elif allow_existing_review_contact:
+                if allow_existing_review_contact:
                     warnings.append(
                         "review.contact will be reused from the existing App Store "
                         "Connect version."
                     )
+                elif allow_draft:
+                    warnings.append(message)
                 else:
                     for field in missing_contact_fields:
                         errors.append(f"review.contact.{field} is required.")

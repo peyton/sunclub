@@ -276,6 +276,9 @@ def main() -> int:
         _errors, warnings = validate_metadata.validate_manifest(
             report.value,
             allow_draft=True,
+            allow_existing_review_contact=(
+                os.environ.get(validate_metadata.EXISTING_REVIEW_CONTACT_ENV) == "1"
+            ),
         )
         content = generate_checkpoint(report, warnings=warnings)
         output_path = Path(args.checkpoint_output)

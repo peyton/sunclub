@@ -815,9 +815,6 @@ class AppStoreReviewSubmitter:
                 return resource_id(submission)
 
         for submission in submissions:
-            state = resource_attributes(submission).get("state")
-            if state != UNRESOLVED_REVIEW_SUBMISSION_STATE:
-                continue
             submission_id = resource_id(submission)
             if self.review_submission_contains_version(
                 submission_id,
@@ -825,10 +822,16 @@ class AppStoreReviewSubmitter:
             ):
                 return submission_id
 
-        for submission in submissions:
-            state = resource_attributes(submission).get("state")
-            if state == READY_REVIEW_SUBMISSION_STATE:
-                return resource_id(submission)
+        if submissions:
+            active = ", ".join(
+                active_review_submission_description(submission)
+                for submission in submissions
+            )
+            raise AppStoreConnectError(
+                "Active App Review submission exists but is not associated with "
+                f"App Store version {app_store_version_id}: {active}. Resolve it "
+                "in App Store Connect before submitting this release."
+            )
 
         response = self.client.post(
             "/reviewSubmissions",
@@ -1006,6 +1009,14 @@ def relationship_data(resource: Mapping[str, Any], name: str) -> JsonObject | No
         return None
     data = relationship.get("data")
     return data if isinstance(data, dict) else None
+
+
+def active_review_submission_description(resource: Mapping[str, Any]) -> str:
+    submission_id = resource_id(resource)
+    state = str(resource_attributes(resource).get("state") or "unknown")
+    version = relationship_data(resource, "appStoreVersionForReview")
+    version_id = str(version.get("id")) if version else "unknown"
+    return f"{submission_id} ({state}, app version {version_id})"
 
 
 def find_by_attribute(
