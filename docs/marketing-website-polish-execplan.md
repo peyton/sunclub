@@ -16,6 +16,7 @@ Sunclub's public website is the App Store marketing, support, and privacy surfac
 - [x] (2026-05-06T15:18-07:00) Ran `just web-fmt`, `just web-check`, `uv run pytest tests/test_web_static_site.py -v`, `just web-build`, `just lint`, and `git diff --check`.
 - [x] (2026-05-06T15:22-07:00) Served the site locally, checked all public routes with Browser, and verified 390px mobile plus 1440px desktop layouts with Chrome DevTools Protocol metrics.
 - [x] (2026-05-06T15:55-07:00) Replaced the hand-built CSS device hero with a generated composed hero image matching the supplied design template, then reloaded the in-app Browser and verified the updated homepage DOM and console state.
+- [x] (2026-05-06T16:23-07:00) Corrected the logo and feature icons against the generated product-page reference: standalone sun mark, rounded lowercase wordmark, and larger rounded-square sun/cloud/shield/Shortcuts icons.
 - [ ] Push the branch, open a PR, monitor checks, merge, and verify the web deployment.
 
 ## Surprises & Discoveries
@@ -30,6 +31,8 @@ Sunclub's public website is the App Store marketing, support, and privacy surfac
   Evidence: A follow-up Chrome DevTools Protocol audit with `Emulation.setDeviceMetricsOverride` reported `viewport=390`, `scrollWidth=390`, and `bodyScrollWidth=390` for `/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html`.
 - Observation: Rebuilding the reference design from separate CSS phone, watch, shadow, and leaf layers produced a jumbled hero at narrow widths.
   Evidence: The in-app Browser showed overlapping hero/device elements after the first reference pass. A generated single-image composition avoids those independent layout layers.
+- Observation: The first corrected header still used the app icon as the logo and the feature icons were undersized compared with the generated product-page reference.
+  Evidence: The user supplied close-up screenshots of the iCloud and Shortcuts icons plus the full generated product page, and the local screenshot showed a square app-icon wordmark treatment instead of the rounded sunclub mark.
 
 ## Decision Log
 
@@ -115,6 +118,9 @@ Local verification completed:
 
     Browser generated-hero check
     The in-app Browser reloaded http://127.0.0.1:8000/ after the composed hero image was added, found the expected hero headline, and reported zero console errors.
+
+    Browser logo/icon check
+    The in-app Browser reloaded http://127.0.0.1:8000/ after the logo and feature icons were corrected and reported zero console errors.
 
     Chrome DevTools Protocol responsive audit
     Every public route reported mobile viewport 390, scrollWidth 390, and bodyScrollWidth 390. Every public route reported desktop viewport 1440, scrollWidth 1440, and bodyScrollWidth 1440. No route contained `Download on the App Store`.
