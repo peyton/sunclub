@@ -14,7 +14,7 @@ struct AccountabilityOnboardingView: View {
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Activity Sharing", showsBack: true, onBack: {
+                SunLightHeader(title: "Activity sharing", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -80,11 +80,11 @@ struct AccountabilityOnboardingView: View {
     private var title: String {
         switch step {
         case 1:
-            return "Set up activity sharing"
+            return "Share with someone you choose"
         case 2:
             return "Add one friend"
         default:
-            return "You are set"
+            return "You're set"
         }
     }
 
@@ -93,9 +93,9 @@ struct AccountabilityOnboardingView: View {
         case 1:
             return "Share whether you logged with people you choose. SPF and notes stay private."
         case 2:
-            return "Bring two phones together with Nearby Add, or send your invite through Messages and the share sheet."
+            return "Bring two phones together with Nearby Add, or send an invite through Messages."
         default:
-            return "Your invite link and backup code are always available from Accountability."
+            return "Your invite link and backup code are always available in Activity sharing."
         }
     }
 
@@ -131,7 +131,7 @@ struct FriendsView: View {
     var body: some View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
-                SunLightHeader(title: "Activity Sharing", showsBack: true, onBack: {
+                SunLightHeader(title: "Activity sharing", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -171,7 +171,7 @@ struct FriendsView: View {
         .alert(item: $friendPendingRemoval) { friend in
             Alert(
                 title: Text("Remove \(friend.name)?"),
-                message: Text("They will leave your accountability list. You can add them again with a fresh invite."),
+                message: Text("They will stop appearing in Activity sharing. You can add them again with a fresh invite."),
                 primaryButton: .destructive(Text("Remove")) {
                     appState.removeFriend(friend.id)
                 },
@@ -228,7 +228,7 @@ struct FriendsView: View {
 
             if let statusMessage = localFeedbackMessage ?? appState.friendImportMessage {
                 SunStatusCard(
-                    title: "Accountability",
+                    title: "Activity sharing",
                     detail: statusMessage,
                     tint: AppPalette.sun,
                     symbol: "person.2.fill"
@@ -269,7 +269,7 @@ struct FriendsView: View {
                             .font(AppFont.rounded(size: 17, weight: .semibold))
                             .foregroundStyle(AppPalette.ink)
 
-                        Text("Nearby, Messages, invite link, or backup code.")
+                        Text("Nearby, Messages, or backup code.")
                             .font(AppFont.rounded(size: 14))
                             .foregroundStyle(AppPalette.softInk)
                     }
@@ -298,7 +298,7 @@ struct FriendsView: View {
     private var addFriendActions: some View {
         accountabilityAction(
             title: "Nearby phones",
-            detail: "Both people open this and bring phones together.",
+            detail: "Both people open this and hold phones close.",
             symbol: "wave.3.right.circle.fill"
         ) {
             appState.activateAccountability(displayName: preferredName)
@@ -307,7 +307,7 @@ struct FriendsView: View {
         .accessibilityIdentifier("friends.add.nearby")
 
         accountabilityAction(
-            title: "Messages or share sheet",
+            title: "Send invite",
             detail: "Send an invite link with a backup code.",
             symbol: "message.fill"
         ) {
@@ -435,7 +435,7 @@ struct FriendsView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .accessibilityHidden(true)
 
-                    Text("Add a friend to see who has logged today and who needs a sunscreen poke.")
+                    Text("Add a friend to share whether today is logged.")
                         .font(AppFont.rounded(size: 15))
                         .foregroundStyle(AppPalette.softInk)
                 }
@@ -615,7 +615,7 @@ private struct FriendAccountabilityRow: View {
     @ViewBuilder
     private var friendActions: some View {
         if supportsDirectPoke {
-            Button("Poke") {
+            Button("Remind") {
                 onPoke()
             }
             .buttonStyle(SunPrimaryButtonStyle())
@@ -637,7 +637,7 @@ private struct FriendAccountabilityRow: View {
         }
 
         Menu {
-            Button("Remove Friend", role: .destructive) {
+            Button("Remove friend", role: .destructive) {
                 onRemove()
             }
             .accessibilityIdentifier("friends.remove.\(friend.id.uuidString)")
@@ -716,7 +716,7 @@ private struct NearbyAccountabilitySheet: View {
                     .font(AppFont.rounded(size: 30, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Both people open this screen and keep the phones close. Sunclub exchanges the same invite link and backup code you can share by Messages.")
+                Text("Both people open this screen and keep the phones close. Sunclub shares invite details privately between the two phones.")
                     .font(AppFont.rounded(size: 16))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -763,7 +763,7 @@ private struct NearbyAccountabilitySheet: View {
         case .searching:
             nearbyStatus("Searching", detail: peerDetail, symbol: "dot.radiowaves.left.and.right")
         case let .connected(name):
-            nearbyStatus("Connected to \(name)", detail: "Sending invite.", symbol: "iphone.gen3.radiowaves.left.and.right")
+            nearbyStatus("Connected to \(name)", detail: "Sharing invite.", symbol: "iphone.gen3.radiowaves.left.and.right")
         case let .received(envelope):
             nearbyStatus("Added \(envelope.displayName)", detail: "You can close Nearby Add.", symbol: "checkmark.seal.fill")
         case let .failed(message):
@@ -773,7 +773,7 @@ private struct NearbyAccountabilitySheet: View {
 
     private var peerDetail: String {
         exchange.visiblePeers.isEmpty
-            ? "Ask your friend to open Nearby Add."
+            ? "Ask them to open Nearby Add."
             : "Found \(exchange.visiblePeers.joined(separator: ", "))."
     }
 

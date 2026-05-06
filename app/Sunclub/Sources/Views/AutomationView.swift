@@ -14,7 +14,7 @@ struct AutomationView: View {
             contentFrameAlignment: .center
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Automation", showsBack: true, onBack: {
+                SunLightHeader(title: "Shortcuts", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -50,7 +50,7 @@ struct AutomationSettingsPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if style == .settings {
-                Text("Automation")
+                Text("Shortcuts")
                     .font(AppFont.rounded(size: 14, weight: .semibold))
                     .foregroundStyle(AppPalette.softInk)
             }
@@ -68,7 +68,7 @@ struct AutomationSettingsPanel: View {
                 .accessibilityIdentifier("automation.feedback")
 
             if style == .settings {
-                Button("Open Automation Catalog") {
+                Button("Open Shortcuts Catalog") {
                     router.open(.automation)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
@@ -81,7 +81,7 @@ struct AutomationSettingsPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 "Connect shortcuts",
-                detail: "Choose which trusted shortcuts and links can update Sunclub."
+                detail: "Choose what Shortcuts and trusted links can do."
             )
 
             preferenceToggle(
@@ -100,7 +100,7 @@ struct AutomationSettingsPanel: View {
 
             preferenceToggle(
                 title: "Allow URL write actions",
-                detail: "Let trusted links save logs or supported settings.",
+                detail: "Let trusted links save logs or settings.",
                 keyPath: \.urlWriteActionsEnabled,
                 accessibilityIdentifier: "automation.urlWriteToggle"
             )
@@ -121,7 +121,7 @@ struct AutomationSettingsPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 "Apple Shortcuts",
-                detail: "Create automations from Shortcuts, Siri, Control Center, widgets, and other intent surfaces."
+                detail: "Use Siri, Control Center, widgets, and Shortcuts with Sunclub."
             )
 
             ForEach(shortcutRows) { row in
@@ -144,8 +144,8 @@ struct AutomationSettingsPanel: View {
     private var shortcutOnlySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "Shortcut File Actions",
-                detail: "These return files to Shortcuts. They are not direct URL actions because the file needs a system handoff."
+                "File Actions",
+                detail: "Create backup, report, and share-card files from Shortcuts."
             )
 
             ForEach(shortcutOnlyRows) { row in
@@ -161,7 +161,7 @@ struct AutomationSettingsPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 "URL Actions",
-                detail: "Use \(SunclubRuntimeConfiguration.urlScheme)://automation/... for direct links."
+                detail: "Use direct links when you need them."
             )
 
             ForEach(urlExamples) { example in
@@ -180,8 +180,8 @@ struct AutomationSettingsPanel: View {
     private var callbackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "x-callback-url",
-                detail: "Use x-success and x-error to return status to another app."
+                "Callbacks",
+                detail: "Return status to another app after Sunclub finishes."
             )
 
             ForEach(callbackExamples) { example in
@@ -256,9 +256,9 @@ struct AutomationSettingsPanel: View {
             AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Today or a chosen date and time."),
             AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Weekday or weekend reminder time."),
             AutomationActionRow.Model(title: "Set Sunclub Reapply Reminder", detail: "Turns reapply reminders on or off and can update the interval."),
-            AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Travel, UV, iCloud, Health, and alert toggles."),
-            AutomationActionRow.Model(title: "Import Friend Invite", detail: "Adds a friend from an invite code."),
-            AutomationActionRow.Model(title: "Poke Friend", detail: "Uses the friend picker from Shortcuts and opens Friends for a message nudge.")
+            AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Travel, UV, iCloud, Health, and alert settings."),
+            AutomationActionRow.Model(title: "Import Sharing Invite", detail: "Adds a friend from an invite code."),
+            AutomationActionRow.Model(title: "Remind Friend", detail: "Choose a friend and open Activity sharing to send a reminder.")
         ]
     }
 
@@ -292,7 +292,7 @@ struct AutomationSettingsPanel: View {
             ),
             AutomationExample(
                 id: "openAutomation",
-                title: "Open Automation",
+                title: "Open Shortcuts",
                 detail: "Open this catalog.",
                 urlString: "\(scheme)://automation/open?route=automation"
             ),
@@ -334,15 +334,15 @@ struct AutomationSettingsPanel: View {
             ),
             AutomationExample(
                 id: "importFriend",
-                title: "Import Friend Invite",
+                title: "Import Sharing Invite",
                 detail: "Paste a real invite code before using this.",
                 urlString: "\(scheme)://automation/import-friend?code=PASTE_INVITE_CODE",
                 canTest: false
             ),
             AutomationExample(
                 id: "pokeFriend",
-                title: "Poke Friend",
-                detail: "Use a saved friend UUID from your own automation.",
+                title: "Remind Friend",
+                detail: "Use a saved friend UUID from your own shortcut.",
                 urlString: "\(scheme)://automation/poke-friend?id=FRIEND_UUID",
                 canTest: false
             )
@@ -402,12 +402,12 @@ private struct AutomationHeroCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Connect shortcuts")
+                Text("Use Shortcuts with Sunclub")
                     .font(AppFont.rounded(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Let Apple Shortcuts and trusted links log sunscreen or read your status when you want them to.")
+                Text("Log sunscreen, read your status, or open a screen when you want to.")
                     .font(AppTypography.body)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)

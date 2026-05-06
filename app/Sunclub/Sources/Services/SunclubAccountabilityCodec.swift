@@ -59,9 +59,9 @@ enum SunclubAccountabilityCodec {
         let code = try backupCode(for: envelope)
         let name = envelope.displayName.isEmpty ? "I" : envelope.displayName
         return """
-        \(name) wants to keep up with sunscreen in Sunclub.
+        \(name) wants to share Sunclub activity with you.
 
-        Add me for accountability:
+        Add me to Activity sharing:
         \(url.absoluteString)
 
         Backup code:
@@ -80,63 +80,55 @@ enum SunclubAccountabilityCodec {
 
 enum SunclubAccountabilityMessaging {
     static let openDayPokeMessages = [
-        "The SPF council requests your presence. Log today before the sun gets smug.",
-        "Unapplied SPF detected. Please report to your nearest bottle.",
-        "Your sunscreen bottle asked if you two are still friends.",
-        "UV is outside acting confident. Time to humble it.",
-        "Tiny sunscreen desk check: did you log today?",
-        "The sun is doing side quests. Please equip SPF.",
-        "This is your official lotion summons.",
-        "The streak auditors are circling. Log today and scare them off.",
-        "Your face called. It would like SPF backup.",
-        "SPF roll call. You are currently marked mysteriously absent.",
-        "A polite poke from the sunscreen desk: clock in, shine less.",
-        "The bottle is emotionally available. Are you?",
-        "Apply now, brag later.",
-        "Your future skin sent a calendar invite called please log sunscreen."
+        "Quick reminder to log today's sunscreen.",
+        "Today's sunscreen log is still open.",
+        "One quick Sunclub log when you have a moment.",
+        "Your daily sunscreen log is still open.",
+        "A friend shared a sunscreen reminder.",
+        "Open Sunclub when you're ready to log.",
+        "Don't forget today's sunscreen log.",
+        "Your check-in is still open today.",
+        "A simple reminder to apply and log sunscreen.",
+        "Today's log helps keep the routine visible.",
+        "Log sunscreen before the day gets away.",
+        "Mark today logged when it is done."
     ]
 
     static let alreadyLoggedPokeMessages = [
-        "Already logged? Suspiciously responsible. Reapply if the sun is still loitering.",
-        "You are on the SPF board today. Consider this a tiny victory poke.",
-        "Logged already. Show-off behavior detected.",
-        "Your sunscreen paperwork is in order. The committee applauds, quietly.",
-        "Logged today. If you are still outside, the bottle wants an encore.",
-        "You logged. The sun has been informed and is taking it poorly.",
-        "SPF elite status confirmed. Reapply if the day keeps day-ing.",
-        "Your streak is behaving. Very mature. Almost alarming.",
-        "The friend audit says your SPF is logged. Carry on.",
-        "You beat the poke. This poke is now ceremonial.",
-        "Logged today. Please accept this unnecessary but affectionate SPF ping.",
-        "The bottle says nice work and also maybe do not abandon it.",
-        "Already protected. The sunscreen bureaucracy has no notes.",
-        "Your sunscreen log is looking smug. It earned it."
+        "Already logged today. Reapply if you're still outside.",
+        "Nice work logging today. Reapply when needed.",
+        "Today's log is already saved.",
+        "You're logged today. Keep an eye on reapply time.",
+        "Already saved for today.",
+        "Today's sunscreen is recorded.",
+        "Good job keeping the routine simple.",
+        "Logged today. Reapply if the day runs long.",
+        "Your Sunclub day is saved.",
+        "Today's check-in is complete.",
+        "Your sunscreen log is current.",
+        "Logged already. Nothing else to do unless you need reapply."
     ]
 
     static let incomingOpenNotificationBodies = [
-        "%@ says the SPF council is taking attendance.",
-        "%@ poked you. The bottle is waiting by the door.",
-        "%@ spotted an open sunscreen day and chose light chaos.",
-        "%@ sent a tiny lotion summons.",
-        "%@ says the sun is getting too confident.",
-        "%@ has requested one logged day, extra SPF.",
-        "%@ is tapping the sunscreen sign.",
-        "%@ says your streak auditors are restless.",
-        "%@ would like one sunscreen log on the board.",
-        "%@ sent a friendly poke from the shade."
+        "%@ sent a sunscreen reminder.",
+        "%@ reminded you to log sunscreen.",
+        "%@ shared a quick sunscreen check-in.",
+        "%@ says today's Sunclub log is still open.",
+        "%@ sent a reminder for today's log.",
+        "%@ is checking whether sunscreen is logged.",
+        "%@ shared a simple Sunclub reminder.",
+        "%@ reminded you to apply and log sunscreen."
     ]
 
     static let incomingLoggedNotificationBodies = [
-        "%@ poked you anyway. Your logged day is causing envy.",
-        "%@ sent a ceremonial poke. You already did the SPF thing.",
-        "%@ says nice log. Reapply if the sun is still loitering.",
-        "%@ noticed your log and chose applause by notification.",
-        "%@ says your sunscreen paperwork is suspiciously tidy.",
-        "%@ sent a victory tap for your already-logged day.",
-        "%@ says the SPF committee has no notes.",
-        "%@ poked the overachiever. That is you.",
-        "%@ says your streak looks smug today.",
-        "%@ approves this sunscreen discipline."
+        "%@ sent a reminder. You're already logged today.",
+        "%@ checked in. Your Sunclub log is already saved.",
+        "%@ says nice log. Reapply if you're still outside.",
+        "%@ sent a reminder, and today is already logged.",
+        "%@ checked your shared activity. You're logged today.",
+        "%@ sent a quick Sunclub reminder.",
+        "%@ noticed today's log is complete.",
+        "%@ sent a reminder. Nothing else to do unless you need reapply."
     ]
 
     static func outgoingPokeMessage(
@@ -178,36 +170,38 @@ enum SunclubAccountabilityMessaging {
     static func sharePokeText(from senderName: String, to friendName: String, hasLoggedToday: Bool) -> String {
         let sender = resolvedName(senderName, fallback: "A Sunclub friend")
         let friend = resolvedName(friendName, fallback: "friend")
-        let nudge = hasLoggedToday
-            ? "Nice log today. Reapply if the sun is still loitering."
+        let reminder = hasLoggedToday
+            ? "Nice log today. Reapply if you're still outside."
             : "Time to log sunscreen in Sunclub."
-        return "\(sender) says to \(friend): \(nudge) Open Sunclub: \(SunclubShareArtifactService.appLinkDisplay)"
+        return """
+        \(sender) sent \(friend) a Sunclub reminder: \(reminder) Open Sunclub: \(SunclubShareArtifactService.appLinkDisplay)
+        """
     }
 
     static func directPokeSuccessMessage(friendName: String, hasLoggedToday: Bool) -> String {
         let friend = resolvedName(friendName, fallback: "your friend")
         return hasLoggedToday
-            ? "Sent \(friend) a nice-work tap."
-            : "Sent \(friend) a sunscreen nudge."
+            ? "Sent \(friend) a reminder."
+            : "Sent \(friend) a sunscreen reminder."
     }
 
     static func directPokeFailureMessage(friendName: String) -> String {
-        "Direct poke did not send to \(resolvedName(friendName, fallback: "your friend")). Use Message instead."
+        "Reminder did not send to \(resolvedName(friendName, fallback: "your friend")). Use Message instead."
     }
 
     static func directPokeUnavailableMessage(friendName: String) -> String {
-        "Use Message to nudge \(resolvedName(friendName, fallback: "this friend"))."
+        "Use Message to remind \(resolvedName(friendName, fallback: "this friend"))."
     }
 
     static func latestPokeText(_ poke: SunclubAccountabilityPoke?) -> String? {
         guard let poke else { return nil }
         switch (poke.direction, poke.status) {
         case (.sent, .sent):
-            return "Last poke: you nudged \(poke.friendName)."
+            return "Last reminder: you reminded \(poke.friendName)."
         case (.sent, .failed):
-            return "Last poke to \(poke.friendName) needs a message fallback."
+            return "Last reminder to \(poke.friendName) needs Message."
         case (.received, .received):
-            return "\(poke.friendName) poked you: \(poke.message)"
+            return "\(poke.friendName) reminded you: \(poke.message)"
         default:
             return nil
         }

@@ -101,7 +101,7 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(queryValue("action", in: detailedError), "log-today")
         XCTAssertEqual(queryValue("status", in: detailedError), "error")
         XCTAssertEqual(queryValue("errorCode", in: detailedError), "urlWriteActionsDisabled")
-        XCTAssertEqual(queryValue("errorMessage", in: detailedError), "URL write actions are off in Sunclub Automation settings.")
+        XCTAssertEqual(queryValue("errorMessage", in: detailedError), "URL write actions are off in Sunclub Shortcuts settings.")
 
         let minimalError = SunclubXCallbackResponse.errorURL(
             baseURL: baseURL,

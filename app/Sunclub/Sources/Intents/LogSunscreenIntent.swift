@@ -56,7 +56,7 @@ enum SunclubWidgetRouteIntentValue: String, AppEnum {
         .summary: "Summary",
         .history: "History",
         .updateToday: "Update Today",
-        .accountability: "Activity Sharing"
+        .accountability: "Activity sharing"
     ]
 
     var route: SunclubWidgetRoute {
@@ -86,7 +86,7 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
         .summary: "Weekly Summary",
         .history: "History",
         .settings: "Settings",
-        .automation: "Automation",
+        .automation: "Shortcuts",
         .achievements: "Achievements",
         .friends: "Friends",
         .healthReport: "Health Report",
@@ -641,8 +641,8 @@ struct CreateStreakCardIntent: AppIntent {
 }
 
 struct ImportFriendInviteIntent: AppIntent {
-    static let title: LocalizedStringResource = "Import Friend Invite"
-    static let description = IntentDescription("Imports a Sunclub accountability friend invite code.")
+    static let title: LocalizedStringResource = "Import Sharing Invite"
+    static let description = IntentDescription("Imports a Sunclub Activity sharing invite code.")
     static let openAppWhenRun = false
     static let isDiscoverable = true
 
@@ -654,7 +654,7 @@ struct ImportFriendInviteIntent: AppIntent {
     }
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Import friend invite")
+        Summary("Import sharing invite")
     }
 
     @MainActor
@@ -669,8 +669,8 @@ struct ImportFriendInviteIntent: AppIntent {
 }
 
 struct PokeFriendIntent: AppIntent {
-    static let title: LocalizedStringResource = "Poke Friend"
-    static let description = IntentDescription("Sends a local Sunclub accountability poke to a friend.")
+    static let title: LocalizedStringResource = "Remind Friend"
+    static let description = IntentDescription("Opens Activity sharing to remind a friend.")
     static let openAppWhenRun = false
     static let isDiscoverable = true
 
@@ -680,7 +680,7 @@ struct PokeFriendIntent: AppIntent {
     init() {}
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Poke \(\.$friend)")
+        Summary("Remind \(\.$friend)")
     }
 
     @MainActor
@@ -735,10 +735,10 @@ struct SunclubAppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: OpenSunclubRouteIntent(route: .automation),
             phrases: [
-                "Open automation in \(.applicationName)",
-                "Show \(.applicationName) automation"
+                "Open Shortcuts in \(.applicationName)",
+                "Show \(.applicationName) Shortcuts"
             ],
-            shortTitle: "Open Automation",
+            shortTitle: "Open Shortcuts",
             systemImageName: "wand.and.stars"
         )
         AppShortcut(

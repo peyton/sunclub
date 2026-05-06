@@ -4,7 +4,7 @@
 
 - Default posture: maximum automation for non-destructive writes.
 - Universal Links: deferred for this release. Do not add Associated Domains or `apple-app-site-association`.
-- Direct writes: allowed for logging, reapply, reminders, supported toggles, and friend invite import. Friend poke automation returns a Message-first foreground route while public accountability transport is disabled for first App Store review.
+- Direct writes: allowed for logging, reapply, reminders, supported toggles, and friend invite import. Friend reminder links return a Message-first foreground route while public Activity sharing transport is disabled for first App Store review.
 - UI-only actions: destructive, review-heavy, permission-only, camera, and file-picker flows open Sunclub instead of running in the background.
 - Storage: automation preferences live in the Codable growth settings store, not SwiftData.
 
@@ -14,7 +14,7 @@
 - `urlOpenActionsEnabled`: blocks URL routes that open app screens when off.
 - `urlWriteActionsEnabled`: blocks URL and x-callback writes when off.
 - `callbackResultDetailsEnabled`: removes action-specific callback fields when off.
-- Location: Settings -> Automation.
+- Location: Settings -> Connect Shortcuts.
 - Website: `/docs/automation/`.
 
 ## App Intents
@@ -31,13 +31,13 @@
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Create Skin Health Report`: returns an `IntentFile`.
 - `Create Streak Card`: returns an `IntentFile`.
-- `Import Friend Invite`: imports a Sunclub friend invite code.
-- `Poke Friend`: uses a friend `AppEntity` query. First-review builds do not send a direct CloudKit poke; they return a Friends route so the user can message locally.
+- `Import Sharing Invite`: imports a Sunclub friend invite code.
+- `Remind Friend`: uses a friend `AppEntity` query. First-review builds do not send a direct CloudKit reminder; they return an Activity sharing route so the user can message locally.
 
 ## App Shortcuts
 
-- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Time Since Last Sunscreen, Open Automation, Export Backup, Create Skin Health Report, and Create Streak Card.
-- File-producing App Intents return files through Shortcuts and are shown separately from URL examples in the in-app Automation catalog.
+- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Time Since Last Sunscreen, Open Shortcuts, Export Backup, Create Skin Health Report, and Create Streak Card.
+- File-producing App Intents return files through Shortcuts and are shown separately from URL examples in the in-app Shortcuts catalog.
 - The in-app catalog intentionally disables the Test button for URL examples that need a real friend invite code or saved friend UUID.
 
 ## URL Scheme
@@ -59,7 +59,7 @@
 - `set-reapply?enabled=true&interval=120`
 - `set-toggle?name=travelTimeZone|streakRisk|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
 - `import-friend?code=...`
-- `poke-friend?id=<uuid>` opens Friends with `status=needs-message` while public accountability transport is disabled.
+- `poke-friend?id=<uuid>` opens Activity sharing with `status=needs-message` while public Activity sharing transport is disabled.
 - `open?route=home|log|reapply|summary|history|settings|automation|achievements|friends|health-report|product-scanner|recovery`
 
 URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
@@ -120,10 +120,10 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Unit: old growth settings payloads decode with default automation preferences.
 - Unit: file-producing intents return expected file metadata.
 - Unit: friend query, invite import, and Message-first poke paths work with seeded friends.
-- UI: Settings exposes Automation controls, copy buttons, and test buttons.
-- UI: `sunclub-dev://x-callback-url/open?route=automation` opens Automation.
+- UI: Settings exposes Shortcuts controls, copy buttons, and test buttons.
+- UI: `sunclub-dev://x-callback-url/open?route=automation` opens Shortcuts.
 - UI: URL write disable blocks mutation and routes to foreground UI.
-- UI: Automation remains usable under Dynamic Type, dark mode, increased contrast, Reduce Motion, and Differentiate Without Color.
+- UI: Shortcuts remains usable under Dynamic Type, dark mode, increased contrast, Reduce Motion, and Differentiate Without Color.
 - Web: `/docs/automation/` is required by the static site validator and sitemap.
 
 ## Future Feature Checklist

@@ -123,8 +123,8 @@ struct SunclubAccountabilityWidget: Widget {
                     SunclubWidgetBackground(style: .warm)
                 }
         }
-        .configurationDisplayName("Buddies")
-        .description("Private sunscreen buddy check-ins.")
+        .configurationDisplayName("Activity sharing")
+        .description("Private sunscreen check-ins with friends.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
@@ -438,8 +438,8 @@ private struct SunclubAccountabilityMediumView: View {
             if presentation.showsFriendStats {
                 VStack(alignment: .leading, spacing: 9) {
                     SunclubAccountabilityMetric(value: presentation.openCountText, label: "open")
-                    SunclubAccountabilityMetric(value: presentation.loggedCountText, label: "protected")
-                    SunclubAccountabilityMetric(value: presentation.friendCountText, label: "buddies")
+                    SunclubAccountabilityMetric(value: presentation.loggedCountText, label: "logged")
+                    SunclubAccountabilityMetric(value: presentation.friendCountText, label: "friends")
                 }
                 .frame(width: 92, alignment: .leading)
             }
@@ -462,7 +462,7 @@ private struct SunclubAccountabilityLargeView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Buddies")
+                    Text("Sharing")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(SunclubWidgetPalette.softInk)
 
@@ -484,8 +484,8 @@ private struct SunclubAccountabilityLargeView: View {
             if presentation.showsFriendStats {
                 HStack(spacing: 10) {
                     SunclubAccountabilityMetric(value: presentation.openCountText, label: "open")
-                    SunclubAccountabilityMetric(value: presentation.loggedCountText, label: "protected")
-                    SunclubAccountabilityMetric(value: presentation.friendCountText, label: "buddies")
+                    SunclubAccountabilityMetric(value: presentation.loggedCountText, label: "logged")
+                    SunclubAccountabilityMetric(value: presentation.friendCountText, label: "friends")
                 }
             }
 
@@ -501,7 +501,7 @@ private struct SunclubAccountabilityLargeView: View {
 
                         Text(friend.status)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(friend.status == "Protected" ? SunclubWidgetPalette.success : SunclubWidgetPalette.softInk)
+                            .foregroundStyle(friend.status == "Logged" ? SunclubWidgetPalette.success : SunclubWidgetPalette.softInk)
 
                         Text(friend.streak)
                             .font(.system(size: 12, weight: .bold))
@@ -573,7 +573,7 @@ private struct SunclubAccountabilityRectangularView: View {
             family: .accessoryRectangular
         )
         VStack(alignment: .leading, spacing: 2) {
-            Label("Buddies", systemImage: presentation.iconName)
+            Label("Sharing", systemImage: presentation.iconName)
                 .font(.system(size: 12, weight: .semibold))
             Text(presentation.inlineText)
                 .font(.system(size: 14, weight: .bold))

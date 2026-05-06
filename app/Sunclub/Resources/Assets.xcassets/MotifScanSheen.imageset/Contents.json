@@ -4,6 +4,16 @@
       "filename" : "MotifScanSheen.png",
       "idiom" : "universal",
       "scale" : "1x"
+    },
+    {
+      "filename" : "MotifScanSheen@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "MotifScanSheen@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {

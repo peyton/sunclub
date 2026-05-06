@@ -4,6 +4,16 @@
       "filename" : "BadgeThirtyDay.png",
       "idiom" : "universal",
       "scale" : "1x"
+    },
+    {
+      "filename" : "BadgeThirtyDay@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "BadgeThirtyDay@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {

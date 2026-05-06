@@ -907,7 +907,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertFalse(state.supportsDirectAccountabilityTransport)
         XCTAssertFalse(state.growthSettings.accountability.connections.first?.canDirectPoke ?? true)
         XCTAssertTrue(state.growthSettings.accountability.pokeHistory.isEmpty)
-        XCTAssertEqual(state.friendImportMessage, "Use Message to nudge Maya.")
+        XCTAssertEqual(state.friendImportMessage, "Use Message to remind Maya.")
     }
 
     @MainActor
@@ -1040,7 +1040,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(service.sentPokes.first?.receiverProfileID, envelope.profileID)
         XCTAssertNotEqual(service.sentPokes.first?.message, "Sunscreen check?")
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .sent)
-        XCTAssertEqual(state.friendImportMessage, "Sent Maya a sunscreen nudge.")
+        XCTAssertEqual(state.friendImportMessage, "Sent Maya a sunscreen reminder.")
 
         service.sendPokeError = FakeAccountabilityError.sendFailed
         state.sendDirectPoke(to: friendID)
@@ -1048,7 +1048,7 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.status, .failed)
         XCTAssertEqual(state.growthSettings.accountability.pokeHistory.first?.channel, .direct)
-        XCTAssertEqual(state.friendImportMessage, "Direct poke did not send to Maya. Use Message instead.")
+        XCTAssertEqual(state.friendImportMessage, "Reminder did not send to Maya. Use Message instead.")
         XCTAssertTrue(state.sharePokeText(for: try XCTUnwrap(state.friends.first)).contains("Time to log sunscreen"))
     }
 
@@ -1111,7 +1111,7 @@ final class SunclubTests: XCTestCase {
         await waitForMainActorTasks()
 
         XCTAssertTrue(service.sentPokes.isEmpty)
-        XCTAssertEqual(state.friendImportMessage, "Use Message to nudge Maya.")
+        XCTAssertEqual(state.friendImportMessage, "Use Message to remind Maya.")
     }
 
     @MainActor
