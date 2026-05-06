@@ -107,6 +107,7 @@ def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
     assert "if: ${{ inputs.confirm_submit == true }}" in workflow
     assert "environment: app-store-review" in workflow
     assert "SUNCLUB_APP_REVIEW_CONTACT_EMAIL" in workflow
+    assert 'SUNCLUB_APP_REVIEW_USE_EXISTING_CONTACT: "1"' in workflow
     assert 'SUNCLUB_APP_PRIVACY_COMPLETED: "1"' in workflow
     assert 'SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS: "NOT_MEDICAL_DEVICE"' in workflow
     assert 'SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED: "1"' in workflow

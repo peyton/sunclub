@@ -39,6 +39,12 @@ READY_REVIEW_SUBMISSION_STATE = "READY_FOR_REVIEW"
 CONFIRMATION_ENV = "SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT"
 CHECKPOINT_CONFIRMATION_ENV = "SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+REVIEW_CONTACT_ATTRIBUTE_MAP = {
+    "first_name": "contactFirstName",
+    "last_name": "contactLastName",
+    "phone": "contactPhone",
+    "email": "contactEmail",
+}
 
 SUPPORTED_SCREENSHOT_SIZES = {
     "APP_IPHONE_67": {
@@ -142,6 +148,7 @@ class AppStoreReviewSubmitter:
         build_timeout_seconds: int = 1800,
         screenshot_timeout_seconds: int = 600,
         poll_interval_seconds: int = 30,
+        reuse_existing_review_contact: bool = False,
     ) -> None:
         self.client = client
         self.manifest = manifest
@@ -151,6 +158,7 @@ class AppStoreReviewSubmitter:
         self.build_timeout_seconds = build_timeout_seconds
         self.screenshot_timeout_seconds = screenshot_timeout_seconds
         self.poll_interval_seconds = poll_interval_seconds
+        self.reuse_existing_review_contact = reuse_existing_review_contact
 
     def submit(self) -> SubmissionResult:
         app_id = self.lookup_app_id()
@@ -640,7 +648,15 @@ class AppStoreReviewSubmitter:
 
     def upsert_review_detail(self, app_store_version_id: str) -> str:
         review = self.manifest["review"]
-        contact = review["contact"]
+        existing = self.client.get_optional(
+            f"/appStoreVersions/{app_store_version_id}/appStoreReviewDetail"
+        )
+        data = existing.get("data") if existing else None
+        existing_detail = data if isinstance(data, Mapping) else None
+        contact = self.review_contact_with_existing_values(
+            review["contact"],
+            existing_detail,
+        )
         payload = {
             "contactFirstName": contact["first_name"],
             "contactLastName": contact["last_name"],
@@ -654,12 +670,8 @@ class AppStoreReviewSubmitter:
         if review.get("demo_account_password"):
             payload["demoAccountPassword"] = review["demo_account_password"]
 
-        existing = self.client.get_optional(
-            f"/appStoreVersions/{app_store_version_id}/appStoreReviewDetail"
-        )
-        data = existing.get("data") if existing else None
-        if isinstance(data, Mapping):
-            detail_id = resource_id(data)
+        if existing_detail is not None:
+            detail_id = resource_id(existing_detail)
             self.client.patch(
                 f"/appStoreReviewDetails/{detail_id}",
                 {
@@ -690,6 +702,40 @@ class AppStoreReviewSubmitter:
             },
         )
         return resource_id(response["data"])
+
+    def review_contact_with_existing_values(
+        self,
+        contact: Mapping[str, Any],
+        existing_detail: Mapping[str, Any] | None,
+    ) -> dict[str, str]:
+        merged: dict[str, str] = {
+            field: str(contact.get(field, "")).strip()
+            for field in REVIEW_CONTACT_ATTRIBUTE_MAP
+        }
+        missing_fields = [field for field, value in merged.items() if not value]
+        if not missing_fields:
+            return merged
+        if not self.reuse_existing_review_contact:
+            missing = ", ".join(f"review.contact.{field}" for field in missing_fields)
+            raise AppStoreConnectError(f"{missing} is required.")
+
+        existing_attributes = (
+            resource_attributes(existing_detail) if existing_detail is not None else {}
+        )
+        for field in missing_fields:
+            attribute = REVIEW_CONTACT_ATTRIBUTE_MAP[field]
+            existing_value = str(existing_attributes.get(attribute, "")).strip()
+            if existing_value:
+                merged[field] = existing_value
+
+        still_missing = [field for field, value in merged.items() if not value]
+        if still_missing:
+            missing = ", ".join(f"review.contact.{field}" for field in still_missing)
+            raise AppStoreConnectError(
+                f"{missing} is required because no existing App Store Connect "
+                "review contact is available to reuse."
+            )
+        return merged
 
     def ensure_review_submission(self, app_id: str) -> str:
         submissions = self.client.get_collection(
@@ -922,10 +968,12 @@ def local_validation(
     *,
     repo_root: Path,
     submission_ready: bool,
+    allow_existing_review_contact: bool = False,
 ) -> tuple[list[str], list[str]]:
     errors, warnings = validate_metadata.validate_manifest(
         dict(manifest),
         allow_draft=not submission_ready,
+        allow_existing_review_contact=allow_existing_review_contact,
     )
     screenshot_errors = validate_screenshot_files(
         collect_screenshot_files(manifest, repo_root)
@@ -1059,10 +1107,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         report = appstore_manifest.load_resolved_manifest_report(args.manifest)
         manifest = report.value
         context = resolve_submission_context(os.environ)
+        reuse_existing_review_contact = (
+            os.environ.get(validate_metadata.EXISTING_REVIEW_CONTACT_ENV) == "1"
+        )
         errors, warnings = local_validation(
             manifest,
             repo_root=REPO_ROOT,
             submission_ready=args.submit,
+            allow_existing_review_contact=reuse_existing_review_contact,
         )
         if errors:
             print(f"App Store review submission validation failed for {args.manifest}:")
@@ -1092,6 +1144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_timeout_seconds=args.build_timeout_seconds,
             screenshot_timeout_seconds=args.screenshot_timeout_seconds,
             poll_interval_seconds=args.poll_interval_seconds,
+            reuse_existing_review_contact=reuse_existing_review_contact,
         )
         result = submitter.submit()
     except (
