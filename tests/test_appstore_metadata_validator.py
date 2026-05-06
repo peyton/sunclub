@@ -1,7 +1,9 @@
 import json
+import sys
 from pathlib import Path
 
 from scripts.appstore import manifest as appstore_manifest
+from scripts.appstore import review_package
 from scripts.appstore import validate_metadata as validator
 
 
@@ -203,6 +205,38 @@ def test_validator_allows_existing_review_contact_reuse_for_submission() -> None
     assert (
         "review.contact will be reused from the existing App Store Connect version."
         in warnings
+    )
+
+
+def test_review_checkpoint_honors_existing_review_contact_reuse(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    output_path = tmp_path / "summary.md"
+    monkeypatch.setenv(validator.EXISTING_REVIEW_CONTACT_ENV, "1")
+    monkeypatch.setenv("SUNCLUB_APP_PRIVACY_COMPLETED", "1")
+    monkeypatch.setenv("SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS", "NOT_MEDICAL_DEVICE")
+    monkeypatch.setenv("SUNCLUB_MARKETING_VERSION", "1.2.3")
+    monkeypatch.setenv("SUNCLUB_BUILD_NUMBER", "20260414.1.1")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "review_package",
+            "--checkpoint",
+            "--checkpoint-output",
+            str(output_path),
+            "--no-print",
+        ],
+    )
+
+    assert review_package.main() == 0
+
+    summary = output_path.read_text()
+    assert "review.contact is still marked as not ready for submission." not in summary
+    assert (
+        "review.contact will be reused from the existing App Store Connect version."
+        in summary
     )
 
 
