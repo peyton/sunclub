@@ -619,9 +619,11 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
         not in archive_upload_body
     )
-    assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in (
-        archive_upload_body
+    assert (
+        "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
+        in archive_upload_body
     )
+    assert "--unsigned-archive" in archive_upload_body
 
     assert submit_step is not None
     submit_body = submit_step.group("body")
