@@ -44,12 +44,14 @@ class FakeSubmissionClient:
         reject_accessibility_publish_once: bool = False,
         reject_build_encryption_once: bool = False,
         category_ids: Mapping[str, str] | None = None,
+        existing_review_detail: Mapping[str, Any] | None = None,
     ) -> None:
         self.stale_submission_item = stale_submission_item
         self.reject_whats_new_once = reject_whats_new_once
         self.reject_accessibility_publish_once = reject_accessibility_publish_once
         self.reject_build_encryption_once = reject_build_encryption_once
         self.category_ids = dict(category_ids or {})
+        self.existing_review_detail = existing_review_detail
         self.build_calls = 0
         self.posts: list[tuple[str, Mapping[str, Any]]] = []
         self.patches: list[tuple[str, Mapping[str, Any]]] = []
@@ -87,7 +89,9 @@ class FakeSubmissionClient:
         query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
     ) -> dict[str, Any] | None:
         if path.endswith("/appStoreReviewDetail"):
-            return None
+            if self.existing_review_detail is None:
+                return None
+            return dict(self.existing_review_detail)
         raise AssertionError(f"Unexpected get_optional path: {path}")
 
     def get_collection(
@@ -397,6 +401,53 @@ def test_submitter_creates_review_submission_flow(tmp_path: Path) -> None:
         path == "/appInfos/info-1/relationships/secondaryCategory"
         for path, _body in client.patches
     )
+
+
+def test_submitter_reuses_existing_review_contact(tmp_path: Path) -> None:
+    manifest = ready_manifest(tmp_path)
+    manifest["review"]["contact"] = {
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "phone": "",
+    }
+    client = FakeSubmissionClient(
+        existing_review_detail={
+            "data": {
+                "type": "appStoreReviewDetails",
+                "id": "review-detail-1",
+                "attributes": {
+                    "contactFirstName": "Existing",
+                    "contactLastName": "Reviewer",
+                    "contactEmail": "existing@example.com",
+                    "contactPhone": "+14155550100",
+                },
+            }
+        }
+    )
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+        reuse_existing_review_contact=True,
+    )
+
+    assert submitter.upsert_review_detail("version-1") == "review-detail-1"
+
+    review_detail_patch = next(
+        body
+        for path, body in client.patches
+        if path == "/appStoreReviewDetails/review-detail-1"
+    )
+    attributes = review_detail_patch["data"]["attributes"]
+    assert attributes["contactFirstName"] == "Existing"
+    assert attributes["contactLastName"] == "Reviewer"
+    assert attributes["contactEmail"] == "existing@example.com"
+    assert attributes["contactPhone"] == "+14155550100"
+    assert attributes["notes"] == manifest["review"]["notes"]
 
 
 def test_submitter_retries_initial_version_localization_without_whats_new(

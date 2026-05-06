@@ -185,6 +185,27 @@ def test_validator_accepts_submission_ready_manifest() -> None:
     assert warnings == []
 
 
+def test_validator_allows_existing_review_contact_reuse_for_submission() -> None:
+    manifest = current_manifest(
+        environment={
+            "SUNCLUB_APP_PRIVACY_COMPLETED": "1",
+            "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS": "NOT_MEDICAL_DEVICE",
+        }
+    )
+
+    errors, warnings = validator.validate_manifest(
+        manifest,
+        allow_draft=False,
+        allow_existing_review_contact=True,
+    )
+
+    assert errors == []
+    assert (
+        "review.contact will be reused from the existing App Store Connect version."
+        in warnings
+    )
+
+
 def test_validator_requires_complete_weatherkit_positive_review_notes() -> None:
     manifest = current_manifest()
     manifest["review"]["notes"] = "Sunclub uses WeatherKit for live UV."
