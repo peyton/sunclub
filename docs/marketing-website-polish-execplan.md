@@ -1,61 +1,70 @@
-# Marketing Website Polish Pass
+# App Store-Aligned Website Refresh
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds. This document follows the requirements in `~/.agents/PLANS.md`.
 
 ## Purpose / Big Picture
 
-Sunclub's public website should work as an App Store marketing surface, not only as a support and review checklist. After this change, a visitor can open the homepage, understand the sunscreen habit value quickly, follow a future-ready App Store release-status action, read product documentation under `/docs/`, and still find support without support being treated as the homepage conversion goal. The site remains static, JavaScript-free, and validated by the repo's existing web commands.
+Sunclub's public website is the App Store marketing, support, and privacy surface for the submitted iPhone release. After this change, a visitor can open `https://sunclub.peyton.app`, see copy that matches the submitted App Store package, understand that the app is a free daily SPF habit tracker without app-owned accounts or ads, find the support and privacy pages used by App Review, and avoid a fake App Store download link while Apple's public listing is not live.
 
 ## Progress
 
-- [x] (2026-04-14T10:15Z) Read the existing static site, validator, tests, App Store metadata, and automation docs.
-- [x] (2026-04-14T10:15Z) Confirmed Apple lookup by bundle ID returned no public App Store listing, so the download action must stay future-ready instead of pointing to a fake URL.
-- [x] (2026-04-14T10:34Z) Moved automation documentation from `/automation/` to `/docs/automation/` and added `/docs/`.
-- [x] (2026-04-14T10:34Z) Polished homepage, navigation, footer, support prominence, layout, and dark mode.
-- [x] (2026-04-14T10:34Z) Updated validator, tests, sitemap, and docs references.
-- [x] (2026-04-14T10:34Z) Ran web validation, build, local route checks, and visual inspection.
+- [x] (2026-05-06T15:04-07:00) Read the current website, App Store metadata manifest, generated App Store review package, web validation tests, deployment workflows, and prior marketing website plan.
+- [x] (2026-05-06T15:06-07:00) Verified Apple's public lookup for `app.peyton.sunclub` still returns no listing, so the website must not show a live App Store download badge.
+- [x] (2026-05-06T15:09-07:00) Reworked the homepage copy and layout around the submitted release: Daily SPF Habit Tracker, free iPhone app, manual logging, streaks, weekly summary, reapply reminders, private-by-default history, and optional Live UV.
+- [x] (2026-05-06T15:12-07:00) Updated support, privacy, docs, and automation docs copy so first-review Activity sharing behavior and App Store privacy label details are visible.
+- [x] (2026-05-06T15:13-07:00) Added static-site validation and tests that guard against stale App Store status copy and missing submission-aligned disclosures.
+- [x] (2026-05-06T15:18-07:00) Ran `just web-fmt`, `just web-check`, `uv run pytest tests/test_web_static_site.py -v`, `just web-build`, `just lint`, and `git diff --check`.
+- [x] (2026-05-06T15:22-07:00) Served the site locally, checked all public routes with Browser, and verified 390px mobile plus 1440px desktop layouts with Chrome DevTools Protocol metrics.
+- [ ] Push the branch, open a PR, monitor checks, merge, and verify the web deployment.
 
 ## Surprises & Discoveries
 
-- Observation: The old static-site validator hard-coded `/automation/` as required in both the file list and sitemap checks.
-  Evidence: `scripts/web/validate_static_site.py` included `automation/index.html` and `"/automation/"`.
-- Observation: The existing homepage made support a hero CTA even though support should be a low-prominence path.
-  Evidence: `web/index.html` linked the secondary hero button to `mailto:support@mail.sunclub.peyton.app`.
-- Observation: Mobile light mode needed an opaque secondary hero button because the phone screenshot sits behind the hero actions at 390px.
-  Evidence: The first headless mobile screenshot showed weak contrast on `Read the docs`; after increasing the secondary button background opacity, the button stayed readable.
-- Observation: The long URL examples on the automation docs do not cause mobile horizontal overflow.
-  Evidence: A Chrome DevTools Protocol check at 390px reported `docScrollWidth=390` and `bodyScrollWidth=390` for `/docs/automation/` in light and dark mode.
+- Observation: Apple's public lookup still returns `resultCount: 0` for `app.peyton.sunclub`.
+  Evidence: `curl -fsSL 'https://itunes.apple.com/lookup?bundleId=app.peyton.sunclub&country=us'` printed an empty results array on 2026-05-06.
+- Observation: The current homepage still used the old "App Store release status" phrasing even though the local App Store package marks marketing, support, and privacy URLs as ready for submission.
+  Evidence: `web/index.html` contained `App Store release status` and `Sunclub is being prepared for public App Store availability`.
+- Observation: Public Activity sharing transport is disabled for the first App Store review build, but the public automation docs did not explain that `poke-friend` becomes a Message-first foreground route.
+  Evidence: `docs/app-automation.md` included the first-review behavior, while `web/docs/automation/index.html` only said Activity sharing links continue to work.
+- Observation: A first mobile screenshot attempt appeared clipped because plain Chrome headless screenshot mode used a wider layout viewport than the 390px image output.
+  Evidence: A follow-up Chrome DevTools Protocol audit with `Emulation.setDeviceMetricsOverride` reported `viewport=390`, `scrollWidth=390`, and `bodyScrollWidth=390` for `/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html`.
 
 ## Decision Log
 
-- Decision: Use an on-page App Store release-status target until a public App Store URL exists.
-  Rationale: The plan explicitly forbids inventing a fake App Store URL, and Apple lookup returned zero results for `app.peyton.sunclub`.
-  Date/Author: 2026-04-14 / Codex
-- Decision: Remove `/automation/` rather than keeping a compatibility redirect page.
-  Rationale: The user chose a clean route move, and the site is static with no redirect layer.
-  Date/Author: 2026-04-14 / Codex
+- Decision: Keep the App Store call to action as submitted-release details instead of a download badge.
+  Rationale: The app has been submitted, but the public App Store listing is not live. A fake or guessed App Store URL would create an App Review and user trust problem.
+  Date/Author: 2026-05-06 / Codex
+- Decision: Use real app screenshots as the primary hero visual instead of generated art.
+  Rationale: The user asked for image generation to explore better design, but the shipped website should show inspectable product state that matches the app submitted to Apple.
+  Date/Author: 2026-05-06 / Codex
+- Decision: Add validator-enforced submission copy requirements.
+  Rationale: The website is now part of the release contract, so future edits should fail fast if they remove key App Store-aligned status, privacy, or automation disclosures.
+  Date/Author: 2026-05-06 / Codex
 
 ## Outcomes & Retrospective
 
-Implemented. Sunclub's website now has a docs-first information architecture with `/docs/` and `/docs/automation/`, no old `/automation/` route, a homepage that uses App Store release status and documentation as its calls to action, lower-prominence support paths, and system-aware dark mode. Validation passed with `just web-check`, `uv run pytest tests/test_web_static_site.py -v`, `just web-build`, local HTTP route checks, and Chrome desktop/mobile light/dark inspection.
+Implementation is in progress. The site has been redesigned and copy-aligned locally. Local validation and browser/layout verification pass; PR checks, merge, and deployment verification remain.
 
 ## Context and Orientation
 
-The public site lives in `web/` as plain HTML and CSS. `web/index.html` is the homepage, `web/support/index.html` and `web/privacy/index.html` are App Store review support pages, `web/automation/index.html` is the old automation reference, and `web/assets/site.css` is the shared stylesheet. `scripts/web/validate_static_site.py` is the local static-site validator run by `just web-check`, and `tests/test_web_static_site.py` covers the validator and packaging behavior. `docs/app-automation.md` is the repository's source note for the app's automation surface.
+The public site lives in `web/` as static HTML and CSS. `web/index.html` is the homepage. `web/support/index.html`, `web/privacy/index.html`, `web/docs/index.html`, and `web/docs/automation/index.html` are the public support, privacy, documentation, and automation routes. `web/assets/site.css` is the shared stylesheet. `scripts/web/validate_static_site.py` implements release-safety checks for the static site, and `tests/test_web_static_site.py` covers those checks.
+
+The App Store source of truth is `scripts/appstore/metadata.json`. The generated human-readable package is `docs/app-store-review-package.md`. For this submitted release, Sunclub is a free iPhone-only app with subtitle `Daily SPF Habit Tracker`, categories Health & Fitness and Lifestyle, age rating 4+, no app-owned accounts, no ads, no analytics SDKs, optional private iCloud sync, and optional WeatherKit Live UV that is off by default.
+
+Web deployment is owned by `.github/workflows/deploy-web-cloudflare.yml`. Pull requests that touch `web/**` build and package the static site. Pushes to `master` deploy `.build/web` to Cloudflare Pages at `https://sunclub.peyton.app`.
 
 ## Plan of Work
 
-Create `web/docs/index.html` as a documentation landing page and create `web/docs/automation/index.html` by moving and polishing the old automation reference. Delete `web/automation/index.html`. Update all headers and footers so the primary navigation is Home, Docs, Support, and Privacy, with no direct email address in the header.
+Rework `web/index.html` so the first viewport presents the submitted product clearly: the real app screenshots, Daily SPF Habit Tracker positioning, free iPhone submission facts, and honest submitted-release status instead of a fake App Store link. Keep support and privacy discoverable without making support the primary homepage conversion goal.
 
-Rework `web/index.html` so the hero copy is sharper, the hero buttons are App Store release status and Read the docs, and support is not a homepage call to action. Add docs and release-status sections, rebalance the feature cards around daily logging, reminders, weekly review, widgets, and privacy, and keep support discoverable only through footer/support/privacy paths.
+Update `web/assets/site.css` to support a lighter product-first layout with stable screenshot frames, responsive hero sizing, fixed font sizes through breakpoints rather than viewport-scaled text, accessible contrast in light and dark modes, and repeated cards that stay within an 8px radius design language.
 
-Revise `web/assets/site.css` with semantic color tokens, light and dark palettes via `@media (prefers-color-scheme: dark)`, improved mobile wrapping, stable screenshot sizing, tighter spacing, and dark-mode contrast for cards, buttons, borders, links, and focus rings.
+Update `web/support/index.html`, `web/privacy/index.html`, `web/docs/index.html`, and `web/docs/automation/index.html` so their copy matches the submitted package. The privacy page must explicitly state that the submitted App Store privacy label is data not collected. The automation page must explain that public Activity sharing transport is disabled for first review, so friend reminders open a Message-first foreground route.
 
-Update `web/sitemap.xml`, `web/404.html`, `web/support/index.html`, `web/privacy/index.html`, `scripts/web/validate_static_site.py`, `tests/test_web_static_site.py`, and `docs/app-automation.md` so `/docs/` and `/docs/automation/` are canonical and `/automation/` is gone.
+Extend `scripts/web/validate_static_site.py` and `tests/test_web_static_site.py` to enforce the new submission-aligned copy contract.
 
 ## Concrete Steps
 
-Run all commands from `/Users/peyton/.codex/worktrees/d602/sunclub`.
+Run all commands from `/Users/peyton/.codex/worktrees/d422/sunclub`.
 
 After editing, run:
 
@@ -64,26 +73,46 @@ After editing, run:
     uv run pytest tests/test_web_static_site.py -v
     just web-build
 
-Then serve locally and verify routes:
+Then serve locally:
 
     just web-serve PORT=8000
 
-Use HTTP checks for `/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, `/404.html`, `/robots.txt`, `/sitemap.xml`, `/assets/screenshots/home.jpg`, and `/assets/screenshots/weekly-summary.jpg`.
+Use Browser to inspect `http://127.0.0.1:8000/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html` at desktop and mobile widths. The homepage should show real app screenshots without overlap, no clipped text, and no fake App Store download badge.
 
 ## Validation and Acceptance
 
-`just web-check` must pass, proving Prettier formatting and static-site validation agree with the new route map. `uv run pytest tests/test_web_static_site.py -v` must pass, proving the validator catches broken placeholders and accepts the committed site. `just web-build` must pass and produce `.build/web`.
+`just web-check` must pass, proving Prettier and the static-site validator agree with the committed site. The focused pytest command must pass, including the homepage App Store positioning test. `just web-build` must pass and produce `.build/web`.
 
-When served locally, the homepage must have no support CTA, the header must not include a direct email address, the primary navigation must use Docs instead of Automation, `/automation/` must not be present in the sitemap or internal links, and the App Store action must not claim a live download URL. Light and dark mode at mobile and desktop widths must remain readable without clipped copy or broken screenshot framing.
+Browser verification must show the homepage, docs, automation docs, support, privacy, and 404 routes render without JavaScript, broken links, hidden primary content, clipped buttons, or overlapping screenshot frames. The homepage must say the public App Store listing is not live yet and must not contain `Download on the App Store`.
+
+After merge, the GitHub web deployment workflow should run for `master` and publish the new static site to Cloudflare Pages. `https://sunclub.peyton.app/` should serve the new submitted-release homepage.
 
 ## Idempotence and Recovery
 
-The edits are plain static files and tests. Rerunning `just web-fmt`, `just web-check`, `uv run pytest tests/test_web_static_site.py -v`, and `just web-build` is safe. `.build/web` is generated output and can be deleted or recreated by `just web-build`.
+All edits are plain text static files, Python validator code, tests, and this ExecPlan. Rerunning `just web-fmt`, `just web-check`, the focused pytest command, and `just web-build` is safe. `.build/web` is generated output and can be deleted or recreated by `just web-build`. The working tree has a pre-existing unrelated `mise.lock` change; preserve it and do not include it in this website branch unless the user explicitly asks.
 
 ## Artifacts and Notes
 
-Artifacts and verification transcripts will be added after implementation.
+Local verification completed:
+
+    just web-check
+    Static site validation passed for web.
+
+    uv run pytest tests/test_web_static_site.py -v
+    7 passed
+
+    just web-build
+    Static site validation passed for web.
+
+    just lint
+    Passed with existing SwiftLint warnings and no serious violations.
+
+    Browser route check
+    /, /docs/, /docs/automation/, /support/, /privacy/, and /404.html loaded with zero console errors.
+
+    Chrome DevTools Protocol responsive audit
+    Every public route reported mobile viewport 390, scrollWidth 390, and bodyScrollWidth 390. Every public route reported desktop viewport 1440, scrollWidth 1440, and bodyScrollWidth 1440. No route contained `Download on the App Store`.
 
 ## Interfaces and Dependencies
 
-No JavaScript, new package dependency, external asset, redirect service, analytics, or runtime tracking is introduced. The public static routes after this change are `/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html`.
+No JavaScript runtime, new package dependency, analytics, tracking, App Store URL guess, external image asset, or Cloudflare configuration change is introduced. The public static routes remain `/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html`.

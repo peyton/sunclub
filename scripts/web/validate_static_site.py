@@ -42,6 +42,30 @@ REQUIRED_EMAILS_BY_FILE = {
     ),
     Path("404.html"): (CONTACT_EMAIL, SUPPORT_EMAIL),
 }
+REQUIRED_PHRASES_BY_FILE = {
+    Path("index.html"): (
+        "Daily SPF Habit Tracker",
+        "Submitted release details",
+        "public App Store listing is not live yet",
+        "No account, ads, or analytics SDKs.",
+        "Live UV is optional, off by default",
+    ),
+    Path("docs/index.html"): (
+        "Submitted release",
+        "free iPhone app",
+        "without app-owned accounts or ads",
+    ),
+    Path("docs/automation/index.html"): (
+        "public Activity sharing transport disabled",
+        "Message-first foreground route",
+        "status=needs-message",
+    ),
+    Path("privacy/index.html"): (
+        "App Store privacy label is data not collected",
+        "Apple system services and permissions you control",
+        "public Activity sharing transport is disabled",
+    ),
+}
 REQUIRED_FILES = (
     "index.html",
     "docs/index.html",
@@ -62,6 +86,8 @@ FORBIDDEN_PHRASES = (
     "ai validation",
     "no cloud",
     "download on the app store",
+    "app store release status",
+    "being prepared for public app store availability",
     'href="#"',
     "href='#'",
     "premium",
@@ -201,6 +227,7 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
     errors: list[str] = []
     raw = path.read_text(encoding="utf-8")
     lowered = raw.lower()
+    normalized_raw = " ".join(raw.split())
     relative = path.relative_to(root)
     parsed = parse_html(raw)
 
@@ -212,6 +239,11 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
         if email not in raw:
             label = EMAIL_LABELS[email]
             errors.append(f"{relative}: missing public {label} email {email}.")
+    for phrase in REQUIRED_PHRASES_BY_FILE.get(relative, ()):
+        if phrase not in normalized_raw:
+            errors.append(
+                f"{relative}: missing required App Store-aligned copy {phrase!r}."
+            )
     if not parsed.title:
         errors.append(f"{relative}: missing non-empty <title>.")
     if not parsed.meta_description:

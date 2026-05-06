@@ -18,6 +18,22 @@ def test_committed_static_site_is_review_ready() -> None:
     assert errors == []
 
 
+def test_homepage_matches_submitted_app_store_positioning() -> None:
+    metadata = json.loads(
+        (REPO_ROOT / "scripts" / "appstore" / "metadata.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    html = (REPO_ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    normalized_html = " ".join(html.split())
+
+    assert metadata["app"]["subtitle"] in normalized_html
+    assert metadata["app"]["pricing_model"] == "free"
+    assert "Submitted release details" in normalized_html
+    assert "public App Store listing is not live yet" in normalized_html
+    assert "Download on the App Store" not in normalized_html
+
+
 def test_weatherkit_config_uses_canonical_schema_and_safe_caps() -> None:
     config_path = REPO_ROOT / "web" / "config" / "weatherkit.json"
     schema_path = REPO_ROOT / "web" / "schemas" / "weatherkit-config.v1.json"

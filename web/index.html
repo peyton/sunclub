@@ -6,11 +6,11 @@
     <title>Sunclub - Daily SPF Habit Tracker for iPhone</title>
     <meta
       name="description"
-      content="Sunclub is an iPhone app for fast sunscreen logging, streaks, weekly review, reminders, widgets, documentation, and private habit history."
+      content="Sunclub helps you build a steady sunscreen routine with quick daily logging, streaks, weekly review, reminders, optional private iCloud sync, and no app-owned accounts."
     />
     <meta
       name="theme-color"
-      content="#0f766e"
+      content="#f8f5ed"
       media="(prefers-color-scheme: light)"
     />
     <meta
@@ -26,7 +26,7 @@
     />
     <meta
       property="og:description"
-      content="Fast sunscreen logging, streaks, weekly review, reminders, widgets, docs, and private habit history."
+      content="Quick sunscreen logging, streaks, weekly review, reminders, and private habit history without accounts or ads."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sunclub.peyton.app/" />
@@ -54,76 +54,115 @@
 
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
-        <img
-          class="hero-backdrop"
-          src="/assets/screenshots/home.jpg"
-          width="560"
-          height="1216"
-          alt=""
-          aria-hidden="true"
-          fetchpriority="high"
-        />
-        <div class="hero-inner">
-          <p class="eyebrow">Daily SPF habit tracker</p>
-          <h1 id="hero-title">Log SPF in seconds. Keep the habit all week.</h1>
-          <p class="hero-copy">
-            Sunclub turns sunscreen into a quick daily check-in: log today, keep
-            your streak moving, review the week, and get reminders when it is
-            time to reapply.
-          </p>
-          <div class="actions" aria-label="Sunclub links">
-            <a class="button primary" href="#app-store"
-              >App Store release status</a
-            >
-            <a class="button secondary" href="/docs/">Read the docs</a>
+        <div class="hero-inner hero-grid">
+          <div class="hero-copy-block">
+            <p class="eyebrow">Daily SPF Habit Tracker</p>
+            <h1 id="hero-title">Keep sunscreen easy to remember.</h1>
+            <p class="hero-copy">
+              Sunclub helps you keep a daily sunscreen habit without accounts,
+              feeds, or extra setup. Log today in a few taps, keep your streak
+              moving, review the last 7 days, and get reminders when it is time
+              to apply or reapply.
+            </p>
+            <div class="actions" aria-label="Sunclub links">
+              <a class="button primary" href="#app-store"
+                >Submitted release details</a
+              >
+              <a class="button secondary" href="/privacy/">Privacy policy</a>
+            </div>
+            <dl class="submission-strip" aria-label="Submitted app facts">
+              <div>
+                <dt>Price</dt>
+                <dd>Free</dd>
+              </div>
+              <div>
+                <dt>Device</dt>
+                <dd>iPhone</dd>
+              </div>
+              <div>
+                <dt>Age</dt>
+                <dd>4+</dd>
+              </div>
+              <div>
+                <dt>Accounts</dt>
+                <dd>None</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="hero-media" aria-label="Sunclub app screenshots">
+            <figure class="phone-frame phone-frame-primary">
+              <img
+                src="/assets/screenshots/home.jpg"
+                width="560"
+                height="1216"
+                alt="Sunclub Home screen showing today's sunscreen log status and streak."
+                fetchpriority="high"
+              />
+            </figure>
+            <figure class="phone-frame phone-frame-secondary">
+              <img
+                src="/assets/screenshots/weekly-summary.jpg"
+                width="560"
+                height="1216"
+                alt="Sunclub Weekly Summary screen showing sunscreen consistency over the last seven days."
+                loading="lazy"
+              />
+            </figure>
           </div>
         </div>
       </section>
 
-      <section class="section" aria-labelledby="why-title">
+      <section class="section" aria-labelledby="features-title">
         <div class="wrap">
           <div class="section-heading">
-            <p class="eyebrow on-surface">Why Sunclub</p>
-            <h2 id="why-title">A sunscreen routine that stays light.</h2>
+            <p class="eyebrow on-surface">Submitted App Store Copy</p>
+            <h2 id="features-title">The first release stays focused.</h2>
             <p>
-              Sunclub stays focused on the daily SPF habit, without accounts,
-              feeds, ads, or extra setup between you and the check-in.
+              The App Store submission presents Sunclub as a small daily habit
+              tool: fast manual logging, streaks, weekly review, reminders, and
+              private-by-default history.
             </p>
           </div>
-          <div class="feature-list">
+          <div class="feature-list app-store-features">
             <article class="feature">
-              <h3>Fast daily logging</h3>
+              <span class="feature-kicker">Manual Logging</span>
+              <h3>Record today quickly.</h3>
               <p>
-                Record today from Home, reminders, widgets, or Control Center
-                and move on.
+                Save a sunscreen check-in in a few taps, even when you are on
+                the go. SPF and notes are optional when they help.
               </p>
             </article>
             <article class="feature">
-              <h3>Reminder paths</h3>
+              <span class="feature-kicker">Streak Tracking</span>
+              <h3>Keep progress visible.</h3>
               <p>
-                Daily, reapply, elevated UV, and weekly reminders can open the
-                right place in Sunclub.
+                Keep your current streak and personal best in view without
+                turning the app into another feed.
               </p>
             </article>
             <article class="feature">
-              <h3>Readable progress</h3>
+              <span class="feature-kicker">Weekly Summary</span>
+              <h3>Review the last 7 days.</h3>
               <p>
-                Streaks, weekly summaries, history, SPF notes, and missed days
-                stay easy to scan.
+                See applied days, missed days, and recent SPF or note context at
+                a glance.
               </p>
             </article>
             <article class="feature">
-              <h3>Glanceable widgets</h3>
+              <span class="feature-kicker">Reapply Reminders</span>
+              <h3>Open the right next action.</h3>
               <p>
-                Widgets and controls keep the next action close without turning
-                the app into another feed.
+                Daily and reapply reminders can bring you straight back to the
+                useful screen.
               </p>
             </article>
             <article class="feature">
-              <h3>Private by design</h3>
+              <span class="feature-kicker">Private by Default</span>
+              <h3>No account, ads, or analytics SDKs.</h3>
               <p>
-                No app-owned account system, no ads, no analytics SDKs, and
-                optional private iCloud sync.
+                Optional private iCloud sync and local backup/import are there
+                when you want continuity or a copy.
               </p>
             </article>
           </div>
@@ -133,21 +172,22 @@
       <section class="section alt" aria-labelledby="flow-title">
         <div class="wrap split">
           <div class="section-heading">
-            <p class="eyebrow on-surface">Daily flow</p>
-            <h2 id="flow-title">From reminder to done without extra taps.</h2>
+            <p class="eyebrow on-surface">Daily Flow</p>
+            <h2 id="flow-title">From reminder to done without extra setup.</h2>
             <p>
-              The app opens into the next useful action, keeps the day
-              consistent, and makes the weekly pattern easy to read.
+              The submitted build keeps the core loop simple: remember, log, and
+              review. Widgets, watch surfaces, and automation routes support the
+              same loop without requiring Live UV or location.
             </p>
           </div>
           <div class="timeline" aria-label="Sunclub routine">
             <div class="timeline-item">
               <div class="timeline-number">1</div>
               <div>
-                <h3>Get the right reminder</h3>
+                <h3>Start with the reminder</h3>
                 <p>
-                  Morning, reapply, elevated UV, and weekly review reminders can
-                  route directly to the matching screen.
+                  Daily and reapply reminders keep sunscreen visible at the
+                  right time.
                 </p>
               </div>
             </div>
@@ -156,18 +196,18 @@
               <div>
                 <h3>Log once for the day</h3>
                 <p>
-                  Manual logging keeps one record per day, with recent SPF
-                  details close when you need them.
+                  One daily record keeps the habit clean, with SPF and notes
+                  close when you need them.
                 </p>
               </div>
             </div>
             <div class="timeline-item">
               <div class="timeline-number">3</div>
               <div>
-                <h3>Review the week</h3>
+                <h3>Read the week</h3>
                 <p>
-                  Weekly summary and history show consistency, misses, and notes
-                  without making you dig.
+                  Weekly Summary shows whether the routine stayed consistent
+                  without making you dig through history.
                 </p>
               </div>
             </div>
@@ -187,28 +227,29 @@
         </div>
       </section>
 
-      <section class="section docs-band" aria-labelledby="docs-title">
+      <section class="section docs-band" aria-labelledby="system-title">
         <div class="wrap">
           <div class="section-heading">
-            <p class="eyebrow on-surface">Documentation</p>
-            <h2 id="docs-title">Short answers for setup and automation.</h2>
+            <p class="eyebrow on-surface">Apple System Surfaces</p>
+            <h2 id="system-title">Useful from the places you already use.</h2>
             <p>
-              The docs collect the practical details for Apple Shortcuts, URL
-              actions, privacy choices, reminders, widgets, and backup behavior.
+              Sunclub is still a private, local-first app. The submitted build
+              also supports practical Apple surfaces for people who want the
+              habit closer to hand.
             </p>
           </div>
           <div class="docs-grid">
-            <a class="docs-card" href="/docs/">
-              <span>Start with docs</span>
-              <strong>Browse Sunclub documentation</strong>
-            </a>
             <a class="docs-card" href="/docs/automation/">
-              <span>Shortcuts and links</span>
-              <strong>Read automation docs</strong>
+              <span>Shortcuts and URL actions</span>
+              <strong>Log, read status, or open Sunclub</strong>
+            </a>
+            <a class="docs-card" href="/support/">
+              <span>Widgets and watch surfaces</span>
+              <strong>Refresh or troubleshoot glanceable progress</strong>
             </a>
             <a class="docs-card" href="/privacy/">
-              <span>Local-first choices</span>
-              <strong>Review privacy details</strong>
+              <span>Live UV and location</span>
+              <strong>Optional, off by default, and fallback-safe</strong>
             </a>
           </div>
         </div>
@@ -223,20 +264,18 @@
               them.
             </h2>
             <p>
-              Sunclub stores app history on device, can use your private iCloud
-              database for sync, and lets you export a local backup when you
-              want a copy.
+              Sunclub has no app-owned account system, no ads, no third-party
+              analytics SDKs, and no cross-app tracking. Optional private iCloud
+              sync, notifications, location, HealthKit, and backup export are
+              controlled by you.
             </p>
           </div>
           <ul class="privacy-points">
             <li>No app-owned accounts.</li>
             <li>No ads or third-party analytics SDKs.</li>
-            <li>Optional notifications, location features, and HealthKit.</li>
             <li>Optional private iCloud sync and local backup export.</li>
-            <li>
-              Shortcut writes, URL writes, and callback details can be disabled
-              in Settings.
-            </li>
+            <li>Optional notifications, location features, and HealthKit.</li>
+            <li>Live UV uses Apple Weather only when you turn it on.</li>
             <li><a href="/privacy/">Read the privacy policy</a>.</li>
           </ul>
         </div>
@@ -245,16 +284,47 @@
       <section class="section tight" id="app-store" aria-labelledby="app-title">
         <div class="wrap">
           <div class="release-note">
-            <p class="eyebrow on-surface">App Store</p>
-            <h2 id="app-title">App Store release status</h2>
-            <p>
-              Sunclub is being prepared for public App Store availability. The
-              App Store link will replace this status as soon as the listing is
-              live.
-            </p>
+            <div>
+              <p class="eyebrow on-surface">App Store Submission</p>
+              <h2 id="app-title">Submitted release details</h2>
+              <p>
+                Sunclub has been submitted as a free iPhone app in Health &
+                Fitness with Lifestyle as the secondary category. The public App
+                Store listing is not live yet, so this page does not show a
+                download badge.
+              </p>
+            </div>
+            <dl class="release-facts">
+              <div>
+                <dt>Subtitle</dt>
+                <dd>Daily SPF Habit Tracker</dd>
+              </div>
+              <div>
+                <dt>Promotional text</dt>
+                <dd>
+                  Build a steady sunscreen routine with quick logging, streaks,
+                  and reminders.
+                </dd>
+              </div>
+              <div>
+                <dt>What is new</dt>
+                <dd>
+                  Initial release. Log sunscreen use quickly, keep your streak
+                  on track, and stay consistent with reminders.
+                </dd>
+              </div>
+              <div>
+                <dt>Review note</dt>
+                <dd>
+                  Live UV is optional, off by default, cached, rate-limited, and
+                  not required for manual logging, reminders, widgets, or watch
+                  surfaces.
+                </dd>
+              </div>
+            </dl>
             <div class="actions compact">
               <a class="button primary" href="/docs/">Read the docs</a>
-              <a class="button tertiary" href="/privacy/">Privacy policy</a>
+              <a class="button tertiary" href="/support/">Support</a>
             </div>
           </div>
         </div>
