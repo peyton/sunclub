@@ -31,6 +31,7 @@ def test_homepage_matches_submitted_app_store_positioning() -> None:
     assert metadata["app"]["pricing_model"] == "free"
     assert "Submitted release details" in normalized_html
     assert "public App Store listing is not live yet" in normalized_html
+    assert "hero-sunclub-devices.jpg" in normalized_html
     assert "Download on the App Store" not in normalized_html
 
 

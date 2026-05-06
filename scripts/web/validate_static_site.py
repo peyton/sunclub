@@ -45,6 +45,7 @@ REQUIRED_EMAILS_BY_FILE = {
 REQUIRED_PHRASES_BY_FILE = {
     Path("index.html"): (
         "Daily SPF Habit Tracker",
+        "hero-sunclub-devices.jpg",
         "Submitted release details",
         "public App Store listing is not live yet",
         "No account, ads, or analytics SDKs.",

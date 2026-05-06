@@ -15,6 +15,7 @@ Sunclub's public website is the App Store marketing, support, and privacy surfac
 - [x] (2026-05-06T15:13-07:00) Added static-site validation and tests that guard against stale App Store status copy and missing submission-aligned disclosures.
 - [x] (2026-05-06T15:18-07:00) Ran `just web-fmt`, `just web-check`, `uv run pytest tests/test_web_static_site.py -v`, `just web-build`, `just lint`, and `git diff --check`.
 - [x] (2026-05-06T15:22-07:00) Served the site locally, checked all public routes with Browser, and verified 390px mobile plus 1440px desktop layouts with Chrome DevTools Protocol metrics.
+- [x] (2026-05-06T15:55-07:00) Replaced the hand-built CSS device hero with a generated composed hero image matching the supplied design template, then reloaded the in-app Browser and verified the updated homepage DOM and console state.
 - [ ] Push the branch, open a PR, monitor checks, merge, and verify the web deployment.
 
 ## Surprises & Discoveries
@@ -27,14 +28,16 @@ Sunclub's public website is the App Store marketing, support, and privacy surfac
   Evidence: `docs/app-automation.md` included the first-review behavior, while `web/docs/automation/index.html` only said Activity sharing links continue to work.
 - Observation: A first mobile screenshot attempt appeared clipped because plain Chrome headless screenshot mode used a wider layout viewport than the 390px image output.
   Evidence: A follow-up Chrome DevTools Protocol audit with `Emulation.setDeviceMetricsOverride` reported `viewport=390`, `scrollWidth=390`, and `bodyScrollWidth=390` for `/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html`.
+- Observation: Rebuilding the reference design from separate CSS phone, watch, shadow, and leaf layers produced a jumbled hero at narrow widths.
+  Evidence: The in-app Browser showed overlapping hero/device elements after the first reference pass. A generated single-image composition avoids those independent layout layers.
 
 ## Decision Log
 
 - Decision: Keep the App Store call to action as submitted-release details instead of a download badge.
   Rationale: The app has been submitted, but the public App Store listing is not live. A fake or guessed App Store URL would create an App Review and user trust problem.
   Date/Author: 2026-05-06 / Codex
-- Decision: Use real app screenshots as the primary hero visual instead of generated art.
-  Rationale: The user asked for image generation to explore better design, but the shipped website should show inspectable product state that matches the app submitted to Apple.
+- Decision: Use a generated composed hero image for the first viewport, backed by real screenshots in the feature section.
+  Rationale: The supplied reference is a single polished product scene. A composed bitmap keeps the hero stable and template-matched while the lower feature row still exposes real Sunclub UI screenshots.
   Date/Author: 2026-05-06 / Codex
 - Decision: Add validator-enforced submission copy requirements.
   Rationale: The website is now part of the release contract, so future edits should fail fast if they remove key App Store-aligned status, privacy, or automation disclosures.
@@ -54,7 +57,7 @@ Web deployment is owned by `.github/workflows/deploy-web-cloudflare.yml`. Pull r
 
 ## Plan of Work
 
-Rework `web/index.html` so the first viewport presents the submitted product clearly: the real app screenshots, Daily SPF Habit Tracker positioning, free iPhone submission facts, and honest submitted-release status instead of a fake App Store link. Keep support and privacy discoverable without making support the primary homepage conversion goal.
+Rework `web/index.html` so the first viewport presents the submitted product clearly: a generated App Store-style hero composition, Daily SPF Habit Tracker positioning, free iPhone submission facts, and honest submitted-release status instead of a fake App Store link. Keep support and privacy discoverable without making support the primary homepage conversion goal.
 
 Update `web/assets/site.css` to support a lighter product-first layout with stable screenshot frames, responsive hero sizing, fixed font sizes through breakpoints rather than viewport-scaled text, accessible contrast in light and dark modes, and repeated cards that stay within an 8px radius design language.
 
@@ -77,7 +80,7 @@ Then serve locally:
 
     just web-serve PORT=8000
 
-Use Browser to inspect `http://127.0.0.1:8000/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html` at desktop and mobile widths. The homepage should show real app screenshots without overlap, no clipped text, and no fake App Store download badge.
+Use Browser to inspect `http://127.0.0.1:8000/`, `/docs/`, `/docs/automation/`, `/support/`, `/privacy/`, and `/404.html` at desktop and mobile widths. The homepage should show the generated hero scene and real feature screenshots without overlap, no clipped text, and no fake App Store download badge.
 
 ## Validation and Acceptance
 
@@ -110,8 +113,19 @@ Local verification completed:
     Browser route check
     /, /docs/, /docs/automation/, /support/, /privacy/, and /404.html loaded with zero console errors.
 
+    Browser generated-hero check
+    The in-app Browser reloaded http://127.0.0.1:8000/ after the composed hero image was added, found the expected hero headline, and reported zero console errors.
+
     Chrome DevTools Protocol responsive audit
     Every public route reported mobile viewport 390, scrollWidth 390, and bodyScrollWidth 390. Every public route reported desktop viewport 1440, scrollWidth 1440, and bodyScrollWidth 1440. No route contained `Download on the App Store`.
+
+Generated hero source:
+
+    /Users/peyton/.codex/generated_images/019dff51-6f51-7710-bc60-3c31681b723e/ig_0b563d72f14b76750169fbc5e0235481959e101569e1c815b0.png
+
+Committed web asset:
+
+    web/assets/hero-sunclub-devices.jpg
 
 ## Interfaces and Dependencies
 
