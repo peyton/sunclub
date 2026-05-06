@@ -3082,10 +3082,12 @@ final class SunclubTests: XCTestCase {
         )
 
         state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
-        await waitForMainActorTasks()
+        try await waitForLiveUVForecast(on: state)
 
         XCTAssertTrue(state.settings.usesLiveUV)
         XCTAssertEqual(state.uvReading?.source, .weatherKit)
+        XCTAssertEqual(state.uvForecast?.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
+        XCTAssertEqual(state.weatherAttribution?.serviceName, UVReadingSource.weatherKit.forecastLabel)
         XCTAssertEqual(state.liveUVStatusPresentation.title, "Live UV")
     }
 
@@ -3274,6 +3276,7 @@ final class SunclubTests: XCTestCase {
             policyKey: "policy-\(UUID().uuidString)",
             counterKey: "counter-\(UUID().uuidString)"
         )
+        defer { budget.resetForTesting() }
         budget.storePolicy(SunclubWeatherKitBudgetPolicy(
             weatherKitEnabled: true,
             minFetchIntervalSeconds: 1,
@@ -3282,7 +3285,13 @@ final class SunclubTests: XCTestCase {
             reason: ""
         ))
 
-        let anchor = Date()
+        let calendar = Calendar(identifier: .gregorian)
+        let anchor = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 5,
+            day: 5,
+            hour: 12
+        )))
         budget.recordFetch(at: anchor)
         budget.recordFetch(at: anchor.addingTimeInterval(120))
 
@@ -3374,8 +3383,7 @@ final class SunclubTests: XCTestCase {
         )
 
         state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
-        await waitForMainActorTasks()
-        await waitForMainActorTasks()
+        try await waitForLiveUVForecast(on: state)
 
         let today = calendar.startOfDay(for: referenceDate)
         XCTAssertTrue(state.elevatedUVDays.contains(today))
@@ -3423,6 +3431,24 @@ final class SunclubTests: XCTestCase {
         await Task.yield()
         await Task.yield()
         await Task.yield()
+    }
+
+    @MainActor
+    private func waitForLiveUVForecast(
+        on state: AppState,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        for _ in 0..<20 {
+            if state.uvReading?.source == .weatherKit,
+               state.uvForecast?.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(25))
+            await waitForMainActorTasks()
+        }
+
+        XCTFail("Timed out waiting for Live UV forecast", file: file, line: line)
     }
 
     private func makeAccountabilityInviteEnvelope(

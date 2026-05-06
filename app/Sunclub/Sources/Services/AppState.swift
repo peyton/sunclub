@@ -371,6 +371,7 @@ final class AppState {
     private(set) var syncPreference: CloudSyncPreference?
     private(set) var uvReading: UVReading?
     private(set) var uvForecast: SunclubUVForecast?
+    private var uvRefreshGeneration = 0
     private(set) var notificationHealthSnapshot: NotificationHealthSnapshot = .unknown
     private(set) var leaveHomeAuthorizationState: LeaveHomeAuthorizationState = .notDetermined
     private(set) var leaveHomeReminderErrorMessage: String?
@@ -507,7 +508,6 @@ final class AppState {
         }
         refresh()
         refreshWeatherKitKillSwitchIfNeeded()
-        refreshUVReadingIfNeeded()
         refreshUVForecastIfNeeded()
         refreshNotificationHealth()
         refreshLeaveHomeReminderStatus()
@@ -2072,20 +2072,38 @@ final class AppState {
     }
 
     func refreshUVForecastIfNeeded(allowPermissionPrompt: Bool = false) {
+        uvRefreshGeneration += 1
+        let generation = uvRefreshGeneration
+        let prefersLiveData = settings.usesLiveUV
+        let referenceDate = currentDate()
         Task {
-            if settings.usesLiveUV {
+            let resolvedReading: UVReading?
+            if let uvReadingOverride {
+                resolvedReading = uvReadingOverride
+            } else {
+                while prefersLiveData && uvIndexService.isLoading {
+                    try? await Task.sleep(for: .milliseconds(25))
+                }
                 await uvIndexService.fetchUVIndex(
-                    prefersLiveData: true,
-                    allowPermissionPrompt: allowPermissionPrompt
+                    prefersLiveData: prefersLiveData,
+                    allowPermissionPrompt: allowPermissionPrompt,
+                    now: referenceDate
                 )
+                resolvedReading = uvIndexService.currentReading
             }
-            uvForecast = await uvBriefingService.forecast(
-                prefersLiveData: settings.usesLiveUV,
+            let resolvedForecast = await uvBriefingService.forecast(
+                prefersLiveData: prefersLiveData,
                 liveBundle: uvIndexService.lastBundle,
                 allowPermissionPrompt: allowPermissionPrompt,
-                referenceDate: currentDate(),
+                referenceDate: referenceDate,
                 calendar: calendar
             )
+            guard uvRefreshGeneration == generation,
+                  settings.usesLiveUV == prefersLiveData else {
+                return
+            }
+            uvReading = resolvedReading
+            uvForecast = resolvedForecast
             syncWidgetSnapshot()
             reloadWidgetTimelines()
             await liveActivityCoordinator.sync(using: self)
@@ -2776,7 +2794,6 @@ final class AppState {
         }
         finishDurableChange(batch, reschedulesReminders: false)
         refreshWeatherKitKillSwitchIfNeeded()
-        refreshUVReadingIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
         refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
     }
 
@@ -2784,13 +2801,11 @@ final class AppState {
         switch action {
         case .requestPermission:
             refreshWeatherKitKillSwitchIfNeeded()
-            refreshUVReadingIfNeeded(allowPermissionPrompt: true)
             refreshUVForecastIfNeeded(allowPermissionPrompt: true)
         case .openSettings:
             break
         case .refresh:
             refreshWeatherKitKillSwitchIfNeeded()
-            refreshUVReadingIfNeeded()
             refreshUVForecastIfNeeded()
         }
     }
@@ -3163,7 +3178,8 @@ final class AppState {
         Task {
             await uvIndexService.fetchUVIndex(
                 prefersLiveData: settings.usesLiveUV,
-                allowPermissionPrompt: allowPermissionPrompt
+                allowPermissionPrompt: allowPermissionPrompt,
+                now: currentDate()
             )
             guard uvReadingOverride == nil else {
                 return
@@ -3682,7 +3698,6 @@ final class AppState {
         refreshStreakRiskReminder()
         refreshNotificationHealth()
         refreshLeaveHomeReminderStatus()
-        refreshUVReadingIfNeeded()
         refreshUVForecastIfNeeded()
         _ = importedBatchCount
         reloadWidgetTimelines()

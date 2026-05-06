@@ -70,6 +70,10 @@ GitHub run cross-check:
   `tuist xcodebuild` via `run_tuist_xcodebuild`, and GitHub macOS test/release
   jobs should run `scripts/tooling/prepare_ci_workspace.sh` before heavy Xcode
   steps so Tuist auth and the local cache service are ready.
+- Keep release archive/export paths repo-root absolute before invoking
+  `run_tuist_xcodebuild`. That helper runs from `app/`, so relative `.build`
+  paths otherwise land under `app/.build` while diagnostics and workflow
+  artifacts look under the repo root.
 - Restore repo-local GitHub Actions caches before lint, Python, and Xcode work.
   Cache `.cache/uv`, `.cache/npm`, `.cache/hk`, `.cache/swiftlint`, and `.venv`;
   do not cache `.DerivedData` or `.build` because Tuist's Xcode cache owns

@@ -721,6 +721,9 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert 'run_tuist_xcodebuild "${xcodebuild_archive_args[@]}"' in archive_step
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in script
     assert "XCODEBUILD_ARCHIVE_SIGNING_ARGS=(" in script
+    assert "resolve_repo_path() {" in script
+    assert 'ARCHIVE_OUTPUT_PATH="$(resolve_repo_path "$ARCHIVE_PATH")"' in script
+    assert 'EXPORT_OUTPUT_PATH="$(resolve_repo_path "$EXPORT_PATH")"' in script
     assert "--unsigned-archive can only be used with --skip-export" not in script
     assert "write_ipa_entitlement_diagnostics" in script
     assert "adhoc_sign_archived_app_with_release_entitlements" in script

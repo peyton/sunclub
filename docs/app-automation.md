@@ -98,6 +98,7 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Camera scanning.
 - File picking.
 - Permission-only setup.
+- Live UV enablement, because turning it on can prompt for location permission; automations should open Settings instead.
 
 ## Runtime Requirements
 

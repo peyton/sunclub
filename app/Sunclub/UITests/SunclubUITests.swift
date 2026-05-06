@@ -158,6 +158,37 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsLiveUVToggleShowsWeatherKitAttributionOnTimeline() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "UITEST_MODE",
+            "UITEST_COMPLETE_ONBOARDING",
+            "UITEST_ROUTE=settings",
+            "UITEST_LIVE_UV_INDEX=8",
+            "UITEST_LIVE_UV_AUTH=always",
+            "UITEST_LIVE_UV_PEAK_INDEX=10"
+        ]
+        app.launch()
+
+        expandSettingsSection("advanced", in: app)
+
+        let liveUVToggle = app.switches["settings.liveUVToggle"]
+        XCTAssertTrue(scrollToHittableElement(liveUVToggle, in: app))
+        liveUVToggle.tap()
+
+        let liveUVAction = app.buttons["settings.liveUV.action"]
+        XCTAssertTrue(scrollToElement(liveUVAction, in: app))
+        XCTAssertTrue(waitForLabel("Refresh", on: liveUVAction))
+
+        let backButton = app.buttons["screen.back"]
+        XCTAssertTrue(scrollToHittableElement(backButton, in: app))
+        backButton.tap()
+
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["timeline.weatherKitAttribution"], in: app))
+    }
+
+    @MainActor
     func testWeekdayReminderPickerOpensFromSettings() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
@@ -259,22 +290,33 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Log"].exists)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+        XCTAssertTrue(
+            scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app, attempts: 10),
+            "Expected Accountability footer to remain reachable with accessibility settings enabled."
+        )
 
         app.buttons["timeline.footer.accountability"].tap()
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
         app.buttons["screen.back"].tap()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToHittableElement(app.buttons["home.settingsButton"], in: app))
+        XCTAssertTrue(
+            scrollToHittableElement(app.buttons["home.settingsButton"], in: app, attempts: 10),
+            "Expected Settings button to remain reachable after returning from Accountability."
+        )
 
         app.buttons["home.settingsButton"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
         XCTAssertTrue(scrollToElement(reapplyToggle, in: app))
-        reapplyToggle.tap()
-        XCTAssertTrue(scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app))
+        if stringValue(of: reapplyToggle) != "1" {
+            reapplyToggle.tap()
+        }
+        XCTAssertTrue(
+            scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10),
+            "Expected enabled reapply settings to show interval controls."
+        )
 
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
         app.buttons["screen.back"].tap()
@@ -1203,7 +1245,8 @@ final class SunclubUITests: XCTestCase {
         XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
-        XCTAssertFalse(app.switches["settings.liveUVToggle"].exists)
+        XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
+        XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["settings.liveUV.status"], in: app))
     }
 
     @MainActor

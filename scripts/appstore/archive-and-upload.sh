@@ -17,10 +17,17 @@ source_appstore_review_env
 : "${SUNCLUB_APS_ENVIRONMENT:=production}"
 setup_local_tooling_env
 
+resolve_repo_path() {
+  case "$1" in
+  /*) printf '%s\n' "$1" ;;
+  *) printf '%s/%s\n' "$ROOT_DIR" "$1" ;;
+  esac
+}
+
 WORKSPACE="$ROOT_DIR/$APP_WORKSPACE"
 SCHEME="$RELEASE_APP_SCHEME"
-ARCHIVE_OUTPUT_PATH="$ARCHIVE_PATH"
-EXPORT_OUTPUT_PATH="$EXPORT_PATH"
+ARCHIVE_OUTPUT_PATH="$(resolve_repo_path "$ARCHIVE_PATH")"
+EXPORT_OUTPUT_PATH="$(resolve_repo_path "$EXPORT_PATH")"
 EXPORT_OPTIONS_PATHNAME="$ROOT_DIR/$EXPORT_OPTIONS_PATH"
 ARCHIVE_DERIVED_DATA_PATH="$ROOT_DIR/$ARCHIVE_DERIVED_DATA"
 APP_BUNDLE_PATH="$ARCHIVE_OUTPUT_PATH/Products/Applications/$RELEASE_APP_PRODUCT_NAME.app"

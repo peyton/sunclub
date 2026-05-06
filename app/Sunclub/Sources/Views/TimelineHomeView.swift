@@ -145,6 +145,17 @@ struct TimelineHomeView: View {
 
                 TimelineTodayStatusCard(presentation: presentation)
 
+                if presentation.logSummary.category == .today,
+                   let forecast = presentation.uvForecast,
+                   forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
+                    WeatherKitAttributionFooter(
+                        attribution: presentation.weatherAttribution,
+                        sourceLabel: forecast.sourceLabel,
+                        showAttributionLink: true
+                    )
+                    .padding(.horizontal, AppSpacing.sm)
+                }
+
                 attentionBanners
 
                 if presentation.logSummary.category == .future {
@@ -490,7 +501,6 @@ struct TimelineHomeView: View {
 
     private func refresh() {
         appState.advanceSelectedDayIfStale()
-        appState.refreshUVReadingIfNeeded()
         appState.refreshUVForecastIfNeeded()
         appState.refreshNotificationHealth()
     }
