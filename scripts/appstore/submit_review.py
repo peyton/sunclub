@@ -851,8 +851,22 @@ class AppStoreReviewSubmitter:
                 query={
                     "filter[platform]": PLATFORM,
                     "filter[state]": state,
+                    "fields[reviewSubmissions]": [
+                        "state",
+                        "items",
+                        "appStoreVersionForReview",
+                    ],
+                    "fields[reviewSubmissionItems]": [
+                        "state",
+                        "appStoreVersion",
+                    ],
+                    "fields[appStoreVersions]": [
+                        "versionString",
+                        "appStoreState",
+                    ],
                     "include": "appStoreVersionForReview,items",
                     "limit": 10,
+                    "limit[items]": 10,
                 },
             ):
                 submission_id = resource_id(submission)
@@ -867,22 +881,35 @@ class AppStoreReviewSubmitter:
         review_submission_id: str,
         app_store_version_id: str,
     ) -> bool:
-        for item in self.client.get_collection(
-            f"/reviewSubmissions/{review_submission_id}/items"
-        ):
+        for item in self.review_submission_items(review_submission_id):
             version = relationship_data(item, "appStoreVersion")
             if version and version.get("id") == app_store_version_id:
                 return True
         return False
+
+    def review_submission_items(self, review_submission_id: str) -> list[JsonObject]:
+        return self.client.get_collection(
+            f"/reviewSubmissions/{review_submission_id}/items",
+            query={
+                "fields[reviewSubmissionItems]": [
+                    "state",
+                    "appStoreVersion",
+                ],
+                "fields[appStoreVersions]": [
+                    "versionString",
+                    "appStoreState",
+                ],
+                "include": "appStoreVersion",
+                "limit": 200,
+            },
+        )
 
     def ensure_submission_item(
         self,
         review_submission_id: str,
         app_store_version_id: str,
     ) -> str:
-        items = self.client.get_collection(
-            f"/reviewSubmissions/{review_submission_id}/items"
-        )
+        items = self.review_submission_items(review_submission_id)
         for item in items:
             version = relationship_data(item, "appStoreVersion")
             if version and version.get("id") == app_store_version_id:
