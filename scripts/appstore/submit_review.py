@@ -36,6 +36,13 @@ EDITABLE_VERSION_STATES = {
     "READY_FOR_REVIEW",
 }
 READY_REVIEW_SUBMISSION_STATE = "READY_FOR_REVIEW"
+UNRESOLVED_REVIEW_SUBMISSION_STATE = "UNRESOLVED_ISSUES"
+ACTIVE_REVIEW_SUBMISSION_STATES = (
+    UNRESOLVED_REVIEW_SUBMISSION_STATE,
+    READY_REVIEW_SUBMISSION_STATE,
+)
+RESOLVABLE_REVIEW_ITEM_STATES = {"REJECTED"}
+IGNORABLE_REVIEW_ITEM_STATES = {"REMOVED"}
 CONFIRMATION_ENV = "SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT"
 CHECKPOINT_CONFIRMATION_ENV = "SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -174,7 +181,10 @@ class AppStoreReviewSubmitter:
         self.upload_screenshots(version_localization_id)
         self.publish_accessibility_declaration(app_id)
         self.upsert_review_detail(app_store_version_id)
-        review_submission_id = self.ensure_review_submission(app_id)
+        review_submission_id = self.ensure_review_submission(
+            app_id,
+            app_store_version_id,
+        )
         review_submission_item_id = self.ensure_submission_item(
             review_submission_id,
             app_store_version_id,
@@ -792,13 +802,33 @@ class AppStoreReviewSubmitter:
             )
         return merged
 
-    def ensure_review_submission(self, app_id: str) -> str:
-        submissions = self.client.get_collection(
-            f"/apps/{app_id}/reviewSubmissions",
-            query={"filter[state]": READY_REVIEW_SUBMISSION_STATE, "limit": 10},
-        )
-        if submissions:
-            return resource_id(submissions[0])
+    def ensure_review_submission(
+        self,
+        app_id: str,
+        app_store_version_id: str,
+    ) -> str:
+        submissions = self.active_review_submissions(app_id)
+
+        for submission in submissions:
+            version = relationship_data(submission, "appStoreVersionForReview")
+            if version and version.get("id") == app_store_version_id:
+                return resource_id(submission)
+
+        for submission in submissions:
+            state = resource_attributes(submission).get("state")
+            if state != UNRESOLVED_REVIEW_SUBMISSION_STATE:
+                continue
+            submission_id = resource_id(submission)
+            if self.review_submission_contains_version(
+                submission_id,
+                app_store_version_id,
+            ):
+                return submission_id
+
+        for submission in submissions:
+            state = resource_attributes(submission).get("state")
+            if state == READY_REVIEW_SUBMISSION_STATE:
+                return resource_id(submission)
 
         response = self.client.post(
             "/reviewSubmissions",
@@ -812,6 +842,39 @@ class AppStoreReviewSubmitter:
         )
         return resource_id(response["data"])
 
+    def active_review_submissions(self, app_id: str) -> list[JsonObject]:
+        submissions: list[JsonObject] = []
+        seen: set[str] = set()
+        for state in ACTIVE_REVIEW_SUBMISSION_STATES:
+            for submission in self.client.get_collection(
+                f"/apps/{app_id}/reviewSubmissions",
+                query={
+                    "filter[platform]": PLATFORM,
+                    "filter[state]": state,
+                    "include": "appStoreVersionForReview,items",
+                    "limit": 10,
+                },
+            ):
+                submission_id = resource_id(submission)
+                if submission_id in seen:
+                    continue
+                seen.add(submission_id)
+                submissions.append(submission)
+        return submissions
+
+    def review_submission_contains_version(
+        self,
+        review_submission_id: str,
+        app_store_version_id: str,
+    ) -> bool:
+        for item in self.client.get_collection(
+            f"/reviewSubmissions/{review_submission_id}/items"
+        ):
+            version = relationship_data(item, "appStoreVersion")
+            if version and version.get("id") == app_store_version_id:
+                return True
+        return False
+
     def ensure_submission_item(
         self,
         review_submission_id: str,
@@ -823,8 +886,15 @@ class AppStoreReviewSubmitter:
         for item in items:
             version = relationship_data(item, "appStoreVersion")
             if version and version.get("id") == app_store_version_id:
-                return resource_id(item)
+                item_id = resource_id(item)
+                state = resource_attributes(item).get("state")
+                if state in RESOLVABLE_REVIEW_ITEM_STATES:
+                    self.resolve_submission_item(item_id)
+                return item_id
             if version:
+                state = resource_attributes(item).get("state")
+                if state in IGNORABLE_REVIEW_ITEM_STATES:
+                    continue
                 raise AppStoreConnectError(
                     "Draft review submission already contains a different "
                     f"app version ({version.get('id')}). Resolve it before "
@@ -854,6 +924,18 @@ class AppStoreReviewSubmitter:
             },
         )
         return resource_id(response["data"])
+
+    def resolve_submission_item(self, review_submission_item_id: str) -> None:
+        self.client.patch(
+            f"/reviewSubmissionItems/{review_submission_item_id}",
+            {
+                "data": {
+                    "type": "reviewSubmissionItems",
+                    "id": review_submission_item_id,
+                    "attributes": {"resolved": True},
+                }
+            },
+        )
 
     def finalize_submission(self, review_submission_id: str) -> None:
         self.client.patch(

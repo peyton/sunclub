@@ -44,6 +44,7 @@ class FakeSubmissionClient:
         reject_accessibility_publish_once: bool = False,
         reject_build_encryption_once: bool = False,
         reject_app_store_version_create_once: bool = False,
+        rejected_submission_item: bool = False,
         existing_editable_version: Mapping[str, Any] | None = None,
         category_ids: Mapping[str, str] | None = None,
         existing_review_detail: Mapping[str, Any] | None = None,
@@ -53,6 +54,7 @@ class FakeSubmissionClient:
         self.reject_accessibility_publish_once = reject_accessibility_publish_once
         self.reject_build_encryption_once = reject_build_encryption_once
         self.reject_app_store_version_create_once = reject_app_store_version_create_once
+        self.rejected_submission_item = rejected_submission_item
         self.existing_editable_version = existing_editable_version
         self.category_ids = dict(category_ids or {})
         self.existing_review_detail = existing_review_detail
@@ -137,8 +139,61 @@ class FakeSubmissionClient:
         if path == "/apps/app-1/accessibilityDeclarations":
             return []
         if path == "/apps/app-1/reviewSubmissions":
-            return [{"type": "reviewSubmissions", "id": "review-1", "attributes": {}}]
+            requested_state = query.get("filter[state]") if query is not None else None
+            if self.rejected_submission_item:
+                if requested_state != "UNRESOLVED_ISSUES":
+                    return []
+                version_id = (
+                    "version-existing"
+                    if self.existing_editable_version is not None
+                    else "version-1"
+                )
+                return [
+                    {
+                        "type": "reviewSubmissions",
+                        "id": "review-1",
+                        "attributes": {"state": "UNRESOLVED_ISSUES"},
+                        "relationships": {
+                            "appStoreVersionForReview": {
+                                "data": {
+                                    "type": "appStoreVersions",
+                                    "id": version_id,
+                                }
+                            }
+                        },
+                    }
+                ]
+            if requested_state == "UNRESOLVED_ISSUES":
+                return []
+            return [
+                {
+                    "type": "reviewSubmissions",
+                    "id": "review-1",
+                    "attributes": {"state": "READY_FOR_REVIEW"},
+                }
+            ]
         if path == "/reviewSubmissions/review-1/items":
+            if self.rejected_submission_item:
+                version_id = (
+                    "version-existing"
+                    if self.existing_editable_version is not None
+                    else "version-1"
+                )
+                return [
+                    {
+                        "type": "reviewSubmissionItems",
+                        "id": "item-rejected",
+                        "attributes": {"state": "REJECTED"},
+                        "relationships": {
+                            "appStoreVersion": {
+                                "data": {
+                                    "type": "appStoreVersions",
+                                    "id": version_id,
+                                }
+                            }
+                        },
+                    }
+                ]
             if self.stale_submission_item:
                 return [
                     {
@@ -179,6 +234,7 @@ class FakeSubmissionClient:
                 "accessibility-1",
             ),
             "/appStoreReviewDetails": ("appStoreReviewDetails", "review-detail-1"),
+            "/reviewSubmissions": ("reviewSubmissions", "review-1"),
             "/reviewSubmissionItems": ("reviewSubmissionItems", "item-1"),
         }
         resource_type, resource_id = ids[path]
@@ -461,6 +517,59 @@ def test_submitter_reuses_editable_version_when_create_is_blocked(
         {"data": {"type": "builds", "id": "build-1"}},
     ) in client.patches
     assert any(path == "/appStoreVersions" for path, _body in client.posts)
+
+
+def test_submitter_resolves_rejected_review_item_for_update_review(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(
+        reject_app_store_version_create_once=True,
+        rejected_submission_item=True,
+        existing_editable_version={
+            "type": "appStoreVersions",
+            "id": "version-existing",
+            "attributes": {
+                "versionString": "1.0.57",
+                "appStoreState": "METADATA_REJECTED",
+            },
+        },
+    )
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    result = submitter.submit()
+
+    assert result.app_store_version_id == "version-existing"
+    assert result.review_submission_id == "review-1"
+    assert result.review_submission_item_id == "item-rejected"
+    assert (
+        "/reviewSubmissionItems/item-rejected",
+        {
+            "data": {
+                "type": "reviewSubmissionItems",
+                "id": "item-rejected",
+                "attributes": {"resolved": True},
+            }
+        },
+    ) in client.patches
+    assert (
+        "/reviewSubmissions/review-1",
+        {
+            "data": {
+                "type": "reviewSubmissions",
+                "id": "review-1",
+                "attributes": {"submitted": True},
+            }
+        },
+    ) in client.patches
+    assert not any(path == "/reviewSubmissionItems" for path, _body in client.posts)
 
 
 def test_submitter_reuses_existing_review_contact(tmp_path: Path) -> None:
