@@ -773,7 +773,8 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert "-exportArchive" in export_step
     assert "-allowProvisioningUpdates" in export_step
     assert '"${XCODEBUILD_AUTH_ARGS[@]}"' in export_step
-    assert 'run_tuist_xcodebuild "${xcodebuild_export_args[@]}"' in export_step
+    assert 'xcodebuild "${xcodebuild_export_args[@]}"' in export_step
+    assert 'tuist xcodebuild "${xcodebuild_export_args[@]}"' not in export_step
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script

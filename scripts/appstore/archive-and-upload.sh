@@ -545,7 +545,7 @@ if [ "$SKIP_EXPORT" = false ]; then
     xcodebuild_export_args+=("${XCODEBUILD_AUTH_ARGS[@]}")
   fi
 
-  run_tuist_xcodebuild "${xcodebuild_export_args[@]}"
+  xcodebuild "${xcodebuild_export_args[@]}"
 
   IPA_FILE="$(find "$EXPORT_OUTPUT_PATH" -name '*.ipa' -print -quit)"
   [ -n "$IPA_FILE" ] || fail "No IPA was exported to $EXPORT_OUTPUT_PATH"
