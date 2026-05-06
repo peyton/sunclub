@@ -72,6 +72,11 @@ ACCESSIBILITY_ATTRIBUTE_MAP = {
 }
 
 
+def is_current_state_version_create_error(error: AppStoreConnectError) -> bool:
+    message = str(error).lower()
+    return "cannot create a new version" in message and "current state" in message
+
+
 class SubmissionClient(Protocol):
     def get(
         self,
@@ -290,31 +295,81 @@ class AppStoreReviewSubmitter:
                 },
             )
         else:
-            response = self.client.post(
-                "/appStoreVersions",
-                {
-                    "data": {
-                        "type": "appStoreVersions",
-                        "attributes": {
-                            "platform": PLATFORM,
-                            "versionString": self.context.marketing_version,
-                            "copyright": copyright_value,
-                            "releaseType": release_type,
-                            "reviewType": "APP_STORE",
-                        },
-                        "relationships": {
-                            "app": {"data": {"type": "apps", "id": app_id}}
-                        },
-                    }
-                },
-            )
-            app_store_version_id = resource_id(response["data"])
+            try:
+                response = self.client.post(
+                    "/appStoreVersions",
+                    {
+                        "data": {
+                            "type": "appStoreVersions",
+                            "attributes": {
+                                "platform": PLATFORM,
+                                "versionString": self.context.marketing_version,
+                                "copyright": copyright_value,
+                                "releaseType": release_type,
+                                "reviewType": "APP_STORE",
+                            },
+                            "relationships": {
+                                "app": {"data": {"type": "apps", "id": app_id}}
+                            },
+                        }
+                    },
+                )
+                app_store_version_id = resource_id(response["data"])
+            except AppStoreConnectError as error:
+                if not is_current_state_version_create_error(error):
+                    raise
+                app_store_version_id = self.reuse_editable_app_store_version(
+                    app_id,
+                    copyright_value=copyright_value,
+                    release_type=release_type,
+                )
 
         self.client.patch(
             f"/appStoreVersions/{app_store_version_id}/relationships/build",
             {"data": {"type": "builds", "id": build_id}},
         )
         return app_store_version_id
+
+    def reuse_editable_app_store_version(
+        self,
+        app_id: str,
+        *,
+        copyright_value: str,
+        release_type: str,
+    ) -> str:
+        versions = self.client.get_collection(
+            f"/apps/{app_id}/appStoreVersions",
+            query={
+                "filter[platform]": PLATFORM,
+                "include": "build",
+                "limit": 10,
+            },
+        )
+        for version in versions:
+            state = resource_attributes(version).get("appStoreState")
+            if state not in EDITABLE_VERSION_STATES:
+                continue
+            app_store_version_id = resource_id(version)
+            self.client.patch(
+                f"/appStoreVersions/{app_store_version_id}",
+                {
+                    "data": {
+                        "type": "appStoreVersions",
+                        "id": app_store_version_id,
+                        "attributes": {
+                            "versionString": self.context.marketing_version,
+                            "copyright": copyright_value,
+                            "releaseType": release_type,
+                            "reviewType": "APP_STORE",
+                        },
+                    }
+                },
+            )
+            return app_store_version_id
+        raise AppStoreConnectError(
+            "App Store Connect would not create a new App Store version, "
+            "and no editable existing iOS version was available to reuse."
+        )
 
     def ensure_version_localization(self, app_store_version_id: str) -> str:
         locale = primary_locale(self.manifest)

@@ -43,6 +43,8 @@ class FakeSubmissionClient:
         reject_whats_new_once: bool = False,
         reject_accessibility_publish_once: bool = False,
         reject_build_encryption_once: bool = False,
+        reject_app_store_version_create_once: bool = False,
+        existing_editable_version: Mapping[str, Any] | None = None,
         category_ids: Mapping[str, str] | None = None,
         existing_review_detail: Mapping[str, Any] | None = None,
     ) -> None:
@@ -50,6 +52,8 @@ class FakeSubmissionClient:
         self.reject_whats_new_once = reject_whats_new_once
         self.reject_accessibility_publish_once = reject_accessibility_publish_once
         self.reject_build_encryption_once = reject_build_encryption_once
+        self.reject_app_store_version_create_once = reject_app_store_version_create_once
+        self.existing_editable_version = existing_editable_version
         self.category_ids = dict(category_ids or {})
         self.existing_review_detail = existing_review_detail
         self.build_calls = 0
@@ -112,8 +116,17 @@ class FakeSubmissionClient:
                 }
             ]
         if path == "/apps/app-1/appStoreVersions":
+            if (
+                self.existing_editable_version is not None
+                and query is not None
+                and "filter[versionString]" not in query
+            ):
+                return [dict(self.existing_editable_version)]
             return []
-        if path == "/appStoreVersions/version-1/appStoreVersionLocalizations":
+        if path in {
+            "/appStoreVersions/version-1/appStoreVersionLocalizations",
+            "/appStoreVersions/version-existing/appStoreVersionLocalizations",
+        }:
             return []
         if path == "/apps/app-1/appInfos":
             return [{"type": "appInfos", "id": "info-1", "attributes": {}}]
@@ -146,6 +159,12 @@ class FakeSubmissionClient:
 
     def post(self, path: str, body: Mapping[str, Any]) -> dict[str, Any]:
         self.posts.append((path, body))
+        if path == "/appStoreVersions" and self.reject_app_store_version_create_once:
+            self.reject_app_store_version_create_once = False
+            raise AppStoreConnectError(
+                "The provided entity includes a relationship with an invalid value - "
+                "You cannot create a new version of the App in the current state."
+            )
         ids = {
             "/appStoreVersions": ("appStoreVersions", "version-1"),
             "/appStoreVersionLocalizations": (
@@ -402,6 +421,46 @@ def test_submitter_creates_review_submission_flow(tmp_path: Path) -> None:
         path == "/appInfos/info-1/relationships/secondaryCategory"
         for path, _body in client.patches
     )
+
+
+def test_submitter_reuses_editable_version_when_create_is_blocked(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(
+        reject_app_store_version_create_once=True,
+        existing_editable_version={
+            "type": "appStoreVersions",
+            "id": "version-existing",
+            "attributes": {
+                "versionString": "1.0.57",
+                "appStoreState": "REJECTED",
+            },
+        },
+    )
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    result = submitter.submit()
+
+    assert result.app_store_version_id == "version-existing"
+    version_patch = next(
+        body
+        for path, body in client.patches
+        if path == "/appStoreVersions/version-existing"
+    )
+    assert version_patch["data"]["attributes"]["versionString"] == "1.2.3"
+    assert (
+        "/appStoreVersions/version-existing/relationships/build",
+        {"data": {"type": "builds", "id": "build-1"}},
+    ) in client.patches
+    assert any(path == "/appStoreVersions" for path, _body in client.posts)
 
 
 def test_submitter_reuses_existing_review_contact(tmp_path: Path) -> None:
