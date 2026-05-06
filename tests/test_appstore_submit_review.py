@@ -63,6 +63,9 @@ class FakeSubmissionClient:
         self.patches: list[tuple[str, Mapping[str, Any]]] = []
         self.deletes: list[str] = []
         self.uploaded: list[Path] = []
+        self.collection_queries: list[
+            tuple[str, Mapping[str, str | int | bool | Sequence[str]] | None]
+        ] = []
 
     def get(
         self,
@@ -105,6 +108,7 @@ class FakeSubmissionClient:
         path: str,
         query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
     ) -> list[dict[str, Any]]:
+        self.collection_queries.append((path, query))
         if path == "/apps":
             return [{"type": "apps", "id": "app-1", "attributes": {}}]
         if path == "/builds":
@@ -179,36 +183,37 @@ class FakeSubmissionClient:
                     if self.existing_editable_version is not None
                     else "version-1"
                 )
-                return [
-                    {
-                        "type": "reviewSubmissionItems",
-                        "id": "item-rejected",
-                        "attributes": {"state": "REJECTED"},
-                        "relationships": {
-                            "appStoreVersion": {
-                                "data": {
-                                    "type": "appStoreVersions",
-                                    "id": version_id,
-                                }
+                item: dict[str, Any] = {
+                    "type": "reviewSubmissionItems",
+                    "id": "item-rejected",
+                    "attributes": {"state": "REJECTED"},
+                }
+                if query_requests_item_app_store_version(query):
+                    item["relationships"] = {
+                        "appStoreVersion": {
+                            "data": {
+                                "type": "appStoreVersions",
+                                "id": version_id,
                             }
-                        },
+                        }
                     }
-                ]
+                return [item]
             if self.stale_submission_item:
-                return [
-                    {
-                        "type": "reviewSubmissionItems",
-                        "id": "item-old",
-                        "relationships": {
-                            "appStoreVersion": {
-                                "data": {
-                                    "type": "appStoreVersions",
-                                    "id": "different-version",
-                                }
+                item = {
+                    "type": "reviewSubmissionItems",
+                    "id": "item-old",
+                    "attributes": {"state": "READY_FOR_REVIEW"},
+                }
+                if query_requests_item_app_store_version(query):
+                    item["relationships"] = {
+                        "appStoreVersion": {
+                            "data": {
+                                "type": "appStoreVersions",
+                                "id": "different-version",
                             }
-                        },
+                        }
                     }
-                ]
+                return [item]
             return []
         raise AssertionError(f"Unexpected collection path: {path}")
 
@@ -301,6 +306,19 @@ class FakeSubmissionClient:
         operations: Sequence[dict[str, Any]],
     ) -> None:
         self.uploaded.append(file_path)
+
+
+def query_requests_item_app_store_version(
+    query: Mapping[str, str | int | bool | Sequence[str]] | None,
+) -> bool:
+    if query is None:
+        return False
+    fields = query.get("fields[reviewSubmissionItems]")
+    if isinstance(fields, str):
+        return "appStoreVersion" in fields.split(",")
+    if isinstance(fields, Sequence):
+        return "appStoreVersion" in fields
+    return False
 
 
 def ready_manifest(tmp_path: Path) -> dict[str, Any]:
@@ -569,6 +587,11 @@ def test_submitter_resolves_rejected_review_item_for_update_review(
             }
         },
     ) in client.patches
+    assert any(
+        path == "/reviewSubmissions/review-1/items"
+        and query_requests_item_app_store_version(query)
+        for path, query in client.collection_queries
+    )
     assert not any(path == "/reviewSubmissionItems" for path, _body in client.posts)
 
 
