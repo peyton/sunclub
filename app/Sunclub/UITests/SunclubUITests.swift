@@ -290,22 +290,33 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Log"].exists)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+        XCTAssertTrue(
+            scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app, attempts: 10),
+            "Expected Accountability footer to remain reachable with accessibility settings enabled."
+        )
 
         app.buttons["timeline.footer.accountability"].tap()
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
         app.buttons["screen.back"].tap()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToHittableElement(app.buttons["home.settingsButton"], in: app))
+        XCTAssertTrue(
+            scrollToHittableElement(app.buttons["home.settingsButton"], in: app, attempts: 10),
+            "Expected Settings button to remain reachable after returning from Accountability."
+        )
 
         app.buttons["home.settingsButton"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
         XCTAssertTrue(scrollToElement(reapplyToggle, in: app))
-        reapplyToggle.tap()
-        XCTAssertTrue(scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app))
+        if stringValue(of: reapplyToggle) != "1" {
+            reapplyToggle.tap()
+        }
+        XCTAssertTrue(
+            scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10),
+            "Expected enabled reapply settings to show interval controls."
+        )
 
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
         app.buttons["screen.back"].tap()

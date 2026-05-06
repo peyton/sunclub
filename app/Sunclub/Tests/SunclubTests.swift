@@ -3276,6 +3276,7 @@ final class SunclubTests: XCTestCase {
             policyKey: "policy-\(UUID().uuidString)",
             counterKey: "counter-\(UUID().uuidString)"
         )
+        defer { budget.resetForTesting() }
         budget.storePolicy(SunclubWeatherKitBudgetPolicy(
             weatherKitEnabled: true,
             minFetchIntervalSeconds: 1,
@@ -3284,7 +3285,13 @@ final class SunclubTests: XCTestCase {
             reason: ""
         ))
 
-        let anchor = Date()
+        let calendar = Calendar(identifier: .gregorian)
+        let anchor = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 5,
+            day: 5,
+            hour: 12
+        )))
         budget.recordFetch(at: anchor)
         budget.recordFetch(at: anchor.addingTimeInterval(120))
 
