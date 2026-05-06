@@ -191,7 +191,8 @@ class FakeSubmissionClient:
         ):
             self.reject_build_encryption_once = False
             raise AppStoreConnectError(
-                "Attribute 'usesNonExemptEncryption' has already set."
+                "The provided entity includes an attribute with an invalid value - "
+                "You cannot update when the value is already set."
             )
         if (
             self.reject_whats_new_once
