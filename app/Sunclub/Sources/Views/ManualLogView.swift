@@ -48,9 +48,9 @@ struct ManualLogView: View {
 
                 SunScreenTitleBlock(
                     eyebrow: targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day()),
-                    title: existingRecord == nil ? "Ready to log" : "Update this log",
+                    title: existingRecord == nil ? "Log sunscreen" : "Update this log",
                     detail: existingRecord == nil
-                        ? "Save the day now. Add SPF or a note if it helps."
+                        ? "Save today's log. Add SPF or a note if it helps."
                         : "Adjust timing, SPF, or notes before saving.",
                     symbolName: existingRecord == nil ? "sun.max.fill" : "checkmark.circle.fill",
                     tint: existingRecord == nil ? AppPalette.sun : AppPalette.success

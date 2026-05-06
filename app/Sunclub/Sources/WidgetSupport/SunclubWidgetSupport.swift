@@ -384,11 +384,11 @@ enum SunclubWidgetSnapshotBuilder {
         guard let poke else { return "" }
         switch (poke.direction, poke.status) {
         case (.sent, .sent):
-            return "You poked \(poke.friendName)."
+            return "You reminded \(poke.friendName)."
         case (.sent, .failed):
-            return "Message \(poke.friendName) if direct poke failed."
+            return "Message \(poke.friendName) if the reminder did not send."
         case (.received, .received):
-            return "\(poke.friendName) poked you."
+            return "\(poke.friendName) reminded you."
         default:
             return ""
         }

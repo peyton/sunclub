@@ -57,7 +57,7 @@ struct WelcomeView: View {
             SunBrandLockup(
                 layout: .stacked,
                 markSize: 96,
-                subtitle: "Build a sunscreen habit that actually sticks."
+                subtitle: "Build a sunscreen habit."
             )
             .frame(maxWidth: .infinity)
         }
@@ -67,18 +67,18 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 26) {
             welcomeValuePropRow(
                 symbol: "hand.tap.fill",
-                title: "Log in seconds",
-                detail: "Save the day from the app, widgets, Shortcuts, or notifications."
+                title: "Log in one tap",
+                detail: "Save today's sunscreen from the app, widget, or Shortcuts."
             )
             welcomeValuePropRow(
                 symbol: "bell.badge.fill",
-                title: "Get nudged at the right time",
-                detail: "Use gentle reminders that fit weekdays, weekends, and travel."
+                title: "Get a daily reminder",
+                detail: "Use one reminder time for weekdays and weekends."
             )
             welcomeValuePropRow(
                 symbol: "flame.fill",
-                title: "Track your progress",
-                detail: "View your streak, history, and weekly progress so the routine is easy to follow."
+                title: "See your streak",
+                detail: "Check history and weekly progress when you want the detail."
             )
         }
         .frame(maxWidth: 360, alignment: .leading)
@@ -125,7 +125,7 @@ struct EnableNotificationsView: View {
                     .padding(.top, 24)
 
                 VStack(spacing: 14) {
-                    Text("Turn on gentle reminders")
+                    Text("Turn on reminders")
                         .font(AppFont.rounded(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
@@ -150,14 +150,14 @@ struct EnableNotificationsView: View {
                                 .accessibilityHidden(true)
                         }
 
-                        Text(isCompleting ? "Setting Up" : "Turn On Reminders")
+                        Text(isCompleting ? "Setting up" : "Allow Reminders")
                     }
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.enableNotifications")
 
-                Button("Not Now") {
+                Button("Skip") {
                     completeOnboarding(requestsNotifications: false)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
@@ -191,7 +191,7 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        "Sunclub sends only sunscreen reminders and reports.\n\nSunclub does not send promotional notifications."
+        "One daily sunscreen reminder. No marketing."
     }
 
     private func completeOnboarding(requestsNotifications: Bool) {

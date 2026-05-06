@@ -4,6 +4,16 @@
       "filename" : "ShareCardBackdropAchievement.png",
       "idiom" : "universal",
       "scale" : "1x"
+    },
+    {
+      "filename" : "ShareCardBackdropAchievement@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "ShareCardBackdropAchievement@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {

@@ -61,13 +61,13 @@ struct ProductScannerView: View {
             contentFrameAlignment: .center
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Product Scanner", showsBack: true, onBack: {
+                SunLightHeader(title: "Scan SPF", showsBack: true, onBack: {
                     router.goBack()
                 })
 
                 SunScreenTitleBlock(
-                    title: "Know your SPF",
-                    detail: "Scan the front label to save SPF, water resistance, and product name.",
+                    title: "Scan SPF",
+                    detail: "Scan the front label, then confirm the SPF before using it.",
                     symbolName: "viewfinder",
                     tint: AppPalette.sun
                 )
@@ -171,7 +171,7 @@ struct ProductScannerView: View {
     @ViewBuilder
     private var scannerActions: some View {
         if Self.isCameraSourceAvailable, cameraAuthorizationState != .denied {
-            Button("Scan product") {
+            Button("Scan label") {
                 requestCameraAccess()
             }
             .buttonStyle(SunPrimaryButtonStyle())
@@ -245,8 +245,8 @@ struct ProductScannerView: View {
     private var cameraAccessDeniedCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SunStatusCard(
-                title: "Camera access denied",
-                detail: "Turn on camera access in Settings to scan sunscreen labels. You can still pick a photo or enter SPF manually.",
+                title: "Camera access is off",
+                detail: "Turn on camera access in Settings to scan labels. You can still pick a photo or enter SPF manually.",
                 tint: AppColor.warning.opacity(0.8),
                 symbol: "camera.fill"
             )
@@ -261,7 +261,7 @@ struct ProductScannerView: View {
             .buttonStyle(SunSecondaryButtonStyle())
             .accessibilityIdentifier("productScanner.openSettings")
 
-            Button("Enter SPF Manually") {
+            Button("Enter manually") {
                 let now = appState.referenceDate
                 appState.prepareManualLogRouteContext(
                     targetDate: now,

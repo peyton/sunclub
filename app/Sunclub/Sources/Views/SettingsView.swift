@@ -232,7 +232,7 @@ struct SettingsView: View {
             }
 
             ReminderToggleCard(
-                title: "Streak at risk nudge",
+                title: "Streak reminder",
                 detail: streakRiskEnabled
                     ? "If your streak is still open, Sunclub sends an evening reminder before the day ends."
                     : "Sunclub only sends your main reminder.",
@@ -692,8 +692,8 @@ struct SettingsView: View {
             ? "Follows local time while you travel."
             : "Stays on \(anchoredTimeZoneLabel) while you travel."
         let streakLine = streakRiskEnabled
-            ? " Evening streak nudges are on."
-            : " Evening streak nudges are off."
+            ? " Evening streak reminders are on."
+            : " Evening streak reminders are off."
         return travelLine + streakLine
     }
 

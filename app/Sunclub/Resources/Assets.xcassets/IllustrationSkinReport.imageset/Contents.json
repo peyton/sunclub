@@ -4,6 +4,16 @@
       "filename" : "IllustrationSkinReport.png",
       "idiom" : "universal",
       "scale" : "1x"
+    },
+    {
+      "filename" : "IllustrationSkinReport@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "IllustrationSkinReport@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {

@@ -4,6 +4,16 @@
       "filename" : "HeroNotificationNudge.png",
       "idiom" : "universal",
       "scale" : "1x"
+    },
+    {
+      "filename" : "HeroNotificationNudge@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "HeroNotificationNudge@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {

@@ -64,14 +64,14 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertNil(presentation.primaryPokeFriendID)
     }
 
-    func testAccountabilityInactivePresentationUsesBuddyEmptyState() {
+    func testAccountabilityInactivePresentationUsesSharingEmptyState() {
         let presentation = SunclubAccountabilityWidgetPresentation.make(
             summary: .empty,
             family: .systemSmall
         )
 
-        XCTAssertEqual(presentation.title, "Add a sunscreen buddy")
-        XCTAssertEqual(presentation.detail, "Share check-ins, not streak pressure.")
+        XCTAssertEqual(presentation.title, "Set up sharing")
+        XCTAssertEqual(presentation.detail, "Share whether today is logged.")
         XCTAssertEqual(presentation.actionText, "Set up in app")
         XCTAssertEqual(presentation.iconName, "person.badge.plus.fill")
         XCTAssertFalse(presentation.showsFriendStats)
@@ -95,8 +95,8 @@ final class SunclubWidgetTests: XCTestCase {
             family: .systemMedium
         )
 
-        XCTAssertEqual(presentation.title, "Add a sunscreen buddy")
-        XCTAssertEqual(presentation.detail, "Share check-ins, not streak pressure.")
+        XCTAssertEqual(presentation.title, "Set up sharing")
+        XCTAssertEqual(presentation.detail, "Share whether today is logged.")
         XCTAssertEqual(presentation.actionText, "Set up in app")
         XCTAssertFalse(presentation.showsFriendStats)
     }
@@ -107,11 +107,11 @@ final class SunclubWidgetTests: XCTestCase {
             family: .systemMedium
         )
 
-        XCTAssertEqual(presentation.title, "Poke Maya")
+        XCTAssertEqual(presentation.title, "Remind Maya")
         XCTAssertEqual(presentation.subtitle, "1 friend open")
         XCTAssertEqual(presentation.iconName, "person.2.fill")
         XCTAssertTrue(presentation.showsFriendStats)
-        XCTAssertEqual(presentation.friends.first?.status, "Needs SPF")
+        XCTAssertEqual(presentation.friends.first?.status, "Open today")
     }
 
     func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
@@ -391,7 +391,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
         XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
-        XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You poked Maya.")
+        XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You reminded Maya.")
     }
 
     func testSnapshotDayStatusUsesStoredCalendarHistory() {
@@ -660,7 +660,7 @@ final class SunclubWidgetTests: XCTestCase {
             ],
             latestPoke: nil,
             primaryPokeFriendID: includePrimaryPokeFriend ? friendID : nil,
-            latestPokeText: "You poked Maya."
+            latestPokeText: "You reminded Maya."
         )
     }
 
