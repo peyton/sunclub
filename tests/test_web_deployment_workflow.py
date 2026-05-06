@@ -116,7 +116,10 @@ def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
         "mise --locked exec -- uv run python -m scripts.appstore.review_package --checkpoint"
         in workflow
     )
-    assert "bash scripts/appstore/archive-and-upload.sh --upload-testflight" in workflow
+    assert (
+        "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
+        in workflow
+    )
     assert (
         "bash scripts/appstore/submit-review.sh --submit --confirm-submit --skip-screenshots --skip-archive-upload"
         in workflow

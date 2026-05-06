@@ -86,7 +86,7 @@ if [ "$CONFIRM_SUBMIT" = false ] && [ "${SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT:-0}" 
 fi
 
 if [ "$SKIP_ARCHIVE_UPLOAD" = false ]; then
-  bash scripts/appstore/archive-and-upload.sh --upload-testflight
+  bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight
 fi
 
 run_repo_python_module scripts.appstore.submit_review "${PYTHON_ARGS[@]}"
