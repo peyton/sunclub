@@ -27,8 +27,8 @@
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="brand" href="/" aria-label="Sunclub home">
-          <img src="/assets/app-icon.svg" width="36" height="36" alt="" />
-          <span>Sunclub</span>
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
         </a>
         <div class="nav-links">
           <a href="/docs/">Docs</a>
@@ -78,6 +78,15 @@
         devices when iCloud sync is enabled.
       </p>
 
+      <h2>App Store Privacy Label</h2>
+      <p>
+        For the submitted release, Sunclub's App Store privacy label is data not
+        collected. Sunclub does not run app-owned accounts, advertising,
+        third-party analytics SDKs, or cross-app tracking. Optional iCloud,
+        HealthKit, notifications, location, and Apple Weather features use Apple
+        system services and permissions you control.
+      </p>
+
       <h2>Local Storage</h2>
       <p>
         Sunclub stores app data in the app sandbox on your device. Widgets read
@@ -117,8 +126,11 @@
         You can turn off Shortcut writes, URL open actions, URL write actions,
         and detailed callback results in Sunclub Settings -> Connect Shortcuts.
         Turning off URL writes keeps links from logging sunscreen, reapply,
-        friend invite import, reminders, or supported toggles in the background.
-        The <a href="/docs/automation/">Shortcuts docs</a>
+        Activity sharing invite import, reminders, or supported toggles in the
+        background. Activity sharing reminder links open a Message-first
+        foreground route while public Activity sharing transport is disabled for
+        the first App Store review build. The
+        <a href="/docs/automation/">Shortcuts docs</a>
         include examples and controls.
       </p>
 
