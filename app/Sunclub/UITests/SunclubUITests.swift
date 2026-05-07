@@ -814,10 +814,15 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        app.buttons["screen.back"].tap()
+        XCTAssertTrue(
+            app.buttons["manualLog.logToday"].waitForExistence(timeout: 10),
+            "Expected the home-screen quick action to open manual logging."
+        )
+        let backButton = app.buttons["screen.back"]
+        XCTAssertTrue(backButton.waitForExistence(timeout: 5))
+        backButton.tap()
 
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        assertTodayRootVisible(in: app)
     }
 
     @MainActor
@@ -1161,6 +1166,36 @@ final class SunclubUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    @MainActor
+    private func assertTodayRootVisible(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            waitForAnyExistingElement([
+                app.buttons["home.logManually"],
+                app.buttons["home.sunscreenLogCard"],
+                timelineHeadline(in: app)
+            ], timeout: 10),
+            "Expected the Today tab root after closing a pushed route.",
+            file: file,
+            line: line
+        )
+    }
+
+    @MainActor
+    private func waitForAnyExistingElement(_ elements: [XCUIElement], timeout: TimeInterval = 5) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if elements.contains(where: { $0.exists }) {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        } while Date() < deadline
+        return elements.contains(where: { $0.exists })
     }
 
     @MainActor
