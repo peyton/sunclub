@@ -35,6 +35,38 @@ def test_homepage_matches_submitted_app_store_positioning() -> None:
     assert "Download on the App Store" not in normalized_html
 
 
+def test_homepage_feature_row_keeps_reference_layout_contract() -> None:
+    html = (REPO_ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    css = (REPO_ROOT / "web" / "assets" / "site.css").read_text(encoding="utf-8")
+    feature_icon_dir = REPO_ROOT / "web" / "assets" / "feature-icons"
+
+    assert (REPO_ROOT / "web" / "assets" / "logo-sun.svg").exists()
+    assert 'url("/assets/logo-sun.svg")' in css
+    assert ".home-page .brand" in css
+    assert "color: #071a2f;" in css
+
+    expected_title_lines = (
+        ("Daily Logging", "Made Simple"),
+        ("UV Context", "You Can Trust"),
+        ("Widgets &", "Apple Watch"),
+        ("Shortcuts", "Automation"),
+        ("iCloud History", "That Follows You"),
+    )
+    for first_line, second_line in expected_title_lines:
+        assert f"<span>{first_line}</span>" in html
+        assert f"<span>{second_line}</span>" in html
+
+    expected_icons = (
+        "sun.svg",
+        "cloud.svg",
+        "watch-shield.svg",
+        "shortcuts.svg",
+    )
+    for icon in expected_icons:
+        assert (feature_icon_dir / icon).exists()
+        assert f'url("/assets/feature-icons/{icon}")' in css
+
+
 def test_weatherkit_config_uses_canonical_schema_and_safe_caps() -> None:
     config_path = REPO_ROOT / "web" / "config" / "weatherkit.json"
     schema_path = REPO_ROOT / "web" / "schemas" / "weatherkit-config.v1.json"
