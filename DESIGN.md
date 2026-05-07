@@ -6,8 +6,9 @@ The app design system lives in `app/Sunclub/Sources/Shared/AppDesignSystem.swift
 Use those tokens and components for iOS, Watch, and shared SwiftUI surfaces.
 
 Legacy brand helpers in `AppTheme.swift` remain for the Sunclub mark, warm screen
-backgrounds, and compatibility wrappers, but new screen styling should route
-through `AppColor`, `AppText`, `AppCard`, and the shared button/card primitives.
+backgrounds, product-page cards, and compatibility wrappers, but new screen
+styling should route through `AppColor`, `AppText`, `AppCard`, `SunInfoRow`,
+`SunUVIndexCard`, and the shared button/card primitives.
 
 ## Typography
 
@@ -29,7 +30,8 @@ calendar cells, and charts.
 | `AppTextStyle.body` | 17 | regular | default body copy |
 | `AppTextStyle.caption` | 14 | regular | secondary labels |
 
-Heading styles apply slight negative tracking.
+Letter spacing is intentionally zero to match the product page and avoid clipped
+large Dynamic Type headings.
 
 ## Color
 
@@ -42,7 +44,8 @@ Semantic color tokens:
 | `AppColor.background` | page background |
 | `AppColor.surface` | soft panels |
 | `AppColor.surfaceElevated` | cards and sheets |
-| `AppColor.accent` | primary Sunclub action |
+| `AppColor.accent` | primary blue Sunclub action |
+| `AppColor.sun` | sun and UV accents |
 | `AppColor.success` | completed/applied states |
 | `AppColor.warning` | destructive or attention states |
 | `AppColor.muted` | inactive UI |
@@ -61,8 +64,8 @@ Canonical radii:
 
 | Token | Value | Usage |
 | --- | ---: | --- |
-| `AppRadius.card` | 22 | cards and large panels |
-| `AppRadius.button` | 18 | buttons and compact controls |
+| `AppRadius.card` | 18 | cards and large panels |
+| `AppRadius.button` | 14 | buttons and compact controls |
 | `AppRadius.pill` | infinity | capsules |
 
 `AppShadow.soft` is the single reusable elevation style. Screen code should use
@@ -79,5 +82,16 @@ Required shared components:
 - `StatusBadge`
 - `DayCapsule`
 - `StatCard`
+- `FeatureIcon`
+- `InfoRow`
 
 Use these before creating bespoke card, button, badge, or stat treatments.
+
+Product-page iOS wrappers in `AppTheme.swift` include:
+
+- `SunProductIcon`
+- `SunInfoRow`
+- `SunUVIndexCard`
+- `SunMiniBarChart`
+- `SunForecastStrip`
+- `SunBottomNavigationBar`

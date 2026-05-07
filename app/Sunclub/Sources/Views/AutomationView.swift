@@ -20,6 +20,22 @@ struct AutomationView: View {
 
                 AutomationHeroCard()
 
+                Button {
+                    openURL(SunclubWebLinks.automationDocs)
+                } label: {
+                    SunInfoRow(
+                        title: "Shortcuts Guide",
+                        detail: "Read setup examples, URL routes, and privacy controls.",
+                        systemImage: "sparkles.rectangle.stack.fill",
+                        tint: AppPalette.pool,
+                        showsChevron: true
+                    )
+                    .padding(18)
+                    .sunGlassCard(cornerRadius: AppRadius.card)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("automation.docs")
+
                 AutomationSettingsPanel(
                     style: .full,
                     feedbackMessage: $feedbackMessage,
@@ -395,19 +411,15 @@ struct AutomationSettingsPanel: View {
 private struct AutomationHeroCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: "wand.and.stars")
-                .font(AppFont.rounded(size: 26, weight: .semibold))
-                .foregroundStyle(AppPalette.sun)
-                .frame(width: 36, height: 36)
-                .accessibilityHidden(true)
+            SunProductIcon(systemName: "square.stack.3d.up.fill", tint: AppPalette.pool, size: 44)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Use Shortcuts with Sunclub")
+                Text("Shortcuts & Automation")
                     .font(AppFont.rounded(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Log sunscreen, read your status, or open a screen when you want to.")
+                Text("Log, remind, and review automatically while staying in control of every write.")
                     .font(AppTypography.body)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -416,7 +428,7 @@ private struct AutomationHeroCard: View {
             Spacer(minLength: 0)
         }
         .padding(20)
-        .sunGlassCard(cornerRadius: 22)
+        .sunGlassCard(cornerRadius: AppRadius.card)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("automation.hero")
     }
@@ -440,26 +452,12 @@ private struct AutomationActionRow: View {
     let row: Model
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: row.symbolName)
-                .font(AppFont.rounded(size: 15, weight: .semibold))
-                .foregroundStyle(AppPalette.success)
-                .frame(width: 22, height: 22)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(row.title)
-                    .font(AppFont.rounded(size: 15, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text(row.detail)
-                    .font(AppFont.rounded(size: 13))
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
+        SunInfoRow(
+            title: row.title,
+            detail: row.detail,
+            systemImage: row.symbolName,
+            tint: AppPalette.success
+        )
         .accessibilityElement(children: .combine)
     }
 }

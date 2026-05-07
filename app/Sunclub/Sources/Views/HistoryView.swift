@@ -31,6 +31,8 @@ struct HistoryView: View {
                     router.goBack()
                 })
 
+                historyOverviewCard(presentation: presentation)
+
                 monthNavigator
 
                 deleteUndoBanner
@@ -93,6 +95,53 @@ struct HistoryView: View {
                 existingRecord: appState.record(for: presentation.day)
             )
         }
+    }
+
+    private func historyOverviewCard(presentation: HistoryPresentation) -> some View {
+        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: 14) {
+                SunInfoRow(
+                    title: "iCloud History",
+                    detail: "Your sunscreen history stays private and follows your devices when iCloud sync is on.",
+                    systemImage: "icloud.fill",
+                    tint: AppPalette.pool
+                )
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        historyOverviewMetric(
+                            value: "\(presentation.monthStats.appliedCount)",
+                            label: "logged days"
+                        )
+                        historyOverviewMetric(
+                            value: "\(presentation.currentStreakDays.count)",
+                            label: "day streak"
+                        )
+                    }
+
+                    VStack(spacing: 10) {
+                        historyOverviewMetric(
+                            value: "\(presentation.monthStats.appliedCount)",
+                            label: "logged days"
+                        )
+                        historyOverviewMetric(
+                            value: "\(presentation.currentStreakDays.count)",
+                            label: "day streak"
+                        )
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier("history.overview")
+    }
+
+    private func historyOverviewMetric(value: String, label: String) -> some View {
+        StatCard(
+            value: value,
+            label: label,
+            systemImage: label.contains("streak") ? "flame.fill" : "checkmark.circle.fill",
+            tint: label.contains("streak") ? AppPalette.sun : AppPalette.success
+        )
     }
 
     @ViewBuilder
@@ -1178,6 +1227,7 @@ struct HistoryRecordEditorView: View {
     let targetContext: AppLogContext?
 
     @State private var selectedSPF: Int?
+    @State private var selectedAreas: Set<String>
     @State private var notes: String
     @State private var hasLoadedInitialState = false
 
@@ -1192,7 +1242,8 @@ struct HistoryRecordEditorView: View {
         self.route = route
         self.targetContext = targetContext
         _selectedSPF = State(initialValue: existingRecord?.spfLevel)
-        _notes = State(initialValue: existingRecord?.notes ?? "")
+        _selectedAreas = State(initialValue: SunManualLogInput.coveredAreas(in: existingRecord?.notes))
+        _notes = State(initialValue: SunManualLogInput.notesRemovingCoveredAreas(existingRecord?.notes))
     }
 
     var body: some View {
@@ -1219,6 +1270,7 @@ struct HistoryRecordEditorView: View {
                     SunManualLogFields(
                         selectedSPF: $selectedSPF,
                         notes: $notes,
+                        selectedAreas: $selectedAreas,
                         accessibilityPrefix: "historyEditor",
                         suggestions: appState.manualLogSuggestionState(for: day),
                         showsOptionalDisclosure: false
@@ -1232,7 +1284,7 @@ struct HistoryRecordEditorView: View {
                     dayPart: targetContext?.dayPart,
                     verifiedAt: existingRecord?.verifiedAt,
                     spfLevel: selectedSPF,
-                    notes: notes
+                    notes: SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas)
                 )
                 closeEditor()
             }

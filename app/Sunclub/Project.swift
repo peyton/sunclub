@@ -83,12 +83,15 @@ func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
     ]
 }
 
-func targetSettings(for flavor: SunclubFlavor) -> Settings {
+func targetSettings(for flavor: SunclubFlavor, supportedPlatforms: String? = nil) -> Settings {
     var base = SettingsDictionary()
         .automaticCodeSigning(devTeam: signingTeam)
 
     for (key, value) in flavorBuildSettings(flavor) {
         base[key] = value
+    }
+    if let supportedPlatforms {
+        base["SUPPORTED_PLATFORMS"] = .string(supportedPlatforms)
     }
 
     return .settings(base: base)
@@ -113,7 +116,7 @@ func appTarget(for flavor: SunclubFlavor) -> Target {
             .target(name: flavor.widgetTargetName),
             .target(name: flavor.watchTargetName)
         ],
-        settings: targetSettings(for: flavor)
+        settings: targetSettings(for: flavor, supportedPlatforms: "iphoneos iphonesimulator")
     )
 }
 
@@ -170,7 +173,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "Resources/Assets.xcassets"
         ],
         entitlements: "SunclubWidgetsExtension.entitlements",
-        settings: targetSettings(for: flavor)
+        settings: targetSettings(for: flavor, supportedPlatforms: "iphoneos iphonesimulator")
     )
 }
 
@@ -193,7 +196,7 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
         dependencies: [
             .target(name: flavor.watchExtensionTargetName)
         ],
-        settings: targetSettings(for: flavor)
+        settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
     )
 }
 
@@ -237,7 +240,7 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/WidgetSupport/SunclubWidgetSupport.swift"
         ],
         entitlements: "SunclubWatch.entitlements",
-        settings: targetSettings(for: flavor)
+        settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
     )
 }
 
@@ -256,7 +259,7 @@ func watchContainerTarget(for flavor: SunclubFlavor) -> Target {
         dependencies: [
             .target(name: flavor.watchTargetName)
         ],
-        settings: targetSettings(for: flavor)
+        settings: targetSettings(for: flavor, supportedPlatforms: "iphoneos iphonesimulator")
     )
 }
 
@@ -296,7 +299,7 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/WidgetSupport/SunclubWidgetSupport.swift"
         ],
         entitlements: "SunclubWatchWidgets.entitlements",
-        settings: targetSettings(for: flavor)
+        settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
     )
 }
 

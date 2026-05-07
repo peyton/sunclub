@@ -2,34 +2,36 @@ import SwiftUI
 
 enum AppColor {
     enum Text {
-        static let primary = Color(red: 0.075, green: 0.071, blue: 0.067)
-        static let secondary = Color(red: 0.400, green: 0.372, blue: 0.345)
+        static let primary = Color(red: 0.025, green: 0.108, blue: 0.205)
+        static let secondary = Color(red: 0.310, green: 0.360, blue: 0.440)
     }
 
-    static let background = Color(red: 0.992, green: 0.984, blue: 0.965)
-    static let backgroundWarm = Color(red: 1.000, green: 0.944, blue: 0.804)
-    static let surface = Color(red: 1.000, green: 0.998, blue: 0.992)
+    static let background = Color(red: 0.988, green: 0.965, blue: 0.925)
+    static let backgroundWarm = Color(red: 1.000, green: 0.933, blue: 0.720)
+    static let surface = Color(red: 1.000, green: 0.995, blue: 0.982)
     static let surfaceElevated = Color(red: 1.000, green: 1.000, blue: 1.000)
-    static let control = Color(red: 1.000, green: 0.968, blue: 0.910)
-    static let accent = Color(red: 0.965, green: 0.610, blue: 0.035)
-    static let accentSoft = Color(red: 1.000, green: 0.890, blue: 0.620)
-    static let success = Color(red: 0.155, green: 0.715, blue: 0.330)
-    static let warning = Color(red: 0.760, green: 0.240, blue: 0.180)
-    static let muted = Color(red: 0.845, green: 0.835, blue: 0.820)
-    static let stroke = Color(red: 0.075, green: 0.071, blue: 0.067).opacity(0.075)
-    static let onAccent = Color(red: 0.075, green: 0.071, blue: 0.067)
-    static let onColor = Text.primary
+    static let control = Color(red: 0.965, green: 0.976, blue: 1.000)
+    static let accent = Color(red: 0.080, green: 0.455, blue: 0.980)
+    static let accentSoft = Color(red: 0.845, green: 0.910, blue: 1.000)
+    static let sun = Color(red: 0.970, green: 0.670, blue: 0.000)
+    static let sunSoft = Color(red: 1.000, green: 0.905, blue: 0.620)
+    static let success = Color(red: 0.275, green: 0.760, blue: 0.340)
+    static let warning = Color(red: 0.870, green: 0.290, blue: 0.220)
+    static let muted = Color(red: 0.825, green: 0.850, blue: 0.875)
+    static let stroke = Color(red: 0.025, green: 0.108, blue: 0.205).opacity(0.095)
+    static let onAccent = Color(red: 0.012, green: 0.036, blue: 0.075)
+    static let onColor = Color.white
 }
 
 enum AppRadius {
-    static let card: CGFloat = 22
-    static let button: CGFloat = 18
+    static let card: CGFloat = 18
+    static let button: CGFloat = 14
     static let pill: CGFloat = .infinity
     static let tiny: CGFloat = 8
-    static let small: CGFloat = 12
-    static let medium: CGFloat = 16
-    static let insetCard: CGFloat = 18
-    static let control: CGFloat = 18
+    static let small: CGFloat = 10
+    static let medium: CGFloat = 14
+    static let insetCard: CGFloat = 14
+    static let control: CGFloat = 14
 }
 
 // swiftlint:disable identifier_name
@@ -52,10 +54,16 @@ struct AppShadowStyle {
 
 enum AppShadow {
     static let soft = AppShadowStyle(
-        color: AppColor.Text.primary.opacity(0.055),
-        radius: 18,
+        color: AppColor.Text.primary.opacity(0.070),
+        radius: 16,
         xOffset: 0,
-        yOffset: 10
+        yOffset: 8
+    )
+    static let floating = AppShadowStyle(
+        color: AppColor.Text.primary.opacity(0.120),
+        radius: 24,
+        xOffset: 0,
+        yOffset: 14
     )
 }
 
@@ -110,16 +118,7 @@ enum AppTextStyle {
     }
 
     var tracking: CGFloat {
-        switch self {
-        case .largeTitle:
-            return -0.35
-        case .title:
-            return -0.30
-        case .sectionHeader:
-            return -0.20
-        default:
-            return 0
-        }
+        0
     }
 }
 
@@ -280,7 +279,7 @@ struct StatusBadge: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(tint.opacity(0.10))
+                .fill(tint.opacity(0.12))
 
             Circle()
                 .stroke(tint.opacity(0.18), lineWidth: 2)
@@ -298,6 +297,58 @@ struct StatusBadge: View {
         .frame(width: 104, height: 104)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
+    }
+}
+
+struct FeatureIcon: View {
+    let systemName: String
+    var tint: Color = AppColor.accent
+    var fill: Color = AppColor.control
+    var size: CGFloat = 40
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size * 0.44, weight: .semibold, design: .rounded))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background {
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                    .fill(fill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                    .stroke(AppColor.stroke, lineWidth: 1)
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+struct InfoRow: View {
+    let title: String
+    let detail: String
+    var systemImage: String
+    var tint: Color = AppColor.accent
+    var showsChevron = false
+
+    var body: some View {
+        HStack(alignment: .center, spacing: AppSpacing.xs) {
+            FeatureIcon(systemName: systemImage, tint: tint, fill: tint.opacity(0.12), size: 36)
+
+            VStack(alignment: .leading, spacing: 2) {
+                AppText(title, style: .bodyMedium)
+                AppText(detail, style: .caption, color: AppColor.Text.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -393,7 +444,7 @@ struct AppPrimaryButtonStyle: ButtonStyle {
             .background {
                 RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                     .fill(isEnabled ? AppColor.accent : AppColor.muted.opacity(0.42))
-                    .appShadow(isEnabled ? AppShadow.soft : nil)
+                    .appShadow(isEnabled ? AppShadow.floating : nil)
             }
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.978 : 1))

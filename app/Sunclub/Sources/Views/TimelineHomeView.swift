@@ -24,6 +24,7 @@ private struct TimelineHomePresentation {
     let visibleDays: [Date]
     let weekProgressDays: [SunWeekProgressDay]
     let allowsFuture: Bool
+    let uvReading: UVReading?
     let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
     let currentStreak: Int
@@ -53,6 +54,7 @@ private struct TimelineHomePresentation {
         visibleDays = days
         weekProgressDays = Self.weekProgressDays(today: referenceDate, recordedDays: recordSet)
         allowsFuture = appState.timelineShowsFutureDays
+        uvReading = appState.uvReading
         uvForecast = appState.uvForecast
         weatherAttribution = appState.weatherAttribution
         currentStreak = appState.currentStreak
@@ -139,11 +141,17 @@ struct TimelineHomeView: View {
 
         SunLightScreen {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                headerBar
+                todayHeader(for: presentation)
 
-                timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
+                if presentation.logSummary.category == .future {
+                    timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
 
-                TimelineTodayStatusCard(presentation: presentation)
+                    TimelineTodayStatusCard(presentation: presentation)
+                } else {
+                    todayProductStack(for: presentation)
+
+                    timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
+                }
 
                 if presentation.logSummary.category == .today,
                    let forecast = presentation.uvForecast,
@@ -200,9 +208,18 @@ struct TimelineHomeView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var headerBar: some View {
-        HStack(alignment: .center) {
-            SunBrandLockup(layout: .inline, markSize: 42)
+    private func todayHeader(for presentation: TimelineHomePresentation) -> some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(headerTitle(for: presentation))
+                    .font(AppFont.rounded(size: 28, weight: .bold))
+                    .foregroundStyle(AppPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(headerDateText(for: presentation))
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppPalette.softInk)
+            }
 
             Spacer(minLength: 0)
 
@@ -210,15 +227,257 @@ struct TimelineHomeView: View {
                 feedbackTrigger += 1
                 router.open(.settings)
             } label: {
-                Image(systemName: "gearshape")
-                    .font(AppFont.rounded(size: 28, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
+                SunLogoMark(size: 38)
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
             .accessibilityHint("Opens app settings.")
             .accessibilityIdentifier("home.settingsButton")
+        }
+    }
+
+    private func headerTitle(for presentation: TimelineHomePresentation) -> String {
+        switch presentation.logSummary.category {
+        case .today:
+            return "Today"
+        case .past:
+            return presentation.selectedDay.formatted(.dateTime.weekday(.wide))
+        case .future:
+            return "Plan Ahead"
+        }
+    }
+
+    private func headerDateText(for presentation: TimelineHomePresentation) -> String {
+        presentation.selectedDay.formatted(.dateTime.month(.wide).day().year())
+    }
+
+    private func todayProductStack(for presentation: TimelineHomePresentation) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            uvContextCard(for: presentation)
+
+            sunscreenLogSummaryButton(for: presentation)
+
+            todayExposureCard(for: presentation)
+
+            todayForecastCard(for: presentation)
+        }
+    }
+
+    private func uvContextCard(for presentation: TimelineHomePresentation) -> some View {
+        let reading = homeUVReading(for: presentation)
+        return SunUVIndexCard(
+            index: reading.index,
+            level: reading.level,
+            sourceLabel: reading.sourceLabel,
+            recommendation: reading.recommendation
+        )
+    }
+
+    private func sunscreenLogSummaryButton(for presentation: TimelineHomePresentation) -> some View {
+        Button {
+            feedbackTrigger += 1
+            openManualLog(
+                context: AppLogContext(
+                    date: presentation.selectedDay,
+                    dayPart: presentation.logSummary.dayPart,
+                    source: .timeline
+                )
+            )
+        } label: {
+            HStack(alignment: .center, spacing: 14) {
+                Image(systemName: presentation.logSummary.record == nil ? "plus.circle.fill" : "checkmark.circle.fill")
+                    .font(AppFont.rounded(size: 32, weight: .semibold))
+                    .foregroundStyle(presentation.logSummary.record == nil ? AppPalette.pool : AppPalette.success)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(presentation.logSummary.record == nil ? "Log Sunscreen" : "Applied")
+                        .font(AppTextStyle.bodyMedium.font)
+                        .foregroundStyle(AppPalette.ink)
+                        .accessibilityIdentifier(presentation.logSummary.record == nil ? "timeline.todayStatus" : "home.todayStatus")
+
+                    Text(logSummaryDetail(for: presentation))
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("timeline.statusDetail")
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityHidden(true)
+            }
+            .padding(13)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                    .fill(AppPalette.elevatedCardFill)
+                    .appShadow(AppShadow.soft)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                    .stroke(AppPalette.cardStroke, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.sunscreenLogCard")
+        .accessibilityHint("Opens the sunscreen log.")
+    }
+
+    private func todayExposureCard(for presentation: TimelineHomePresentation) -> some View {
+        AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: 9) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Sun Exposure")
+                            .font(AppTextStyle.bodyMedium.font)
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text("Forecast intensity for the selected day")
+                            .font(AppTextStyle.caption.font)
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Text(peakUVText(for: presentation))
+                        .font(AppFont.rounded(size: 17, weight: .bold))
+                        .foregroundStyle(AppPalette.sun)
+                }
+
+                SunMiniBarChart(bars: chartBars(for: presentation))
+            }
+        }
+        .accessibilityIdentifier("home.sunExposureCard")
+    }
+
+    private func todayForecastCard(for presentation: TimelineHomePresentation) -> some View {
+        AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: 9) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Today's Forecast")
+                        .font(AppTextStyle.bodyMedium.font)
+                        .foregroundStyle(AppPalette.ink)
+
+                    Spacer(minLength: 0)
+
+                    Text(homeUVReading(for: presentation).sourceLabel)
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppPalette.softInk)
+                }
+
+                SunForecastStrip(hours: forecastHours(for: presentation))
+            }
+        }
+    }
+
+    private func logSummaryDetail(for presentation: TimelineHomePresentation) -> String {
+        guard let record = presentation.logSummary.record else {
+            return "Track SPF, timing, and covered areas."
+        }
+
+        let time = record.verifiedAt.formatted(date: .omitted, time: .shortened)
+        let spf = record.spfLevel.map { "SPF \($0)" } ?? "SPF optional"
+        let notes = record.trimmedNotes == nil ? "" : " • Note saved"
+        return "\(time) • \(spf)\(notes)"
+    }
+
+    private struct HomeUVReading {
+        let index: Int
+        let level: UVLevel
+        let sourceLabel: String
+        let recommendation: String
+    }
+
+    private func homeUVReading(for presentation: TimelineHomePresentation) -> HomeUVReading {
+        if let uvReading = presentation.uvReading,
+           Calendar.current.isDate(uvReading.timestamp, inSameDayAs: presentation.today) {
+            return HomeUVReading(
+                index: uvReading.index,
+                level: uvReading.level,
+                sourceLabel: uvReading.source.statusLabel,
+                recommendation: uvReading.level.shortAdvice
+            )
+        }
+
+        if let peakHour = presentation.uvForecast?.peakHour {
+            return HomeUVReading(
+                index: peakHour.index,
+                level: peakHour.level,
+                sourceLabel: presentation.uvForecast?.sourceLabel ?? peakHour.sourceLabel,
+                recommendation: peakHour.level.shortAdvice
+            )
+        }
+
+        let calendar = Calendar.current
+        let noon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: presentation.selectedDay)
+            ?? presentation.selectedDay
+        let estimated = UVIndexService.estimatedUVIndex(at: noon, calendar: calendar)
+        let level = UVLevel.from(index: estimated)
+        return HomeUVReading(
+            index: estimated,
+            level: level,
+            sourceLabel: UVReadingSource.heuristic.statusLabel,
+            recommendation: level.shortAdvice
+        )
+    }
+
+    private func forecastHours(for presentation: TimelineHomePresentation) -> [SunclubUVHourForecast] {
+        let calendar = Calendar.current
+        let selectedDay = calendar.startOfDay(for: presentation.selectedDay)
+        let liveHours = presentation.uvForecast?.hours.filter {
+            calendar.isDate($0.date, inSameDayAs: selectedDay)
+        } ?? []
+        if !liveHours.isEmpty {
+            return Array(liveHours.prefix(7))
+        }
+
+        return [10, 11, 12, 13, 14].compactMap { hour in
+            guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: selectedDay) else {
+                return nil
+            }
+            return SunclubUVHourForecast(
+                date: date,
+                index: UVIndexService.estimatedUVIndex(at: date, calendar: calendar),
+                sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
+            )
+        }
+    }
+
+    private func chartBars(for presentation: TimelineHomePresentation) -> [SunChartBar] {
+        forecastHours(for: presentation).map { hour in
+            SunChartBar(
+                label: hour.date.formatted(.dateTime.hour()),
+                value: hour.index,
+                tint: tint(for: hour.level)
+            )
+        }
+    }
+
+    private func peakUVText(for presentation: TimelineHomePresentation) -> String {
+        guard let peakHour = forecastHours(for: presentation).max(by: { $0.index < $1.index }) else {
+            return "UV --"
+        }
+        return "Peak UV \(peakHour.index)"
+    }
+
+    private func tint(for level: UVLevel) -> Color {
+        switch level {
+        case .low:
+            return AppPalette.aloe
+        case .moderate:
+            return AppPalette.sun.opacity(0.72)
+        case .high:
+            return AppPalette.sun
+        case .veryHigh:
+            return AppPalette.coral
+        case .extreme:
+            return AppPalette.uvExtreme
+        case .unknown:
+            return AppPalette.muted
         }
     }
 

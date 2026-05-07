@@ -26,7 +26,8 @@ struct SettingsView: View {
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
     @State private var automationFeedback = "Ready"
-    @State private var expandedSections: Set<SettingsSection> = [.reminders]
+    @State private var expandedSections: Set<SettingsSection> = []
+    @State private var didApplyDefaultExpandedSections = false
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
 
@@ -40,15 +41,17 @@ struct SettingsView: View {
                     router.goBack()
                 })
 
-                settingsGroup(.reminders) {
-                    smarterReminderSection
-                    reminderCoachingSection
-                    notificationHealthSection
+                settingsQuickActions(includesDocumentation: !usesAccessibilityTextLayout)
+
+                if usesAccessibilityTextLayout {
+                    settingsGroup(.progress) {
+                        reapplySection
+                    }
+
+                    settingsDocumentationAction
                 }
 
-                settingsGroup(.progress) {
-                    reapplySection
-                }
+                reminderAndProgressGroups
 
                 settingsGroup(.data) {
                     iCloudSection
@@ -114,6 +117,7 @@ struct SettingsView: View {
         }
         .onAppear {
             syncLocalState()
+            applyDefaultExpandedSectionsIfNeeded()
             appState.refreshNotificationHealth()
             appState.refreshLeaveHomeReminderStatus()
             appState.refreshUVForecastIfNeeded()
@@ -167,6 +171,61 @@ struct SettingsView: View {
             if isSectionExpanded(section) {
                 content()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var reminderAndProgressGroups: some View {
+        if usesAccessibilityTextLayout {
+            settingsGroup(.reminders) {
+                smarterReminderSection
+                reminderCoachingSection
+                notificationHealthSection
+            }
+        } else {
+            settingsGroup(.reminders) {
+                smarterReminderSection
+                reminderCoachingSection
+                notificationHealthSection
+            }
+
+            settingsGroup(.progress) {
+                reapplySection
+            }
+        }
+    }
+
+    private func settingsQuickActions(includesDocumentation: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Quick Access")
+                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            settingsActionButton(
+                title: "Sharing",
+                detail: "Invite friends and send sunscreen nudges.",
+                symbolName: "person.2.fill",
+                tint: AppPalette.pool,
+                accessibilityIdentifier: "settings.sharing"
+            ) {
+                router.push(.friends)
+            }
+
+            if includesDocumentation {
+                settingsDocumentationAction
+            }
+        }
+    }
+
+    private var settingsDocumentationAction: some View {
+        settingsActionButton(
+            title: "Documentation",
+            detail: "Setup, widgets, Shortcuts, and privacy details.",
+            symbolName: "book.pages.fill",
+            tint: AppPalette.pool,
+            accessibilityIdentifier: "settings.docs.quick"
+        ) {
+            openURL(SunclubWebLinks.docs)
         }
     }
 
@@ -645,7 +704,15 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 webLinkButton(
-                    title: "Support",
+                    title: "Documentation",
+                    detail: "Setup, shortcuts, widgets, and data notes.",
+                    symbolName: "book.pages.fill",
+                    url: SunclubWebLinks.docs,
+                    accessibilityIdentifier: "settings.docs"
+                )
+
+                webLinkButton(
+                    title: "Help Center",
                     detail: "Open Sunclub support in your browser.",
                     symbolName: "questionmark.circle.fill",
                     url: SunclubWebLinks.support,
@@ -757,7 +824,7 @@ struct SettingsView: View {
                 }
 
                 Button("Recovery & Changes") {
-                    router.open(.recovery)
+                    router.push(.recovery)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
                 .accessibilityIdentifier("settings.recovery")
@@ -896,6 +963,22 @@ struct SettingsView: View {
         dailyUVBriefingEnabled = appState.growthSettings.uvBriefing.dailyBriefingEnabled
         extremeUVAlertsEnabled = appState.growthSettings.uvBriefing.extremeAlertEnabled
         iCloudSyncEnabled = appState.syncPreference?.isICloudSyncEnabled ?? true
+    }
+
+    private func applyDefaultExpandedSectionsIfNeeded() {
+        guard !didApplyDefaultExpandedSections else {
+            return
+        }
+
+        didApplyDefaultExpandedSections = true
+        if !usesAccessibilityTextLayout {
+            expandedSections = [.reminders]
+        }
+    }
+
+    private var usesAccessibilityTextLayout: Bool {
+        dynamicTypeSize.isAccessibilitySize
+            || ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_ACCESSIBILITY_TEXT")
     }
 
     private func beginBackupExport() {
@@ -1141,29 +1224,36 @@ struct SettingsView: View {
         Button {
             openURL(url)
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: symbolName)
-                    .font(AppFont.rounded(size: 16, weight: .semibold))
-                    .foregroundStyle(AppPalette.sun)
-                    .frame(width: 24, height: 24)
+            SunInfoRow(
+                title: title,
+                detail: detail,
+                systemImage: symbolName,
+                tint: AppPalette.pool,
+                showsChevron: true
+            )
+            .padding(18)
+            .background(cardBackground)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(AppFont.rounded(size: 16, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(detail)
-                        .font(AppFont.rounded(size: 13))
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "arrow.up.forward")
-                    .font(AppFont.rounded(size: 12, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-            }
+    private func settingsActionButton(
+        title: String,
+        detail: String,
+        symbolName: String,
+        tint: Color,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            SunInfoRow(
+                title: title,
+                detail: detail,
+                systemImage: symbolName,
+                tint: tint,
+                showsChevron: true
+            )
             .padding(18)
             .background(cardBackground)
         }

@@ -9,6 +9,7 @@ struct ManualLogView: View {
     @State private var targetDate: Date
     @State private var selectedDayPart: DayPart
     @State private var selectedSPF: Int?
+    @State private var selectedAreas: Set<String> = []
     @State private var notes: String = ""
     @State private var hasLoadedInitialState = false
     @State private var feedbackTrigger = 0
@@ -41,20 +42,10 @@ struct ManualLogView: View {
             contentFrameAlignment: .center,
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 18) {
                 SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
                     router.goBack()
                 })
-
-                SunScreenTitleBlock(
-                    eyebrow: targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day()),
-                    title: existingRecord == nil ? "Log sunscreen" : "Update this log",
-                    detail: existingRecord == nil
-                        ? "Save today's log. Add SPF or a note if it helps."
-                        : "Adjust timing, SPF, or notes before saving.",
-                    symbolName: existingRecord == nil ? "sun.max.fill" : "checkmark.circle.fill",
-                    tint: existingRecord == nil ? AppPalette.sun : AppPalette.success
-                )
 
                 if let validationMessage {
                     SunStatusCard(
@@ -75,17 +66,35 @@ struct ManualLogView: View {
                     )
                 }
 
-                AppCard(padding: AppSpacing.sm) {
-                    VStack(alignment: .leading, spacing: 20) {
+                AppCard(padding: 16) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack(alignment: .center, spacing: 12) {
+                            SunProductIcon(
+                                systemName: existingRecord == nil ? "sun.max.fill" : "checkmark.circle.fill",
+                                tint: existingRecord == nil ? AppPalette.sun : AppPalette.success
+                            )
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(existingRecord == nil ? "Today's sunscreen" : "Update today's log")
+                                    .font(AppFont.rounded(size: 19, weight: .semibold))
+                                    .foregroundStyle(AppPalette.ink)
+
+                                Text("\(targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day())) • \(selectedDayPart.title)")
+                                    .font(AppFont.rounded(size: 13, weight: .medium))
+                                    .foregroundStyle(AppPalette.softInk)
+                            }
+                        }
+
                         dayPartPicker
 
                         SunManualLogFields(
                             selectedSPF: $selectedSPF,
                             notes: $notes,
+                            selectedAreas: $selectedAreas,
                             accessibilityPrefix: "manualLog",
                             suggestions: appState.manualLogSuggestionState(for: targetDate),
-                            showsOptionalDisclosure: true,
-                            detailsInitiallyExpanded: false
+                            showsOptionalDisclosure: false,
+                            detailsInitiallyExpanded: true
                         )
                     }
                 }
@@ -153,7 +162,7 @@ struct ManualLogView: View {
             method: .manual,
             verificationDuration: nil,
             spfLevel: selectedSPF,
-            notes: notes,
+            notes: SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas),
             context: saveContext
         )
         guard didSave else {
@@ -228,13 +237,15 @@ struct ManualLogView: View {
 
         if let existingRecord {
             selectedSPF = existingRecord.spfLevel
-            notes = existingRecord.notes ?? ""
+            selectedAreas = SunManualLogInput.coveredAreas(in: existingRecord.notes)
+            notes = SunManualLogInput.notesRemovingCoveredAreas(existingRecord.notes)
             return
         }
 
         if let manualLogPrefill = appState.manualLogPrefill {
             selectedSPF = manualLogPrefill.spfLevel
-            notes = manualLogPrefill.notes
+            selectedAreas = SunManualLogInput.coveredAreas(in: manualLogPrefill.notes)
+            notes = SunManualLogInput.notesRemovingCoveredAreas(manualLogPrefill.notes)
             appState.clearManualLogPrefill()
             return
         }

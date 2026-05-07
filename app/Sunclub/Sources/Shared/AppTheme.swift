@@ -18,25 +18,25 @@ enum AppPalette {
     }
 
     static let cream = AppColor.background
-    static let pearl = Color(red: 1.000, green: 0.993, blue: 0.976)
+    static let pearl = Color(red: 1.000, green: 0.990, blue: 0.965)
     static let warmGlow = adaptive(
-        light: uiColor(red: 1.000, green: 0.910, blue: 0.690),
+        light: uiColor(red: 1.000, green: 0.905, blue: 0.620),
         dark: uiColor(red: 0.430, green: 0.286, blue: 0.126)
     )
     static let sun = adaptive(
-        light: uiColor(red: 0.965, green: 0.610, blue: 0.035),
+        light: uiColor(red: 0.970, green: 0.670, blue: 0.000),
         dark: uiColor(red: 1.000, green: 0.705, blue: 0.145)
     )
     static let coral = adaptive(
-        light: uiColor(red: 0.890, green: 0.350, blue: 0.270),
+        light: uiColor(red: 0.870, green: 0.290, blue: 0.220),
         dark: uiColor(red: 1.000, green: 0.450, blue: 0.340)
     )
     static let aloe = adaptive(
-        light: uiColor(red: 0.330, green: 0.680, blue: 0.500),
+        light: uiColor(red: 0.320, green: 0.620, blue: 0.410),
         dark: uiColor(red: 0.485, green: 0.830, blue: 0.620)
     )
     static let pool = adaptive(
-        light: uiColor(red: 0.285, green: 0.620, blue: 0.805),
+        light: uiColor(red: 0.080, green: 0.455, blue: 0.980),
         dark: uiColor(red: 0.385, green: 0.745, blue: 0.940)
     )
     static let uvExtreme = adaptive(
@@ -47,15 +47,15 @@ enum AppPalette {
     static let darkCanvas = Color(red: 0.114, green: 0.098, blue: 0.086)
     static let darkSurface = Color(red: 0.171, green: 0.150, blue: 0.129)
     static let ink = adaptive(
-        light: uiColor(red: 0.075, green: 0.071, blue: 0.067),
+        light: uiColor(red: 0.025, green: 0.108, blue: 0.205),
         dark: uiColor(red: 0.964, green: 0.925, blue: 0.855)
     )
     static let softInk = adaptive(
-        light: uiColor(red: 0.400, green: 0.372, blue: 0.345),
+        light: uiColor(red: 0.310, green: 0.360, blue: 0.440),
         dark: uiColor(red: 0.745, green: 0.690, blue: 0.620)
     )
     static let success = adaptive(
-        light: uiColor(red: 0.155, green: 0.715, blue: 0.330),
+        light: uiColor(red: 0.275, green: 0.760, blue: 0.340),
         dark: uiColor(red: 0.360, green: 0.875, blue: 0.540)
     )
     static let warning = adaptive(
@@ -63,11 +63,11 @@ enum AppPalette {
         dark: uiColor(red: 1.000, green: 0.380, blue: 0.300)
     )
     static let muted = adaptive(
-        light: uiColor(red: 0.832, green: 0.832, blue: 0.842),
+        light: uiColor(red: 0.825, green: 0.850, blue: 0.875),
         dark: uiColor(red: 0.430, green: 0.395, blue: 0.360)
     )
     static let streakAccent = adaptive(
-        light: uiColor(red: 0.855, green: 0.470, blue: 0.045),
+        light: uiColor(red: 0.970, green: 0.670, blue: 0.000),
         dark: uiColor(red: 1.000, green: 0.590, blue: 0.110)
     )
     static let streakBackground = adaptive(
@@ -75,7 +75,7 @@ enum AppPalette {
         dark: uiColor(red: 0.244, green: 0.171, blue: 0.092)
     )
     static let cardFill = adaptive(
-        light: uiColor(red: 1.000, green: 0.998, blue: 0.992),
+        light: uiColor(red: 1.000, green: 1.000, blue: 1.000),
         dark: uiColor(red: 0.205, green: 0.178, blue: 0.150)
     )
     static let elevatedCardFill = adaptive(
@@ -83,7 +83,7 @@ enum AppPalette {
         dark: uiColor(red: 0.252, green: 0.220, blue: 0.184)
     )
     static let controlFill = adaptive(
-        light: uiColor(red: 1.000, green: 0.968, blue: 0.910),
+        light: uiColor(red: 0.965, green: 0.976, blue: 1.000),
         dark: uiColor(red: 0.294, green: 0.252, blue: 0.207)
     )
     static let editorFill = adaptive(
@@ -91,11 +91,11 @@ enum AppPalette {
         dark: uiColor(red: 0.139, green: 0.122, blue: 0.104)
     )
     static let cardStroke = adaptive(
-        light: uiColor(red: 0.075, green: 0.071, blue: 0.067, alpha: 0.075),
+        light: uiColor(red: 0.025, green: 0.108, blue: 0.205, alpha: 0.095),
         dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.16)
     )
     static let hairlineStroke = adaptive(
-        light: uiColor(red: 0, green: 0, blue: 0, alpha: 0.06),
+        light: uiColor(red: 0.025, green: 0.108, blue: 0.205, alpha: 0.070),
         dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.14)
     )
     static let onAccent = AppColor.onAccent
@@ -322,24 +322,25 @@ struct SunLightScreen<Content: View, Footer: View>: View {
             ZStack {
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 28) {
+                        VStack(alignment: .leading, spacing: 22) {
                             content
                         }
                         .frame(maxWidth: contentMaxWidth ?? .infinity, alignment: .leading)
                         .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 20)
-                        .padding(.bottom, 18)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
                         .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
                     }
                     .scrollDismissesKeyboard(.interactively)
+                    .clipped()
 
                     footer
                         .frame(maxWidth: footerMaxWidth ?? .infinity)
                         .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 6)
-                        .padding(.bottom, 24)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 5)
+                        .padding(.bottom, 20)
                         .background {
                             LinearGradient(
                                 colors: [
@@ -450,8 +451,8 @@ struct SunPrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .fill(isEnabled ? AppPalette.sun : AppPalette.muted.opacity(0.28))
-                    .appShadow(isEnabled ? AppShadow.soft : nil)
+                    .fill(isEnabled ? AppColor.accent : AppPalette.muted.opacity(0.28))
+                    .appShadow(isEnabled ? AppShadow.floating : nil)
             )
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.976 : 1))
@@ -888,38 +889,41 @@ struct SunLogoMark: View {
     let size: CGFloat
 
     var body: some View {
-        let cornerRadius = size * 0.22
-        let coreSize = size * 0.38
-
-        ZStack {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.984, green: 0.969, blue: 0.937),
-                            Color(red: 1.000, green: 0.929, blue: 0.741)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+        Canvas { context, canvasSize in
+            let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+            let coreRadius = size * 0.18
+            let rayInner = size * 0.33
+            let rayOuter = size * 0.48
+            var core = Path()
+            core.addEllipse(
+                in: CGRect(
+                    x: center.x - coreRadius,
+                    y: center.y - coreRadius,
+                    width: coreRadius * 2,
+                    height: coreRadius * 2
                 )
+            )
+            context.fill(core, with: .color(AppPalette.sun))
 
-            Circle()
-                .stroke(AppPalette.sun.opacity(0.12), lineWidth: max(1, size * 0.008))
-                .frame(width: size * 0.51, height: size * 0.51)
-
-            Circle()
-                .stroke(AppPalette.sun.opacity(0.06), lineWidth: max(1, size * 0.004))
-                .frame(width: size * 0.63, height: size * 0.63)
-
-            Circle()
-                .fill(AppPalette.sun)
-                .frame(width: coreSize, height: coreSize)
-
-            Circle()
-                .fill(Color(red: 1.000, green: 0.867, blue: 0.502).opacity(0.3))
-                .frame(width: size * 0.23, height: size * 0.23)
-                .offset(x: -size * 0.03, y: -size * 0.05)
+            for index in 0..<8 {
+                let angle = (Double(index) / 8) * 2 * .pi
+                let start = CGPoint(
+                    x: center.x + CGFloat(cos(angle)) * rayInner,
+                    y: center.y + CGFloat(sin(angle)) * rayInner
+                )
+                let end = CGPoint(
+                    x: center.x + CGFloat(cos(angle)) * rayOuter,
+                    y: center.y + CGFloat(sin(angle)) * rayOuter
+                )
+                var ray = Path()
+                ray.move(to: start)
+                ray.addLine(to: end)
+                context.stroke(
+                    ray,
+                    with: .color(AppPalette.sun),
+                    style: StrokeStyle(lineWidth: max(2, size * 0.08), lineCap: .round)
+                )
+            }
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
@@ -1026,6 +1030,272 @@ struct SunStatusCard: View {
         .padding(16)
         .sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
         .accessibilityElement(children: .combine)
+    }
+}
+
+struct SunProductIcon: View {
+    let systemName: String
+    var tint: Color = AppPalette.pool
+    var fill: Color? = nil
+    var size: CGFloat = 40
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(AppFont.rounded(size: size * 0.44, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                    .fill(fill ?? tint.opacity(0.12))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+struct SunInfoRow: View {
+    let title: String
+    let detail: String
+    var systemImage: String
+    var tint: Color = AppPalette.pool
+    var trailingText: String?
+    var showsChevron = false
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            SunProductIcon(systemName: systemImage, tint: tint, size: 36)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(detail)
+                    .font(AppTextStyle.caption.font)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if let trailingText {
+                Text(trailingText)
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppPalette.ink)
+            }
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct SunUVIndexCard: View {
+    let index: Int
+    let level: UVLevel
+    let sourceLabel: String
+    let recommendation: String
+    var title: String = "UV Index"
+
+    var body: some View {
+        AppCard(padding: 15, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            HStack(alignment: .center, spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(AppPalette.warmGlow.opacity(0.82), lineWidth: 10)
+                    Circle()
+                        .trim(from: 0, to: min(CGFloat(index) / 11, 1))
+                        .stroke(
+                            AppPalette.sun,
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                    Text("\(index)")
+                        .font(AppFont.rounded(size: 36, weight: .bold))
+                        .foregroundStyle(AppPalette.sun)
+                }
+                .frame(width: 82, height: 82)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppPalette.softInk)
+
+                    Text(level.displayName)
+                        .font(AppTextStyle.title.font)
+                        .foregroundStyle(AppPalette.sun)
+                        .accessibilityIdentifier("home.uvIndexLevel")
+
+                    Text(sourceLabel)
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(recommendation)
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("UV Index \(index), \(level.displayName). \(recommendation)")
+        .accessibilityIdentifier("home.uvIndexCard")
+    }
+}
+
+struct SunChartBar: Identifiable {
+    var id: String { label }
+    let label: String
+    let value: Int
+    let tint: Color
+}
+
+struct SunMiniBarChart: View {
+    let bars: [SunChartBar]
+    var maxValue: Int = 11
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 5) {
+            ForEach(bars) { bar in
+                VStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: AppRadius.tiny, style: .continuous)
+                        .fill(bar.tint)
+                        .frame(height: barHeight(for: bar.value))
+                        .frame(maxWidth: .infinity)
+
+                    Text(bar.label)
+                        .font(AppFont.rounded(size: 10, weight: .medium))
+                        .foregroundStyle(AppPalette.softInk)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 76, alignment: .bottom)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Hourly UV exposure chart")
+    }
+
+    private func barHeight(for value: Int) -> CGFloat {
+        let clamped = max(0, min(value, maxValue))
+        return max(8, CGFloat(clamped) / CGFloat(maxValue) * 48)
+    }
+}
+
+struct SunForecastStrip: View {
+    let hours: [SunclubUVHourForecast]
+    var maxCount = 5
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            ForEach(displayedHours) { hour in
+                VStack(spacing: 4) {
+                    Text(hour.date.formatted(.dateTime.hour()))
+                        .font(AppFont.rounded(size: 10, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+
+                    Image(systemName: hour.level.symbolName)
+                        .font(AppFont.rounded(size: 15, weight: .semibold))
+                        .foregroundStyle(AppPalette.sun)
+                        .frame(height: 18)
+                        .accessibilityHidden(true)
+
+                    Text("\(hour.index)")
+                        .font(AppFont.rounded(size: 14, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(hour.level.displayName)
+                        .font(AppFont.rounded(size: 9, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Hourly UV forecast")
+        .accessibilityIdentifier("home.forecastStrip")
+    }
+
+    private var displayedHours: [SunclubUVHourForecast] {
+        Array(hours.prefix(maxCount))
+    }
+}
+
+struct SunBottomNavigationItem: Identifiable {
+    let id: String
+    let title: String
+    let systemImage: String
+    let accessibilityIdentifier: String
+    let action: () -> Void
+}
+
+struct SunBottomNavigationBar: View {
+    let leadingItems: [SunBottomNavigationItem]
+    let trailingItems: [SunBottomNavigationItem]
+    let primaryTitle: String
+    let primaryIdentifier: String
+    let onPrimaryTap: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            ForEach(leadingItems) { item in
+                navButton(item)
+            }
+
+            Button(action: onPrimaryTap) {
+                Image(systemName: "plus")
+                    .font(AppFont.rounded(size: 22, weight: .bold))
+                    .foregroundStyle(AppColor.onColor)
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(AppColor.accent))
+                    .appShadow(AppShadow.floating)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(primaryTitle)
+            .accessibilityIdentifier(primaryIdentifier)
+
+            ForEach(trailingItems) { item in
+                navButton(item)
+            }
+        }
+        .padding(7)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .fill(AppPalette.elevatedCardFill.opacity(0.96))
+                .appShadow(AppShadow.soft)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func navButton(_ item: SunBottomNavigationItem) -> some View {
+        Button(action: item.action) {
+            VStack(spacing: 4) {
+                Image(systemName: item.systemImage)
+                    .font(AppFont.rounded(size: 18, weight: .semibold))
+                    .accessibilityHidden(true)
+                Text(item.title)
+                    .font(AppFont.rounded(size: 10, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(AppPalette.softInk)
+            .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.title)
+        .accessibilityIdentifier(item.accessibilityIdentifier)
     }
 }
 

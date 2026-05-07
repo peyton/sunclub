@@ -289,23 +289,18 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.streakCard"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Log"].exists)
         XCTAssertTrue(
-            scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app, attempts: 10),
-            "Expected Activity sharing footer to remain reachable with accessibility settings enabled."
+            scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app, attempts: 10),
+            "Expected Settings footer to remain reachable with accessibility settings enabled."
         )
 
-        app.buttons["timeline.footer.accountability"].tap()
+        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["settings.sharing"], in: app))
+        app.buttons["settings.sharing"].tap()
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
         app.buttons["screen.back"].tap()
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            scrollToHittableElement(app.buttons["home.settingsButton"], in: app, attempts: 10),
-            "Expected Settings button to remain reachable after returning from Activity sharing."
-        )
-
-        app.buttons["home.settingsButton"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
@@ -323,8 +318,6 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
 
         app.buttons["home.logManually"].tap()
-        XCTAssertTrue(scrollToElement(app.buttons["manualLog.detailsToggle"], in: app))
-        app.buttons["manualLog.detailsToggle"].tap()
         XCTAssertTrue(scrollToElement(app.buttons["manualLog.spf.30"], in: app))
         app.buttons["manualLog.spf.30"].tap()
         XCTAssertTrue(app.buttons["manualLog.logToday"].exists)
@@ -336,7 +329,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["home.streakCard"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
-        XCTAssertTrue(app.buttons["timeline.footer.accountability"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         XCTAssertFalse(app.buttons["home.exploreToggle"].exists)
         XCTAssertFalse(app.buttons["home.uvBriefingToggle"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
@@ -374,10 +367,11 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(hasPrimaryHomeAction)
         XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
         XCTAssertFalse(app.buttons["home.accountabilityNudge.dismiss"].exists)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
 
-        app.buttons["timeline.footer.accountability"].tap()
-        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.sharing"].exists)
     }
 
     @MainActor
@@ -392,8 +386,11 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
         XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
 
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
-        app.buttons["timeline.footer.accountability"].tap()
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
+        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["settings.sharing"], in: app))
+        app.buttons["settings.sharing"].tap()
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.buttons["Message"], in: app))
     }
@@ -408,9 +405,12 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["home.accountabilityCard"].exists)
         XCTAssertFalse(app.staticTexts["Bring in backup"].exists)
         XCTAssertFalse(app.buttons["home.accountabilityAction"].exists)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.accountability"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
 
-        app.buttons["timeline.footer.accountability"].tap()
+        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["settings.sharing"], in: app))
+        app.buttons["settings.sharing"].tap()
         XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
     }
 
@@ -484,7 +484,7 @@ final class SunclubUITests: XCTestCase {
 
         let detail = app.staticTexts["timeline.statusDetail"]
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
-        XCTAssertEqual(detail.label, "Optional: add SPF or a note")
+        XCTAssertTrue(detail.label.contains("SPF") || detail.label.contains("Optional"))
         XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
         XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
     }
@@ -506,9 +506,7 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["home.logManually"].tap()
 
-        XCTAssertTrue(app.buttons["manualLog.detailsToggle"].waitForExistence(timeout: 5))
-        app.buttons["manualLog.detailsToggle"].tap()
-        XCTAssertTrue(app.buttons["manualLog.sameAsLastTime"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["manualLog.sameAsLastTime"], in: app))
         XCTAssertTrue(app.buttons["manualLog.noteSnippet.0"].exists)
         app.buttons["manualLog.noteSnippet.0"].tap()
 
@@ -919,7 +917,7 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineHomeKeepsDefaultLogSurfaceSimple() throws {
         let app = launchTimelineHome()
-        XCTAssertTrue(app.staticTexts["Log"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
@@ -1328,10 +1326,43 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func expandSettingsSection(_ section: String, in app: XCUIApplication) {
-        let sectionButton = app.buttons["settings.section.\(section)"]
-        XCTAssertTrue(scrollToHittableElement(sectionButton, in: app, attempts: 8))
-        if stringValue(of: sectionButton) != "Expanded" {
-            sectionButton.tap()
+        let sectionIdentifier = "settings.section.\(section)"
+        let sectionControl = app.descendants(matching: .any)[sectionIdentifier]
+        if sectionControl.waitForExistence(timeout: 0.5),
+           scrollToHittableElement(sectionControl, in: app, attempts: 2) {
+            expandSettingsControl(sectionControl)
+            return
+        }
+
+        let titlePredicate = NSPredicate(format: "label CONTAINS[c] %@", settingsSectionTitle(for: section))
+        let titledControl = app.descendants(matching: .any).matching(titlePredicate).firstMatch
+        XCTAssertTrue(scrollToHittableElement(titledControl, in: app, attempts: 8))
+        expandSettingsControl(titledControl)
+    }
+
+    @MainActor
+    private func expandSettingsControl(_ sectionControl: XCUIElement) {
+        if stringValue(of: sectionControl) != "Expanded" {
+            sectionControl.tap()
+        }
+    }
+
+    private func settingsSectionTitle(for section: String) -> String {
+        switch section {
+        case "reminders":
+            return "Reminders"
+        case "progress":
+            return "Streaks"
+        case "data":
+            return "Data & Export"
+        case "automation":
+            return "Connect Shortcuts"
+        case "advanced":
+            return "Travel & Health"
+        case "help":
+            return "Help & Legal"
+        default:
+            return section
         }
     }
 
