@@ -6,7 +6,7 @@
     <title>Shortcuts Docs - Sunclub</title>
     <meta
       name="description"
-      content="Sunclub Shortcuts docs for Apple Shortcuts, custom URL actions, x-callback-url, widgets, controls, privacy settings, and support contacts."
+      content="Sunclub automation docs for Apple Shortcuts, custom URL actions, x-callback-url, widgets, controls, privacy settings, first-review Activity sharing behavior, and support contacts."
     />
     <meta
       name="theme-color"
@@ -27,8 +27,8 @@
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
         <a class="brand" href="/" aria-label="Sunclub home">
-          <img src="/assets/app-icon.svg" width="36" height="36" alt="" />
-          <span>Sunclub</span>
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
         </a>
         <div class="nav-links">
           <a href="/docs/" aria-current="page">Docs</a>
@@ -44,7 +44,9 @@
       <p class="lead">
         Sunclub supports Apple Shortcuts, Control Center, widgets, custom URL
         scheme actions, and x-callback-url for supported non-destructive app
-        actions.
+        actions. The first App Store review build keeps public Activity sharing
+        transport disabled, so friend reminder links open a Message-first
+        foreground route instead of sending a direct cloud reminder.
       </p>
 
       <h2>Settings</h2>
@@ -68,7 +70,8 @@
           Export a backup, create a skin health report, or create a streak card.
         </li>
         <li>
-          Import a friend invite or open Activity sharing to send a reminder.
+          Import an Activity sharing invite or open Activity sharing to send a
+          Message-first reminder.
         </li>
       </ul>
       <p>
@@ -121,6 +124,11 @@
         <li><code>sunclub://automation/open?route=settings</code></li>
       </ul>
       <p>
+        <code>poke-friend</code> opens Activity sharing with a
+        <code>status=needs-message</code> result while public Activity sharing
+        transport is disabled for the first App Store review build.
+      </p>
+      <p>
         Typed URL fields are strict. Malformed dates, times, non-numeric SPF
         values, invalid routes, invalid toggles, invalid booleans, and invalid
         UUIDs fail before Sunclub writes anything. Valid SPF values are
@@ -152,7 +160,8 @@
         URL actions can be called by other apps on your device. Disable URL
         writes in Sunclub Settings -> Connect Shortcuts if background links
         should not log sunscreen, reapply, update reminders, change supported
-        toggles, import friends, or open Activity sharing for reminders.
+        toggles, import Activity sharing invites, or open Activity sharing for
+        Message-first reminders.
       </p>
 
       <h2>Help</h2>
