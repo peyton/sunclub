@@ -209,31 +209,57 @@ struct TimelineHomeView: View {
     }
 
     private func todayHeader(for presentation: TimelineHomePresentation) -> some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(headerTitle(for: presentation))
-                    .font(AppFont.rounded(size: 28, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 16) {
+                SunBrandLockup(markSize: 30)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Sunclub")
 
-                Text(headerDateText(for: presentation))
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(AppPalette.softInk)
+                Spacer(minLength: 0)
+
+                Button {
+                    feedbackTrigger += 1
+                    router.open(.settings)
+                } label: {
+                    Image(systemName: "bell")
+                        .font(AppFont.rounded(size: 18, weight: .semibold))
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(AppPalette.elevatedCardFill.opacity(0.92))
+                                .appShadow(AppShadow.soft)
+                        )
+                        .overlay {
+                            Circle()
+                                .stroke(AppPalette.cardStroke, lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Notifications and settings")
+                .accessibilityHint("Opens app settings.")
+                .accessibilityIdentifier("home.settingsButton")
             }
 
-            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(headerTitle(for: presentation))
+                        .font(AppFont.rounded(size: 28, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
 
-            Button {
-                feedbackTrigger += 1
-                router.open(.settings)
-            } label: {
-                SunLogoMark(size: 38)
-                    .frame(width: 44, height: 44)
+                    Text(headerDateText(for: presentation))
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppPalette.softInk)
+                }
+
+                Spacer(minLength: 0)
+
+                if presentation.logSummary.category == .today {
+                    SunLogoMark(size: 32)
+                        .frame(width: 38, height: 38)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
-            .accessibilityHint("Opens app settings.")
-            .accessibilityIdentifier("home.settingsButton")
         }
     }
 
@@ -266,12 +292,27 @@ struct TimelineHomeView: View {
 
     private func uvContextCard(for presentation: TimelineHomePresentation) -> some View {
         let reading = homeUVReading(for: presentation)
-        return SunUVIndexCard(
-            index: reading.index,
-            level: reading.level,
-            sourceLabel: reading.sourceLabel,
-            recommendation: reading.recommendation
-        )
+        return Button {
+            feedbackTrigger += 1
+            router.push(.uvForecast)
+        } label: {
+            SunUVIndexCard(
+                index: reading.index,
+                level: reading.level,
+                sourceLabel: reading.sourceLabel,
+                recommendation: reading.recommendation
+            )
+            .overlay(alignment: .trailing) {
+                Image(systemName: "chevron.right")
+                    .font(AppFont.rounded(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+                    .padding(.trailing, 14)
+                    .accessibilityHidden(true)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens the hourly UV forecast.")
+        .accessibilityIdentifier("home.uvIndexCard")
     }
 
     private func sunscreenLogSummaryButton(for presentation: TimelineHomePresentation) -> some View {
@@ -432,7 +473,10 @@ struct TimelineHomeView: View {
             calendar.isDate($0.date, inSameDayAs: selectedDay)
         } ?? []
         if !liveHours.isEmpty {
-            return Array(liveHours.prefix(7))
+            let lateMorningHours = liveHours.filter {
+                calendar.component(.hour, from: $0.date) >= 10
+            }
+            return Array((lateMorningHours.isEmpty ? liveHours : lateMorningHours).prefix(7))
         }
 
         return [10, 11, 12, 13, 14].compactMap { hour in

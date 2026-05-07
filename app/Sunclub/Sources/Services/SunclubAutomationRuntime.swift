@@ -74,6 +74,9 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
     case history
     case settings
     case automation
+    case uvForecast = "uv-forecast"
+    case privacy
+    case support
     case achievements
     case friends
     case healthReport = "health-report"
@@ -96,6 +99,12 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
             return .settings
         case .automation:
             return .automation
+        case .uvForecast:
+            return .uvForecast
+        case .privacy:
+            return .privacy
+        case .support:
+            return .support
         case .achievements:
             return .achievements
         case .friends:
@@ -125,6 +134,12 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
             return "Settings"
         case .automation:
             return "Shortcuts"
+        case .uvForecast:
+            return "UV Forecast"
+        case .privacy:
+            return "Privacy"
+        case .support:
+            return "Support"
         case .achievements:
             return "Achievements"
         case .friends:

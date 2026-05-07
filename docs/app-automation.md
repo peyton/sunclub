@@ -60,7 +60,7 @@
 - `set-toggle?name=travelTimeZone|streakRisk|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
 - `import-friend?code=...`
 - `poke-friend?id=<uuid>` opens Activity sharing with `status=needs-message` while public Activity sharing transport is disabled.
-- `open?route=home|log|reapply|summary|history|settings|automation|achievements|friends|health-report|product-scanner|recovery`
+- `open?route=home|log|reapply|summary|history|settings|automation|uv-forecast|privacy|support|achievements|friends|health-report|product-scanner|recovery`
 
 URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
 

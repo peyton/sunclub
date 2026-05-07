@@ -72,6 +72,9 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
     case history
     case settings
     case automation
+    case uvForecast
+    case privacy
+    case support
     case achievements
     case friends
     case healthReport
@@ -87,6 +90,9 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
         .history: "History",
         .settings: "Settings",
         .automation: "Shortcuts",
+        .uvForecast: "UV Forecast",
+        .privacy: "Privacy",
+        .support: "Support",
         .achievements: "Achievements",
         .friends: "Friends",
         .healthReport: "Health Report",
@@ -110,6 +116,12 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
             return .settings
         case .automation:
             return .automation
+        case .uvForecast:
+            return .uvForecast
+        case .privacy:
+            return .privacy
+        case .support:
+            return .support
         case .achievements:
             return .achievements
         case .friends:
@@ -139,6 +151,12 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
             self = .settings
         case .automation:
             self = .automation
+        case .uvForecast:
+            self = .uvForecast
+        case .privacy:
+            self = .privacy
+        case .support:
+            self = .support
         case .achievements:
             self = .achievements
         case .friends:

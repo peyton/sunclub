@@ -51,6 +51,12 @@ struct RootView: View {
             SettingsView()
         case .automation:
             AutomationView()
+        case .uvForecast:
+            UVForecastDetailView()
+        case .privacy:
+            PrivacyView()
+        case .support:
+            SupportView()
         case .recovery:
             RecoveryView()
         case .history:

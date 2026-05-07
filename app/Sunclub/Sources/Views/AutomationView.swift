@@ -14,9 +14,16 @@ struct AutomationView: View {
             contentFrameAlignment: .center
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Shortcuts", showsBack: true, onBack: {
+                SunLightHeader(title: "Shortcuts & Automation", showsBack: true, onBack: {
                     router.goBack()
                 })
+
+                AutomationReferenceSummaryCard(
+                    onLogSunscreen: openManualLog,
+                    onReapplyReminder: {
+                        router.push(.reapplyCheckIn)
+                    }
+                )
 
                 AutomationHeroCard()
 
@@ -47,6 +54,132 @@ struct AutomationView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+    }
+
+    private func openManualLog() {
+        let now = appState.referenceDate
+        let dayPart = appState.dayPart(for: now)
+        appState.prepareManualLogRouteContext(
+            targetDate: now,
+            targetDayPart: dayPart,
+            source: .manualLog
+        )
+        router.push(.manualLog, targetDate: now, targetDayPart: dayPart)
+    }
+}
+
+private struct AutomationReferenceSummaryCard: View {
+    let onLogSunscreen: () -> Void
+    let onReapplyReminder: () -> Void
+
+    var body: some View {
+        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Shortcuts")
+                        .font(AppTextStyle.title.font)
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text("Automate logging, get reminders, and stay consistent.")
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                automationRow(
+                    title: "Log Sunscreen",
+                    detail: "Add a log quickly from Home Screen or Apple Watch.",
+                    symbolName: "wand.and.stars",
+                    tint: AppPalette.pool,
+                    action: onLogSunscreen,
+                    accessibilityIdentifier: "automation.reference.logSunscreen"
+                )
+
+                automationRow(
+                    title: "Reapply Reminder",
+                    detail: "Get reminders based on your exposure and schedule.",
+                    symbolName: "alarm.fill",
+                    tint: AppPalette.coral,
+                    action: onReapplyReminder,
+                    accessibilityIdentifier: "automation.reference.reapplyReminder"
+                )
+
+                HStack(alignment: .center, spacing: 12) {
+                    SunProductIcon(systemName: "hand.raised.fill", tint: AppPalette.sun, size: 36)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Ask Before Running")
+                            .font(AppTextStyle.bodyMedium.font)
+                            .foregroundStyle(AppPalette.ink)
+
+                        Text("Review and confirm before Shortcuts save sensitive changes.")
+                            .font(AppTextStyle.caption.font)
+                            .foregroundStyle(AppPalette.softInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.right")
+                        .font(AppFont.rounded(size: 12, weight: .semibold))
+                        .foregroundStyle(AppPalette.softInk)
+                        .accessibilityHidden(true)
+                }
+                .padding(14)
+                .background(referenceRowBackground)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("automation.reference.askBeforeRunning")
+            }
+        }
+        .accessibilityIdentifier("automation.referenceSummary")
+    }
+
+    private func automationRow(
+        title: String,
+        detail: String,
+        symbolName: String,
+        tint: Color,
+        action: @escaping () -> Void,
+        accessibilityIdentifier: String
+    ) -> some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 12) {
+                SunProductIcon(systemName: symbolName, tint: tint, size: 36)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(AppTextStyle.bodyMedium.font)
+                        .foregroundStyle(AppPalette.ink)
+
+                    Text(detail)
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "plus")
+                    .font(AppFont.rounded(size: 17, weight: .bold))
+                    .foregroundStyle(AppPalette.pool)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(AppPalette.pool.opacity(0.12)))
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .background(referenceRowBackground)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private var referenceRowBackground: some View {
+        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+            .fill(AppPalette.cardFill.opacity(0.84))
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+            }
     }
 }
 

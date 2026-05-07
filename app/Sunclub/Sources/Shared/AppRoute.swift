@@ -10,6 +10,9 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case weeklySummary
     case settings
     case automation
+    case uvForecast
+    case privacy
+    case support
     case recovery
     case history
     case backfillYesterday
