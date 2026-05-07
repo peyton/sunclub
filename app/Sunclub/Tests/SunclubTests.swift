@@ -2702,6 +2702,17 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(yesterdayRecord.notes?.count, SunManualLogInput.noteCharacterLimit)
     }
 
+    func testManualLogCoveredAreasRoundTripThroughNotes() throws {
+        let notes = SunManualLogInput.notesWithCoveredAreas(
+            "Morning beach walk",
+            areas: ["Neck", "Face", "Unknown"]
+        )
+
+        XCTAssertEqual(notes, "Morning beach walk\nAreas: Face, Neck")
+        XCTAssertEqual(SunManualLogInput.coveredAreas(in: notes), Set(["Face", "Neck"]))
+        XCTAssertEqual(SunManualLogInput.notesRemovingCoveredAreas(notes), "Morning beach walk")
+    }
+
     @MainActor
     func testNextDailyReminderPreviewUsesActualNextFireDate() throws {
         let calendar = Calendar.current

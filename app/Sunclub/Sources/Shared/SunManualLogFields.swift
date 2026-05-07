@@ -5,6 +5,7 @@ struct SunManualLogFields: View {
 
     @Binding var selectedSPF: Int?
     @Binding var notes: String
+    @Binding var selectedAreas: Set<String>
     @State private var isShowingDetails: Bool
 
     let accessibilityPrefix: String
@@ -16,6 +17,7 @@ struct SunManualLogFields: View {
     init(
         selectedSPF: Binding<Int?>,
         notes: Binding<String>,
+        selectedAreas: Binding<Set<String>> = Binding<Set<String>>.constant([]),
         accessibilityPrefix: String,
         suggestions: ManualLogSuggestionState = .empty,
         showsOptionalDisclosure: Bool = true,
@@ -23,6 +25,7 @@ struct SunManualLogFields: View {
     ) {
         _selectedSPF = selectedSPF
         _notes = notes
+        _selectedAreas = selectedAreas
         _isShowingDetails = State(initialValue: detailsInitiallyExpanded)
         self.accessibilityPrefix = accessibilityPrefix
         self.suggestions = suggestions
@@ -82,6 +85,7 @@ struct SunManualLogFields: View {
     private var detailsFields: some View {
         VStack(alignment: .leading, spacing: 26) {
             spfSelector
+            coveredAreasSelector
             notesField
         }
     }
@@ -259,6 +263,67 @@ struct SunManualLogFields: View {
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
+    private var coveredAreasSelector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Areas covered")
+                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+
+            SunCoveredAreaIllustration(selectedAreas: selectedAreas)
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
+
+            LazyVGrid(columns: areaColumns, spacing: 8) {
+                ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
+                    areaButton(area)
+                }
+            }
+            .accessibilityIdentifier("\(accessibilityPrefix).areas")
+        }
+    }
+
+    private var areaColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 104), spacing: 8)]
+    }
+
+    private func areaButton(_ area: String) -> some View {
+        let isSelected = selectedAreas.contains(area)
+
+        return Button {
+            withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
+                if isSelected {
+                    selectedAreas.remove(area)
+                } else {
+                    selectedAreas.insert(area)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
+                    .accessibilityHidden(true)
+
+                Text(area)
+                    .font(AppFont.rounded(size: 14, weight: .semibold))
+            }
+            .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
+            .frame(maxWidth: .infinity, minHeight: 42)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                    .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                    .stroke(isSelected ? AppPalette.sun : AppPalette.hairlineStroke, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(area)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("\(accessibilityPrefix).area.\(area)")
+    }
+
     private var notesField: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -349,5 +414,85 @@ struct SunManualLogFields: View {
         }
 
         return "\(remaining) characters left"
+    }
+}
+
+private struct SunCoveredAreaIllustration: View {
+    let selectedAreas: Set<String>
+
+    private var faceTint: Color {
+        selectedAreas.contains("Face") ? AppPalette.sun : AppPalette.hairlineStroke
+    }
+
+    private var neckTint: Color {
+        selectedAreas.contains("Neck") ? AppPalette.sun : AppPalette.hairlineStroke
+    }
+
+    private var shoulderTint: Color {
+        selectedAreas.contains("Shoulders") ? AppPalette.sun : AppPalette.hairlineStroke
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
+                .fill(AppPalette.warmGlow.opacity(0.18))
+
+            Canvas { context, size in
+                let centerX = size.width / 2
+                let faceRect = CGRect(
+                    x: centerX - 42,
+                    y: 16,
+                    width: 84,
+                    height: 100
+                )
+                let neckRect = CGRect(
+                    x: centerX - 18,
+                    y: faceRect.maxY - 6,
+                    width: 36,
+                    height: 34
+                )
+
+                var face = Path(ellipseIn: faceRect)
+                context.stroke(face, with: .color(faceTint), lineWidth: 2)
+
+                var hairline = Path()
+                hairline.move(to: CGPoint(x: faceRect.minX + 16, y: faceRect.minY + 20))
+                hairline.addQuadCurve(
+                    to: CGPoint(x: faceRect.maxX - 16, y: faceRect.minY + 20),
+                    control: CGPoint(x: centerX, y: faceRect.minY + 2)
+                )
+                context.stroke(hairline, with: .color(AppPalette.sun.opacity(0.45)), lineWidth: 1.5)
+
+                var features = Path()
+                features.move(to: CGPoint(x: centerX - 18, y: faceRect.midY - 4))
+                features.addLine(to: CGPoint(x: centerX - 8, y: faceRect.midY - 4))
+                features.move(to: CGPoint(x: centerX + 8, y: faceRect.midY - 4))
+                features.addLine(to: CGPoint(x: centerX + 18, y: faceRect.midY - 4))
+                features.move(to: CGPoint(x: centerX - 14, y: faceRect.maxY - 26))
+                features.addQuadCurve(
+                    to: CGPoint(x: centerX + 14, y: faceRect.maxY - 26),
+                    control: CGPoint(x: centerX, y: faceRect.maxY - 16)
+                )
+                context.stroke(features, with: .color(AppPalette.softInk.opacity(0.45)), lineWidth: 1.4)
+
+                let neck = Path(roundedRect: neckRect, cornerRadius: 10)
+                context.stroke(neck, with: .color(neckTint), lineWidth: 2)
+
+                var shoulders = Path()
+                shoulders.move(to: CGPoint(x: centerX - 76, y: size.height - 16))
+                shoulders.addQuadCurve(
+                    to: CGPoint(x: centerX + 76, y: size.height - 16),
+                    control: CGPoint(x: centerX, y: size.height - 54)
+                )
+                context.stroke(shoulders, with: .color(shoulderTint), lineWidth: 2)
+
+                face = Path(ellipseIn: faceRect.insetBy(dx: -8, dy: -8))
+                if selectedAreas.contains("Face") {
+                    context.stroke(face, with: .color(AppPalette.sun.opacity(0.24)), lineWidth: 8)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .frame(height: 154)
     }
 }

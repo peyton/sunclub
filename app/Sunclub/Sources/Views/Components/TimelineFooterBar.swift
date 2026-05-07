@@ -2,89 +2,49 @@ import SwiftUI
 
 struct TimelineFooterBar: View {
     @Environment(AppRouter.self) private var router
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let primaryTitle: String
     let primaryIdentifier: String
     let onPrimaryTap: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                AppText("Log", style: .sectionHeader)
-
-                Spacer(minLength: 0)
-
-                Button("History") {
-                    router.open(.history)
-                }
-                .font(AppTextStyle.bodyMedium.font)
-                .foregroundStyle(AppPalette.success)
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home.historyCard")
-                .accessibilityHint("Opens your full calendar history.")
-            }
-
-            PrimaryButton(primaryTitle, systemImage: "sun.max", identifier: primaryIdentifier, action: onPrimaryTap)
-
-            pillTabs
-        }
-    }
-
-    @ViewBuilder
-    private var pillTabs: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: AppSpacing.xs) {
-                pillButton(
-                    title: "Weekly",
+        SunBottomNavigationBar(
+            leadingItems: [
+                SunBottomNavigationItem(
+                    id: "today",
+                    title: "Today",
+                    systemImage: "sun.max.fill",
+                    accessibilityIdentifier: "timeline.footer.today",
+                    action: { router.open(.home) }
+                ),
+                SunBottomNavigationItem(
+                    id: "history",
+                    title: "History",
+                    systemImage: "calendar",
+                    accessibilityIdentifier: "home.historyCard",
+                    action: { router.open(.history) }
+                )
+            ],
+            trailingItems: [
+                SunBottomNavigationItem(
+                    id: "insights",
+                    title: "Insights",
                     systemImage: "chart.bar.fill",
-                    identifier: "home.streakCard",
+                    accessibilityIdentifier: "home.streakCard",
                     action: { router.open(.weeklySummary) }
+                ),
+                SunBottomNavigationItem(
+                    id: "settings",
+                    title: "Settings",
+                    systemImage: "gearshape.fill",
+                    accessibilityIdentifier: "timeline.footer.settings",
+                    action: { router.open(.settings) }
                 )
-                pillButton(
-                    title: "Sharing",
-                    systemImage: "person.2.fill",
-                    identifier: "timeline.footer.accountability",
-                    action: { router.open(.friends) }
-                )
-            }
-        } else {
-            HStack(spacing: AppSpacing.md) {
-                pillButton(
-                    title: "Weekly",
-                    systemImage: "chart.bar.fill",
-                    identifier: "home.streakCard",
-                    action: { router.open(.weeklySummary) }
-                )
-                pillButton(
-                    title: "Sharing",
-                    systemImage: "person.2.fill",
-                    identifier: "timeline.footer.accountability",
-                    action: { router.open(.friends) }
-                )
-            }
-        }
-    }
-
-    private func pillButton(
-        title: String,
-        systemImage: String,
-        identifier: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: systemImage)
-                    .font(AppFont.rounded(size: 22, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-                Text(title)
-                    .font(AppTextStyle.bodyMedium.font)
-                    .foregroundStyle(AppPalette.ink)
-            }
-            .frame(maxWidth: .infinity, minHeight: 58)
-        }
-        .buttonStyle(AppSecondaryPillButtonStyle())
-        .accessibilityIdentifier(identifier)
-        .accessibilityHint("Opens \(title).")
+            ],
+            primaryTitle: primaryTitle,
+            primaryIdentifier: primaryIdentifier,
+            onPrimaryTap: onPrimaryTap
+        )
+        .padding(.top, 64)
     }
 }

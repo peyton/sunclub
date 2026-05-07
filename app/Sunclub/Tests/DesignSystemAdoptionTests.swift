@@ -16,8 +16,10 @@ final class DesignSystemAdoptionTests: XCTestCase {
             "struct StatusBadge",
             "struct DayCapsule",
             "struct StatCard",
-            "static let card: CGFloat = 22",
-            "static let button: CGFloat = 18",
+            "struct FeatureIcon",
+            "struct InfoRow",
+            "static let card: CGFloat = 18",
+            "static let button: CGFloat = 14",
             "static let pill: CGFloat = .infinity"
         ]
 
@@ -83,8 +85,8 @@ final class DesignSystemAdoptionTests: XCTestCase {
                 "DayCapsule"
             ],
             "app/Sunclub/Sources/Views/Components/TimelineFooterBar.swift": [
-                "PrimaryButton",
-                "SecondaryPillButton"
+                "SunBottomNavigationBar",
+                "SunBottomNavigationItem"
             ],
             "app/Sunclub/Sources/Views/ManualLogView.swift": [
                 "AppCard",
@@ -95,6 +97,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
                 "AppShadow.soft"
             ],
             "app/Sunclub/Sources/Views/HistoryView.swift": [
+                "SunInfoRow",
                 "PrimaryButton",
                 "SecondaryPillButton"
             ],

@@ -53,13 +53,19 @@ struct WelcomeView: View {
     }
 
     private var welcomeHero: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 14) {
             SunBrandLockup(
                 layout: .stacked,
                 markSize: 96,
-                subtitle: "Build a sunscreen habit."
+                subtitle: "Your daily dose of sun sense."
             )
             .frame(maxWidth: .infinity)
+
+            Text("Log sunscreen. See UV context. Build better habits.")
+                .font(AppFont.rounded(size: 31, weight: .bold))
+                .foregroundStyle(AppPalette.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -67,42 +73,25 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 26) {
             welcomeValuePropRow(
                 symbol: "hand.tap.fill",
-                title: "Log in one tap",
-                detail: "Save today's sunscreen from the app, widget, or Shortcuts."
+                title: "Daily logging made simple",
+                detail: "Record SPF, timing, notes, and reapply check-ins."
             )
             welcomeValuePropRow(
-                symbol: "bell.badge.fill",
-                title: "Get a daily reminder",
-                detail: "Use one reminder time for weekdays and weekends."
+                symbol: "sun.max.fill",
+                title: "UV context you can trust",
+                detail: "See live or estimated UV and clear guidance for the day."
             )
             welcomeValuePropRow(
-                symbol: "flame.fill",
-                title: "See your streak",
-                detail: "Check history and weekly progress when you want the detail."
+                symbol: "applewatch",
+                title: "Works across your Apple devices",
+                detail: "Use reminders, widgets, Apple Watch, and Shortcuts."
             )
         }
         .frame(maxWidth: 360, alignment: .leading)
     }
 
     private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: symbol)
-                .font(AppFont.rounded(size: 20, weight: .semibold))
-                .foregroundStyle(AppPalette.sun)
-                .frame(width: 36, height: 36)
-                .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(AppFont.rounded(size: 17, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-                Text(detail)
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+        SunInfoRow(title: title, detail: detail, systemImage: symbol, tint: AppPalette.pool)
         .accessibilityElement(children: .combine)
     }
 }
@@ -191,7 +180,7 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        "One daily sunscreen reminder. No marketing."
+        "A daily sunscreen reminder, plus optional reapply timing after you log."
     }
 
     private func completeOnboarding(requestsNotifications: Bool) {
