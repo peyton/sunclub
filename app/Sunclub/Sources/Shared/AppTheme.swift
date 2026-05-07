@@ -154,6 +154,7 @@ enum SunclubVisualAsset: String, CaseIterable {
     case illustrationAchievementsShelf = "IllustrationAchievementsShelf"
     case illustrationFriendsPair = "IllustrationFriendsPair"
     case illustrationSkinReport = "IllustrationSkinReport"
+    case coverageFaceDiagram = "CoverageFaceDiagram"
     case motifSunRing = "MotifSunRing"
     case motifShieldGlow = "MotifShieldGlow"
     case motifScanSheen = "MotifScanSheen"
@@ -298,6 +299,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
     let contentFrameAlignment: Alignment
     let footerMaxWidth: CGFloat?
     let footerFrameAlignment: Alignment
+    let showsFooter: Bool
 
     init(
         contentAlignment: Alignment = .topLeading,
@@ -305,6 +307,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         contentFrameAlignment: Alignment = .leading,
         footerMaxWidth: CGFloat? = nil,
         footerFrameAlignment: Alignment = .center,
+        showsFooter: Bool = true,
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
@@ -313,6 +316,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         self.contentFrameAlignment = contentFrameAlignment
         self.footerMaxWidth = footerMaxWidth
         self.footerFrameAlignment = footerFrameAlignment
+        self.showsFooter = showsFooter
         self.content = content()
         self.footer = footer()
     }
@@ -335,24 +339,26 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                     .scrollDismissesKeyboard(.interactively)
                     .clipped()
 
-                    footer
-                        .frame(maxWidth: footerMaxWidth ?? .infinity)
-                        .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 5)
-                        .padding(.bottom, 20)
-                        .background {
-                            LinearGradient(
-                                colors: [
-                                    AppPalette.cardFill.opacity(0),
-                                    AppPalette.cardFill.opacity(0.92),
-                                    AppPalette.cardFill.opacity(0.98)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            .ignoresSafeArea(edges: .bottom)
-                        }
+                    if showsFooter {
+                        footer
+                            .frame(maxWidth: footerMaxWidth ?? .infinity)
+                            .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 5)
+                            .padding(.bottom, 20)
+                            .background {
+                                LinearGradient(
+                                    colors: [
+                                        AppPalette.cardFill.opacity(0),
+                                        AppPalette.cardFill.opacity(0.92),
+                                        AppPalette.cardFill.opacity(0.98)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                .ignoresSafeArea(edges: .bottom)
+                            }
+                    }
                 }
             }
 
@@ -374,6 +380,7 @@ extension SunLightScreen where Footer == EmptyView {
             contentAlignment: contentAlignment,
             contentMaxWidth: contentMaxWidth,
             contentFrameAlignment: contentFrameAlignment,
+            showsFooter: false,
             content: content
         ) { EmptyView() }
     }
@@ -1296,6 +1303,94 @@ struct SunBottomNavigationBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(item.title)
         .accessibilityIdentifier(item.accessibilityIdentifier)
+    }
+}
+
+struct SunAppTabBar: View {
+    let selectedTab: AppTab
+    let onSelectTab: (AppTab) -> Void
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            tabButton(.today)
+            tabButton(.history)
+
+            Button(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(AppFont.rounded(size: 22, weight: .bold))
+                    .foregroundStyle(AppColor.onColor)
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(AppColor.accent))
+                    .appShadow(AppShadow.floating)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Log Sunscreen")
+            .accessibilityHint("Opens the sunscreen log.")
+            .accessibilityIdentifier("home.logManually")
+
+            tabButton(.insights)
+            tabButton(.settings)
+        }
+        .padding(7)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .fill(AppPalette.elevatedCardFill.opacity(0.97))
+                .appShadow(AppShadow.soft)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+        .background {
+            LinearGradient(
+                colors: [
+                    AppPalette.cardFill.opacity(0),
+                    AppPalette.cardFill.opacity(0.94),
+                    AppPalette.cardFill.opacity(0.99)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(edges: .bottom)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("app.tabBar")
+    }
+
+    private func tabButton(_ tab: AppTab) -> some View {
+        let isSelected = selectedTab == tab
+
+        return Button {
+            onSelectTab(tab)
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: tab.systemImage)
+                    .font(AppFont.rounded(size: 18, weight: .semibold))
+                    .accessibilityHidden(true)
+
+                Text(tab.title)
+                    .font(AppFont.rounded(size: 10, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(isSelected ? AppColor.accent : AppPalette.softInk)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                        .fill(AppColor.accentSoft.opacity(0.45))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tab.title)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier(tab.accessibilityIdentifier)
     }
 }
 

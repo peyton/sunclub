@@ -14,10 +14,13 @@ struct HistoryView: View {
     @State private var isShowingMonthlyInsights = true
     @State private var selectedRange: HistoryRange = .month
 
+    let showsBackButton: Bool
+
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
 
-    init(preselectedDay: Date? = nil) {
+    init(preselectedDay: Date? = nil, showsBackButton: Bool = true) {
+        self.showsBackButton = showsBackButton
         let initialMonth = preselectedDay ?? Date()
         _displayedMonth = State(initialValue: initialMonth)
         _selectedDay = State(initialValue: preselectedDay)
@@ -28,7 +31,7 @@ struct HistoryView: View {
 
         SunLightScreen {
             VStack(alignment: .leading, spacing: 22) {
-                SunLightHeader(title: "History", showsBack: true, onBack: {
+                SunLightHeader(title: "History", showsBack: showsBackButton, onBack: {
                     router.goBack()
                 })
 
@@ -64,8 +67,6 @@ struct HistoryView: View {
 
                 Spacer(minLength: 0)
             }
-        } footer: {
-            historyActionFooter(presentation: presentation)
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
@@ -79,13 +80,7 @@ struct HistoryView: View {
         ) {
             Button("Delete", role: .destructive) {
                 if let day = dayPendingDeletion {
-                    let existingBatchIDs = Set(appState.changeBatches.map(\.id))
-                    appState.deleteRecord(for: day)
-                    selectedDay = calendar.startOfDay(for: day)
-                    lastDeletedDay = calendar.startOfDay(for: day)
-                    lastDeletedBatchID = appState.changeBatches.first {
-                        $0.kind == .deleteRecord && !existingBatchIDs.contains($0.id)
-                    }?.id
+                    deleteRecordAndPreserveSelection(for: day)
                 }
                 dayPendingDeletion = nil
             }
@@ -670,6 +665,9 @@ struct HistoryView: View {
             }
 
             dayDetailBody(record: record, status: status, conflict: conflict)
+
+            actionButtons(for: dayStart, record: record, status: status)
+                .padding(.top, 4)
         }
         .padding(18)
         .background(
@@ -758,23 +756,6 @@ struct HistoryView: View {
             }
             .padding(.top, 6)
             .accessibilityIdentifier("history.conflictBanner")
-        }
-    }
-
-    @ViewBuilder
-    private func historyActionFooter(presentation: HistoryPresentation) -> some View {
-        if let selectedDay = selectedDay {
-            let dayStart = calendar.startOfDay(for: selectedDay)
-            let record = presentation.record(for: dayStart, calendar: calendar)
-            let status = CalendarAnalytics.status(
-                for: dayStart,
-                with: presentation.recordDateSet,
-                now: presentation.today,
-                calendar: calendar
-            )
-
-            actionButtons(for: dayStart, record: record, status: status)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -1041,6 +1022,16 @@ struct HistoryView: View {
         }
 
         return parts.isEmpty ? "the visible entry" : parts.joined(separator: ", ")
+    }
+
+    private func deleteRecordAndPreserveSelection(for day: Date) {
+        let existingBatchIDs = Set(appState.changeBatches.map(\.id))
+        appState.deleteRecord(for: day)
+        selectedDay = calendar.startOfDay(for: day)
+        lastDeletedDay = calendar.startOfDay(for: day)
+        lastDeletedBatchID = appState.changeBatches.first {
+            $0.kind == .deleteRecord && !existingBatchIDs.contains($0.id)
+        }?.id
     }
 
     private func changeMonth(by offset: Int) {

@@ -137,6 +137,7 @@ generate:
 [group('app')]
 visual-assets:
     xcrun swift scripts/generate-visual-assets.swift
+    uv run python -m scripts.art.import_design_asset
 
 [group('app')]
 build:

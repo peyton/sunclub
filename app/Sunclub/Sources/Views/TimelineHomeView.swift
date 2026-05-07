@@ -147,6 +147,8 @@ struct TimelineHomeView: View {
                     timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
 
                     TimelineTodayStatusCard(presentation: presentation)
+
+                    futureDayActions
                 } else {
                     todayProductStack(for: presentation)
 
@@ -178,15 +180,6 @@ struct TimelineHomeView: View {
 
                 Spacer(minLength: 0)
             }
-        } footer: {
-            TimelineFooterBar(
-                primaryTitle: primaryCTAText(for: presentation),
-                primaryIdentifier: primaryCTAIdentifier(for: presentation),
-                onPrimaryTap: {
-                    feedbackTrigger += 1
-                    performPrimaryAction(using: presentation)
-                }
-            )
         }
         .onAppear {
             refresh()
@@ -206,6 +199,25 @@ struct TimelineHomeView: View {
         }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var futureDayActions: some View {
+        Button {
+            feedbackTrigger += 1
+            jumpToToday()
+        } label: {
+            SunInfoRow(
+                title: "Back to Today",
+                detail: "Return to today's log and UV context.",
+                systemImage: "arrow.uturn.backward.circle.fill",
+                tint: AppPalette.pool,
+                showsChevron: false
+            )
+            .padding(14)
+            .sunGlassCard(cornerRadius: AppRadius.card)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("timeline.backToToday")
     }
 
     private func todayHeader(for presentation: TimelineHomePresentation) -> some View {
@@ -689,64 +701,6 @@ struct TimelineHomeView: View {
 
     private func accessibilityHeadlineLabel(for presentation: TimelineHomePresentation) -> String {
         headlineText(for: presentation)
-    }
-
-    private func primaryCTAText(for presentation: TimelineHomePresentation) -> String {
-        if presentation.logSummary.category == .future {
-            return "Back to Today"
-        }
-
-        let action = presentation.homeDailyPlanPresentation.action
-        switch action {
-        case .logToday, .addDetails:
-            return "Log \(presentation.logSummary.dayPart.title)"
-        default:
-            return presentation.homeDailyPlanPresentation.actionTitle
-        }
-    }
-
-    private func primaryCTAIdentifier(for presentation: TimelineHomePresentation) -> String {
-        if presentation.logSummary.category == .future {
-            return "timeline.backToToday"
-        }
-
-        switch presentation.homeDailyPlanPresentation.action {
-        case .logToday:
-            return "home.logManually"
-        case .backfillYesterday, .logReapply, .addDetails, .viewProgress, .reviewRecovery, .repairReminders, .openSettings:
-            return "home.loggedPrimaryAction"
-        }
-    }
-
-    private func performPrimaryAction(using presentation: TimelineHomePresentation) {
-        if presentation.logSummary.category == .future {
-            jumpToToday()
-            return
-        }
-
-        let action = presentation.homeDailyPlanPresentation.action
-        switch action {
-        case .logToday, .addDetails:
-            openManualLog(
-                context: AppLogContext(
-                    date: presentation.selectedDay,
-                    dayPart: presentation.logSummary.dayPart,
-                    source: .timeline
-                )
-            )
-        case .backfillYesterday:
-            router.open(.backfillYesterday)
-        case .logReapply:
-            router.open(.reapplyCheckIn)
-        case .viewProgress:
-            router.open(.weeklySummary)
-        case .reviewRecovery:
-            router.open(.recovery)
-        case .repairReminders:
-            appState.repairReminderSchedule()
-        case .openSettings:
-            router.open(.settings)
-        }
     }
 
     private func jumpToToday() {
