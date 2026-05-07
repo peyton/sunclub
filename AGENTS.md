@@ -34,9 +34,41 @@ Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. 
 | Surface            | Command                         |
 | ------------------ | ------------------------------- |
 | App Review env     | `just appstore-env`             |
+| Draft metadata     | `just appstore-validate`        |
+| Strict metadata    | `just appstore-validate-strict` |
+| Review package     | `just appstore-review-package`  |
+| Screenshots        | `just appstore-screenshots`     |
+| Archive            | `just appstore-archive`         |
 | App Review dry run | `just appstore-submit-dry-run`  |
 | App Review submit  | `just appstore-submit-review`   |
-| TestFlight tag     | `just release-testflight 1.2.3` |
+| Release doctor     | `just release-doctor`           |
+| Release tag        | `just release-tag 1.2.3`        |
+| TestFlight alias   | `just release-testflight 1.2.3` |
+
+## Web & Cloudflare Commands
+
+| Surface           | Command                               |
+| ----------------- | ------------------------------------- |
+| Local web preview | `just web-serve`                      |
+| Web validation    | `just web-check`                      |
+| Web format        | `just web-fmt`                        |
+| Web build/package | `just web-package VERSION=test`       |
+| Web release tag   | `just web-release-tag 1.2.3`          |
+| Cloudflare status | `just cloudflare-status`              |
+| Cloudflare deploy | `just cloudflare-pages-deploy master` |
+| Cloudflare check  | `just cloudflare-check`               |
+
+## CloudKit Commands
+
+| Surface          | Command                          |
+| ---------------- | -------------------------------- |
+| Save token       | `just cloudkit-save-token`       |
+| Doctor           | `just cloudkit-doctor`           |
+| Ensure container | `just cloudkit-ensure-container` |
+| Export schema    | `just cloudkit-export-schema`    |
+| Validate schema  | `just cloudkit-validate-schema`  |
+| Import schema    | `just cloudkit-import-schema`    |
+| Reset dev        | `just cloudkit-reset-dev`        |
 
 ## Verification Rules
 
@@ -88,15 +120,18 @@ app/          iOS Apps, Swift source, iOS tests, UI tests
 scripts/      All project-level scripts.
 tests/        Other tests and test runners
 docs/         One place for all documentation on the app, scripts, and tests.
+web/          Static public site and automation docs.
+infra/        Cloudflare Pages and Email Routing config.
 ```
 
 ## Architecture Conventions
 
-- **Models** → `app/Sunclub/Models/` — SwiftData `@Model` types
+- **Models** → `app/Sunclub/Sources/Models/` — SwiftData `@Model` types
 - **Persistence Versioning** → `app/Sunclub/Sources/Models/SunclubSchema.swift` — all SwiftData `VersionedSchema`, migration stages, and `ModelContainer` factory wiring live here
-- **Services** → `app/Sunclub/Services/` — coordinators, matchers, managers
-- **Views** → `app/Sunclub/Views/` — one file per screen
-- **Theme** → `app/Sunclub/Shared/AppTheme.swift` — all UI tokens live here
+- **Services** → `app/Sunclub/Sources/Services/` — coordinators, matchers, managers
+- **Views** → `app/Sunclub/Sources/Views/` — one file per screen
+- **Design System** → `DESIGN.md` and `app/Sunclub/Sources/Shared/AppDesignSystem.swift` — source of truth for tokens/components; `AppTheme.swift` keeps product-page wrappers and compatibility helpers
+- **Home** → `app/Sunclub/Sources/Views/TimelineHomeView.swift`; `HomeView.swift` is intentionally removed
 - Singletons: `VisionFeaturePrintService.shared`, `NotificationManager.shared`
 - Observable state: `AppState` is the single source of truth, injected via `@Environment`
 
@@ -154,3 +189,5 @@ docs/         One place for all documentation on the app, scripts, and tests.
 - Normal CI exposes the iOS build matrix directly as `Build iOS (Development)` and `Build iOS (Production)`. Do not re-add a separate aggregate `Build iOS` job unless required-check naming deliberately changes.
 - Generated non-logo art assets are owned by `scripts/generate-visual-assets.swift` and regenerated with `just visual-assets`. The generator must keep app icons, watch icons, `icon.svg`, and `web/assets/app-icon.svg` untouched, and generated non-logo imagesets should include valid `1x`, `2x`, and `3x` PNGs plus `Contents.json` scale entries.
 - App Review submission runs through `just appstore-submit-dry-run` before `just appstore-submit-review` or `just appstore-send-review`. Final submission requires strict metadata, screenshots, `.build/appstore-review-checkpoint/summary.md` review, a valid TestFlight build upload, and the checkpoint confirmation gate; never submit a draft review submission that already contains a different app version.
+- Screen styling must route through `AppDesignSystem.swift` and the product-page wrappers in `AppTheme.swift`; `DesignSystemAdoptionTests` guard against direct system fonts, raw SwiftUI colors/RGB values, numeric corner radii, and ad hoc shadows in screen code.
+- The product-page reference added first-class UV forecast, privacy, and support destinations. New screen routes should be wired through `AppRoute`, `RootView`, App Intent route mapping, URL/x-callback automation parsing, `docs/app-automation.md`, website automation docs, and route/UI tests together.
