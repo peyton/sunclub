@@ -20,7 +20,9 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 - [x] (2026-05-07T00:58Z) Updated docs/tests that encode design-system rules.
 - [x] (2026-05-07T00:57Z) Captured simulator screenshots for Home, Manual Log, History, Settings, and Automation on the iPhone 17 Pro simulator.
 - [x] (2026-05-07T01:10Z) Ran final generation, lint, Python, unit, focused UI, and full simulator UI verification.
-- [ ] Push the branch, open a PR, monitor required GitHub checks, merge to `master`, then cut the requested TestFlight build from `master`.
+- [x] (2026-05-07T05:55Z) Completed the reference-alignment pass for missing UV detail, privacy, support, Shortcuts, settings, manual-log, and history features.
+- [x] (2026-05-07T05:55Z) Re-ran simulator screenshots and a 56-test full UI suite after the second pass.
+- [ ] Push the branch, open a PR, monitor required GitHub checks, and merge to `master`.
 
 ## Surprises & Discoveries
 
@@ -45,6 +47,15 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 - Observation: The complete UI suite passed, but Tuist still crashed while trying to upload unauthenticated run metadata after the Xcode result was already successful.
   Evidence: `just test-ui` executed 55 tests with 0 failures in 657 seconds, then the repo wrapper printed `Warning: tuist xcodebuild exited with Trace/BPT trap after a successful Xcode result; treating as success`.
 
+- Observation: The product-page reference expected separate in-app destinations for UV forecast detail, privacy, and support instead of only marketing-page/documentation equivalents.
+  Evidence: The second-pass implementation added `AppRoute.uvForecast`, `AppRoute.privacy`, and `AppRoute.support`, plus `UVForecastDetailView`, `PrivacyView`, and `SupportView`, with app-intent and x-callback route coverage.
+
+- Observation: The local `just run` path still hit the known Tuist cache/socket issue, but the app was installable and inspectable through the successful simulator test build.
+  Evidence: `just run` failed during Tuist cache connection setup; the app from `.DerivedData/test/Build/Products/Debug-iphonesimulator/Sunclub.app` installed on the iPhone 17 Pro simulator and produced fresh screenshots under `.build/reference-feature-alignment-screenshots/`.
+
+- Observation: Moving the History legend below the product-page summary made the old UI test assertion rely on an offscreen element.
+  Evidence: The first full UI rerun failed only `testHistoryShowsMonthlyReviewInsights`; after changing the test to scroll to the legend labels, the focused test and the full 56-test UI suite passed.
+
 ## Decision Log
 
 - Decision: Treat the attached product page and generated concept sheet as the visual source of truth over older soft-rounded rules.
@@ -59,7 +70,9 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 
 Implemented the product-page visual system across the app's primary surfaces. Home now uses a Today-first UV card, logged sunscreen row, sun exposure chart, hourly forecast strip, and product-page bottom navigation. Manual Log now exposes SPF presets and covered areas immediately, with area metadata persisted through the existing notes field instead of a SwiftData schema change. History, Settings, Automation, onboarding copy, and Watch glance UI were restyled around the same navy, amber, blue, and translucent-card system.
 
-Local source verification passed with `just generate`, `just lint`, `just test-python`, `just test-unit`, focused UI reruns for the changed accessibility/manual-log paths, and the full 55-test UI simulator suite. Remote PR checks, merge, and the requested TestFlight release from `master` remain the final lifecycle steps.
+The second pass closed gaps against the reference sheet by adding a tappable UV forecast detail, first-class privacy and support screens, a Shortcuts & Automation summary, product-page settings rows, reference-style manual logging form rows, and a History segmented control/calendar summary. The new routes are covered by shared automation parsing, App Intent routing, and UI navigation tests.
+
+Local source verification passed with `just generate`, `just lint`, `just test-python`, `just test-unit`, focused UI reruns for the changed History path, simulator screenshot inspection, and the full 56-test UI simulator suite. Remote PR checks and merge remain the final lifecycle steps for this request.
 
 ## Context and Orientation
 

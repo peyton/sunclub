@@ -41,6 +41,8 @@ struct SettingsView: View {
                     router.goBack()
                 })
 
+                settingsReferenceMenu
+
                 settingsQuickActions(includesDocumentation: !usesAccessibilityTextLayout)
 
                 if usesAccessibilityTextLayout {
@@ -214,7 +216,100 @@ struct SettingsView: View {
             if includesDocumentation {
                 settingsDocumentationAction
             }
+
+            settingsActionButton(
+                title: "Privacy",
+                detail: "Data, iCloud, export, and deletion practices.",
+                symbolName: "lock.shield.fill",
+                tint: AppPalette.aloe,
+                accessibilityIdentifier: "settings.privacy.quick"
+            ) {
+                router.push(.privacy)
+            }
+
+            settingsActionButton(
+                title: "Support",
+                detail: "Help center, email support, and feedback.",
+                symbolName: "lifepreserver.fill",
+                tint: AppPalette.pool,
+                accessibilityIdentifier: "settings.support.quick"
+            ) {
+                router.push(.support)
+            }
         }
+    }
+
+    private var settingsReferenceMenu: some View {
+        VStack(spacing: 0) {
+            settingsReferenceButton(
+                title: "Profile",
+                detail: profileDetail,
+                symbolName: "person.crop.circle.fill",
+                tint: AppPalette.pool,
+                accessibilityIdentifier: "settings.reference.profile"
+            ) {
+                router.push(.friends)
+            }
+
+            settingsReferenceDivider
+
+            settingsReferenceButton(
+                title: "Sunscreen & Reminders",
+                detail: "SPF defaults, daily reminders, and reapply timing.",
+                symbolName: "sun.max.fill",
+                tint: AppPalette.sun,
+                accessibilityIdentifier: "settings.reference.reminders"
+            ) {
+                expandedSections.formUnion([.reminders, .progress])
+            }
+
+            settingsReferenceDivider
+
+            settingsReferenceButton(
+                title: "Health & Weather",
+                detail: "Live UV, Health, and location-aware options.",
+                symbolName: "cloud.sun.fill",
+                tint: AppPalette.pool,
+                accessibilityIdentifier: "settings.reference.healthWeather"
+            ) {
+                expandedSections.insert(.advanced)
+            }
+
+            settingsReferenceDivider
+
+            settingsReferenceStaticRow(
+                title: "Appearance",
+                detail: "Follows system appearance, Dynamic Type, and contrast settings.",
+                symbolName: "paintpalette.fill",
+                tint: AppPalette.coral,
+                accessibilityIdentifier: "settings.reference.appearance"
+            )
+
+            settingsReferenceDivider
+
+            settingsReferenceButton(
+                title: "Notifications",
+                detail: "\(formattedReminderTime(for: .weekday)) weekdays, \(formattedReminderTime(for: .weekend)) weekends.",
+                symbolName: "bell.fill",
+                tint: AppPalette.pool,
+                accessibilityIdentifier: "settings.reference.notifications"
+            ) {
+                expandedSections.insert(.reminders)
+            }
+
+            settingsReferenceDivider
+
+            settingsReferenceStaticRow(
+                title: "Units",
+                detail: "Distance, temperature, and regional formatting.",
+                symbolName: "ruler.fill",
+                tint: AppPalette.pool,
+                trailingText: "Metric",
+                accessibilityIdentifier: "settings.reference.units"
+            )
+        }
+        .background(cardBackground)
+        .accessibilityIdentifier("settings.referenceMenu")
     }
 
     private var settingsDocumentationAction: some View {
@@ -1259,6 +1354,103 @@ struct SettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func settingsReferenceButton(
+        title: String,
+        detail: String,
+        symbolName: String,
+        tint: Color,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            settingsReferenceRowContent(
+                title: title,
+                detail: detail,
+                symbolName: symbolName,
+                tint: tint,
+                trailingText: nil,
+                showsChevron: true
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func settingsReferenceStaticRow(
+        title: String,
+        detail: String,
+        symbolName: String,
+        tint: Color,
+        trailingText: String? = nil,
+        accessibilityIdentifier: String
+    ) -> some View {
+        settingsReferenceRowContent(
+            title: title,
+            detail: detail,
+            symbolName: symbolName,
+            tint: tint,
+            trailingText: trailingText,
+            showsChevron: false
+        )
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func settingsReferenceRowContent(
+        title: String,
+        detail: String,
+        symbolName: String,
+        tint: Color,
+        trailingText: String?,
+        showsChevron: Bool
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            SunProductIcon(systemName: symbolName, tint: tint, size: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .foregroundStyle(AppPalette.ink)
+
+                Text(detail)
+                    .font(AppTextStyle.caption.font)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if let trailingText {
+                Text(trailingText)
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppPalette.ink)
+            }
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(AppFont.rounded(size: 12, weight: .semibold))
+                    .foregroundStyle(AppPalette.softInk)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(14)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private var settingsReferenceDivider: some View {
+        Divider()
+            .overlay(AppPalette.hairlineStroke)
+            .padding(.leading, 60)
+    }
+
+    private var profileDetail: String {
+        let name = appState.preferredDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty {
+            return "Name, sharing identity, and friend nudges."
+        }
+        return "\(name), sharing identity, and friend nudges."
     }
 
     @ViewBuilder

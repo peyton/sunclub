@@ -43,9 +43,7 @@ struct ManualLogView: View {
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
             VStack(alignment: .leading, spacing: 18) {
-                SunLightHeader(title: "Log Sunscreen", showsBack: true, onBack: {
-                    router.goBack()
-                })
+                manualLogNavigationHeader
 
                 if let validationMessage {
                     SunStatusCard(
@@ -85,6 +83,8 @@ struct ManualLogView: View {
                             }
                         }
 
+                        referenceFormRows
+
                         dayPartPicker
 
                         SunManualLogFields(
@@ -117,6 +117,93 @@ struct ManualLogView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: navigationFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+    }
+
+    private var manualLogNavigationHeader: some View {
+        HStack(alignment: .center) {
+            Button("Cancel") {
+                router.goBack()
+            }
+            .font(AppTextStyle.captionMedium.font)
+            .foregroundStyle(AppPalette.sun)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("screen.back")
+
+            Spacer(minLength: 0)
+
+            Text("Log Sunscreen")
+                .font(AppFont.rounded(size: 17, weight: .semibold))
+                .foregroundStyle(AppPalette.ink)
+
+            Spacer(minLength: 0)
+
+            Button("Save") {
+                saveLog()
+            }
+            .font(AppTextStyle.captionMedium.font)
+            .foregroundStyle(isFutureTarget ? AppPalette.softInk : AppPalette.pool)
+            .buttonStyle(.plain)
+            .disabled(isFutureTarget)
+            .accessibilityIdentifier("manualLog.saveTop")
+        }
+        .frame(minHeight: 44)
+    }
+
+    private var referenceFormRows: some View {
+        VStack(spacing: 0) {
+            referenceFormRow(
+                title: "When",
+                value: "\(targetDate.formatted(.dateTime.month(.abbreviated).day())), \(selectedDayPart.title)"
+            )
+
+            Divider()
+                .overlay(AppPalette.hairlineStroke)
+
+            referenceFormRow(
+                title: "SPF",
+                value: selectedSPF.map { "\($0)" } ?? "Choose below"
+            )
+
+            Divider()
+                .overlay(AppPalette.hairlineStroke)
+
+            referenceFormRow(
+                title: "Product",
+                value: selectedSPF.map { "Sunclub Mineral SPF \($0)" } ?? "Scan or add SPF"
+            )
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                .fill(AppPalette.cardFill.opacity(0.72))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+        }
+        .accessibilityIdentifier("manualLog.referenceRows")
+    }
+
+    private func referenceFormRow(title: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(AppTextStyle.captionMedium.font)
+                .foregroundStyle(AppPalette.ink)
+
+            Spacer(minLength: 8)
+
+            Text(value)
+                .font(AppTextStyle.caption.font)
+                .foregroundStyle(AppPalette.softInk)
+                .multilineTextAlignment(.trailing)
+
+            Image(systemName: "chevron.right")
+                .font(AppFont.rounded(size: 11, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk.opacity(0.7))
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .accessibilityElement(children: .combine)
     }
 
     private var dayPartPicker: some View {

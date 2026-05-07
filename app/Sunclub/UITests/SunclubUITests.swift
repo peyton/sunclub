@@ -96,6 +96,17 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testHomeUVCardOpensForecastDetail() throws {
+        let app = launchHome()
+
+        XCTAssertTrue(app.buttons["home.uvIndexCard"].waitForExistence(timeout: 5))
+        app.buttons["home.uvIndexCard"].tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["uvForecast.hero"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["uvForecast.hourly"].exists)
+    }
+
+    @MainActor
     func testAchievementsShowClearProgressMeters() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=achievements",
@@ -590,10 +601,10 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Logged"].exists)
-        XCTAssertTrue(app.staticTexts["Not logged"].exists)
-        XCTAssertTrue(app.staticTexts["Future"].exists)
-        XCTAssertTrue(scrollToElement(app.staticTexts["Best Day"], in: app, attempts: 8))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Logged"], in: app, attempts: 8))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Not logged"], in: app, attempts: 8))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Future"], in: app, attempts: 8))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Best Day"], in: app, attempts: 14))
         XCTAssertTrue(app.staticTexts["Hardest Day"].exists)
         XCTAssertTrue(app.staticTexts["Most Used SPF"].exists)
     }

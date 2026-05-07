@@ -269,16 +269,34 @@ struct SunManualLogFields: View {
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            SunCoveredAreaIllustration(selectedAreas: selectedAreas)
-                .frame(maxWidth: .infinity)
-                .accessibilityHidden(true)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 14) {
+                    SunCoveredAreaIllustration(selectedAreas: selectedAreas)
+                        .frame(width: 148, height: 190)
+                        .accessibilityHidden(true)
 
-            LazyVGrid(columns: areaColumns, spacing: 8) {
-                ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
-                    areaButton(area)
+                    VStack(spacing: 8) {
+                        ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
+                            areaButton(area)
+                                .frame(width: 116)
+                        }
+                    }
+                    .accessibilityIdentifier("\(accessibilityPrefix).areas")
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    SunCoveredAreaIllustration(selectedAreas: selectedAreas)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
+
+                    LazyVGrid(columns: areaColumns, spacing: 8) {
+                        ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
+                            areaButton(area)
+                        }
+                    }
+                    .accessibilityIdentifier("\(accessibilityPrefix).areas")
                 }
             }
-            .accessibilityIdentifier("\(accessibilityPrefix).areas")
         }
     }
 

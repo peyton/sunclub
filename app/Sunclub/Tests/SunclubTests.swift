@@ -2228,6 +2228,9 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(AppRoute.backfillYesterday.rawValue, "backfillYesterday")
         XCTAssertEqual(AppRoute.weeklySummary.rawValue, "weeklySummary")
         XCTAssertEqual(AppRoute.recovery.rawValue, "recovery")
+        XCTAssertEqual(AppRoute.uvForecast.rawValue, "uvForecast")
+        XCTAssertEqual(AppRoute.privacy.rawValue, "privacy")
+        XCTAssertEqual(AppRoute.support.rawValue, "support")
     }
 
     @MainActor
