@@ -303,6 +303,10 @@ struct SunclubXCallback: Equatable {
     let successURL: URL?
     let errorURL: URL?
     let cancelURL: URL?
+
+    var hasDestination: Bool {
+        successURL != nil || errorURL != nil || cancelURL != nil
+    }
 }
 
 private struct SunclubDeepLinkQuery {

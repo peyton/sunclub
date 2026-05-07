@@ -113,11 +113,12 @@ enum SunclubDeepLinkHandler {
         router: AppRouter,
         openExternalURL: ((URL) -> Void)?
     ) -> Bool {
+        let hasCallbackDestination = request.callback?.hasDestination == true
         do {
             let result = try appState.performAutomationAction(request.action, invocation: .url)
             if case let .open(route) = request.action {
                 _ = openAfterOnboarding(route.appRoute, appState: appState, router: router)
-            } else if request.callback == nil {
+            } else if !hasCallbackDestination {
                 routeAfterForegroundAutomation(request.action, result: result, appState: appState, router: router)
             }
             openSuccessCallbackIfNeeded(request.callback, result: result, appState: appState, openExternalURL: openExternalURL)
@@ -129,7 +130,7 @@ enum SunclubDeepLinkHandler {
                 appState: appState,
                 openExternalURL: openExternalURL
             )
-            if request.callback == nil {
+            if !hasCallbackDestination {
                 routeAfterAutomationError(error, request.action, appState: appState, router: router)
             }
         } catch {
@@ -141,7 +142,7 @@ enum SunclubDeepLinkHandler {
                 appState: appState,
                 openExternalURL: openExternalURL
             )
-            if request.callback == nil {
+            if !hasCallbackDestination {
                 routeAfterAutomationError(automationError, request.action, appState: appState, router: router)
             }
         }

@@ -8,10 +8,16 @@ struct WeeklyReportView: View {
     @State private var insights = SunscreenUsageInsights.empty
     @State private var editorPresentation: WeeklyEditorPresentation?
 
+    let showsBackButton: Bool
+
+    init(showsBackButton: Bool = true) {
+        self.showsBackButton = showsBackButton
+    }
+
     var body: some View {
-        SunLightScreen {
+        SunLightScreen(showsFooter: showsBackButton) {
             VStack(alignment: .leading, spacing: 28) {
-                SunLightHeader(title: "Weekly Summary", showsBack: true, onBack: {
+                SunLightHeader(title: "Insights", showsBack: showsBackButton, onBack: {
                     router.goBack()
                 })
 
@@ -22,6 +28,10 @@ struct WeeklyReportView: View {
 
                 streakContextRow
 
+                if !showsBackButton {
+                    viewFullHistoryButton
+                }
+
                 if insights.hasContent {
                     usageInsightsSection
                 }
@@ -29,10 +39,7 @@ struct WeeklyReportView: View {
                 Spacer(minLength: 0)
             }
         } footer: {
-            SecondaryPillButton("View Full History", systemImage: "calendar", identifier: "weekly.viewFullHistory") {
-                router.push(.history)
-            }
-            .accessibilityHint("Opens your full calendar history with your current streak highlighted.")
+            viewFullHistoryButton
         }
         .sheet(item: $editorPresentation, onDismiss: refreshReport) { presentation in
             HistoryRecordEditorView(
@@ -45,6 +52,13 @@ struct WeeklyReportView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+    }
+
+    private var viewFullHistoryButton: some View {
+        SecondaryPillButton("View Full History", systemImage: "calendar", identifier: "weekly.viewFullHistory") {
+            router.open(.history)
+        }
+        .accessibilityHint("Opens your full calendar history with your current streak highlighted.")
     }
 
     private var streakContextRow: some View {

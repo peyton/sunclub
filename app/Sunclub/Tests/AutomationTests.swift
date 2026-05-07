@@ -47,6 +47,16 @@ final class AutomationTests: XCTestCase {
         }
     }
 
+    func testEmptyXCallbackHasNoForegroundRoutingDestination() throws {
+        let url = try XCTUnwrap(URL(string: "\(SunclubRuntimeConfiguration.urlScheme)://x-callback-url/log-today?spf=50"))
+        guard case let .automation(request) = SunclubDeepLink(url: url) else {
+            return XCTFail("Expected x-callback automation deeplink.")
+        }
+
+        XCTAssertEqual(request.action, .logToday(spfLevel: 50, notes: nil))
+        XCTAssertFalse(try XCTUnwrap(request.callback).hasDestination)
+    }
+
     func testCallbackURLsEncodeDetailsAndRespectDetailsToggle() throws {
         let baseURL = URL(string: "shortcuts://run-shortcut?name=Done")!
         let result = SunclubAutomationResult(

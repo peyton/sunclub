@@ -2234,6 +2234,42 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testAppRouterSwitchesPrimaryRoutesAsTabs() {
+        let router = AppRouter()
+
+        router.open(.history)
+        XCTAssertEqual(router.selectedTab, .history)
+        XCTAssertTrue(router.path.isEmpty)
+        XCTAssertFalse(router.canGoBack)
+
+        router.open(.weeklySummary)
+        XCTAssertEqual(router.selectedTab, .insights)
+        XCTAssertTrue(router.path.isEmpty)
+
+        router.open(.settings)
+        XCTAssertEqual(router.selectedTab, .settings)
+        XCTAssertTrue(router.path.isEmpty)
+    }
+
+    @MainActor
+    func testAppRouterKeepsPushedRoutesInsideSelectedTab() {
+        let router = AppRouter()
+
+        router.open(.settings)
+        router.push(.privacy)
+        XCTAssertEqual(router.selectedTab, .settings)
+        XCTAssertEqual(router.path, [.privacy])
+        XCTAssertTrue(router.canGoBack)
+
+        router.selectTab(.today)
+        XCTAssertEqual(router.selectedTab, .today)
+        XCTAssertTrue(router.path.isEmpty)
+
+        router.selectTab(.settings)
+        XCTAssertEqual(router.path, [.privacy])
+    }
+
+    @MainActor
     func testAppRouterPayloadSupportsLegacyAndExplicitManualLogRoutes() throws {
         let router = AppRouter()
         let target = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12)))

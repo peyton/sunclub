@@ -438,79 +438,35 @@ struct SunManualLogFields: View {
 private struct SunCoveredAreaIllustration: View {
     let selectedAreas: Set<String>
 
-    private var faceTint: Color {
-        selectedAreas.contains("Face") ? AppPalette.sun : AppPalette.hairlineStroke
-    }
-
-    private var neckTint: Color {
-        selectedAreas.contains("Neck") ? AppPalette.sun : AppPalette.hairlineStroke
-    }
-
-    private var shoulderTint: Color {
-        selectedAreas.contains("Shoulders") ? AppPalette.sun : AppPalette.hairlineStroke
-    }
-
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.warmGlow.opacity(0.18))
 
-            Canvas { context, size in
-                let centerX = size.width / 2
-                let faceRect = CGRect(
-                    x: centerX - 42,
-                    y: 16,
-                    width: 84,
-                    height: 100
-                )
-                let neckRect = CGRect(
-                    x: centerX - 18,
-                    y: faceRect.maxY - 6,
-                    width: 36,
-                    height: 34
-                )
+            SunclubVisualAsset.coverageFaceDiagram.image
+                .resizable()
+                .scaledToFit()
+                .padding(.horizontal, 24)
+                .padding(.vertical, 10)
 
-                var face = Path(ellipseIn: faceRect)
-                context.stroke(face, with: .color(faceTint), lineWidth: 2)
-
-                var hairline = Path()
-                hairline.move(to: CGPoint(x: faceRect.minX + 16, y: faceRect.minY + 20))
-                hairline.addQuadCurve(
-                    to: CGPoint(x: faceRect.maxX - 16, y: faceRect.minY + 20),
-                    control: CGPoint(x: centerX, y: faceRect.minY + 2)
-                )
-                context.stroke(hairline, with: .color(AppPalette.sun.opacity(0.45)), lineWidth: 1.5)
-
-                var features = Path()
-                features.move(to: CGPoint(x: centerX - 18, y: faceRect.midY - 4))
-                features.addLine(to: CGPoint(x: centerX - 8, y: faceRect.midY - 4))
-                features.move(to: CGPoint(x: centerX + 8, y: faceRect.midY - 4))
-                features.addLine(to: CGPoint(x: centerX + 18, y: faceRect.midY - 4))
-                features.move(to: CGPoint(x: centerX - 14, y: faceRect.maxY - 26))
-                features.addQuadCurve(
-                    to: CGPoint(x: centerX + 14, y: faceRect.maxY - 26),
-                    control: CGPoint(x: centerX, y: faceRect.maxY - 16)
-                )
-                context.stroke(features, with: .color(AppPalette.softInk.opacity(0.45)), lineWidth: 1.4)
-
-                let neck = Path(roundedRect: neckRect, cornerRadius: 10)
-                context.stroke(neck, with: .color(neckTint), lineWidth: 2)
-
-                var shoulders = Path()
-                shoulders.move(to: CGPoint(x: centerX - 76, y: size.height - 16))
-                shoulders.addQuadCurve(
-                    to: CGPoint(x: centerX + 76, y: size.height - 16),
-                    control: CGPoint(x: centerX, y: size.height - 54)
-                )
-                context.stroke(shoulders, with: .color(shoulderTint), lineWidth: 2)
-
-                face = Path(ellipseIn: faceRect.insetBy(dx: -8, dy: -8))
-                if selectedAreas.contains("Face") {
-                    context.stroke(face, with: .color(AppPalette.sun.opacity(0.24)), lineWidth: 8)
+            if !selectedAreaLabels.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(selectedAreaLabels, id: \.self) { area in
+                        Text(area)
+                            .font(AppFont.rounded(size: 10, weight: .semibold))
+                            .foregroundStyle(AppPalette.onAccent)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(AppPalette.sun, in: Capsule())
+                    }
                 }
+                .padding(.bottom, 8)
             }
-            .padding(.vertical, 4)
         }
         .frame(height: 154)
+    }
+
+    private var selectedAreaLabels: [String] {
+        Array(SunManualLogInput.coveredAreas.filter { selectedAreas.contains($0) }.prefix(3))
     }
 }

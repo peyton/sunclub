@@ -5,13 +5,12 @@ struct RootView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        @Bindable var router = router
-
-        NavigationStack(path: $router.path) {
-            rootScreen
-                .navigationDestination(for: AppRoute.self) { route in
-                    destination(for: route)
-                }
+        Group {
+            if appState.settings.hasCompletedOnboarding {
+                tabbedRoot
+            } else {
+                onboardingRoot
+            }
         }
         .overlay(alignment: .leading) {
             EdgeBackSwipeOverlay(canGoBack: router.canGoBack) {
@@ -22,12 +21,60 @@ struct RootView: View {
         .tint(AppPalette.sun)
     }
 
-    @ViewBuilder
-    private var rootScreen: some View {
-        if appState.settings.hasCompletedOnboarding {
-            TimelineHomeView()
-        } else {
+    private var onboardingRoot: some View {
+        NavigationStack(path: pathBinding(for: .today)) {
             WelcomeView()
+                .navigationDestination(for: AppRoute.self) { route in
+                    destination(for: route)
+                }
+        }
+    }
+
+    private var tabbedRoot: some View {
+        NavigationStack(path: pathBinding(for: router.selectedTab)) {
+            tabRoot(for: router.selectedTab)
+                .transaction { transaction in
+                    transaction.animation = nil
+                }
+                .navigationDestination(for: AppRoute.self) { route in
+                    destination(for: route)
+                }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if router.path(for: router.selectedTab).isEmpty {
+                SunAppTabBar(
+                    selectedTab: router.selectedTab,
+                    onSelectTab: { tab in
+                        router.open(tab.rootRoute)
+                    },
+                    onAdd: openManualLogFromCurrentTab
+                )
+            }
+        }
+    }
+
+    private func pathBinding(for tab: AppTab) -> Binding<[AppRoute]> {
+        Binding(
+            get: {
+                router.path(for: tab)
+            },
+            set: { newPath in
+                router.setPath(newPath, for: tab)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func tabRoot(for tab: AppTab) -> some View {
+        switch tab {
+        case .today:
+            TimelineHomeView()
+        case .history:
+            HistoryView(showsBackButton: false)
+        case .insights:
+            WeeklyReportView(showsBackButton: false)
+        case .settings:
+            SettingsView(showsBackButton: false)
         }
     }
 
@@ -115,6 +162,16 @@ struct RootView: View {
             dayPart: payload.targetDayPart ?? baseContext.dayPart,
             source: baseContext.source
         )
+    }
+
+    private func openManualLogFromCurrentTab() {
+        let context = appState.currentLogContext(for: appState.selectedDay, source: .manualLog)
+        appState.prepareManualLogRouteContext(
+            targetDate: context.date,
+            targetDayPart: context.dayPart,
+            source: context.source
+        )
+        router.push(.manualLog, targetDate: context.date, targetDayPart: context.dayPart)
     }
 }
 

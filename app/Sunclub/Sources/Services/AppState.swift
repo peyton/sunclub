@@ -2078,12 +2078,19 @@ final class AppState {
         let referenceDate = currentDate()
         Task {
             let resolvedReading: UVReading?
-            if let uvReadingOverride {
-                resolvedReading = uvReadingOverride
-            } else {
-                while prefersLiveData && uvIndexService.isLoading {
+            if prefersLiveData {
+                while uvIndexService.isLoading {
                     try? await Task.sleep(for: .milliseconds(25))
                 }
+                await uvIndexService.fetchUVIndex(
+                    prefersLiveData: prefersLiveData,
+                    allowPermissionPrompt: allowPermissionPrompt,
+                    now: referenceDate
+                )
+                resolvedReading = uvReadingOverride ?? uvIndexService.currentReading
+            } else if let uvReadingOverride {
+                resolvedReading = uvReadingOverride
+            } else {
                 await uvIndexService.fetchUVIndex(
                     prefersLiveData: prefersLiveData,
                     allowPermissionPrompt: allowPermissionPrompt,
