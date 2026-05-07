@@ -18,7 +18,7 @@ def test_committed_static_site_is_review_ready() -> None:
     assert errors == []
 
 
-def test_homepage_matches_submitted_app_store_positioning() -> None:
+def test_homepage_matches_public_app_store_positioning() -> None:
     metadata = json.loads(
         (REPO_ROOT / "scripts" / "appstore" / "metadata.json").read_text(
             encoding="utf-8"
@@ -29,10 +29,12 @@ def test_homepage_matches_submitted_app_store_positioning() -> None:
 
     assert metadata["app"]["subtitle"] in normalized_html
     assert metadata["app"]["pricing_model"] == "free"
-    assert "Submitted release details" in normalized_html
-    assert "public App Store listing is not live yet" in normalized_html
+    assert "https://apps.apple.com/us/app/sunclub/id6760630774" in normalized_html
+    assert "app-store-badge.svg" in normalized_html
     assert "hero-sunclub-devices.jpg" in normalized_html
-    assert "Download on the App Store" not in normalized_html
+    assert "Submitted release details" not in normalized_html
+    assert "public App Store listing is not live yet" not in normalized_html
+    assert "submitted" not in normalized_html.lower()
 
 
 def test_homepage_feature_row_keeps_reference_layout_contract() -> None:
@@ -142,7 +144,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
             <meta name="description" content="Broken page">
           </head>
           <body>
-            <a href="#">Download on the App Store</a>
+            <a href="#">Submitted to the App Store</a>
             <a href="mailto:support@sunclub.peyton.app">Old support address</a>
             <a href="/missing/">Missing</a>
           </body>
@@ -175,7 +177,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
     assert any("missing public privacy email" in error for error in errors)
     assert any("missing public security email" in error for error in errors)
     assert any("@sunclub.peyton.app" in error for error in errors)
-    assert any("download on the app store" in error for error in errors)
+    assert any("submitted" in error for error in errors)
     assert any("broken internal" in error for error in errors)
     assert any("config/weatherkit.json" in error for error in errors)
     assert any("schemas/weatherkit-config.v1.json" in error for error in errors)

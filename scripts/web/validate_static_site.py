@@ -46,34 +46,52 @@ REQUIRED_PHRASES_BY_FILE = {
     Path("index.html"): (
         "Daily SPF Habit Tracker",
         "hero-sunclub-devices.jpg",
-        "Submitted release details",
-        "public App Store listing is not live yet",
-        "No account, ads, or analytics SDKs.",
-        "Live UV is optional, off by default",
+        "apps.apple.com/us/app/sunclub/id6760630774",
+        "Download on the App Store",
+        "We don't sell your data or show ads.",
     ),
     Path("docs/index.html"): (
-        "Submitted release",
-        "free iPhone app",
-        "without app-owned accounts or ads",
+        "Documentation & resources",
+        "Getting Started",
+        "How UV Index Works",
+        "Shortcuts Guide",
+        "Privacy Details",
+    ),
+    Path("docs/getting-started/index.html"): (
+        "Choose your UV settings",
+        "Log your sunscreen",
+        "Turn on reminders",
+        "Check your progress",
+    ),
+    Path("docs/uv-index/index.html"): (
+        "Reading the scale",
+        "0-2 Low",
+        "6-7 High",
+        "Why values change",
     ),
     Path("docs/automation/index.html"): (
-        "public Activity sharing transport disabled",
-        "Message-first foreground route",
-        "status=needs-message",
+        "Shortcuts Guide",
+        "Apple Shortcuts",
+        "Log sunscreen",
+        "Privacy note",
     ),
     Path("privacy/index.html"): (
-        "App Store privacy label is data not collected",
-        "Apple system services and permissions you control",
-        "public Activity sharing transport is disabled",
+        "Privacy Details",
+        "No accounts or ads",
+        "iCloud is optional",
+        "You stay in control",
     ),
 }
 REQUIRED_FILES = (
     "index.html",
     "docs/index.html",
+    "docs/getting-started/index.html",
+    "docs/uv-index/index.html",
     "docs/automation/index.html",
     "support/index.html",
     "privacy/index.html",
     "404.html",
+    "assets/app-store-badge.svg",
     "config/weatherkit.json",
     "schemas/weatherkit-config.v1.json",
     "robots.txt",
@@ -86,7 +104,17 @@ FORBIDDEN_PHRASES = (
     "ai confirms",
     "ai validation",
     "no cloud",
-    "download on the app store",
+    "submitted",
+    "submission",
+    "app review",
+    "review build",
+    "first app store",
+    "public app store listing",
+    "public activity sharing transport",
+    "message-first foreground route",
+    "status=needs-message",
+    "x-callback-url",
+    "sunclub://",
     "app store release status",
     "being prepared for public app store availability",
     'href="#"',
@@ -242,9 +270,7 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
             errors.append(f"{relative}: missing public {label} email {email}.")
     for phrase in REQUIRED_PHRASES_BY_FILE.get(relative, ()):
         if phrase not in normalized_raw:
-            errors.append(
-                f"{relative}: missing required App Store-aligned copy {phrase!r}."
-            )
+            errors.append(f"{relative}: missing required public-site copy {phrase!r}.")
     if not parsed.title:
         errors.append(f"{relative}: missing non-empty <title>.")
     if not parsed.meta_description:
@@ -345,7 +371,15 @@ def validate_site(root: Path) -> list[str]:
     sitemap = resolved_root / "sitemap.xml"
     if sitemap.is_file():
         sitemap_text = sitemap.read_text(encoding="utf-8")
-        for path in ("/", "/docs/", "/docs/automation/", "/support/", "/privacy/"):
+        for path in (
+            "/",
+            "/docs/",
+            "/docs/getting-started/",
+            "/docs/uv-index/",
+            "/docs/automation/",
+            "/support/",
+            "/privacy/",
+        ):
             expected = f"https://sunclub.peyton.app{path}"
             if expected not in sitemap_text:
                 errors.append(f"sitemap.xml missing {expected}.")

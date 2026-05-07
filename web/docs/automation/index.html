@@ -6,7 +6,7 @@
     <title>Shortcuts Docs - Sunclub</title>
     <meta
       name="description"
-      content="Sunclub automation docs for Apple Shortcuts, custom URL actions, x-callback-url, widgets, controls, privacy settings, first-review Activity sharing behavior, and support contacts."
+      content="Use Apple Shortcuts with Sunclub to log sunscreen, check status, open the app, and connect reminders to your daily routine."
     />
     <meta
       name="theme-color"
@@ -22,7 +22,7 @@
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body>
+  <body class="doc-page">
     <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
@@ -38,149 +38,145 @@
       </nav>
     </header>
 
-    <main id="main" class="content">
-      <p class="eyebrow on-surface">Shortcuts Docs</p>
-      <h1>Run Sunclub from Shortcuts and URL actions.</h1>
-      <p class="lead">
-        Sunclub supports Apple Shortcuts, Control Center, widgets, custom URL
-        scheme actions, and x-callback-url for supported non-destructive app
-        actions. The first App Store review build keeps public Activity sharing
-        transport disabled, so friend reminder links open a Message-first
-        foreground route instead of sending a direct cloud reminder.
-      </p>
+    <main id="main" class="doc-shell">
+      <aside class="doc-sidebar" aria-label="Resources">
+        <a class="brand doc-sidebar-brand" href="/">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
+        <nav>
+          <a href="/docs/getting-started/">Getting Started</a>
+          <a href="/docs/uv-index/">How UV Index Works</a>
+          <a href="/docs/automation/" aria-current="page">Shortcuts Guide</a>
+          <a href="/privacy/">Privacy Details</a>
+        </nav>
+        <div class="doc-help-card">
+          <span class="leaf-sprig" aria-hidden="true"></span>
+          <strong>Automation question?</strong>
+          <span>Send us what you are trying to build.</span>
+          <a href="mailto:support@mail.sunclub.peyton.app">Email Support</a>
+        </div>
+      </aside>
 
-      <h2>Settings</h2>
-      <p>
-        Open Sunclub Settings -> Connect Shortcuts to manage Shortcut writes,
-        URL open actions, URL write actions, and detailed callback results. Turn
-        off URL writes if links from other apps should only open Sunclub
-        screens.
-      </p>
-
-      <h2>Apple Shortcuts</h2>
-      <ul>
-        <li>Log Sunscreen with optional SPF and notes.</li>
-        <li>Save Sunscreen Log for today or a selected date and time.</li>
-        <li>Log Reapply.</li>
-        <li>Get Sunclub Status.</li>
-        <li>Get Time Since Last Sunscreen.</li>
-        <li>Open Sunclub to a supported screen.</li>
-        <li>Set reminder times, reapply reminders, and supported toggles.</li>
-        <li>
-          Export a backup, create a skin health report, or create a streak card.
-        </li>
-        <li>
-          Import an Activity sharing invite or open Activity sharing to send a
-          Message-first reminder.
-        </li>
-      </ul>
-      <p>
-        File-producing actions return files through Shortcuts and appear
-        separately from URL examples in the in-app Shortcuts catalog.
-      </p>
-
-      <h2>URL Actions</h2>
-      <p>
-        Production links use <code>sunclub://automation/...</code>. Development
-        builds use <code>sunclub-dev://automation/...</code>. Existing widget
-        and Activity sharing links continue to work.
-      </p>
-      <ul>
-        <li>
-          <code>sunclub://automation/log-today?spf=50&amp;notes=Beach</code>
-        </li>
-        <li>
-          <code
-            >sunclub://automation/save-log?date=2026-04-13&amp;time=08:30&amp;spf=50</code
+      <article class="doc-main">
+        <p class="doc-breadcrumb">Resources / Shortcuts Guide</p>
+        <section class="doc-hero-card">
+          <div>
+            <h1>Shortcuts Guide</h1>
+            <p class="lead">
+              Sunclub works with Apple Shortcuts so your sunscreen habit can fit
+              into the routines you already use, like a morning reminder or a
+              quick status check before leaving home.
+            </p>
+          </div>
+          <div
+            class="doc-hero-illustration shortcuts-illustration"
+            aria-hidden="true"
           >
-        </li>
-        <li><code>sunclub://automation/reapply</code></li>
-        <li><code>sunclub://automation/status</code></li>
-        <li>
-          <code>sunclub://automation/time-since-last-application</code>
-        </li>
-        <li>
-          <code
-            >sunclub://automation/set-reminder?kind=weekday&amp;time=08:30</code
-          >
-        </li>
-        <li>
-          <code
-            >sunclub://automation/set-reapply?enabled=true&amp;interval=90</code
-          >
-        </li>
-        <li>
-          <code
-            >sunclub://automation/set-toggle?name=dailyUVBriefing&amp;enabled=true</code
-          >
-        </li>
-        <li>
-          <code>sunclub://automation/import-friend?code=PASTE_INVITE_CODE</code>
-        </li>
-        <li>
-          <code>sunclub://automation/poke-friend?id=FRIEND_UUID</code>
-        </li>
-        <li><code>sunclub://automation/open?route=automation</code></li>
-        <li><code>sunclub://automation/open?route=uv-forecast</code></li>
-        <li><code>sunclub://automation/open?route=settings</code></li>
-      </ul>
-      <p>
-        <code>poke-friend</code> opens Activity sharing with a
-        <code>status=needs-message</code> result while public Activity sharing
-        transport is disabled for the first App Store review build.
-      </p>
-      <p>
-        Typed URL fields are strict. Malformed dates, times, non-numeric SPF
-        values, invalid routes, invalid toggles, invalid booleans, and invalid
-        UUIDs fail before Sunclub writes anything. Valid SPF values are
-        normalized to 1-100, and notes are trimmed and capped at 280 characters.
-      </p>
+            <span>When</span>
+            <strong>At 10:00 AM, daily</strong>
+          </div>
+        </section>
 
-      <h2>x-callback-url</h2>
-      <p>
-        x-callback-url links use <code>sunclub://x-callback-url/...</code>.
-        Success callbacks receive <code>action</code>, <code>status</code>,
-        <code>message</code>, and action-specific fields when callback details
-        are enabled. Error callbacks receive <code>action</code>,
-        <code>errorCode</code>, and <code>errorMessage</code>.
-      </p>
-      <p>
-        If callback result details are off, callbacks only include
-        <code>action</code> and <code>status</code>.
-      </p>
+        <section class="doc-card-grid" aria-label="Shortcut ideas">
+          <article>
+            <h2>Log sunscreen</h2>
+            <p>
+              Create a Shortcut that records sunscreen with your usual SPF and
+              areas. You can keep it manual or let iOS ask before it runs.
+            </p>
+          </article>
+          <article>
+            <h2>Check your status</h2>
+            <p>
+              Ask Sunclub whether you logged today, how long it has been, and
+              whether it is time to reapply.
+            </p>
+          </article>
+          <article>
+            <h2>Open the right screen</h2>
+            <p>
+              Use a Shortcut, widget, or Control Center action to jump straight
+              to Today, History, reminders, or logging.
+            </p>
+          </article>
+          <article>
+            <h2>Build a routine</h2>
+            <p>
+              Combine Sunclub with time, location, Focus, or calendar triggers
+              in the Shortcuts app when you want a reminder that matches your
+              day.
+            </p>
+          </article>
+        </section>
 
-      <h2>Foreground-Only Actions</h2>
-      <p>
-        Delete log, remove friend, backup import, recovery undo or redo,
-        conflict resolution, camera scanning, file picking, and permission-only
-        setup open Sunclub instead of writing in the background.
-      </p>
+        <section class="doc-steps" aria-label="Create a basic shortcut">
+          <article class="doc-step">
+            <span
+              class="doc-step-icon shortcuts-doc-icon"
+              aria-hidden="true"
+            ></span>
+            <div>
+              <span class="doc-step-number">1</span>
+              <h2>Open the Shortcuts app</h2>
+              <p>
+                Create a new shortcut or personal automation, then search for
+                Sunclub in the action picker.
+              </p>
+            </div>
+          </article>
+          <article class="doc-step">
+            <span
+              class="doc-step-icon bottle-doc-icon"
+              aria-hidden="true"
+            ></span>
+            <div>
+              <span class="doc-step-number">2</span>
+              <h2>Choose the action</h2>
+              <p>
+                Start with Log Sunscreen for a simple daily habit, or choose a
+                status action when you only want to check your current state.
+              </p>
+            </div>
+          </article>
+          <article class="doc-step">
+            <span class="doc-step-icon bell-doc-icon" aria-hidden="true"></span>
+            <div>
+              <span class="doc-step-number">3</span>
+              <h2>Decide how it runs</h2>
+              <p>
+                For automatic routines, keep Ask Before Running on until you are
+                comfortable with the result. You can change this any time in
+                Shortcuts.
+              </p>
+            </div>
+          </article>
+        </section>
 
-      <h2>Privacy</h2>
-      <p>
-        URL actions can be called by other apps on your device. Disable URL
-        writes in Sunclub Settings -> Connect Shortcuts if background links
-        should not log sunscreen, reapply, update reminders, change supported
-        toggles, import Activity sharing invites, or open Activity sharing for
-        Message-first reminders.
-      </p>
+        <aside class="doc-tip">
+          <strong>Privacy note</strong>
+          <p>
+            Shortcut actions run on your device using the settings you choose in
+            Sunclub. You can turn automation writes off in Sunclub Settings.
+          </p>
+        </aside>
 
-      <h2>Help</h2>
-      <p>
-        For automation support, email
-        <a href="mailto:support@mail.sunclub.peyton.app"
-          >support@mail.sunclub.peyton.app</a
-        >. Privacy questions go to
-        <a href="mailto:privacy@mail.sunclub.peyton.app"
-          >privacy@mail.sunclub.peyton.app</a
-        >. Security reports go to
-        <a href="mailto:security@mail.sunclub.peyton.app"
-          >security@mail.sunclub.peyton.app</a
-        >. General questions go to
-        <a href="mailto:contact@mail.sunclub.peyton.app"
-          >contact@mail.sunclub.peyton.app</a
-        >.
-      </p>
+        <section class="doc-legal">
+          <h2>Help</h2>
+          <p>
+            For Shortcuts support, email
+            <a href="mailto:support@mail.sunclub.peyton.app"
+              >support@mail.sunclub.peyton.app</a
+            >. Privacy questions go to
+            <a href="mailto:privacy@mail.sunclub.peyton.app"
+              >privacy@mail.sunclub.peyton.app</a
+            >. Security reports go to
+            <a href="mailto:security@mail.sunclub.peyton.app"
+              >security@mail.sunclub.peyton.app</a
+            >.
+          </p>
+        </section>
+      </article>
     </main>
 
     <footer class="site-footer">
