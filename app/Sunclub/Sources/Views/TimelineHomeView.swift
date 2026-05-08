@@ -119,15 +119,121 @@ private struct TimelineHomePresentation {
     }
 }
 
+struct TimelineScrubCalculator: Equatable {
+    static let defaultDayStride: CGFloat = 68
+
+    let visibleDays: [Date]
+    let calendar: Calendar
+    let dayStride: CGFloat
+
+    init(
+        visibleDays: [Date],
+        calendar: Calendar = .current,
+        dayStride: CGFloat = Self.defaultDayStride
+    ) {
+        self.visibleDays = visibleDays.map { calendar.startOfDay(for: $0) }
+        self.calendar = calendar
+        self.dayStride = dayStride
+    }
+
+    func index(for day: Date) -> Int? {
+        let normalized = calendar.startOfDay(for: day)
+        return visibleDays.firstIndex(of: normalized)
+    }
+
+    func selectedDay(startDay: Date, translation: CGFloat) -> Date? {
+        guard let startIndex = index(for: startDay) else {
+            return nil
+        }
+        return visibleDays[selectedIndex(startIndex: startIndex, translation: translation)]
+    }
+
+    func selectedIndex(startIndex: Int, translation: CGFloat) -> Int {
+        guard !visibleDays.isEmpty else {
+            return 0
+        }
+        let projected = CGFloat(startIndex) - (translation / dayStride)
+        let rounded = Int(projected.rounded())
+        return min(max(rounded, visibleDays.startIndex), visibleDays.index(before: visibleDays.endIndex))
+    }
+
+    func scrubOffset(startIndex: Int, translation: CGFloat) -> CGFloat {
+        guard !visibleDays.isEmpty else {
+            return 0
+        }
+        let minIndex = CGFloat(visibleDays.startIndex)
+        let maxIndex = CGFloat(visibleDays.index(before: visibleDays.endIndex))
+        let projected = CGFloat(startIndex) - (translation / dayStride)
+        let bounded = min(max(projected, minIndex), maxIndex)
+        let boundedTranslation = (CGFloat(startIndex) - bounded) * dayStride
+        let overflow = translation - boundedTranslation
+
+        guard overflow != 0 else {
+            return translation
+        }
+        return boundedTranslation + Self.rubberBand(overflow, dimension: dayStride * 2.5)
+    }
+
+    static func rubberBand(_ overflow: CGFloat, dimension: CGFloat) -> CGFloat {
+        guard overflow != 0, dimension > 0 else {
+            return 0
+        }
+        let magnitude = abs(overflow)
+        let banded = (dimension * magnitude) / (dimension + magnitude)
+        return overflow < 0 ? -banded : banded
+    }
+}
+
+enum TimelineScrubAxis: Equatable {
+    case horizontal
+    case vertical
+}
+
+struct TimelineScrubGestureClassifier: Equatable {
+    let minimumDistance: CGFloat
+    let horizontalDominance: CGFloat
+
+    init(minimumDistance: CGFloat = 18, horizontalDominance: CGFloat = 1.35) {
+        self.minimumDistance = minimumDistance
+        self.horizontalDominance = horizontalDominance
+    }
+
+    func axis(current: TimelineScrubAxis?, translation: CGSize) -> TimelineScrubAxis? {
+        if let current {
+            return current
+        }
+
+        let horizontal = abs(translation.width)
+        let vertical = abs(translation.height)
+        guard max(horizontal, vertical) >= minimumDistance else {
+            return nil
+        }
+
+        if horizontal >= vertical * horizontalDominance {
+            return .horizontal
+        }
+        if vertical >= horizontal {
+            return .vertical
+        }
+        return nil
+    }
+}
+
 struct TimelineHomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var feedbackTrigger = 0
     @State private var midnightTimer: Timer?
-    @State private var contentScrollTargetDay: Date?
+    @State private var bodyScrubStartDay: Date?
+    @State private var bodyScrubAxis: TimelineScrubAxis?
+    @State private var bodyScrubOffset: CGFloat = 0
+    @State private var isBodyScrubbing = false
+
+    private let bodyScrubClassifier = TimelineScrubGestureClassifier()
 
     var body: some View {
         let sharedPresentation = TimelineHomeSharedPresentation(appState: appState)
@@ -139,12 +245,11 @@ struct TimelineHomeView: View {
 
                 timelineSelector(for: presentation, selectedDay: selectedTimelineDayBinding)
 
-                timelineContentPager(for: presentation, shared: sharedPresentation)
+                timelineContent(for: presentation)
             }
             .contentShape(Rectangle())
         }
         .onAppear {
-            syncContentScrollTarget(to: presentation.selectedDay, animated: false)
             refresh()
             scheduleMidnightRefresh()
         }
@@ -160,23 +265,6 @@ struct TimelineHomeView: View {
             }
             refresh()
         }
-        .onChange(of: appState.selectedDay) { _, newValue in
-            syncContentScrollTarget(to: newValue, animated: true)
-        }
-        .onChange(of: contentScrollTargetDay) { _, newValue in
-            guard let newValue else {
-                return
-            }
-            let clamped = appState.timelineClampedDay(newValue)
-            if !Calendar.current.isDate(clamped, inSameDayAs: newValue) {
-                contentScrollTargetDay = clamped
-                return
-            }
-            guard !Calendar.current.isDate(appState.selectedDay, inSameDayAs: clamped) else {
-                return
-            }
-            appState.selectTimelineDay(clamped)
-        }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -186,79 +274,43 @@ struct TimelineHomeView: View {
             get: { appState.selectedDay },
             set: { newValue in
                 appState.selectTimelineDay(newValue)
-                syncContentScrollTarget(to: appState.selectedDay, animated: true)
             }
         )
     }
 
-    private func timelineContentPager(
-        for presentation: TimelineHomePresentation,
-        shared: TimelineHomeSharedPresentation
-    ) -> some View {
-        let activePagePresentations = activePagePresentations(for: presentation, shared: shared)
-        return ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: 0) {
-                ForEach(presentation.visibleDays, id: \.self) { day in
-                    let dayStart = Calendar.current.startOfDay(for: day)
-                    let isSelectedPage = Calendar.current.isDate(dayStart, inSameDayAs: presentation.selectedDay)
-                    if let pagePresentation = activePagePresentations[dayStart] {
-                        timelineContentPage(
-                            for: pagePresentation,
-                            isSelectedPage: isSelectedPage
-                        )
-                        .containerRelativeFrame(.horizontal)
-                        .id(dayStart)
-                        .accessibilityElement(children: isSelectedPage ? .contain : .ignore)
-                        .accessibilityHidden(!isSelectedPage)
-                        .allowsHitTesting(isSelectedPage)
-                    } else {
-                        Color.clear
-                            .containerRelativeFrame(.horizontal)
-                            .id(dayStart)
-                            .accessibilityHidden(true)
-                            .allowsHitTesting(false)
-                    }
+    private func timelineContent(for presentation: TimelineHomePresentation) -> some View {
+        bodyScrubSurface(for: presentation) {
+            timelineContentPage(
+                for: presentation,
+                isSelectedPage: true
+            )
+            .overlay {
+                if RuntimeEnvironment.isUITesting {
+                    Color.clear
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Timeline content scrub area")
+                        .accessibilityIdentifier("timeline.contentPager")
+                        .allowsHitTesting(false)
                 }
             }
-            .scrollTargetLayout()
         }
-        .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-        .scrollPosition(id: $contentScrollTargetDay, anchor: .center)
-        .scrollBounceBehavior(.always, axes: .horizontal)
-        .scrollClipDisabled()
-        .accessibilityIdentifier("timeline.contentPager")
     }
 
-    private func activePagePresentations(
+    @ViewBuilder
+    private func bodyScrubSurface<Content: View>(
         for presentation: TimelineHomePresentation,
-        shared: TimelineHomeSharedPresentation
-    ) -> [Date: TimelineHomePresentation] {
-        Dictionary(uniqueKeysWithValues: activeContentDays(for: presentation).map { day in
-            (
-                day,
-                TimelineHomePresentation(
-                    appState: appState,
-                    selectedDay: day,
-                    shared: shared
-                )
-            )
-        })
-    }
-
-    private func activeContentDays(for presentation: TimelineHomePresentation) -> Set<Date> {
-        let calendar = Calendar.current
-        let visibleDays = presentation.visibleDays.map { calendar.startOfDay(for: $0) }
-        let selectedDay = calendar.startOfDay(for: presentation.selectedDay)
-        guard !visibleDays.isEmpty else {
-            return [selectedDay]
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let surface = ZStack(alignment: .topLeading) {
+            content()
         }
-        guard let selectedIndex = visibleDays.firstIndex(of: selectedDay) else {
-            return [selectedDay]
-        }
+        .contentShape(Rectangle())
 
-        let lowerBound = max(visibleDays.startIndex, selectedIndex - 1)
-        let upperBound = min(visibleDays.index(before: visibleDays.endIndex), selectedIndex + 1)
-        return Set(visibleDays[lowerBound...upperBound])
+        if isBodyScrubAvailable(for: presentation) {
+            surface.highPriorityGesture(bodyScrubGesture(for: presentation), including: .all)
+        } else {
+            surface
+        }
     }
 
     private func timelineContentPage(
@@ -267,15 +319,19 @@ struct TimelineHomeView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             if presentation.logSummary.category == .future {
-                TimelineTodayStatusCard(
-                    presentation: presentation,
-                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
+                bodyScrubSurface(for: presentation) {
+                    TimelineTodayStatusCard(
+                        presentation: presentation,
+                        accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
+                            for: presentation,
+                            isSelectedPage: isSelectedPage
+                        )
                     )
-                )
+                }
 
-                futureDayActions(for: presentation, isSelectedPage: isSelectedPage)
+                bodyScrubSurface(for: presentation) {
+                    futureDayActions(for: presentation, isSelectedPage: isSelectedPage)
+                }
             } else {
                 todayProductStack(for: presentation, isSelectedPage: isSelectedPage)
             }
@@ -293,20 +349,113 @@ struct TimelineHomeView: View {
 
             attentionBanners(for: presentation, isSelectedPage: isSelectedPage)
 
-            TimelineLogSection(
-                summary: presentation.logSummary,
-                uvForecast: presentation.uvForecast,
-                weatherAttribution: presentation.weatherAttribution,
-                currentStreak: presentation.currentStreak,
-                longestStreak: presentation.longestStreak,
-                accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
-                    for: presentation,
-                    isSelectedPage: isSelectedPage
+            bodyScrubSurface(for: presentation) {
+                TimelineLogSection(
+                    summary: presentation.logSummary,
+                    uvForecast: presentation.uvForecast,
+                    weatherAttribution: presentation.weatherAttribution,
+                    currentStreak: presentation.currentStreak,
+                    longestStreak: presentation.longestStreak,
+                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
+                        for: presentation,
+                        isSelectedPage: isSelectedPage
+                    )
                 )
-            )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 1)
+    }
+
+    private func bodyScrubGesture(for presentation: TimelineHomePresentation) -> some Gesture {
+        DragGesture(minimumDistance: 18, coordinateSpace: .local)
+            .onChanged { value in
+                updateBodyScrub(value, presentation: presentation)
+            }
+            .onEnded { value in
+                finishBodyScrub(value, presentation: presentation)
+            }
+    }
+
+    private func updateBodyScrub(
+        _ value: DragGesture.Value,
+        presentation: TimelineHomePresentation
+    ) {
+        guard isBodyScrubAvailable(for: presentation) else {
+            return
+        }
+
+        let axis = bodyScrubClassifier.axis(current: bodyScrubAxis, translation: value.translation)
+        bodyScrubAxis = axis
+        guard axis == .horizontal else {
+            return
+        }
+
+        if bodyScrubStartDay == nil {
+            bodyScrubStartDay = presentation.selectedDay
+        }
+        isBodyScrubbing = true
+
+        let calculator = TimelineScrubCalculator(visibleDays: presentation.visibleDays)
+        let startDay = bodyScrubStartDay ?? presentation.selectedDay
+        guard let startIndex = calculator.index(for: startDay),
+              let selectedDay = calculator.selectedDay(
+                startDay: startDay,
+                translation: value.translation.width
+              ) else {
+            return
+        }
+
+        bodyScrubOffset = calculator.scrubOffset(
+            startIndex: startIndex,
+            translation: value.translation.width
+        )
+
+        guard !Calendar.current.isDate(selectedDay, inSameDayAs: appState.selectedDay) else {
+            return
+        }
+        appState.selectTimelineDay(selectedDay)
+    }
+
+    private func finishBodyScrub(
+        _ value: DragGesture.Value,
+        presentation: TimelineHomePresentation
+    ) {
+        defer {
+            settleBodyScrub()
+        }
+        guard isBodyScrubAvailable(for: presentation) else {
+            return
+        }
+
+        let axis = bodyScrubClassifier.axis(current: bodyScrubAxis, translation: value.translation)
+        bodyScrubAxis = axis
+        guard axis == .horizontal else {
+            return
+        }
+
+        let calculator = TimelineScrubCalculator(visibleDays: presentation.visibleDays)
+        let startDay = bodyScrubStartDay ?? presentation.selectedDay
+        guard let targetDay = calculator.selectedDay(
+            startDay: startDay,
+            translation: value.predictedEndTranslation.width
+        ) else {
+            return
+        }
+        appState.selectTimelineDay(targetDay)
+    }
+
+    private func isBodyScrubAvailable(for presentation: TimelineHomePresentation) -> Bool {
+        !dynamicTypeSize.isAccessibilitySize && presentation.visibleDays.count > 1
+    }
+
+    private func settleBodyScrub() {
+        bodyScrubStartDay = nil
+        bodyScrubAxis = nil
+        isBodyScrubbing = false
+        withAnimation(SunMotion.easeInOut(duration: 0.24, reduceMotion: reduceMotion)) {
+            bodyScrubOffset = 0
+        }
     }
 
     private func accessibilityIdentifierSuffix(
@@ -396,11 +545,17 @@ struct TimelineHomeView: View {
         isSelectedPage: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            uvContextCard(for: presentation, isSelectedPage: isSelectedPage)
+            bodyScrubSurface(for: presentation) {
+                uvContextCard(for: presentation, isSelectedPage: isSelectedPage)
+            }
 
-            sunscreenLogSummaryButton(for: presentation, isSelectedPage: isSelectedPage)
+            bodyScrubSurface(for: presentation) {
+                sunscreenLogSummaryButton(for: presentation, isSelectedPage: isSelectedPage)
+            }
 
-            todayUVForecastCard(for: presentation, isSelectedPage: isSelectedPage)
+            bodyScrubSurface(for: presentation) {
+                todayUVForecastCard(for: presentation, isSelectedPage: isSelectedPage)
+            }
         }
     }
 
@@ -767,7 +922,9 @@ struct TimelineHomeView: View {
                 forecastUVLevels: presentation.forecastUVLevels,
                 extrasDays: presentation.extrasDays,
                 logDetails: presentation.logDetails,
-                allowsFuture: presentation.allowsFuture
+                allowsFuture: presentation.allowsFuture,
+                scrubOffset: bodyScrubOffset,
+                isExternalScrubbing: isBodyScrubbing
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -927,20 +1084,6 @@ struct TimelineHomeView: View {
         }
         withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
             appState.selectTimelineDay(appState.referenceDate)
-        }
-    }
-
-    private func syncContentScrollTarget(to day: Date, animated: Bool) {
-        let target = appState.timelineClampedDay(day)
-        guard contentScrollTargetDay != target else {
-            return
-        }
-        if animated {
-            withAnimation(SunMotion.easeInOut(duration: 0.24, reduceMotion: reduceMotion)) {
-                contentScrollTargetDay = target
-            }
-        } else {
-            contentScrollTargetDay = target
         }
     }
 

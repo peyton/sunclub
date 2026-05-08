@@ -1023,14 +1023,15 @@ final class SunclubUITests: XCTestCase {
         let swipeSurface = app.descendants(matching: .any)["home.uvForecastExposureCard"]
         XCTAssertTrue(swipeSurface.waitForExistence(timeout: 5))
 
-        swipeSurface.swipeLeft()
-        XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 1), on: headline))
+        dragTimelineBody(swipeSurface, direction: .future)
+        XCTAssertTrue(waitForLabelNotPrefix("Today,", on: headline))
+        XCTAssertTrue(app.buttons["timeline.backToToday"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["home.uvIndexCard"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
 
         let futureSwipeSurface = app.descendants(matching: .any)["timeline.contentPager"]
         XCTAssertTrue(futureSwipeSurface.waitForExistence(timeout: 5))
-        futureSwipeSurface.swipeRight()
+        dragTimelineBody(futureSwipeSurface, direction: .past)
         XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
     }
 
@@ -1050,8 +1051,8 @@ final class SunclubUITests: XCTestCase {
 
         let pager = app.descendants(matching: .any)["timeline.contentPager"]
         XCTAssertTrue(pager.waitForExistence(timeout: 5))
-        pager.swipeLeft()
-        pager.swipeLeft()
+        dragTimelineBody(pager, direction: .future)
+        dragTimelineBody(pager, direction: .future)
 
         XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 6), on: headline, timeout: 2))
         XCTAssertFalse(waitForLabel(weekdayHeadline(offset: 7), on: headline, timeout: 1))
@@ -1253,6 +1254,13 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    private func waitForLabelNotPrefix(_ prefix: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "NOT label BEGINSWITH %@", prefix)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
     private func assertInsightsVisible(
         in app: XCUIApplication,
         file: StaticString = #filePath,
@@ -1376,6 +1384,15 @@ final class SunclubUITests: XCTestCase {
         let endX: CGFloat = direction == .future ? 0.18 : 0.82
         let start = strip.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: 0.5))
         let end = strip.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    private func dragTimelineBody(_ body: XCUIElement, direction: TimelineDayScrollDirection) {
+        let startX: CGFloat = direction == .future ? 0.82 : 0.18
+        let endX: CGFloat = direction == .future ? 0.18 : 0.82
+        let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: 0.12))
+        let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: 0.12))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
