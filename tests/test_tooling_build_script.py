@@ -792,6 +792,90 @@ exit 0
     assert attempt_log.read_text().splitlines() == ["attempt"]
 
 
+def test_test_ios_script_retries_signal_kill_launch_failure(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    workspace_dir = repo_root / "app" / "Sunclub.xcworkspace"
+    workspace_dir.mkdir(parents=True)
+    (workspace_dir / "contents.xcworkspacedata").write_text("stale workspace")
+
+    for script_name in ("test_ios.sh", "common.sh", "sunclub.env"):
+        _copy_tooling_script(repo_root, script_name)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    attempt_log = tmp_path / "xcodebuild-attempts.log"
+
+    _write_executable(
+        bin_dir / "xcodebuild",
+        """#!/bin/sh
+if [ "$1" = "-version" ]; then
+  printf 'Xcode 26.5 Beta\\nBuild version 17F5012f\\n'
+  exit 0
+fi
+if [ "$1" = "-list" ]; then
+  cat <<'EOF'
+Information about workspace "Sunclub":
+    Schemes:
+        Sunclub
+EOF
+  exit 0
+fi
+exit 1
+""",
+    )
+    _write_executable(
+        bin_dir / "xcrun",
+        """#!/bin/sh
+exit 0
+""",
+    )
+    _write_executable(
+        bin_dir / "mise",
+        f"""#!/bin/sh
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "uv" ] && [ "$4" = "run" ] && [ "$5" = "python" ] && [ "$6" = "-m" ] && [ "$7" = "scripts.resolve_simulator" ]; then
+  printf 'SIM-UDID\n'
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  printf 'attempt\\n' >> {shlex.quote(str(attempt_log))}
+  if [ "$(wc -l < {shlex.quote(str(attempt_log))})" -lt 2 ]; then
+    cat <<'EOF'
+Sunclub encountered an error (Early unexpected exit, operation never finished bootstrapping - no restart will be attempted. (Underlying Error: Test crashed with signal kill before establishing connection.))
+EOF
+    exit 65
+  fi
+  exit 0
+fi
+exit 0
+""",
+    )
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["TEST_XCODEBUILD_MAX_ATTEMPTS"] = "2"
+
+    subprocess.run(
+        [
+            "bash",
+            str(repo_root / "scripts" / "tooling" / "test_ios.sh"),
+            "--suite",
+            "unit",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+
+    assert attempt_log.read_text().splitlines() == ["attempt", "attempt"]
+
+
 def test_build_script_ignores_tuist_share_failures(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     (repo_root / "app").mkdir(parents=True)

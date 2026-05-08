@@ -62,7 +62,7 @@ reset_test_simulator() {
 
 is_simulator_launch_error() {
   grep -Eq \
-    'CoreSimulatorService|Mach error -308|Invalid device state|Failed to install or launch the test runner|Test crashed with signal term|Simulator device failed to launch|FBSOpenApplicationServiceErrorDomain|Application info provider .* returned nil' \
+    'CoreSimulatorService|Mach error -308|Invalid device state|Failed to install or launch the test runner|Test crashed with signal (kill|term)|Simulator device failed to launch|FBSOpenApplicationServiceErrorDomain|Application info provider .* returned nil' \
     "$xcodebuild_log_path"
 }
 

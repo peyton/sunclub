@@ -15,6 +15,8 @@ struct SunDayStrip: View {
     let extrasDays: Set<Date>
     let logDetails: [Date: SunDayDetails]
     let allowsFuture: Bool
+    let scrubOffset: CGFloat
+    let isExternalScrubbing: Bool
 
     private let calendar = Calendar.current
     private let columnWidth: CGFloat = 60
@@ -39,47 +41,62 @@ struct SunDayStrip: View {
 
     private var stripScrollView: some View {
         GeometryReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: columnSpacing) {
-                    ForEach(visibleDays, id: \.self) { day in
-                        dayColumn(for: day)
-                            .id(day)
+            ZStack(alignment: .top) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: columnSpacing) {
+                        ForEach(visibleDays, id: \.self) { day in
+                            dayColumn(for: day)
+                                .id(day)
+                        }
+                    }
+                    .offset(x: scrubOffset)
+                    .transaction { transaction in
+                        if isExternalScrubbing {
+                            transaction.animation = nil
+                        }
+                    }
+                    .scrollTargetLayout()
+                    .padding(.vertical, 6)
+                }
+                .contentMargins(
+                    .horizontal,
+                    max(0, (proxy.size.width - columnWidth) / 2),
+                    for: .scrollContent
+                )
+                .scrollTargetBehavior(.viewAligned)
+                .scrollPosition(id: $scrollTargetDay, anchor: .center)
+                .scrollBounceBehavior(.always, axes: .horizontal)
+                .scrollClipDisabled()
+                .onAppear {
+                    syncScrollTarget(to: selectedDay, animated: false)
+                }
+                .onChange(of: selectedDay) { _, newValue in
+                    guard !isExternalScrubbing else {
+                        return
+                    }
+                    syncScrollTarget(to: newValue, animated: true)
+                }
+                .onChange(of: isExternalScrubbing) { _, newValue in
+                    guard !newValue else {
+                        return
+                    }
+                    syncScrollTarget(to: selectedDay, animated: true)
+                }
+                .onChange(of: scrollTargetDay) { _, newValue in
+                    guard let newValue else {
+                        return
+                    }
+                    let normalized = calendar.startOfDay(for: newValue)
+                    guard canSelect(normalized) else {
+                        syncScrollTarget(to: selectedDay, animated: true)
+                        return
+                    }
+                    if selectedDay != normalized {
+                        selectedDay = normalized
                     }
                 }
-                .scrollTargetLayout()
-                .padding(.vertical, 6)
-            }
-            .contentMargins(
-                .horizontal,
-                max(0, (proxy.size.width - columnWidth) / 2),
-                for: .scrollContent
-            )
-            .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollTargetDay, anchor: .center)
-            .scrollClipDisabled()
-            .onAppear {
-                scrollTargetDay = calendar.startOfDay(for: selectedDay)
-            }
-            .onChange(of: selectedDay) { _, newValue in
-                let normalized = calendar.startOfDay(for: newValue)
-                if scrollTargetDay != normalized {
-                    withAnimation(SunMotion.easeInOut(duration: 0.3, reduceMotion: reduceMotion)) {
-                        scrollTargetDay = normalized
-                    }
-                }
-            }
-            .onChange(of: scrollTargetDay) { _, newValue in
-                guard let newValue else {
-                    return
-                }
-                let normalized = calendar.startOfDay(for: newValue)
-                guard canSelect(normalized) else {
-                    scrollTargetDay = calendar.startOfDay(for: selectedDay)
-                    return
-                }
-                if selectedDay != normalized {
-                    selectedDay = normalized
-                }
+
+                fixedSelectionIndicator
             }
         }
         .frame(height: weekdayRowHeight + selectedChipHeight + 18)
@@ -113,31 +130,33 @@ struct SunDayStrip: View {
 
     @ViewBuilder
     private func weekdayLabel(for state: ChipState) -> some View {
-        if state.isSelected {
-            VStack(spacing: 1) {
-                SunSelectionTriangle()
-                    .fill(selectedIndicatorFill)
-                    .frame(width: 10, height: 7)
-                    .accessibilityHidden(true)
+        VStack(spacing: 1) {
+            Color.clear
+                .frame(width: 10, height: 7)
 
-                Text(state.weekdayLetter)
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 24, height: 24)
-            }
-            .frame(width: columnWidth, height: weekdayRowHeight)
-        } else {
-            VStack(spacing: 1) {
-                Color.clear
-                    .frame(width: 10, height: 7)
-
-                Text(state.weekdayLetter)
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(state.isToday ? AppPalette.ink : AppPalette.softInk)
-                    .frame(width: 24, height: 24)
-            }
-            .frame(width: columnWidth, height: weekdayRowHeight)
+            Text(state.weekdayLetter)
+                .font(AppTextStyle.captionMedium.font)
+                .foregroundStyle(weekdayColor(for: state))
+                .frame(width: 24, height: 24)
         }
+        .frame(width: columnWidth, height: weekdayRowHeight)
+    }
+
+    private var fixedSelectionIndicator: some View {
+        SunSelectionTriangle()
+            .fill(selectedIndicatorFill)
+            .frame(width: 10, height: 7)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 6)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func weekdayColor(for state: ChipState) -> Color {
+        if state.isSelected || state.isToday {
+            return AppPalette.ink
+        }
+        return AppPalette.softInk
     }
 
     private var selectedIndicatorFill: Color {
@@ -328,11 +347,26 @@ struct SunDayStrip: View {
     private func selectDay(_ day: Date) {
         let normalized = calendar.startOfDay(for: day)
         guard canSelect(normalized) else {
-            scrollTargetDay = calendar.startOfDay(for: selectedDay)
+            syncScrollTarget(to: selectedDay, animated: true)
             return
         }
         withAnimation(SunMotion.easeInOut(duration: 0.22, reduceMotion: reduceMotion)) {
             selectedDay = normalized
+        }
+    }
+
+    private func syncScrollTarget(to day: Date, animated: Bool) {
+        let normalized = calendar.startOfDay(for: day)
+        guard scrollTargetDay != normalized else {
+            return
+        }
+
+        if animated {
+            withAnimation(SunMotion.easeInOut(duration: 0.3, reduceMotion: reduceMotion)) {
+                scrollTargetDay = normalized
+            }
+        } else {
+            scrollTargetDay = normalized
         }
     }
 

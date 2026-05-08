@@ -3348,6 +3348,87 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(state.logActionErrorMessage, "Cannot log future date.")
     }
 
+    func testTimelineScrubCalculatorClampsSelectionAtVisibleBounds() throws {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date(timeIntervalSinceReferenceDate: 800_000_000))
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let calculator = TimelineScrubCalculator(
+            visibleDays: [yesterday, today, tomorrow],
+            calendar: calendar,
+            dayStride: 68
+        )
+
+        XCTAssertEqual(
+            calculator.selectedDay(startDay: today, translation: 680),
+            yesterday
+        )
+        XCTAssertEqual(
+            calculator.selectedDay(startDay: today, translation: -680),
+            tomorrow
+        )
+    }
+
+    func testTimelineScrubRubberBandDoesNotSelectBeyondForecastRange() throws {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date(timeIntervalSinceReferenceDate: 800_000_000))
+        let forecastDay = calendar.date(byAdding: .day, value: 6, to: today) ?? today
+        let calculator = TimelineScrubCalculator(
+            visibleDays: [today, forecastDay],
+            calendar: calendar,
+            dayStride: 68
+        )
+
+        let offset = calculator.scrubOffset(startIndex: 1, translation: -680)
+
+        XCTAssertEqual(
+            calculator.selectedDay(startDay: forecastDay, translation: -680),
+            forecastDay
+        )
+        XCTAssertLessThan(abs(offset), 680)
+    }
+
+    func testTimelineScrubClassifierLocksVerticalWobbleAwayFromSelection() throws {
+        let classifier = TimelineScrubGestureClassifier()
+
+        XCTAssertNil(classifier.axis(current: nil, translation: CGSize(width: 12, height: 10)))
+        XCTAssertEqual(classifier.axis(current: nil, translation: CGSize(width: 20, height: 36)), .vertical)
+        XCTAssertEqual(classifier.axis(current: .vertical, translation: CGSize(width: 80, height: 38)), .vertical)
+        XCTAssertNil(classifier.axis(current: nil, translation: CGSize(width: 28, height: 24)))
+        XCTAssertEqual(classifier.axis(current: nil, translation: CGSize(width: 42, height: 24)), .horizontal)
+    }
+
+    @MainActor
+    func testFutureLoggingRejectedAfterTimelineScrubSelectsForecastDay() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    daily: [SunclubUVDayForecast(day: tomorrow, maxIndex: 7)]
+                )
+            ),
+            clock: { referenceDate }
+        )
+        let calculator = TimelineScrubCalculator(
+            visibleDays: state.timelineVisibleDays,
+            calendar: calendar,
+            dayStride: 68
+        )
+        let scrubbedDay = try XCTUnwrap(
+            calculator.selectedDay(startDay: today, translation: -68)
+        )
+
+        state.selectTimelineDay(scrubbedDay)
+
+        XCTAssertEqual(state.selectedDay, tomorrow)
+        XCTAssertFalse(state.canLog(on: state.selectedDay))
+        XCTAssertNil(state.validatedLogDate(state.selectedDay))
+    }
+
     @MainActor
     func testTimelineForecastLevelLookupUsesRealForecastData() throws {
         let calendar = Calendar.current
