@@ -12,7 +12,7 @@ struct TimelineFooterBar: View {
             leadingItems: [
                 SunBottomNavigationItem(
                     id: "today",
-                    title: "Today",
+                    title: "Timeline",
                     systemImage: "sun.max.fill",
                     accessibilityIdentifier: "timeline.footer.today",
                     action: { router.open(.home) }

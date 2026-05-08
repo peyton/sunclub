@@ -141,18 +141,16 @@ struct TimelineHomeView: View {
 
         SunLightScreen {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                todayHeader(for: presentation)
+                topChrome
+
+                timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
 
                 if presentation.logSummary.category == .future {
-                    timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
-
                     TimelineTodayStatusCard(presentation: presentation)
 
                     futureDayActions
                 } else {
                     todayProductStack(for: presentation)
-
-                    timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
                 }
 
                 if presentation.logSummary.category == .today,
@@ -180,6 +178,8 @@ struct TimelineHomeView: View {
 
                 Spacer(minLength: 0)
             }
+            .contentShape(Rectangle())
+            .simultaneousGesture(timelineSwipeGesture(for: presentation))
         }
         .onAppear {
             refresh()
@@ -220,74 +220,37 @@ struct TimelineHomeView: View {
         .accessibilityIdentifier("timeline.backToToday")
     }
 
-    private func todayHeader(for presentation: TimelineHomePresentation) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 16) {
-                SunBrandLockup(markSize: 30)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Sunclub")
+    private var topChrome: some View {
+        HStack(alignment: .center, spacing: 16) {
+            SunBrandLockup(markSize: 30)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Sunclub")
 
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
-                Button {
-                    feedbackTrigger += 1
-                    router.open(.settings)
-                } label: {
-                    Image(systemName: "bell")
-                        .font(AppFont.rounded(size: 18, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-                        .frame(width: 44, height: 44)
-                        .background(
-                            Circle()
-                                .fill(AppPalette.elevatedCardFill.opacity(0.92))
-                                .appShadow(AppShadow.soft)
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(AppPalette.cardStroke, lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Notifications and settings")
-                .accessibilityHint("Opens app settings.")
-                .accessibilityIdentifier("home.settingsButton")
+            Button {
+                feedbackTrigger += 1
+                router.open(.settings)
+            } label: {
+                Image(systemName: "bell")
+                    .font(AppFont.rounded(size: 18, weight: .semibold))
+                    .foregroundStyle(AppPalette.ink)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(AppPalette.elevatedCardFill.opacity(0.92))
+                            .appShadow(AppShadow.soft)
+                    )
+                    .overlay {
+                        Circle()
+                            .stroke(AppPalette.cardStroke, lineWidth: 1)
+                    }
             }
-
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(headerTitle(for: presentation))
-                        .font(AppFont.rounded(size: 28, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(headerDateText(for: presentation))
-                        .font(AppTextStyle.captionMedium.font)
-                        .foregroundStyle(AppPalette.softInk)
-                }
-
-                Spacer(minLength: 0)
-
-                if presentation.logSummary.category == .today {
-                    SunLogoMark(size: 32)
-                        .frame(width: 38, height: 38)
-                }
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Notifications and settings")
+            .accessibilityHint("Opens app settings.")
+            .accessibilityIdentifier("home.settingsButton")
         }
-    }
-
-    private func headerTitle(for presentation: TimelineHomePresentation) -> String {
-        switch presentation.logSummary.category {
-        case .today:
-            return "Today"
-        case .past:
-            return presentation.selectedDay.formatted(.dateTime.weekday(.wide))
-        case .future:
-            return "Plan Ahead"
-        }
-    }
-
-    private func headerDateText(for presentation: TimelineHomePresentation) -> String {
-        presentation.selectedDay.formatted(.dateTime.month(.wide).day().year())
     }
 
     private func todayProductStack(for presentation: TimelineHomePresentation) -> some View {
@@ -296,9 +259,7 @@ struct TimelineHomeView: View {
 
             sunscreenLogSummaryButton(for: presentation)
 
-            todayExposureCard(for: presentation)
-
-            todayForecastCard(for: presentation)
+            todayUVForecastCard(for: presentation)
         }
     }
 
@@ -380,53 +341,42 @@ struct TimelineHomeView: View {
         .accessibilityHint("Opens the sunscreen log.")
     }
 
-    private func todayExposureCard(for presentation: TimelineHomePresentation) -> some View {
-        AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 9) {
+    private func todayUVForecastCard(for presentation: TimelineHomePresentation) -> some View {
+        let hours = forecastHours(for: presentation)
+        return AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Today's Sun Exposure")
+                        Text("UV Forecast")
                             .font(AppTextStyle.bodyMedium.font)
                             .foregroundStyle(AppPalette.ink)
 
-                        Text("Forecast intensity for today")
+                        Text(uvForecastSubtitle(for: presentation))
                             .font(AppTextStyle.caption.font)
                             .foregroundStyle(AppPalette.softInk)
                     }
 
                     Spacer(minLength: 0)
 
-                    Text(peakUVText(for: presentation))
-                        .font(AppFont.rounded(size: 17, weight: .bold))
-                        .foregroundStyle(AppPalette.sun)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(peakUVText(for: presentation))
+                            .font(AppFont.rounded(size: 17, weight: .bold))
+                            .foregroundStyle(AppPalette.sun)
+
+                        Text(homeUVReading(for: presentation).sourceLabel)
+                            .font(AppTextStyle.captionMedium.font)
+                            .foregroundStyle(AppPalette.softInk)
+                    }
                 }
 
-                SunMiniBarChart(bars: chartBars(for: presentation))
+                SunMiniBarChart(bars: chartBars(for: hours))
+
+                SunForecastStrip(hours: hours)
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Today's sun exposure. \(peakUVText(for: presentation)). Forecast intensity by hour.")
-        .accessibilityIdentifier("home.sunExposureCard")
-    }
-
-    private func todayForecastCard(for presentation: TimelineHomePresentation) -> some View {
-        AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 9) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Today's Forecast")
-                        .font(AppTextStyle.bodyMedium.font)
-                        .foregroundStyle(AppPalette.ink)
-
-                    Spacer(minLength: 0)
-
-                    Text(homeUVReading(for: presentation).sourceLabel)
-                        .font(AppTextStyle.captionMedium.font)
-                        .foregroundStyle(AppPalette.softInk)
-                }
-
-                SunForecastStrip(hours: forecastHours(for: presentation))
-            }
-        }
+        .accessibilityLabel("UV forecast. \(peakUVText(for: presentation)). Hourly intensity for the selected day.")
+        .accessibilityIdentifier("home.uvForecastExposureCard")
     }
 
     private func logSummaryDetail(for presentation: TimelineHomePresentation) -> String {
@@ -543,8 +493,19 @@ struct TimelineHomeView: View {
         }
     }
 
-    private func chartBars(for presentation: TimelineHomePresentation) -> [SunChartBar] {
-        forecastHours(for: presentation).map { hour in
+    private func uvForecastSubtitle(for presentation: TimelineHomePresentation) -> String {
+        switch presentation.logSummary.category {
+        case .today:
+            return "Hourly intensity for today"
+        case .past:
+            return "Hourly context for this day"
+        case .future:
+            return "Hourly plan for this day"
+        }
+    }
+
+    private func chartBars(for hours: [SunclubUVHourForecast]) -> [SunChartBar] {
+        hours.map { hour in
             SunChartBar(
                 label: hour.date.formatted(.dateTime.hour()),
                 value: hour.index,
@@ -749,6 +710,42 @@ struct TimelineHomeView: View {
         }
         withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
             appState.selectDay(appState.referenceDate)
+        }
+    }
+
+    private func timelineSwipeGesture(for presentation: TimelineHomePresentation) -> some Gesture {
+        DragGesture(minimumDistance: 36)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(horizontal) >= 52, abs(horizontal) > abs(vertical) * 1.4 else {
+                    return
+                }
+
+                let offset = horizontal < 0 ? 1 : -1
+                moveTimelineSelection(by: offset, within: presentation)
+            }
+    }
+
+    private func moveTimelineSelection(by offset: Int, within presentation: TimelineHomePresentation) {
+        let calendar = Calendar.current
+        let currentDay = calendar.startOfDay(for: appState.selectedDay)
+        guard let target = calendar.date(byAdding: .day, value: offset, to: currentDay) else {
+            return
+        }
+
+        let targetDay = calendar.startOfDay(for: target)
+        let today = calendar.startOfDay(for: presentation.today)
+        guard presentation.allowsFuture || targetDay <= today else {
+            return
+        }
+        guard presentation.visibleDays.contains(targetDay) else {
+            return
+        }
+
+        feedbackTrigger += 1
+        withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
+            appState.selectDay(targetDay)
         }
     }
 
