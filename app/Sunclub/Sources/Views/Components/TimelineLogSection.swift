@@ -8,6 +8,7 @@ struct TimelineLogSection: View {
     let weatherAttribution: SunclubWeatherAttribution?
     let currentStreak: Int
     let longestStreak: Int
+    let accessibilityIdentifierSuffix: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -48,7 +49,7 @@ struct TimelineLogSection: View {
             .font(AppFont.rounded(size: 15, weight: .semibold))
             .foregroundStyle(AppPalette.pool)
             .buttonStyle(.plain)
-            .accessibilityIdentifier("timeline.forecast.history")
+            .accessibilityIdentifier(identifier("timeline.forecast.history"))
             .accessibilityHint("Opens your full calendar history.")
         }
     }
@@ -62,7 +63,10 @@ struct TimelineLogSection: View {
     }
 
     static func attributionSourceLabel(forDisplayedSourceLabels sourceLabels: [String]) -> String? {
-        sourceLabels.first { $0 == UVReadingSource.weatherKit.forecastLabel }
+        sourceLabels.contains { sourceLabel in
+            sourceLabel == UVReadingSource.weatherKit.forecastLabel
+                || sourceLabel == UVReadingSource.weatherKit.hourlySourceLabel
+        } ? UVReadingSource.weatherKit.forecastLabel : nil
     }
 
     private var forecastBlockGroup: some View {
@@ -100,12 +104,14 @@ struct TimelineLogSection: View {
     private var forecastBlocks: [TimelineUVForecastBlock] {
         let hasNightLog = summary.record?.isLogged(in: .night) ?? false
         let dayParts = hasNightLog ? DayPart.standardLogParts + [.night] : DayPart.standardLogParts
-        return dayParts.map { forecastBlock(for: $0) }
+        return dayParts.compactMap { forecastBlock(for: $0) }
     }
 
-    private func forecastBlock(for dayPart: DayPart) -> TimelineUVForecastBlock {
+    private func forecastBlock(for dayPart: DayPart) -> TimelineUVForecastBlock? {
         let hours = forecastHours(for: dayPart)
-        let peakHour = hours.max(by: { $0.index < $1.index }) ?? fallbackForecastHour(for: dayPart)
+        guard let peakHour = hours.max(by: { $0.index < $1.index }) ?? fallbackForecastHour(for: dayPart) else {
+            return nil
+        }
         return TimelineUVForecastBlock(
             dayPart: dayPart,
             timeRange: timeRange(for: dayPart),
@@ -127,13 +133,21 @@ struct TimelineLogSection: View {
             return liveOrCachedHours
         }
 
+        if summary.category == .future {
+            return []
+        }
+
         return dayPart.forecastHours.compactMap { hour in
             estimatedForecastHour(on: selectedDay, hour: hour)
         }
     }
 
-    private func fallbackForecastHour(for dayPart: DayPart) -> SunclubUVHourForecast {
-        estimatedForecastHour(
+    private func fallbackForecastHour(for dayPart: DayPart) -> SunclubUVHourForecast? {
+        if summary.category == .future {
+            return nil
+        }
+
+        return estimatedForecastHour(
             on: Calendar.current.startOfDay(for: summary.day),
             hour: dayPart.defaultHour
         ) ?? SunclubUVHourForecast(
@@ -217,7 +231,7 @@ struct TimelineLogSection: View {
         .accessibilityValue(
             forecastAccessibilityValue(for: block, status: status)
         )
-        .accessibilityIdentifier("timeline.forecast.part.\(block.dayPart.rawValue)")
+        .accessibilityIdentifier(identifier("timeline.forecast.part.\(block.dayPart.rawValue)"))
     }
 
     private func forecastAccessibilityValue(
@@ -254,7 +268,7 @@ struct TimelineLogSection: View {
         .padding(16)
         .sunGlassCard(cornerRadius: 16)
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("timeline.futurePlan")
+        .accessibilityIdentifier(identifier("timeline.futurePlan"))
     }
 
     private var weekHighlight: some View {
@@ -286,7 +300,14 @@ struct TimelineLogSection: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Daily log")
         .accessibilityValue(detail)
-        .accessibilityIdentifier("timeline.highlights.dailyLog")
+        .accessibilityIdentifier(identifier("timeline.highlights.dailyLog"))
+    }
+
+    private func identifier(_ base: String) -> String {
+        guard let accessibilityIdentifierSuffix else {
+            return base
+        }
+        return "\(base).\(accessibilityIdentifierSuffix)"
     }
 }
 

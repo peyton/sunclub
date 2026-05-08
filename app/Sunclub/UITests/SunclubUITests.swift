@@ -948,15 +948,16 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
             || app.staticTexts["home.todayStatus"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
+        XCTAssertTrue(app.staticTexts["Log"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
     }
 
     @MainActor
     func testTimelineFutureDayShowsTomorrowForecast() throws {
-        let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=13:00"])
+        let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
         let tomorrowChip = timelineDayChip(tomorrowIdentifier, in: app, direction: .future)
         XCTAssertTrue(tomorrowChip.exists)
@@ -966,7 +967,10 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(headline.waitForExistence(timeout: 3))
         XCTAssertEqual(headline.label, weekdayHeadline(offset: 1))
         XCTAssertTrue(app.staticTexts["UV Forecast"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
         XCTAssertTrue(app.buttons["timeline.backToToday"].exists)
 
         headline.tap()
@@ -974,8 +978,26 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testTimelineAccessibilityTextCanBrowseFutureForecast() throws {
+        let app = launchTimelineHome(additionalArguments: accessibilityScorecardArguments + liveTimelineForecastArguments)
+        let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
+        let tomorrowRow = app.buttons[tomorrowIdentifier]
+
+        XCTAssertTrue(tomorrowRow.waitForExistence(timeout: 5))
+        tomorrowRow.tap()
+
+        let headline = timelineHeadline(in: app)
+        XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 1), on: headline))
+        XCTAssertTrue(app.buttons["timeline.backToToday"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
+    }
+
+    @MainActor
     func testTimelineScreenSwipeMovesSelectedDay() throws {
-        let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=13:00"])
+        let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         let headline = timelineHeadline(in: app)
         XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
@@ -984,11 +1006,28 @@ final class SunclubUITests: XCTestCase {
 
         swipeSurface.swipeLeft()
         XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 1), on: headline))
+        XCTAssertFalse(app.buttons["home.uvIndexCard"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
 
-        let futureSwipeSurface = app.buttons["timeline.backToToday"]
+        let futureSwipeSurface = app.descendants(matching: .any)["timeline.contentPager"]
         XCTAssertTrue(futureSwipeSurface.waitForExistence(timeout: 5))
         futureSwipeSurface.swipeRight()
         XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
+    }
+
+    @MainActor
+    func testTimelineFutureScrollStopsAtLastForecastDay() throws {
+        let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
+        let lastForecastIdentifier = "timeline.day.\(dayIdentifier(offset: 6))"
+        let beyondForecastIdentifier = "timeline.day.\(dayIdentifier(offset: 7))"
+        let lastForecastChip = timelineDayChip(lastForecastIdentifier, in: app, direction: .future)
+
+        XCTAssertTrue(lastForecastChip.exists)
+        XCTAssertFalse(app.descendants(matching: .any)[beyondForecastIdentifier].exists)
+
+        let headline = timelineHeadline(in: app)
+        lastForecastChip.swipeLeft()
+        XCTAssertFalse(waitForLabel(weekdayHeadline(offset: 7), on: headline, timeout: 1))
     }
 
     @MainActor
@@ -1002,6 +1041,10 @@ final class SunclubUITests: XCTestCase {
         let headline = timelineHeadline(in: app)
         XCTAssertTrue(headline.waitForExistence(timeout: 3))
         XCTAssertEqual(headline.label, weekdayHeadline(offset: -1))
+        let selectedStatus = app.staticTexts["timeline.dayStatus"]
+        XCTAssertTrue(selectedStatus.waitForExistence(timeout: 3))
+        XCTAssertEqual(selectedStatus.label, "No sunscreen logged")
+        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 3))
         app.buttons["home.logManually"].tap()
 
@@ -1052,6 +1095,16 @@ final class SunclubUITests: XCTestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING"] + additionalArguments
         app.launch()
         return app
+    }
+
+    private var liveTimelineForecastArguments: [String] {
+        [
+            "UITEST_CURRENT_TIME=13:00",
+            "UITEST_LIVE_UV_ENABLED",
+            "UITEST_LIVE_UV_AUTH=always",
+            "UITEST_LIVE_UV_INDEX=7",
+            "UITEST_LIVE_UV_PEAK_INDEX=10"
+        ]
     }
 
     private var accessibilityScorecardArguments: [String] {
@@ -1243,10 +1296,27 @@ final class SunclubUITests: XCTestCase {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
+        let dateText: String
         if calendar.isDate(day, equalTo: today, toGranularity: .year) {
-            return day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+            dateText = day.formatted(.dateTime.month(.wide).day())
+        } else {
+            dateText = day.formatted(.dateTime.month(.wide).day().year())
         }
-        return day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+
+        switch offset {
+        case -1:
+            return "Yesterday, \(dateText)"
+        case 0:
+            return "Today, \(dateText)"
+        case 1:
+            return "Tomorrow, \(dateText)"
+        case let days where days > 1:
+            return "In \(days) days, \(dateText)"
+        case let days where days < -1:
+            return "\(abs(days)) days ago, \(dateText)"
+        default:
+            return day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+        }
     }
 
     @MainActor

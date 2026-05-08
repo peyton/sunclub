@@ -3183,12 +3183,21 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     func testFutureDayPreviewReturnsSuggestionForTomorrow() throws {
-        let appState = try makeAppState()
-        let tomorrow = Calendar.current.date(
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(
             byAdding: .day,
             value: 1,
-            to: Calendar.current.startOfDay(for: Date())
+            to: today
         ) ?? Date()
+        let appState = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(generatedAt: today, daily: [
+                    SunclubUVDayForecast(day: tomorrow, maxIndex: 7)
+                ])
+            )
+        )
+
         let preview = appState.futureDayPreview(for: tomorrow)
         XCTAssertNotNil(preview)
         XCTAssertGreaterThanOrEqual(preview?.suggestedSPF ?? 0, 15)
@@ -3197,17 +3206,244 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     func testTimelineDayLogSummaryFutureCategoryForTomorrow() throws {
-        let appState = try makeAppState()
-        let tomorrow = Calendar.current.date(
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(
             byAdding: .day,
             value: 1,
-            to: Calendar.current.startOfDay(for: Date())
+            to: today
         ) ?? Date()
+        let appState = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(generatedAt: today, daily: [
+                    SunclubUVDayForecast(day: tomorrow, maxIndex: 7)
+                ])
+            )
+        )
+
         let summary = appState.timelineDayLogSummary(for: tomorrow)
         XCTAssertEqual(summary.category, .future)
         XCTAssertNil(summary.record)
         XCTAssertNotNil(summary.futurePreview)
         XCTAssertTrue(summary.sunscreenStatusText.contains("Plan SPF"))
+    }
+
+    @MainActor
+    func testTimelineBoundsEndsAtLastForecastDay() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let dailyForecastDay = calendar.date(byAdding: .day, value: 2, to: today) ?? today
+        let hourlyForecastDay = calendar.date(byAdding: .day, value: 75, to: today) ?? today
+        let gapFutureDay = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let hour = calendar.date(bySettingHour: 11, minute: 0, second: 0, of: hourlyForecastDay) ?? hourlyForecastDay
+        let afterForecast = calendar.date(byAdding: .day, value: 76, to: today) ?? today
+        let expectedStartDay = calendar.date(byAdding: .day, value: -365, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    hourly: [
+                        SunclubUVHourForecast(
+                            date: hour,
+                            index: 8,
+                            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+                        )
+                    ],
+                    daily: [
+                        SunclubUVDayForecast(day: dailyForecastDay, maxIndex: 6)
+                    ]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        XCTAssertEqual(state.timelineBounds.startDay, expectedStartDay)
+        XCTAssertEqual(state.timelineBounds.futureEndDay, hourlyForecastDay)
+        XCTAssertEqual(state.timelineVisibleDays.last, hourlyForecastDay)
+        XCTAssertFalse(state.timelineVisibleDays.contains(afterForecast))
+        XCTAssertFalse(state.timelineVisibleDays.contains(gapFutureDay))
+        XCTAssertTrue(state.timelineShowsFutureDays)
+        XCTAssertFalse(state.canSelectTimelineDay(gapFutureDay))
+        XCTAssertTrue(state.canSelectTimelineDay(dailyForecastDay))
+        XCTAssertTrue(state.canSelectTimelineDay(hourlyForecastDay))
+    }
+
+    @MainActor
+    func testTimelineBoundsClampKeepsRemainingSparseFutureForecast() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let invalidSelectedForecastDay = calendar.date(byAdding: .day, value: 2, to: today) ?? today
+        let remainingForecastDay = calendar.date(byAdding: .day, value: 6, to: today) ?? today
+        let earlierForecastDay = calendar.date(byAdding: .day, value: 2, to: today) ?? today
+        let tiedInvalidForecastDay = calendar.date(byAdding: .day, value: 4, to: today) ?? today
+        let bounds = TimelineBounds(
+            today: referenceDate,
+            forecastDays: [remainingForecastDay],
+            calendar: calendar
+        )
+        let tiedBounds = TimelineBounds(
+            today: referenceDate,
+            forecastDays: [remainingForecastDay, earlierForecastDay],
+            calendar: calendar
+        )
+
+        XCTAssertEqual(
+            bounds.clamp(invalidSelectedForecastDay, calendar: calendar),
+            remainingForecastDay
+        )
+        XCTAssertEqual(
+            tiedBounds.clamp(tiedInvalidForecastDay, calendar: calendar),
+            earlierForecastDay
+        )
+    }
+
+    @MainActor
+    func testNoFutureDaysSelectableWhenNoForecastDataBeyondToday() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    daily: [SunclubUVDayForecast(day: today, maxIndex: 6)]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        state.selectDay(tomorrow)
+
+        XCTAssertEqual(state.timelineBounds.futureEndDay, today)
+        XCTAssertFalse(state.timelineShowsFutureDays)
+        XCTAssertEqual(state.selectedDay, today)
+        XCTAssertNil(state.futureDayPreview(for: tomorrow))
+    }
+
+    @MainActor
+    func testFutureLoggingRejectedEvenWhenForecastBrowsingAllowed() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    daily: [SunclubUVDayForecast(day: tomorrow, maxIndex: 7)]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        state.selectDay(tomorrow)
+        let validatedDate = state.validatedLogDate(tomorrow)
+
+        XCTAssertEqual(state.selectedDay, tomorrow)
+        XCTAssertFalse(state.canLog(on: tomorrow))
+        XCTAssertNil(validatedDate)
+        XCTAssertEqual(state.logActionErrorMessage, "Cannot log future date.")
+    }
+
+    @MainActor
+    func testTimelineForecastLevelLookupUsesRealForecastData() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let hourlyOnlyDay = calendar.date(byAdding: .day, value: 2, to: today) ?? today
+        let unforecastedFutureDay = calendar.date(byAdding: .day, value: 3, to: today) ?? today
+        let hourlyDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: hourlyOnlyDay) ?? hourlyOnlyDay
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    hourly: [
+                        SunclubUVHourForecast(
+                            date: hourlyDate,
+                            index: 9,
+                            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+                        )
+                    ],
+                    daily: [
+                        SunclubUVDayForecast(day: tomorrow, maxIndex: 8)
+                    ]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        XCTAssertEqual(state.timelineForecastUVLevel(for: tomorrow), .veryHigh)
+        XCTAssertEqual(state.timelineForecastUVLevel(for: hourlyOnlyDay), .veryHigh)
+        XCTAssertNil(state.timelineForecastUVLevel(for: unforecastedFutureDay))
+    }
+
+    @MainActor
+    func testTimelineUVForecastUsesFutureHourlyDataWhenAvailable() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let morning = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        let afternoon = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    hourly: [
+                        SunclubUVHourForecast(
+                            date: morning,
+                            index: 4,
+                            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+                        ),
+                        SunclubUVHourForecast(
+                            date: afternoon,
+                            index: 9,
+                            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+                        )
+                    ],
+                    daily: [
+                        SunclubUVDayForecast(day: tomorrow, maxIndex: 6)
+                    ]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        let forecast = try XCTUnwrap(state.timelineUVForecast(for: tomorrow))
+
+        XCTAssertEqual(forecast.hours.map(\.date), [morning, afternoon])
+        XCTAssertEqual(forecast.peakHour?.index, 9)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
+    }
+
+    @MainActor
+    func testTimelineUVForecastFallsBackToDailyForecastPeak() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate,
+                    daily: [
+                        SunclubUVDayForecast(day: tomorrow, maxIndex: 8)
+                    ]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        let forecast = try XCTUnwrap(state.timelineUVForecast(for: tomorrow))
+
+        XCTAssertEqual(forecast.hours.count, 1)
+        XCTAssertEqual(forecast.peakHour?.index, 8)
+        XCTAssertEqual(forecast.peakHour?.sourceLabel, UVReadingSource.weatherKit.hourlySourceLabel)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
     }
 
     @MainActor
@@ -3480,6 +3716,31 @@ final class SunclubTests: XCTestCase {
         await Task.yield()
         await Task.yield()
         await Task.yield()
+    }
+
+    @MainActor
+    private func makeUVIndexService(bundle: SunclubUVForecastBundle) -> UVIndexService {
+        let cache = SunclubUVForecastCache(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            key: "test-\(UUID().uuidString)"
+        )
+        cache.store(bundle)
+        return UVIndexService(cache: cache)
+    }
+
+    private func makeUVForecastBundle(
+        generatedAt: Date,
+        hourly: [SunclubUVHourForecast] = [],
+        daily: [SunclubUVDayForecast] = []
+    ) -> SunclubUVForecastBundle {
+        SunclubUVForecastBundle(
+            generatedAt: generatedAt,
+            latitude: 34.116,
+            longitude: -118.150,
+            currentIndex: nil,
+            hourly: hourly,
+            daily: daily
+        )
     }
 
     @MainActor
