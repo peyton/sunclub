@@ -63,3 +63,25 @@ def test_release_tag_ignores_global_tag_signing() -> None:
     release_tag_script = (REPO_ROOT / "scripts/appstore/release-tag.sh").read_text()
 
     assert 'git tag --no-sign -a "$tag" -m "Release $tag"' in release_tag_script
+
+
+def test_bootstrap_installs_mise_tools_from_lockfile() -> None:
+    bootstrap_script = (REPO_ROOT / "scripts/tooling/bootstrap.sh").read_text()
+
+    assert "run_mise install --locked" in bootstrap_script
+    assert "run_mise install\n" not in bootstrap_script
+
+
+def test_mise_wrapper_uses_repo_local_config_without_trust_mutation() -> None:
+    common_script = (REPO_ROOT / "scripts/tooling/common.sh").read_text()
+
+    assert 'export MISE_CONFIG_DIR="$REPO_ROOT/.config/mise"' in common_script
+    assert 'export MISE_TRUSTED_CONFIG_PATHS="$REPO_ROOT"' in common_script
+    assert (
+        'MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$REPO_ROOT/.config/mise}"' in common_script
+    )
+    assert (
+        'MISE_TRUSTED_CONFIG_PATHS="${MISE_TRUSTED_CONFIG_PATHS:-$REPO_ROOT}"'
+        in common_script
+    )
+    assert "mise trust" not in common_script
