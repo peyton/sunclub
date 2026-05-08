@@ -19,32 +19,28 @@ struct PrivacyView: View {
                     router.goBack()
                 })
 
-                AppCard(padding: 20, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        SunProductIcon(systemName: "lock.fill", tint: AppPalette.aloe, size: 44)
+                SunScreenTitleBlock(
+                    title: "Privacy controls",
+                    detail: "Export, review, or remove sunscreen history without changing the app's private-by-default posture.",
+                    symbolName: "lock.fill",
+                    tint: AppPalette.aloe
+                )
 
-                        Text("Privacy controls")
-                            .font(AppFont.rounded(size: 28, weight: .bold))
-                            .foregroundStyle(AppPalette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
+                privacyRows
 
-                        privacyRows
-
-                        Button {
-                            openURL(SunclubWebLinks.privacy)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Text("Learn more about our privacy practices")
-                                Image(systemName: "arrow.right")
-                                    .font(AppFont.rounded(size: 12, weight: .semibold))
-                            }
-                            .font(AppTextStyle.captionMedium.font)
-                            .foregroundStyle(AppPalette.pool)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("privacy.learnMore")
+                Button {
+                    openURL(SunclubWebLinks.privacy)
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Learn more about our privacy practices")
+                        Image(systemName: "arrow.right")
+                            .font(AppFont.rounded(size: 12, weight: .semibold))
                     }
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppPalette.pool)
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("privacy.learnMore")
 
                 Spacer(minLength: 0)
             }
@@ -91,6 +87,8 @@ struct PrivacyView: View {
                 systemImage: "shield.checkered",
                 tint: AppPalette.aloe
             )
+            .padding(16)
+            .background(referenceRowBackground)
 
             SunInfoRow(
                 title: "Private iCloud sync",
@@ -98,6 +96,8 @@ struct PrivacyView: View {
                 systemImage: "icloud",
                 tint: AppPalette.aloe
             )
+            .padding(16)
+            .background(referenceRowBackground)
 
             SunInfoRow(
                 title: "Export or delete anytime",
@@ -105,6 +105,8 @@ struct PrivacyView: View {
                 systemImage: "square.and.arrow.up",
                 tint: AppPalette.aloe
             )
+            .padding(16)
+            .background(referenceRowBackground)
 
             privacyActionRow(
                 title: "Export Sunclub history",
@@ -139,9 +141,20 @@ struct PrivacyView: View {
                 tint: AppPalette.aloe,
                 showsChevron: true
             )
+            .padding(16)
+            .background(referenceRowBackground)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private var referenceRowBackground: some View {
+        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+            .fill(AppPalette.cardFill.opacity(0.84))
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+            }
     }
 
     private func beginBackupExport() {

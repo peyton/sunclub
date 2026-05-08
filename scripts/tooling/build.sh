@@ -15,6 +15,18 @@ build_root_explicit=0
 code_signing="none"
 share_scheme=0
 run_generate=1
+build_xcodebuild_args=()
+if [ -n "${BUILD_XCODEBUILD_ARGS:-}" ]; then
+  read -r -a build_xcodebuild_args <<<"$BUILD_XCODEBUILD_ARGS"
+fi
+
+if [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-0}" = "1" ]; then
+  build_xcodebuild_args+=(
+    COMPILATION_CACHE_ENABLE_CACHING=NO
+    COMPILATION_CACHE_ENABLE_PLUGIN=NO
+    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
+  )
+fi
 
 if [ "${SUNCLUB_TUIST_SHARE:-0}" = "1" ]; then
   share_scheme=1
@@ -101,6 +113,10 @@ build_args=(
   -derivedDataPath "$derived_data_path"
   -resultBundlePath "$result_bundle_path"
 )
+
+if [ "${#build_xcodebuild_args[@]}" -gt 0 ]; then
+  build_args+=("${build_xcodebuild_args[@]}")
+fi
 
 if [ "$code_signing" = "none" ]; then
   build_args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)

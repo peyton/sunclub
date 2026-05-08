@@ -3,6 +3,7 @@ import SwiftUI
 struct WeeklyReportView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
     @State private var insights = SunscreenUsageInsights.empty
@@ -63,17 +64,17 @@ struct WeeklyReportView: View {
 
     private var weeklySummaryRow: some View {
         HStack(spacing: 12) {
-                WeeklyMetricPill(
-                    value: "\(report.appliedCount)",
-                    label: "logged days",
-                    accessibilityIdentifier: "weekly.currentStreak"
-                )
+            WeeklyMetricPill(
+                value: "\(report.appliedCount)",
+                label: "logged days",
+                accessibilityIdentifier: "weekly.currentStreak"
+            )
 
-                WeeklyMetricPill(
-                    value: "\(max(0, report.totalDays - report.appliedCount))",
-                    label: "open days",
-                    accessibilityIdentifier: "weekly.bestStreak"
-                )
+            WeeklyMetricPill(
+                value: "\(max(0, report.totalDays - report.appliedCount))",
+                label: "open days",
+                accessibilityIdentifier: "weekly.bestStreak"
+            )
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(report.appliedCount) days logged, \(max(0, report.totalDays - report.appliedCount)) open days")
@@ -154,6 +155,7 @@ struct WeeklyReportView: View {
                 .frame(width: 190, height: 190)
                 .opacity(0.24)
                 .offset(x: 40, y: 30)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("\(report.appliedCount) logged")
@@ -180,13 +182,39 @@ struct WeeklyReportView: View {
         }
         .padding(22)
         .background {
-            SunclubVisualAsset.shareCardBackdropWarm.image
-                .resizable()
-                .scaledToFill()
-                .opacity(0.36)
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: weeklyPostcardBackgroundColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    SunclubVisualAsset.shareCardBackdropWarm.image
+                        .resizable()
+                        .scaledToFill()
+                        .opacity(colorScheme == .dark ? 0.16 : 0.24)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
+                }
         }
         .sunGlassCard(cornerRadius: 24, fillOpacity: 0.52)
+    }
+
+    private var weeklyPostcardBackgroundColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                AppPalette.elevatedCardFill,
+                AppPalette.nightAmber.opacity(0.62),
+                AppPalette.darkSurface
+            ]
+        }
+
+        return [
+            AppPalette.cardFill,
+            AppPalette.warmGlow.opacity(0.40),
+            AppPalette.cardFill
+        ]
     }
 
     private var weeklyPlainSummary: String {

@@ -99,7 +99,8 @@ run_tuist_xcodebuild() {
   fi
 
   if [ "$exit_code" -eq 133 ] &&
-    grep -Eq '(^|[[:space:]])Build Succeeded($|[[:space:]])|(^|[[:space:]])Test Succeeded($|[[:space:]])|\*\* TEST SUCCEEDED \*\*' "$log_file"; then
+    grep -Eq '(^|[[:space:]])Build Succeeded($|[[:space:]])|(^|[[:space:]])Test Succeeded($|[[:space:]])|\*\* TEST SUCCEEDED \*\*|Test Suite .+ passed' "$log_file" &&
+    ! grep -Eq '\*\* (BUILD|TEST) FAILED \*\*|Test Suite .+ failed|with [1-9][0-9]* failures|:[0-9]+: error: -\[' "$log_file"; then
     printf 'Warning: tuist xcodebuild exited with Trace/BPT trap after a successful Xcode result; treating as success.\n' >&2
     rm -f "$log_file"
     return 0

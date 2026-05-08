@@ -158,6 +158,65 @@ printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
     assert not mise_log.exists()
 
 
+def test_build_script_can_disable_swift_compile_cache_for_local_recovery(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / "app").mkdir(parents=True)
+
+    for script_name in ("build.sh", "common.sh", "sunclub.env"):
+        _copy_tooling_script(repo_root, script_name)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+
+    _write_executable(
+        bin_dir / "mise",
+        f"""#!/bin/sh
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  shift 4
+  printf '%s\n' "$@" > {shlex.quote(str(xcodebuild_log))}
+  exit 0
+fi
+exit 0
+""",
+    )
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["SUNCLUB_TUIST_SHARE"] = "0"
+    env["SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE"] = "1"
+    env["BUILD_XCODEBUILD_ARGS"] = "ONLY_ACTIVE_ARCH=NO"
+
+    subprocess.run(
+        [
+            "bash",
+            str(repo_root / "scripts" / "tooling" / "build.sh"),
+            "--skip-generate",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+
+    xcodebuild_args = xcodebuild_log.read_text().splitlines()
+
+    assert "ONLY_ACTIVE_ARCH=NO" in xcodebuild_args
+    assert "COMPILATION_CACHE_ENABLE_CACHING=NO" in xcodebuild_args
+    assert "COMPILATION_CACHE_ENABLE_PLUGIN=NO" in xcodebuild_args
+    assert "COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO" in xcodebuild_args
+    assert xcodebuild_args.index("COMPILATION_CACHE_ENABLE_CACHING=NO") < (
+        xcodebuild_args.index("build")
+    )
+
+
 def test_build_script_treats_post_success_tuist_trace_trap_as_success(
     tmp_path: Path,
 ) -> None:
@@ -210,6 +269,56 @@ exit 0
     assert result.returncode == 0
     assert "Trace/BPT trap after a successful Xcode result" in result.stderr
     assert xcodebuild_log.read_text().splitlines()[0] == "-workspace"
+
+
+def test_build_script_treats_xcode26_passed_suite_trace_trap_as_success(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / "app").mkdir(parents=True)
+
+    for script_name in ("build.sh", "common.sh", "sunclub.env"):
+        _copy_tooling_script(repo_root, script_name)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+
+    _write_executable(
+        bin_dir / "mise",
+        """#!/bin/sh
+if [ "$1" = "trust" ]; then
+  exit 0
+fi
+if [ "$1" = "exec" ] && [ "$3" = "tuist" ] && [ "$4" = "xcodebuild" ]; then
+  printf "Test Suite 'SunclubUITests.xctest' passed at 2026-05-08 11:28:46.479.\\n"
+  printf "Executed 19 tests, with 0 failures (0 unexpected) in 187.391 seconds\\n"
+  exit 133
+fi
+exit 0
+""",
+    )
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["SUNCLUB_SKIP_LOCAL_TUIST_CACHE"] = "1"
+    env["SUNCLUB_TUIST_SHARE"] = "0"
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(repo_root / "scripts" / "tooling" / "build.sh"),
+            "--skip-generate",
+        ],
+        check=False,
+        cwd=repo_root,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0
+    assert "Trace/BPT trap after a successful Xcode result" in result.stderr
 
 
 def test_setup_local_tooling_env_exports_tuist_manifest_variables(

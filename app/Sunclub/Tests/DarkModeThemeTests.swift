@@ -32,6 +32,18 @@ final class DarkModeThemeTests: XCTestCase {
         assertContrast(AppPalette.ink, against: AppPalette.controlFill, style: .dark, minimum: 4.5)
     }
 
+    func testDesignSystemBaseColorsAdaptForDarkMode() {
+        assertContrast(AppColor.Text.primary, against: AppColor.surfaceElevated, style: .dark, minimum: 4.5)
+        assertContrast(AppColor.Text.secondary, against: AppColor.surfaceElevated, style: .dark, minimum: 3.0)
+        assertContrast(AppColor.Text.primary, against: AppColor.background, style: .dark, minimum: 4.5)
+        assertContrast(AppColor.Text.primary, against: AppColor.control, style: .dark, minimum: 4.5)
+    }
+
+    func testPrimaryActionColorsStayReadableAcrossAppearances() {
+        assertContrast(AppColor.primaryActionForeground, against: AppColor.primaryAction, style: .light, minimum: 4.5)
+        assertContrast(AppColor.primaryActionForeground, against: AppColor.primaryAction, style: .dark, minimum: 4.5)
+    }
+
     func testAccentForegroundMaintainsContrastAcrossAppearances() {
         let accentFills = [
             AppPalette.sun,

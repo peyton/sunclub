@@ -1,24 +1,101 @@
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 enum AppColor {
-    enum Text {
-        static let primary = Color(red: 0.025, green: 0.108, blue: 0.205)
-        static let secondary = Color(red: 0.310, green: 0.360, blue: 0.440)
+    private static func adaptive(light: Color, dark: Color) -> Color {
+        #if canImport(UIKit) && !os(watchOS)
+        return Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+            }
+        )
+        #else
+        return light
+        #endif
     }
 
-    static let background = Color(red: 0.988, green: 0.965, blue: 0.925)
-    static let backgroundWarm = Color(red: 1.000, green: 0.933, blue: 0.720)
-    static let surface = Color(red: 1.000, green: 0.995, blue: 0.982)
-    static let surfaceElevated = Color(red: 1.000, green: 1.000, blue: 1.000)
-    static let control = Color(red: 0.965, green: 0.976, blue: 1.000)
-    static let accent = Color(red: 0.080, green: 0.455, blue: 0.980)
-    static let accentSoft = Color(red: 0.845, green: 0.910, blue: 1.000)
-    static let sun = Color(red: 0.970, green: 0.670, blue: 0.000)
-    static let sunSoft = Color(red: 1.000, green: 0.905, blue: 0.620)
-    static let success = Color(red: 0.275, green: 0.760, blue: 0.340)
-    static let warning = Color(red: 0.870, green: 0.290, blue: 0.220)
-    static let muted = Color(red: 0.825, green: 0.850, blue: 0.875)
-    static let stroke = Color(red: 0.025, green: 0.108, blue: 0.205).opacity(0.095)
+    enum Text {
+        static let primary = AppColor.adaptive(
+            light: Color(red: 0.025, green: 0.108, blue: 0.205),
+            dark: Color(red: 0.964, green: 0.925, blue: 0.855)
+        )
+        static let secondary = AppColor.adaptive(
+            light: Color(red: 0.310, green: 0.360, blue: 0.440),
+            dark: Color(red: 0.745, green: 0.690, blue: 0.620)
+        )
+    }
+
+    enum Watch {
+        static let background = Color(red: 0.055, green: 0.052, blue: 0.048)
+        static let surface = Color(red: 0.125, green: 0.115, blue: 0.100)
+        static let textPrimary = Color(red: 0.965, green: 0.925, blue: 0.855)
+        static let textSecondary = Color(red: 0.745, green: 0.690, blue: 0.620)
+        static let extreme = Color(red: 1.000, green: 0.430, blue: 0.720)
+    }
+
+    static let background = adaptive(
+        light: Color(red: 0.988, green: 0.965, blue: 0.925),
+        dark: Color(red: 0.114, green: 0.098, blue: 0.086)
+    )
+    static let backgroundWarm = adaptive(
+        light: Color(red: 1.000, green: 0.933, blue: 0.720),
+        dark: Color(red: 0.315, green: 0.164, blue: 0.068)
+    )
+    static let surface = adaptive(
+        light: Color(red: 1.000, green: 0.995, blue: 0.982),
+        dark: Color(red: 0.171, green: 0.150, blue: 0.129)
+    )
+    static let surfaceElevated = adaptive(
+        light: Color(red: 1.000, green: 1.000, blue: 1.000),
+        dark: Color(red: 0.252, green: 0.220, blue: 0.184)
+    )
+    static let control = adaptive(
+        light: Color(red: 0.965, green: 0.976, blue: 1.000),
+        dark: Color(red: 0.294, green: 0.252, blue: 0.207)
+    )
+    static let accent = adaptive(
+        light: Color(red: 0.080, green: 0.455, blue: 0.980),
+        dark: Color(red: 0.385, green: 0.745, blue: 0.940)
+    )
+    static let accentSoft = adaptive(
+        light: Color(red: 0.845, green: 0.910, blue: 1.000),
+        dark: Color(red: 0.120, green: 0.200, blue: 0.300)
+    )
+    static let sun = adaptive(
+        light: Color(red: 0.970, green: 0.670, blue: 0.000),
+        dark: Color(red: 1.000, green: 0.705, blue: 0.145)
+    )
+    static let sunSoft = adaptive(
+        light: Color(red: 1.000, green: 0.905, blue: 0.620),
+        dark: Color(red: 0.430, green: 0.286, blue: 0.126)
+    )
+    static let success = adaptive(
+        light: Color(red: 0.275, green: 0.760, blue: 0.340),
+        dark: Color(red: 0.360, green: 0.875, blue: 0.540)
+    )
+    static let warning = adaptive(
+        light: Color(red: 0.870, green: 0.290, blue: 0.220),
+        dark: Color(red: 1.000, green: 0.450, blue: 0.340)
+    )
+    static let muted = adaptive(
+        light: Color(red: 0.825, green: 0.850, blue: 0.875),
+        dark: Color(red: 0.430, green: 0.395, blue: 0.360)
+    )
+    static let stroke = adaptive(
+        light: Color(red: 0.025, green: 0.108, blue: 0.205).opacity(0.095),
+        dark: Color(red: 1.000, green: 0.900, blue: 0.760).opacity(0.160)
+    )
+    static let primaryAction = adaptive(
+        light: Color(red: 0.025, green: 0.108, blue: 0.205),
+        dark: Color(red: 1.000, green: 0.705, blue: 0.145)
+    )
+    static let primaryActionForeground = adaptive(
+        light: .white,
+        dark: Color(red: 0.012, green: 0.036, blue: 0.075)
+    )
     static let onAccent = Color(red: 0.012, green: 0.036, blue: 0.075)
     static let onColor = Color.white
 }
@@ -215,7 +292,7 @@ struct PrimaryButton: View {
                         .accessibilityHidden(true)
                 }
 
-                AppText(title, style: .bodyMedium, color: AppColor.onColor)
+                AppText(title, style: .bodyMedium, color: AppColor.primaryActionForeground)
             }
             .frame(maxWidth: .infinity, minHeight: 56)
         }
@@ -439,11 +516,11 @@ struct AppPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .semibold, design: .rounded))
-            .foregroundStyle(isEnabled ? AppColor.onColor : AppColor.Text.secondary)
+            .foregroundStyle(isEnabled ? AppColor.primaryActionForeground : AppColor.Text.secondary)
             .frame(maxWidth: .infinity, minHeight: 56)
             .background {
                 RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .fill(isEnabled ? AppColor.Text.primary : AppColor.muted.opacity(0.42))
+                    .fill(isEnabled ? AppColor.primaryAction : AppColor.muted.opacity(0.42))
                     .appShadow(isEnabled ? AppShadow.floating : nil)
             }
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))

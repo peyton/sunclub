@@ -102,6 +102,25 @@ enum AppPalette {
     static let white = Color.white
 }
 
+extension UVLevel {
+    var designTint: Color {
+        switch self {
+        case .low:
+            return AppPalette.aloe
+        case .moderate:
+            return AppPalette.sun.opacity(0.78)
+        case .high:
+            return AppPalette.sun
+        case .veryHigh:
+            return AppPalette.coral
+        case .extreme:
+            return AppPalette.uvExtreme
+        case .unknown:
+            return AppPalette.muted
+        }
+    }
+}
+
 enum AppTypography {
     static let screenTitle = AppTextStyle.largeTitle.font
     static let sectionLabel = AppTextStyle.captionMedium.font
@@ -335,11 +354,10 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, showsFooter ? 24 : SunLayout.tabBarScrollUnderlapPadding)
                         .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .clipped()
 
                     if showsFooter {
                         footer
@@ -456,11 +474,11 @@ struct SunPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTextStyle.bodyMedium.font)
-            .foregroundStyle(isEnabled ? AppColor.onColor : AppPalette.softInk)
+            .foregroundStyle(isEnabled ? AppColor.primaryActionForeground : AppPalette.softInk)
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .fill(isEnabled ? AppColor.Text.primary : AppPalette.muted.opacity(0.28))
+                    .fill(isEnabled ? AppColor.primaryAction : AppPalette.muted.opacity(0.28))
                     .appShadow(isEnabled ? AppShadow.floating : nil)
             )
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
@@ -850,7 +868,7 @@ struct SunLightHeader: View {
     }
 
     var body: some View {
-        HStack {
+        HStack(alignment: .top, spacing: 10) {
             if showsBack {
                 Button(
                     action: { onBack?() },
@@ -864,17 +882,14 @@ struct SunLightHeader: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Back")
                 .accessibilityIdentifier("screen.back")
-            } else {
-                Color.clear.frame(width: sideButtonSize, height: sideButtonSize)
             }
 
-            Spacer(minLength: 0)
-
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(AppTypography.screenTitle)
                 .foregroundStyle(AppPalette.ink)
-
-            Spacer(minLength: 0)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, showsBack ? 3 : 0)
 
             if let trailingSystemImage {
                 Button(
@@ -882,15 +897,15 @@ struct SunLightHeader: View {
                     label: {
                         Image(systemName: trailingSystemImage)
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(AppPalette.ink)
-                            .frame(width: sideButtonSize, height: sideButtonSize)
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(width: sideButtonSize, height: sideButtonSize)
                     }
                 )
                 .buttonStyle(.plain)
-            } else {
-                Color.clear.frame(width: sideButtonSize, height: sideButtonSize)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 2)
     }
 }
 
@@ -1115,38 +1130,27 @@ struct SunUVIndexCard: View {
     var title: String = "UV Index"
 
     var body: some View {
-        AppCard(padding: 15, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            HStack(alignment: .center, spacing: 16) {
-                ZStack {
-                    Circle()
-                        .stroke(AppPalette.warmGlow.opacity(0.82), lineWidth: 10)
-                    Circle()
-                        .trim(from: 0, to: min(CGFloat(index) / 11, 1))
-                        .stroke(
-                            AppPalette.sun,
-                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                    Text("\(index)")
-                        .font(AppFont.rounded(size: 36, weight: .bold))
-                        .foregroundStyle(AppPalette.sun)
-                }
-                .frame(width: 82, height: 82)
-                .accessibilityHidden(true)
+        let tint = level.designTint
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(AppTextStyle.captionMedium.font)
-                        .foregroundStyle(AppPalette.softInk)
+        ZStack(alignment: .topLeading) {
+            AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(title)
+                            .font(AppTextStyle.captionMedium.font)
+                            .foregroundStyle(AppPalette.softInk)
 
-                    Text(level.displayName)
-                        .font(AppTextStyle.title.font)
-                        .foregroundStyle(AppPalette.sun)
-                        .accessibilityIdentifier("home.uvIndexLevel")
+                        Text(level.displayName)
+                            .font(AppTextStyle.title.font)
+                            .foregroundStyle(tint)
+                            .accessibilityIdentifier("home.uvIndexLevel")
 
-                    Text(sourceLabel)
-                        .font(AppTextStyle.captionMedium.font)
-                        .foregroundStyle(AppPalette.ink)
+                        Text(sourceLabel)
+                            .font(AppTextStyle.captionMedium.font)
+                            .foregroundStyle(AppPalette.ink)
+                    }
+                    .padding(.leading, 124)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text(recommendation)
                         .font(AppTextStyle.caption.font)
@@ -1154,10 +1158,40 @@ struct SunUVIndexCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+
+            uvMeter(tint: tint)
+                .frame(width: 116, height: 116)
+                .offset(x: -5, y: -22)
+                .accessibilityHidden(true)
         }
+        .padding(.top, 22)
+        .padding(.leading, 6)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("UV Index \(index), \(level.displayName). \(recommendation)")
         .accessibilityIdentifier("home.uvIndexCard")
+    }
+
+    private func uvMeter(tint: Color) -> some View {
+        ZStack {
+            Circle()
+                .fill(AppPalette.cardFill)
+                .appShadow(AppShadow.soft)
+
+            Circle()
+                .stroke(AppPalette.warmGlow.opacity(0.72), lineWidth: 12)
+
+            Circle()
+                .trim(from: 0, to: min(CGFloat(index) / 11, 1))
+                .stroke(
+                    tint,
+                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+
+            Text("\(index)")
+                .font(AppFont.rounded(size: 46, weight: .bold))
+                .foregroundStyle(tint)
+        }
     }
 }
 
@@ -1213,13 +1247,13 @@ struct SunForecastStrip: View {
 
                     Image(systemName: hour.level.symbolName)
                         .font(AppFont.rounded(size: 15, weight: .semibold))
-                        .foregroundStyle(AppPalette.sun)
+                        .foregroundStyle(hour.level.designTint)
                         .frame(height: 18)
                         .accessibilityHidden(true)
 
                     Text("\(hour.index)")
                         .font(AppFont.rounded(size: 14, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
+                        .foregroundStyle(hour.level.designTint)
 
                     Text(hour.level.displayName)
                         .font(AppFont.rounded(size: 9, weight: .semibold))

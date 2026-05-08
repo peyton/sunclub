@@ -10,6 +10,10 @@ backgrounds, product-page cards, and compatibility wrappers, but new screen
 styling should route through `AppColor`, `AppText`, `AppCard`, `SunInfoRow`,
 `SunUVIndexCard`, and the shared button/card primitives.
 
+All screen titles use the shared large-title treatment and align to the leading
+content edge. Do not reintroduce centered navigation-style titles for top-level
+screens such as Timeline, History, Insights, Settings, Privacy, or Support.
+
 ## Typography
 
 Use San Francisco rounded everywhere:
@@ -50,9 +54,26 @@ Semantic color tokens:
 | `AppColor.warning` | destructive or attention states |
 | `AppColor.muted` | inactive UI |
 | `AppColor.stroke` | low-contrast borders |
+| `AppColor.primaryAction` | high-emphasis filled buttons |
+| `AppColor.primaryActionForeground` | text and icons on primary actions |
 
 Avoid hardcoded `Color.red`, direct RGB values, and one-off foreground colors in
 screen files.
+
+Dark mode uses the same semantic token names. `AppColor` and `AppPalette` should
+resolve to warm night surfaces, amber sun accents, readable cream foregrounds,
+and visible low-contrast borders. New colors must be added as semantic tokens
+instead of screen-local RGB values.
+
+UV severity colors:
+
+| Level | Token |
+| --- | --- |
+| Low | `AppPalette.aloe` |
+| Moderate | `AppPalette.sun.opacity(0.78)` |
+| High | `AppPalette.sun` |
+| Very High | `AppPalette.coral` |
+| Extreme | `AppPalette.uvExtreme` |
 
 ## Radius, Spacing, Shadow
 
@@ -95,3 +116,14 @@ Product-page iOS wrappers in `AppTheme.swift` include:
 - `SunMiniBarChart`
 - `SunForecastStrip`
 - `SunBottomNavigationBar`
+
+Timeline owns the former Today surface. Keep the bottom tab label as Timeline,
+keep the top timeline scrubber, and enrich the selected-day content below it.
+The UV card should use the shared overlapping `SunUVIndexCard` meter treatment,
+and the daily exposure card should show peak UV, elevated-hours context, and the
+hourly strip with shared UV severity colors.
+
+Compact surfaces share the same semantics: widgets and Watch should show one
+primary state first, then one supporting detail such as UV, SPF, or reapply
+timing. Stale previous-day reapply timers must not surface on Today widgets or
+Watch.

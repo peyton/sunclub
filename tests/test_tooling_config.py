@@ -65,6 +65,14 @@ def test_release_tag_ignores_global_tag_signing() -> None:
     assert 'git tag --no-sign -a "$tag" -m "Release $tag"' in release_tag_script
 
 
+def test_ios_test_runner_can_disable_swift_compile_cache() -> None:
+    test_ios_script = (REPO_ROOT / "scripts/tooling/test_ios.sh").read_text()
+
+    assert "SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE" in test_ios_script
+    assert "COMPILATION_CACHE_ENABLE_CACHING=NO" in test_ios_script
+    assert "COMPILATION_CACHE_ENABLE_PLUGIN=NO" in test_ios_script
+
+
 def test_bootstrap_installs_mise_tools_from_lockfile() -> None:
     bootstrap_script = (REPO_ROOT / "scripts/tooling/bootstrap.sh").read_text()
 

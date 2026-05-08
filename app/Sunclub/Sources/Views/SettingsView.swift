@@ -52,7 +52,6 @@ struct SettingsView: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(.bottom, tabBarScrollUnderlapPadding)
         }
         .sheet(item: $selectedReminderPicker) { schedule in
             reminderPickerSheet(for: schedule)
@@ -108,10 +107,6 @@ struct SettingsView: View {
 
     private var showsSettingsBackButton: Bool {
         showsBackButton || selectedSettingsDetail != nil
-    }
-
-    private var tabBarScrollUnderlapPadding: CGFloat {
-        showsBackButton ? 0 : SunLayout.tabBarScrollUnderlapPadding
     }
 
     private func handleSettingsBack() {
