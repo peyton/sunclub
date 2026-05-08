@@ -137,6 +137,8 @@ setup_local_tooling_env() {
   ensure_local_state
 
   export MISE_CONFIG_DIR="$REPO_ROOT/.config/mise"
+  export MISE_TRUSTED_CONFIG_PATHS="$REPO_ROOT"
+  export MISE_YES="${MISE_YES:-1}"
   export UV_CACHE_DIR="$REPO_ROOT/.cache/uv"
   export UV_PROJECT_ENVIRONMENT="$REPO_ROOT/.venv"
   export HK_CACHE_DIR="$REPO_ROOT/.cache/hk"
@@ -150,8 +152,10 @@ setup_local_tooling_env() {
 }
 
 run_mise() {
-  command mise trust "$REPO_ROOT/mise.toml" >/dev/null 2>&1 || true
-  mise "$@"
+  MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$REPO_ROOT/.config/mise}" \
+    MISE_TRUSTED_CONFIG_PATHS="${MISE_TRUSTED_CONFIG_PATHS:-$REPO_ROOT}" \
+    MISE_YES="${MISE_YES:-1}" \
+    mise "$@"
 }
 
 run_mise_exec() {
