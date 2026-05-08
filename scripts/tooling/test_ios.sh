@@ -39,7 +39,18 @@ ensure_workspace_generated
 result_bundle_path="$REPO_ROOT/.build/test-$suite.xcresult"
 xcodebuild_log_path="$REPO_ROOT/.build/test-$suite.xcodebuild.log"
 test_xcodebuild_args=()
-read -r -a test_xcodebuild_args <<<"${TEST_XCODEBUILD_ARGS:-}"
+if [ -n "${TEST_XCODEBUILD_ARGS:-}" ]; then
+  read -r -a test_xcodebuild_args <<<"$TEST_XCODEBUILD_ARGS"
+fi
+
+if [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-0}" = "1" ]; then
+  test_xcodebuild_args+=(
+    COMPILATION_CACHE_ENABLE_CACHING=NO
+    COMPILATION_CACHE_ENABLE_PLUGIN=NO
+    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
+  )
+fi
+
 test_scheme="${TEST_APP_SCHEME:-$RELEASE_APP_SCHEME}"
 
 simulator_udid="$(resolve_simulator_udid "$TEST_SIMULATOR_NAME" "$DEFAULT_SIMULATOR_DEVICE")"
@@ -70,8 +81,11 @@ xcodebuild_args=(
   -derivedDataPath "$REPO_ROOT/$TEST_DERIVED_DATA"
   -resultBundlePath "$result_bundle_path"
   "-only-testing:$only_testing"
-  "${test_xcodebuild_args[@]}"
 )
+
+if [ "${#test_xcodebuild_args[@]}" -gt 0 ]; then
+  xcodebuild_args+=("${test_xcodebuild_args[@]}")
+fi
 
 mkdir -p "$REPO_ROOT/.build"
 max_attempts="${TEST_XCODEBUILD_MAX_ATTEMPTS:-3}"

@@ -251,6 +251,31 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.detail, "Reapply due")
     }
 
+    func testReapplyDeadlineIgnoresExpiredTimerFromYesterday() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 12)
+        let yesterdayReapply = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: now))
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [1, 2, 3],
+            longestStreak: 9,
+            now: now,
+            calendar: calendar,
+            lastReappliedAt: yesterdayReapply,
+            reapplyReminderEnabled: true,
+            reapplyIntervalMinutes: 90
+        )
+
+        XCTAssertNil(snapshot.reapplyDeadline(now: now, calendar: calendar))
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemMedium,
+            calendar: calendar
+        )
+        XCTAssertEqual(presentation.state, .open)
+    }
+
     func testSnapshotShowsTodayOpenWhenLatestRecordIsYesterday() {
         let snapshot = makeSnapshot(dayOffsets: [1, 2, 3], longestStreak: 7)
 
@@ -334,6 +359,27 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(snapshot.longestStreak, 3)
         XCTAssertNil(snapshot.todaySPFLevel)
+        XCTAssertEqual(snapshot.accountabilitySummary, .empty)
+    }
+
+    func testWidgetSnapshotDecodesMinimalLegacyPayloadWithDefaults() throws {
+        let data = Data("""
+        {
+            "isOnboardingComplete": true
+        }
+        """.utf8)
+
+        let snapshot = try JSONDecoder().decode(SunclubWidgetSnapshot.self, from: data)
+
+        XCTAssertTrue(snapshot.isOnboardingComplete)
+        XCTAssertTrue(snapshot.recordedDays.isEmpty)
+        XCTAssertEqual(snapshot.currentStreak, 0)
+        XCTAssertEqual(snapshot.longestStreak, 0)
+        XCTAssertEqual(snapshot.weeklyAppliedCount, 0)
+        XCTAssertEqual(snapshot.monthlyAppliedCount, 0)
+        XCTAssertEqual(snapshot.monthlyDayCount, 0)
+        XCTAssertFalse(snapshot.reapplyReminderEnabled)
+        XCTAssertEqual(snapshot.reapplyIntervalMinutes, 120)
         XCTAssertEqual(snapshot.accountabilitySummary, .empty)
     }
 

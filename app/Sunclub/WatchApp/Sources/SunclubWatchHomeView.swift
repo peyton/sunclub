@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SunclubWatchHomeView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var syncCoordinator = SunclubWatchSyncCoordinator.shared
     @State private var isLogging = false
 
@@ -35,6 +36,26 @@ struct SunclubWatchHomeView: View {
         snapshot.todaySPFLevel.map { "SPF \($0)" } ?? "Logged today"
     }
 
+    private var isDarkMode: Bool {
+        colorScheme == .dark
+    }
+
+    private var watchBackground: Color {
+        isDarkMode ? AppColor.Watch.background : AppColor.background
+    }
+
+    private var watchCardFill: Color {
+        isDarkMode ? AppColor.Watch.surface : AppColor.surfaceElevated
+    }
+
+    private var watchTextPrimary: Color {
+        isDarkMode ? AppColor.Watch.textPrimary : AppColor.Text.primary
+    }
+
+    private var watchTextSecondary: Color {
+        isDarkMode ? AppColor.Watch.textSecondary : AppColor.Text.secondary
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xxs) {
             header
@@ -53,7 +74,7 @@ struct SunclubWatchHomeView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background {
-            AppColor.background.ignoresSafeArea()
+            watchBackground.ignoresSafeArea()
         }
         .navigationTitle("Sunclub")
         .onAppear {
@@ -82,7 +103,7 @@ struct SunclubWatchHomeView: View {
             AppText(
                 Date().formatted(date: .omitted, time: .shortened),
                 style: .caption,
-                color: AppColor.Text.secondary
+                color: watchTextSecondary
             )
         }
     }
@@ -114,7 +135,7 @@ struct SunclubWatchHomeView: View {
     }
 
     private var statusCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: AppColor.surfaceElevated, showsShadow: false) {
+        AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
             VStack(alignment: .leading, spacing: 6) {
                 Label(
                     snapshot.hasLoggedToday() ? "Logged" : "Log sunscreen",
@@ -126,7 +147,7 @@ struct SunclubWatchHomeView: View {
                 AppText(
                     snapshot.hasLoggedToday() ? "\(loggedStatusText) · \(loggedDetailText)" : "Not logged",
                     style: .caption,
-                    color: AppColor.Text.secondary
+                    color: watchTextSecondary
                 )
 
                 if let visibleSyncStatus {
@@ -137,17 +158,18 @@ struct SunclubWatchHomeView: View {
     }
 
     private var uvCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: AppColor.surfaceElevated, showsShadow: false) {
+        AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
             VStack(alignment: .leading, spacing: 7) {
                 if let currentUVIndex = snapshot.currentUVIndex {
+                    let level = UVLevel.from(index: currentUVIndex)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        AppText("\(currentUVIndex)", style: .largeTitle, color: AppColor.sun)
+                        AppText("\(currentUVIndex)", style: .largeTitle, color: watchTint(for: level))
                         VStack(alignment: .leading, spacing: 2) {
-                            AppText("UV", style: .captionMedium, color: AppColor.Text.primary)
+                            AppText("UV", style: .captionMedium, color: watchTextPrimary)
                             AppText(
-                                UVLevel.from(index: currentUVIndex).displayName,
+                                level.displayName,
                                 style: .caption,
-                                color: AppColor.Text.secondary
+                                color: watchTextSecondary
                             )
                         }
                     }
@@ -156,18 +178,18 @@ struct SunclubWatchHomeView: View {
                         AppText(
                             "Peak \(peakUVIndex) at \(peakUVHour.formatted(date: .omitted, time: .shortened))",
                             style: .caption,
-                            color: AppColor.Text.secondary
+                            color: watchTextSecondary
                         )
                     }
                 } else {
-                    AppText("Open iPhone for forecast", style: .caption, color: AppColor.Text.secondary)
+                    AppText("Open iPhone for forecast", style: .caption, color: watchTextSecondary)
                 }
             }
         }
     }
 
     private var reapplyCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: AppColor.surfaceElevated, showsShadow: false) {
+        AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Reapply", systemImage: "timer")
                     .font(AppTextStyle.captionMedium.font)
@@ -180,16 +202,31 @@ struct SunclubWatchHomeView: View {
                             ? "Reapply due"
                             : "Reapply in \(durationLabel(until: deadline, now: Date()))",
                         style: .captionMedium,
-                        color: isDue ? AppColor.warning : AppColor.Text.secondary
+                        color: isDue ? AppColor.warning : watchTextSecondary
                     )
                 } else {
                     AppText(
                         snapshot.hasLoggedToday() ? "No timer" : "Log to time reapply",
                         style: .caption,
-                        color: AppColor.Text.secondary
+                        color: watchTextSecondary
                     )
                 }
             }
+        }
+    }
+
+    private func watchTint(for level: UVLevel) -> Color {
+        switch level {
+        case .low:
+            return AppColor.success
+        case .moderate, .high:
+            return AppColor.sun
+        case .veryHigh:
+            return AppColor.warning
+        case .extreme:
+            return AppColor.Watch.extreme
+        case .unknown:
+            return watchTextSecondary
         }
     }
 

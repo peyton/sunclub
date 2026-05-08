@@ -547,34 +547,13 @@ struct TimelineHomeView: View {
         isSelectedPage: Bool
     ) -> some View {
         let hours = forecastHours(for: presentation)
+        let peakHour = peakHour(in: hours)
+        let peakTint = peakHour?.level.designTint ?? AppPalette.sun
         return AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("UV Forecast")
-                            .font(AppTextStyle.bodyMedium.font)
-                            .foregroundStyle(AppPalette.ink)
-
-                        Text(uvForecastSubtitle(for: presentation))
-                            .font(AppTextStyle.caption.font)
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text(peakUVText(for: presentation))
-                            .font(AppFont.rounded(size: 17, weight: .bold))
-                            .foregroundStyle(AppPalette.sun)
-
-                        Text(homeUVReading(for: presentation).sourceLabel)
-                            .font(AppTextStyle.captionMedium.font)
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                }
-
+                exposureCardHeader(for: presentation, hours: hours)
+                exposureMetricRow(for: presentation, hours: hours, peakHour: peakHour, peakTint: peakTint, isSelectedPage: isSelectedPage)
                 SunMiniBarChart(bars: chartBars(for: hours))
-
                 SunForecastStrip(hours: hours)
             }
         }
@@ -583,6 +562,56 @@ struct TimelineHomeView: View {
         .accessibilityIdentifier(
             pageIdentifier("home.uvForecastExposureCard", for: presentation, isSelectedPage: isSelectedPage)
         )
+    }
+
+    private func exposureCardHeader(
+        for presentation: TimelineHomePresentation,
+        hours: [SunclubUVHourForecast]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(exposureCardTitle(for: presentation))
+                .font(AppTextStyle.bodyMedium.font)
+                .foregroundStyle(AppPalette.ink)
+
+            Text(exposureWindowText(for: hours, presentation: presentation))
+                .font(AppTextStyle.caption.font)
+                .foregroundStyle(AppPalette.softInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func exposureMetricRow(
+        for presentation: TimelineHomePresentation,
+        hours: [SunclubUVHourForecast],
+        peakHour: SunclubUVHourForecast?,
+        peakTint: Color,
+        isSelectedPage: Bool
+    ) -> some View {
+        HStack(spacing: 10) {
+            SunMetricPill(
+                value: peakHour.map { "\($0.index)" } ?? "--",
+                label: peakHour.map { "Peak near \($0.date.formatted(.dateTime.hour()))" } ?? "Peak UV",
+                symbolName: "sun.max.fill",
+                tint: peakTint,
+                accessibilityIdentifier: pageIdentifier(
+                    "home.uvForecastPeakMetric",
+                    for: presentation,
+                    isSelectedPage: isSelectedPage
+                )
+            )
+
+            SunMetricPill(
+                value: elevatedHoursValue(for: hours),
+                label: "Elevated UV",
+                symbolName: "clock.fill",
+                tint: AppPalette.coral,
+                accessibilityIdentifier: pageIdentifier(
+                    "home.uvForecastElevatedMetric",
+                    for: presentation,
+                    isSelectedPage: isSelectedPage
+                )
+            )
+        }
     }
 
     private func logSummaryDetail(for presentation: TimelineHomePresentation) -> String {
@@ -715,33 +744,58 @@ struct TimelineHomeView: View {
             SunChartBar(
                 label: hour.date.formatted(.dateTime.hour()),
                 value: hour.index,
-                tint: tint(for: hour.level)
+                tint: hour.level.designTint
             )
         }
     }
 
     private func peakUVText(for presentation: TimelineHomePresentation) -> String {
-        guard let peakHour = forecastHours(for: presentation).max(by: { $0.index < $1.index }) else {
+        guard let peakHour = peakHour(in: forecastHours(for: presentation)) else {
             return "UV --"
         }
         return "Peak UV \(peakHour.index)"
     }
 
-    private func tint(for level: UVLevel) -> Color {
-        switch level {
-        case .low:
-            return AppPalette.aloe
-        case .moderate:
-            return AppPalette.sun.opacity(0.72)
-        case .high:
-            return AppPalette.sun
-        case .veryHigh:
-            return AppPalette.coral
-        case .extreme:
-            return AppPalette.uvExtreme
-        case .unknown:
-            return AppPalette.muted
+    private func peakHour(in hours: [SunclubUVHourForecast]) -> SunclubUVHourForecast? {
+        hours.max(by: { $0.index < $1.index })
+    }
+
+    private func exposureCardTitle(for presentation: TimelineHomePresentation) -> String {
+        switch presentation.logSummary.category {
+        case .today:
+            return "Today's Sun Exposure"
+        case .past:
+            return "Sun Exposure"
+        case .future:
+            return "Planned Sun Exposure"
         }
+    }
+
+    private func exposureWindowText(
+        for hours: [SunclubUVHourForecast],
+        presentation: TimelineHomePresentation
+    ) -> String {
+        let elevatedHours = hours.filter { $0.index >= 3 }
+        guard let first = elevatedHours.first, let last = elevatedHours.last else {
+            return "\(uvForecastSubtitle(for: presentation)); UV stays low in this window."
+        }
+
+        let window = first.date == last.date
+            ? first.date.formatted(.dateTime.hour())
+            : "\(first.date.formatted(.dateTime.hour()))-\(last.date.formatted(.dateTime.hour()))"
+        let highHours = hours.filter { $0.index >= 6 }.count
+        if highHours > 0 {
+            return "\(highHours) high-intensity hour\(highHours == 1 ? "" : "s") near \(window)."
+        }
+        return "Elevated UV near \(window)."
+    }
+
+    private func elevatedHoursValue(for hours: [SunclubUVHourForecast]) -> String {
+        let count = hours.filter { $0.index >= 3 }.count
+        guard count > 0 else {
+            return "Low"
+        }
+        return "\(count)h"
     }
 
     private func timelineSelector(

@@ -14,50 +14,48 @@ struct SupportView: View {
                     router.goBack()
                 })
 
-                AppCard(padding: 20, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        SunProductIcon(systemName: "lifepreserver", tint: AppPalette.pool, size: 44)
+                SunScreenTitleBlock(
+                    title: "Get help with Sunclub",
+                    detail: "Support, documentation, and feedback stay one tap away.",
+                    symbolName: "lifepreserver.fill",
+                    tint: AppPalette.pool
+                )
 
-                        Text("Get help with Sunclub")
-                            .font(AppFont.rounded(size: 28, weight: .bold))
-                            .foregroundStyle(AppPalette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 12) {
+                    supportAction(
+                        title: "Email Support",
+                        detail: "Ask for help with logging, reminders, sync, or billing.",
+                        symbolName: "envelope.fill",
+                        url: SunclubWebLinks.supportEmail,
+                        accessibilityIdentifier: "support.email"
+                    )
 
-                        supportAction(
-                            title: "Email Support",
-                            detail: "Ask for help with logging, reminders, sync, or billing.",
-                            symbolName: "envelope.fill",
-                            url: SunclubWebLinks.supportEmail,
-                            accessibilityIdentifier: "support.email"
-                        )
+                    supportAction(
+                        title: "Help Center",
+                        detail: "Read setup, widget, Shortcuts, and privacy guides.",
+                        symbolName: "questionmark.circle.fill",
+                        url: SunclubWebLinks.support,
+                        accessibilityIdentifier: "support.helpCenter"
+                    )
 
-                        supportAction(
-                            title: "Help Center",
-                            detail: "Read setup, widget, Shortcuts, and privacy guides.",
-                            symbolName: "questionmark.circle.fill",
-                            url: SunclubWebLinks.support,
-                            accessibilityIdentifier: "support.helpCenter"
-                        )
+                    supportAction(
+                        title: "Feedback",
+                        detail: "Report a problem or suggest an improvement.",
+                        symbolName: "bubble.left.and.bubble.right.fill",
+                        url: SunclubWebLinks.supportEmail,
+                        accessibilityIdentifier: "support.feedback"
+                    )
 
-                        supportAction(
-                            title: "Feedback",
-                            detail: "Report a problem or suggest an improvement.",
-                            symbolName: "bubble.left.and.bubble.right.fill",
-                            url: SunclubWebLinks.supportEmail,
-                            accessibilityIdentifier: "support.feedback"
-                        )
-
-                        SunInfoRow(
-                            title: "About Sunclub",
-                            detail: "Version \(appVersion)",
-                            systemImage: "sun.max.fill",
-                            tint: AppPalette.sun,
-                            showsChevron: false
-                        )
-                        .padding(16)
-                        .background(referenceRowBackground)
-                        .accessibilityIdentifier("support.about")
-                    }
+                    SunInfoRow(
+                        title: "About Sunclub",
+                        detail: "Version \(appVersion)",
+                        systemImage: "sun.max.fill",
+                        tint: AppPalette.sun,
+                        showsChevron: false
+                    )
+                    .padding(16)
+                    .background(referenceRowBackground)
+                    .accessibilityIdentifier("support.about")
                 }
 
                 Spacer(minLength: 0)

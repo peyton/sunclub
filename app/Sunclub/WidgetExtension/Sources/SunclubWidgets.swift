@@ -640,14 +640,15 @@ private struct SunclubLogSmallView: View {
                 .frame(width: 86, height: 86)
                 .opacity(0.16)
                 .offset(x: 22, y: -20)
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 8) {
-                SunclubLogIconBadge(presentation: presentation, size: 46)
+            VStack(alignment: .leading, spacing: 6) {
+                SunclubLogIconBadge(presentation: presentation, size: 42)
 
                 Spacer(minLength: 0)
 
                 Text(presentation.title)
-                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(SunclubWidgetPalette.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(0.72)
@@ -657,6 +658,12 @@ private struct SunclubLogSmallView: View {
                     .foregroundStyle(SunclubWidgetPalette.softInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+
+                Text(presentation.detail)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(SunclubWidgetPalette.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.78)
 
                 SunclubLogActionPill(presentation: presentation, compact: true)
             }
@@ -991,6 +998,7 @@ private struct SunclubStreakSmallView: View {
                 .frame(width: 108, height: 108)
                 .opacity(0.22)
                 .offset(x: 30, y: -28)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("This week")

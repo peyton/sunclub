@@ -112,6 +112,22 @@ def test_product_redesign_completion_ledger_has_required_polish_counts() -> None
     assert categories.count("Accessibility/Watch/Widget/Dark Mode") >= 10
 
 
+def test_quality_design_system_pass_ledger_tracks_150_improvements() -> None:
+    execplan = (REPO_ROOT / "docs/quality-design-system-pass-execplan.md").read_text(
+        encoding="utf-8"
+    )
+    categories = LEDGER_PATTERN.findall(execplan)
+
+    assert len(categories) >= 150
+    assert categories.count("Shared Design System") >= 30
+    assert categories.count("Timeline") >= 25
+    assert categories.count("Scroll/Nav") >= 20
+    assert categories.count("Dark Mode") >= 25
+    assert categories.count("Widget/Watch") >= 25
+    assert categories.count("Data Handling") >= 15
+    assert categories.count("Privacy/Support/Insights") >= 10
+
+
 def test_coverage_face_diagram_imageset_has_real_scaled_outputs() -> None:
     imageset = (
         REPO_ROOT / "app/Sunclub/Resources/Assets.xcassets/CoverageFaceDiagram.imageset"

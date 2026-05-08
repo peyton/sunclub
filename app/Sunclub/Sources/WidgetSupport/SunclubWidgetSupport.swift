@@ -134,23 +134,23 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        isOnboardingComplete = try container.decode(Bool.self, forKey: .isOnboardingComplete)
+        isOnboardingComplete = try container.decodeIfPresent(Bool.self, forKey: .isOnboardingComplete) ?? false
         lastLoggedDay = try container.decodeIfPresent(Date.self, forKey: .lastLoggedDay)
         lastVerifiedAt = try container.decodeIfPresent(Date.self, forKey: .lastVerifiedAt)
         lastReappliedAt = try container.decodeIfPresent(Date.self, forKey: .lastReappliedAt)
-        recordedDays = try container.decode([Date].self, forKey: .recordedDays)
-        currentStreak = try container.decode(Int.self, forKey: .currentStreak)
-        longestStreak = try container.decode(Int.self, forKey: .longestStreak)
-        weeklyAppliedCount = try container.decode(Int.self, forKey: .weeklyAppliedCount)
-        monthlyAppliedCount = try container.decode(Int.self, forKey: .monthlyAppliedCount)
-        monthlyDayCount = try container.decode(Int.self, forKey: .monthlyDayCount)
+        recordedDays = try container.decodeIfPresent([Date].self, forKey: .recordedDays) ?? []
+        currentStreak = try container.decodeIfPresent(Int.self, forKey: .currentStreak) ?? 0
+        longestStreak = try container.decodeIfPresent(Int.self, forKey: .longestStreak) ?? 0
+        weeklyAppliedCount = try container.decodeIfPresent(Int.self, forKey: .weeklyAppliedCount) ?? 0
+        monthlyAppliedCount = try container.decodeIfPresent(Int.self, forKey: .monthlyAppliedCount) ?? 0
+        monthlyDayCount = try container.decodeIfPresent(Int.self, forKey: .monthlyDayCount) ?? 0
         todaySPFLevel = try container.decodeIfPresent(Int.self, forKey: .todaySPFLevel)
         mostUsedSPF = try container.decodeIfPresent(Int.self, forKey: .mostUsedSPF)
         currentUVIndex = try container.decodeIfPresent(Int.self, forKey: .currentUVIndex)
         peakUVIndex = try container.decodeIfPresent(Int.self, forKey: .peakUVIndex)
         peakUVHour = try container.decodeIfPresent(Date.self, forKey: .peakUVHour)
-        reapplyReminderEnabled = try container.decode(Bool.self, forKey: .reapplyReminderEnabled)
-        reapplyIntervalMinutes = try container.decode(Int.self, forKey: .reapplyIntervalMinutes)
+        reapplyReminderEnabled = try container.decodeIfPresent(Bool.self, forKey: .reapplyReminderEnabled) ?? false
+        reapplyIntervalMinutes = max(1, try container.decodeIfPresent(Int.self, forKey: .reapplyIntervalMinutes) ?? 120)
         accountabilitySummary = try container.decodeIfPresent(SunclubAccountabilitySummary.self, forKey: .accountabilitySummary) ?? .empty
     }
 
@@ -208,7 +208,12 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
 
     func reapplyDeadline(now: Date = Date(), calendar: Calendar = Calendar.current) -> Date? {
         guard reapplyReminderEnabled,
+              hasLoggedToday(now: now, calendar: calendar),
               let baseDate = lastReappliedAt ?? lastVerifiedAt else {
+            return nil
+        }
+
+        guard calendar.isDate(baseDate, inSameDayAs: now) else {
             return nil
         }
 
