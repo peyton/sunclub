@@ -492,7 +492,8 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
         XCTAssertTrue(detail.label.contains("SPF") || detail.label.contains("Optional"))
         XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
-        XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
     }
 
     @MainActor
@@ -928,6 +929,7 @@ final class SunclubUITests: XCTestCase {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertEqual(app.buttons["timeline.footer.today"].label, "Timeline")
         XCTAssertEqual(app.buttons["home.historyCard"].label, "History")
         XCTAssertTrue(app.otherElements["timeline.dayStrip"].exists
             || app.scrollViews["timeline.dayStrip"].exists
@@ -938,8 +940,9 @@ final class SunclubUITests: XCTestCase {
     func testTimelineHomeKeepsDefaultLogSurfaceSimple() throws {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["UV Forecast"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
             || app.staticTexts["home.todayStatus"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
@@ -964,6 +967,24 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timeline.backToToday"].exists)
 
         headline.tap()
+        XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
+    }
+
+    @MainActor
+    func testTimelineScreenSwipeMovesSelectedDay() throws {
+        let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=13:00"])
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        let headline = timelineHeadline(in: app)
+        XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
+        let swipeSurface = app.descendants(matching: .any)["home.uvForecastExposureCard"]
+        XCTAssertTrue(swipeSurface.waitForExistence(timeout: 5))
+
+        swipeSurface.swipeLeft()
+        XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 1), on: headline))
+
+        let futureSwipeSurface = app.buttons["timeline.backToToday"]
+        XCTAssertTrue(futureSwipeSurface.waitForExistence(timeout: 5))
+        futureSwipeSurface.swipeRight()
         XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
     }
 
