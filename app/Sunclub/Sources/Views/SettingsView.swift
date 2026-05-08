@@ -144,7 +144,7 @@ struct SettingsView: View {
                     tint: AppPalette.sun,
                     accessibilityIdentifier: "settings.section.progress"
                 ) {
-                    selectedSettingsDetail = .sunscreenReminders
+                    selectedSettingsDetail = .reapplyReminder
                 }
 
                 settingsHomeRow(
@@ -297,6 +297,8 @@ struct SettingsView: View {
                 reapplySection
                 reminderCoachingSection
             }
+        case .reapplyReminder:
+            reapplySection
         case .notifications:
             VStack(alignment: .leading, spacing: 22) {
                 notificationOverviewCard
@@ -1412,6 +1414,7 @@ struct SettingsView: View {
 
 private enum SettingsDetail: Hashable {
     case sunscreenReminders
+    case reapplyReminder
     case notifications
     case healthWeather
     case data
@@ -1422,6 +1425,8 @@ private enum SettingsDetail: Hashable {
         switch self {
         case .sunscreenReminders:
             return "Sunscreen & Reminders"
+        case .reapplyReminder:
+            return "Reapply Reminder"
         case .notifications:
             return "Notifications"
         case .healthWeather:
