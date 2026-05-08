@@ -64,7 +64,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["home.verifyNow"].exists)
-        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         assertHomeReadyForLogState(app)
         XCTAssertFalse(app.buttons["accountabilityOnboarding.next"].exists)
         XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
@@ -300,10 +300,10 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         XCTAssertLessThan(averageScreenshotLuminance(), 0.70)
 
-        app.buttons["home.settingsButton"].tap()
+        app.buttons["timeline.footer.settings"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         expandSettingsSection("reminders", in: app)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
@@ -317,7 +317,7 @@ final class SunclubUITests: XCTestCase {
         ])
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         XCTAssertTrue(app.buttons["home.streakCard"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
@@ -928,7 +928,7 @@ final class SunclubUITests: XCTestCase {
     func testTimelineHomeIsDefaultAfterOnboarding() throws {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.settingsButton"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         XCTAssertEqual(app.buttons["timeline.footer.today"].label, "Timeline")
         XCTAssertEqual(app.buttons["home.historyCard"].label, "History")
         XCTAssertTrue(app.otherElements["timeline.dayStrip"].exists

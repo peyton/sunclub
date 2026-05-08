@@ -375,7 +375,7 @@ struct SunDayStrip: View {
         if normalized <= calendar.startOfDay(for: today) {
             return true
         }
-        return allowsFuture && forecastUVLevels[normalized] != nil
+        return allowsFuture && visibleDays.contains(normalized)
     }
 
     private var accessibleList: some View {
