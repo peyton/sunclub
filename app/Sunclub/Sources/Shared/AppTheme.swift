@@ -116,6 +116,8 @@ enum AppTypography {
 }
 
 enum SunLayout {
+    static let tabBarScrollUnderlapPadding: CGFloat = 112
+
     enum ContentWidth {
         static let wizard: CGFloat = 640
         static let form: CGFloat = 720

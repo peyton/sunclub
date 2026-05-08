@@ -52,6 +52,7 @@ struct SettingsView: View {
 
                 Spacer(minLength: 0)
             }
+            .padding(.bottom, tabBarScrollUnderlapPadding)
         }
         .sheet(item: $selectedReminderPicker) { schedule in
             reminderPickerSheet(for: schedule)
@@ -109,6 +110,10 @@ struct SettingsView: View {
         showsBackButton || selectedSettingsDetail != nil
     }
 
+    private var tabBarScrollUnderlapPadding: CGFloat {
+        showsBackButton ? 0 : SunLayout.tabBarScrollUnderlapPadding
+    }
+
     private func handleSettingsBack() {
         if selectedSettingsDetail != nil {
             selectedSettingsDetail = nil
@@ -139,7 +144,7 @@ struct SettingsView: View {
                     tint: AppPalette.sun,
                     accessibilityIdentifier: "settings.section.progress"
                 ) {
-                    selectedSettingsDetail = .sunscreenReminders
+                    selectedSettingsDetail = .reapplyReminder
                 }
 
                 settingsHomeRow(
@@ -182,28 +187,6 @@ struct SettingsView: View {
                     accessibilityIdentifier: "settings.section.automation"
                 ) {
                     selectedSettingsDetail = .shortcuts
-                }
-            }
-
-            settingsHomeGroup(title: "App Preferences") {
-                settingsHomeRow(
-                    title: "Appearance",
-                    detail: "Uses iOS appearance, Dynamic Type, and contrast settings.",
-                    symbolName: "paintpalette.fill",
-                    tint: AppPalette.coral,
-                    accessibilityIdentifier: "settings.reference.appearance"
-                ) {
-                    selectedSettingsDetail = .appearance
-                }
-
-                settingsHomeRow(
-                    title: "Units & Region",
-                    detail: "Uses your device region and measurement settings.",
-                    symbolName: "ruler.fill",
-                    tint: AppPalette.pool,
-                    accessibilityIdentifier: "settings.reference.units"
-                ) {
-                    selectedSettingsDetail = .units
                 }
             }
 
@@ -314,6 +297,8 @@ struct SettingsView: View {
                 reapplySection
                 reminderCoachingSection
             }
+        case .reapplyReminder:
+            reapplySection
         case .notifications:
             VStack(alignment: .leading, spacing: 22) {
                 notificationOverviewCard
@@ -338,22 +323,6 @@ struct SettingsView: View {
                     openURL: openURL
                 )
             }
-        case .appearance:
-            settingsSystemPreferenceCard(
-                title: "Appearance follows iOS.",
-                detail: "Sunclub adapts to Light and Dark Interface, Dynamic Type, increased contrast, VoiceOver, Voice Control, and Reduce Motion.",
-                symbolName: "paintpalette.fill",
-                tint: AppPalette.coral,
-                accessibilityIdentifier: "settings.appearance.detail"
-            )
-        case .units:
-            settingsSystemPreferenceCard(
-                title: "Units follow your device.",
-                detail: "Dates, times, temperature, and measurement labels use the region preferences already set on this iPhone.",
-                symbolName: "ruler.fill",
-                tint: AppPalette.pool,
-                accessibilityIdentifier: "settings.units.detail"
-            )
         case .help:
             helpAndLegalSection
         }
@@ -374,31 +343,6 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    private func settingsSystemPreferenceCard(
-        title: String,
-        detail: String,
-        symbolName: String,
-        tint: Color,
-        accessibilityIdentifier: String
-    ) -> some View {
-        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 14) {
-                SunProductIcon(systemName: symbolName, tint: tint, size: 42)
-
-                Text(title)
-                    .font(AppFont.rounded(size: 22, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(detail)
-                    .font(AppFont.rounded(size: 14))
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private var smarterReminderSection: some View {
@@ -1470,18 +1414,19 @@ struct SettingsView: View {
 
 private enum SettingsDetail: Hashable {
     case sunscreenReminders
+    case reapplyReminder
     case notifications
     case healthWeather
     case data
     case shortcuts
-    case appearance
-    case units
     case help
 
     var title: String {
         switch self {
         case .sunscreenReminders:
             return "Sunscreen & Reminders"
+        case .reapplyReminder:
+            return "Reapply Reminder"
         case .notifications:
             return "Notifications"
         case .healthWeather:
@@ -1490,10 +1435,6 @@ private enum SettingsDetail: Hashable {
             return "iCloud & Data"
         case .shortcuts:
             return "Shortcuts"
-        case .appearance:
-            return "Appearance"
-        case .units:
-            return "Units & Region"
         case .help:
             return "Help & Legal"
         }
