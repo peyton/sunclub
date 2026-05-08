@@ -20,9 +20,10 @@
     />
     <link rel="canonical" href="https://sunclub.peyton.app/support/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body>
+  <body class="doc-page">
     <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
@@ -31,10 +32,23 @@
           <span>sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/">Docs</a>
-          <a href="/support/" aria-current="page">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/support/" aria-current="page">Support</a>
+          <a href="/docs/">Docs</a>
         </div>
+        <a
+          class="nav-store-badge"
+          href="https://apps.apple.com/us/app/sunclub/id6760630774"
+          aria-label="Download Sunclub on the App Store"
+        >
+          <img
+            src="/assets/app-store-badge.svg"
+            width="120"
+            height="40"
+            alt="Download on the App Store"
+          />
+        </a>
       </nav>
     </header>
 
@@ -44,15 +58,65 @@
       <p class="lead">
         Sunclub does not require an account. For app issues, feedback, or
         feature requests, email
-        <a href="mailto:support@mail.sunclub.peyton.app"
+        <a
+          href="mailto:support@mail.sunclub.peyton.app?subject=Sunclub%20Support"
           >support@mail.sunclub.peyton.app</a
         >. Privacy questions go to
-        <a href="mailto:privacy@mail.sunclub.peyton.app"
+        <a
+          href="mailto:privacy@mail.sunclub.peyton.app?subject=Sunclub%20Privacy"
           >privacy@mail.sunclub.peyton.app</a
         >.
       </p>
 
-      <section class="support-grid" aria-label="Support topics">
+      <section class="support-action-panel" aria-label="Support actions">
+        <a
+          class="support-action-row"
+          href="mailto:support@mail.sunclub.peyton.app?subject=Sunclub%20Support"
+        >
+          <span
+            class="support-action-icon mail-action-icon"
+            aria-hidden="true"
+          ></span>
+          <span>
+            <strong>Email Support</strong>
+            <small>Get help from a real human.</small>
+          </span>
+          <span class="card-chevron" aria-hidden="true">›</span>
+        </a>
+        <a class="support-action-row" href="#common-questions">
+          <span
+            class="support-action-icon help-action-icon"
+            aria-hidden="true"
+          ></span>
+          <span>
+            <strong>Common Questions</strong>
+            <small
+              >Find answers for logging, reminders, widgets, and sync.</small
+            >
+          </span>
+          <span class="card-chevron" aria-hidden="true">›</span>
+        </a>
+        <a
+          class="support-action-row"
+          href="mailto:support@mail.sunclub.peyton.app?subject=Sunclub%20Feedback"
+        >
+          <span
+            class="support-action-icon feedback-action-icon"
+            aria-hidden="true"
+          ></span>
+          <span>
+            <strong>Feedback</strong>
+            <small>Share ideas and report issues.</small>
+          </span>
+          <span class="card-chevron" aria-hidden="true">›</span>
+        </a>
+      </section>
+
+      <section
+        id="common-questions"
+        class="support-grid"
+        aria-label="Common questions"
+      >
         <article class="support-item">
           <h2>Logging today</h2>
           <p>
@@ -121,6 +185,10 @@
           For Shortcut or URL issues, include the action name and whether URL
           writes are enabled in Settings -> Connect Shortcuts.
         </li>
+        <li>
+          Include screenshots or device details only if you choose to share
+          them.
+        </li>
       </ul>
 
       <h2>Documentation</h2>
@@ -165,16 +233,18 @@
     </main>
 
     <footer class="site-footer">
-      <div class="footer">
+      <div class="footer home-footer">
+        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
         <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@mail.sunclub.peyton.app"
-            >contact@mail.sunclub.peyton.app</a
-          >
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </nav>
+        <p>© 2026 Peyton Randolph. All rights reserved.</p>
       </div>
     </footer>
   </body>

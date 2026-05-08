@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" role="img" aria-label="Sun icon">
+  <defs>
+    <linearGradient id="logging-bg" x1="44" x2="44" y1="6" y2="82">
+      <stop stop-color="#ffc43d" />
+      <stop offset="1" stop-color="#ffad00" />
+    </linearGradient>
+  </defs>
+  <rect width="76" height="76" x="6" y="6" fill="url(#logging-bg)" rx="18" />
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-width="6">
+    <path d="M44 20v7" />
+    <path d="M44 61v7" />
+    <path d="M20 44h7" />
+    <path d="M61 44h7" />
+    <path d="m27.3 27.3 5 5" />
+    <path d="m55.7 55.7 5 5" />
+    <path d="m60.7 27.3-5 5" />
+    <path d="m32.3 55.7-5 5" />
+  </g>
+  <circle cx="44" cy="44" r="15" fill="#fff" />
+</svg>

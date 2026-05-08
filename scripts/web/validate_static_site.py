@@ -21,7 +21,6 @@ EMAIL_LABELS = {
 }
 REQUIRED_EMAILS_BY_FILE = {
     Path("index.html"): (CONTACT_EMAIL,),
-    Path("docs/index.html"): (CONTACT_EMAIL,),
     Path("docs/automation/index.html"): (
         CONTACT_EMAIL,
         SUPPORT_EMAIL,
@@ -40,15 +39,27 @@ REQUIRED_EMAILS_BY_FILE = {
         PRIVACY_EMAIL,
         SECURITY_EMAIL,
     ),
-    Path("404.html"): (CONTACT_EMAIL, SUPPORT_EMAIL),
+    Path("404.html"): (SUPPORT_EMAIL,),
 }
 REQUIRED_PHRASES_BY_FILE = {
     Path("index.html"): (
         "Daily SPF Habit Tracker",
-        "hero-sunclub-devices.jpg",
+        "assets/marketing/hero-desktop.webp",
+        "assets/marketing/hero-mobile.webp",
+        "assets/features/daily-logging.webp",
+        "assets/features/uv-context.webp",
+        "assets/features/widgets-watch.webp",
+        "assets/features/shortcuts.webp",
+        "assets/features/history.webp",
+        "assets/icons/feature-logging.svg",
+        "assets/icons/feature-uv.svg",
+        "assets/icons/feature-watch.svg",
+        "assets/icons/feature-shortcuts.svg",
+        "assets/icons/feature-history.svg",
         "apps.apple.com/us/app/sunclub/id6760630774",
         "Download on the App Store",
-        "We don't sell your data or show ads.",
+        "Free - iOS 18.6+ - iPhone and Apple Watch",
+        "No account. No ads.",
     ),
     Path("docs/index.html"): (
         "Documentation & resources",
@@ -92,6 +103,19 @@ REQUIRED_FILES = (
     "privacy/index.html",
     "404.html",
     "assets/app-store-badge.svg",
+    "assets/apple-touch-icon.png",
+    "assets/marketing/hero-desktop.webp",
+    "assets/marketing/hero-mobile.webp",
+    "assets/features/daily-logging.webp",
+    "assets/features/uv-context.webp",
+    "assets/features/widgets-watch.webp",
+    "assets/features/shortcuts.webp",
+    "assets/features/history.webp",
+    "assets/icons/feature-logging.svg",
+    "assets/icons/feature-uv.svg",
+    "assets/icons/feature-watch.svg",
+    "assets/icons/feature-shortcuts.svg",
+    "assets/icons/feature-history.svg",
     "config/weatherkit.json",
     "schemas/weatherkit-config.v1.json",
     "robots.txt",
@@ -110,6 +134,8 @@ FORBIDDEN_PHRASES = (
     "review build",
     "first app store",
     "public app store listing",
+    "not live yet",
+    "coming soon",
     "public activity sharing transport",
     "message-first foreground route",
     "status=needs-message",
@@ -119,11 +145,25 @@ FORBIDDEN_PHRASES = (
     "being prepared for public app store availability",
     'href="#"',
     "href='#'",
+    "device-mock",
+    "widget-watch-mock",
+    "shortcuts-mock",
+    "mock-card",
+    "mock-toggle",
+    "placeholder-quality",
     "premium",
     "subscription",
     "subscriptions",
     "sunclub@peyton.app",
     "@sunclub.peyton.app",
+)
+FORBIDDEN_SOURCE_SNIPPETS = (
+    "device-mock",
+    "widget-watch-mock",
+    "shortcuts-mock",
+    "mock-card",
+    "mock-toggle",
+    "mock-bar",
 )
 WEATHERKIT_SCHEMA_URL = "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json"
 WEATHERKIT_CONFIG_EXPECTED_VALUES = {
@@ -264,7 +304,7 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
         errors.append(f"{relative}: must not contain noindex.")
     if "http://" in lowered:
         errors.append(f"{relative}: must not contain insecure http:// URLs.")
-    for email in REQUIRED_EMAILS_BY_FILE.get(relative, (CONTACT_EMAIL,)):
+    for email in REQUIRED_EMAILS_BY_FILE.get(relative, ()):
         if email not in raw:
             label = EMAIL_LABELS[email]
             errors.append(f"{relative}: missing public {label} email {email}.")
@@ -275,6 +315,8 @@ def validate_html_file(root: Path, path: Path) -> list[str]:
         errors.append(f"{relative}: missing non-empty <title>.")
     if not parsed.meta_description:
         errors.append(f"{relative}: missing non-empty meta description.")
+    if 'rel="apple-touch-icon"' not in normalized_raw:
+        errors.append(f"{relative}: missing apple-touch-icon link.")
 
     for phrase in FORBIDDEN_PHRASES:
         if phrase in lowered:
@@ -346,6 +388,23 @@ def validate_weatherkit_config(root: Path) -> list[str]:
     return errors
 
 
+def validate_visual_contract(root: Path) -> list[str]:
+    errors: list[str] = []
+    for relative_path in (Path("index.html"), Path("assets/site.css")):
+        path = root / relative_path
+        if not path.is_file():
+            continue
+
+        lowered = path.read_text(encoding="utf-8").lower()
+        for snippet in FORBIDDEN_SOURCE_SNIPPETS:
+            if snippet in lowered:
+                errors.append(
+                    f"{relative_path}: contains forbidden visual placeholder {snippet!r}."
+                )
+
+    return errors
+
+
 def validate_site(root: Path) -> list[str]:
     resolved_root = root.resolve()
     errors: list[str] = []
@@ -392,6 +451,7 @@ def validate_site(root: Path) -> list[str]:
     for path in html_files(resolved_root):
         errors.extend(validate_html_file(resolved_root, path))
 
+    errors.extend(validate_visual_contract(resolved_root))
     errors.extend(validate_weatherkit_config(resolved_root))
 
     return errors

@@ -19,9 +19,10 @@
       media="(prefers-color-scheme: dark)"
     />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body>
+  <body class="doc-page">
     <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <nav class="nav" aria-label="Primary">
@@ -30,10 +31,23 @@
           <span>sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </div>
+        <a
+          class="nav-store-badge"
+          href="https://apps.apple.com/us/app/sunclub/id6760630774"
+          aria-label="Download Sunclub on the App Store"
+        >
+          <img
+            src="/assets/app-store-badge.svg"
+            width="120"
+            height="40"
+            alt="Download on the App Store"
+          />
+        </a>
       </nav>
     </header>
 
@@ -41,26 +55,32 @@
       <p class="eyebrow on-surface">404</p>
       <h1>That page is not here.</h1>
       <p class="lead">
-        Go back to <a href="/">Sunclub</a>, read the <a href="/docs/">docs</a>,
-        open the <a href="/privacy/">privacy policy</a>, or email
+        Go back home, read the docs, or contact support. You can also email
         <a href="mailto:support@mail.sunclub.peyton.app"
           >support@mail.sunclub.peyton.app</a
         >
         for support.
       </p>
+      <div class="actions compact" aria-label="Recovery links">
+        <a class="button primary" href="/">Home</a>
+        <a class="button secondary" href="/docs/">Docs</a>
+        <a class="button tertiary" href="/support/">Support</a>
+      </div>
     </main>
 
     <footer class="site-footer">
-      <div class="footer">
+      <div class="footer home-footer">
+        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
         <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@mail.sunclub.peyton.app"
-            >contact@mail.sunclub.peyton.app</a
-          >
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </nav>
+        <p>© 2026 Peyton Randolph. All rights reserved.</p>
       </div>
     </footer>
   </body>

@@ -20,6 +20,7 @@
     />
     <link rel="canonical" href="https://sunclub.peyton.app/docs/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body class="doc-page">
@@ -31,10 +32,23 @@
           <span>sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/" aria-current="page">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/support/">Support</a>
+          <a href="/docs/" aria-current="page">Docs</a>
         </div>
+        <a
+          class="nav-store-badge"
+          href="https://apps.apple.com/us/app/sunclub/id6760630774"
+          aria-label="Download Sunclub on the App Store"
+        >
+          <img
+            src="/assets/app-store-badge.svg"
+            width="120"
+            height="40"
+            alt="Download on the App Store"
+          />
+        </a>
       </nav>
     </header>
 
@@ -48,66 +62,67 @@
       </p>
 
       <section
-        class="support-grid docs-index"
+        class="support-grid docs-index four-card-grid"
         aria-label="Documentation topics"
       >
-        <article class="support-item">
+        <article class="support-item docs-index-card">
+          <span class="resource-icon" aria-hidden="true"></span>
+          <span class="card-chevron" aria-hidden="true">›</span>
           <h2><a href="/docs/getting-started/">Getting Started</a></h2>
           <p>
             Set up Sunclub, make your first sunscreen log, turn on reminders,
             and add Apple Watch or widgets when you want a quicker glance.
           </p>
         </article>
-        <article class="support-item">
+        <article class="support-item docs-index-card">
+          <span class="resource-icon globe-icon" aria-hidden="true"></span>
+          <span class="card-chevron" aria-hidden="true">›</span>
           <h2><a href="/docs/uv-index/">How UV Index Works</a></h2>
           <p>
             Learn what UV numbers mean, how Sunclub turns them into plain
             guidance, and why forecast values can change through the day.
           </p>
         </article>
-        <article class="support-item">
+        <article class="support-item docs-index-card">
+          <span
+            class="resource-icon shortcuts-line-icon"
+            aria-hidden="true"
+          ></span>
+          <span class="card-chevron" aria-hidden="true">›</span>
           <h2><a href="/docs/automation/">Shortcuts Guide</a></h2>
           <p>
             Use Apple Shortcuts to log sunscreen, check your status, open
             Sunclub, and connect reminders to your daily routine.
           </p>
         </article>
-        <article class="support-item">
+        <article class="support-item docs-index-card">
+          <span
+            class="resource-icon shield-line-icon"
+            aria-hidden="true"
+          ></span>
+          <span class="card-chevron" aria-hidden="true">›</span>
           <h2><a href="/privacy/">Privacy Details</a></h2>
           <p>
             See what stays on your device, what can sync with iCloud, and how
             export, delete, location, notifications, and support contact work.
           </p>
         </article>
-        <article class="support-item">
-          <h2>Support</h2>
-          <p>
-            The <a href="/support/">support page</a> covers common questions
-            about logging, reminders, widgets, iCloud sync, backups, and
-            contacting a real person.
-          </p>
-        </article>
-        <article class="support-item">
-          <h2>What Sunclub tracks</h2>
-          <p>
-            Sunclub focuses on daily sunscreen habits: when you logged, SPF,
-            optional notes, reminders, UV context, history, and sync settings.
-          </p>
-        </article>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div class="footer">
+      <div class="footer home-footer">
+        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
         <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@mail.sunclub.peyton.app"
-            >contact@mail.sunclub.peyton.app</a
-          >
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </nav>
+        <p>© 2026 Peyton Randolph. All rights reserved.</p>
       </div>
     </footer>
   </body>

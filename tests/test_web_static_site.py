@@ -31,7 +31,9 @@ def test_homepage_matches_public_app_store_positioning() -> None:
     assert metadata["app"]["pricing_model"] == "free"
     assert "https://apps.apple.com/us/app/sunclub/id6760630774" in normalized_html
     assert "app-store-badge.svg" in normalized_html
-    assert "hero-sunclub-devices.jpg" in normalized_html
+    assert "assets/marketing/hero-desktop.webp" in normalized_html
+    assert "assets/marketing/hero-mobile.webp" in normalized_html
+    assert "Free - iOS 18.6+ - iPhone and Apple Watch" in normalized_html
     assert "Submitted release details" not in normalized_html
     assert "public App Store listing is not live yet" not in normalized_html
     assert "submitted" not in normalized_html.lower()
@@ -40,7 +42,8 @@ def test_homepage_matches_public_app_store_positioning() -> None:
 def test_homepage_feature_row_keeps_reference_layout_contract() -> None:
     html = (REPO_ROOT / "web" / "index.html").read_text(encoding="utf-8")
     css = (REPO_ROOT / "web" / "assets" / "site.css").read_text(encoding="utf-8")
-    feature_icon_dir = REPO_ROOT / "web" / "assets" / "feature-icons"
+    feature_icon_dir = REPO_ROOT / "web" / "assets" / "icons"
+    feature_image_dir = REPO_ROOT / "web" / "assets" / "features"
 
     assert (REPO_ROOT / "web" / "assets" / "logo-sun.svg").exists()
     assert 'url("/assets/logo-sun.svg")' in css
@@ -59,14 +62,107 @@ def test_homepage_feature_row_keeps_reference_layout_contract() -> None:
         assert f"<span>{second_line}</span>" in html
 
     expected_icons = (
-        "sun.svg",
-        "cloud.svg",
-        "watch-shield.svg",
-        "shortcuts.svg",
+        "feature-logging.svg",
+        "feature-uv.svg",
+        "feature-watch.svg",
+        "feature-shortcuts.svg",
+        "feature-history.svg",
     )
     for icon in expected_icons:
         assert (feature_icon_dir / icon).exists()
-        assert f'url("/assets/feature-icons/{icon}")' in css
+        assert f"/assets/icons/{icon}" in html
+
+    expected_feature_images = (
+        "daily-logging.webp",
+        "uv-context.webp",
+        "widgets-watch.webp",
+        "shortcuts.webp",
+        "history.webp",
+    )
+    for image in expected_feature_images:
+        assert (feature_image_dir / image).exists()
+        assert f"/assets/features/{image}" in html
+
+    forbidden_visual_fragments = (
+        "device-mock",
+        "widget-watch-mock",
+        "shortcuts-mock",
+        "mock-card",
+        "mock-toggle",
+    )
+    for fragment in forbidden_visual_fragments:
+        assert fragment not in html
+        assert fragment not in css
+
+
+def test_docs_index_keeps_reference_resource_count() -> None:
+    html = (REPO_ROOT / "web" / "docs" / "index.html").read_text(encoding="utf-8")
+    normalized_html = " ".join(html.split())
+
+    assert 'class="support-grid docs-index four-card-grid"' in normalized_html
+    assert normalized_html.count('class="support-item docs-index-card"') == 4
+    assert normalized_html.count('class="card-chevron"') >= 4
+    assert "Getting Started" in normalized_html
+    assert "How UV Index Works" in normalized_html
+    assert "Shortcuts Guide" in normalized_html
+    assert "Privacy Details" in normalized_html
+    assert "What Sunclub tracks" not in normalized_html
+
+
+def test_reference_polish_contract_is_guarded_across_routes() -> None:
+    html_files = sorted((REPO_ROOT / "web").rglob("*.html"))
+
+    assert (REPO_ROOT / "web" / "assets" / "apple-touch-icon.png").exists()
+    for path in html_files:
+        normalized_html = " ".join(path.read_text(encoding="utf-8").split())
+        expected_nav = [
+            "https://apps.apple.com/us/app/sunclub/id6760630774",
+            "assets/app-store-badge.svg",
+            'rel="apple-touch-icon"',
+        ]
+        if path == REPO_ROOT / "web" / "index.html":
+            expected_nav.extend(
+                (
+                    'href="#features"',
+                    'href="#privacy-title"',
+                    'href="#support"',
+                    'href="/docs/"',
+                )
+            )
+        else:
+            expected_nav.extend(
+                (
+                    'href="/#features"',
+                    'href="/privacy/"',
+                    'href="/support/"',
+                    'href="/docs/"',
+                )
+            )
+        for fragment in expected_nav:
+            assert fragment in normalized_html
+
+
+def test_support_and_shortcuts_pages_keep_reference_modules() -> None:
+    support_html = (REPO_ROOT / "web" / "support" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    automation_html = (
+        REPO_ROOT / "web" / "docs" / "automation" / "index.html"
+    ).read_text(encoding="utf-8")
+    css = (REPO_ROOT / "web" / "assets" / "site.css").read_text(encoding="utf-8")
+    normalized_support = " ".join(support_html.split())
+    normalized_automation = " ".join(automation_html.split())
+
+    assert 'class="support-action-panel"' in normalized_support
+    assert normalized_support.count('class="support-action-row"') == 3
+    assert "Email Support" in normalized_support
+    assert "Common Questions" in normalized_support
+    assert "Feedback" in normalized_support
+    assert 'id="common-questions"' in normalized_support
+    assert 'class="doc-help-card shortcuts-help-card"' in normalized_automation
+    assert "shortcuts-help-icon" in normalized_automation
+    assert "border: 3px solid #8b5cf6;" in css
+    assert ".shortcuts-help-card" in css
 
 
 def test_weatherkit_config_uses_canonical_schema_and_safe_caps() -> None:
@@ -172,6 +268,7 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
     errors = validate_site(site_root)
 
     assert any("placeholder link" in error for error in errors)
+    assert any("Missing required static site file" in error for error in errors)
     assert any("missing public contact email" in error for error in errors)
     assert any("missing public support email" in error for error in errors)
     assert any("missing public privacy email" in error for error in errors)

@@ -23,6 +23,7 @@
       href="https://sunclub.peyton.app/docs/getting-started/"
     />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body class="doc-page">
@@ -34,10 +35,23 @@
           <span>sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/" aria-current="page">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/support/">Support</a>
+          <a href="/docs/" aria-current="page">Docs</a>
         </div>
+        <a
+          class="nav-store-badge"
+          href="https://apps.apple.com/us/app/sunclub/id6760630774"
+          aria-label="Download Sunclub on the App Store"
+        >
+          <img
+            src="/assets/app-store-badge.svg"
+            width="120"
+            height="40"
+            alt="Download on the App Store"
+          />
+        </a>
       </nav>
     </header>
 
@@ -75,10 +89,11 @@
           </div>
           <figure class="doc-phone-preview">
             <img
-              src="/assets/screenshots/log-today.jpg"
+              src="/assets/features/daily-logging.webp"
               width="560"
-              height="1216"
-              alt="Sunclub Log Today screen."
+              height="840"
+              alt="Sunclub Log Sunscreen screen with time, SPF, product, and areas covered."
+              decoding="async"
               loading="eager"
             />
           </figure>
@@ -151,16 +166,18 @@
     </main>
 
     <footer class="site-footer">
-      <div class="footer">
+      <div class="footer home-footer">
+        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
         <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@mail.sunclub.peyton.app"
-            >contact@mail.sunclub.peyton.app</a
-          >
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </nav>
+        <p>© 2026 Peyton Randolph. All rights reserved.</p>
       </div>
     </footer>
   </body>

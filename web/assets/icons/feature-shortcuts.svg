@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" role="img" aria-label="Shortcuts icon">
+  <defs>
+    <linearGradient id="shortcuts-bg" x1="44" x2="44" y1="6" y2="82">
+      <stop stop-color="#9b6dff" />
+      <stop offset="1" stop-color="#8061f2" />
+    </linearGradient>
+  </defs>
+  <rect width="76" height="76" x="6" y="6" fill="url(#shortcuts-bg)" rx="18" />
+  <path
+    d="M22 52.5 44 34.5l22 18-22 18-22-18Z"
+    fill="none"
+    stroke="#fff"
+    stroke-linejoin="round"
+    stroke-width="6"
+    opacity=".72"
+  />
+  <path
+    fill="#fff"
+    fill-rule="evenodd"
+    d="M44 15.5 70 36.7 44 58 18 36.7 44 15.5Zm0 16.1c-3.2 7.8-6.6 11.2-14.5 14.3 7.9 3.1 11.3 6.6 14.5 14.5 3.2-7.9 6.6-11.4 14.5-14.5-7.9-3.1-11.3-6.5-14.5-14.3Z"
+  />
+</svg>
