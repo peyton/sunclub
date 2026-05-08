@@ -321,34 +321,28 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.streakCard"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app, attempts: 10),
-            "Expected Settings footer to remain reachable with accessibility settings enabled."
-        )
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app, attempts: 10), "Expected Settings footer to remain reachable with accessibility settings enabled.")
 
         app.buttons["timeline.footer.settings"].tap()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected Settings to open from the tab footer.")
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
-        XCTAssertTrue(scrollToElement(reapplyToggle, in: app))
+        XCTAssertTrue(scrollToHittableElement(reapplyToggle, in: app, attempts: 10), "Expected the reapply toggle to be reachable in accessibility mode.")
         if stringValue(of: reapplyToggle) != "1" {
             reapplyToggle.tap()
         }
-        XCTAssertTrue(
-            scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10),
-            "Expected enabled reapply settings to show interval controls."
-        )
+        XCTAssertTrue(scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10), "Expected enabled reapply settings to show interval controls.")
 
-        XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
         app.buttons["screen.back"].tap()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
+        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5), "Expected Today tab footer to remain reachable from Settings.")
         app.buttons["timeline.footer.today"].tap()
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5), "Expected Today tab home action after leaving Settings.")
 
         app.buttons["home.logManually"].tap()
-        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5), "Expected manual log action to remain reachable in accessibility mode.")
     }
 
     @MainActor
@@ -1432,21 +1426,50 @@ final class SunclubUITests: XCTestCase {
     private func expandSettingsSection(_ section: String, in app: XCUIApplication) {
         let sectionIdentifier = "settings.section.\(section)"
         let sectionControl = app.descendants(matching: .any)[sectionIdentifier]
-        if sectionControl.waitForExistence(timeout: 0.5),
-           scrollToHittableElement(sectionControl, in: app, attempts: 2) {
+        if tapSettingsSectionControl(sectionControl, in: app, attempts: 4) {
             expandSettingsControl(sectionControl)
             return
         }
 
         let titlePredicate = NSPredicate(format: "label CONTAINS[c] %@", settingsSectionTitle(for: section))
         let titledControl = app.descendants(matching: .any).matching(titlePredicate).firstMatch
-        XCTAssertTrue(scrollToHittableElement(titledControl, in: app, attempts: 8))
+        XCTAssertTrue(
+            tapSettingsSectionControl(titledControl, in: app, attempts: 8),
+            "Expected \(settingsSectionTitle(for: section)) Settings section to be reachable."
+        )
         expandSettingsControl(titledControl)
     }
 
     @MainActor
     private func expandSettingsControl(_ sectionControl: XCUIElement) {
         sectionControl.tap()
+    }
+
+    @MainActor
+    private func tapSettingsSectionControl(
+        _ sectionControl: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int
+    ) -> Bool {
+        if sectionControl.waitForExistence(timeout: 2) {
+            return true
+        }
+
+        for _ in 0..<attempts {
+            app.swipeUp()
+            if sectionControl.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        for _ in 0..<attempts {
+            app.swipeDown()
+            if sectionControl.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        return false
     }
 
     @MainActor
