@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" role="img" aria-label="iCloud icon">
+  <defs>
+    <linearGradient id="history-bg" x1="44" x2="44" y1="6" y2="82">
+      <stop stop-color="#4aaeff" />
+      <stop offset="1" stop-color="#247aff" />
+    </linearGradient>
+  </defs>
+  <rect width="76" height="76" x="6" y="6" fill="url(#history-bg)" rx="18" />
+  <path
+    fill="#fff"
+    d="M26.6 58.5c-8.5 0-15-5.9-15-13.2 0-6.7 5.5-12.3 12.8-13.1C28 25.8 34.6 22 42.1 22c9.4 0 17.3 6.2 19.4 14.7 7.3 1 12.4 6.3 12.4 12.7 0 5.3-4 9.1-9.4 9.1H26.6Z"
+  />
+</svg>

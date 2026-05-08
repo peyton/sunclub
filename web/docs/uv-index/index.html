@@ -20,6 +20,7 @@
     />
     <link rel="canonical" href="https://sunclub.peyton.app/docs/uv-index/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body class="doc-page">
@@ -31,10 +32,23 @@
           <span>sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/" aria-current="page">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/support/">Support</a>
+          <a href="/docs/" aria-current="page">Docs</a>
         </div>
+        <a
+          class="nav-store-badge"
+          href="https://apps.apple.com/us/app/sunclub/id6760630774"
+          aria-label="Download Sunclub on the App Store"
+        >
+          <img
+            src="/assets/app-store-badge.svg"
+            width="120"
+            height="40"
+            alt="Download on the App Store"
+          />
+        </a>
       </nav>
     </header>
 
@@ -71,10 +85,11 @@
           </div>
           <figure class="doc-phone-preview">
             <img
-              src="/assets/screenshots/home.jpg"
+              src="/assets/features/uv-context.webp"
               width="560"
-              height="1216"
-              alt="Sunclub Today screen with UV context."
+              height="840"
+              alt="Sunclub UV Forecast Detail screen showing UV Index 7 High and hourly forecast rows."
+              decoding="async"
               loading="eager"
             />
           </figure>
@@ -117,7 +132,8 @@
             <p>
               Sunclub pairs the number with a severity label, location context,
               forecast rows, and a short next step such as reapplying sunscreen
-              every two hours during high exposure.
+              every two hours during high exposure. Live UV availability can
+              vary by location, permissions, network access, and Apple Weather.
             </p>
           </article>
           <article>
@@ -144,20 +160,30 @@
             </p>
           </article>
         </section>
+
+        <aside class="doc-tip">
+          <strong>General guidance only</strong>
+          <p>
+            Sunclub provides general, non-medical guidance. Follow sunscreen
+            product directions and advice from qualified professionals.
+          </p>
+        </aside>
       </article>
     </main>
 
     <footer class="site-footer">
-      <div class="footer">
+      <div class="footer home-footer">
+        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
         <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@mail.sunclub.peyton.app"
-            >contact@mail.sunclub.peyton.app</a
-          >
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </nav>
+        <p>© 2026 Peyton Randolph. All rights reserved.</p>
       </div>
     </footer>
   </body>

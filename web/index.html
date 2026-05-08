@@ -20,6 +20,14 @@
     />
     <link rel="canonical" href="https://sunclub.peyton.app/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <link
+      rel="preload"
+      as="image"
+      href="/assets/marketing/hero-desktop.webp"
+      imagesrcset="/assets/marketing/hero-mobile.webp 780w, /assets/marketing/hero-desktop.webp 1672w"
+      imagesizes="100vw"
+    />
     <meta
       property="og:title"
       content="Sunclub - Daily SPF Habit Tracker for iPhone"
@@ -67,15 +75,22 @@
 
     <main id="main">
       <section class="landing-hero" aria-labelledby="hero-title">
-        <img
-          class="hero-background-image"
-          src="/assets/hero-sunclub-devices.jpg"
-          width="1672"
-          height="941"
-          alt=""
-          aria-hidden="true"
-          fetchpriority="high"
-        />
+        <picture class="hero-background-picture">
+          <source
+            media="(max-width: 620px)"
+            srcset="/assets/marketing/hero-mobile.webp"
+            width="780"
+            height="1200"
+          />
+          <img
+            class="hero-background-image"
+            src="/assets/marketing/hero-desktop.webp"
+            width="1672"
+            height="941"
+            alt="Sunclub Today screen on iPhone with Apple Watch sunscreen status."
+            fetchpriority="high"
+          />
+        </picture>
         <div class="hero-scene">
           <div class="hero-copy-block">
             <p class="hero-pill">
@@ -88,9 +103,9 @@
               Build better habits.
             </h1>
             <p class="hero-copy">
-              Sunclub helps you protect your skin with simple daily logging,
-              optional Live UV insights, smart reminders, widgets, Apple Watch,
-              and Shortcuts.
+              Sunclub helps you build a sunscreen habit with quick logging,
+              optional Live UV context, reapplication reminders, Apple Watch,
+              widgets, Shortcuts, and private iCloud history.
             </p>
             <div class="actions hero-actions" aria-label="Sunclub links">
               <a
@@ -106,7 +121,9 @@
                 />
               </a>
             </div>
-            <p class="compatibility">iOS 18.6+ - iPhone - Apple Watch</p>
+            <p class="compatibility">
+              Free - iOS 18.6+ - iPhone and Apple Watch
+            </p>
           </div>
         </div>
       </section>
@@ -120,7 +137,14 @@
           <h2 id="features-title">Everything you need to stay sun smart.</h2>
           <div class="feature-columns">
             <article class="feature-column">
-              <span class="feature-icon sun-icon" aria-hidden="true"></span>
+              <img
+                class="feature-icon"
+                src="/assets/icons/feature-logging.svg"
+                width="44"
+                height="44"
+                alt=""
+                aria-hidden="true"
+              />
               <h3>
                 <span>Daily Logging</span>
                 <span>Made Simple</span>
@@ -129,96 +153,112 @@
                 Log your sunscreen in seconds. Track time, SPF, and areas
                 covered.
               </p>
-              <figure class="feature-device">
+              <figure class="feature-visual">
                 <img
-                  src="/assets/screenshots/log-today.jpg"
+                  src="/assets/features/daily-logging.webp"
                   width="560"
-                  height="1216"
-                  alt="Sunclub Log Sunscreen screen with SPF, product, areas covered, notes, and Save Log."
-                  loading="lazy"
+                  height="840"
+                  alt="Sunclub Log Sunscreen screen with time, SPF, product, areas covered, notes, and Save Log."
+                  decoding="async"
                 />
               </figure>
             </article>
             <article class="feature-column">
-              <span class="feature-icon uv-icon" aria-hidden="true"></span>
+              <img
+                class="feature-icon"
+                src="/assets/icons/feature-uv.svg"
+                width="44"
+                height="44"
+                alt=""
+                aria-hidden="true"
+              />
               <h3>
                 <span>UV Context</span>
                 <span>You Can Trust</span>
               </h3>
               <p>Live UV index, forecast, and clear guidance for your day.</p>
-              <figure class="feature-device">
+              <figure class="feature-visual">
                 <img
-                  src="/assets/screenshots/home.jpg"
+                  src="/assets/features/uv-context.webp"
                   width="560"
-                  height="1216"
-                  alt="Sunclub Home screen showing the UV Today card and peak UV estimate."
-                  loading="lazy"
+                  height="840"
+                  alt="Sunclub UV Forecast Detail screen showing UV Index 7 High and hourly forecast rows."
+                  decoding="async"
                 />
               </figure>
             </article>
             <article class="feature-column">
-              <span class="feature-icon watch-icon" aria-hidden="true"></span>
+              <img
+                class="feature-icon"
+                src="/assets/icons/feature-watch.svg"
+                width="44"
+                height="44"
+                alt=""
+                aria-hidden="true"
+              />
               <h3>
                 <span>Widgets &</span>
                 <span>Apple Watch</span>
               </h3>
               <p>Check UV, log fast, and stay on track from a glance.</p>
-              <div class="device-mock widget-watch-mock" aria-hidden="true">
-                <div class="widget-panel">
-                  <span>SUNCLUB</span>
-                  <strong>4</strong>
-                  <small>UV high</small>
-                  <em>Logged at 9:41</em>
-                </div>
-                <div class="watch-mini">
-                  <strong>4</strong>
-                  <span>UV Today</span>
-                  <small>Log Sunscreen</small>
-                </div>
-              </div>
+              <figure class="feature-visual">
+                <img
+                  src="/assets/features/widgets-watch.webp"
+                  width="560"
+                  height="840"
+                  alt="Sunclub Apple Watch glances and widgets showing UV, reapply countdown, and logged status."
+                  decoding="async"
+                />
+              </figure>
             </article>
             <article class="feature-column">
-              <span
-                class="feature-icon shortcuts-icon"
+              <img
+                class="feature-icon"
+                src="/assets/icons/feature-shortcuts.svg"
+                width="44"
+                height="44"
+                alt=""
                 aria-hidden="true"
-              ></span>
+              />
               <h3>
                 <span>Shortcuts</span>
                 <span>Automation</span>
               </h3>
               <p>Log, remind, and review with Apple Shortcuts.</p>
-              <div class="device-mock shortcuts-mock" aria-hidden="true">
-                <div class="mock-bar">
-                  <span>When</span>
-                  <strong>At 10:00 AM, daily</strong>
-                </div>
-                <div class="mock-card">
-                  <span>Do</span>
-                  <strong>Log Sunscreen</strong>
-                  <small>SPF 50 - Face, Neck</small>
-                </div>
-                <div class="mock-toggle">
-                  <span>Ask Before Running</span>
-                  <em></em>
-                </div>
-              </div>
+              <figure class="feature-visual">
+                <img
+                  src="/assets/features/shortcuts.webp"
+                  width="560"
+                  height="840"
+                  alt="Sunclub Shortcuts screen with Log Sunscreen, Reapply Reminder, and Ask Before Running actions."
+                  decoding="async"
+                />
+              </figure>
             </article>
             <article class="feature-column">
-              <span class="feature-icon cloud-icon" aria-hidden="true"></span>
+              <img
+                class="feature-icon"
+                src="/assets/icons/feature-history.svg"
+                width="44"
+                height="44"
+                alt=""
+                aria-hidden="true"
+              />
               <h3>
                 <span>iCloud History</span>
                 <span>That Follows You</span>
               </h3>
               <p>
-                Your history syncs privately across your devices with iCloud.
+                Optional iCloud sync can keep your history available across your
+                devices.
               </p>
-              <figure class="feature-device">
+              <figure class="feature-visual">
                 <img
-                  src="/assets/screenshots/history.jpg"
+                  src="/assets/features/history.webp"
                   width="560"
-                  height="1216"
+                  height="840"
                   alt="Sunclub History screen showing monthly stats and calendar status."
-                  loading="lazy"
+                  decoding="async"
                 />
               </figure>
             </article>
@@ -237,12 +277,17 @@
               <h2 id="privacy-title">Privacy, by design.</h2>
               <ul class="panel-list">
                 <li>
-                  <strong>Your data stays yours.</strong>
-                  <span>We don't sell your data or show ads.</span>
+                  <strong>No account. No ads.</strong>
+                  <span>
+                    Sunclub does not sell your data or operate an app-owned
+                    account system.
+                  </span>
                 </li>
                 <li>
-                  <strong>iCloud sync stays private.</strong>
-                  <span>Sync uses your private iCloud database.</span>
+                  <strong>iCloud sync is optional.</strong>
+                  <span
+                    >Your history can stay local or sync with your iCloud.</span
+                  >
                 </li>
                 <li>
                   <strong>You're in control.</strong>
@@ -267,7 +312,7 @@
                   <small>Get help from a real human.</small>
                 </a>
                 <a href="/support/">
-                  <span>Help Center</span>
+                  <span>Common Questions</span>
                   <small>Answers to common questions.</small>
                 </a>
                 <a href="mailto:contact@mail.sunclub.peyton.app">

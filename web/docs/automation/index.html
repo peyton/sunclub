@@ -20,6 +20,7 @@
     />
     <link rel="canonical" href="https://sunclub.peyton.app/docs/automation/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body class="doc-page">
@@ -31,10 +32,23 @@
           <span>sunclub</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/" aria-current="page">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
+          <a href="/support/">Support</a>
+          <a href="/docs/" aria-current="page">Docs</a>
         </div>
+        <a
+          class="nav-store-badge"
+          href="https://apps.apple.com/us/app/sunclub/id6760630774"
+          aria-label="Download Sunclub on the App Store"
+        >
+          <img
+            src="/assets/app-store-badge.svg"
+            width="120"
+            height="40"
+            alt="Download on the App Store"
+          />
+        </a>
       </nav>
     </header>
 
@@ -50,8 +64,11 @@
           <a href="/docs/automation/" aria-current="page">Shortcuts Guide</a>
           <a href="/privacy/">Privacy Details</a>
         </nav>
-        <div class="doc-help-card">
-          <span class="leaf-sprig" aria-hidden="true"></span>
+        <div class="doc-help-card shortcuts-help-card">
+          <span
+            class="resource-icon shortcuts-line-icon shortcuts-help-icon"
+            aria-hidden="true"
+          ></span>
           <strong>Automation question?</strong>
           <span>Send us what you are trying to build.</span>
           <a href="mailto:support@mail.sunclub.peyton.app">Email Support</a>
@@ -69,13 +86,16 @@
               quick status check before leaving home.
             </p>
           </div>
-          <div
-            class="doc-hero-illustration shortcuts-illustration"
-            aria-hidden="true"
-          >
-            <span>When</span>
-            <strong>At 10:00 AM, daily</strong>
-          </div>
+          <figure class="doc-phone-preview">
+            <img
+              src="/assets/features/shortcuts.webp"
+              width="560"
+              height="840"
+              alt="Sunclub Shortcuts screen with Log Sunscreen, Reapply Reminder, and Ask Before Running actions."
+              decoding="async"
+              loading="eager"
+            />
+          </figure>
         </section>
 
         <section class="doc-card-grid" aria-label="Shortcut ideas">
@@ -87,25 +107,32 @@
             </p>
           </article>
           <article>
-            <h2>Check your status</h2>
+            <h2>Get current UV status</h2>
             <p>
               Ask Sunclub whether you logged today, how long it has been, and
               whether it is time to reapply.
             </p>
           </article>
           <article>
-            <h2>Open the right screen</h2>
+            <h2>Get reapplication status</h2>
             <p>
-              Use a Shortcut, widget, or Control Center action to jump straight
-              to Today, History, reminders, or logging.
+              Use a Shortcut, widget, or Control Center action to check whether
+              your current log is still fresh.
             </p>
           </article>
           <article>
-            <h2>Build a routine</h2>
+            <h2>Create a reminder</h2>
             <p>
               Combine Sunclub with time, location, Focus, or calendar triggers
               in the Shortcuts app when you want a reminder that matches your
               day.
+            </p>
+          </article>
+          <article>
+            <h2>Review history summary</h2>
+            <p>
+              Pull a quick summary of recent logs and use it in a personal
+              routine without opening a new account or web service.
             </p>
           </article>
         </section>
@@ -126,10 +153,7 @@
             </div>
           </article>
           <article class="doc-step">
-            <span
-              class="doc-step-icon bottle-doc-icon"
-              aria-hidden="true"
-            ></span>
+            <span class="doc-step-icon sun-doc-icon" aria-hidden="true"></span>
             <div>
               <span class="doc-step-number">2</span>
               <h2>Choose the action</h2>
@@ -173,6 +197,9 @@
             >. Security reports go to
             <a href="mailto:security@mail.sunclub.peyton.app"
               >security@mail.sunclub.peyton.app</a
+            >. General questions go to
+            <a href="mailto:contact@mail.sunclub.peyton.app"
+              >contact@mail.sunclub.peyton.app</a
             >.
           </p>
         </section>
@@ -180,16 +207,18 @@
     </main>
 
     <footer class="site-footer">
-      <div class="footer">
+      <div class="footer home-footer">
+        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>sunclub</span>
+        </a>
         <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="/docs/">Docs</a>
-          <a href="/support/">Support</a>
+          <a href="/#features">Features</a>
           <a href="/privacy/">Privacy</a>
-          <a href="mailto:contact@mail.sunclub.peyton.app"
-            >contact@mail.sunclub.peyton.app</a
-          >
+          <a href="/support/">Support</a>
+          <a href="/docs/">Docs</a>
         </nav>
+        <p>© 2026 Peyton Randolph. All rights reserved.</p>
       </div>
     </footer>
   </body>
