@@ -337,15 +337,16 @@ struct SunDayStrip: View {
     }
 
     private func canSelect(_ day: Date) -> Bool {
-        if allowsFuture {
+        let normalized = calendar.startOfDay(for: day)
+        if normalized <= calendar.startOfDay(for: today) {
             return true
         }
-        return calendar.startOfDay(for: day) <= calendar.startOfDay(for: today)
+        return allowsFuture && forecastUVLevels[normalized] != nil
     }
 
     private var accessibleList: some View {
-        VStack(spacing: 8) {
-            ForEach(visibleDays.reversed().prefix(14), id: \.self) { day in
+        LazyVStack(spacing: 8) {
+            ForEach(visibleDays.reversed(), id: \.self) { day in
                 Button {
                     selectDay(day)
                 } label: {
@@ -353,6 +354,7 @@ struct SunDayStrip: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSelect(day))
+                .accessibilityIdentifier("timeline.day.\(Self.dayIdentifierFormatter.string(from: day))")
             }
         }
     }

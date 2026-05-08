@@ -288,6 +288,95 @@ struct SunDayDetails: Equatable {
     }
 }
 
+struct TimelineBounds: Equatable {
+    let startDay: Date
+    let today: Date
+    let futureEndDay: Date
+    let forecastDays: Set<Date>
+    let visibleDays: [Date]
+
+    init(
+        today: Date,
+        forecastDays: [Date],
+        calendar: Calendar
+    ) {
+        let todayStart = calendar.startOfDay(for: today)
+        let normalizedForecastDays = Set(forecastDays.map { calendar.startOfDay(for: $0) })
+        let forecastEndDay = normalizedForecastDays
+            .map { calendar.startOfDay(for: $0) }
+            .filter { $0 > todayStart }
+            .max()
+
+        self.startDay = calendar.date(byAdding: .day, value: -365, to: todayStart) ?? todayStart
+        self.today = todayStart
+        self.futureEndDay = max(todayStart, forecastEndDay ?? todayStart)
+        self.forecastDays = normalizedForecastDays
+        self.visibleDays = Self.visibleDays(
+            from: startDay,
+            through: todayStart,
+            forecastDays: normalizedForecastDays,
+            calendar: calendar
+        )
+    }
+
+    func clamp(_ day: Date, calendar: Calendar) -> Date {
+        let boundedDay = min(max(calendar.startOfDay(for: day), startDay), futureEndDay)
+        guard boundedDay > today else {
+            return boundedDay
+        }
+        if forecastDays.contains(boundedDay) {
+            return boundedDay
+        }
+
+        return nearestFutureForecastDay(to: boundedDay) ?? today
+    }
+
+    func canSelect(_ day: Date, calendar: Calendar) -> Bool {
+        let normalized = calendar.startOfDay(for: day)
+        if normalized < startDay || normalized > futureEndDay {
+            return false
+        }
+        return normalized <= today || forecastDays.contains(normalized)
+    }
+
+    private static func visibleDays(
+        from startDay: Date,
+        through today: Date,
+        forecastDays: Set<Date>,
+        calendar: Calendar
+    ) -> [Date] {
+        var days: [Date] = []
+        var cursor = startDay
+
+        while cursor <= today {
+            days.append(cursor)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else {
+                break
+            }
+            cursor = next
+        }
+
+        let futureForecastDays = forecastDays
+            .filter { $0 > today }
+            .sorted()
+        return days + futureForecastDays
+    }
+
+    private func nearestFutureForecastDay(to day: Date) -> Date? {
+        forecastDays
+            .filter { $0 > today }
+            .sorted()
+            .min { first, second in
+                let firstDistance = abs(first.timeIntervalSince(day))
+                let secondDistance = abs(second.timeIntervalSince(day))
+                if firstDistance == secondDistance {
+                    return first < second
+                }
+                return firstDistance < secondDistance
+            }
+    }
+}
+
 enum LogSource: String, Codable, Sendable {
     case timeline
     case manualLog
@@ -736,7 +825,105 @@ final class AppState {
     }
 
     var timelineShowsFutureDays: Bool {
-        allowsFutureTimelineSelection
+        timelineBounds.futureEndDay > timelineBounds.today
+    }
+
+    var timelineAllowsFutureSelection: Bool {
+        timelineShowsFutureDays
+    }
+
+    var timelineBounds: TimelineBounds {
+        TimelineBounds(
+            today: referenceDate,
+            forecastDays: timelineForecastDates,
+            calendar: calendar
+        )
+    }
+
+    var timelineVisibleDays: [Date] {
+        timelineBounds.visibleDays
+    }
+
+    var timelineForecastUVLevels: [Date: UVLevel] {
+        guard let bundle = uvIndexService.lastBundle else {
+            return [:]
+        }
+
+        let today = startOfLocalDay(referenceDate)
+        var levels: [Date: UVLevel] = [:]
+
+        for forecast in bundle.daily {
+            let day = startOfLocalDay(forecast.day)
+            guard day > today else {
+                continue
+            }
+            levels[day] = forecast.level
+        }
+
+        let hoursByFutureDay = Dictionary(grouping: bundle.hourly) { hour in
+            startOfLocalDay(hour.date)
+        }
+        for (day, hours) in hoursByFutureDay where day > today && levels[day] == nil {
+            levels[day] = hours.max(by: { $0.index < $1.index })?.level
+        }
+
+        return levels
+    }
+
+    func timelineForecastUVLevel(for day: Date) -> UVLevel? {
+        timelineForecastUVLevels[startOfLocalDay(day)]
+    }
+
+    func canSelectTimelineDay(_ day: Date) -> Bool {
+        timelineBounds.canSelect(day, calendar: calendar)
+    }
+
+    func timelineClampedDay(_ day: Date) -> Date {
+        timelineBounds.clamp(day, calendar: calendar)
+    }
+
+    func timelineUVForecast(for day: Date) -> SunclubUVForecast? {
+        let dayStart = startOfLocalDay(day)
+        let today = startOfLocalDay(referenceDate)
+
+        if dayStart <= today {
+            return uvForecast
+        }
+
+        guard canSelectTimelineDay(dayStart),
+              let bundle = uvIndexService.lastBundle else {
+            return nil
+        }
+
+        let dayHours = bundle.hourly.filter { hour in
+            calendar.isDate(hour.date, inSameDayAs: dayStart)
+        }
+        if !dayHours.isEmpty {
+            return makeTimelineUVForecast(
+                generatedAt: bundle.generatedAt,
+                sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+                hours: dayHours
+            )
+        }
+
+        guard let daily = bundle.daily.first(where: { forecast in
+            calendar.isDate(forecast.day, inSameDayAs: dayStart)
+        }) else {
+            return nil
+        }
+
+        let peakDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: dayStart) ?? dayStart
+        return makeTimelineUVForecast(
+            generatedAt: bundle.generatedAt,
+            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+            hours: [
+                SunclubUVHourForecast(
+                    date: peakDate,
+                    index: daily.maxIndex,
+                    sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+                )
+            ]
+        )
     }
 
     var preferredCheckInRoute: AppRoute {
@@ -2886,10 +3073,6 @@ final class AppState {
         DayPart.resolve(for: date, calendar: calendar)
     }
 
-    var allowsFutureTimelineSelection: Bool {
-        RuntimeEnvironment.isPreviewing || RuntimeEnvironment.isUITesting
-    }
-
     func currentLogContext(
         for day: Date? = nil,
         source: LogSource = .manualLog,
@@ -2935,27 +3118,19 @@ final class AppState {
     }
 
     func advanceSelectedDayIfStale() {
-        let today = startOfLocalDay(referenceDate)
-        let normalized = startOfLocalDay(selectedDay)
+        let bounds = timelineBounds
+        let normalized = bounds.clamp(selectedDay, calendar: calendar)
         if normalized != selectedDay {
             selectedDay = normalized
-        }
-        if !allowsFutureTimelineSelection, selectedDay > today {
-            selectedDay = today
-            return
-        }
-        if selectedDay > calendar.date(byAdding: .day, value: 60, to: today) ?? today {
-            selectedDay = today
         }
     }
 
     func selectDay(_ day: Date) {
-        let normalized = startOfLocalDay(day)
-        if !allowsFutureTimelineSelection, normalized > startOfLocalDay(referenceDate) {
-            selectedDay = startOfLocalDay(referenceDate)
-            return
-        }
-        selectedDay = normalized
+        selectTimelineDay(day)
+    }
+
+    func selectTimelineDay(_ day: Date) {
+        selectedDay = timelineClampedDay(day)
     }
 
     private func normalizeSelectedDayIfNeeded() {
@@ -2963,14 +3138,7 @@ final class AppState {
             return
         }
 
-        let today = startOfLocalDay(referenceDate)
-        var normalized = startOfLocalDay(selectedDay)
-        if !allowsFutureTimelineSelection, normalized > today {
-            normalized = today
-        }
-        if normalized > calendar.date(byAdding: .day, value: 60, to: today) ?? today {
-            normalized = today
-        }
+        let normalized = timelineBounds.clamp(selectedDay, calendar: calendar)
         guard normalized != selectedDay else {
             return
         }
@@ -2983,7 +3151,7 @@ final class AppState {
     func futureDayPreview(for day: Date) -> FutureDayPreview? {
         let dayStart = startOfLocalDay(day)
         let today = startOfLocalDay(referenceDate)
-        guard dayStart > today else {
+        guard dayStart > today, canSelectTimelineDay(dayStart) else {
             return nil
         }
 
@@ -3003,7 +3171,7 @@ final class AppState {
     }
 
     func timelineDayLogSummary(for day: Date) -> TimelineDayLogSummary {
-        let dayStart = startOfLocalDay(day)
+        let dayStart = timelineBounds.clamp(day, calendar: calendar)
         let today = startOfLocalDay(referenceDate)
         let record = record(for: dayStart)
         let resolvedDayPart = resolvedTimelineDayPart(for: dayStart, record: record)
@@ -3380,6 +3548,29 @@ final class AppState {
 
     var dailyUVForecast: [SunclubUVDayForecast] {
         uvIndexService.lastBundle?.daily ?? []
+    }
+
+    private var timelineForecastDates: [Date] {
+        guard let bundle = uvIndexService.lastBundle else {
+            return []
+        }
+
+        return bundle.daily.map(\.day) + bundle.hourly.map(\.date)
+    }
+
+    private func makeTimelineUVForecast(
+        generatedAt: Date,
+        sourceLabel: String,
+        hours: [SunclubUVHourForecast]
+    ) -> SunclubUVForecast {
+        let peakHour = hours.max(by: { $0.index < $1.index })
+        return SunclubUVForecast(
+            generatedAt: generatedAt,
+            sourceLabel: sourceLabel,
+            hours: hours,
+            peakHour: peakHour,
+            recommendation: peakHour?.level.shortAdvice ?? ""
+        )
     }
 
     var weatherAttribution: SunclubWeatherAttribution? {

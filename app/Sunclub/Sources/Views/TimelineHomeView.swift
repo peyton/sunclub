@@ -10,10 +10,8 @@ private struct TimelineAttentionContent {
 }
 
 @MainActor
-private struct TimelineHomePresentation {
-    let selectedDay: Date
+private struct TimelineHomeSharedPresentation {
     let today: Date
-    let logSummary: TimelineDayLogSummary
     let homeDailyPlanPresentation: HomeDailyPlanPresentation
     let recordedDays: Set<Date>
     let currentStreakDays: Set<Date>
@@ -25,56 +23,30 @@ private struct TimelineHomePresentation {
     let weekProgressDays: [SunWeekProgressDay]
     let allowsFuture: Bool
     let uvReading: UVReading?
-    let uvForecast: SunclubUVForecast?
     let weatherAttribution: SunclubWeatherAttribution?
     let currentStreak: Int
     let longestStreak: Int
 
     init(appState: AppState) {
-        let selected = appState.selectedDay
         let referenceDate = appState.referenceDate
-        let days = Self.timelineDays(centeredOn: referenceDate)
-
-        selectedDay = selected
-        today = referenceDate
+        let days = appState.timelineVisibleDays
         let recordSet = Set(appState.recordedDays)
 
-        logSummary = appState.timelineDayLogSummary(for: selected)
+        today = referenceDate
         homeDailyPlanPresentation = appState.homeDailyPlanPresentation
         recordedDays = recordSet
         currentStreakDays = Set(appState.currentStreakDays)
         elevatedUVDays = appState.elevatedUVDays
-        forecastUVLevels = Self.forecastUVLevels(
-            for: days,
-            today: referenceDate,
-            dailyForecast: appState.dailyUVForecast
-        )
+        forecastUVLevels = appState.timelineForecastUVLevels
         extrasDays = appState.daysWithExtras
         logDetails = appState.dailyDetailsForTimeline
         visibleDays = days
         weekProgressDays = Self.weekProgressDays(today: referenceDate, recordedDays: recordSet)
         allowsFuture = appState.timelineShowsFutureDays
         uvReading = appState.uvReading
-        uvForecast = appState.uvForecast
         weatherAttribution = appState.weatherAttribution
         currentStreak = appState.currentStreak
         longestStreak = appState.longestStreak
-    }
-
-    private static func timelineDays(centeredOn today: Date) -> [Date] {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: today)
-        let pastStart = calendar.date(byAdding: .day, value: -365, to: todayStart) ?? todayStart
-        let futureEnd = calendar.date(byAdding: .day, value: 14, to: todayStart) ?? todayStart
-        var days: [Date] = []
-        var cursor = pastStart
-
-        while cursor <= futureEnd {
-            days.append(cursor)
-            cursor = calendar.date(byAdding: .day, value: 1, to: cursor) ?? futureEnd.addingTimeInterval(86_400)
-        }
-
-        return days
     }
 
     private static func weekProgressDays(today: Date, recordedDays: Set<Date>) -> [SunWeekProgressDay] {
@@ -95,34 +67,55 @@ private struct TimelineHomePresentation {
             )
         }
     }
+}
 
-    private static func forecastUVLevels(
-        for visibleDays: [Date],
-        today: Date,
-        dailyForecast: [SunclubUVDayForecast]
-    ) -> [Date: UVLevel] {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: today)
-        var levels: [Date: UVLevel] = [:]
+@MainActor
+private struct TimelineHomePresentation {
+    let selectedDay: Date
+    let today: Date
+    let logSummary: TimelineDayLogSummary
+    let homeDailyPlanPresentation: HomeDailyPlanPresentation
+    let recordedDays: Set<Date>
+    let currentStreakDays: Set<Date>
+    let elevatedUVDays: Set<Date>
+    let forecastUVLevels: [Date: UVLevel]
+    let extrasDays: Set<Date>
+    let logDetails: [Date: SunDayDetails]
+    let visibleDays: [Date]
+    let weekProgressDays: [SunWeekProgressDay]
+    let allowsFuture: Bool
+    let uvReading: UVReading?
+    let uvForecast: SunclubUVForecast?
+    let weatherAttribution: SunclubWeatherAttribution?
+    let currentStreak: Int
+    let longestStreak: Int
 
-        for forecast in dailyForecast {
-            let dayStart = calendar.startOfDay(for: forecast.day)
-            guard dayStart > todayStart else {
-                continue
-            }
-            levels[dayStart] = forecast.level
-        }
+    init(
+        appState: AppState,
+        selectedDay requestedSelectedDay: Date? = nil,
+        shared: TimelineHomeSharedPresentation? = nil
+    ) {
+        let sharedPresentation = shared ?? TimelineHomeSharedPresentation(appState: appState)
+        let selected = appState.timelineClampedDay(requestedSelectedDay ?? appState.selectedDay)
 
-        for day in visibleDays {
-            let dayStart = calendar.startOfDay(for: day)
-            guard dayStart > todayStart, levels[dayStart] == nil else {
-                continue
-            }
-            let midday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: dayStart) ?? dayStart
-            levels[dayStart] = UVLevel.from(index: UVIndexService.estimatedUVIndex(at: midday, calendar: calendar))
-        }
-
-        return levels
+        selectedDay = selected
+        today = sharedPresentation.today
+        logSummary = appState.timelineDayLogSummary(for: selected)
+        homeDailyPlanPresentation = sharedPresentation.homeDailyPlanPresentation
+        recordedDays = sharedPresentation.recordedDays
+        currentStreakDays = sharedPresentation.currentStreakDays
+        elevatedUVDays = sharedPresentation.elevatedUVDays
+        forecastUVLevels = sharedPresentation.forecastUVLevels
+        extrasDays = sharedPresentation.extrasDays
+        logDetails = sharedPresentation.logDetails
+        visibleDays = sharedPresentation.visibleDays
+        weekProgressDays = sharedPresentation.weekProgressDays
+        allowsFuture = sharedPresentation.allowsFuture
+        uvReading = sharedPresentation.uvReading
+        uvForecast = appState.timelineUVForecast(for: selected)
+        weatherAttribution = sharedPresentation.weatherAttribution
+        currentStreak = sharedPresentation.currentStreak
+        longestStreak = sharedPresentation.longestStreak
     }
 }
 
@@ -134,54 +127,24 @@ struct TimelineHomeView: View {
 
     @State private var feedbackTrigger = 0
     @State private var midnightTimer: Timer?
+    @State private var contentScrollTargetDay: Date?
 
     var body: some View {
-        @Bindable var appState = appState
-        let presentation = TimelineHomePresentation(appState: appState)
+        let sharedPresentation = TimelineHomeSharedPresentation(appState: appState)
+        let presentation = TimelineHomePresentation(appState: appState, shared: sharedPresentation)
 
         SunLightScreen {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 topChrome
 
-                timelineSelector(for: presentation, selectedDay: $appState.selectedDay)
+                timelineSelector(for: presentation, selectedDay: selectedTimelineDayBinding)
 
-                if presentation.logSummary.category == .future {
-                    TimelineTodayStatusCard(presentation: presentation)
-
-                    futureDayActions
-                } else {
-                    todayProductStack(for: presentation)
-                }
-
-                if presentation.logSummary.category == .today,
-                   let forecast = presentation.uvForecast,
-                   forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
-                    WeatherKitAttributionFooter(
-                        attribution: presentation.weatherAttribution,
-                        sourceLabel: forecast.sourceLabel,
-                        showAttributionLink: true
-                    )
-                    .padding(.horizontal, AppSpacing.sm)
-                }
-
-                attentionBanners
-
-                if presentation.logSummary.category == .future {
-                    TimelineLogSection(
-                        summary: presentation.logSummary,
-                        uvForecast: presentation.uvForecast,
-                        weatherAttribution: presentation.weatherAttribution,
-                        currentStreak: presentation.currentStreak,
-                        longestStreak: presentation.longestStreak
-                    )
-                }
-
-                Spacer(minLength: 0)
+                timelineContentPager(for: presentation, shared: sharedPresentation)
             }
             .contentShape(Rectangle())
-            .simultaneousGesture(timelineSwipeGesture(for: presentation))
         }
         .onAppear {
+            syncContentScrollTarget(to: presentation.selectedDay, animated: false)
             refresh()
             scheduleMidnightRefresh()
         }
@@ -197,11 +160,184 @@ struct TimelineHomeView: View {
             }
             refresh()
         }
+        .onChange(of: appState.selectedDay) { _, newValue in
+            syncContentScrollTarget(to: newValue, animated: true)
+        }
+        .onChange(of: contentScrollTargetDay) { _, newValue in
+            guard let newValue else {
+                return
+            }
+            let clamped = appState.timelineClampedDay(newValue)
+            if !Calendar.current.isDate(clamped, inSameDayAs: newValue) {
+                contentScrollTargetDay = clamped
+                return
+            }
+            guard !Calendar.current.isDate(appState.selectedDay, inSameDayAs: clamped) else {
+                return
+            }
+            appState.selectTimelineDay(clamped)
+        }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var futureDayActions: some View {
+    private var selectedTimelineDayBinding: Binding<Date> {
+        Binding(
+            get: { appState.selectedDay },
+            set: { newValue in
+                appState.selectTimelineDay(newValue)
+                syncContentScrollTarget(to: appState.selectedDay, animated: true)
+            }
+        )
+    }
+
+    private func timelineContentPager(
+        for presentation: TimelineHomePresentation,
+        shared: TimelineHomeSharedPresentation
+    ) -> some View {
+        let activePagePresentations = activePagePresentations(for: presentation, shared: shared)
+        return ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 0) {
+                ForEach(presentation.visibleDays, id: \.self) { day in
+                    let dayStart = Calendar.current.startOfDay(for: day)
+                    let isSelectedPage = Calendar.current.isDate(dayStart, inSameDayAs: presentation.selectedDay)
+                    if let pagePresentation = activePagePresentations[dayStart] {
+                        timelineContentPage(
+                            for: pagePresentation,
+                            isSelectedPage: isSelectedPage
+                        )
+                        .containerRelativeFrame(.horizontal)
+                        .id(dayStart)
+                        .accessibilityElement(children: isSelectedPage ? .contain : .ignore)
+                        .accessibilityHidden(!isSelectedPage)
+                        .allowsHitTesting(isSelectedPage)
+                    } else {
+                        Color.clear
+                            .containerRelativeFrame(.horizontal)
+                            .id(dayStart)
+                            .accessibilityHidden(true)
+                            .allowsHitTesting(false)
+                    }
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+        .scrollPosition(id: $contentScrollTargetDay, anchor: .center)
+        .scrollBounceBehavior(.always, axes: .horizontal)
+        .scrollClipDisabled()
+        .accessibilityIdentifier("timeline.contentPager")
+    }
+
+    private func activePagePresentations(
+        for presentation: TimelineHomePresentation,
+        shared: TimelineHomeSharedPresentation
+    ) -> [Date: TimelineHomePresentation] {
+        Dictionary(uniqueKeysWithValues: activeContentDays(for: presentation).map { day in
+            (
+                day,
+                TimelineHomePresentation(
+                    appState: appState,
+                    selectedDay: day,
+                    shared: shared
+                )
+            )
+        })
+    }
+
+    private func activeContentDays(for presentation: TimelineHomePresentation) -> Set<Date> {
+        let calendar = Calendar.current
+        let visibleDays = presentation.visibleDays.map { calendar.startOfDay(for: $0) }
+        let selectedDay = calendar.startOfDay(for: presentation.selectedDay)
+        guard !visibleDays.isEmpty else {
+            return [selectedDay]
+        }
+        guard let selectedIndex = visibleDays.firstIndex(of: selectedDay) else {
+            return [selectedDay]
+        }
+
+        let lowerBound = max(visibleDays.startIndex, selectedIndex - 1)
+        let upperBound = min(visibleDays.index(before: visibleDays.endIndex), selectedIndex + 1)
+        return Set(visibleDays[lowerBound...upperBound])
+    }
+
+    private func timelineContentPage(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
+            if presentation.logSummary.category == .future {
+                TimelineTodayStatusCard(
+                    presentation: presentation,
+                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
+                        for: presentation,
+                        isSelectedPage: isSelectedPage
+                    )
+                )
+
+                futureDayActions(for: presentation, isSelectedPage: isSelectedPage)
+            } else {
+                todayProductStack(for: presentation, isSelectedPage: isSelectedPage)
+            }
+
+            if presentation.logSummary.category == .today,
+               let forecast = presentation.uvForecast,
+               forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
+                WeatherKitAttributionFooter(
+                    attribution: presentation.weatherAttribution,
+                    sourceLabel: forecast.sourceLabel,
+                    showAttributionLink: true
+                )
+                .padding(.horizontal, AppSpacing.sm)
+            }
+
+            attentionBanners(for: presentation, isSelectedPage: isSelectedPage)
+
+            TimelineLogSection(
+                summary: presentation.logSummary,
+                uvForecast: presentation.uvForecast,
+                weatherAttribution: presentation.weatherAttribution,
+                currentStreak: presentation.currentStreak,
+                longestStreak: presentation.longestStreak,
+                accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
+                    for: presentation,
+                    isSelectedPage: isSelectedPage
+                )
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 1)
+    }
+
+    private func accessibilityIdentifierSuffix(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> String? {
+        guard !isSelectedPage else {
+            return nil
+        }
+        let dayID = Int(Calendar.current.startOfDay(for: presentation.selectedDay).timeIntervalSinceReferenceDate)
+        return "offscreen.\(dayID)"
+    }
+
+    private func pageIdentifier(
+        _ identifier: String,
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> String {
+        guard let suffix = accessibilityIdentifierSuffix(
+            for: presentation,
+            isSelectedPage: isSelectedPage
+        ) else {
+            return identifier
+        }
+        return "\(identifier).\(suffix)"
+    }
+
+    private func futureDayActions(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
         Button {
             feedbackTrigger += 1
             jumpToToday()
@@ -217,7 +353,9 @@ struct TimelineHomeView: View {
             .sunGlassCard(cornerRadius: AppRadius.card)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("timeline.backToToday")
+        .accessibilityIdentifier(
+            pageIdentifier("timeline.backToToday", for: presentation, isSelectedPage: isSelectedPage)
+        )
     }
 
     private var topChrome: some View {
@@ -253,17 +391,23 @@ struct TimelineHomeView: View {
         }
     }
 
-    private func todayProductStack(for presentation: TimelineHomePresentation) -> some View {
+    private func todayProductStack(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            uvContextCard(for: presentation)
+            uvContextCard(for: presentation, isSelectedPage: isSelectedPage)
 
-            sunscreenLogSummaryButton(for: presentation)
+            sunscreenLogSummaryButton(for: presentation, isSelectedPage: isSelectedPage)
 
-            todayUVForecastCard(for: presentation)
+            todayUVForecastCard(for: presentation, isSelectedPage: isSelectedPage)
         }
     }
 
-    private func uvContextCard(for presentation: TimelineHomePresentation) -> some View {
+    private func uvContextCard(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
         let reading = homeUVReading(for: presentation)
         return Button {
             feedbackTrigger += 1
@@ -285,10 +429,15 @@ struct TimelineHomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the hourly UV forecast.")
-        .accessibilityIdentifier("home.uvIndexCard")
+        .accessibilityIdentifier(
+            pageIdentifier("home.uvIndexCard", for: presentation, isSelectedPage: isSelectedPage)
+        )
     }
 
-    private func sunscreenLogSummaryButton(for presentation: TimelineHomePresentation) -> some View {
+    private func sunscreenLogSummaryButton(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
         Button {
             feedbackTrigger += 1
             openManualLog(
@@ -299,49 +448,104 @@ struct TimelineHomeView: View {
                 )
             )
         } label: {
-            HStack(alignment: .center, spacing: 14) {
-                Image(systemName: presentation.logSummary.record == nil ? "plus.circle.fill" : "checkmark.circle.fill")
-                    .font(AppFont.rounded(size: 32, weight: .semibold))
-                    .foregroundStyle(presentation.logSummary.record == nil ? AppPalette.pool : AppPalette.success)
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(presentation.logSummary.record == nil ? "No sunscreen logged today" : "Sunscreen Logged")
-                        .font(AppTextStyle.bodyMedium.font)
-                        .foregroundStyle(AppPalette.ink)
-                        .accessibilityIdentifier(presentation.logSummary.record == nil ? "timeline.todayStatus" : "home.todayStatus")
-
-                    Text(logSummaryDetail(for: presentation))
-                        .font(AppTextStyle.caption.font)
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("timeline.statusDetail")
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-                    .accessibilityHidden(true)
-            }
-            .padding(13)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .fill(AppPalette.elevatedCardFill)
-                    .appShadow(AppShadow.soft)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
-            }
+            sunscreenLogSummaryLabel(for: presentation, isSelectedPage: isSelectedPage)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.sunscreenLogCard")
+        .accessibilityIdentifier(
+            pageIdentifier("home.sunscreenLogCard", for: presentation, isSelectedPage: isSelectedPage)
+        )
         .accessibilityHint("Opens the sunscreen log.")
     }
 
-    private func todayUVForecastCard(for presentation: TimelineHomePresentation) -> some View {
+    private func sunscreenLogSummaryLabel(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: presentation.logSummary.record == nil ? "plus.circle.fill" : "checkmark.circle.fill")
+                .font(AppFont.rounded(size: 32, weight: .semibold))
+                .foregroundStyle(presentation.logSummary.record == nil ? AppPalette.pool : AppPalette.success)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                sunscreenLogStatusText(for: presentation, isSelectedPage: isSelectedPage)
+                sunscreenLogDetailText(for: presentation, isSelectedPage: isSelectedPage)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(AppFont.rounded(size: 13, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
+                .accessibilityHidden(true)
+        }
+        .padding(13)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .fill(AppPalette.elevatedCardFill)
+                .appShadow(AppShadow.soft)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .stroke(AppPalette.cardStroke, lineWidth: 1)
+        }
+    }
+
+    private func sunscreenLogStatusText(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
+        Text(sunscreenLogStatusTitle(for: presentation))
+            .font(AppTextStyle.bodyMedium.font)
+            .foregroundStyle(AppPalette.ink)
+            .accessibilityIdentifier(
+                pageIdentifier(
+                    sunscreenLogStatusIdentifier(for: presentation),
+                    for: presentation,
+                    isSelectedPage: isSelectedPage
+                )
+            )
+    }
+
+    private func sunscreenLogStatusTitle(for presentation: TimelineHomePresentation) -> String {
+        if presentation.logSummary.record != nil {
+            return "Sunscreen Logged"
+        }
+
+        switch presentation.logSummary.category {
+        case .today:
+            return "No sunscreen logged today"
+        case .past:
+            return "No sunscreen logged"
+        case .future:
+            return "Forecast only"
+        }
+    }
+
+    private func sunscreenLogStatusIdentifier(for presentation: TimelineHomePresentation) -> String {
+        guard presentation.logSummary.category == .today else {
+            return "timeline.dayStatus"
+        }
+        return presentation.logSummary.record == nil ? "timeline.todayStatus" : "home.todayStatus"
+    }
+
+    private func sunscreenLogDetailText(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
+        Text(logSummaryDetail(for: presentation))
+            .font(AppTextStyle.caption.font)
+            .foregroundStyle(AppPalette.softInk)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier(
+                pageIdentifier("timeline.statusDetail", for: presentation, isSelectedPage: isSelectedPage)
+            )
+    }
+
+    private func todayUVForecastCard(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
         let hours = forecastHours(for: presentation)
         return AppCard(padding: 13, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
             VStack(alignment: .leading, spacing: 12) {
@@ -376,7 +580,9 @@ struct TimelineHomeView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("UV forecast. \(peakUVText(for: presentation)). Hourly intensity for the selected day.")
-        .accessibilityIdentifier("home.uvForecastExposureCard")
+        .accessibilityIdentifier(
+            pageIdentifier("home.uvForecastExposureCard", for: presentation, isSelectedPage: isSelectedPage)
+        )
     }
 
     private func logSummaryDetail(for presentation: TimelineHomePresentation) -> String {
@@ -617,7 +823,10 @@ struct TimelineHomeView: View {
     }
 
     @ViewBuilder
-    private var attentionBanners: some View {
+    private func attentionBanners(
+        for presentation: TimelineHomePresentation,
+        isSelectedPage: Bool
+    ) -> some View {
         if let notificationHealth = appState.notificationHealthPresentation {
             timelineAttentionBanner(
                 TimelineAttentionContent(
@@ -626,7 +835,11 @@ struct TimelineHomeView: View {
                     symbol: "bell.badge.fill",
                     tint: AppColor.warning.opacity(0.75),
                     actionTitle: notificationHealth.actionTitle,
-                    identifier: "timeline.notificationHealthAction"
+                    identifier: pageIdentifier(
+                        "timeline.notificationHealthAction",
+                        for: presentation,
+                        isSelectedPage: isSelectedPage
+                    )
                 )
             ) {
                 switch notificationHealth.state {
@@ -650,7 +863,11 @@ struct TimelineHomeView: View {
                         : "icloud.and.arrow.up",
                     tint: !appState.conflicts.isEmpty ? AppColor.warning.opacity(0.75) : AppPalette.sun,
                     actionTitle: "Review",
-                    identifier: "timeline.syncRecoveryCard"
+                    identifier: pageIdentifier(
+                        "timeline.syncRecoveryCard",
+                        for: presentation,
+                        isSelectedPage: isSelectedPage
+                    )
                 )
             ) {
                 router.open(.recovery)
@@ -709,43 +926,21 @@ struct TimelineHomeView: View {
             return
         }
         withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
-            appState.selectDay(appState.referenceDate)
+            appState.selectTimelineDay(appState.referenceDate)
         }
     }
 
-    private func timelineSwipeGesture(for presentation: TimelineHomePresentation) -> some Gesture {
-        DragGesture(minimumDistance: 36)
-            .onEnded { value in
-                let horizontal = value.translation.width
-                let vertical = value.translation.height
-                guard abs(horizontal) >= 52, abs(horizontal) > abs(vertical) * 1.4 else {
-                    return
-                }
-
-                let offset = horizontal < 0 ? 1 : -1
-                moveTimelineSelection(by: offset, within: presentation)
+    private func syncContentScrollTarget(to day: Date, animated: Bool) {
+        let target = appState.timelineClampedDay(day)
+        guard contentScrollTargetDay != target else {
+            return
+        }
+        if animated {
+            withAnimation(SunMotion.easeInOut(duration: 0.24, reduceMotion: reduceMotion)) {
+                contentScrollTargetDay = target
             }
-    }
-
-    private func moveTimelineSelection(by offset: Int, within presentation: TimelineHomePresentation) {
-        let calendar = Calendar.current
-        let currentDay = calendar.startOfDay(for: appState.selectedDay)
-        guard let target = calendar.date(byAdding: .day, value: offset, to: currentDay) else {
-            return
-        }
-
-        let targetDay = calendar.startOfDay(for: target)
-        let today = calendar.startOfDay(for: presentation.today)
-        guard presentation.allowsFuture || targetDay <= today else {
-            return
-        }
-        guard presentation.visibleDays.contains(targetDay) else {
-            return
-        }
-
-        feedbackTrigger += 1
-        withAnimation(SunMotion.easeInOut(duration: 0.25, reduceMotion: reduceMotion)) {
-            appState.selectDay(targetDay)
+        } else {
+            contentScrollTargetDay = target
         }
     }
 
@@ -759,6 +954,14 @@ struct TimelineHomeView: View {
         switch offset {
         case 0:
             return "Today, \(dateText)"
+        case 1:
+            return "Tomorrow, \(dateText)"
+        case -1:
+            return "Yesterday, \(dateText)"
+        case let days? where days > 1:
+            return "In \(days) days, \(dateText)"
+        case let days? where days < -1:
+            return "\(abs(days)) days ago, \(dateText)"
         default:
             return formattedWeekdayHeadlineDate(selected, relativeTo: today)
         }
@@ -829,6 +1032,7 @@ private struct TimelineTodayStatusCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let presentation: TimelineHomePresentation
+    let accessibilityIdentifierSuffix: String?
 
     private var isToday: Bool {
         Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
@@ -844,11 +1048,11 @@ private struct TimelineTodayStatusCard: View {
                 HStack(alignment: .top, spacing: AppSpacing.md) {
                     VStack(alignment: .leading, spacing: AppSpacing.xs) {
                         AppText(statusTitle, style: .largeTitle)
-                            .accessibilityIdentifier(statusAccessibilityIdentifier)
+                            .accessibilityIdentifier(identifier(statusAccessibilityIdentifier))
 
                         if let statusDetail {
                             AppText(statusDetail, style: .body, color: AppColor.Text.secondary)
-                                .accessibilityIdentifier("timeline.statusDetail")
+                                .accessibilityIdentifier(identifier("timeline.statusDetail"))
                         }
                     }
 
@@ -867,7 +1071,7 @@ private struct TimelineTodayStatusCard: View {
                     .accessibilityHidden(true)
 
                 SunWeekProgressRow(days: presentation.weekProgressDays)
-                    .accessibilityIdentifier("timeline.weekProgress")
+                    .accessibilityIdentifier(identifier("timeline.weekProgress"))
 
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(spacing: 10) {
@@ -891,7 +1095,7 @@ private struct TimelineTodayStatusCard: View {
             systemImage: "checkmark.circle.fill",
             tint: AppPalette.streakAccent
         )
-        .accessibilityIdentifier("timeline.status.weekLogged")
+        .accessibilityIdentifier(identifier("timeline.status.weekLogged"))
 
         StatCard(
             value: reapplyStatusValue,
@@ -899,7 +1103,7 @@ private struct TimelineTodayStatusCard: View {
             systemImage: "timer",
             tint: AppPalette.sun
         )
-        .accessibilityIdentifier("timeline.status.reapply")
+        .accessibilityIdentifier(identifier("timeline.status.reapply"))
     }
 
     private var dateText: String {
@@ -922,6 +1126,13 @@ private struct TimelineTodayStatusCard: View {
             return "home.todayStatus"
         }
         return "timeline.todayStatus"
+    }
+
+    private func identifier(_ base: String) -> String {
+        guard let accessibilityIdentifierSuffix else {
+            return base
+        }
+        return "\(base).\(accessibilityIdentifierSuffix)"
     }
 
     private var statusDetail: String? {
