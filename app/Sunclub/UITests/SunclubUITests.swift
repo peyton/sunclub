@@ -153,6 +153,9 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.data"].exists)
         XCTAssertTrue(app.buttons["settings.section.automation"].exists)
         XCTAssertTrue(app.buttons["settings.section.advanced"].exists)
+        XCTAssertFalse(app.staticTexts["App Preferences"].exists)
+        XCTAssertFalse(app.buttons["settings.reference.appearance"].exists)
+        XCTAssertFalse(app.buttons["settings.reference.units"].exists)
 
         assertSettingsReminderControls(in: app)
         assertSettingsNotificationControls(in: app)
@@ -1349,7 +1352,7 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func assertSettingsHelpControls(in app: XCUIApplication) {
-        XCTAssertTrue(scrollToElement(app.buttons["settings.section.help"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.section.help"], in: app))
         expandSettingsSection("help", in: app)
         XCTAssertTrue(scrollToElement(app.buttons["settings.support"], in: app))
         XCTAssertTrue(app.buttons["settings.privacyPolicy"].exists)
