@@ -975,6 +975,28 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testTimelineFutureManualLogActionFallsBackToToday() throws {
+        let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
+        let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
+        let tomorrowChip = timelineDayChip(tomorrowIdentifier, in: app, direction: .future)
+        XCTAssertTrue(tomorrowChip.exists)
+        tomorrowChip.tap()
+
+        let headline = timelineHeadline(in: app)
+        XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 1), on: headline))
+        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 3))
+        app.buttons["home.logManually"].tap()
+
+        let saveButton = app.buttons["manualLog.logToday"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.isEnabled)
+        XCTAssertFalse(app.descendants(matching: .any)["manualLog.validation"].exists)
+        let timestamp = app.staticTexts["manualLog.timestamp"]
+        XCTAssertTrue(timestamp.waitForExistence(timeout: 3))
+        XCTAssertTrue(timestamp.label.hasPrefix("Today,"))
+    }
+
+    @MainActor
     func testTimelineAccessibilityTextCanBrowseFutureForecast() throws {
         let app = launchTimelineHome(additionalArguments: accessibilityScorecardArguments + liveTimelineForecastArguments)
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
@@ -1023,7 +1045,15 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)[beyondForecastIdentifier].exists)
 
         let headline = timelineHeadline(in: app)
-        lastForecastChip.swipeLeft()
+        lastForecastChip.tap()
+        XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 6), on: headline))
+
+        let pager = app.descendants(matching: .any)["timeline.contentPager"]
+        XCTAssertTrue(pager.waitForExistence(timeout: 5))
+        pager.swipeLeft()
+        pager.swipeLeft()
+
+        XCTAssertTrue(waitForLabel(weekdayHeadline(offset: 6), on: headline, timeout: 2))
         XCTAssertFalse(waitForLabel(weekdayHeadline(offset: 7), on: headline, timeout: 1))
     }
 
