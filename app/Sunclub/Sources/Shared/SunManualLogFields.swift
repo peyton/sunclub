@@ -276,7 +276,7 @@ struct SunManualLogFields: View {
 
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 14) {
-                    SunCoveredAreaIllustration(selectedAreas: selectedAreas)
+                    SunCoveredAreaIllustration()
                         .frame(width: 148, height: 190)
                         .accessibilityHidden(true)
 
@@ -290,7 +290,7 @@ struct SunManualLogFields: View {
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    SunCoveredAreaIllustration(selectedAreas: selectedAreas)
+                    SunCoveredAreaIllustration()
                         .frame(maxWidth: .infinity)
                         .accessibilityHidden(true)
 
@@ -457,21 +457,10 @@ struct SunManualLogFields: View {
 }
 
 private struct SunCoveredAreaIllustration: View {
-    let selectedAreas: Set<String>
-
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Circle()
-                .fill(AppPalette.warmGlow.opacity(0.18))
-                .frame(width: 136, height: 136)
-                .offset(y: 44)
-
-            SunclubVisualAsset.coverageFaceDiagram.image
-                .resizable()
-                .scaledToFit()
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-        }
-        .frame(height: 154)
+        SunclubVisualAsset.coverageFaceDiagram.image
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: 148, maxHeight: 190)
     }
 }

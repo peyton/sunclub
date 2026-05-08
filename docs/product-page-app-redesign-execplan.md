@@ -31,6 +31,7 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 - [x] (2026-05-07T21:06Z) Captured clean iPhone 17 Pro simulator screenshots for Today, tab switching, Settings top/mid/bottom, Log Sunscreen, History, Insights, UV detail, Privacy, Support, and accessibility text mode.
 - [x] (2026-05-07T21:06Z) Built and opened the `.build/redesign-completion-screenshots/contact-sheet.html` browser contact sheet with 12 screenshots.
 - [x] (2026-05-08T00:59Z) Recorded the GPT-5.5 Pro 150-item critique outcome ledger and scoped the ignored Atlas capture artifact to P0 review groups/states without Swift source edits.
+- [x] (2026-05-08T07:52Z) Replaced the coverage-face source with Browser/ChatGPT Extended Pro GPT image generation artwork, de-matted it into a transparent PNG master, regenerated exact 1x/2x/3x outputs, and adjusted the manual-log illustration frame.
 - [ ] Push the branch, open a PR, monitor required GitHub checks, and merge to `master`.
 
 ## Surprises & Discoveries
@@ -74,6 +75,12 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 - Observation: The first screenshot contact sheet showed a Simulator system banner covering the app chrome.
   Evidence: The screenshot harness was rerun with a settle delay before each capture, producing clean 1206x2622 screenshots under `.build/redesign-completion-screenshots/` and a 12-image contact sheet opened in the in-app browser.
 
+- Observation: ChatGPT Extended Pro in Browser could accept pasted reference images and generate a reference-aligned coverage-face image, but the Browser surface did not expose a direct file download.
+  Evidence: The Browser DOM showed four uploaded reference images, `Extended Pro`, a generated-image response with a 1086x1448 image, and `Downloads are not supported by Codex In-app Browser`. The checked-in source was extracted from the rendered Browser image preview and then post-processed locally.
+
+- Observation: The generated bitmap source exceeded the 900x1200 @3x requirement and needed background processing before import.
+  Evidence: The Browser-rendered crop was 1038x1384 RGB; the repo source `scripts/art/sources/CoverageFaceDiagram.png` is now a 1038x1384 RGBA PNG with the warm-canvas matte removed to avoid a visible box in the Log Sunscreen card, and the imageset exports are exact transparent 300x400, 600x800, and 900x1200 PNGs.
+
 ## Decision Log
 
 - Decision: Treat the attached product page and generated concept sheet as the visual source of truth over older soft-rounded rules.
@@ -91,6 +98,10 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 - Decision: Use a repo-owned high-resolution vector source rendered into PNG assets instead of a low-resolution crop from the attached screenshots.
   Rationale: The reference crops were too small for a crisp 3x asset. Rendering a reviewed source through the import script gives the app real bitmap assets while keeping regeneration deterministic and dependency-free.
   Date/Author: 2026-05-07 / Codex
+
+- Decision: Switch the coverage-face master from the earlier deterministic SVG to a checked-in, post-processed PNG source generated in the Browser ChatGPT Extended Pro session.
+  Rationale: The SVG source produced a simplified stick-figure look that did not match the supplied reference illustration. A high-resolution PNG master preserves the richer face, hair, line hierarchy, and neck glow while the existing importer still creates deterministic iOS scale outputs.
+  Date/Author: 2026-05-08 / Codex
 
 ## Completion Pass Polish Ledger
 
