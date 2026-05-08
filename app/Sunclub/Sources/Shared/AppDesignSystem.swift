@@ -445,9 +445,9 @@ struct DayCapsule: View {
                     .fill(isFuture ? AppColor.surface.opacity(0.35) : fill)
 
                 if isFuture {
-                    DiagonalHatch(color: AppColor.muted.opacity(0.28))
+                    DiagonalHatch(color: AppColor.muted.opacity(isSelected ? 0.40 : 0.28))
                         .clipShape(Circle())
-                        .padding(2)
+                        .padding(isSelected ? 1 : 2)
                 }
 
                 Circle()
