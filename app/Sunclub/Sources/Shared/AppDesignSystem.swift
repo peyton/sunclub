@@ -443,7 +443,7 @@ struct AppPrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 56)
             .background {
                 RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .fill(isEnabled ? AppColor.accent : AppColor.muted.opacity(0.42))
+                    .fill(isEnabled ? AppColor.Text.primary : AppColor.muted.opacity(0.42))
                     .appShadow(isEnabled ? AppShadow.floating : nil)
             }
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))

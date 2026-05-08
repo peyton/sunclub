@@ -4,7 +4,7 @@
 
 - Default posture: maximum automation for non-destructive writes.
 - Universal Links: deferred for this release. Do not add Associated Domains or `apple-app-site-association`.
-- Direct writes: allowed for logging, reapply, reminders, supported toggles, and friend invite import. Friend reminder links return a Message-first foreground route while public Activity sharing transport is disabled for first App Store review.
+- Direct writes: allowed for logging, reapply, reminders, supported toggles, and export-only history files. Prototype sharing links remain parseable for older Shortcuts but route to Settings in this release.
 - UI-only actions: destructive, review-heavy, permission-only, camera, and file-picker flows open Sunclub instead of running in the background.
 - Storage: automation preferences live in the Codable growth settings store, not SwiftData.
 
@@ -22,23 +22,20 @@
 - `Log Sunscreen`: optional SPF and notes.
 - `Save Sunscreen Log`: today or a selected date/time, optional SPF and notes.
 - `Log Reapply`: increments today's reapply count.
-- `Get Sunclub Status`: returns today logged state, streak, weekly applied count, and message.
+- `Get Sunclub Status`: returns today logged state, weekly logged count, reapply status, and message.
 - `Time Since Last Sunscreen`: returns minutes since the last log or reapply.
 - `Open Sunclub`: opens a supported app route.
 - `Set Sunclub Reminder`: updates weekday or weekend reminder time.
 - `Set Sunclub Reapply Reminder`: turns reapply reminders on or off and can update the interval.
-- `Set Sunclub Toggle`: updates travel timezone, streak-risk, daily UV briefing, extreme UV alert, iCloud sync, or HealthKit.
+- `Set Sunclub Toggle`: updates travel timezone, daily UV briefing, extreme UV alert, iCloud sync, or Apple Health availability settings.
 - `Export Sunclub Backup`: returns an `IntentFile`.
-- `Create Skin Health Report`: returns an `IntentFile`.
-- `Create Streak Card`: returns an `IntentFile`.
-- `Import Sharing Invite`: imports a Sunclub friend invite code.
-- `Remind Friend`: uses a friend `AppEntity` query. First-review builds do not send a direct CloudKit reminder; they return an Activity sharing route so the user can message locally.
+- `Export Sunclub History`: returns a PDF `IntentFile`.
 
 ## App Shortcuts
 
-- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Time Since Last Sunscreen, Open Shortcuts, Export Backup, Create Skin Health Report, and Create Streak Card.
+- Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Time Since Last Sunscreen, Open Shortcuts, Export Backup, and Export Sunclub History.
 - File-producing App Intents return files through Shortcuts and are shown separately from URL examples in the in-app Shortcuts catalog.
-- The in-app catalog intentionally disables the Test button for URL examples that need a real friend invite code or saved friend UUID.
+- The in-app catalog includes only deterministic P0 examples.
 
 ## URL Scheme
 
@@ -46,7 +43,7 @@
 - Development scheme: `sunclub-dev`.
 - Direct host: `sunclub://automation/...`.
 - x-callback host: `sunclub://x-callback-url/...`.
-- Legacy hosts kept: `sunclub://widget/...`, `sunclub://accountability/...`.
+- Legacy hosts kept: `sunclub://widget/...`, `sunclub://accountability/...`. Accountability links are compatibility-only and route to Settings.
 
 ## Direct URL Actions
 
@@ -57,10 +54,10 @@
 - `time-since-last-application`
 - `set-reminder?kind=weekday|weekend&time=HH:mm`
 - `set-reapply?enabled=true&interval=120`
-- `set-toggle?name=travelTimeZone|streakRisk|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
-- `import-friend?code=...`
-- `poke-friend?id=<uuid>` opens Activity sharing with `status=needs-message` while public Activity sharing transport is disabled.
-- `open?route=home|log|reapply|summary|history|settings|automation|uv-forecast|privacy|support|achievements|friends|health-report|product-scanner|recovery`
+- `set-toggle?name=travelTimeZone|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
+- `open?route=home|log|reapply|summary|history|settings|automation|uv-forecast|privacy|support|recovery`
+
+Compatibility routes are normalized before display: `achievements` opens Insights, `friends` opens Settings, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
 
 URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
 
@@ -84,14 +81,12 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - `recordDate`
 - `lastAppliedAt`
 - `minutesSinceLastApplication`
-- `friend`
 - `fileName`
 - `fileType`
 
 ## Excluded Direct Writes
 
 - Delete log.
-- Remove friend.
 - Backup import.
 - Recovery undo/redo.
 - Conflict resolution.
@@ -119,7 +114,6 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Unit: automation logging uses revision history and refreshes widget snapshots.
 - Unit: old growth settings payloads decode with default automation preferences.
 - Unit: file-producing intents return expected file metadata.
-- Unit: friend query, invite import, and Message-first poke paths work with seeded friends.
 - UI: Settings exposes Shortcuts controls, copy buttons, and test buttons.
 - UI: `sunclub-dev://x-callback-url/open?route=automation` opens Shortcuts.
 - UI: URL write disable blocks mutation and routes to foreground UI.

@@ -8,15 +8,15 @@ enum SunclubCopy {
     }
 
     enum Success {
-        static let defaultTitle = "Applied"
+        static let defaultTitle = "Sunscreen Logged"
         static let actionTitle = "Done"
 
         static func streakDetail(_ streak: Int) -> String {
             if streak == 1 {
-                return "First day logged. Keep it going tomorrow."
+                return "First log saved."
             }
 
-            return "\(SunclubCopy.countedDays(streak)) in a row."
+            return "\(SunclubCopy.countedDays(streak)) logged recently."
         }
     }
 
@@ -38,14 +38,14 @@ enum SunclubCopy {
         static let daily: [String] = [
             "Sunscreen first. The rest can follow.",
             "Log today before the day gets busy.",
-            "One quick check-in and you're set for today.",
+            "One quick log and your reminder can start.",
             "Keep the habit easy. Sunscreen first.",
-            "Start the day protected.",
+            "Start the day with a sunscreen log.",
             "Get today's check-in done early.",
             "A steady routine beats a perfect one.",
             "Log today and move on with the day.",
             "Keep your bottle where you can see it.",
-            "One small step. One protected day.",
+            "One small step. One logged day.",
             "Make sunscreen the easy part of the morning.",
             "Stay covered, keep it simple."
         ]
@@ -62,14 +62,14 @@ enum SunclubCopy {
         ]
 
         static let success: [String] = [
-            "Applied",
             "Logged",
             "Saved",
             "Today is logged",
             "Done",
             "Logged today",
             "Sunscreen logged",
-            "All set"
+            "All set",
+            "Reminder set"
         ]
     }
 

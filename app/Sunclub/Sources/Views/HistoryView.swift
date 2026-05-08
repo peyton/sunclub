@@ -41,13 +41,13 @@ struct HistoryView: View {
 
                 calendarMonthCard(presentation: presentation)
 
+                statsSection(stats: presentation.monthStats)
+
                 deleteUndoBanner
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay, presentation: presentation)
                 }
-
-                statsSection(stats: presentation.monthStats)
 
                 historyOverviewCard(presentation: presentation)
 
@@ -56,14 +56,6 @@ struct HistoryView: View {
                 if selectedDay == nil {
                     historyEmptyHint(presentation: presentation)
                 }
-
-                streakContextCard(presentation: presentation)
-
-                SunAssetHero(
-                    asset: .illustrationHistoryCalendar,
-                    height: 112,
-                    glowColor: AppPalette.sun
-                )
 
                 Spacer(minLength: 0)
             }
@@ -122,8 +114,8 @@ struct HistoryView: View {
                             label: "logged days"
                         )
                         historyOverviewMetric(
-                            value: "\(presentation.currentStreakDays.count)",
-                            label: "day streak"
+                            value: "\(max(0, presentation.monthStats.totalDays - presentation.monthStats.appliedCount))",
+                            label: "open days"
                         )
                     }
 
@@ -133,8 +125,8 @@ struct HistoryView: View {
                             label: "logged days"
                         )
                         historyOverviewMetric(
-                            value: "\(presentation.currentStreakDays.count)",
-                            label: "day streak"
+                            value: "\(max(0, presentation.monthStats.totalDays - presentation.monthStats.appliedCount))",
+                            label: "open days"
                         )
                     }
                 }
@@ -147,8 +139,8 @@ struct HistoryView: View {
         StatCard(
             value: value,
             label: label,
-            systemImage: label.contains("streak") ? "flame.fill" : "checkmark.circle.fill",
-            tint: label.contains("streak") ? AppPalette.sun : AppPalette.success
+            systemImage: label.contains("open") ? "calendar" : "checkmark.circle.fill",
+            tint: label.contains("open") ? AppPalette.sun : AppPalette.success
         )
     }
 
@@ -235,94 +227,6 @@ struct HistoryView: View {
         .disabled(!isEnabled)
     }
 
-    private func streakContextCard(presentation: HistoryPresentation) -> some View {
-        let streakDays = presentation.currentStreakDays
-        let currentStreak = streakDays.count
-        let startText = streakDays.first.map {
-            "Started \($0.formatted(.dateTime.month(.abbreviated).day()))"
-        } ?? "Start by logging today"
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
-                    .font(AppFont.rounded(size: 20, weight: .semibold))
-                    .foregroundStyle(AppPalette.sun)
-                    .frame(width: 30, height: 30)
-                    .background(AppPalette.warmGlow.opacity(0.5), in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(currentStreak > 0 ? "Current Streak" : "No Current Streak")
-                        .font(AppFont.rounded(size: 14, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-
-                    Text(currentStreak == 1 ? "1 day" : "\(currentStreak) days")
-                        .font(AppFont.rounded(size: 28, weight: .bold))
-                        .foregroundStyle(AppPalette.ink)
-                        .accessibilityIdentifier("history.currentStreakValue")
-
-                    Text(startText)
-                        .font(AppFont.rounded(size: 14, weight: .medium))
-                        .foregroundStyle(AppPalette.softInk)
-                        .accessibilityIdentifier("history.currentStreakStart")
-                }
-
-                Spacer(minLength: 0)
-            }
-
-            HStack(spacing: 12) {
-                streakMetricPill(
-                    value: "\(presentation.longestStreak)",
-                    label: presentation.longestStreak == 1 ? "Best day" : "Best days",
-                    accessibilityIdentifier: "history.bestStreak"
-                )
-
-                Button("Jump to Today") {
-                    jumpToToday()
-                }
-                .font(AppFont.rounded(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.ink)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .fill(AppPalette.warmGlow.opacity(0.5))
-                )
-                .buttonStyle(.plain)
-                .accessibilityHint("Shows and selects today in the calendar.")
-                .accessibilityIdentifier("history.todayMonth")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("history.streakContext")
-    }
-
-    private func streakMetricPill(
-        value: String,
-        label: String,
-        accessibilityIdentifier: String
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(value)
-                .font(AppFont.rounded(size: 18, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-
-            Text(label)
-                .font(AppFont.rounded(size: 12, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-        }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.76))
-        )
-        .accessibilityIdentifier(accessibilityIdentifier)
-    }
-
     private var canGoForward: Bool {
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
         let nextMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: nextMonth)) ?? nextMonth
@@ -343,14 +247,6 @@ struct HistoryView: View {
 
     private func historyLegend(presentation: HistoryPresentation) -> some View {
         LazyVGrid(columns: historyLegendColumns, spacing: 8) {
-            if !presentation.currentStreakDays.isEmpty {
-                historyLegendItem(
-                    title: "Streak",
-                    color: AppPalette.streakAccent,
-                    symbol: "flame.fill",
-                    accessibilityIdentifier: "history.legend.streak"
-                )
-            }
             historyLegendItem(
                 title: "Logged",
                 color: AppPalette.sun,
@@ -499,7 +395,7 @@ struct HistoryView: View {
             isFuture: isFuture,
             isSelected: isSelected,
             isCurrentMonth: isCurrentMonth,
-            isCurrentStreak: isCurrentMonth && presentation.currentStreakDaySet.contains(dayStart)
+            isCurrentStreak: false
         )
     }
 
@@ -554,7 +450,7 @@ struct HistoryView: View {
     private func calendarDayContent(day: Date, state: HistoryDayCellState) -> some View {
         VStack(spacing: 2) {
             Text("\(calendar.component(.day, from: day))")
-                .font(AppFont.rounded(size: 15, weight: state.isToday ? .bold : .regular))
+                .font(AppFont.rounded(size: 16, weight: state.isToday ? .bold : .regular))
                 .foregroundStyle(
                     dayTextColor(
                         isCurrentMonth: state.isCurrentMonth,
@@ -593,13 +489,13 @@ struct HistoryView: View {
     private func dayTextColor(isCurrentMonth: Bool, isFuture: Bool, isSelected: Bool) -> Color {
         if !isCurrentMonth { return AppPalette.muted }
         if isFuture { return AppPalette.muted }
-        if isSelected { return AppPalette.ink }
+        if isSelected { return AppPalette.onAccent }
         return AppPalette.ink
     }
 
     private func dayBackgroundColor(isSelected: Bool, isCurrentStreak: Bool) -> Color {
         if isSelected {
-            return AppPalette.warmGlow.opacity(0.58)
+            return AppPalette.ink
         }
 
         if isCurrentStreak {
@@ -611,7 +507,7 @@ struct HistoryView: View {
 
     private func dayBorderColor(isSelected: Bool, isCurrentStreak: Bool) -> Color {
         if isSelected {
-            return AppPalette.ink.opacity(0.28)
+            return AppPalette.sun
         }
 
         if isCurrentStreak {
@@ -650,19 +546,11 @@ struct HistoryView: View {
             calendar: calendar
         )
         let conflict = appState.conflict(for: dayStart)
-        let isCurrentStreak = presentation.currentStreakDaySet.contains(dayStart)
 
         VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
-
-            if isCurrentStreak {
-                Label("Part of your current streak", systemImage: "flame.fill")
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
-                    .foregroundStyle(AppPalette.streakAccent)
-                    .accessibilityIdentifier("history.currentStreakBadge")
-            }
 
             dayDetailBody(record: record, status: status, conflict: conflict)
 
@@ -708,7 +596,7 @@ struct HistoryView: View {
     @ViewBuilder
     private func dayRecordMetadata(_ record: DailyRecord?) -> some View {
         if let record {
-            Text("Verified via \(record.method.displayName) at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
+            Text("\(record.method.displayName) log at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
                 .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
         } else {
@@ -781,12 +669,12 @@ struct HistoryView: View {
                         .font(AppTypography.metric)
                         .foregroundStyle(AppPalette.ink)
 
-                    Text("Consistency: \(stats.rate)")
+                    Text("Log rate: \(stats.rate)")
                         .font(AppTypography.metric)
                         .foregroundStyle(AppPalette.ink)
 
                     if stats.bestStreak > 0 {
-                        Text("Best streak: \(stats.bestStreak) days")
+                        Text("Longest run: \(stats.bestStreak) days")
                             .font(AppTypography.metric)
                             .foregroundStyle(AppPalette.ink)
                     }
@@ -813,7 +701,7 @@ struct HistoryView: View {
     private func monthMetricPills(stats: HistoryMonthStats) -> some View {
         SunMetricPill(
             value: "\(stats.appliedCount)",
-            label: "days applied",
+            label: "logged days",
             symbolName: "checkmark.circle.fill",
             tint: AppPalette.success,
             accessibilityIdentifier: "history.month.applied"
@@ -841,11 +729,6 @@ struct HistoryView: View {
         let recordDates = records.map { calendar.startOfDay(for: $0.startOfDay) }
         let recordDateSet = Set(recordDates)
         let today = calendar.startOfDay(for: appState.referenceDate)
-        let currentStreakDays = CalendarAnalytics.currentStreakDays(
-            records: recordDates,
-            now: today,
-            calendar: calendar
-        )
         var recordsByDay: [Date: DailyRecord] = [:]
         for record in records {
             recordsByDay[calendar.startOfDay(for: record.startOfDay)] = record
@@ -854,12 +737,9 @@ struct HistoryView: View {
         return HistoryPresentation(
             recordsByDay: recordsByDay,
             recordDateSet: recordDateSet,
-            currentStreakDays: currentStreakDays,
-            currentStreakDaySet: Set(currentStreakDays),
             today: today,
             monthDays: CalendarAnalytics.monthGridDays(for: displayedMonth, calendar: calendar),
-            monthStats: monthStats(recordDates: recordDates, records: records, today: today),
-            longestStreak: appState.longestStreak
+            monthStats: monthStats(recordDates: recordDates, records: records, today: today)
         )
     }
 
@@ -1073,7 +953,7 @@ struct HistoryView: View {
         state: HistoryDayCellState
     ) -> String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        let status = state.hasRecord ? "Applied" : (state.isToday ? "Pending" : "No entry")
+        let status = state.hasRecord ? "Logged" : (state.isToday ? "Pending" : "No entry")
         var parts = [dateLabel, status]
 
         if let spfLevel = state.spfLevel {
@@ -1082,10 +962,6 @@ struct HistoryView: View {
 
         if state.hasNotes {
             parts.append("note saved")
-        }
-
-        if state.isCurrentStreak {
-            parts.append("part of current streak")
         }
 
         if state.isSelected {
@@ -1121,7 +997,7 @@ struct HistoryView: View {
                 .font(AppFont.rounded(size: 22, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
             Text(label)
-                .font(AppFont.rounded(size: 12, weight: .medium))
+                    .font(AppFont.rounded(size: 13, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity)
@@ -1185,7 +1061,7 @@ struct HistoryView: View {
 
     private func statusTitle(for status: DayStatus) -> String {
         switch status {
-        case .applied: return "Applied"
+        case .applied: return "Logged"
         case .todayPending: return "Pending"
         case .missed: return "Not logged"
         case .future: return "Future"
@@ -1246,7 +1122,8 @@ struct HistoryRecordEditorView: View {
         self.route = route
         self.targetContext = targetContext
         _selectedSPF = State(initialValue: existingRecord?.spfLevel)
-        _selectedAreas = State(initialValue: SunManualLogInput.coveredAreas(in: existingRecord?.notes))
+        let existingAreas = SunManualLogInput.coveredAreas(in: existingRecord?.notes)
+        _selectedAreas = State(initialValue: existingAreas.isEmpty ? SunManualLogInput.defaultCoveredAreas : existingAreas)
         _notes = State(initialValue: SunManualLogInput.notesRemovingCoveredAreas(existingRecord?.notes))
     }
 
@@ -1385,12 +1262,9 @@ struct HistoryEditorTestHarnessView: View {
 private struct HistoryPresentation {
     let recordsByDay: [Date: DailyRecord]
     let recordDateSet: Set<Date>
-    let currentStreakDays: [Date]
-    let currentStreakDaySet: Set<Date>
     let today: Date
     let monthDays: [Date]
     let monthStats: HistoryMonthStats
-    let longestStreak: Int
 
     func record(for day: Date, calendar: Calendar) -> DailyRecord? {
         recordsByDay[calendar.startOfDay(for: day)]

@@ -33,7 +33,7 @@ final class SunclubUITests: XCTestCase {
         let hasLoggedAction = loggedCard.waitForExistence(timeout: 5)
             || legacyLoggedAction.exists
         let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 5)
-            && timelineStatus.label == "Applied"
+            && timelineStatus.label == "Sunscreen Logged"
             && hasLoggedAction
         XCTAssertTrue(
             hasTimelineLoggedState,
@@ -78,6 +78,8 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipLocation"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -111,23 +113,15 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testAchievementsShowClearProgressMeters() throws {
+    func testAchievementsRouteOpensInsightsInsteadOfBadges() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=achievements",
             "UITEST_SEED_HISTORY=achievementProgress"
         ])
 
-        let morningSummary = app.staticTexts["achievement.progress.morningGlow.summary"]
-        XCTAssertTrue(scrollToElement(morningSummary, in: app, attempts: 10))
-        XCTAssertTrue(morningSummary.label.contains("80%"))
-        XCTAssertTrue(morningSummary.label.contains("4/5"))
-
-        let morningStatus = app.staticTexts["achievement.progress.morningGlow.status"]
-        XCTAssertTrue(waitForLabel("1 left", on: morningStatus))
-
-        let firstReapplyStatus = app.staticTexts["achievement.progress.firstReapply.status"]
-        XCTAssertTrue(scrollToElement(firstReapplyStatus, in: app, attempts: 10))
-        XCTAssertEqual(firstReapplyStatus.label, "Unlocked")
+        assertInsightsVisible(in: app)
+        XCTAssertFalse(app.staticTexts["achievement.progress.morningGlow.summary"].exists)
+        XCTAssertFalse(app.staticTexts["Achievements"].exists)
     }
 
     @MainActor
@@ -137,9 +131,6 @@ final class SunclubUITests: XCTestCase {
         app.buttons["home.logManually"].tap()
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
         app.buttons["manualLog.logToday"].tap()
-        XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
-
-        app.buttons["success.done"].tap()
         assertHomeLoggedState(app)
         XCTAssertTrue(app.buttons["home.sunscreenLogCard"].exists)
     }
@@ -170,6 +161,24 @@ final class SunclubUITests: XCTestCase {
         assertSettingsAutomationControls(in: app)
         assertSettingsAdvancedControls(in: app)
         assertSettingsHelpControls(in: app)
+    }
+
+    @MainActor
+    func testPrivacyShowsExportDeleteControlsAndAccurateConfirmation() throws {
+        let app = launchHome(additionalArguments: ["UITEST_ROUTE=privacy"])
+
+        XCTAssertTrue(app.staticTexts["Privacy"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(app.buttons["privacy.exportHistory"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["privacy.deleteHistory"], in: app))
+
+        app.buttons["privacy.deleteHistory"].tap()
+        XCTAssertTrue(app.staticTexts["Delete sunscreen history?"].waitForExistence(timeout: 5))
+        let confirmationCopy = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@",
+            "If iCloud Sync is on, the deletion syncs to your devices."
+        )).firstMatch
+        XCTAssertTrue(confirmationCopy.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Delete History"].exists)
     }
 
     @MainActor
@@ -316,12 +325,7 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["timeline.footer.settings"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.sharing"], in: app))
-        app.buttons["settings.sharing"].tap()
-        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5))
-        app.buttons["screen.back"].tap()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["settings.sharing"].exists)
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
         XCTAssertTrue(scrollToElement(reapplyToggle, in: app))
@@ -341,9 +345,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
 
         app.buttons["home.logManually"].tap()
-        XCTAssertTrue(scrollToElement(app.buttons["manualLog.spf.30"], in: app))
-        app.buttons["manualLog.spf.30"].tap()
-        XCTAssertTrue(app.buttons["manualLog.logToday"].exists)
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -364,22 +366,19 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testProductScannerShowsCameraDeniedCardAndKeepsPhotoPicker() throws {
+    func testProductScannerRouteOpensManualLog() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=productScanner",
             "UITEST_CAMERA_AUTH=denied"
         ])
 
-        XCTAssertTrue(app.staticTexts["Camera access is off"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["productScanner.openSettings"].exists)
-        XCTAssertTrue(app.buttons["productScanner.manualLog"].exists)
-        let pickerByIdentifier = app.buttons["productScanner.pickPhoto"]
-        let pickerByLabel = app.buttons["Pick Photo"]
-        XCTAssertTrue(pickerByIdentifier.exists || pickerByLabel.exists)
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["productScanner.openSettings"].exists)
+        XCTAssertFalse(app.buttons["productScanner.pickPhoto"].exists)
     }
 
     @MainActor
-    func testHomeKeepsAccountabilityAsFooterPillAfterProgress() throws {
+    func testHomeKeepsAccountabilityOffP0Settings() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_RESET_ACCOUNTABILITY",
             "UITEST_SEED_HISTORY=achievementProgress"
@@ -394,11 +393,11 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["timeline.footer.settings"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.sharing"].exists)
+        XCTAssertFalse(app.buttons["settings.sharing"].exists)
     }
 
     @MainActor
-    func testHomeFooterAccountabilityOpensFriendsForSeededFriends() throws {
+    func testSeededAccountabilityDoesNotSurfaceFriendsInP0() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_SEED_ACCOUNTABILITY_FRIEND"
         ])
@@ -412,14 +411,12 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
         app.buttons["timeline.footer.settings"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.sharing"], in: app))
-        app.buttons["settings.sharing"].tap()
-        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["Message"], in: app))
+        XCTAssertFalse(app.buttons["settings.sharing"].exists)
+        XCTAssertFalse(app.buttons["friends.activate"].exists)
     }
 
     @MainActor
-    func testHomeFooterAccountabilityOpensActiveSetup() throws {
+    func testActiveAccountabilityDoesNotSurfaceSetupInP0() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_SEED_ACCOUNTABILITY_ACTIVE"
         ])
@@ -432,31 +429,20 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["timeline.footer.settings"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.sharing"], in: app))
-        app.buttons["settings.sharing"].tap()
-        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["settings.sharing"].exists)
+        XCTAssertFalse(app.buttons["friends.activate"].exists)
     }
 
     @MainActor
-    func testAccountabilityHubShowsAddInviteCodeAndPokeActions() throws {
+    func testFriendsRouteIsQuarantinedToSettings() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_ROUTE=friends",
             "UITEST_SEED_ACCOUNTABILITY_FRIEND"
         ])
 
-        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["Message"], in: app))
-        XCTAssertFalse(app.buttons["Poke"].exists)
-        XCTAssertFalse(app.buttons["Refresh"].exists)
-        XCTAssertFalse(app.buttons["Poke by Message"].exists)
-        XCTAssertFalse(app.buttons["Remove friend"].exists)
-
-        XCTAssertTrue(scrollToElement(app.buttons["friends.add.toggle"], in: app))
-        app.buttons["friends.add.toggle"].tap()
-        XCTAssertTrue(app.buttons["friends.add.nearby"].exists)
-        XCTAssertTrue(app.buttons["friends.add.share"].exists)
-        XCTAssertTrue(app.buttons["friends.add.paste"].exists)
-        XCTAssertTrue(scrollToElement(app.staticTexts["friends.backupCode"], in: app))
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["friends.activate"].exists)
+        XCTAssertFalse(app.buttons["friends.add.toggle"].exists)
     }
 
     @MainActor
@@ -470,13 +456,13 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipLocation"].tap()
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
-        XCTAssertTrue(app.buttons["friends.activate"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.staticTexts["Maya"], in: app))
-        XCTAssertTrue(app.buttons["Message"].exists)
-        XCTAssertFalse(app.buttons["Poke"].exists)
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["friends.activate"].exists)
     }
 
     @MainActor
@@ -503,7 +489,7 @@ final class SunclubUITests: XCTestCase {
 
         let todayStatus = app.staticTexts["home.todayStatus"]
         XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
-        XCTAssertEqual(todayStatus.label, "Applied")
+        XCTAssertEqual(todayStatus.label, "Sunscreen Logged")
 
         let detail = app.staticTexts["timeline.statusDetail"]
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
@@ -513,14 +499,14 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testManualLogFlowShowsSuccess() throws {
+    func testManualLogFlowReturnsHomeLogged() throws {
         let app = launchHome()
 
         app.buttons["home.logManually"].tap()
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
         app.buttons["manualLog.logToday"].tap()
 
-        XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
+        assertHomeLoggedState(app)
     }
 
     @MainActor
@@ -529,8 +515,7 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["home.logManually"].tap()
 
-        XCTAssertTrue(scrollToElement(app.buttons["manualLog.sameAsLastTime"], in: app))
-        XCTAssertTrue(app.buttons["manualLog.noteSnippet.0"].exists)
+        XCTAssertTrue(scrollToElement(app.buttons["manualLog.noteSnippet.0"], in: app))
         app.buttons["manualLog.noteSnippet.0"].tap()
 
         let notesField = app.textFields["manualLog.notesField"]
@@ -547,7 +532,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testWeeklySummaryOpensFullHistoryWithStreakContext() throws {
+    func testWeeklySummaryOpensFullHistoryWithMonthlySummary() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_SEED_HISTORY=achievementProgress"
         ])
@@ -558,8 +543,8 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["weekly.viewFullHistory"].tap()
         XCTAssertTrue(app.staticTexts["history.monthTitle"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.otherElements["history.streakContext"], in: app))
-        XCTAssertTrue(scrollToElement(app.staticTexts["history.currentStreakValue"], in: app))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Month summary"], in: app))
+        XCTAssertFalse(app.otherElements["history.streakContext"].exists)
         XCTAssertFalse(app.buttons["screen.back"].exists)
 
         app.buttons["home.streakCard"].tap()
@@ -765,7 +750,7 @@ final class SunclubUITests: XCTestCase {
 
         let logButton = app.buttons["manualLog.logToday"]
         XCTAssertTrue(logButton.waitForExistence(timeout: 5))
-        XCTAssertEqual(logButton.label, "Save Changes")
+        XCTAssertEqual(logButton.label, "Save Log")
     }
 
     @MainActor
@@ -838,10 +823,9 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
         app.buttons["manualLog.logToday"].tap()
 
-        let reapplyMessage = app.staticTexts["success.reapplyMessage"]
-        XCTAssertTrue(reapplyMessage.waitForExistence(timeout: 5))
-        XCTAssertTrue(reapplyMessage.label.contains("High UV today"))
-        XCTAssertTrue(reapplyMessage.label.contains("1h 30m"))
+        let detail = app.staticTexts["timeline.statusDetail"]
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(detail.label.contains("Reapply in"))
     }
 
     @MainActor
@@ -1001,7 +985,7 @@ final class SunclubUITests: XCTestCase {
         app.buttons["home.logManually"].tap()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Save")
+        XCTAssertEqual(app.buttons["manualLog.logToday"].label, "Save Log")
     }
 
     @MainActor
@@ -1090,7 +1074,18 @@ final class SunclubUITests: XCTestCase {
     }
 
     private func automationSwitch(_ label: String, in app: XCUIApplication) -> XCUIElement {
-        app.switches[label]
+        switch label {
+        case "Allow Shortcut writes":
+            app.switches["Allow Shortcut writes"]
+        case "Allow URL open actions":
+            app.switches["Open Sunclub from links"]
+        case "Allow URL write actions":
+            app.switches["Save changes from links"]
+        case "Include callback result details":
+            app.switches["Share result details"]
+        default:
+            app.switches[label]
+        }
     }
 
     private var automationScheme: String {
@@ -1126,6 +1121,8 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     private func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
         app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipLocation"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -1279,7 +1276,8 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["settings.notificationStatus"].exists)
         XCTAssertTrue(app.buttons["settings.weekendReminderTime"].exists)
         XCTAssertTrue(app.switches["settings.travelToggle"].exists)
-        XCTAssertTrue(app.switches["settings.streakRiskToggle"].exists)
+        XCTAssertTrue(scrollToElement(app.switches["settings.eveningLogReminderToggle"], in: app))
+        XCTAssertFalse(app.switches["settings.streakRiskToggle"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["settings.coaching.weekday"], in: app))
         returnToSettingsHome(in: app)
     }
@@ -1326,9 +1324,9 @@ final class SunclubUITests: XCTestCase {
     private func assertSettingsAutomationControls(in app: XCUIApplication) {
         expandSettingsSection("automation", in: app)
         XCTAssertTrue(scrollToElement(automationSwitch("Allow Shortcut writes", in: app), in: app))
-        XCTAssertTrue(automationSwitch("Allow URL open actions", in: app).exists)
-        XCTAssertTrue(automationSwitch("Allow URL write actions", in: app).exists)
-        XCTAssertTrue(automationSwitch("Include callback result details", in: app).exists)
+        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL open actions", in: app), in: app))
+        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL write actions", in: app), in: app))
+        XCTAssertTrue(scrollToElement(automationSwitch("Include callback result details", in: app), in: app))
         XCTAssertTrue(scrollToElement(app.buttons["automation.example.logToday.copy"], in: app))
         XCTAssertTrue(app.buttons["automation.example.logToday.test"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["settings.automation.openCatalog"], in: app))
@@ -1343,6 +1341,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
         XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
         XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
+        XCTAssertTrue(scrollToElement(app.switches["settings.healthKitToggle"], in: app))
         XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["settings.liveUV.status"], in: app))
         returnToSettingsHome(in: app)
@@ -1460,13 +1459,13 @@ final class SunclubUITests: XCTestCase {
         case "reminders":
             return "Reminders"
         case "progress":
-            return "Streaks"
+            return "Reapply Reminder"
         case "data":
             return "Data & Export"
         case "automation":
             return "Connect Shortcuts"
         case "advanced":
-            return "Travel & Health"
+            return "UV & Weather"
         case "help":
             return "Help & Legal"
         default:

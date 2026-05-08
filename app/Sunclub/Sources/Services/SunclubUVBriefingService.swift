@@ -111,7 +111,7 @@ final class SunclubUVBriefingService {
         case .extreme:
             return "Extreme UV today. Treat this as a high-alert protection day."
         case .unknown:
-            return "Use Sunclub's daily check-in to stay protected."
+            return "Use Sunclub's daily check-in to keep a clear log."
         }
     }
 }

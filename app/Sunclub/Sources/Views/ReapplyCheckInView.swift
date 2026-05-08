@@ -35,9 +35,9 @@ struct ReapplyCheckInView: View {
     private func reapplyContent(presentation: ReapplyCheckInPresentation) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             SunScreenTitleBlock(
-                eyebrow: "Reapply check-in",
-                title: "Time to reapply?",
-                detail: "Add a reapply check-in when you put more sunscreen on. Today still stays one log.",
+                eyebrow: "Reapply",
+                title: "Reapply sunscreen",
+                detail: reapplyDetail,
                 symbolName: "timer",
                 tint: AppPalette.sun
             )
@@ -55,7 +55,7 @@ struct ReapplyCheckInView: View {
                         .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.sun)
 
-                    Text("Reapply #\(record.reapplyCount) today")
+                    Text("\(record.reapplyCount) reapply \(record.reapplyCount == 1 ? "log" : "logs") today")
                         .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
 
@@ -84,10 +84,6 @@ struct ReapplyCheckInView: View {
     private var footerAction: some View {
         if let presentation = appState.reapplyCheckInPresentation {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) {
-                    reapplyButtons(presentation: presentation)
-                }
-
                 VStack(spacing: 10) {
                     reapplyButtons(presentation: presentation)
                 }
@@ -113,7 +109,7 @@ struct ReapplyCheckInView: View {
 
     @ViewBuilder
     private func reapplyButtons(presentation: ReapplyCheckInPresentation) -> some View {
-        Button(primaryReapplyTitle(for: presentation)) {
+        Button("Log reapplication") {
             appState.recordReapplication()
             successFeedbackTrigger += 1
             router.goHome()
@@ -121,15 +117,28 @@ struct ReapplyCheckInView: View {
         .buttonStyle(SunPrimaryButtonStyle())
         .accessibilityIdentifier("reapply.log")
 
-        Button("Not Now") {
+        Button("Snooze 15 min") {
+            appState.snoozeReapplyReminder(minutes: 15)
             router.goHome()
         }
         .buttonStyle(SunSecondaryButtonStyle())
+        .accessibilityIdentifier("reapply.snooze")
+
+        Button("Dismiss") {
+            router.goHome()
+        }
+        .buttonStyle(SunTextButtonStyle())
         .accessibilityIdentifier("reapply.skip")
     }
 
-    private func primaryReapplyTitle(for presentation: ReapplyCheckInPresentation) -> String {
-        presentation.actionTitle.contains("Another") ? "Reapplied again" : "Reapplied"
+    private var reapplyDetail: String {
+        guard let record = appState.record(for: appState.referenceDate) else {
+            return "Log sunscreen first, then use reapply reminders when you add more."
+        }
+
+        let time = record.verifiedAt.formatted(date: .omitted, time: .shortened)
+        let spf = record.spfLevel.map { " · SPF \($0)" } ?? ""
+        return "Last logged \(time)\(spf)."
     }
 }
 
@@ -156,7 +165,7 @@ private struct ReapplyTimelineCard: View {
 
                     ReapplyTimelineStep(
                         title: "Reapply now",
-                        detail: "Tap Reapplied after you put more sunscreen on.",
+                        detail: "Log the reapplication after you put more sunscreen on.",
                         symbolName: "timer",
                         tint: AppPalette.sun,
                         isCurrent: true

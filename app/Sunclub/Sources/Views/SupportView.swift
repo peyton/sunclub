@@ -18,14 +18,14 @@ struct SupportView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         SunProductIcon(systemName: "lifepreserver", tint: AppPalette.pool, size: 44)
 
-                        Text("We're here to help.")
+                        Text("Get help with Sunclub")
                             .font(AppFont.rounded(size: 28, weight: .bold))
                             .foregroundStyle(AppPalette.ink)
                             .fixedSize(horizontal: false, vertical: true)
 
                         supportAction(
                             title: "Email Support",
-                            detail: "Get help from a real human.",
+                            detail: "Ask for help with logging, reminders, sync, or billing.",
                             symbolName: "envelope.fill",
                             url: SunclubWebLinks.supportEmail,
                             accessibilityIdentifier: "support.email"
@@ -33,7 +33,7 @@ struct SupportView: View {
 
                         supportAction(
                             title: "Help Center",
-                            detail: "Answers to common questions.",
+                            detail: "Read setup, widget, Shortcuts, and privacy guides.",
                             symbolName: "questionmark.circle.fill",
                             url: SunclubWebLinks.support,
                             accessibilityIdentifier: "support.helpCenter"
@@ -41,7 +41,7 @@ struct SupportView: View {
 
                         supportAction(
                             title: "Feedback",
-                            detail: "Share ideas or report issues.",
+                            detail: "Report a problem or suggest an improvement.",
                             symbolName: "bubble.left.and.bubble.right.fill",
                             url: SunclubWebLinks.supportEmail,
                             accessibilityIdentifier: "support.feedback"

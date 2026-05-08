@@ -19,7 +19,7 @@ struct TimelineHighlightsSection: View {
                 uvForecastCard(forecast: forecast)
             }
 
-            streakHighlight
+            weekHighlight
         }
     }
 
@@ -57,25 +57,21 @@ struct TimelineHighlightsSection: View {
         .accessibilityIdentifier("timeline.highlights.part.\(status.dayPart.rawValue)")
     }
 
-    private var streakHighlight: some View {
-        let streak = appState.currentStreak
-        let best = appState.longestStreak
-        let detail: String
-        if streak == 0 {
-            detail = "Log once today to start a streak."
-        } else {
-            detail = "\(streak)-day streak. Personal best: \(best)."
-        }
+    private var weekHighlight: some View {
+        let loggedParts = summary.partStatuses.filter(\.isCompleted).count
+        let detail = loggedParts == 0
+            ? "No sunscreen logged for this day yet."
+            : "\(loggedParts) part\(loggedParts == 1 ? "" : "s") logged for this day."
 
         return HStack(alignment: .top, spacing: 12) {
-            Image(systemName: streak > 0 ? "flame.fill" : "flame")
+            Image(systemName: loggedParts > 0 ? "checkmark.circle.fill" : "circle")
                 .font(AppFont.rounded(size: 16, weight: .semibold))
-                .foregroundStyle(AppPalette.streakAccent)
+                .foregroundStyle(loggedParts > 0 ? AppPalette.success : AppPalette.softInk)
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Streak")
+                Text("Daily log")
                     .font(AppFont.rounded(size: 15, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                 Text(detail)
@@ -88,9 +84,9 @@ struct TimelineHighlightsSection: View {
         .padding(16)
         .sunGlassCard(cornerRadius: 18)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Streak")
+        .accessibilityLabel("Daily log")
         .accessibilityValue(detail)
-        .accessibilityIdentifier("timeline.highlights.streak")
+        .accessibilityIdentifier("timeline.highlights.dailyLog")
     }
 
     private func uvForecastCard(forecast: SunclubUVForecast) -> some View {

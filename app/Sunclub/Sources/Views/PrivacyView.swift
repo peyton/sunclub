@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct PrivacyView: View {
+    @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
+    @State private var backupDocument: SunclubBackupDocument?
+    @State private var isExportingBackup = false
+    @State private var isConfirmingDeleteHistory = false
+    @State private var exportError: String?
 
     var body: some View {
         SunLightScreen(
@@ -18,7 +23,7 @@ struct PrivacyView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         SunProductIcon(systemName: "lock.fill", tint: AppPalette.aloe, size: 44)
 
-                        Text("Privacy, by design.")
+                        Text("Privacy controls")
                             .font(AppFont.rounded(size: 28, weight: .bold))
                             .foregroundStyle(AppPalette.ink)
                             .fixedSize(horizontal: false, vertical: true)
@@ -44,6 +49,36 @@ struct PrivacyView: View {
                 Spacer(minLength: 0)
             }
         }
+        .fileExporter(
+            isPresented: $isExportingBackup,
+            document: backupDocument,
+            contentType: SunclubBackupDocument.contentType,
+            defaultFilename: backupDocument?.suggestedFilename
+        ) { result in
+            if case let .failure(error) = result {
+                exportError = error.localizedDescription
+            }
+        }
+        .confirmationDialog(
+            "Delete sunscreen history?",
+            isPresented: $isConfirmingDeleteHistory,
+            titleVisibility: .visible
+        ) {
+            Button("Delete History", role: .destructive) {
+                deleteHistory()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes sunscreen log entries. If iCloud Sync is on, the deletion syncs to your devices. Recent changes remain reviewable in Recovery & Changes.")
+        }
+        .alert("Export failed", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
+        }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -51,27 +86,78 @@ struct PrivacyView: View {
     private var privacyRows: some View {
         VStack(alignment: .leading, spacing: 16) {
             SunInfoRow(
-                title: "Your data stays yours.",
-                detail: "We don't sell your data or show ads.",
+                title: "No ads or data selling",
+                detail: "Sunclub does not sell your data or use it for advertising.",
                 systemImage: "shield.checkered",
                 tint: AppPalette.aloe
             )
 
             SunInfoRow(
-                title: "iCloud sync is end-to-end on your devices.",
-                detail: "Your sunscreen history follows you privately.",
+                title: "Private iCloud sync",
+                detail: "When sync is on, your sunscreen history follows your devices through your iCloud account.",
                 systemImage: "icloud",
                 tint: AppPalette.aloe
             )
 
             SunInfoRow(
-                title: "You're in control.",
-                detail: "Export or delete your data anytime from Settings.",
+                title: "Export or delete anytime",
+                detail: "Use the controls below to export history or remove sunscreen logs after confirmation.",
                 systemImage: "square.and.arrow.up",
                 tint: AppPalette.aloe
             )
+
+            privacyActionRow(
+                title: "Export Sunclub history",
+                detail: "Create a JSON backup with logs and settings.",
+                systemImage: "square.and.arrow.up.fill",
+                accessibilityIdentifier: "privacy.exportHistory",
+                action: beginBackupExport
+            )
+
+            privacyActionRow(
+                title: "Delete Sunclub history",
+                detail: "Remove sunscreen logs after confirmation. iCloud Sync shares the deletion across your devices.",
+                systemImage: "trash.fill",
+                accessibilityIdentifier: "privacy.deleteHistory",
+                action: { isConfirmingDeleteHistory = true }
+            )
         }
-        .accessibilityIdentifier("privacy.rows")
+    }
+
+    private func privacyActionRow(
+        title: String,
+        detail: String,
+        systemImage: String,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            SunInfoRow(
+                title: title,
+                detail: detail,
+                systemImage: systemImage,
+                tint: AppPalette.aloe,
+                showsChevron: true
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func beginBackupExport() {
+        do {
+            backupDocument = try appState.exportBackupDocument()
+            isExportingBackup = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    private func deleteHistory() {
+        let days = Set(appState.records.map { appState.startOfLocalDay($0.startOfDay) })
+        for day in days {
+            appState.deleteRecord(for: day)
+        }
     }
 }
 

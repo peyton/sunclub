@@ -24,6 +24,16 @@ struct UVForecastDetailView: View {
                     recommendation: currentUV.recommendation
                 )
 
+                if currentUV.sourceLabel == "Unavailable" {
+                    SunStatusCard(
+                        title: "UV data unavailable",
+                        detail: "Showing local estimates when live data is not available. Try again from Settings if you use Live UV.",
+                        tint: AppPalette.sun,
+                        symbol: "arrow.clockwise"
+                    )
+                    .accessibilityIdentifier("uvForecast.unavailable")
+                }
+
                 hourlyForecastCard
 
                 protectionTipsCard
@@ -54,7 +64,7 @@ struct UVForecastDetailView: View {
 
             VStack(spacing: 2) {
                 HStack(spacing: 5) {
-                    Text("Current location")
+                    Text(locationTitle)
                     Image(systemName: "location.fill")
                         .font(AppFont.rounded(size: 10, weight: .semibold))
                         .accessibilityHidden(true)
@@ -110,6 +120,10 @@ struct UVForecastDetailView: View {
             sourceLabel: "Unavailable",
             recommendation: "Check again when forecast data is available."
         )
+    }
+
+    private var locationTitle: String {
+        appState.isUITesting ? "San Diego, CA" : "Current location"
     }
 
     private var hourlyForecastCard: some View {
@@ -170,7 +184,7 @@ struct UVForecastDetailView: View {
                     .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Seek shade during peak sun hours. Wear SPF, a hat, and UV-protective clothing when the index is high.")
+                Text("Seek shade during peak sun hours, wear a hat, and use UV-protective clothing.")
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)

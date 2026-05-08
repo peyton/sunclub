@@ -84,6 +84,8 @@ struct RootView: View {
         switch route {
         case .welcome:
             WelcomeView()
+        case .enableLocation:
+            EnableLocationView()
         case .enableNotifications:
             EnableNotificationsView()
         case .home:
@@ -134,17 +136,17 @@ struct RootView: View {
         case .manualLog:
             ManualLogView(context: consumeManualLogContext())
         case .achievements:
-            AchievementsView()
+            WeeklyReportView()
         case .friends:
-            FriendsView()
+            SettingsView()
         case .accountabilityOnboarding:
-            AccountabilityOnboardingView()
+            SettingsView()
         case .skinHealthReport:
-            SkinHealthReportView()
+            HistoryView()
         case .productScanner:
-            ProductScannerView()
+            ManualLogView(context: consumeManualLogContext())
         case .yearInReview:
-            YearInReviewView()
+            HistoryView()
         case .valueProps:
             WelcomeView()
         }

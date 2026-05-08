@@ -25,24 +25,27 @@ struct SunclubLiveActivityWidget: Widget {
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Current UV \(context.state.currentUVIndex)")
-                                .font(.system(size: 28, weight: .bold))
+                            Text(reapplyText(for: context.state.countdownLabel))
+                                .font(.system(size: 30, weight: .bold))
                                 .foregroundStyle(.white)
 
-                            Text("Peak UV \(context.state.peakUVIndex)")
+                            Text(uvSummary(current: context.state.currentUVIndex, peak: context.state.peakUVIndex))
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(uvTint(for: context.state.peakUVIndex).opacity(0.95))
+                                .foregroundStyle(uvTint(for: context.state.currentUVIndex).opacity(0.95))
                         }
 
                         Spacer(minLength: 0)
 
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("Last applied")
+                            Text("Last log")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.75))
-                            Text(context.state.lastAppliedLabel)
+                            Text("Logged \(context.state.lastAppliedLabel)")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(.white)
+                            Text(context.state.lastLogDetail)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.75))
                         }
                     }
 
@@ -50,9 +53,9 @@ struct SunclubLiveActivityWidget: Widget {
                         .overlay(.white.opacity(0.2))
 
                     HStack {
-                        Label(context.state.countdownLabel, systemImage: "timer")
+                        Label(reapplyText(for: context.state.countdownLabel), systemImage: "timer")
                         Spacer(minLength: 0)
-                        Text(context.state.streakLabel)
+                        Text("Logged \(context.state.lastAppliedLabel)")
                     }
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
@@ -64,27 +67,27 @@ struct SunclubLiveActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("UV \(context.state.currentUVIndex)", systemImage: "sun.max.fill")
+                    Label(reapplyText(for: context.state.countdownLabel), systemImage: "timer")
                         .font(.system(size: 16, weight: .bold))
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.streakLabel)
+                    Text("Logged \(context.state.lastAppliedLabel)")
                         .font(.system(size: 16, weight: .semibold))
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text("Reapply by \(context.state.countdownLabel)")
+                        Text(uvSummary(current: context.state.currentUVIndex, peak: context.state.peakUVIndex))
                         Spacer(minLength: 0)
-                        Text("Peak \(context.state.peakUVIndex)")
+                        Text(context.state.lastLogDetail)
                     }
                     .font(.system(size: 14, weight: .medium))
                 }
             } compactLeading: {
-                Text("UV\(context.state.currentUVIndex)")
+                Text(compactCountdown(context.state.countdownLabel))
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(uvTint(for: context.state.currentUVIndex))
             } compactTrailing: {
-                Image(systemName: "shield.lefthalf.filled")
+                Image(systemName: "timer")
                     .foregroundStyle(uvTint(for: context.state.peakUVIndex))
             } minimal: {
                 Image(systemName: "sun.max.fill")
@@ -92,6 +95,18 @@ struct SunclubLiveActivityWidget: Widget {
             }
             .keylineTint(uvTint(for: context.state.peakUVIndex))
         }
+    }
+
+    private func reapplyText(for countdownLabel: String) -> String {
+        countdownLabel == "due" ? "Reapply due" : "Reapply \(countdownLabel)"
+    }
+
+    private func compactCountdown(_ countdownLabel: String) -> String {
+        countdownLabel.replacingOccurrences(of: "in ", with: "")
+    }
+
+    private func uvSummary(current: Int, peak: Int) -> String {
+        "UV \(current) \(UVLevel.from(index: current).displayName) · Peak \(peak)"
     }
 
     private func uvTint(for index: Int) -> Color {

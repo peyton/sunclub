@@ -3,6 +3,7 @@ import Observation
 
 enum AppRoute: String, Hashable, Codable, Identifiable {
     case welcome
+    case enableLocation
     case enableNotifications
     case home
     case verifySuccess
@@ -28,6 +29,21 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case valueProps
 
     var id: String { rawValue }
+
+    var productionRoute: AppRoute {
+        switch self {
+        case .achievements, .yearInReview:
+            return .weeklySummary
+        case .friends, .accountabilityOnboarding:
+            return .settings
+        case .skinHealthReport:
+            return .history
+        case .productScanner:
+            return .manualLog
+        default:
+            return self
+        }
+    }
 
     var rootTab: AppTab? {
         switch self {
@@ -184,6 +200,7 @@ final class AppRouter {
         targetDate: Date? = nil,
         targetDayPart: DayPart? = nil
     ) {
+        let route = route.productionRoute
         payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         if route == .welcome {
             selectedTab = .today
@@ -203,6 +220,7 @@ final class AppRouter {
         targetDate: Date? = nil,
         targetDayPart: DayPart? = nil
     ) {
+        let route = route.productionRoute
         payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         if route == .welcome {
             selectedTab = .today
@@ -218,6 +236,7 @@ final class AppRouter {
     }
 
     func replace(with route: AppRoute) {
+        let route = route.productionRoute
         if let rootTab = route.rootTab {
             selectedTab = rootTab
             setPath([], for: rootTab)

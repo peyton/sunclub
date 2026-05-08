@@ -75,8 +75,8 @@ struct SunclubStreakWidget: Widget {
                     SunclubWidgetBackground(style: .warmStrong)
                 }
         }
-        .configurationDisplayName("Streak")
-        .description("Current streak and recent momentum.")
+        .configurationDisplayName("Logged Days")
+        .description("Recent logged days.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }
@@ -92,7 +92,7 @@ struct SunclubStatsWidget: Widget {
                 }
         }
         .configurationDisplayName("Stats")
-        .description("Weekly and monthly habit stats.")
+        .description("Weekly and monthly logged days.")
         .supportedFamilies([.systemMedium, .systemLarge, .accessoryInline, .accessoryRectangular])
     }
 }
@@ -503,9 +503,11 @@ private struct SunclubAccountabilityLargeView: View {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(friend.status == "Logged" ? SunclubWidgetPalette.success : SunclubWidgetPalette.softInk)
 
-                        Text(friend.streak)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(SunclubWidgetPalette.sun)
+                        if !friend.streak.isEmpty {
+                            Text(friend.streak)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(SunclubWidgetPalette.sun)
+                        }
                     }
                 }
 
@@ -834,7 +836,7 @@ private struct SunclubLogRectangularView: View {
             SunclubLogIconBadge(presentation: presentation, size: 26)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(presentation.state == .open ? "Log SPF" : presentation.title)
+                Text(presentation.title)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -991,17 +993,17 @@ private struct SunclubStreakSmallView: View {
                 .offset(x: 30, y: -28)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Current streak")
+                Text("This week")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
 
                 Spacer(minLength: 0)
 
-                Text("\(snapshot.streakValue(now: now))d")
+                Text("\(snapshot.currentWeekAppliedValue(now: now))/7")
                     .font(.system(size: 42, weight: .bold))
                     .foregroundStyle(SunclubWidgetPalette.ink)
 
-                Text("Best \(max(snapshot.longestStreak, snapshot.streakValue(now: now)))d")
+                Text(snapshot.monthlyPercent(now: now))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
             }
@@ -1016,15 +1018,15 @@ private struct SunclubStreakMediumView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Current streak")
+            Text("This week")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
 
             HStack(alignment: .firstTextBaseline) {
-                Text("\(snapshot.streakValue(now: now))d")
+                Text("\(snapshot.currentWeekAppliedValue(now: now))/7")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(SunclubWidgetPalette.ink)
-                Text("Best \(max(snapshot.longestStreak, snapshot.streakValue(now: now)))d")
+                Text(snapshot.monthlyPercent(now: now))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
                 Spacer(minLength: 0)
@@ -1046,7 +1048,7 @@ private struct SunclubStreakCircularView: View {
             VStack(spacing: 2) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 14, weight: .bold))
-                Text("\(snapshot.streakValue(now: now))d")
+                Text("\(snapshot.currentWeekAppliedValue(now: now))")
                     .font(.system(size: 12, weight: .bold))
             }
             .foregroundStyle(SunclubWidgetPalette.ink)
@@ -1061,12 +1063,12 @@ private struct SunclubStreakRectangularView: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Streak")
+                Text("This week")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
-                Text("\(snapshot.streakValue(now: now))d streak")
+                Text("\(snapshot.currentWeekAppliedValue(now: now))/7 logged")
                     .font(.system(size: 15, weight: .semibold))
-                Text("Best \(max(snapshot.longestStreak, snapshot.streakValue(now: now)))d")
+                Text(snapshot.monthlyPercent(now: now))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -1094,7 +1096,7 @@ private struct SunclubStatsMediumView: View {
                     .font(.system(size: 38, weight: .black, design: .rounded))
                     .foregroundStyle(SunclubWidgetPalette.ink)
                     .lineLimit(1)
-                Text("\(snapshot.streakValue(now: now))d streak")
+                Text(snapshot.monthlyPercent(now: now))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
                     .lineLimit(1)
@@ -1131,7 +1133,7 @@ private struct SunclubStatsLargeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    SunclubCompactStat(title: "Current", value: "\(snapshot.streakValue(now: now))d")
+                    SunclubCompactStat(title: "Week", value: "\(snapshot.currentWeekAppliedValue(now: now))/7")
                     SunclubCompactStat(title: "Month", value: snapshot.monthlyPercent(now: now))
                 }
                 .frame(width: 92, alignment: .leading)
@@ -1211,7 +1213,7 @@ private struct SunclubCalendarLargeView: View {
 
             HStack(spacing: 14) {
                 SunclubCompactStat(title: "Week", value: presentation.weekSummary)
-                SunclubCompactStat(title: "Streak", value: presentation.streakSummary)
+                SunclubCompactStat(title: "Logged", value: presentation.streakSummary)
                 SunclubCompactStat(title: "Month", value: presentation.monthSummary)
             }
         }
@@ -1225,7 +1227,7 @@ private struct SunclubCalendarInlineView: View {
     let now: Date
 
     var body: some View {
-        Text(snapshot.hasLoggedToday(now: now) ? "Protected today" : "Open today")
+        Text(snapshot.hasLoggedToday(now: now) ? "Logged" : "Log today")
     }
 }
 
@@ -1410,20 +1412,36 @@ private extension SunclubWidgetSnapshot {
     }
 
     var uvSummary: String {
-        if let peakUVIndex {
-            return "Peak UV \(peakUVIndex)"
-        }
         if let currentUVIndex {
-            return "UV \(currentUVIndex)"
+            return "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
         }
-        return "Today open"
+        if let peakUVIndex {
+            return "UV \(peakUVIndex) \(UVLevel.from(index: peakUVIndex).displayName)"
+        }
+        return "Log today"
     }
 
     func reapplyInlineLabel(now: Date) -> String? {
         guard let reapplyDeadline = reapplyDeadline(now: now) else {
             return nil
         }
-        return "Reapply \(reapplyDeadline.formatted(date: .omitted, time: .shortened))"
+        if reapplyDeadline <= now {
+            return "Reapply due"
+        }
+
+        let minutesUntilDeadline = max(1, Int(ceil(reapplyDeadline.timeIntervalSince(now) / 60)))
+        let hours = minutesUntilDeadline / 60
+        let minutes = minutesUntilDeadline % 60
+        let duration: String
+        switch (hours, minutes) {
+        case (0, let minutes):
+            duration = "\(minutes)m"
+        case (let hours, 0):
+            duration = "\(hours)h"
+        default:
+            duration = "\(hours)h \(minutes)m"
+        }
+        return "Reapply in \(duration)"
     }
 
     static var previewLogged: SunclubWidgetSnapshot {

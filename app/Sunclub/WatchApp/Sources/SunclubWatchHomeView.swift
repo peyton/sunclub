@@ -8,8 +8,31 @@ struct SunclubWatchHomeView: View {
         syncCoordinator.snapshot
     }
 
-    private var currentStreak: Int {
-        snapshot.streakValue()
+    private var visibleSyncStatus: String? {
+        guard let syncStatus = syncCoordinator.syncStatus?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !syncStatus.isEmpty else {
+            return nil
+        }
+
+        switch syncStatus {
+        case "Snapshot refreshed.", "Status updated.":
+            return nil
+        default:
+            return syncStatus
+        }
+    }
+
+    private var loggedStatusText: String {
+        guard let lastVerifiedAt = snapshot.lastVerifiedAt else {
+            return "Logged"
+        }
+
+        return "Logged \(lastVerifiedAt.formatted(date: .omitted, time: .shortened))"
+    }
+
+    private var loggedDetailText: String {
+        snapshot.todaySPFLevel.map { "SPF \($0)" } ?? "Logged today"
     }
 
     var body: some View {
@@ -26,8 +49,12 @@ struct SunclubWatchHomeView: View {
 
             logButton
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        .background {
+            AppColor.background.ignoresSafeArea()
+        }
         .navigationTitle("Sunclub")
         .onAppear {
             syncCoordinator.refreshSnapshot()
@@ -50,9 +77,13 @@ struct SunclubWatchHomeView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            AppText("sunclub", style: .captionMedium, color: AppColor.sun)
+            AppText("Sunclub", style: .captionMedium, color: AppColor.sun)
             Spacer(minLength: 0)
-            AppText(Date().formatted(date: .omitted, time: .shortened), style: .caption, color: AppColor.surfaceElevated)
+            AppText(
+                Date().formatted(date: .omitted, time: .shortened),
+                style: .caption,
+                color: AppColor.Text.secondary
+            )
         }
     }
 
@@ -64,7 +95,10 @@ struct SunclubWatchHomeView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             } else {
-                Label(snapshot.hasLoggedToday() ? "Refresh Log" : "Log Sunscreen", systemImage: "sun.max.fill")
+                Label(
+                    snapshot.hasLoggedToday() ? "Update log" : "Log sunscreen",
+                    systemImage: "sun.max.fill"
+                )
                     .font(AppTextStyle.bodyMedium.font)
                     .frame(maxWidth: .infinity)
             }
@@ -72,40 +106,49 @@ struct SunclubWatchHomeView: View {
         .buttonStyle(AppPrimaryButtonStyle())
         .controlSize(.large)
         .disabled(isLogging)
-        .accessibilityLabel(snapshot.hasLoggedToday() ? "Refresh wrist log" : "Log sunscreen")
-        .accessibilityHint("Sends today's sunscreen log to your paired iPhone.")
+        .accessibilityLabel(
+            snapshot.hasLoggedToday() ? "Update today's sunscreen log" : "Log sunscreen"
+        )
+        .accessibilityHint("Saves today's sunscreen log on your paired iPhone.")
         .accessibilityIdentifier("watch.logSunscreen")
     }
 
     private var statusCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: AppColor.Text.primary, showsShadow: false) {
+        AppCard(padding: AppSpacing.xs, fill: AppColor.surfaceElevated, showsShadow: false) {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Today", systemImage: snapshot.hasLoggedToday() ? "checkmark.circle.fill" : "sun.max")
+                Label(
+                    snapshot.hasLoggedToday() ? "Logged" : "Log sunscreen",
+                    systemImage: snapshot.hasLoggedToday() ? "checkmark.circle.fill" : "sun.max"
+                )
                     .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(snapshot.hasLoggedToday() ? AppColor.success : AppColor.accent)
+                    .foregroundStyle(snapshot.hasLoggedToday() ? AppColor.success : AppColor.sun)
 
                 AppText(
-                    snapshot.hasLoggedToday() ? "Logged from wrist or phone." : "Use the button below to log.",
+                    snapshot.hasLoggedToday() ? "\(loggedStatusText) · \(loggedDetailText)" : "Not logged",
                     style: .caption,
-                    color: AppColor.surfaceElevated
+                    color: AppColor.Text.secondary
                 )
 
-                if let syncStatus = syncCoordinator.syncStatus, !syncStatus.isEmpty {
-                    AppText(syncStatus, style: .captionMedium, color: AppColor.sunSoft)
+                if let visibleSyncStatus {
+                    AppText(visibleSyncStatus, style: .captionMedium, color: AppColor.accent)
                 }
             }
         }
     }
 
     private var uvCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: AppColor.Text.primary, showsShadow: false) {
+        AppCard(padding: AppSpacing.xs, fill: AppColor.surfaceElevated, showsShadow: false) {
             VStack(alignment: .leading, spacing: 7) {
                 if let currentUVIndex = snapshot.currentUVIndex {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         AppText("\(currentUVIndex)", style: .largeTitle, color: AppColor.sun)
                         VStack(alignment: .leading, spacing: 2) {
-                            AppText("UV Index", style: .captionMedium, color: AppColor.surfaceElevated)
-                            AppText(UVLevel.from(index: currentUVIndex).displayName, style: .caption, color: AppColor.sunSoft)
+                            AppText("UV", style: .captionMedium, color: AppColor.Text.primary)
+                            AppText(
+                                UVLevel.from(index: currentUVIndex).displayName,
+                                style: .caption,
+                                color: AppColor.Text.secondary
+                            )
                         }
                     }
                     if let peakUVIndex = snapshot.peakUVIndex,
@@ -113,31 +156,38 @@ struct SunclubWatchHomeView: View {
                         AppText(
                             "Peak \(peakUVIndex) at \(peakUVHour.formatted(date: .omitted, time: .shortened))",
                             style: .caption,
-                            color: AppColor.surfaceElevated
+                            color: AppColor.Text.secondary
                         )
                     }
                 } else {
-                    AppText("Waiting for iPhone forecast", style: .caption, color: AppColor.surfaceElevated)
+                    AppText("Open iPhone for forecast", style: .caption, color: AppColor.Text.secondary)
                 }
             }
         }
     }
 
     private var reapplyCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: AppColor.Text.primary, showsShadow: false) {
+        AppCard(padding: AppSpacing.xs, fill: AppColor.surfaceElevated, showsShadow: false) {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Reapply", systemImage: "timer")
                     .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(AppColor.sunSoft)
+                    .foregroundStyle(AppColor.sun)
 
                 if let deadline = snapshot.reapplyDeadline() {
+                    let isDue = deadline <= Date()
                     AppText(
-                        deadline > Date() ? "Haptic reminder at \(deadline.formatted(date: .omitted, time: .shortened))" : "Reapply now",
+                        isDue
+                            ? "Reapply due"
+                            : "Reapply in \(durationLabel(until: deadline, now: Date()))",
                         style: .captionMedium,
-                        color: AppColor.surfaceElevated
+                        color: isDue ? AppColor.warning : AppColor.Text.secondary
                     )
                 } else {
-                    AppText("No wrist reminder scheduled", style: .caption, color: AppColor.surfaceElevated)
+                    AppText(
+                        snapshot.hasLoggedToday() ? "No timer" : "Log to time reapply",
+                        style: .caption,
+                        color: AppColor.Text.secondary
+                    )
                 }
             }
         }
@@ -152,6 +202,21 @@ struct SunclubWatchHomeView: View {
         Task {
             _ = await syncCoordinator.logToday()
             isLogging = false
+        }
+    }
+
+    private func durationLabel(until deadline: Date, now: Date) -> String {
+        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(now) / 60)))
+        let hours = minutesUntilDeadline / 60
+        let minutes = minutesUntilDeadline % 60
+
+        switch (hours, minutes) {
+        case (0, let minutes):
+            return "\(minutes)m"
+        case (let hours, 0):
+            return "\(hours)h"
+        default:
+            return "\(hours)h \(minutes)m"
         }
     }
 }

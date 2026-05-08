@@ -31,23 +31,28 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             return
         }
 
-        let countdownLabel: String
-        if let deadline = state.reapplyReminderPlan.fireDate ?? state.uvForecast?.peakHour?.date {
-            countdownLabel = deadline.formatted(date: .omitted, time: .shortened)
-        } else {
-            countdownLabel = "Later today"
+        let now = state.currentDateValue
+        let reapplyPlan = state.reapplyReminderPlan
+        let reapplyStartDate = record.lastReappliedAt ?? record.verifiedAt
+        guard state.settings.reapplyReminderEnabled,
+              let reapplyDeadline = ReminderPlanner.reapplyFireDate(
+                from: reapplyStartDate,
+                intervalMinutes: reapplyPlan.intervalMinutes
+              ) else {
+            await endAll()
+            return
         }
 
         let lastAppliedLabel = record.verifiedAt.formatted(date: .omitted, time: .shortened)
         let contentState = SunclubLiveActivityAttributes.ContentState(
             currentUVIndex: uvPayload.currentUVIndex,
             peakUVIndex: uvPayload.peakUVIndex,
-            countdownLabel: countdownLabel,
+            countdownLabel: Self.reapplyCountdownLabel(deadline: reapplyDeadline, now: now),
             lastAppliedLabel: lastAppliedLabel,
-            streakLabel: "\(state.currentStreak)d streak"
+            lastLogDetail: Self.lastLogDetail(for: record)
         )
 
-        let attributes = SunclubLiveActivityAttributes(headline: "Sunclub UV Guard")
+        let attributes = SunclubLiveActivityAttributes(headline: "Reapply timer")
         let content = ActivityContent(state: contentState, staleDate: Calendar.current.date(byAdding: .hour, value: 3, to: Date()))
 
         if let existing = Activity<SunclubLiveActivityAttributes>.activities.first {
@@ -89,6 +94,29 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             peakUVIndex: peakHour.index,
             level: currentReading.level
         )
+    }
+
+    static func reapplyCountdownLabel(deadline: Date, now: Date) -> String {
+        if deadline <= now {
+            return "due"
+        }
+
+        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(now) / 60)))
+        let hours = minutesUntilDeadline / 60
+        let minutes = minutesUntilDeadline % 60
+
+        switch (hours, minutes) {
+        case (0, let minutes):
+            return "in \(minutes)m"
+        case (let hours, 0):
+            return "in \(hours)h"
+        default:
+            return "in \(hours)h \(minutes)m"
+        }
+    }
+
+    static func lastLogDetail(for record: DailyRecord) -> String {
+        record.spfLevel.map { "SPF \($0)" } ?? "Logged"
     }
 
     private static func compactSurfaceReading(
