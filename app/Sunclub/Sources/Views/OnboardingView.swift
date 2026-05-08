@@ -22,7 +22,7 @@ struct WelcomeView: View {
         } footer: {
             Button("Get Started") {
                 startFeedbackTrigger += 1
-                router.open(.enableNotifications)
+                router.open(.enableLocation)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("welcome.getStarted")
@@ -61,7 +61,7 @@ struct WelcomeView: View {
             )
             .frame(maxWidth: .infinity)
 
-            Text("Log sunscreen. See UV context. Build better habits.")
+            Text("Log sunscreen. Know today's UV. Reapply on time.")
                 .font(AppFont.rounded(size: 31, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .multilineTextAlignment(.center)
@@ -73,17 +73,17 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 26) {
             welcomeValuePropRow(
                 symbol: "hand.tap.fill",
-                title: "Daily logging made simple",
-                detail: "Record SPF, timing, notes, and reapply check-ins."
+                title: "Log sunscreen in seconds",
+                detail: "Record SPF, timing, covered areas, and notes."
             )
             welcomeValuePropRow(
                 symbol: "sun.max.fill",
-                title: "UV context you can trust",
-                detail: "See live or estimated UV and clear guidance for the day."
+                title: "See local UV context",
+                detail: "Check current risk, hourly forecast, and peak sun time."
             )
             welcomeValuePropRow(
-                symbol: "applewatch",
-                title: "Works across your Apple devices",
+                symbol: "timer",
+                title: "Get reapply reminders",
                 detail: "Use reminders, widgets, Apple Watch, and Shortcuts."
             )
         }
@@ -93,6 +93,68 @@ struct WelcomeView: View {
     private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
         SunInfoRow(title: title, detail: detail, systemImage: symbol, tint: AppPalette.pool)
         .accessibilityElement(children: .combine)
+    }
+}
+
+struct EnableLocationView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(AppRouter.self) private var router
+    @State private var feedbackTrigger = 0
+
+    var body: some View {
+        SunLightScreen(
+            contentAlignment: .center,
+            contentMaxWidth: SunLayout.ContentWidth.wizard,
+            contentFrameAlignment: .center,
+            footerMaxWidth: SunLayout.ContentWidth.wizard
+        ) {
+            VStack(spacing: 18) {
+                SunProductIcon(systemName: "location.fill", tint: AppPalette.sun, size: 76)
+                    .padding(.top, 24)
+
+                VStack(spacing: 14) {
+                    Text("Use your location for local UV")
+                        .font(AppFont.rounded(size: 30, weight: .bold))
+                        .foregroundStyle(AppPalette.ink)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("Sunclub can show local UV and hourly forecast context. Defaults start with Face and Neck selected, SPF optional, and a 2-hour reapply reminder.")
+                        .font(AppFont.rounded(size: 17))
+                        .foregroundStyle(AppPalette.softInk)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity)
+        } footer: {
+            VStack(spacing: 10) {
+                Button("Allow location") {
+                    continueToReminders(usesLiveUV: true)
+                }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("onboarding.enableLocation")
+
+                Button("Choose a city instead") {
+                    continueToReminders(usesLiveUV: false)
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityHint("Continues setup without asking for location access.")
+                .accessibilityIdentifier("onboarding.skipLocation")
+            }
+        }
+        .sensoryFeedback(.impact(weight: .medium), trigger: feedbackTrigger)
+        .toolbar(.hidden, for: .navigationBar)
+        .interactivePopGestureEnabled()
+    }
+
+    private func continueToReminders(usesLiveUV: Bool) {
+        feedbackTrigger += 1
+        if usesLiveUV, !appState.isUITesting {
+            appState.updateLiveUVPreference(enabled: true, allowPermissionPrompt: true)
+        }
+        router.open(.enableNotifications)
     }
 }
 
@@ -114,7 +176,7 @@ struct EnableNotificationsView: View {
                     .padding(.top, 24)
 
                 VStack(spacing: 14) {
-                    Text("Turn on reminders")
+                    Text("Enable reminders")
                         .font(AppFont.rounded(size: 30, weight: .bold))
                         .foregroundStyle(AppPalette.ink)
 
@@ -122,6 +184,12 @@ struct EnableNotificationsView: View {
                         .font(AppFont.rounded(size: 17))
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
+
+                    Text("Your logs stay private. No ads. No data sale.")
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppPalette.ink)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -139,14 +207,14 @@ struct EnableNotificationsView: View {
                                 .accessibilityHidden(true)
                         }
 
-                        Text(isCompleting ? "Setting up" : "Allow Reminders")
+                        Text(isCompleting ? "Setting up" : "Enable reminders")
                     }
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.enableNotifications")
 
-                Button("Skip") {
+                Button("Not now") {
                     completeOnboarding(requestsNotifications: false)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
@@ -180,7 +248,7 @@ struct EnableNotificationsView: View {
     }
 
     private var reminderDescription: String {
-        "A daily sunscreen reminder, plus optional reapply timing after you log."
+        "Sunclub can remind you when it is time to log sunscreen or reapply. You can change this anytime in Settings."
     }
 
     private func completeOnboarding(requestsNotifications: Bool) {

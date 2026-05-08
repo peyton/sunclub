@@ -55,7 +55,6 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         calendar: Calendar = Calendar.current
     ) -> SunclubLogTodayWidgetPresentation {
         let state = state(for: snapshot, now: now, calendar: calendar)
-        let streak = snapshot.streakValue(now: now, calendar: calendar)
         let uvText = uvSummary(for: snapshot)
         let reapplyText = reapplyLabel(for: snapshot, now: now, calendar: calendar)
         let detail = detailText(
@@ -63,9 +62,10 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             state: state,
             uvText: uvText,
             reapplyText: reapplyText,
-            family: family
+            family: family,
+            calendar: calendar
         )
-        let subtitle = subtitle(for: state, snapshot: snapshot, streak: streak)
+        let subtitle = subtitle(for: state, snapshot: snapshot, calendar: calendar)
 
         return SunclubLogTodayWidgetPresentation(
             family: family,
@@ -76,8 +76,8 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             detail: detail,
             actionText: actionText(for: state),
             iconName: iconName(for: state),
-            inlineText: inlineText(for: state, subtitle: subtitle, streak: streak, uvText: uvText, reapplyText: reapplyText),
-            circularText: circularText(for: state, snapshot: snapshot, streak: streak),
+            inlineText: inlineText(for: state, subtitle: subtitle, uvText: uvText, reapplyText: reapplyText),
+            circularText: circularText(for: state, snapshot: snapshot),
             metrics: metrics(for: snapshot, now: now, calendar: calendar)
         )
     }
@@ -115,25 +115,27 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .open:
             return "Log sunscreen"
         case .logged:
-            return "Protected"
+            return "Logged"
         case .reapplyDue:
-            return "SPF due?"
+            return "Reapply due"
         }
     }
 
     private static func subtitle(
         for state: SunclubLogTodayWidgetState,
         snapshot: SunclubWidgetSnapshot,
-        streak: Int
+        calendar: Calendar
     ) -> String {
         switch state {
         case .needsSetup:
             return "Start tracking"
         case .open:
-            return "No SPF logged today"
+            return "Not logged yet"
         case .logged, .reapplyDue:
-            let loggedText = snapshot.todaySPFLevel.map { "SPF \($0) logged" } ?? "Protected today"
-            return "\(loggedText) - \(streak)d streak"
+            if let todaySPFLevel = snapshot.todaySPFLevel {
+                return "SPF \(todaySPFLevel)"
+            }
+            return loggedTimeLabel(for: snapshot, calendar: calendar)
         }
     }
 
@@ -142,7 +144,8 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         state: SunclubLogTodayWidgetState,
         uvText: String,
         reapplyText: String?,
-        family: SunclubLogTodayWidgetFamily
+        family: SunclubLogTodayWidgetFamily,
+        calendar: Calendar
     ) -> String {
         switch state {
         case .needsSetup:
@@ -151,11 +154,11 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             if let mostUsedSPF = snapshot.mostUsedSPF {
                 return family == .systemSmall ? uvText : "Usual SPF \(mostUsedSPF)"
             }
-            return uvText == "Today open" ? "Tap to add SPF" : uvText
+            return uvText == "Log today" ? "Log sunscreen" : uvText
         case .logged:
-            return reapplyText ?? "Protected today"
+            return reapplyText ?? loggedTimeLabel(for: snapshot, calendar: calendar)
         case .reapplyDue:
-            return "Reapply now"
+            return "Reapply due"
         }
     }
 
@@ -166,7 +169,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .open:
             return "Log"
         case .logged:
-            return "Update"
+            return "Edit"
         case .reapplyDue:
             return "Reapply"
         }
@@ -186,26 +189,24 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
     private static func inlineText(
         for state: SunclubLogTodayWidgetState,
         subtitle: String,
-        streak: Int,
         uvText: String,
         reapplyText: String?
     ) -> String {
         switch state {
         case .needsSetup:
-            return "Open Today"
+            return "Set up Sunclub"
         case .open:
-            return "Log SPF - \(uvText)"
+            return uvText == "Log today" ? "Log sunscreen" : "Log, \(uvText)"
         case .logged:
-            return reapplyText ?? "\(subtitle)"
+            return reapplyText ?? subtitle
         case .reapplyDue:
-            return reapplyText ?? "SPF due - \(streak)d streak"
+            return "Reapply due"
         }
     }
 
     private static func circularText(
         for state: SunclubLogTodayWidgetState,
-        snapshot: SunclubWidgetSnapshot,
-        streak: Int
+        snapshot: SunclubWidgetSnapshot
     ) -> String {
         switch state {
         case .needsSetup:
@@ -213,7 +214,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .open:
             return snapshot.currentUVIndex.map { "UV\($0)" } ?? "Log"
         case .logged, .reapplyDue:
-            return "\(streak)d"
+            return state == .reapplyDue ? "Due" : "OK"
         }
     }
 
@@ -224,18 +225,13 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
     ) -> [SunclubLogTodayWidgetMetric] {
         var metrics = [
             SunclubLogTodayWidgetMetric(
-                title: "Streak",
-                value: "\(snapshot.streakValue(now: now, calendar: calendar))d",
-                systemImageName: "checkmark.seal.fill"
-            ),
-            SunclubLogTodayWidgetMetric(
-                title: "This week",
+                title: "Week",
                 value: "\(snapshot.currentWeekAppliedValue(now: now, calendar: calendar))/7",
                 systemImageName: "calendar"
             ),
             SunclubLogTodayWidgetMetric(
-                title: "Best",
-                value: "\(max(snapshot.longestStreak, snapshot.streakValue(now: now, calendar: calendar)))d",
+                title: "Month",
+                value: monthPercent(snapshot: snapshot, now: now, calendar: calendar),
                 systemImageName: "calendar.badge.checkmark"
             )
         ]
@@ -252,7 +248,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             metrics.append(
                 SunclubLogTodayWidgetMetric(
                     title: "UV",
-                    value: "\(peakUVIndex)",
+                    value: "\(peakUVIndex) \(UVLevel.from(index: peakUVIndex).displayName)",
                     systemImageName: "sun.max.fill"
                 )
             )
@@ -262,13 +258,27 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
     }
 
     private static func uvSummary(for snapshot: SunclubWidgetSnapshot) -> String {
-        if let peakUVIndex = snapshot.peakUVIndex {
-            return "Peak UV \(peakUVIndex)"
-        }
         if let currentUVIndex = snapshot.currentUVIndex {
-            return "UV \(currentUVIndex)"
+            return "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
         }
-        return "Today open"
+        if let peakUVIndex = snapshot.peakUVIndex {
+            return "UV \(peakUVIndex) \(UVLevel.from(index: peakUVIndex).displayName)"
+        }
+        return "Log today"
+    }
+
+    private static func monthPercent(
+        snapshot: SunclubWidgetSnapshot,
+        now: Date,
+        calendar: Calendar
+    ) -> String {
+        let applied = snapshot.monthlyAppliedValue(now: now, calendar: calendar)
+        let total = snapshot.monthlyDayValue(now: now, calendar: calendar)
+        guard total > 0 else {
+            return "0%"
+        }
+
+        return "\(Int((Double(applied) / Double(total)) * 100))%"
     }
 
     private static func reapplyLabel(
@@ -280,6 +290,42 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             return nil
         }
 
-        return "Reapply \(reapplyDeadline.formatted(date: .omitted, time: .shortened))"
+        if reapplyDeadline <= now {
+            return "Reapply due"
+        }
+
+        return "Reapply in \(durationLabel(until: reapplyDeadline, now: now))"
+    }
+
+    private static func loggedTimeLabel(
+        for snapshot: SunclubWidgetSnapshot,
+        calendar: Calendar
+    ) -> String {
+        guard let lastVerifiedAt = snapshot.lastVerifiedAt else {
+            return "Logged"
+        }
+
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.locale = .current
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return "Logged \(formatter.string(from: lastVerifiedAt))"
+    }
+
+    private static func durationLabel(until deadline: Date, now: Date) -> String {
+        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(now) / 60)))
+        let hours = minutesUntilDeadline / 60
+        let minutes = minutesUntilDeadline % 60
+
+        switch (hours, minutes) {
+        case (0, let minutes):
+            return "\(minutes)m"
+        case (let hours, 0):
+            return "\(hours)h"
+        default:
+            return "\(hours)h \(minutes)m"
+        }
     }
 }

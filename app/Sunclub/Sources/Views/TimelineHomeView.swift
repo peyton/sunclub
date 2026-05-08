@@ -345,7 +345,7 @@ struct TimelineHomeView: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(presentation.logSummary.record == nil ? "Log Sunscreen" : "Applied")
+                    Text(presentation.logSummary.record == nil ? "No sunscreen logged today" : "Sunscreen Logged")
                         .font(AppTextStyle.bodyMedium.font)
                         .foregroundStyle(AppPalette.ink)
                         .accessibilityIdentifier(presentation.logSummary.record == nil ? "timeline.todayStatus" : "home.todayStatus")
@@ -385,11 +385,11 @@ struct TimelineHomeView: View {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Sun Exposure")
+                        Text("Today's Sun Exposure")
                             .font(AppTextStyle.bodyMedium.font)
                             .foregroundStyle(AppPalette.ink)
 
-                        Text("Forecast intensity for the selected day")
+                        Text("Forecast intensity for today")
                             .font(AppTextStyle.caption.font)
                             .foregroundStyle(AppPalette.softInk)
                     }
@@ -404,6 +404,8 @@ struct TimelineHomeView: View {
                 SunMiniBarChart(bars: chartBars(for: presentation))
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Today's sun exposure. \(peakUVText(for: presentation)). Forecast intensity by hour.")
         .accessibilityIdentifier("home.sunExposureCard")
     }
 
@@ -429,13 +431,51 @@ struct TimelineHomeView: View {
 
     private func logSummaryDetail(for presentation: TimelineHomePresentation) -> String {
         guard let record = presentation.logSummary.record else {
-            return "Track SPF, timing, and covered areas."
+            return "Add a log to start your reminder."
         }
 
         let time = record.verifiedAt.formatted(date: .omitted, time: .shortened)
         let spf = record.spfLevel.map { "SPF \($0)" } ?? "SPF optional"
-        let notes = record.trimmedNotes == nil ? "" : " • Note saved"
-        return "\(time) • \(spf)\(notes)"
+        let areas = coveredAreaSummary(for: record)
+        let reapply = reapplySummary(for: record)
+        return [time, spf, areas, reapply].compactMap(\.self).joined(separator: " • ")
+    }
+
+    private func coveredAreaSummary(for record: DailyRecord) -> String? {
+        let areas = SunManualLogInput.coveredAreas(in: record.notes)
+        guard !areas.isEmpty else {
+            return "Areas not set"
+        }
+        return SunManualLogInput.coveredAreas.filter { areas.contains($0) }.joined(separator: " & ")
+    }
+
+    private func reapplySummary(for record: DailyRecord) -> String? {
+        guard appState.settings.reapplyReminderEnabled else {
+            return nil
+        }
+
+        let base = record.lastReappliedAt ?? record.verifiedAt
+        guard let deadline = Calendar.current.date(
+            byAdding: .minute,
+            value: appState.settings.reapplyIntervalMinutes,
+            to: base
+        ) else {
+            return nil
+        }
+
+        if deadline <= appState.referenceDate {
+            return "Reapply due"
+        }
+
+        let minutes = max(1, Int(deadline.timeIntervalSince(appState.referenceDate) / 60))
+        if minutes >= 60 {
+            let hours = minutes / 60
+            let remainingMinutes = minutes % 60
+            return remainingMinutes == 0
+                ? "Reapply in \(hours)h"
+                : "Reapply in \(hours)h \(remainingMinutes)m"
+        }
+        return "Reapply in \(minutes)m"
     }
 
     private struct HomeUVReading {
@@ -849,20 +889,20 @@ private struct TimelineTodayStatusCard: View {
     @ViewBuilder
     private var statusMetricCards: some View {
         StatCard(
-            value: "\(presentation.currentStreak)",
-            label: presentation.currentStreak == 1 ? "day streak" : "day streak",
-            systemImage: "flame.fill",
+            value: "\(weekLoggedCount)/7",
+            label: "logged this week",
+            systemImage: "checkmark.circle.fill",
             tint: AppPalette.streakAccent
         )
-        .accessibilityIdentifier("timeline.status.currentStreak")
+        .accessibilityIdentifier("timeline.status.weekLogged")
 
         StatCard(
-            value: "\(weekLoggedCount)/7",
-            label: "this week",
-            systemImage: "calendar",
+            value: reapplyStatusValue,
+            label: "reapply",
+            systemImage: "timer",
             tint: AppPalette.sun
         )
-        .accessibilityIdentifier("timeline.status.week")
+        .accessibilityIdentifier("timeline.status.reapply")
     }
 
     private var dateText: String {
@@ -872,9 +912,9 @@ private struct TimelineTodayStatusCard: View {
     private var statusTitle: String {
         switch presentation.logSummary.category {
         case .today:
-            return presentation.logSummary.record == nil ? "Not applied" : "Applied"
+            return presentation.logSummary.record == nil ? "No sunscreen logged today" : "Sunscreen Logged"
         case .past:
-            return presentation.logSummary.record == nil ? "No log" : "Applied"
+            return presentation.logSummary.record == nil ? "No log" : "Logged"
         case .future:
             return "Forecast only"
         }
@@ -891,9 +931,9 @@ private struct TimelineTodayStatusCard: View {
         switch presentation.logSummary.category {
         case .today:
             if presentation.logSummary.record != nil {
-                return "Optional: add SPF or a note"
+                return "Add SPF, areas, or a note."
             }
-            return nil
+            return "Add a log to start your reminder."
         case .past:
             return presentation.logSummary.record == nil
                 ? "Backfill this day if you applied sunscreen."
@@ -918,12 +958,20 @@ private struct TimelineTodayStatusCard: View {
     private var ringLabel: String {
         switch presentation.logSummary.category {
         case .today:
-            return presentation.logSummary.record == nil ? "Open" : "Done"
+            return presentation.logSummary.record == nil ? "No log" : "Logged"
         case .past:
             return presentation.logSummary.record == nil ? "Open" : "Saved"
         case .future:
             return "Plan"
         }
+    }
+
+    private var reapplyStatusValue: String {
+        guard presentation.logSummary.category == .today,
+              presentation.logSummary.record != nil else {
+            return "After log"
+        }
+        return "2h"
     }
 
     private var statusTint: Color {

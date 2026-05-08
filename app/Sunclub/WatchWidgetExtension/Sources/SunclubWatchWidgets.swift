@@ -41,13 +41,42 @@ private struct SunclubWatchStatusComplicationView: View {
         snapshot.hasLoggedToday(now: entry.date)
     }
 
-    private var currentStreak: Int {
-        snapshot.streakValue(now: entry.date)
-    }
-
     private var statusURL: URL {
         let action = hasLoggedToday ? "open" : "log"
         return URL(string: "\(SunclubRuntimeConfiguration.urlScheme)://watch/\(action)")!
+    }
+
+    private var statusText: String {
+        hasLoggedToday ? "Logged" : "Log sunscreen"
+    }
+
+    private var secondaryText: String {
+        if let reapplyText {
+            return reapplyText
+        }
+        if let uvText {
+            return uvText
+        }
+        return hasLoggedToday ? "Logged today" : "Not logged"
+    }
+
+    private var uvText: String? {
+        guard let currentUVIndex = snapshot.currentUVIndex else {
+            return nil
+        }
+
+        return "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
+    }
+
+    private var reapplyText: String? {
+        guard let deadline = snapshot.reapplyDeadline(now: entry.date) else {
+            return nil
+        }
+        if deadline <= entry.date {
+            return "Reapply due"
+        }
+
+        return "Reapply in \(durationLabel(until: deadline))"
     }
 
     var body: some View {
@@ -66,13 +95,13 @@ private struct SunclubWatchStatusComplicationView: View {
 
     private var accessoryRectangular: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(hasLoggedToday ? "Protected Today" : "Tap to Log")
+            Text(statusText)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("\(currentStreak)d streak")
+            Text(secondaryText)
                 .font(.headline)
-            if let currentUVIndex = snapshot.currentUVIndex {
-                Text("UV \(currentUVIndex)")
+            if reapplyText != nil, let uvText {
+                Text(uvText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -87,14 +116,29 @@ private struct SunclubWatchStatusComplicationView: View {
             VStack(spacing: 1) {
                 Image(systemName: hasLoggedToday ? "checkmark.circle.fill" : "sun.max.fill")
                     .font(.caption.weight(.semibold))
-                Text("\(currentStreak)")
+                Text(snapshot.currentUVIndex.map { "UV\($0)" } ?? (hasLoggedToday ? "OK" : "Log"))
                     .font(.caption2.weight(.bold))
             }
         }
     }
 
     private var accessoryInline: some View {
-        Text(hasLoggedToday ? "Sunclub protected • \(currentStreak)d" : "Sunclub log now • \(currentStreak)d")
+        Text("\(statusText) • \(secondaryText)")
+    }
+
+    private func durationLabel(until deadline: Date) -> String {
+        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(entry.date) / 60)))
+        let hours = minutesUntilDeadline / 60
+        let minutes = minutesUntilDeadline % 60
+
+        switch (hours, minutes) {
+        case (0, let minutes):
+            return "\(minutes)m"
+        case (let hours, 0):
+            return "\(hours)h"
+        default:
+            return "\(hours)h \(minutes)m"
+        }
     }
 }
 
@@ -106,7 +150,7 @@ struct SunclubWatchStatusComplication: Widget {
             SunclubWatchStatusComplicationView(entry: entry)
         }
         .configurationDisplayName("Sunclub Status")
-        .description("See today's sunscreen status and your current streak.")
+        .description("See today's sunscreen status and reapply timing.")
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }

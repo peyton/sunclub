@@ -458,7 +458,7 @@ struct SunPrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .fill(isEnabled ? AppColor.accent : AppPalette.muted.opacity(0.28))
+                    .fill(isEnabled ? AppColor.Text.primary : AppPalette.muted.opacity(0.28))
                     .appShadow(isEnabled ? AppShadow.floating : nil)
             )
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))

@@ -6,7 +6,7 @@ struct AutomationView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
 
-    @State private var feedbackMessage = "Ready"
+    @State private var feedbackMessage = ""
 
     var body: some View {
         SunLightScreen(
@@ -112,18 +112,13 @@ private struct AutomationReferenceSummaryCard: View {
                             .font(AppTextStyle.bodyMedium.font)
                             .foregroundStyle(AppPalette.ink)
 
-                        Text("Review and confirm before Shortcuts save sensitive changes.")
+                        Text("Ask before saving logs or changing reminder settings.")
                             .font(AppTextStyle.caption.font)
                             .foregroundStyle(AppPalette.softInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 0)
-
-                    Image(systemName: "chevron.right")
-                        .font(AppFont.rounded(size: 12, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-                        .accessibilityHidden(true)
                 }
                 .padding(14)
                 .background(referenceRowBackground)
@@ -210,11 +205,13 @@ struct AutomationSettingsPanel: View {
             urlSection
             callbackSection
 
-            Text(feedbackMessage)
-                .font(AppFont.rounded(size: 13, weight: .medium))
-                .foregroundStyle(AppPalette.softInk)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("automation.feedback")
+            if !feedbackMessage.isEmpty {
+                Text(feedbackMessage)
+                    .font(AppFont.rounded(size: 13, weight: .medium))
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("automation.feedback")
+            }
 
             if style == .settings {
                 Button("Open Shortcuts Catalog") {
@@ -229,8 +226,8 @@ struct AutomationSettingsPanel: View {
     private var preferenceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "Connect shortcuts",
-                detail: "Choose what Shortcuts and trusted links can do."
+                "Permissions",
+                detail: "Choose which outside actions can open Sunclub or save changes."
             )
 
             preferenceToggle(
@@ -241,22 +238,22 @@ struct AutomationSettingsPanel: View {
             )
 
             preferenceToggle(
-                title: "Allow URL open actions",
-                detail: "Let links open Sunclub screens.",
+                title: "Open Sunclub from links",
+                detail: "Let trusted links open Sunclub screens.",
                 keyPath: \.urlOpenActionsEnabled,
                 accessibilityIdentifier: "automation.urlOpenToggle"
             )
 
             preferenceToggle(
-                title: "Allow URL write actions",
-                detail: "Let trusted links save logs or settings.",
+                title: "Save changes from links",
+                detail: "Let trusted links save logs or reminder settings.",
                 keyPath: \.urlWriteActionsEnabled,
                 accessibilityIdentifier: "automation.urlWriteToggle"
             )
 
             preferenceToggle(
-                title: "Include callback result details",
-                detail: "Return status details to apps that ask for them.",
+                title: "Share result details",
+                detail: "Send simple success or status details back to the calling app.",
                 keyPath: \.callbackResultDetailsEnabled,
                 accessibilityIdentifier: "automation.callbackDetailsToggle"
             )
@@ -270,7 +267,7 @@ struct AutomationSettingsPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 "Apple Shortcuts",
-                detail: "Use Siri, Control Center, widgets, and Shortcuts with Sunclub."
+                detail: "Use Siri, Control Center, widgets, and Shortcuts to log or check status."
             )
 
             ForEach(shortcutRows) { row in
@@ -293,7 +290,7 @@ struct AutomationSettingsPanel: View {
     private var shortcutOnlySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "File Actions",
+                "Export Actions",
                 detail: "Create backup, report, and share-card files from Shortcuts."
             )
 
@@ -309,8 +306,8 @@ struct AutomationSettingsPanel: View {
     private var urlSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "URL Actions",
-                detail: "Use direct links when you need them."
+                "Link Examples",
+                detail: "Copy a link when a Shortcut needs to open Sunclub directly."
             )
 
             ForEach(urlExamples) { example in
@@ -329,8 +326,8 @@ struct AutomationSettingsPanel: View {
     private var callbackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                "Callbacks",
-                detail: "Return status to another app after Sunclub finishes."
+                "Callback Examples",
+                detail: "Use these only when another app needs a result after Sunclub finishes."
             )
 
             ForEach(callbackExamples) { example in
@@ -398,24 +395,23 @@ struct AutomationSettingsPanel: View {
 
     private var shortcutRows: [AutomationActionRow.Model] {
         [
-            AutomationActionRow.Model(title: "Log Sunscreen", detail: "Optional SPF and notes."),
-            AutomationActionRow.Model(title: "Get Sunclub Status", detail: "Returns today, streak, and weekly count."),
-            AutomationActionRow.Model(title: "Time Since Last Sunscreen", detail: "Returns minutes since the last log or reapply."),
-            AutomationActionRow.Model(title: "Log Reapply", detail: "Adds a reapply check-in for today's record."),
-            AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Today or a chosen date and time."),
-            AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Weekday or weekend reminder time."),
-            AutomationActionRow.Model(title: "Set Sunclub Reapply Reminder", detail: "Turns reapply reminders on or off and can update the interval."),
-            AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Travel, UV, iCloud, Health, and alert settings."),
-            AutomationActionRow.Model(title: "Import Sharing Invite", detail: "Adds a friend from an invite code."),
-            AutomationActionRow.Model(title: "Remind Friend", detail: "Choose a friend and open Activity sharing to send a reminder.")
+            AutomationActionRow.Model(title: "Log Sunscreen", detail: "Save today's log with optional SPF and notes."),
+            AutomationActionRow.Model(title: "Reapply Reminder", detail: "Add a reapply check-in or review the next reminder."),
+            AutomationActionRow.Model(title: "Get Current UV Status", detail: "Check current UV index and severity."),
+            AutomationActionRow.Model(title: "Get Reapplication Status", detail: "Check the last log and next reapply time."),
+            AutomationActionRow.Model(title: "Review History Summary", detail: "Get recent logged-day counts and last log details."),
+            AutomationActionRow.Model(title: "Time Since Last Sunscreen", detail: "Check how long it has been since the last log or reapply."),
+            AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Backfill or update a chosen date and time."),
+            AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Change weekday or weekend reminder time."),
+            AutomationActionRow.Model(title: "Set Sunclub Reapply Reminder", detail: "Turn reapply reminders on or change the interval."),
+            AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Update travel, UV, iCloud, or alert preferences.")
         ]
     }
 
     private var shortcutOnlyRows: [AutomationActionRow.Model] {
         [
-            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Returns a backup file.", symbolName: "externaldrive.fill"),
-            AutomationActionRow.Model(title: "Create Skin Health Report", detail: "Returns a PDF report.", symbolName: "doc.richtext.fill"),
-            AutomationActionRow.Model(title: "Create Streak Card", detail: "Returns a shareable image.", symbolName: "photo.fill")
+            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Create a JSON backup file.", symbolName: "externaldrive.fill"),
+            AutomationActionRow.Model(title: "Export Sunclub History", detail: "Create a factual PDF history export.", symbolName: "doc.richtext.fill")
         ]
     }
 
@@ -430,13 +426,13 @@ struct AutomationSettingsPanel: View {
             AutomationExample(
                 id: "status",
                 title: "Status",
-                detail: "Return today's status to the caller.",
+                detail: "Check today's status from a Shortcut.",
                 urlString: "\(scheme)://automation/status"
             ),
             AutomationExample(
                 id: "timeSinceLastApplication",
                 title: "Time Since Last Sunscreen",
-                detail: "Return minutes since the last log or reapply.",
+                detail: "Check how long it has been since the last log or reapply.",
                 urlString: "\(scheme)://automation/time-since-last-application"
             ),
             AutomationExample(
@@ -477,23 +473,9 @@ struct AutomationSettingsPanel: View {
             ),
             AutomationExample(
                 id: "setToggle",
-                title: "Set Toggle",
+                title: "Update Setting",
                 detail: "Turn on daily UV briefing.",
                 urlString: "\(scheme)://automation/set-toggle?name=dailyUVBriefing&enabled=true"
-            ),
-            AutomationExample(
-                id: "importFriend",
-                title: "Import Sharing Invite",
-                detail: "Paste a real invite code before using this.",
-                urlString: "\(scheme)://automation/import-friend?code=PASTE_INVITE_CODE",
-                canTest: false
-            ),
-            AutomationExample(
-                id: "pokeFriend",
-                title: "Remind Friend",
-                detail: "Use a saved friend UUID from your own shortcut.",
-                urlString: "\(scheme)://automation/poke-friend?id=FRIEND_UUID",
-                canTest: false
             )
         ]
     }
@@ -503,25 +485,25 @@ struct AutomationSettingsPanel: View {
             AutomationExample(
                 id: "callbackStatus",
                 title: "Status Callback",
-                detail: "Returns action, status, and status fields.",
+                detail: "Sends today's status back to the calling app.",
                 urlString: "\(scheme)://x-callback-url/status?x-success=shortcuts://callback&x-error=shortcuts://callback"
             ),
             AutomationExample(
                 id: "callbackLastApplication",
                 title: "Last Application Callback",
-                detail: "Returns the last application time and minutes-since field when details are on.",
+                detail: "Sends the last sunscreen time back when result details are on.",
                 urlString: "\(scheme)://x-callback-url/time-since-last-application?x-success=shortcuts://callback&x-error=shortcuts://callback"
             ),
             AutomationExample(
                 id: "callbackLogToday",
                 title: "Log Callback",
-                detail: "Returns recordDate, todayLogged, and streak fields when details are on.",
+                detail: "Saves today's log and sends the result back when details are on.",
                 urlString: "\(scheme)://x-callback-url/log-today?spf=50&x-success=shortcuts://callback&x-error=shortcuts://callback"
             ),
             AutomationExample(
                 id: "callbackOpen",
                 title: "Open Callback",
-                detail: "UI-only actions return status=opened after routing.",
+                detail: "Opens a screen and confirms when routing is finished.",
                 urlString: "\(scheme)://x-callback-url/open?route=history&x-success=shortcuts://callback&x-error=shortcuts://callback"
             )
         ]
@@ -552,7 +534,7 @@ private struct AutomationHeroCard: View {
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Log, remind, and review automatically while staying in control of every write.")
+                Text("Set up one-tap logging, reminders, and status checks while sensitive writes stay optional.")
                     .font(AppTypography.body)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)

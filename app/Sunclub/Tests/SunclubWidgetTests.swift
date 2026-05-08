@@ -108,10 +108,10 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.title, "Remind Maya")
-        XCTAssertEqual(presentation.subtitle, "1 friend open")
+        XCTAssertEqual(presentation.subtitle, "1 friend not logged")
         XCTAssertEqual(presentation.iconName, "person.2.fill")
         XCTAssertTrue(presentation.showsFriendStats)
-        XCTAssertEqual(presentation.friends.first?.status, "Open today")
+        XCTAssertEqual(presentation.friends.first?.status, "Not logged")
     }
 
     func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
@@ -136,8 +136,8 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.state, .open)
         XCTAssertEqual(presentation.iconName, "sun.max.fill")
         XCTAssertEqual(presentation.title, "Log sunscreen")
-        XCTAssertEqual(presentation.subtitle, "No SPF logged today")
-        XCTAssertEqual(presentation.detail, "Peak UV 9")
+        XCTAssertEqual(presentation.subtitle, "Not logged yet")
+        XCTAssertEqual(presentation.detail, "UV 7 High")
         XCTAssertEqual(presentation.actionText, "Log")
         XCTAssertFalse(presentation.title.contains("Today"))
     }
@@ -164,8 +164,8 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.title, "Log sunscreen")
         XCTAssertEqual(presentation.detail, "Usual SPF 50")
-        XCTAssertEqual(presentation.metrics.map(\.title), ["Streak", "This week", "Best", "UV"])
-        XCTAssertEqual(presentation.metrics.map(\.value), ["3d", "3/7", "9d", "9"])
+        XCTAssertEqual(presentation.metrics.map(\.title), ["Week", "Month", "UV"])
+        XCTAssertEqual(presentation.metrics.map(\.value), ["3/7", "20%", "9 Very High"])
     }
 
     func testLogTodayLargeLoggedPresentationShowsUpdateStateAndReapply() throws {
@@ -191,10 +191,10 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.state, .logged)
         XCTAssertEqual(presentation.iconName, "checkmark.seal.fill")
-        XCTAssertEqual(presentation.title, "Protected")
-        XCTAssertEqual(presentation.subtitle, "Protected today - 4d streak")
-        XCTAssertEqual(presentation.actionText, "Update")
-        XCTAssertTrue(presentation.detail.hasPrefix("Reapply "))
+        XCTAssertEqual(presentation.title, "Logged")
+        XCTAssertEqual(presentation.subtitle.replacingOccurrences(of: "\u{202F}", with: " "), "Logged 9:00 AM")
+        XCTAssertEqual(presentation.actionText, "Edit")
+        XCTAssertEqual(presentation.detail, "Reapply in 30m")
     }
 
     func testLogTodayLoggedPresentationUsesTodaySPFOnly() throws {
@@ -217,8 +217,8 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.state, .logged)
-        XCTAssertEqual(presentation.title, "Protected")
-        XCTAssertEqual(presentation.subtitle, "SPF 50 logged - 4d streak")
+        XCTAssertEqual(presentation.title, "Logged")
+        XCTAssertEqual(presentation.subtitle, "SPF 50")
         XCTAssertEqual(presentation.metrics.last?.title, "SPF")
         XCTAssertEqual(presentation.metrics.last?.value, "50")
     }
@@ -246,9 +246,9 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.state, .reapplyDue)
         XCTAssertEqual(presentation.iconName, "sun.max.fill")
-        XCTAssertEqual(presentation.title, "SPF due?")
+        XCTAssertEqual(presentation.title, "Reapply due")
         XCTAssertEqual(presentation.actionText, "Reapply")
-        XCTAssertEqual(presentation.detail, "Reapply now")
+        XCTAssertEqual(presentation.detail, "Reapply due")
     }
 
     func testSnapshotShowsTodayOpenWhenLatestRecordIsYesterday() {
@@ -438,7 +438,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.title, "July sunscreen history")
         XCTAssertEqual(presentation.compactTitle, "July history")
         XCTAssertEqual(presentation.weekSummary, "4/7 this week")
-        XCTAssertEqual(presentation.streakSummary, "4d current streak")
+        XCTAssertEqual(presentation.streakSummary, "4 recent")
         XCTAssertEqual(presentation.monthSummary, "33% month")
     }
 
@@ -495,6 +495,33 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(errorReply[SunclubWatchSyncPayload.successKey] as? Bool, false)
         XCTAssertEqual(errorReply[SunclubWatchSyncPayload.messageKey] as? String, "Open Sunclub once to finish setup.")
         XCTAssertNil(SunclubWatchSyncPayload.decodeSnapshot(from: errorReply))
+    }
+
+    func testLiveActivityCountdownUsesActiveReapplyCopy() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 12)
+        let deadline = try fixedDate(calendar: calendar, hour: 13, minute: 20)
+
+        XCTAssertEqual(
+            SunclubLiveActivityCoordinator.reapplyCountdownLabel(deadline: deadline, now: now),
+            "in 1h 20m"
+        )
+        XCTAssertEqual(
+            SunclubLiveActivityCoordinator.reapplyCountdownLabel(deadline: now, now: now),
+            "due"
+        )
+    }
+
+    func testLiveActivityLastLogDetailUsesSPFWithoutStreak() throws {
+        let calendar = fixedCalendar()
+        let record = DailyRecord(
+            startOfDay: try fixedDate(calendar: calendar, hour: 0),
+            verifiedAt: try fixedDate(calendar: calendar, hour: 8, minute: 20),
+            method: .manual,
+            spfLevel: 50
+        )
+
+        XCTAssertEqual(SunclubLiveActivityCoordinator.lastLogDetail(for: record), "SPF 50")
     }
 
     func testWidgetSummaryRouteOpensWeeklySummary() throws {

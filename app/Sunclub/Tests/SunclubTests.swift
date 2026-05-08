@@ -358,7 +358,7 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(state.currentStreak, 2)
         XCTAssertEqual(state.verificationSuccessPresentation?.streak, 2)
-        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "2 days in a row.")
+        XCTAssertEqual(state.verificationSuccessPresentation?.detail, "2 days logged recently.")
     }
 
     @MainActor
@@ -1729,7 +1729,7 @@ final class SunclubTests: XCTestCase {
 
         let presentation = state.todayCardPresentation
         XCTAssertEqual(presentation.uvHeadline, "UV is moderate today")
-        XCTAssertEqual(presentation.detail, "One quick check-in keeps the streak steady.")
+        XCTAssertEqual(presentation.detail, "Add a log to start your reminder.")
     }
 
     @MainActor
@@ -1778,7 +1778,7 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testTodayCardPresentationShowsOpenDayReminderStreakAndForecastRows() throws {
+    func testTodayCardPresentationShowsOpenDayReminderReapplyAndForecastRows() throws {
         let calendar = Calendar.current
         let now = try XCTUnwrap(
             calendar.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 9, minute: 0))
@@ -1812,9 +1812,8 @@ final class SunclubTests: XCTestCase {
         let presentation = state.todayCardPresentation
         let rows = Dictionary(uniqueKeysWithValues: presentation.metadataRows.map { ($0.id, $0) })
 
-        XCTAssertEqual(presentation.metadataRows.map(\.id), ["reminder", "streak", "reapply", "uvPeak", "uvSource"])
+        XCTAssertEqual(presentation.metadataRows.map(\.id), ["reminder", "reapply", "uvPeak", "uvSource"])
         XCTAssertTrue(rows["reminder"]?.value.contains("Weekdays") == true)
-        XCTAssertEqual(rows["streak"]?.value, "1 day open")
         XCTAssertEqual(rows["reapply"]?.value, "After today's log")
         XCTAssertEqual(rows["uvSource"]?.value, "Estimated locally")
     }
@@ -1834,7 +1833,7 @@ final class SunclubTests: XCTestCase {
         )
         oneReapplyState.refresh()
 
-        XCTAssertEqual(oneReapplyState.todayCardPresentation.logBadgeText, "Applied + 1 reapply")
+        XCTAssertEqual(oneReapplyState.todayCardPresentation.logBadgeText, "Logged + 1 reapply")
 
         let multipleReapplyState = try makeAppState()
         multipleReapplyState.modelContext.insert(
@@ -1847,7 +1846,7 @@ final class SunclubTests: XCTestCase {
         )
         multipleReapplyState.refresh()
 
-        XCTAssertEqual(multipleReapplyState.todayCardPresentation.logBadgeText, "Applied + 3 reapplies")
+        XCTAssertEqual(multipleReapplyState.todayCardPresentation.logBadgeText, "Logged + 3 reapplies")
     }
 
     @MainActor
@@ -1873,7 +1872,7 @@ final class SunclubTests: XCTestCase {
         )
         atRiskState.refresh()
 
-        XCTAssertEqual(atRiskState.todayCardPresentation.streakRiskBadgeText, "1-day streak at risk")
+        XCTAssertEqual(atRiskState.todayCardPresentation.streakRiskBadgeText, "Today still open")
 
         let earlyState = try makeAppState(clock: { beforeRiskWindow })
         earlyState.modelContext.insert(

@@ -7,7 +7,7 @@ struct SunclubLiveActivityAttributes: ActivityAttributes {
         var peakUVIndex: Int
         var countdownLabel: String
         var lastAppliedLabel: String
-        var streakLabel: String
+        var lastLogDetail: String
     }
 
     var headline: String

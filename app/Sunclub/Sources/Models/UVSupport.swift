@@ -24,7 +24,7 @@ enum UVLevel: Equatable, Sendable {
         case .low: return "Minimal protection needed."
         case .moderate: return "Wear sunscreen if outside for extended periods."
         case .high: return "Sunscreen strongly recommended today."
-        case .veryHigh: return "Stay protected — UV is very high."
+        case .veryHigh: return "UV is very high; limit midday sun."
         case .extreme: return "Avoid midday sun. Reapply sunscreen frequently."
         case .unknown: return ""
         }

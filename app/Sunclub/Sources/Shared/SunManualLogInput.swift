@@ -2,7 +2,8 @@ import Foundation
 
 enum SunManualLogInput {
     static let noteCharacterLimit = 280
-    static let coveredAreas = ["Face", "Neck", "Ears", "Shoulders", "Arms", "Hands"]
+    static let coveredAreas = ["Face", "Neck", "Ears", "Body"]
+    static let defaultCoveredAreas: Set<String> = ["Face", "Neck"]
 
     private static let coveredAreasPrefix = "Areas:"
 

@@ -24,7 +24,7 @@ struct SettingsView: View {
     @State private var isImportingBackup = false
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
-    @State private var automationFeedback = "Ready"
+    @State private var automationFeedback = ""
     @State private var selectedSettingsDetail: SettingsDetail?
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
@@ -121,28 +121,6 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 22) {
             settingsHubIntro
 
-            settingsHomeGroup(title: "Account") {
-                settingsHomeRow(
-                    title: "Profile",
-                    detail: profileDetail,
-                    symbolName: "person.crop.circle.fill",
-                    tint: AppPalette.pool,
-                    accessibilityIdentifier: "settings.reference.profile"
-                ) {
-                    router.push(.friends)
-                }
-
-                settingsHomeRow(
-                    title: "Activity Sharing",
-                    detail: "Invite friends and send simple sunscreen reminders.",
-                    symbolName: "person.2.fill",
-                    tint: AppPalette.pool,
-                    accessibilityIdentifier: "settings.sharing"
-                ) {
-                    router.push(.friends)
-                }
-            }
-
             settingsHomeGroup(title: "Daily Use") {
                 settingsHomeRow(
                     title: "Sunscreen & Reminders",
@@ -155,7 +133,7 @@ struct SettingsView: View {
                 }
 
                 settingsHomeRow(
-                    title: "Reapply & Progress",
+                    title: "Reapply Reminder",
                     detail: sectionDetail(for: .progress),
                     symbolName: "clock.badge.checkmark.fill",
                     tint: AppPalette.sun,
@@ -177,7 +155,7 @@ struct SettingsView: View {
 
             settingsHomeGroup(title: "Data & Integrations") {
                 settingsHomeRow(
-                    title: "Health & Weather",
+                    title: "UV & Weather",
                     detail: sectionDetail(for: .advanced),
                     symbolName: "cloud.sun.fill",
                     tint: AppPalette.pool,
@@ -276,12 +254,12 @@ struct SettingsView: View {
     private var settingsHubIntro: some View {
         AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Set up Sunclub once, then let the daily habit stay light.")
+                Text("Keep your sun routine tuned.")
                     .font(AppFont.rounded(size: 24, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Every row opens a working control, detail page, or system-backed preference. Settings that follow iOS are labeled that way.")
+                Text("Manage reminders, privacy, sync, Shortcuts, and display preferences from one place.")
                     .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -363,7 +341,7 @@ struct SettingsView: View {
         case .appearance:
             settingsSystemPreferenceCard(
                 title: "Appearance follows iOS.",
-                detail: "Sunclub supports Light and Dark Interface, Dynamic Type, increased contrast, Differentiate Without Color Alone, VoiceOver, Voice Control, and Reduce Motion through system settings.",
+                detail: "Sunclub adapts to Light and Dark Interface, Dynamic Type, increased contrast, VoiceOver, Voice Control, and Reduce Motion.",
                 symbolName: "paintpalette.fill",
                 tint: AppPalette.coral,
                 accessibilityIdentifier: "settings.appearance.detail"
@@ -371,7 +349,7 @@ struct SettingsView: View {
         case .units:
             settingsSystemPreferenceCard(
                 title: "Units follow your device.",
-                detail: "Sunclub uses the region, calendar, time, temperature, and measurement preferences configured in iOS Settings. There is no separate in-app units toggle yet.",
+                detail: "Dates, times, temperature, and measurement labels use the region preferences already set on this iPhone.",
                 symbolName: "ruler.fill",
                 tint: AppPalette.pool,
                 accessibilityIdentifier: "settings.units.detail"
@@ -386,11 +364,11 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 SunProductIcon(systemName: "bell.fill", tint: AppPalette.pool, size: 42)
 
-                Text("Notifications stay gentle.")
+                Text("Reminder timing")
                     .font(AppFont.rounded(size: 22, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Daily reminders, streak reminders, reapply timing, and permission repair live here so notification behavior is not split across old sections.")
+                Text("Adjust daily reminders, reapply timing, and notification access in one place.")
                     .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -485,16 +463,17 @@ struct SettingsView: View {
             }
 
             ReminderToggleCard(
-                title: "Streak reminder",
+                title: "Evening log reminder",
                 detail: streakRiskEnabled
-                    ? "If your streak is still open, Sunclub sends an evening reminder before the day ends."
-                    : "Sunclub only sends your main reminder.",
+                    ? "If today is still open in the evening, Sunclub can remind you to add a sunscreen log."
+                    : "Sunclub will not send an evening note for missing daily logs.",
                 isOn: $streakRiskEnabled,
-                accessibilityIdentifier: "settings.streakRiskToggle"
+                accessibilityIdentifier: "settings.eveningLogReminderToggle"
             )
             .onChange(of: streakRiskEnabled) { _, newValue in
                 appState.updateStreakRiskReminder(enabled: newValue)
             }
+
         }
     }
 
@@ -880,7 +859,7 @@ struct SettingsView: View {
 
     private var uvAndHealthSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("UV & Health")
+            Text("UV & Weather")
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -952,10 +931,10 @@ struct SettingsView: View {
         let travelLine = followsTravelTimeZone
             ? "Follows local time while you travel."
             : "Stays on \(anchoredTimeZoneLabel) while you travel."
-        let streakLine = streakRiskEnabled
-            ? " Evening streak reminders are on."
-            : " Evening streak reminders are off."
-        return travelLine + streakLine
+        let eveningLine = streakRiskEnabled
+            ? " Evening log reminder on."
+            : " Evening log reminder off."
+        return travelLine + eveningLine
     }
 
     private var anchoredTimeZoneLabel: String {
@@ -1125,8 +1104,8 @@ struct SettingsView: View {
             let links = appState.automationPreferences.urlOpenActionsEnabled ? "links on" : "links off"
             return "Shortcuts \(writes), URL \(links)."
         case .advanced:
-            let health = healthKitEnabled ? "Health sync on" : "Health sync off"
             let liveUV = liveUVEnabled ? "Live UV on" : "Live UV off"
+            let health = healthKitEnabled ? "Health sync on" : "Health sync off"
             return "\(liveUV). \(health)."
         case .help:
             return "Support, privacy, and contact links."
@@ -1506,7 +1485,7 @@ private enum SettingsDetail: Hashable {
         case .notifications:
             return "Notifications"
         case .healthWeather:
-            return "Health & Weather"
+            return "UV & Weather"
         case .data:
             return "iCloud & Data"
         case .shortcuts:

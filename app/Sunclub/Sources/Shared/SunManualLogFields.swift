@@ -11,6 +11,7 @@ struct SunManualLogFields: View {
     let accessibilityPrefix: String
     let suggestions: ManualLogSuggestionState
     let showsOptionalDisclosure: Bool
+    let showsSPFSelector: Bool
 
     private let commonSPFLevels = [15, 30, 50, 70, 100]
 
@@ -21,6 +22,7 @@ struct SunManualLogFields: View {
         accessibilityPrefix: String,
         suggestions: ManualLogSuggestionState = .empty,
         showsOptionalDisclosure: Bool = true,
+        showsSPFSelector: Bool = true,
         detailsInitiallyExpanded: Bool = false
     ) {
         _selectedSPF = selectedSPF
@@ -30,6 +32,7 @@ struct SunManualLogFields: View {
         self.accessibilityPrefix = accessibilityPrefix
         self.suggestions = suggestions
         self.showsOptionalDisclosure = showsOptionalDisclosure
+        self.showsSPFSelector = showsSPFSelector
     }
 
     var body: some View {
@@ -84,7 +87,9 @@ struct SunManualLogFields: View {
 
     private var detailsFields: some View {
         VStack(alignment: .leading, spacing: 26) {
-            spfSelector
+            if showsSPFSelector {
+                spfSelector
+            }
             coveredAreasSelector
             notesField
         }
@@ -265,7 +270,7 @@ struct SunManualLogFields: View {
 
     private var coveredAreasSelector: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Areas covered")
+            Text("Areas Covered")
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
@@ -278,7 +283,7 @@ struct SunManualLogFields: View {
                     VStack(spacing: 8) {
                         ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
                             areaButton(area)
-                                .frame(width: 116)
+                                .frame(width: 124)
                         }
                     }
                     .accessibilityIdentifier("\(accessibilityPrefix).areas")
@@ -316,23 +321,39 @@ struct SunManualLogFields: View {
                 }
             }
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(AppFont.rounded(size: 14, weight: .semibold))
-                    .accessibilityHidden(true)
-
+            HStack(spacing: 8) {
                 Text(area)
-                    .font(AppFont.rounded(size: 14, weight: .semibold))
+                    .font(AppFont.rounded(size: 14, weight: isSelected ? .bold : .semibold))
+
+                Spacer(minLength: 0)
+
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? AppPalette.sun : Color.clear)
+                        .overlay {
+                            Circle()
+                                .stroke(isSelected ? AppPalette.sun : AppPalette.hairlineStroke, lineWidth: 1.4)
+                        }
+
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(AppFont.rounded(size: 10, weight: .bold))
+                            .foregroundStyle(AppPalette.onAccent)
+                    }
+                }
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
             }
-            .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
-            .frame(maxWidth: .infinity, minHeight: 42)
+            .foregroundStyle(AppPalette.ink)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 48)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
+                    .fill(AppPalette.cardFill.opacity(isSelected ? 0.92 : 0.72))
             )
             .overlay {
                 RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .stroke(isSelected ? AppPalette.sun : AppPalette.hairlineStroke, lineWidth: 1)
+                    .stroke(isSelected ? AppPalette.sun.opacity(0.75) : AppPalette.hairlineStroke, lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
@@ -392,7 +413,7 @@ struct SunManualLogFields: View {
                 .accessibilityIdentifier("\(accessibilityPrefix).noteSnippets")
             }
 
-            TextField("e.g. Applied before morning run", text: $notes, axis: .vertical)
+            TextField("Add notes about your sunscreen", text: $notes, axis: .vertical)
                 .font(AppFont.rounded(size: 15))
                 .textInputAutocapitalization(.sentences)
                 .submitLabel(.done)
@@ -440,33 +461,17 @@ private struct SunCoveredAreaIllustration: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
+            Circle()
                 .fill(AppPalette.warmGlow.opacity(0.18))
+                .frame(width: 136, height: 136)
+                .offset(y: 44)
 
             SunclubVisualAsset.coverageFaceDiagram.image
                 .resizable()
                 .scaledToFit()
-                .padding(.horizontal, 24)
-                .padding(.vertical, 10)
-
-            if !selectedAreaLabels.isEmpty {
-                HStack(spacing: 6) {
-                    ForEach(selectedAreaLabels, id: \.self) { area in
-                        Text(area)
-                            .font(AppFont.rounded(size: 10, weight: .semibold))
-                            .foregroundStyle(AppPalette.onAccent)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(AppPalette.sun, in: Capsule())
-                    }
-                }
-                .padding(.bottom, 8)
-            }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
         }
         .frame(height: 154)
-    }
-
-    private var selectedAreaLabels: [String] {
-        Array(SunManualLogInput.coveredAreas.filter { selectedAreas.contains($0) }.prefix(3))
     }
 }

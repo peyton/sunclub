@@ -30,8 +30,13 @@ enum SunclubShareArtifactService {
         now: Date = Date(),
         calendar: Calendar = .current
     ) throws -> SunclubShareArtifact {
-        let title = "\(max(currentStreak, 0))-day streak"
-        let subtitle = "Sunclub consistency card"
+        let loggedDays = recentHeatmapDays(now: now, calendar: calendar)
+            .filter { day in
+                recordedDays.contains { calendar.isDate($0, inSameDayAs: day) }
+            }
+            .count
+        let title = "\(loggedDays) logged days"
+        let subtitle = "Sunclub history card"
         let heatmapDays = recentHeatmapDays(now: now, calendar: calendar)
         let recordedSet = Set(recordedDays.map { calendar.startOfDay(for: $0) })
         let image = renderCard(
@@ -39,7 +44,7 @@ enum SunclubShareArtifactService {
                 seasonStyle: seasonStyle,
                 title: title,
                 subtitle: subtitle,
-                heroValue: "Best \(longestStreak)",
+                heroValue: "\(recordedDays.count) total",
                 footer: "sunclub"
             )
         ) { context, bounds in
@@ -51,14 +56,14 @@ enum SunclubShareArtifactService {
                 context: context
             )
             drawBodyCopy(
-                "Keep showing up. Every square is one protected day.",
+                "Every square is one day with a sunscreen log.",
                 in: CGRect(x: 40, y: 330, width: bounds.width - 80, height: 70),
                 font: .systemFont(ofSize: 20, weight: .medium),
                 color: .white
             )
         }
 
-        let fileURL = try writeImage(image, named: "sunclub-streak-card.png")
+        let fileURL = try writeImage(image, named: "sunclub-logged-days-card.png")
         return SunclubShareArtifact(title: title, subtitle: subtitle, fileURL: fileURL)
     }
 
@@ -113,9 +118,9 @@ enum SunclubShareArtifactService {
         summary: SunclubSkinHealthReportSummary,
         preferredName: String
     ) throws -> SunclubShareArtifact {
-        let title = "Skin Health Report"
-        let subtitle = "Sunclub report for \(preferredName.isEmpty ? "your routine" : preferredName)"
-        let fileURL = try temporaryURL(named: "sunclub-skin-health-report.pdf")
+        let title = "Sunclub History Export"
+        let subtitle = "Sunscreen log summary for \(preferredName.isEmpty ? "your routine" : preferredName)"
+        let fileURL = try temporaryURL(named: "sunclub-history-export.pdf")
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 612, height: 792))
 
         try renderer.writePDF(to: fileURL) { context in
@@ -134,10 +139,10 @@ enum SunclubShareArtifactService {
 
             drawMetricColumn(
                 [
-                    ("Protected days", "\(summary.totalProtectedDays)"),
-                    ("Longest streak", "\(summary.longestStreak)"),
-                    ("Average streak", String(format: "%.1f", summary.averageStreakLength)),
-                    ("High-UV protected", "\(summary.highUVProtectedDays)")
+                    ("Logged days", "\(summary.totalProtectedDays)"),
+                    ("Longest run", "\(summary.longestStreak)"),
+                    ("Average run", String(format: "%.1f", summary.averageStreakLength)),
+                    ("High-UV logged", "\(summary.highUVProtectedDays)")
                 ],
                 in: CGRect(x: 40, y: 150, width: bounds.width - 80, height: 150),
                 inkColor: UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 1)

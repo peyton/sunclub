@@ -132,9 +132,9 @@ struct ReapplyReminderPlan: Equatable {
         self.fireDate = scheduledFireDate
 
         if let strongerMessage = level.strongerReapplyMessage {
-            self.notificationBody = "\(strongerMessage) It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
+            self.notificationBody = "\(strongerMessage) It's been \(adjustedInterval) minutes since the last log."
         } else {
-            self.notificationBody = "It's been \(adjustedInterval) minutes — reapply sunscreen for continued protection."
+            self.notificationBody = "It's been \(adjustedInterval) minutes since the last sunscreen log."
         }
 
         if scheduledFireDate != nil {
@@ -148,6 +148,18 @@ struct ReapplyReminderPlan: Equatable {
             self.confirmationText = "No reapply reminder today after sunset."
             self.confirmationSymbolName = "moon.stars"
         }
+    }
+
+    init(snoozeMinutes: Int, now: Date = Date(), calendar: Calendar = Calendar.current) {
+        let clampedMinutes = max(5, min(60, snoozeMinutes))
+        self.baseIntervalMinutes = clampedMinutes
+        self.intervalMinutes = clampedMinutes
+        self.notificationTitle = "Reapply reminder"
+        self.notificationBody = "Snoozed for \(Self.formattedInterval(clampedMinutes)). Open Sunclub when you reapply."
+        self.confirmationText = "Reminder snoozed for \(Self.formattedInterval(clampedMinutes))"
+        self.confirmationSymbolName = "timer"
+        self.fireDate = calendar.date(byAdding: .minute, value: clampedMinutes, to: now)
+        self.isElevated = false
     }
 
     private static func formattedInterval(_ minutes: Int) -> String {
@@ -871,7 +883,7 @@ final class AppState {
         reminderSettings.streakRiskEnabled = enabled
         applyReminderSettingsChange(
             reminderSettings,
-            summary: "Updated the streak-risk reminder."
+            summary: "Updated the evening log reminder."
         )
     }
 
@@ -1066,7 +1078,7 @@ final class AppState {
         let title = hasLoggedToday ? "Today's log is in" : "Ready for today's log"
         let defaultDetail = hasLoggedToday
             ? "Update today's SPF or note any time."
-            : "One quick check-in keeps the streak steady."
+            : "Add a log to start your reminder."
         let logBadgeText = todayRecord.map { Self.logBadgeText(for: $0) }
         let streakRiskBadgeText = streakRiskBadgeText(now: now, hasLoggedToday: hasLoggedToday)
         let metadataRows = todayCardMetadataRows(now: now, todayRecord: todayRecord)
@@ -1112,18 +1124,13 @@ final class AppState {
         let facts = dailyPlanFacts(now: now, todayRecord: todayRecord)
 
         guard let todayRecord else {
-            let activeStreak = CalendarAnalytics.currentStreak(
-                records: recordedDays,
-                now: now,
-                calendar: calendar
-            )
             let hour = calendar.component(.hour, from: now)
             let title: String
             let detail: String
 
-            if hour >= 18, activeStreak > 0 {
+            if hour >= 18 {
                 title = "Log before midnight"
-                detail = "Today is still open. One quick log keeps your \(activeStreak)-day streak intact."
+                detail = "Today is still open. Add a log if you wore sunscreen."
             } else if reapplyReminderPlan.isElevated {
                 title = "Log before outdoor time"
                 detail = "UV is elevated today. Save the first log now, then reapply sooner if you stay outside."
@@ -1206,7 +1213,7 @@ final class AppState {
         if todayRecord.spfLevel == nil, todayRecord.trimmedNotes == nil {
             return HomeDailyPlanPresentation(
                 title: "Add details if useful",
-                detail: "Today's streak is saved. Add SPF or a note only if it helps future you understand the day.",
+                detail: "Today's log is saved. Add SPF or a note only if it helps future you understand the day.",
                 actionTitle: "Add SPF or Note",
                 action: .addDetails,
                 symbolName: "note.text",
@@ -1267,7 +1274,7 @@ final class AppState {
     private func dailyPlanFacts(now: Date, todayRecord: DailyRecord?) -> [HomeDailyPlanFact] {
         var facts = [
             todayDailyPlanFact(now: now, record: todayRecord),
-            streakDailyPlanFact(now: now)
+            weekLoggedDailyPlanFact(now: now)
         ]
 
         if let uvFact = uvDailyPlanFact() {
@@ -1299,13 +1306,17 @@ final class AppState {
         )
     }
 
-    private func streakDailyPlanFact(now: Date) -> HomeDailyPlanFact {
-        let streak = CalendarAnalytics.currentStreak(records: recordedDays, now: now, calendar: calendar)
+    private func weekLoggedDailyPlanFact(now: Date) -> HomeDailyPlanFact {
+        let weekLoggedCount = CalendarAnalytics.weeklyReport(
+            records: recordedDays,
+            now: now,
+            calendar: calendar
+        ).appliedCount
         return HomeDailyPlanFact(
-            id: "streak",
-            title: "Streak",
-            value: streak == 1 ? "1 day" : "\(streak) days",
-            symbolName: "flame.fill"
+            id: "week",
+            title: "This Week",
+            value: "\(weekLoggedCount)/7 logged",
+            symbolName: "calendar"
         )
     }
 
@@ -1410,22 +1421,6 @@ final class AppState {
                 )
             )
 
-            let activeStreak = CalendarAnalytics.currentStreak(
-                records: recordedDays,
-                now: now,
-                calendar: calendar
-            )
-            if activeStreak > 0 {
-                rows.append(
-                    HomeTodayMetadataRow(
-                        id: "streak",
-                        title: "Streak",
-                        value: "\(activeStreak) \(activeStreak == 1 ? "day" : "days") open",
-                        symbolName: "flame.fill"
-                    )
-                )
-            }
-
             if settings.reapplyReminderEnabled {
                 rows.append(
                     HomeTodayMetadataRow(
@@ -1506,7 +1501,7 @@ final class AppState {
         }
 
         let noun = record.reapplyCount == 1 ? "reapply" : "reapplies"
-        return "Applied + \(record.reapplyCount) \(noun)"
+            return "Logged + \(record.reapplyCount) \(noun)"
     }
 
     private func streakRiskBadgeText(now: Date, hasLoggedToday: Bool) -> String? {
@@ -1528,7 +1523,7 @@ final class AppState {
             return nil
         }
 
-        return "\(activeStreak)-day streak at risk"
+        return "Today still open"
     }
 
     var reapplyReminderPlan: ReapplyReminderPlan {
@@ -2734,6 +2729,18 @@ final class AppState {
         }
     }
 
+    func snoozeReapplyReminder(minutes: Int = 15) {
+        guard settings.reapplyReminderEnabled else { return }
+        let plan = ReapplyReminderPlan(snoozeMinutes: minutes, now: currentDate(), calendar: calendar)
+
+        Task {
+            await notificationManager.scheduleReapplyReminder(
+                plan: plan,
+                route: preferredCheckInRoute
+            )
+        }
+    }
+
     func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
         let clampedIntervalMinutes = max(30, min(480, intervalMinutes))
         guard settings.reapplyReminderEnabled != enabled
@@ -3032,9 +3039,9 @@ final class AppState {
         if let record {
             let sunscreenText: String
             if let spfLevel = record.spfLevel {
-                sunscreenText = "Applied · SPF \(spfLevel)"
+                sunscreenText = "Logged · SPF \(spfLevel)"
             } else {
-                sunscreenText = "Applied"
+                sunscreenText = "Logged"
             }
 
             let reapplyText: String

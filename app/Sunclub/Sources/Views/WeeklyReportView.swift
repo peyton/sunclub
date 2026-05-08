@@ -26,7 +26,7 @@ struct WeeklyReportView: View {
                 weeklyChart
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                streakContextRow
+                weeklySummaryRow
 
                 if !showsBackButton {
                     viewFullHistoryButton
@@ -58,25 +58,25 @@ struct WeeklyReportView: View {
         SecondaryPillButton("View Full History", systemImage: "calendar", identifier: "weekly.viewFullHistory") {
             router.open(.history)
         }
-        .accessibilityHint("Opens your full calendar history with your current streak highlighted.")
+        .accessibilityHint("Opens your full calendar history.")
     }
 
-    private var streakContextRow: some View {
+    private var weeklySummaryRow: some View {
         HStack(spacing: 12) {
                 WeeklyMetricPill(
-                    value: "\(appState.currentStreak)",
-                    label: "Current streak",
+                    value: "\(report.appliedCount)",
+                    label: "logged days",
                     accessibilityIdentifier: "weekly.currentStreak"
                 )
 
                 WeeklyMetricPill(
-                    value: "\(appState.longestStreak)",
-                    label: "Best streak",
+                    value: "\(max(0, report.totalDays - report.appliedCount))",
+                    label: "open days",
                     accessibilityIdentifier: "weekly.bestStreak"
                 )
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Current streak \(appState.currentStreak) days, best streak \(appState.longestStreak) days")
+        .accessibilityLabel("\(report.appliedCount) days logged, \(max(0, report.totalDays - report.appliedCount)) open days")
     }
 
     private var weeklyChart: some View {
@@ -156,7 +156,7 @@ struct WeeklyReportView: View {
                 .offset(x: 40, y: 30)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text(report.appliedSummaryText)
+                Text("\(report.appliedCount) logged")
                     .font(AppFont.rounded(size: 58, weight: .light))
                     .foregroundStyle(
                         LinearGradient(
@@ -195,9 +195,6 @@ struct WeeklyReportView: View {
         }
         if report.appliedCount == 1 {
             return "You logged sunscreen once this week."
-        }
-        if report.appliedCount == report.totalDays {
-            return "You logged sunscreen every day this week."
         }
         return "You logged sunscreen \(report.appliedCount) times this week."
     }

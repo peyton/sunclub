@@ -207,7 +207,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             return UNNotificationRequest(
                 identifier: "\(NotificationConstants.uvBriefingPrefix)\(Int(day.timeIntervalSince1970))",
                 content: makeContent(
-                    title: "Skin's weather report",
+                    title: "Sunclub UV briefing",
                     body: "\(forecast.headline). \(forecast.recommendation)",
                     categoryIdentifier: NotificationConstants.dailyManualCategoryID,
                     route: NotificationConstants.manualRoute,
@@ -376,7 +376,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 identifier: "\(NotificationConstants.weeklyPrimaryPrefix)\(Int(Date().timeIntervalSince1970))",
                 content: makeContent(
                     title: "Sunclub weekly report",
-                    body: "You applied sunscreen \(report.appliedCount)/\(report.totalDays) days. Current streak: \(report.streak). "
+                    body: "You logged sunscreen \(report.appliedCount)/\(report.totalDays) days. "
                         + (report.missedDays.isEmpty ? "All 7 days are logged. " : "Not logged: \(report.missedDays.joined(separator: ", ")). ")
                         + phrase.0,
                     categoryIdentifier: NotificationConstants.dailyManualCategoryID,
@@ -479,7 +479,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             return nil
         }
 
-        let streakLabel = plan.streakCount == 1 ? "1-day streak" : "\(plan.streakCount)-day streak"
         let timeZone = state.settings.smartReminderSettings.notificationTimeZone()
         var scheduleCalendar = calendar
         scheduleCalendar.timeZone = timeZone
@@ -493,8 +492,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return UNNotificationRequest(
             identifier: "\(NotificationConstants.streakRiskPrefix)\(Int(plan.fireDate.timeIntervalSince1970))",
             content: makeContent(
-                title: "Keep your streak alive",
-                body: "Today is still open. Log sunscreen before the day ends to protect your \(streakLabel).",
+                title: "Today is still open",
+                body: "Log sunscreen before the day ends if you wore it today.",
                 categoryIdentifier: NotificationConstants.dailyManualCategoryID,
                 route: NotificationConstants.manualRoute,
                 type: "streak_risk",

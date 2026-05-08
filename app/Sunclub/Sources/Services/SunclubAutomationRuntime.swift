@@ -106,13 +106,13 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
         case .support:
             return .support
         case .achievements:
-            return .achievements
+            return .weeklySummary
         case .friends:
-            return .friends
+            return .settings
         case .healthReport:
-            return .skinHealthReport
+            return .history
         case .productScanner:
-            return .productScanner
+            return .manualLog
         case .recovery:
             return .recovery
         }
@@ -141,13 +141,13 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
         case .support:
             return "Support"
         case .achievements:
-            return "Achievements"
+            return "Insights"
         case .friends:
-            return "Friends"
+            return "Settings"
         case .healthReport:
-            return "Health Report"
+            return "History"
         case .productScanner:
-            return "SPF Scanner"
+            return "Log Sunscreen"
         case .recovery:
             return "Recovery"
         }
@@ -181,7 +181,7 @@ enum SunclubAutomationToggle: String, CaseIterable, Codable, Sendable {
         case .travelTimeZone:
             return "Travel Time Zone"
         case .streakRisk:
-            return "Streak Risk"
+            return "Evening Log Reminder"
         case .dailyUVBriefing:
             return "Daily UV Briefing"
         case .extremeUVAlert:
@@ -189,7 +189,7 @@ enum SunclubAutomationToggle: String, CaseIterable, Codable, Sendable {
         case .iCloudSync:
             return "iCloud Sync"
         case .healthKit:
-            return "HealthKit"
+            return "Apple Health"
         }
     }
 }
@@ -237,9 +237,9 @@ enum SunclubAutomationAction: Equatable {
         case .exportBackup:
             return "export-backup"
         case .createSkinHealthReport:
-            return "create-skin-health-report"
+            return "export-sunclub-history"
         case .createStreakCard:
-            return "create-streak-card"
+            return "create-logged-days-card"
         }
     }
 
@@ -978,7 +978,7 @@ enum SunclubAutomationRuntime {
         return SunclubAutomationResult(
             action: action,
             status: "ok",
-            message: "Created skin health report.",
+            message: "Exported Sunclub history.",
             fileURL: artifact.fileURL,
             fileTypeIdentifier: UTType.pdf.identifier
         )
@@ -1004,7 +1004,7 @@ enum SunclubAutomationRuntime {
         return SunclubAutomationResult(
             action: action,
             status: "ok",
-            message: "Created streak card.",
+            message: "Created logged-days card.",
             fileURL: artifact.fileURL,
             fileTypeIdentifier: UTType.png.identifier
         )

@@ -17,23 +17,10 @@ struct VerificationSuccessView: View {
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
             VStack(spacing: 22) {
-                ZStack(alignment: .bottomTrailing) {
-                    SunSuccessBurst(
-                        size: 168,
-                        milestone: SunSuccessBurst.milestoneLevel(for: presentation.streak)
-                    )
-
-                    Circle()
-                        .fill(AppPalette.success)
-                        .frame(width: 42, height: 42)
-                        .overlay {
-                            Image(systemName: "checkmark")
-                                .font(AppFont.rounded(size: 18, weight: .bold))
-                                .foregroundStyle(AppPalette.onAccent)
-                        }
-                        .offset(x: 10, y: 8)
-                }
-                .frame(maxWidth: .infinity)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(AppFont.rounded(size: 72, weight: .semibold))
+                    .foregroundStyle(AppPalette.success)
+                    .frame(maxWidth: .infinity)
                 .accessibilityHidden(true)
 
                 VStack(spacing: 10) {
@@ -48,12 +35,6 @@ struct VerificationSuccessView: View {
                         .multilineTextAlignment(.center)
                         .accessibilityIdentifier("success.loggedDate")
 
-                    if presentation.isPersonalBest && presentation.streak > 1 {
-                        Text("New personal best!")
-                            .font(AppFont.rounded(size: 15, weight: .semibold))
-                            .foregroundStyle(AppPalette.sun)
-                            .accessibilityIdentifier("success.personalBest")
-                    }
                 }
                 .frame(maxWidth: .infinity)
 
@@ -127,10 +108,10 @@ struct VerificationSuccessView: View {
     @ViewBuilder
     private var successMetricPills: some View {
         SunMetricPill(
-            value: "\(presentation.streak)",
-            label: presentation.streak == 1 ? "day in a row" : "days in a row",
-            symbolName: "flame.fill",
-            tint: AppPalette.streakAccent,
+            value: loggedDateText,
+            label: "logged",
+            symbolName: "checkmark.circle.fill",
+            tint: AppPalette.success,
             accessibilityIdentifier: "success.streakMetric"
         )
 

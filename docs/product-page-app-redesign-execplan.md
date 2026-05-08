@@ -30,6 +30,7 @@ The work is visual and product-surface focused. It must not change SwiftData mod
 - [x] (2026-05-07T19:20Z) Added a numbered 100-item user-visible polish ledger with category counts matching the completion plan.
 - [x] (2026-05-07T21:06Z) Captured clean iPhone 17 Pro simulator screenshots for Today, tab switching, Settings top/mid/bottom, Log Sunscreen, History, Insights, UV detail, Privacy, Support, and accessibility text mode.
 - [x] (2026-05-07T21:06Z) Built and opened the `.build/redesign-completion-screenshots/contact-sheet.html` browser contact sheet with 12 screenshots.
+- [x] (2026-05-08T00:59Z) Recorded the GPT-5.5 Pro 150-item critique outcome ledger and scoped the ignored Atlas capture artifact to P0 review groups/states without Swift source edits.
 - [ ] Push the branch, open a PR, monitor required GitHub checks, and merge to `master`.
 
 ## Surprises & Discoveries
@@ -196,13 +197,32 @@ These are implemented user-visible polish improvements from the completion pass 
 - [x] [Accessibility/Watch/Widget/Dark Mode] 099. Dark-mode Settings still reaches migrated reminder controls.
 - [x] [Accessibility/Watch/Widget/Dark Mode] 100. The coverage asset is bitmap-backed so Watch/widget asset validation does not depend on runtime drawing.
 
+## GPT-5.5 Pro Critique Outcome Ledger
+
+Source: `.build/gpt55-pro-review/chatgpt-critique.md`, 150 numbered items: 14 Critical, 61 High, 57 Medium, 18 Low. The GPT-5.5 Pro remediation pass accepted the product-facing critique as implementation input and updated source, tests, review artifacts, and release notes. Legacy internal names and compatibility routes remain only where they keep existing automation/deep-link contracts stable; production routing and the generated contact sheet now normalize them to P0 Sunclub surfaces.
+
+| Items | Area | Outcome |
+| --- | --- | --- |
+| 1-15 | Global scope, IA, visual language | Production routes and the review sheet now focus on P0 surfaces: Today, Log Sunscreen, UV detail, History, Settings, Privacy, Support, Shortcuts, Watch, widgets, Live Activity, and App Store cards. Off-P0 routes normalize to P0 destinations, and visible copy was moved away from generic slogans, medical claims, and pressure-based language. |
+| 16-25 | Onboarding and permissions | Onboarding now leads through welcome, local-UV/location choice, and reminders with concise task copy, navy primary buttons, privacy reassurance, and first-log defaults of Face/Neck. The review sheet includes welcome and notifications-off states. |
+| 26-40 | Today dashboard | Today now emphasizes UV, logged/no-log status, reapply timing, exposure, and hourly forecast. Logged status uses factual sunscreen metadata and neutral reapply copy; no-log state gives a direct logging action. |
+| 41-65 | Log Sunscreen and Areas Covered art | Manual Log now uses the reference form hierarchy, default Face/Neck coverage, product preset rows, disabled invalid saves, and a regenerated coverage-face asset at 1x/2x/3x through the existing visual asset path. |
+| 66-78 | Logged, reapply, and UV detail | Save returns to Today or a concise logged confirmation, reapply is action-first with Log/Snooze/Dismiss controls, snooze persists through AppState, and UV detail/fallback copy stays factual. |
+| 79-88 | History and calendar | History surfaces use stronger selected/logged states, a nearby month summary, neutral stats, edit/delete confirmation paths, and P0 edge cards for export/delete/iCloud-off review. |
+| 89-105 | Insights, social, scanner, reports, tap-to-release, challenges | Shipping navigation and capture exclude achievements, friends/social, scanner, skin-health report, year-in-review, tap-to-release, and challenge-style screens. Compatibility routes remain parseable but normalize to Insights, Settings, History, or Log Sunscreen. |
+| 106-120 | Settings, privacy, support, Shortcuts | Settings, Privacy, Support, and Automation use grouped P0 rows. Privacy exposes export/delete controls with confirmations, Support uses help/email/feedback/about rows, and automation docs/copy now describe supported non-destructive routes and writes. |
+| 121-130 | Accessibility variants | Dark-mode Today, large-text Log Sunscreen, and high-contrast History are captured. UI tests cover the common-task accessibility scorecard path, large text manual logging, high contrast history, and settings automation controls. |
+| 131-150 | Widgets, Watch, Live Activity, App Store | Watch, widgets, Live Activity, and App Store review cards use logged/reapply/UV language instead of protected/streak-pressure language. The legacy activity-sharing widget kind stays registered for existing installs, while production navigation and the contact sheet do not promote it. |
+
 ## Outcomes & Retrospective
 
-Implemented the product-page visual system across the app's primary surfaces. Home now uses a Today-first UV card, logged sunscreen row, sun exposure chart, hourly forecast strip, and product-page bottom navigation. Manual Log now exposes SPF presets and covered areas immediately, with area metadata persisted through the existing notes field instead of a SwiftData schema change. History, Settings, Automation, onboarding copy, and Watch glance UI were restyled around the same navy, amber, blue, and translucent-card system.
+Implemented the product-page visual system across the app's primary surfaces. Home now uses a Today-first UV card, logged sunscreen row, sun exposure chart, hourly forecast strip, and product-page bottom navigation. Manual Log now exposes grouped SPF/product rows and covered areas immediately, with area metadata persisted through the existing notes field instead of a SwiftData schema change. History, Settings, Automation, onboarding copy, widgets, Live Activity, and Watch glance UI were restyled around the same navy, amber, blue, and translucent-card system.
 
 The second pass closed gaps against the reference sheet by adding a tappable UV forecast detail, first-class privacy and support screens, a Shortcuts & Automation summary, product-page settings rows, reference-style manual logging form rows, and a History segmented control/calendar summary. The new routes are covered by shared automation parsing, App Intent routing, and UI navigation tests.
 
-Local verification passed with `just generate`, `just visual-assets`, `just test-python` (175 tests), `just lint` (0 serious SwiftLint violations), `just test-unit` (286 tests), focused UI reruns for tab navigation, Settings controls, manual log coverage, History/Insights, automation routes, and the full `just test-ui` simulator suite (56 tests). A temporary UI-test harness captured 12 clean iPhone 17 Pro screenshots into `.build/redesign-completion-screenshots/`, and `contact-sheet.html` was opened in the in-app browser for visual inspection. Remote PR checks and merge remain the final lifecycle steps for this request.
+The GPT-5.5 Pro pass then removed off-P0 surfaces from production capture, normalized compatibility routes, replaced the coverage-face art, tightened Today/Manual Log/History/Privacy/Support/Automation copy, added true snooze behavior, and aligned Watch/widget/Live Activity language with logged/reapply/UV states.
+
+Local verification passed with `just visual-assets`, `SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 just generate`, `just test-python` (175 tests), `just lint` (40 warning-level SwiftLint violations, 0 serious), `SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 TEST_XCODEBUILD_ARGS='COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO' TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit` (288 tests), and the same-env full `just test-ui` simulator suite (57 tests). Local Tuist upload/auth warnings were non-blocking; the known post-success Tuist `logs.txt` trace trap was observed after Xcode reported success and the repo wrapper treated it as success. The final review manifest contains 40 surfaces: iPhone 20, Accessibility 3, Widgets 5, Watch 4, Live Activity 3, and App Store 5, with artifacts at `.build/gpt55-pro-review/current-contact-sheet.{png,html,json}`.
 
 ## Context and Orientation
 

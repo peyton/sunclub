@@ -29,7 +29,7 @@ struct TimelineLogSection: View {
             }
 
             if summary.category != .future {
-                streakHighlight
+                weekHighlight
             }
         }
     }
@@ -257,23 +257,21 @@ struct TimelineLogSection: View {
         .accessibilityIdentifier("timeline.futurePlan")
     }
 
-    private var streakHighlight: some View {
-        let detail: String
-        if currentStreak == 0 {
-            detail = "Log once today to start a streak."
-        } else {
-            detail = "\(currentStreak)-day streak. Personal best: \(longestStreak)."
-        }
+    private var weekHighlight: some View {
+        let loggedCount = summary.partStatuses.filter(\.isCompleted).count
+        let detail = loggedCount == 0
+            ? "No sunscreen logged for this day yet."
+            : "\(loggedCount) part\(loggedCount == 1 ? "" : "s") logged for this day."
 
         return HStack(alignment: .top, spacing: 12) {
-            Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
+            Image(systemName: loggedCount > 0 ? "checkmark.circle.fill" : "circle")
                 .font(AppFont.rounded(size: 16, weight: .semibold))
-                .foregroundStyle(AppPalette.streakAccent)
+                .foregroundStyle(loggedCount > 0 ? AppPalette.success : AppPalette.softInk)
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Streak")
+                Text("Daily log")
                     .font(AppFont.rounded(size: 15, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
                 Text(detail)
@@ -286,9 +284,9 @@ struct TimelineLogSection: View {
         .padding(16)
         .sunGlassCard(cornerRadius: 18)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Streak")
+        .accessibilityLabel("Daily log")
         .accessibilityValue(detail)
-        .accessibilityIdentifier("timeline.highlights.streak")
+        .accessibilityIdentifier("timeline.highlights.dailyLog")
     }
 }
 

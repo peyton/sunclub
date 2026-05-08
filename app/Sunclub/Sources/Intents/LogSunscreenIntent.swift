@@ -56,7 +56,7 @@ enum SunclubWidgetRouteIntentValue: String, AppEnum {
         .summary: "Summary",
         .history: "History",
         .updateToday: "Update Today",
-        .accountability: "Activity sharing"
+        .accountability: "Sunclub"
     ]
 
     var route: SunclubWidgetRoute {
@@ -93,10 +93,10 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
         .uvForecast: "UV Forecast",
         .privacy: "Privacy",
         .support: "Support",
-        .achievements: "Achievements",
-        .friends: "Friends",
-        .healthReport: "Health Report",
-        .productScanner: "SPF Scanner",
+        .achievements: "Insights",
+        .friends: "Settings",
+        .healthReport: "History",
+        .productScanner: "Log Sunscreen",
         .recovery: "Recovery"
     ]
 
@@ -210,7 +210,7 @@ enum SunclubToggleIntentValue: String, AppEnum {
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Sunclub Toggle")
     static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
         .travelTimeZone: "Travel Time Zone",
-        .streakRisk: "Streak Risk",
+        .streakRisk: "Evening Log Reminder",
         .dailyUVBriefing: "Daily UV Briefing",
         .extremeUVAlert: "Extreme UV Alert",
         .iCloudSync: "iCloud Sync",
@@ -250,9 +250,7 @@ struct SunclubFriendEntity: AppEntity, Identifiable {
     init(snapshot: SunclubFriendSnapshot) {
         id = snapshot.id
         name = snapshot.name
-        status = snapshot.hasLoggedToday
-            ? "Logged today, \(snapshot.currentStreak)-day streak"
-            : "Not logged today, \(snapshot.currentStreak)-day streak"
+        status = snapshot.hasLoggedToday ? "Logged today" : "Not logged today"
     }
 }
 
@@ -393,7 +391,7 @@ struct LogReapplyIntent: AppIntent {
 
 struct GetSunclubStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Sunclub Status"
-    static let description = IntentDescription("Gets today's Sunclub status, streak, and weekly applied count.")
+    static let description = IntentDescription("Gets today's Sunclub status, weekly logged count, and reapply timing.")
     static let openAppWhenRun = false
     static let isDiscoverable = true
 
@@ -407,8 +405,7 @@ struct GetSunclubStatusIntent: AppIntent {
             let result = try SunclubIntentSupport.perform(.status)
             var statusLines = [
                 result.message,
-                "Current streak: \(result.currentStreak ?? 0).",
-                "This week: \(result.weeklyApplied ?? 0) days."
+                "This week: \(result.weeklyApplied ?? 0) days logged."
             ]
             if let minutesSinceLastApplication = result.minutesSinceLastApplication {
                 statusLines.append("Last application: \(minutesSinceLastApplication) minutes ago.")
@@ -600,8 +597,8 @@ struct ExportSunclubBackupIntent: AppIntent {
 }
 
 struct CreateSkinHealthReportIntent: AppIntent {
-    static let title: LocalizedStringResource = "Create Skin Health Report"
-    static let description = IntentDescription("Creates a PDF skin health report from Sunclub sunscreen history.")
+    static let title: LocalizedStringResource = "Export Sunclub History"
+    static let description = IntentDescription("Creates a PDF export from Sunclub sunscreen history.")
     static let openAppWhenRun = false
     static let isDiscoverable = true
 
@@ -617,7 +614,7 @@ struct CreateSkinHealthReportIntent: AppIntent {
     }
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Create skin health report")
+        Summary("Export Sunclub history")
     }
 
     @MainActor
@@ -636,13 +633,13 @@ struct CreateSkinHealthReportIntent: AppIntent {
 }
 
 struct CreateStreakCardIntent: AppIntent {
-    static let title: LocalizedStringResource = "Create Streak Card"
-    static let description = IntentDescription("Creates a Sunclub streak card image.")
+    static let title: LocalizedStringResource = "Create Logged Days Card"
+    static let description = IntentDescription("Creates a Sunclub logged-days image.")
     static let openAppWhenRun = false
-    static let isDiscoverable = true
+    static let isDiscoverable = false
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Create streak card")
+        Summary("Create logged-days card")
     }
 
     @MainActor
@@ -653,7 +650,7 @@ struct CreateStreakCardIntent: AppIntent {
             return .result(value: file, dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             let dialog = SunclubIntentSupport.dialog(for: error)
-            return .result(value: IntentFile(data: Data(), filename: "sunclub-streak-card-error.txt", type: .plainText), dialog: dialog)
+            return .result(value: IntentFile(data: Data(), filename: "sunclub-logged-days-error.txt", type: .plainText), dialog: dialog)
         }
     }
 }
@@ -662,7 +659,7 @@ struct ImportFriendInviteIntent: AppIntent {
     static let title: LocalizedStringResource = "Import Sharing Invite"
     static let description = IntentDescription("Imports a Sunclub Activity sharing invite code.")
     static let openAppWhenRun = false
-    static let isDiscoverable = true
+    static let isDiscoverable = false
 
     @Parameter(title: "Invite Code")
     var code: String
@@ -690,7 +687,7 @@ struct PokeFriendIntent: AppIntent {
     static let title: LocalizedStringResource = "Remind Friend"
     static let description = IntentDescription("Opens Activity sharing to remind a friend.")
     static let openAppWhenRun = false
-    static let isDiscoverable = true
+    static let isDiscoverable = false
 
     @Parameter(title: "Friend")
     var friend: SunclubFriendEntity
@@ -771,20 +768,11 @@ struct SunclubAppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: CreateSkinHealthReportIntent(),
             phrases: [
-                "Create \(.applicationName) skin report",
-                "Make a skin health report in \(.applicationName)"
+                "Export \(.applicationName) history",
+                "Make a history export in \(.applicationName)"
             ],
-            shortTitle: "Skin Report",
+            shortTitle: "History Export",
             systemImageName: "doc.richtext.fill"
-        )
-        AppShortcut(
-            intent: CreateStreakCardIntent(),
-            phrases: [
-                "Create \(.applicationName) streak card",
-                "Make a streak card in \(.applicationName)"
-            ],
-            shortTitle: "Streak Card",
-            systemImageName: "photo.fill"
         )
     }
 }

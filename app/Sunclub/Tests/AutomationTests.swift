@@ -392,10 +392,10 @@ final class AutomationTests: XCTestCase {
             .createSkinHealthReport(start: nil, end: nil),
             invocation: .shortcut
         )
-        try assertAutomationFile(report, expectedAction: "create-skin-health-report", expectedType: UTType.pdf.identifier)
+        try assertAutomationFile(report, expectedAction: "export-sunclub-history", expectedType: UTType.pdf.identifier)
 
         let streakCard = try harness.state.performAutomationAction(.createStreakCard, invocation: .shortcut)
-        try assertAutomationFile(streakCard, expectedAction: "create-streak-card", expectedType: UTType.png.identifier)
+        try assertAutomationFile(streakCard, expectedAction: "create-logged-days-card", expectedType: UTType.png.identifier)
     }
 
     func testTimeSinceLastApplicationAutomationUsesMostRecentLogOrReapply() throws {
@@ -441,7 +441,7 @@ final class AutomationTests: XCTestCase {
 
         let suggested = try await query.suggestedEntities()
         XCTAssertEqual(suggested.map(\.name), ["Maya", "Zoe"])
-        XCTAssertEqual(suggested.first?.status, "Not logged today, 2-day streak")
+        XCTAssertEqual(suggested.first?.status, "Not logged today")
         let filtered = try await query.entities(for: [loggedFriendID])
         XCTAssertEqual(filtered.map(\.name), ["Zoe"])
 

@@ -542,7 +542,7 @@ private struct ChipState {
                 parts.append("reapplied")
             }
             if isCurrentStreak {
-                parts.append("current streak")
+                parts.append("recent logged run")
             }
             return parts.joined(separator: " · ")
         case .todayPending:

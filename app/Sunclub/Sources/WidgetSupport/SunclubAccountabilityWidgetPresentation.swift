@@ -56,8 +56,8 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             SunclubAccountabilityWidgetFriend(
                 id: friend.id,
                 name: friend.name,
-                status: friend.hasLoggedToday ? "Logged" : "Open today",
-                streak: "\(friend.currentStreak)d"
+                status: friend.hasLoggedToday ? "Logged" : "Not logged",
+                streak: ""
             )
         }
 
@@ -106,16 +106,16 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
         if let topOpenFriend = summary.topFriends.first(where: { !$0.hasLoggedToday }) {
             guard summary.primaryPokeFriendID != nil else {
                 return Content(
-                    title: family == .systemSmall ? "\(topOpenFriend.name) open" : "Message \(topOpenFriend.name)",
-                    subtitle: "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") open",
+                    title: family == .systemSmall ? "\(topOpenFriend.name) not logged" : "Message \(topOpenFriend.name)",
+                    subtitle: "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") not logged",
                     detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
                     actionText: "Open",
                     iconName: "person.2.fill"
                 )
             }
             return Content(
-                title: family == .systemSmall ? "\(topOpenFriend.name) open" : "Remind \(topOpenFriend.name)",
-                subtitle: "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") open",
+                title: family == .systemSmall ? "\(topOpenFriend.name) not logged" : "Remind \(topOpenFriend.name)",
+                subtitle: "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") not logged",
                 detail: "\(topOpenFriend.name) has not logged sunscreen yet.",
                 actionText: "Remind",
                 iconName: "person.2.fill"
@@ -138,7 +138,7 @@ struct SunclubAccountabilityWidgetPresentation: Equatable, Sendable {
             return "Set up sharing"
         }
         if summary.openCount > 0 {
-            return "\(summary.openCount) friend\(summary.openCount == 1 ? "" : "s") open"
+            return "\(summary.openCount) not logged"
         }
         return "Everyone logged"
     }

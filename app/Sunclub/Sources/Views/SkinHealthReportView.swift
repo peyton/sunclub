@@ -22,7 +22,7 @@ struct SkinHealthReportView: View {
             footerMaxWidth: SunLayout.ContentWidth.readable
         ) {
             VStack(alignment: .leading, spacing: 24) {
-                SunLightHeader(title: "Skin Health Report", showsBack: true, onBack: {
+                SunLightHeader(title: "Sunclub History Export", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -52,11 +52,11 @@ struct SkinHealthReportView: View {
 
     private var introCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Skin Health Report")
+            Text("Sunclub History Export")
                 .font(AppFont.rounded(size: 26, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
 
-            Text("Choose a date range, review your key metrics, then export or share the summary.")
+            Text("Choose a date range, review your log summary, then export the history.")
                 .font(AppFont.rounded(size: 15))
                 .foregroundStyle(AppPalette.softInk)
         }
@@ -83,10 +83,10 @@ struct SkinHealthReportView: View {
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            reportMetricRow(label: "Protected days in range", value: "\(summary.totalProtectedDays)")
-            reportMetricRow(label: "Longest streak", value: "\(summary.longestStreak)")
-            reportMetricRow(label: "Average streak length", value: String(format: "%.1f", summary.averageStreakLength))
-            reportMetricRow(label: "High-UV protected days", value: "\(summary.highUVProtectedDays)")
+            reportMetricRow(label: "Logged days", value: "\(summary.totalProtectedDays)")
+            reportMetricRow(label: "Longest run", value: "\(summary.longestStreak)")
+            reportMetricRow(label: "Average run", value: String(format: "%.1f", summary.averageStreakLength))
+            reportMetricRow(label: "High-UV logged days", value: "\(summary.highUVProtectedDays)")
         }
         .padding(18)
         .background(cardBackground)
@@ -120,7 +120,7 @@ struct SkinHealthReportView: View {
                     )
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(month.monthLabel)
-                    .accessibilityValue("\(month.protectedDays) of \(month.totalDays) protected days")
+                    .accessibilityValue("\(month.protectedDays) of \(month.totalDays) days logged")
                 }
             }
         }
@@ -174,35 +174,22 @@ struct SkinHealthReportView: View {
     @ViewBuilder
     private var footerActions: some View {
         if appState.records.isEmpty {
-            Text("Log at least one day before exporting or sharing a report.")
+            Text("Log at least one day before exporting history.")
                 .font(AppFont.rounded(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.softInk)
                 .multilineTextAlignment(.center)
         } else {
             VStack(spacing: 12) {
-                Button("Export report") {
+                Button("Export History") {
                     exportPDFReport()
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
-
-                Button("Share summary") {
-                    shareStreakCard()
-                }
-                .buttonStyle(SunSecondaryButtonStyle())
             }
         }
     }
 
     private func exportPDFReport() {
         guard let artifact = try? appState.skinHealthReportArtifact(for: interval) else {
-            return
-        }
-        appState.recordShareActionStarted()
-        shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
-    }
-
-    private func shareStreakCard() {
-        guard let artifact = try? appState.streakCardArtifact() else {
             return
         }
         appState.recordShareActionStarted()

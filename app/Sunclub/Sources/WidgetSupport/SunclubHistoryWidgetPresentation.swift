@@ -17,13 +17,13 @@ struct SunclubHistoryWidgetPresentation: Equatable, Sendable {
         calendar: Calendar = Calendar.current
     ) -> SunclubHistoryWidgetPresentation {
         let monthName = now.formatted(.dateTime.month(.wide))
-        let currentStreak = snapshot.streakValue(now: now, calendar: calendar)
+        let recentLoggedRun = snapshot.streakValue(now: now, calendar: calendar)
 
         return SunclubHistoryWidgetPresentation(
             title: "\(monthName) sunscreen history",
             compactTitle: "\(monthName) history",
             weekSummary: "\(snapshot.currentWeekAppliedValue(now: now, calendar: calendar))/7 this week",
-            streakSummary: "\(currentStreak)d current streak",
+            streakSummary: "\(recentLoggedRun) recent",
             monthSummary: monthPercent(snapshot: snapshot, now: now, calendar: calendar)
         )
     }
