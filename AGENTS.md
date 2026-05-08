@@ -13,6 +13,7 @@ just run
 ```
 
 Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.
+`just bootstrap` installs pinned repo-local tools with `mise install --locked`, syncs `.venv/`, prepares repo-local caches, and primes Tuist's local Xcode cache service from `app/`. Update `mise.lock` intentionally with `mise lock` when changing pinned tools.
 
 ## Test Commands
 
@@ -24,6 +25,8 @@ Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. 
 | CI validation     | `just ci`                |
 | Lint              | `just lint`              |
 | Format            | `just fmt`               |
+| CI lint shard     | `just ci-lint`           |
+| CI Python shard   | `just ci-python`         |
 | CI build shard    | `just ci-build`          |
 | Release preflight | `just release-preflight` |
 | Visual assets     | `just visual-assets`     |
@@ -41,6 +44,7 @@ Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. 
 | Archive            | `just appstore-archive`         |
 | App Review dry run | `just appstore-submit-dry-run`  |
 | App Review submit  | `just appstore-submit-review`   |
+| App Review alias   | `just appstore-send-review`     |
 | Release doctor     | `just release-doctor`           |
 | Release tag        | `just release-tag 1.2.3`        |
 | TestFlight alias   | `just release-testflight 1.2.3` |
@@ -52,10 +56,16 @@ Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. 
 | Local web preview | `just web-serve`                      |
 | Web validation    | `just web-check`                      |
 | Web format        | `just web-fmt`                        |
+| Web build         | `just web-build`                      |
 | Web build/package | `just web-package VERSION=test`       |
 | Web release tag   | `just web-release-tag 1.2.3`          |
 | Cloudflare status | `just cloudflare-status`              |
+| Pages status      | `just cloudflare-pages-status`        |
+| Pages setup       | `just cloudflare-pages-setup`         |
+| Pages DNS setup   | `just cloudflare-pages-dns`           |
 | Cloudflare deploy | `just cloudflare-pages-deploy master` |
+| Email status      | `just cloudflare-email-status`        |
+| Email setup       | `just cloudflare-email-setup`         |
 | Cloudflare check  | `just cloudflare-check`               |
 
 ## CloudKit Commands
@@ -69,6 +79,14 @@ Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. 
 | Validate schema  | `just cloudkit-validate-schema`  |
 | Import schema    | `just cloudkit-import-schema`    |
 | Reset dev        | `just cloudkit-reset-dev`        |
+
+## Maintenance Commands
+
+| Surface                 | Command                |
+| ----------------------- | ---------------------- |
+| Build cleanup           | `just clean-build`     |
+| Generated/cache cleanup | `just clean-generated` |
+| Full cleanup            | `just clean`           |
 
 ## Verification Rules
 
@@ -188,6 +206,8 @@ infra/        Cloudflare Pages and Email Routing config.
 - Keep the historical CI and release stability notes in `docs/ci-release-stability.md` current whenever touching `.github/workflows/ci.yml`, `.github/workflows/release-testflight.yml`, release tooling, or watch target generation.
 - Normal CI exposes the iOS build matrix directly as `Build iOS (Development)` and `Build iOS (Production)`. Do not re-add a separate aggregate `Build iOS` job unless required-check naming deliberately changes.
 - Generated non-logo art assets are owned by `scripts/generate-visual-assets.swift` and regenerated with `just visual-assets`. The generator must keep app icons, watch icons, `icon.svg`, and `web/assets/app-icon.svg` untouched, and generated non-logo imagesets should include valid `1x`, `2x`, and `3x` PNGs plus `Contents.json` scale entries.
+- Coverage diagram artwork is imported from the high-resolution PNG source at `scripts/art/sources/CoverageFaceDiagram.png` by `uv run python -m scripts.art.import_design_asset`, which is part of `just visual-assets`. Do not hand-edit the generated `CoverageFaceDiagram.imageset` outputs or reintroduce the old SVG source; tests require real 300x400, 600x800, and 900x1200 PNG outputs with transparent corners.
+- Bootstrap must remain lockfile-enforced and repo-local: `scripts/tooling/bootstrap.sh` runs `mise install --locked`, and the shared mise wrapper uses repo-local config/trust paths instead of `mise trust`. Do not accept incidental `mise.lock` drift; regenerate it deliberately when tool pins change.
 - App Review submission runs through `just appstore-submit-dry-run` before `just appstore-submit-review` or `just appstore-send-review`. Final submission requires strict metadata, screenshots, `.build/appstore-review-checkpoint/summary.md` review, a valid TestFlight build upload, and the checkpoint confirmation gate; never submit a draft review submission that already contains a different app version.
 - Screen styling must route through `AppDesignSystem.swift` and the product-page wrappers in `AppTheme.swift`; `DesignSystemAdoptionTests` guard against direct system fonts, raw SwiftUI colors/RGB values, numeric corner radii, and ad hoc shadows in screen code.
 - The product-page reference added first-class UV forecast, privacy, and support destinations. New screen routes should be wired through `AppRoute`, `RootView`, App Intent route mapping, URL/x-callback automation parsing, `docs/app-automation.md`, website automation docs, and route/UI tests together.
