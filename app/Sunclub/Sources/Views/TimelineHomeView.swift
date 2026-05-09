@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private struct TimelineAttentionContent {
     let title: String
@@ -219,6 +220,85 @@ struct TimelineScrubGestureClassifier: Equatable {
     }
 }
 
+private struct TimelineBodyScrubGestureLayer: UIViewRepresentable {
+    let onChanged: (CGSize) -> Void
+    let onEnded: (CGSize, CGSize) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onChanged: onChanged, onEnded: onEnded)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.backgroundColor = .clear
+        view.isAccessibilityElement = false
+
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
+        pan.cancelsTouchesInView = false
+        pan.delaysTouchesBegan = false
+        pan.delaysTouchesEnded = false
+        pan.delegate = context.coordinator
+        view.addGestureRecognizer(pan)
+
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.update(onChanged: onChanged, onEnded: onEnded)
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        private var onChanged: (CGSize) -> Void
+        private var onEnded: (CGSize, CGSize) -> Void
+
+        init(
+            onChanged: @escaping (CGSize) -> Void,
+            onEnded: @escaping (CGSize, CGSize) -> Void
+        ) {
+            self.onChanged = onChanged
+            self.onEnded = onEnded
+        }
+
+        func update(
+            onChanged: @escaping (CGSize) -> Void,
+            onEnded: @escaping (CGSize, CGSize) -> Void
+        ) {
+            self.onChanged = onChanged
+            self.onEnded = onEnded
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            gestureRecognizer is UIPanGestureRecognizer
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            true
+        }
+
+        @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
+            guard let view = recognizer.view else {
+                return
+            }
+            let translation = recognizer.translation(in: view)
+            let translationSize = CGSize(width: translation.x, height: translation.y)
+
+            switch recognizer.state {
+            case .began, .changed:
+                onChanged(translationSize)
+            case .ended:
+                onEnded(translationSize, translationSize)
+            case .cancelled, .failed:
+                onEnded(translationSize, translationSize)
+            default:
+                break
+            }
+        }
+    }
+}
+
 struct TimelineHomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
@@ -279,19 +359,23 @@ struct TimelineHomeView: View {
     }
 
     private func timelineContent(for presentation: TimelineHomePresentation) -> some View {
-        bodyScrubSurface(for: presentation) {
-            timelineContentPage(
-                for: presentation,
-                isSelectedPage: true
-            )
-            .overlay {
-                if RuntimeEnvironment.isUITesting {
-                    Color.clear
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Timeline content scrub area")
-                        .accessibilityIdentifier("timeline.contentPager")
-                        .allowsHitTesting(false)
-                }
+        timelineContentPage(
+            for: presentation,
+            isSelectedPage: true
+        )
+        .overlay {
+            if RuntimeEnvironment.isUITesting {
+                Color.clear
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Timeline content scrub area")
+                    .accessibilityIdentifier("timeline.contentPager")
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay(alignment: .top) {
+            if presentation.logSummary.category == .future {
+                bodyScrubGestureLayer(for: presentation)
+                    .frame(height: 240)
             }
         }
     }
@@ -307,9 +391,30 @@ struct TimelineHomeView: View {
         .contentShape(Rectangle())
 
         if isBodyScrubAvailable(for: presentation) {
-            surface.highPriorityGesture(bodyScrubGesture(for: presentation), including: .all)
+            surface.overlay {
+                bodyScrubGestureLayer(for: presentation)
+            }
         } else {
             surface
+        }
+    }
+
+    @ViewBuilder
+    private func bodyScrubGestureLayer(for presentation: TimelineHomePresentation) -> some View {
+        if isBodyScrubAvailable(for: presentation) {
+            TimelineBodyScrubGestureLayer(
+                onChanged: { translation in
+                    updateBodyScrub(translation, presentation: presentation)
+                },
+                onEnded: { translation, predictedEndTranslation in
+                    finishBodyScrub(
+                        translation,
+                        predictedEndTranslation: predictedEndTranslation,
+                        presentation: presentation
+                    )
+                }
+            )
+            .accessibilityHidden(true)
         }
     }
 
@@ -319,19 +424,15 @@ struct TimelineHomeView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             if presentation.logSummary.category == .future {
-                bodyScrubSurface(for: presentation) {
-                    TimelineTodayStatusCard(
-                        presentation: presentation,
-                        accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
-                            for: presentation,
-                            isSelectedPage: isSelectedPage
-                        )
+                TimelineTodayStatusCard(
+                    presentation: presentation,
+                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
+                        for: presentation,
+                        isSelectedPage: isSelectedPage
                     )
-                }
+                )
 
-                bodyScrubSurface(for: presentation) {
-                    futureDayActions(for: presentation, isSelectedPage: isSelectedPage)
-                }
+                futureDayActions(for: presentation, isSelectedPage: isSelectedPage)
             } else {
                 todayProductStack(for: presentation, isSelectedPage: isSelectedPage)
             }
@@ -349,43 +450,31 @@ struct TimelineHomeView: View {
 
             attentionBanners(for: presentation, isSelectedPage: isSelectedPage)
 
-            bodyScrubSurface(for: presentation) {
-                TimelineLogSection(
-                    summary: presentation.logSummary,
-                    uvForecast: presentation.uvForecast,
-                    weatherAttribution: presentation.weatherAttribution,
-                    currentStreak: presentation.currentStreak,
-                    longestStreak: presentation.longestStreak,
-                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
-                    )
+            TimelineLogSection(
+                summary: presentation.logSummary,
+                uvForecast: presentation.uvForecast,
+                weatherAttribution: presentation.weatherAttribution,
+                currentStreak: presentation.currentStreak,
+                longestStreak: presentation.longestStreak,
+                accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
+                    for: presentation,
+                    isSelectedPage: isSelectedPage
                 )
-            }
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 1)
     }
 
-    private func bodyScrubGesture(for presentation: TimelineHomePresentation) -> some Gesture {
-        DragGesture(minimumDistance: 18, coordinateSpace: .local)
-            .onChanged { value in
-                updateBodyScrub(value, presentation: presentation)
-            }
-            .onEnded { value in
-                finishBodyScrub(value, presentation: presentation)
-            }
-    }
-
     private func updateBodyScrub(
-        _ value: DragGesture.Value,
+        _ translation: CGSize,
         presentation: TimelineHomePresentation
     ) {
         guard isBodyScrubAvailable(for: presentation) else {
             return
         }
 
-        let axis = bodyScrubClassifier.axis(current: bodyScrubAxis, translation: value.translation)
+        let axis = bodyScrubClassifier.axis(current: bodyScrubAxis, translation: translation)
         bodyScrubAxis = axis
         guard axis == .horizontal else {
             return
@@ -398,27 +487,20 @@ struct TimelineHomeView: View {
 
         let calculator = TimelineScrubCalculator(visibleDays: presentation.visibleDays)
         let startDay = bodyScrubStartDay ?? presentation.selectedDay
-        guard let startIndex = calculator.index(for: startDay),
-              let selectedDay = calculator.selectedDay(
-                startDay: startDay,
-                translation: value.translation.width
-              ) else {
+        let scrubTranslation = bodyScrubTranslation(for: translation.width)
+        guard let startIndex = calculator.index(for: startDay) else {
             return
         }
 
         bodyScrubOffset = calculator.scrubOffset(
             startIndex: startIndex,
-            translation: value.translation.width
+            translation: scrubTranslation
         )
-
-        guard !Calendar.current.isDate(selectedDay, inSameDayAs: appState.selectedDay) else {
-            return
-        }
-        appState.selectTimelineDay(selectedDay)
     }
 
     private func finishBodyScrub(
-        _ value: DragGesture.Value,
+        _ translation: CGSize,
+        predictedEndTranslation: CGSize,
         presentation: TimelineHomePresentation
     ) {
         defer {
@@ -428,7 +510,7 @@ struct TimelineHomeView: View {
             return
         }
 
-        let axis = bodyScrubClassifier.axis(current: bodyScrubAxis, translation: value.translation)
+        let axis = bodyScrubClassifier.axis(current: bodyScrubAxis, translation: translation)
         bodyScrubAxis = axis
         guard axis == .horizontal else {
             return
@@ -438,11 +520,18 @@ struct TimelineHomeView: View {
         let startDay = bodyScrubStartDay ?? presentation.selectedDay
         guard let targetDay = calculator.selectedDay(
             startDay: startDay,
-            translation: value.predictedEndTranslation.width
+            translation: bodyScrubTranslation(for: predictedEndTranslation.width)
         ) else {
             return
         }
         appState.selectTimelineDay(targetDay)
+    }
+
+    private func bodyScrubTranslation(for translation: CGFloat) -> CGFloat {
+        min(
+            max(translation, -TimelineScrubCalculator.defaultDayStride),
+            TimelineScrubCalculator.defaultDayStride
+        )
     }
 
     private func isBodyScrubAvailable(for presentation: TimelineHomePresentation) -> Bool {
@@ -545,13 +634,9 @@ struct TimelineHomeView: View {
         isSelectedPage: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            bodyScrubSurface(for: presentation) {
-                uvContextCard(for: presentation, isSelectedPage: isSelectedPage)
-            }
+            uvContextCard(for: presentation, isSelectedPage: isSelectedPage)
 
-            bodyScrubSurface(for: presentation) {
-                sunscreenLogSummaryButton(for: presentation, isSelectedPage: isSelectedPage)
-            }
+            sunscreenLogSummaryButton(for: presentation, isSelectedPage: isSelectedPage)
 
             bodyScrubSurface(for: presentation) {
                 todayUVForecastCard(for: presentation, isSelectedPage: isSelectedPage)
