@@ -321,7 +321,7 @@ struct TimelineHomeView: View {
 
         SunLightScreen {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                topChrome
+                timelineHeader(for: presentation)
 
                 timelineSelector(for: presentation, selectedDay: selectedTimelineDayBinding)
 
@@ -596,37 +596,26 @@ struct TimelineHomeView: View {
         )
     }
 
-    private var topChrome: some View {
-        HStack(alignment: .center, spacing: 16) {
-            SunBrandLockup(markSize: 30)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Sunclub")
+    private func timelineHeader(for presentation: TimelineHomePresentation) -> some View {
+        let isToday = Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
 
-            Spacer(minLength: 0)
+        return HStack(alignment: .top, spacing: 14) {
+            headlineLabel(for: presentation, isToday: isToday)
 
-            Button {
-                feedbackTrigger += 1
-                router.open(.settings)
-            } label: {
-                Image(systemName: "bell")
-                    .font(AppFont.rounded(size: 18, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(AppPalette.elevatedCardFill.opacity(0.92))
-                            .appShadow(AppShadow.soft)
-                    )
-                    .overlay {
-                        Circle()
-                            .stroke(AppPalette.cardStroke, lineWidth: 1)
-                    }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Notifications and settings")
-            .accessibilityHint("Opens app settings.")
-            .accessibilityIdentifier("home.settingsButton")
+            Spacer(minLength: 8)
+
+            Image(systemName: "sun.max.fill")
+                .font(AppFont.rounded(size: 24, weight: .semibold))
+                .foregroundStyle(AppPalette.sun)
+                .frame(width: 46, height: 46)
+                .background(AppPalette.warmGlow.opacity(0.48), in: Circle())
+                .overlay {
+                    Circle()
+                        .stroke(AppPalette.sun.opacity(0.30), lineWidth: 1)
+                }
+                .accessibilityHidden(true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func todayProductStack(
@@ -862,11 +851,14 @@ struct TimelineHomeView: View {
         let time = record.verifiedAt.formatted(date: .omitted, time: .shortened)
         let spf = record.spfLevel.map { "SPF \($0)" } ?? "SPF optional"
         let areas = coveredAreaSummary(for: record)
-        let reapply = reapplySummary(for: record)
-        return [time, spf, areas, reapply].compactMap(\.self).joined(separator: " • ")
+        return [
+            "Logged \(time)",
+            "\(spf)  •  \(areas)",
+            reapplySummary(for: record)
+        ].joined(separator: "\n")
     }
 
-    private func coveredAreaSummary(for record: DailyRecord) -> String? {
+    private func coveredAreaSummary(for record: DailyRecord) -> String {
         let areas = SunManualLogInput.coveredAreas(in: record.notes)
         guard !areas.isEmpty else {
             return "Areas not set"
@@ -874,9 +866,9 @@ struct TimelineHomeView: View {
         return SunManualLogInput.coveredAreas.filter { areas.contains($0) }.joined(separator: " & ")
     }
 
-    private func reapplySummary(for record: DailyRecord) -> String? {
+    private func reapplySummary(for record: DailyRecord) -> String {
         guard appState.settings.reapplyReminderEnabled else {
-            return nil
+            return "No reapply needed"
         }
 
         let base = record.lastReappliedAt ?? record.verifiedAt
@@ -885,7 +877,7 @@ struct TimelineHomeView: View {
             value: appState.settings.reapplyIntervalMinutes,
             to: base
         ) else {
-            return nil
+            return "No reapply needed"
         }
 
         if deadline <= appState.referenceDate {
@@ -1003,7 +995,7 @@ struct TimelineHomeView: View {
     private func exposureCardTitle(for presentation: TimelineHomePresentation) -> String {
         switch presentation.logSummary.category {
         case .today:
-            return "Today's Sun Exposure"
+            return "Sun Exposure"
         case .past:
             return "Sun Exposure"
         case .future:
@@ -1043,14 +1035,6 @@ struct TimelineHomeView: View {
         selectedDay: Binding<Date>
     ) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-            HStack(alignment: .firstTextBaseline) {
-                AppText("Timeline", style: .sectionHeader)
-
-                Spacer(minLength: 0)
-
-                dateHeadline(for: presentation)
-            }
-
             SunDayStrip(
                 selectedDay: selectedDay,
                 today: presentation.today,
@@ -1069,46 +1053,37 @@ struct TimelineHomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func dateHeadline(for presentation: TimelineHomePresentation) -> some View {
-        let isToday = Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
-
-        return VStack(spacing: 0) {
-            HStack(spacing: 7) {
-                headlineLabel(for: presentation, isToday: isToday)
-
-                if !isToday {
-                    Image(systemName: "arrow.uturn.backward.circle.fill")
-                        .font(AppFont.rounded(size: 15, weight: .semibold))
-                        .foregroundStyle(AppPalette.pool)
-                        .accessibilityHidden(true)
-                }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard !isToday else {
-                    return
-                }
-                feedbackTrigger += 1
-                jumpToToday()
-            }
-        }
-    }
-
     @ViewBuilder
     private func headlineLabel(for presentation: TimelineHomePresentation, isToday: Bool) -> some View {
-        let text = Text(headlineText(for: presentation))
-            .font(AppTextStyle.sectionHeader.font)
-            .foregroundStyle(AppPalette.ink)
-            .tracking(AppTextStyle.sectionHeader.tracking)
-            .multilineTextAlignment(.trailing)
+        let text = VStack(alignment: .leading, spacing: 3) {
+            Text(relativeHeadlineTitle(for: presentation.selectedDay))
+                .font(AppTypography.screenTitle)
+                .foregroundStyle(AppPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(formattedHeadlineDate(
+                Calendar.current.startOfDay(for: presentation.selectedDay),
+                relativeTo: Calendar.current.startOfDay(for: appState.referenceDate)
+            ))
+            .font(AppTextStyle.captionMedium.font)
+            .foregroundStyle(AppPalette.softInk)
             .fixedSize(horizontal: false, vertical: true)
-            .accessibilityIdentifier("timeline.headline")
-            .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
+        }
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("timeline.headline")
+        .accessibilityLabel(accessibilityHeadlineLabel(for: presentation))
 
         if isToday {
             text
         } else {
             text
+                .onTapGesture {
+                    feedbackTrigger += 1
+                    jumpToToday()
+                }
                 .accessibilityHint("Returns to today's date.")
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction {
@@ -1230,31 +1205,31 @@ struct TimelineHomeView: View {
         let calendar = Calendar.current
         let selected = calendar.startOfDay(for: day)
         let today = calendar.startOfDay(for: appState.referenceDate)
-        let offset = calendar.dateComponents([.day], from: today, to: selected).day
+        let title = relativeHeadlineTitle(for: selected)
         let dateText = formattedHeadlineDate(selected, relativeTo: today)
+        return "\(title), \(dateText)"
+    }
+
+    private func relativeHeadlineTitle(for day: Date) -> String {
+        let calendar = Calendar.current
+        let selected = calendar.startOfDay(for: day)
+        let today = calendar.startOfDay(for: appState.referenceDate)
+        let offset = calendar.dateComponents([.day], from: today, to: selected).day
 
         switch offset {
         case 0:
-            return "Today, \(dateText)"
+            return "Today"
         case 1:
-            return "Tomorrow, \(dateText)"
+            return "Tomorrow"
         case -1:
-            return "Yesterday, \(dateText)"
+            return "Yesterday"
         case let days? where days > 1:
-            return "In \(days) days, \(dateText)"
+            return "In \(days) days"
         case let days? where days < -1:
-            return "\(abs(days)) days ago, \(dateText)"
+            return "\(abs(days)) days ago"
         default:
-            return formattedWeekdayHeadlineDate(selected, relativeTo: today)
+            return selected.formatted(.dateTime.weekday(.wide))
         }
-    }
-
-    private func formattedWeekdayHeadlineDate(_ day: Date, relativeTo referenceDay: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDate(day, equalTo: referenceDay, toGranularity: .year) {
-            return day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        }
-        return day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
     }
 
     private func formattedHeadlineDate(_ day: Date, relativeTo referenceDay: Date) -> String {
