@@ -46,6 +46,37 @@ final class DesignSystemAdoptionTests: XCTestCase {
         }
     }
 
+    func testSharedScreenWrappersOwnTopStatusBarScrollFade() throws {
+        let content = try source("app/Sunclub/Sources/Shared/AppTheme.swift")
+        let requiredSymbols = [
+            "static let topStatusBarFadeHeight",
+            "static let topStatusBarFadeActivationDistance",
+            "topStatusBarFadeProgress(for verticalScrollOffset",
+            "private struct SunTopStatusBarFade",
+            "private extension ScrollGeometry",
+            "sunclubVerticalScrollOffset",
+            ".onScrollGeometryChange("
+        ]
+
+        for symbol in requiredSymbols {
+            XCTAssertTrue(
+                content.contains(symbol),
+                "AppTheme.swift must keep shared status-bar fade support: \(symbol)."
+            )
+        }
+
+        XCTAssertEqual(
+            content.components(separatedBy: "SunTopStatusBarFade(progress:").count - 1,
+            2,
+            "SunLightScreen and SunDarkScreen should both install the shared top status-bar fade."
+        )
+        XCTAssertEqual(
+            content.components(separatedBy: ".onScrollGeometryChange(").count - 1,
+            2,
+            "SunLightScreen and SunDarkScreen should both drive the fade from scroll geometry."
+        )
+    }
+
     func testScreenCodeRoutesVisualStylingThroughDesignSystem() throws {
         let root = try repoRoot
         let checkedRoots = [

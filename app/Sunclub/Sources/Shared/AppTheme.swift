@@ -136,6 +136,14 @@ enum AppTypography {
 
 enum SunLayout {
     static let tabBarScrollUnderlapPadding: CGFloat = 112
+    static let topStatusBarFadeHeight: CGFloat = 92
+    static let topStatusBarFadeActivationDistance: CGFloat = 36
+
+    static func topStatusBarFadeProgress(for verticalScrollOffset: CGFloat) -> Double {
+        let rawProgress = verticalScrollOffset / topStatusBarFadeActivationDistance
+        let clampedProgress = min(1, max(0, Double(rawProgress)))
+        return (clampedProgress * 100).rounded() / 100
+    }
 
     enum ContentWidth {
         static let wizard: CGFloat = 640
@@ -313,6 +321,8 @@ struct SunDarkBackdrop: View {
 }
 
 struct SunLightScreen<Content: View, Footer: View>: View {
+    @State private var topStatusBarFadeProgress = 0.0
+
     let content: Content
     let footer: Footer
     let contentAlignment: Alignment
@@ -344,7 +354,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            ZStack(alignment: .top) {
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 22) {
@@ -358,6 +368,15 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                         .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
                     }
                     .scrollDismissesKeyboard(.interactively)
+                    .onScrollGeometryChange(
+                        for: Double.self,
+                        of: { geometry in
+                            SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
+                        },
+                        action: { _, newProgress in
+                            topStatusBarFadeProgress = newProgress
+                        }
+                    )
 
                     if showsFooter {
                         footer
@@ -380,6 +399,8 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                             }
                     }
                 }
+
+                SunTopStatusBarFade(progress: topStatusBarFadeProgress, background: AppColor.background)
             }
 
         }
@@ -407,6 +428,8 @@ extension SunLightScreen where Footer == EmptyView {
 }
 
 struct SunDarkScreen<Content: View, Footer: View>: View {
+    @State private var topStatusBarFadeProgress = 0.0
+
     let content: Content
     let footer: Footer
 
@@ -420,7 +443,7 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            ZStack(alignment: .top) {
 
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
@@ -433,12 +456,23 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
                         .padding(.bottom, 18)
                         .frame(minHeight: proxy.size.height - 120, alignment: .top)
                     }
+                    .onScrollGeometryChange(
+                        for: Double.self,
+                        of: { geometry in
+                            SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
+                        },
+                        action: { _, newProgress in
+                            topStatusBarFadeProgress = newProgress
+                        }
+                    )
 
                     footer
                         .padding(.horizontal, 24)
                         .padding(.top, 6)
                         .padding(.bottom, 24)
                 }
+
+                SunTopStatusBarFade(progress: topStatusBarFadeProgress, background: AppColor.background)
             }
         }
         .background {
@@ -464,6 +498,34 @@ struct SunScreen<Content: View>: View {
         SunLightScreen {
             content
         }
+    }
+}
+
+private struct SunTopStatusBarFade: View {
+    let progress: Double
+    let background: Color
+
+    var body: some View {
+        LinearGradient(
+            colors: [
+                background.opacity(progress),
+                background.opacity(progress * 0.96),
+                background.opacity(0)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: SunLayout.topStatusBarFadeHeight)
+        .frame(maxWidth: .infinity)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private extension ScrollGeometry {
+    var sunclubVerticalScrollOffset: CGFloat {
+        max(0, contentOffset.y + contentInsets.top)
     }
 }
 
