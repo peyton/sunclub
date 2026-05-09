@@ -136,7 +136,7 @@ The release script validates the exported IPA before upload. It must fail if the
 watch app code signature identifier does not match its `CFBundleIdentifier`, if
 compiled watch icon assets are missing, or if iOS-only plist keys reappear.
 
-`.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review.
+`.github/workflows/submit-app-review.yml` is manual. It requires a release tag and explicit confirmation, then captures screenshots, archives and uploads the app, uploads App Store metadata and screenshots, and submits the app version for App Review. The optional `source_ref` input lets a retry run fixed submission tooling while preserving the requested release tag for version resolution.
 
 Required secrets:
 

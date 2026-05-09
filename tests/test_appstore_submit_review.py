@@ -42,22 +42,28 @@ class FakeSubmissionClient:
         stale_submission_item: bool = False,
         reject_whats_new_once: bool = False,
         reject_accessibility_publish_once: bool = False,
+        reject_accessibility_not_draft_once: bool = False,
         reject_build_encryption_once: bool = False,
         reject_app_store_version_create_once: bool = False,
         rejected_submission_item: bool = False,
         existing_editable_version: Mapping[str, Any] | None = None,
+        existing_app_info_localization: Mapping[str, Any] | None = None,
         category_ids: Mapping[str, str] | None = None,
         existing_review_detail: Mapping[str, Any] | None = None,
+        reject_locked_app_info_once: bool = False,
     ) -> None:
         self.stale_submission_item = stale_submission_item
         self.reject_whats_new_once = reject_whats_new_once
         self.reject_accessibility_publish_once = reject_accessibility_publish_once
+        self.reject_accessibility_not_draft_once = reject_accessibility_not_draft_once
         self.reject_build_encryption_once = reject_build_encryption_once
         self.reject_app_store_version_create_once = reject_app_store_version_create_once
         self.rejected_submission_item = rejected_submission_item
         self.existing_editable_version = existing_editable_version
+        self.existing_app_info_localization = existing_app_info_localization
         self.category_ids = dict(category_ids or {})
         self.existing_review_detail = existing_review_detail
+        self.reject_locked_app_info_once = reject_locked_app_info_once
         self.build_calls = 0
         self.posts: list[tuple[str, Mapping[str, Any]]] = []
         self.patches: list[tuple[str, Mapping[str, Any]]] = []
@@ -137,6 +143,8 @@ class FakeSubmissionClient:
         if path == "/apps/app-1/appInfos":
             return [{"type": "appInfos", "id": "info-1", "attributes": {}}]
         if path == "/appInfos/info-1/appInfoLocalizations":
+            if self.existing_app_info_localization is not None:
+                return [dict(self.existing_app_info_localization)]
             return []
         if path == "/appStoreVersionLocalizations/version-loc-1/appScreenshotSets":
             return []
@@ -296,6 +304,32 @@ class FakeSubmissionClient:
             raise AppStoreConnectError(
                 "An app with the 'iOS' platform must be available on the App Store "
                 "to publish an 'accessibilityDeclarations' with an 'IPHONE' device family."
+            )
+        if (
+            self.reject_accessibility_not_draft_once
+            and path.startswith("/accessibilityDeclarations/")
+            and isinstance(attributes, Mapping)
+        ):
+            self.reject_accessibility_not_draft_once = False
+            raise AppStoreConnectError(
+                "The request cannot be fulfilled because of the state of another "
+                "resource. - An accessibilityDeclarations can only be modified "
+                "while in a 'DRAFT' state."
+            )
+        if (
+            self.reject_locked_app_info_once
+            and path.startswith("/appInfoLocalizations/")
+            and isinstance(attributes, Mapping)
+            and {"name", "subtitle", "privacyPolicyUrl"} & set(attributes)
+        ):
+            self.reject_locked_app_info_once = False
+            raise AppStoreConnectError(
+                "There is a problem with the request entity - "
+                "The field 'name' can not be modified in the current state.; "
+                "There is a problem with the request entity - "
+                "The field 'subtitle' can not be modified in the current state.; "
+                "There is a problem with the request entity - "
+                "The field 'privacyPolicyUrl' can not be modified in the current state."
             )
         return {"data": {"type": "patched", "id": path.rsplit("/", 1)[-1]}}
 
@@ -722,6 +756,76 @@ def test_submitter_skips_category_update_when_relationships_already_match(
     )
 
 
+def test_submitter_skips_unchanged_app_info_localization_fields(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(
+        existing_app_info_localization={
+            "type": "appInfoLocalizations",
+            "id": "info-loc-1",
+            "attributes": {
+                "locale": "en-US",
+                "name": "Sunclub",
+                "subtitle": "Daily SPF Habit Tracker",
+                "privacyPolicyUrl": "https://sunclub.peyton.app/privacy",
+            },
+        },
+        reject_locked_app_info_once=True,
+    )
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    submitter.update_app_info("app-1")
+
+    assert not any(
+        path == "/appInfoLocalizations/info-loc-1" for path, _body in client.patches
+    )
+
+
+def test_submitter_ignores_app_info_fields_locked_by_current_state(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(
+        existing_app_info_localization={
+            "type": "appInfoLocalizations",
+            "id": "info-loc-1",
+            "attributes": {"locale": "en-US"},
+        },
+        reject_locked_app_info_once=True,
+    )
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    submitter.update_app_info("app-1")
+
+    app_info_patches = [
+        body
+        for path, body in client.patches
+        if path == "/appInfoLocalizations/info-loc-1"
+    ]
+    assert len(app_info_patches) == 1
+    attributes = app_info_patches[0]["data"]["attributes"]
+    assert set(attributes) == {
+        "name",
+        "subtitle",
+        "privacyPolicyUrl",
+    }
+
+
 def test_submitter_saves_accessibility_when_first_submission_cannot_publish(
     tmp_path: Path,
 ) -> None:
@@ -746,6 +850,31 @@ def test_submitter_saves_accessibility_when_first_submission_cannot_publish(
     assert len(accessibility_patches) == 2
     assert accessibility_patches[0]["data"]["attributes"]["publish"] is True
     assert "publish" not in accessibility_patches[1]["data"]["attributes"]
+
+
+def test_submitter_skips_accessibility_when_declaration_is_not_draft(
+    tmp_path: Path,
+) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient(reject_accessibility_not_draft_once=True)
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    submitter.publish_accessibility_declaration("app-1")
+
+    accessibility_patches = [
+        body
+        for path, body in client.patches
+        if path == "/accessibilityDeclarations/accessibility-1"
+    ]
+    assert len(accessibility_patches) == 1
+    assert accessibility_patches[0]["data"]["attributes"]["publish"] is True
 
 
 def test_submitter_rejects_stale_draft_review_submission(tmp_path: Path) -> None:
