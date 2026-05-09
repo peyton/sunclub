@@ -97,16 +97,21 @@ def test_homepage_feature_row_keeps_reference_layout_contract() -> None:
 
 def test_docs_index_keeps_reference_resource_count() -> None:
     html = (REPO_ROOT / "web" / "docs" / "index.html").read_text(encoding="utf-8")
+    css = (REPO_ROOT / "web" / "assets" / "site.css").read_text(encoding="utf-8")
     normalized_html = " ".join(html.split())
+    normalized_css = " ".join(css.split())
 
     assert 'class="support-grid docs-index four-card-grid"' in normalized_html
     assert normalized_html.count('class="support-item docs-index-card"') == 4
+    assert normalized_html.count('class="support-item docs-index-card" href=') == 4
+    assert "<h2><a " not in normalized_html
     assert normalized_html.count('class="card-chevron"') >= 4
     assert "Getting Started" in normalized_html
     assert "How UV Index Works" in normalized_html
     assert "Shortcuts Guide" in normalized_html
     assert "Privacy Details" in normalized_html
     assert "What Sunclub tracks" not in normalized_html
+    assert ".support-grid.docs-index { grid-template-columns: 1fr; }" in normalized_css
 
 
 def test_reference_polish_contract_is_guarded_across_routes() -> None:

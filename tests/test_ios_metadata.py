@@ -441,8 +441,8 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert "name: iOS UI Tests" in workflow
     assert "run: mise --locked exec -- just test-ui" in workflow
     assert "test-ios:\n    name: iOS Tests\n    runs-on: ubuntu-latest" in workflow
-    assert "needs: [test-ios-unit, test-ios-ui]" in workflow
-    assert "if: ${{ always() }}" in workflow
+    assert "needs: [changes, test-ios-unit, test-ios-ui]" in workflow
+    assert "if: ${{ always() && needs.changes.outputs.run_ios == 'true' }}" in workflow
     assert 'unit_result="${{ needs.test-ios-unit.result }}"' in workflow
     assert 'ui_result="${{ needs.test-ios-ui.result }}"' in workflow
     assert "build-ios:" in workflow
@@ -459,6 +459,46 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     assert "\n  build:\n    name: Build iOS\n    runs-on: ubuntu-latest" not in workflow
     assert "needs: build-ios" not in workflow
     assert 'build_result="${{ needs.build-ios.result }}"' not in workflow
+
+
+def test_ci_workflow_skips_ios_jobs_only_for_known_web_surface_changes() -> None:
+    workflow = CI_WORKFLOW.read_text()
+
+    assert (
+        "changes:\n    name: Detect iOS Changes\n    runs-on: ubuntu-latest" in workflow
+    )
+    assert "run_ios: ${{ steps.path-filter.outputs.run_ios }}" in workflow
+    assert "fetch-depth: 0" in workflow
+    assert "github.event.pull_request.base.sha" in workflow
+    assert "github.event.pull_request.head.sha" in workflow
+    assert "github.event.before" in workflow
+    assert (
+        'default_to_ios "Push base commit is unavailable; running iOS jobs."'
+        in workflow
+    )
+    assert (
+        'default_to_ios "Could not resolve changed-file commits; running iOS jobs."'
+        in workflow
+    )
+    assert 'default_to_ios "No changed files found; running iOS jobs."' in workflow
+    assert (
+        "web/*|scripts/web/*|scripts/cloudflare/*|infra/cloudflare/*|"
+        "tests/test_web_*.py|tests/test_cloudflare_config.py"
+    ) in workflow
+    assert (
+        "docs/web-*.md|docs/marketing-website-polish-execplan.md|"
+        "docs/cloudflare-deployment-execplan.md"
+    ) in workflow
+    assert (
+        ".github/workflows/deploy-web-cloudflare.yml|"
+        ".github/workflows/release-web.yml|"
+        ".github/workflows/rollback-web-cloudflare.yml"
+    ) in workflow
+    assert "Only web-surface paths changed; skipping iOS jobs." in workflow
+    assert workflow.count("needs: [lint, changes]") == 3
+    assert workflow.count("if: ${{ needs.changes.outputs.run_ios == 'true' }}") == 3
+    assert "needs: [changes, test-ios-unit, test-ios-ui]" in workflow
+    assert "if: ${{ always() && needs.changes.outputs.run_ios == 'true' }}" in workflow
 
 
 def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> None:

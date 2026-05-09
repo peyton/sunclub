@@ -62,10 +62,13 @@ GitHub run cross-check:
 - Swift compile caching is enabled by default. Keep `timeout-minutes` on every
   macOS GitHub Actions job that runs `just test-unit`, `just test-ui`,
   `just ci-build`, screenshot capture, or release archive/test commands.
-- Normal CI must keep building both app flavors. CI exposes the macOS build
-  matrix directly as `Build iOS (Development)` and `Build iOS (Production)`;
-  do not re-add a separate aggregate `Build iOS` job unless required-check
-  naming deliberately changes.
+- Normal CI must keep building both app flavors when iOS-affecting files
+  change. CI exposes the macOS build matrix directly as
+  `Build iOS (Development)` and `Build iOS (Production)`; do not re-add a
+  separate aggregate `Build iOS` job unless required-check naming deliberately
+  changes. The CI path filter may skip iOS test and build jobs only when every
+  changed path is known web-surface work; ambiguous diffs default to running
+  iOS.
 - Run Xcode builds and archives through Tuist. Repo scripts should invoke
   `tuist xcodebuild` via `run_tuist_xcodebuild`, and GitHub macOS test/release
   jobs should run `scripts/tooling/prepare_ci_workspace.sh` before heavy Xcode
