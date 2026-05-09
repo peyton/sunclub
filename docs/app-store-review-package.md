@@ -23,7 +23,7 @@ Required environment variables:
 ## Listing
 
 - Name: Sunclub
-- Subtitle: Daily SPF Habit Tracker
+- Subtitle: Daily Sunscreen Tracker
 - SKU: sunclub-ios-001
 - Bundle ID: app.peyton.sunclub
 - Primary locale: en-US
@@ -38,9 +38,9 @@ Required environment variables:
 
 Description:
 
-Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.
+Sunclub is a private sunscreen tracker for quick SPF logging, local UV context, weekly progress, and reapply reminders.
 
-Log today in a few taps, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.
+Log what you applied, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.
 
 Features:
 
@@ -54,7 +54,7 @@ Sunclub is built for people who want sun protection to be a routine instead of a
 
 Keywords: sunscreen, spf, uv, habit, streak, daily, reminder, skincare, sun care
 
-Promotional text: Build a steady sunscreen routine with quick logging, streaks, and reminders.
+Promotional text: Log sunscreen fast, track weekly progress, check local UV, and get reapply reminders — private by default.
 
 What's New: Initial release. Log sunscreen use quickly, keep your streak on track, and stay consistent with reminders.
 
@@ -74,11 +74,11 @@ What's New: Initial release. Log sunscreen use quickly, keep your streak on trac
 - Required size class: 6.9-inch iPhone
 - Display type: APP_IPHONE_67
 - Generated output: `.build/appstore-screenshots`
-- welcome: route `welcome`
-- home: route `home`
-- check-in-success: route `verifySuccess`
-- weekly-summary: route `weeklySummary`
-- settings: route `settings`
+- log-spf: route `manualLog`, headline "Log SPF in seconds", caption "Record SPF, timing, covered areas, and notes without an account."
+- uv-timeline: route `home`, headline "Know today's UV", caption "See current UV, peak hour, and hourly forecast on your timeline."
+- reapply-time: route `verifySuccess`, headline "Reapply on time", caption "Set reminders that match your sunscreen routine."
+- weekly-progress: route `weeklySummary`, headline "Track your week", caption "Review logged days, open days, and weekly progress at a glance."
+- private-settings: route `settings`, headline "Private by default", caption "No account, no ads, optional iCloud sync and local backup."
 
 ## App Privacy
 
@@ -153,6 +153,7 @@ Manual App Store Connect answer: data not collected for the default release buil
 - Confirm pricing is free, no IAP is configured, and no Kids category is selected.
 - Confirm screenshot upload completed for the listed iPhone display type.
 - Confirm final checkpoint summary before running `just appstore-submit-review` or `just appstore-send-review`.
+  `just appstore-submit-draft` prepares the draft submission without the final review submit flag.
 
 ## Submission Commands
 
@@ -160,6 +161,7 @@ Manual App Store Connect answer: data not collected for the default release buil
 - Strict validation: `just appstore-validate-strict`
 - Regenerate this package: `just appstore-review-package`
 - Dry run: `just appstore-submit-dry-run`
+- Draft: `just appstore-submit-draft`
 - Submit: `just appstore-submit-review`
 - Alias: `just appstore-send-review`
 

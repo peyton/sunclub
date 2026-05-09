@@ -13,6 +13,7 @@ from scripts.tooling.config import CONFIG
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METADATA_PATH = REPO_ROOT / "scripts/appstore/metadata.json"
+COMPOSE_SCRIPT = REPO_ROOT / "scripts/appstore/compose_screenshots.swift"
 DERIVED_DATA = REPO_ROOT / CONFIG.screenshot_derived_data
 APP_PATH = DERIVED_DATA / CONFIG.run_app_path_for_flavor("prod")
 
@@ -77,10 +78,16 @@ def main() -> int:
     screenshots = manifest["assets"]["screenshots"]
     device = screenshots["capture_device"]
     output_dir = REPO_ROOT / screenshots["output_directory"]
+    raw_output_dir = output_dir / "raw"
     screens = screenshots["screens"]
     bundle_id = CONFIG.release_app_identifier
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    raw_output_dir.mkdir(parents=True, exist_ok=True)
+    for stale_screenshot in output_dir.glob("*.png"):
+        stale_screenshot.unlink()
+    for stale_screenshot in raw_output_dir.glob("*.png"):
+        stale_screenshot.unlink()
 
     simulator_udid = run(
         [
@@ -165,7 +172,7 @@ def main() -> int:
             )
             time.sleep(1.5)
 
-            output_path = output_dir / f"{screen_id}.png"
+            output_path = raw_output_dir / f"{screen_id}.png"
             if output_path.exists():
                 output_path.unlink()
             run_logged(
@@ -182,7 +189,22 @@ def main() -> int:
     finally:
         run(["xcrun", "simctl", "status_bar", simulator_udid, "clear"], check=False)
 
-    print(f"\nSaved {len(screens)} screenshots to {output_dir}")
+    run_logged(
+        [
+            "xcrun",
+            "--sdk",
+            "macosx",
+            "swift",
+            str(COMPOSE_SCRIPT),
+            str(METADATA_PATH),
+            str(raw_output_dir),
+            str(output_dir),
+        ],
+        cwd=REPO_ROOT,
+    )
+
+    print(f"\nSaved {len(screens)} framed screenshots to {output_dir}")
+    print(f"Raw simulator screenshots are in {raw_output_dir}")
     return 0
 
 

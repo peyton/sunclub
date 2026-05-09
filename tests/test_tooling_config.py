@@ -17,6 +17,8 @@ def test_justfile_exposes_app_review_submission_commands() -> None:
     assert "uv run python -m scripts.appstore.review_package" in justfile
     assert "appstore-submit-dry-run:" in justfile
     assert "bash scripts/appstore/submit-review.sh --dry-run" in justfile
+    assert "appstore-submit-draft:" in justfile
+    assert "bash scripts/appstore/submit-review.sh --draft" in justfile
     assert "appstore-submit-review:" in justfile
     assert "bash scripts/appstore/submit-review.sh --submit" in justfile
     assert "appstore-send-review: appstore-submit-review" in justfile
@@ -28,6 +30,18 @@ def test_justfile_exposes_app_review_submission_commands() -> None:
     assert "just test-unit" in justfile
     assert "just ci-build" in justfile
     assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in justfile
+
+
+def test_appstore_screenshot_capture_composes_marketing_frames() -> None:
+    capture_script = (
+        REPO_ROOT / "scripts" / "appstore" / "capture_screenshots.py"
+    ).read_text()
+    compose_script = REPO_ROOT / "scripts" / "appstore" / "compose_screenshots.swift"
+
+    assert compose_script.is_file()
+    assert 'raw_output_dir = output_dir / "raw"' in capture_script
+    assert "compose_screenshots.swift" in capture_script
+    assert "Saved {len(screens)} framed screenshots" in capture_script
 
 
 def test_tooling_config_matches_repo_contract() -> None:

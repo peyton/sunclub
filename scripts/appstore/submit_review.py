@@ -11,6 +11,7 @@ import struct
 import sys
 import time
 from typing import Any, Protocol
+import zlib
 
 from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore import validate_metadata
@@ -46,6 +47,8 @@ IGNORABLE_REVIEW_ITEM_STATES = {"REMOVED"}
 CONFIRMATION_ENV = "SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT"
 CHECKPOINT_CONFIRMATION_ENV = "SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+BLANK_SCREENSHOT_MEAN_THRESHOLD = 244.0
+BLANK_SCREENSHOT_VARIANCE_THRESHOLD = 400.0
 REVIEW_CONTACT_ATTRIBUTE_MAP = {
     "first_name": "contactFirstName",
     "last_name": "contactLastName",
@@ -172,7 +175,7 @@ class AppStoreReviewSubmitter:
         self.poll_interval_seconds = poll_interval_seconds
         self.reuse_existing_review_contact = reuse_existing_review_contact
 
-    def submit(self) -> SubmissionResult:
+    def prepare_draft(self) -> SubmissionResult:
         app_id = self.lookup_app_id()
         build_id = self.wait_for_valid_build(app_id)
         app_store_version_id = self.ensure_app_store_version(app_id, build_id)
@@ -189,7 +192,6 @@ class AppStoreReviewSubmitter:
             review_submission_id,
             app_store_version_id,
         )
-        self.finalize_submission(review_submission_id)
         return SubmissionResult(
             app_id=app_id,
             build_id=build_id,
@@ -197,6 +199,11 @@ class AppStoreReviewSubmitter:
             review_submission_id=review_submission_id,
             review_submission_item_id=review_submission_item_id,
         )
+
+    def submit(self) -> SubmissionResult:
+        result = self.prepare_draft()
+        self.finalize_submission(result.review_submission_id)
+        return result
 
     def lookup_app_id(self) -> str:
         bundle_id = str(self.manifest["app"]["bundle_id"])
@@ -1122,6 +1129,16 @@ def validate_screenshot_files(
                 f"Screenshot {screenshot_file.path} is {size[0]}x{size[1]}, "
                 f"which is not accepted for {screenshot_file.display_type}."
             )
+            continue
+        profile = png_luminance_profile(screenshot_file.path)
+        if (
+            profile is not None
+            and profile["mean"] >= BLANK_SCREENSHOT_MEAN_THRESHOLD
+            and profile["variance"] <= BLANK_SCREENSHOT_VARIANCE_THRESHOLD
+        ):
+            errors.append(
+                f"Screenshot {screenshot_file.path} appears blank or nearly blank."
+            )
     return errors
 
 
@@ -1131,6 +1148,122 @@ def png_dimensions(path: Path) -> tuple[int, int]:
     if len(header) < 24 or not header.startswith(PNG_SIGNATURE):
         raise AppStoreConnectError(f"Screenshot is not a PNG file: {path}")
     return struct.unpack(">II", header[16:24])
+
+
+def png_luminance_profile(path: Path) -> dict[str, float] | None:
+    data = path.read_bytes()
+    if len(data) < 24 or not data.startswith(PNG_SIGNATURE):
+        raise AppStoreConnectError(f"Screenshot is not a PNG file: {path}")
+
+    offset = len(PNG_SIGNATURE)
+    width = height = bit_depth = color_type = None
+    idat_chunks: list[bytes] = []
+    while offset + 8 <= len(data):
+        chunk_length = struct.unpack(">I", data[offset : offset + 4])[0]
+        offset += 4
+        chunk_type = data[offset : offset + 4]
+        offset += 4
+        chunk = data[offset : offset + chunk_length]
+        offset += chunk_length + 4
+        if chunk_type == b"IHDR":
+            if len(chunk) < 13:
+                return None
+            width, height, bit_depth, color_type, _, _, _ = struct.unpack(
+                ">IIBBBBB",
+                chunk,
+            )
+        elif chunk_type == b"IDAT":
+            idat_chunks.append(chunk)
+        elif chunk_type == b"IEND":
+            break
+
+    if (
+        width is None
+        or height is None
+        or bit_depth != 8
+        or color_type not in {2, 6}
+        or not idat_chunks
+    ):
+        return None
+
+    bytes_per_pixel = 4 if color_type == 6 else 3
+    stride = width * bytes_per_pixel
+    try:
+        raw = zlib.decompress(b"".join(idat_chunks))
+    except zlib.error as error:
+        raise AppStoreConnectError(
+            f"Screenshot PNG data could not be decoded: {path}"
+        ) from error
+
+    previous = bytearray(stride)
+    position = 0
+    sample_count = 0
+    luminance_sum = 0.0
+    luminance_square_sum = 0.0
+    row_step = max(1, height // 160)
+    column_step = max(1, width // 80)
+    for y in range(height):
+        if position >= len(raw):
+            return None
+        filter_type = raw[position]
+        position += 1
+        row = bytearray(raw[position : position + stride])
+        position += stride
+        if len(row) != stride:
+            return None
+
+        unfilter_png_row(row, previous, filter_type, bytes_per_pixel)
+        if y % row_step == 0:
+            for x in range(0, width, column_step):
+                index = x * bytes_per_pixel
+                red = row[index]
+                green = row[index + 1]
+                blue = row[index + 2]
+                luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+                luminance_sum += luminance
+                luminance_square_sum += luminance * luminance
+                sample_count += 1
+        previous = row
+
+    if sample_count == 0:
+        return None
+    mean = luminance_sum / sample_count
+    variance = max(0.0, (luminance_square_sum / sample_count) - (mean * mean))
+    return {"mean": mean, "variance": variance}
+
+
+def unfilter_png_row(
+    row: bytearray,
+    previous: bytearray,
+    filter_type: int,
+    bytes_per_pixel: int,
+) -> None:
+    for index in range(len(row)):
+        left = row[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
+        up = previous[index]
+        upper_left = (
+            previous[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
+        )
+        if filter_type == 1:
+            row[index] = (row[index] + left) & 0xFF
+        elif filter_type == 2:
+            row[index] = (row[index] + up) & 0xFF
+        elif filter_type == 3:
+            row[index] = (row[index] + ((left + up) // 2)) & 0xFF
+        elif filter_type == 4:
+            prediction = left + up - upper_left
+            left_distance = abs(prediction - left)
+            up_distance = abs(prediction - up)
+            upper_left_distance = abs(prediction - upper_left)
+            if left_distance <= up_distance and left_distance <= upper_left_distance:
+                paeth = left
+            elif up_distance <= upper_left_distance:
+                paeth = up
+            else:
+                paeth = upper_left
+            row[index] = (row[index] + paeth) & 0xFF
+        elif filter_type != 0:
+            raise AppStoreConnectError(f"Unsupported PNG filter type: {filter_type}")
 
 
 def accessibility_attributes(payload: Mapping[str, Any]) -> JsonObject:
@@ -1320,6 +1453,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Apply App Store Connect changes and submit for App Review.",
     )
+    mode.add_argument(
+        "--draft",
+        action="store_true",
+        help="Apply App Store Connect changes and create or update the draft review submission without submitting it.",
+    )
     parser.add_argument(
         "--confirm-submit",
         action="store_true",
@@ -1348,7 +1486,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         errors, warnings = local_validation(
             manifest,
             repo_root=REPO_ROOT,
-            submission_ready=args.submit,
+            submission_ready=args.submit or args.draft,
             allow_existing_review_contact=reuse_existing_review_contact,
         )
         if errors:
@@ -1370,7 +1508,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(f"Review checkpoint written to {checkpoint_path}.")
         print("\n".join(checkpoint_path.read_text().splitlines()))
-        require_confirmation(args, os.environ)
+        if args.submit:
+            require_confirmation(args, os.environ)
         client = AppStoreConnectClient.from_env()
         submitter = AppStoreReviewSubmitter(
             client,
@@ -1381,7 +1520,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             poll_interval_seconds=args.poll_interval_seconds,
             reuse_existing_review_contact=reuse_existing_review_contact,
         )
-        result = submitter.submit()
+        result = submitter.submit() if args.submit else submitter.prepare_draft()
     except (
         AppStoreConnectError,
         OSError,
@@ -1391,7 +1530,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"App Store review submission failed: {error}", file=sys.stderr)
         return 1
 
-    print("App Store review submission completed.")
+    if args.submit:
+        print("App Store review submission completed.")
+    else:
+        print("App Store draft review submission prepared.")
     print(f"- App ID: {result.app_id}")
     print(f"- Build ID: {result.build_id}")
     print(f"- App Store version ID: {result.app_store_version_id}")

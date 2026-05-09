@@ -5,6 +5,7 @@ import copy
 from pathlib import Path
 import struct
 from typing import Any
+import zlib
 
 import pytest
 
@@ -378,6 +379,32 @@ def write_png(path: Path, *, width: int = 1320, height: int = 2868) -> None:
     )
 
 
+def write_solid_png(
+    path: Path,
+    *,
+    width: int = 1320,
+    height: int = 2868,
+    color: tuple[int, int, int] = (255, 255, 255),
+) -> None:
+    def chunk(name: bytes, payload: bytes) -> bytes:
+        checksum = zlib.crc32(name + payload) & 0xFFFFFFFF
+        return (
+            struct.pack(">I", len(payload))
+            + name
+            + payload
+            + struct.pack(">I", checksum)
+        )
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    row = b"\x00" + bytes(color) * width
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(row * height))
+        + chunk(b"IEND", b"")
+    )
+
+
 def test_local_validation_requires_screenshots_for_submit(tmp_path: Path) -> None:
     manifest = ready_manifest(tmp_path)
     for screenshot in collect_screenshot_files(manifest, tmp_path):
@@ -390,6 +417,21 @@ def test_local_validation_requires_screenshots_for_submit(tmp_path: Path) -> Non
     )
 
     assert any("Missing screenshot:" in error for error in errors)
+    assert warnings == []
+
+
+def test_local_validation_rejects_nearly_blank_screenshots(tmp_path: Path) -> None:
+    manifest = ready_manifest(tmp_path)
+    screenshot = collect_screenshot_files(manifest, tmp_path)[0]
+    write_solid_png(screenshot.path)
+
+    errors, warnings = local_validation(
+        manifest,
+        repo_root=tmp_path,
+        submission_ready=True,
+    )
+
+    assert any("appears blank or nearly blank" in error for error in errors)
     assert warnings == []
 
 
@@ -531,6 +573,30 @@ def test_submitter_creates_review_submission_flow(tmp_path: Path) -> None:
         path == "/appInfos/info-1/relationships/secondaryCategory"
         for path, _body in client.patches
     )
+
+
+def test_submitter_prepares_draft_without_final_submission(tmp_path: Path) -> None:
+    manifest = ready_manifest(tmp_path)
+    client = FakeSubmissionClient()
+    submitter = AppStoreReviewSubmitter(
+        client,
+        manifest,
+        SubmissionContext(marketing_version="1.2.3", build_number="20260412.1.1"),
+        repo_root=tmp_path,
+        sleep=lambda _seconds: None,
+        poll_interval_seconds=0,
+    )
+
+    result = submitter.prepare_draft()
+
+    assert result.review_submission_id == "review-1"
+    assert result.review_submission_item_id == "item-1"
+    assert not any(
+        path == "/reviewSubmissions/review-1"
+        and body["data"]["attributes"].get("submitted") is True
+        for path, body in client.patches
+    )
+    assert any(path == "/reviewSubmissionItems" for path, _body in client.posts)
 
 
 def test_submitter_reuses_editable_version_when_create_is_blocked(
@@ -767,7 +833,7 @@ def test_submitter_skips_unchanged_app_info_localization_fields(
             "attributes": {
                 "locale": "en-US",
                 "name": "Sunclub",
-                "subtitle": "Daily SPF Habit Tracker",
+                "subtitle": "Daily Sunscreen Tracker",
                 "privacyPolicyUrl": "https://sunclub.peyton.app/privacy",
             },
         },
