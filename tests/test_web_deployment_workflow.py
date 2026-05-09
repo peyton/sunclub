@@ -103,10 +103,14 @@ def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
     workflow = workflow_text(SUBMIT_APP_REVIEW_WORKFLOW)
 
     assert "workflow_dispatch:" in workflow
+    assert "create_draft:" in workflow
     assert "confirm_submit:" in workflow
     assert "source_ref:" in workflow
     assert "ref: ${{ inputs.source_ref || inputs.release_tag }}" in workflow
-    assert "if: ${{ inputs.confirm_submit == true }}" in workflow
+    assert (
+        "if: ${{ inputs.create_draft == true || inputs.confirm_submit == true }}"
+        in workflow
+    )
     assert "environment: app-store-review" in workflow
     assert "SUNCLUB_APP_REVIEW_CONTACT_EMAIL" in workflow
     assert 'SUNCLUB_APP_REVIEW_USE_EXISTING_CONTACT: "1"' in workflow
@@ -120,6 +124,10 @@ def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
     )
     assert (
         "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
+        in workflow
+    )
+    assert (
+        "bash scripts/appstore/submit-review.sh --draft --skip-screenshots --skip-archive-upload"
         in workflow
     )
     assert (

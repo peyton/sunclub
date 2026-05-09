@@ -624,6 +624,12 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
     archive_upload_step = re.search(
         r"- name: Archive and upload to TestFlight\n"
         r"(?P<body>(?:        .*\n)+?)"
+        r"\n      - name: Prepare draft App Review submission",
+        workflow,
+    )
+    draft_step = re.search(
+        r"- name: Prepare draft App Review submission\n"
+        r"(?P<body>(?:        .*\n)+?)"
         r"\n      - name: Submit app for review",
         workflow,
     )
@@ -664,6 +670,12 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         in archive_upload_body
     )
     assert "--unsigned-archive" in archive_upload_body
+
+    assert draft_step is not None
+    draft_body = draft_step.group("body")
+    assert "timeout-minutes: 30" in draft_body
+    assert "bash scripts/appstore/submit-review.sh --draft" in draft_body
+    assert "--skip-screenshots --skip-archive-upload" in draft_body
 
     assert submit_step is not None
     submit_body = submit_step.group("body")

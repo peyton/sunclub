@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Sunclub",
-    "subtitle": "Daily SPF Habit Tracker",
+    "subtitle": "Daily Sunscreen Tracker",
     "bundle_id": "app.peyton.sunclub",
     "sku": "sunclub-ios-001",
     "primary_locale": "en-US",
@@ -14,7 +14,7 @@
   },
   "localizations": {
     "en-US": {
-      "description": "Sunclub helps you keep a daily sunscreen habit without accounts, feeds, or extra setup.\n\nLog today in a few taps, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
+      "description": "Sunclub is a private sunscreen tracker for quick SPF logging, local UV context, weekly progress, and reapply reminders.\n\nLog what you applied, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
       "keywords": [
         "sunscreen",
         "spf",
@@ -26,7 +26,7 @@
         "skincare",
         "sun care"
       ],
-      "promotional_text": "Build a steady sunscreen routine with quick logging, streaks, and reminders.",
+      "promotional_text": "Log sunscreen fast, track weekly progress, check local UV, and get reapply reminders — private by default.",
       "whats_new": "Initial release. Log sunscreen use quickly, keep your streak on track, and stay consistent with reminders."
     }
   },
@@ -129,34 +129,50 @@
       "output_directory": ".build/appstore-screenshots",
       "screens": [
         {
-          "id": "welcome",
-          "route": "welcome",
-          "complete_onboarding": false,
-          "launch_arguments": []
+          "id": "log-spf",
+          "route": "manualLog",
+          "complete_onboarding": true,
+          "headline": "Log SPF in seconds",
+          "caption": "Record SPF, timing, covered areas, and notes without an account.",
+          "launch_arguments": ["UITEST_SEED_HISTORY=manualSuggestions"]
         },
         {
-          "id": "home",
+          "id": "uv-timeline",
           "route": "home",
           "complete_onboarding": true,
-          "launch_arguments": []
+          "headline": "Know today's UV",
+          "caption": "See current UV, peak hour, and hourly forecast on your timeline.",
+          "launch_arguments": ["UITEST_UV_INDEX=6"]
         },
         {
-          "id": "check-in-success",
+          "id": "reapply-time",
           "route": "verifySuccess",
           "complete_onboarding": true,
-          "launch_arguments": []
+          "headline": "Reapply on time",
+          "caption": "Set reminders that match your sunscreen routine.",
+          "launch_arguments": [
+            "UITEST_REAPPLY_ENABLED",
+            "UITEST_REAPPLY_INTERVAL=120"
+          ]
         },
         {
-          "id": "weekly-summary",
+          "id": "weekly-progress",
           "route": "weeklySummary",
           "complete_onboarding": true,
-          "launch_arguments": []
+          "headline": "Track your week",
+          "caption": "Review logged days, open days, and weekly progress at a glance.",
+          "launch_arguments": ["UITEST_SEED_USAGE_INSIGHTS"]
         },
         {
-          "id": "settings",
+          "id": "private-settings",
           "route": "settings",
           "complete_onboarding": true,
-          "launch_arguments": []
+          "headline": "Private by default",
+          "caption": "No account, no ads, optional iCloud sync and local backup.",
+          "launch_arguments": [
+            "UITEST_REAPPLY_ENABLED",
+            "UITEST_LIVE_UV_ENABLED"
+          ]
         }
       ]
     }

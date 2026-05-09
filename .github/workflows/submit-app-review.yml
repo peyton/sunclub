@@ -12,6 +12,11 @@ on:
         description: "Optional source ref for submission tooling; defaults to release_tag"
         required: false
         type: string
+      create_draft:
+        description: "Create or update a draft App Review submission without submitting"
+        required: true
+        type: boolean
+        default: true
       confirm_submit:
         description: "I understand this submits the app to App Review"
         required: true
@@ -32,7 +37,7 @@ env:
 jobs:
   submit:
     name: Submit App Review
-    if: ${{ inputs.confirm_submit == true }}
+    if: ${{ inputs.create_draft == true || inputs.confirm_submit == true }}
     runs-on: macos-26
     environment: app-store-review
     env:
@@ -109,7 +114,17 @@ jobs:
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
         run: bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight
 
+      - name: Prepare draft App Review submission
+        if: ${{ inputs.confirm_submit != true }}
+        timeout-minutes: 30
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}
+        run: bash scripts/appstore/submit-review.sh --draft --skip-screenshots --skip-archive-upload
+
       - name: Submit app for review
+        if: ${{ inputs.confirm_submit == true }}
         timeout-minutes: 30
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

@@ -51,6 +51,7 @@ just appstore-validate
 just appstore-screenshots
 just appstore-archive
 just appstore-submit-dry-run
+just appstore-submit-draft
 just release-tag 1.2.3
 just release-testflight 1.2.3
 ```
@@ -59,6 +60,7 @@ just release-testflight 1.2.3
 `just release-testflight 1.2.3` is the same tag-cutting path with a TestFlight-specific name.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
+Use `just appstore-submit-draft` to prepare App Store Connect metadata, screenshots, review details, and review submission items without final submission.
 Use `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1 just appstore-submit-review` only after strict metadata, App Privacy, screenshots, and App Review contact details are ready.
 The production tag workflow archives unsigned on GitHub, ad-hoc signs the archived app with the resolved production entitlements, then exports and uploads the IPA with App Store Connect API key auth. The runner does not import an Apple signing certificate private key, and signed automatic archives can resolve to iOS Development signing and fail at Apple's certificate limit. The workflow writes final signed-app entitlement diagnostics into `.build/release-diagnostics` and validates those diagnostics before upload, so a TestFlight IPA that is missing CloudKit, push, or app-group entitlements is blocked before testers receive it. The app still keeps runtime CloudKit entitlement guards as a last-resort launch-crash guard. Development flavors keep development signing so local installs and tests continue to use dev profiles.
 

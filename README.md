@@ -68,6 +68,7 @@ Common setup from the repo root:
 - `just appstore-screenshots`
 - `just appstore-archive`
 - `just appstore-submit-dry-run`
+- `just appstore-submit-draft`
 - `just appstore-submit-review`
 - `just appstore-send-review`
 - `just release-tag 1.2.3`
