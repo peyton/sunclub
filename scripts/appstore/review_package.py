@@ -106,7 +106,11 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
         ]
     )
     lines.extend(
-        f"- {screen['id']}: route `{screen['route']}`" for screen in assets["screens"]
+        (
+            f"- {screen['id']}: route `{screen['route']}`, "
+            f'headline "{screen["headline"]}", caption "{screen["caption"]}"'
+        )
+        for screen in assets["screens"]
     )
 
     lines.extend(
@@ -176,6 +180,7 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             "- Confirm pricing is free, no IAP is configured, and no Kids category is selected.",
             "- Confirm screenshot upload completed for the listed iPhone display type.",
             "- Confirm final checkpoint summary before running `just appstore-submit-review` or `just appstore-send-review`.",
+            "  `just appstore-submit-draft` prepares the draft submission without the final review submit flag.",
             "",
             "## Submission Commands",
             "",
@@ -183,6 +188,7 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             "- Strict validation: `just appstore-validate-strict`",
             "- Regenerate this package: `just appstore-review-package`",
             "- Dry run: `just appstore-submit-dry-run`",
+            "- Draft: `just appstore-submit-draft`",
             "- Submit: `just appstore-submit-review`",
             "- Alias: `just appstore-send-review`",
             "",

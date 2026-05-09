@@ -32,6 +32,7 @@ just web-check
 just web-build
 just appstore-screenshots
 just appstore-archive
+just appstore-submit-draft
 just appstore-submit-review
 just appstore-send-review
 just release-tag 1.2.3

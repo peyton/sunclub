@@ -17,6 +17,8 @@ KEYWORDS_LIMIT_BYTES = 100
 PROMOTIONAL_TEXT_LIMIT = 170
 DESCRIPTION_LIMIT = 4000
 WHATS_NEW_LIMIT = 4000
+SCREENSHOT_HEADLINE_LIMIT = 42
+SCREENSHOT_CAPTION_LIMIT = 96
 VALID_ROUTES = {
     "welcome",
     "home",
@@ -521,6 +523,25 @@ def validate_manifest(
                     if route not in VALID_ROUTES:
                         errors.append(
                             f"assets.screenshots.screens[{index}].route must be one of {sorted(VALID_ROUTES)}."
+                        )
+
+                    headline = str(screen.get("headline", "")).strip()
+                    caption = str(screen.get("caption", "")).strip()
+                    if not headline:
+                        errors.append(
+                            f"assets.screenshots.screens[{index}].headline is required."
+                        )
+                    elif len(headline) > SCREENSHOT_HEADLINE_LIMIT:
+                        errors.append(
+                            f"assets.screenshots.screens[{index}].headline must be {SCREENSHOT_HEADLINE_LIMIT} characters or fewer."
+                        )
+                    if not caption:
+                        errors.append(
+                            f"assets.screenshots.screens[{index}].caption is required."
+                        )
+                    elif len(caption) > SCREENSHOT_CAPTION_LIMIT:
+                        errors.append(
+                            f"assets.screenshots.screens[{index}].caption must be {SCREENSHOT_CAPTION_LIMIT} characters or fewer."
                         )
 
     accessibility = manifest.get("accessibility")

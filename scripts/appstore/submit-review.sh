@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Capture App Store screenshots, upload the release build to App Store Connect,
-# and submit the prepared app version for App Review.
+# prepare a draft App Review submission, and optionally submit it for review.
 #
 # Final non-interactive submission requires:
 #   SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1
@@ -21,6 +21,7 @@ source_appstore_review_env
 : "${SUNCLUB_APS_ENVIRONMENT:=production}"
 setup_local_tooling_env
 
+MUTATE_APP_STORE=false
 SUBMIT=false
 CONFIRM_SUBMIT=false
 SKIP_SCREENSHOTS=false
@@ -33,8 +34,13 @@ for arg in "$@"; do
     PYTHON_ARGS+=(--dry-run)
     ;;
   --submit)
+    MUTATE_APP_STORE=true
     SUBMIT=true
     PYTHON_ARGS+=(--submit)
+    ;;
+  --draft)
+    MUTATE_APP_STORE=true
+    PYTHON_ARGS+=(--draft)
     ;;
   --confirm-submit)
     CONFIRM_SUBMIT=true
@@ -52,7 +58,7 @@ for arg in "$@"; do
   esac
 done
 
-if [ "$SUBMIT" = false ]; then
+if [ "$MUTATE_APP_STORE" = false ]; then
   run_repo_python_module scripts.appstore.submit_review "${PYTHON_ARGS[@]}"
   exit 0
 fi
@@ -65,7 +71,7 @@ fi
 
 run_repo_python_module scripts.appstore.review_package --checkpoint
 
-if [ "${SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED:-0}" != "1" ]; then
+if [ "$SUBMIT" = true ] && [ "${SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED:-0}" != "1" ]; then
   expected="submit Sunclub $SUNCLUB_MARKETING_VERSION ($SUNCLUB_BUILD_NUMBER) to App Review"
   printf '\nReview .build/appstore-review-checkpoint/summary.md, then type this exact phrase to continue:\n%s\n> ' "$expected"
   if ! IFS= read -r actual; then
@@ -80,7 +86,7 @@ if [ "${SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED:-0}" != "1" ]; then
   export SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1
 fi
 
-if [ "$CONFIRM_SUBMIT" = false ] && [ "${SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT:-0}" != "1" ]; then
+if [ "$SUBMIT" = true ] && [ "$CONFIRM_SUBMIT" = false ] && [ "${SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT:-0}" != "1" ]; then
   printf 'Final App Review submission requires --confirm-submit or SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1.\n' >&2
   exit 2
 fi

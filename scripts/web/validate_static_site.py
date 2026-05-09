@@ -43,7 +43,7 @@ REQUIRED_EMAILS_BY_FILE = {
 }
 REQUIRED_PHRASES_BY_FILE = {
     Path("index.html"): (
-        "Daily SPF Habit Tracker",
+        "Daily Sunscreen Tracker",
         "assets/marketing/hero-desktop.webp",
         "assets/marketing/hero-mobile.webp",
         "assets/features/daily-logging.webp",
@@ -143,6 +143,7 @@ FORBIDDEN_PHRASES = (
     "sunclub://",
     "app store release status",
     "being prepared for public app store availability",
+    "daily spf habit tracker",
     'href="#"',
     "href='#'",
     "device-mock",

@@ -105,6 +105,10 @@ appstore-submit-dry-run:
     bash scripts/appstore/submit-review.sh --dry-run
 
 [group('app')]
+appstore-submit-draft:
+    bash scripts/appstore/submit-review.sh --draft
+
+[group('app')]
 appstore-submit-review:
     bash scripts/appstore/submit-review.sh --submit
 
