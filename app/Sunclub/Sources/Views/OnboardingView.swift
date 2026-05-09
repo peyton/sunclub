@@ -53,19 +53,13 @@ struct WelcomeView: View {
     }
 
     private var welcomeHero: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 0) {
             SunBrandLockup(
                 layout: .stacked,
                 markSize: 96,
                 subtitle: "Your daily dose of sun sense."
             )
             .frame(maxWidth: .infinity)
-
-            Text("Log sunscreen. Know today's UV. Reapply on time.")
-                .font(AppFont.rounded(size: 31, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -91,7 +85,33 @@ struct WelcomeView: View {
     }
 
     private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
-        SunInfoRow(title: title, detail: detail, systemImage: symbol, tint: AppPalette.pool)
+        WelcomeValuePropRow(title: title, detail: detail, systemImage: symbol)
+    }
+}
+
+private struct WelcomeValuePropRow: View {
+    let title: String
+    let detail: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            SunProductIcon(systemName: systemImage, tint: AppPalette.pool, size: 40)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(AppTextStyle.sectionHeader.font)
+                    .foregroundStyle(AppPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(detail)
+                    .font(AppTextStyle.caption.font)
+                    .foregroundStyle(AppPalette.softInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+        }
         .accessibilityElement(children: .combine)
     }
 }

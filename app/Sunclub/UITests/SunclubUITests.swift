@@ -56,6 +56,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["sunclub"].exists)
         XCTAssertFalse(app.staticTexts["Daily sunscreen, made routine."].exists)
+        XCTAssertFalse(app.staticTexts["Log sunscreen. Know today's UV. Reapply on time."].exists)
     }
 
     @MainActor
