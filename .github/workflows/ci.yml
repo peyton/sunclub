@@ -120,10 +120,118 @@ jobs:
       - name: Run Python shard
         run: mise --locked exec -- just ci-python
 
+  changes:
+    name: Detect iOS Changes
+    runs-on: ubuntu-latest
+    outputs:
+      run_ios: ${{ steps.path-filter.outputs.run_ios }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Detect iOS-affecting changes
+        id: path-filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          default_to_ios() {
+            printf '%s\n' "$1"
+            echo "run_ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          commit_exists() {
+            git rev-parse --verify --quiet "$1^{commit}" >/dev/null
+          }
+
+          web_only_path() {
+            case "$1" in
+              web/*|scripts/web/*|scripts/cloudflare/*|infra/cloudflare/*|tests/test_web_*.py|tests/test_cloudflare_config.py)
+                return 0
+                ;;
+              docs/web-*.md|docs/marketing-website-polish-execplan.md|docs/cloudflare-deployment-execplan.md)
+                return 0
+                ;;
+              .github/workflows/deploy-web-cloudflare.yml|.github/workflows/release-web.yml|.github/workflows/rollback-web-cloudflare.yml)
+                return 0
+                ;;
+              *)
+                return 1
+                ;;
+            esac
+          }
+
+          event_name="${GITHUB_EVENT_NAME}"
+          base_ref=""
+          head_ref="${GITHUB_SHA}"
+          diff_mode="range"
+
+          if [ "$event_name" = "pull_request" ]; then
+            base_ref="${{ github.event.pull_request.base.sha }}"
+            head_ref="${{ github.event.pull_request.head.sha }}"
+            diff_mode="merge-base"
+          elif [ "$event_name" = "push" ]; then
+            base_ref="${{ github.event.before }}"
+            if [ -z "$base_ref" ] || [ "$base_ref" = "0000000000000000000000000000000000000000" ]; then
+              default_to_ios "Push base commit is unavailable; running iOS jobs."
+            fi
+          else
+            default_to_ios "Unsupported event '$event_name'; running iOS jobs."
+          fi
+
+          if ! commit_exists "$base_ref" || ! commit_exists "$head_ref"; then
+            if [ "$event_name" = "pull_request" ] && commit_exists "HEAD^1" && commit_exists "HEAD^2"; then
+              base_ref="HEAD^1"
+              head_ref="HEAD^2"
+              diff_mode="range"
+            else
+              default_to_ios "Could not resolve changed-file commits; running iOS jobs."
+            fi
+          fi
+
+          if [ "$diff_mode" = "merge-base" ]; then
+            if ! git diff --name-only "$base_ref...$head_ref" > changed-files.txt; then
+              default_to_ios "Could not diff pull request changes; running iOS jobs."
+            fi
+          elif ! git diff --name-only "$base_ref" "$head_ref" > changed-files.txt; then
+            default_to_ios "Could not diff push changes; running iOS jobs."
+          fi
+
+          if [ ! -s changed-files.txt ]; then
+            default_to_ios "No changed files found; running iOS jobs."
+          fi
+
+          printf 'Changed files:\n'
+          sed 's/^/  /' changed-files.txt
+
+          run_ios=false
+          ios_path=""
+          while IFS= read -r changed_path; do
+            if [ -z "$changed_path" ]; then
+              continue
+            fi
+            if ! web_only_path "$changed_path"; then
+              run_ios=true
+              ios_path="$changed_path"
+              break
+            fi
+          done < changed-files.txt
+
+          if [ "$run_ios" = "true" ]; then
+            printf 'iOS-affecting path detected: %s\n' "$ios_path"
+          else
+            printf 'Only web-surface paths changed; skipping iOS jobs.\n'
+          fi
+
+          echo "run_ios=$run_ios" >> "$GITHUB_OUTPUT"
+
   test-ios-unit:
     name: iOS Unit Tests
     runs-on: macos-26
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.run_ios == 'true' }}
     env:
       SUNCLUB_FLAVOR: prod
       TEST_APP_SCHEME: Sunclub
@@ -192,7 +300,8 @@ jobs:
   test-ios-ui:
     name: iOS UI Tests
     runs-on: macos-26
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.run_ios == 'true' }}
     env:
       SUNCLUB_FLAVOR: prod
       TEST_APP_SCHEME: Sunclub
@@ -261,8 +370,8 @@ jobs:
   test-ios:
     name: iOS Tests
     runs-on: ubuntu-latest
-    needs: [test-ios-unit, test-ios-ui]
-    if: ${{ always() }}
+    needs: [changes, test-ios-unit, test-ios-ui]
+    if: ${{ always() && needs.changes.outputs.run_ios == 'true' }}
     steps:
       - name: Validate iOS test shards
         shell: bash
@@ -280,7 +389,8 @@ jobs:
   build-ios:
     name: Build iOS (${{ matrix.name }})
     runs-on: macos-26
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.run_ios == 'true' }}
     strategy:
       fail-fast: false
       matrix:
