@@ -77,6 +77,26 @@ final class DesignSystemAdoptionTests: XCTestCase {
         )
     }
 
+    func testTabBarBottomScrimSpansTheScreen() throws {
+        let content = try source("app/Sunclub/Sources/Shared/AppTheme.swift")
+        guard let start = content.range(of: "struct SunAppTabBar: View {"),
+              let end = content.range(of: "    private func tabButton", range: start.upperBound..<content.endIndex) else {
+            return XCTFail("AppTheme.swift should keep SunAppTabBar as a distinct view.")
+        }
+
+        let tabBar = content[start.lowerBound..<end.lowerBound]
+        XCTAssertTrue(
+            tabBar.contains(
+                """
+                        .padding(.bottom, 12)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                """
+            ),
+            "The tab bar bottom scrim must expand before its background so page backdrops do not bleed at the screen edges."
+        )
+    }
+
     func testScreenCodeRoutesVisualStylingThroughDesignSystem() throws {
         let root = try repoRoot
         let checkedRoots = [

@@ -1443,6 +1443,7 @@ struct SunAppTabBar: View {
         .padding(.horizontal, 20)
         .padding(.top, 6)
         .padding(.bottom, 12)
+        .frame(maxWidth: .infinity)
         .background {
             LinearGradient(
                 colors: [
