@@ -104,6 +104,8 @@ def test_app_review_submission_workflow_is_manual_and_guarded() -> None:
 
     assert "workflow_dispatch:" in workflow
     assert "confirm_submit:" in workflow
+    assert "source_ref:" in workflow
+    assert "ref: ${{ inputs.source_ref || inputs.release_tag }}" in workflow
     assert "if: ${{ inputs.confirm_submit == true }}" in workflow
     assert "environment: app-store-review" in workflow
     assert "SUNCLUB_APP_REVIEW_CONTACT_EMAIL" in workflow

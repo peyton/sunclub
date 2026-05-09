@@ -8,6 +8,10 @@ on:
         description: "Release tag to submit, for example v1.2.3"
         required: true
         type: string
+      source_ref:
+        description: "Optional source ref for submission tooling; defaults to release_tag"
+        required: false
+        type: string
       confirm_submit:
         description: "I understand this submits the app to App Review"
         required: true
@@ -50,7 +54,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ inputs.source_ref || inputs.release_tag }}
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           cache: false

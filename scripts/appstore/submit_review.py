@@ -491,18 +491,58 @@ class AppStoreReviewSubmitter:
             localization_id = resource_id(response["data"])
         else:
             localization_id = resource_id(existing)
-
-        self.client.patch(
-            f"/appInfoLocalizations/{localization_id}",
-            {
-                "data": {
-                    "type": "appInfoLocalizations",
-                    "id": localization_id,
-                    "attributes": attributes,
-                }
-            },
-        )
+            existing_attributes = resource_attributes(existing)
+            changed_attributes = {
+                key: value
+                for key, value in attributes.items()
+                if existing_attributes.get(key) != value
+            }
+            self.patch_app_info_localization(localization_id, changed_attributes)
         self.update_app_categories(app_info_id)
+
+    def patch_app_info_localization(
+        self,
+        localization_id: str,
+        attributes: JsonObject,
+    ) -> None:
+        if not attributes:
+            return
+        path = f"/appInfoLocalizations/{localization_id}"
+        body = {
+            "data": {
+                "type": "appInfoLocalizations",
+                "id": localization_id,
+                "attributes": attributes,
+            }
+        }
+        try:
+            self.client.patch(path, body)
+        except AppStoreConnectError as error:
+            message = str(error)
+            locked_fields = {
+                field
+                for field in attributes
+                if f"field '{field}' can not be modified" in message
+            }
+            if not locked_fields:
+                raise
+            retry_attributes = {
+                key: value
+                for key, value in attributes.items()
+                if key not in locked_fields
+            }
+            if not retry_attributes:
+                return
+            self.client.patch(
+                path,
+                {
+                    "data": {
+                        "type": "appInfoLocalizations",
+                        "id": localization_id,
+                        "attributes": retry_attributes,
+                    }
+                },
+            )
 
     def update_app_categories(self, app_info_id: str) -> None:
         app = self.manifest["app"]
@@ -695,21 +735,25 @@ class AppStoreReviewSubmitter:
             )
         except AppStoreConnectError as error:
             message = str(error)
-            if (
-                "accessibilityDeclarations" not in message
-                or "must be available on the App Store" not in message
-            ):
+            if is_locked_accessibility_declaration_error(message):
+                return
+            if not is_unpublished_accessibility_declaration_error(message):
                 raise
-            self.client.patch(
-                path,
-                {
-                    "data": {
-                        "type": "accessibilityDeclarations",
-                        "id": declaration_id,
-                        "attributes": attributes,
-                    }
-                },
-            )
+            try:
+                self.client.patch(
+                    path,
+                    {
+                        "data": {
+                            "type": "accessibilityDeclarations",
+                            "id": declaration_id,
+                            "attributes": attributes,
+                        }
+                    },
+                )
+            except AppStoreConnectError as retry_error:
+                if is_locked_accessibility_declaration_error(str(retry_error)):
+                    return
+                raise
 
     def upsert_review_detail(self, app_store_version_id: str) -> str:
         review = self.manifest["review"]
@@ -1094,6 +1138,22 @@ def accessibility_attributes(payload: Mapping[str, Any]) -> JsonObject:
         apple_key: bool(payload.get(manifest_key, False))
         for manifest_key, apple_key in ACCESSIBILITY_ATTRIBUTE_MAP.items()
     }
+
+
+def is_unpublished_accessibility_declaration_error(message: str) -> bool:
+    return (
+        "accessibilityDeclarations" in message
+        and "must be available on the App Store" in message
+    )
+
+
+def is_locked_accessibility_declaration_error(message: str) -> bool:
+    normalized = message.lower()
+    return (
+        "accessibilitydeclaration" in normalized
+        and "only be modified" in normalized
+        and "'draft'" in normalized
+    )
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
