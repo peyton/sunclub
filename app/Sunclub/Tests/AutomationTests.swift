@@ -327,6 +327,84 @@ final class AutomationTests: XCTestCase {
         XCTAssertTrue(harness.state.changeBatches.contains { $0.kind == .reapply })
     }
 
+    func testLogTodayAutomationReusesPriorSPFAndCoveredAreasForNewRecords() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+        harness.state.saveManualRecord(
+            for: yesterday,
+            spfLevel: 70,
+            notes: SunManualLogInput.notesWithCoveredAreas(
+                "Beach walk",
+                areas: Set(["Ears", "Body"])
+            )
+        )
+
+        let result = try harness.state.performAutomationAction(
+            .logToday(spfLevel: nil, notes: nil),
+            invocation: .shortcut
+        )
+
+        XCTAssertEqual(result.message, "Logged sunscreen for today.")
+        let todayRecord = try XCTUnwrap(harness.state.record(for: now))
+        XCTAssertEqual(todayRecord.method, .quickLog)
+        XCTAssertEqual(todayRecord.spfLevel, 70)
+        XCTAssertEqual(SunManualLogInput.coveredAreas(in: todayRecord.notes), Set(["Ears", "Body"]))
+        XCTAssertEqual(SunManualLogInput.notesRemovingCoveredAreas(todayRecord.notes), "")
+        XCTAssertEqual(harness.widgetStore.load().todaySPFLevel, 70)
+    }
+
+    func testLogTodayAutomationExplicitInputOverridesPriorDefaults() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+        harness.state.saveManualRecord(
+            for: yesterday,
+            spfLevel: 70,
+            notes: SunManualLogInput.notesWithCoveredAreas(
+                "Beach walk",
+                areas: Set(["Ears", "Body"])
+            )
+        )
+
+        _ = try harness.state.performAutomationAction(
+            .logToday(spfLevel: 30, notes: "  Patio  "),
+            invocation: .shortcut
+        )
+
+        let todayRecord = try XCTUnwrap(harness.state.record(for: now))
+        XCTAssertEqual(todayRecord.spfLevel, 30)
+        XCTAssertEqual(todayRecord.notes, "Patio")
+        XCTAssertTrue(SunManualLogInput.coveredAreas(in: todayRecord.notes).isEmpty)
+    }
+
+    func testLogTodayAutomationExplicitEmptyNotesSuppressDefaultCoveredAreas() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+        harness.state.saveManualRecord(
+            for: yesterday,
+            spfLevel: 70,
+            notes: SunManualLogInput.notesWithCoveredAreas(
+                "Beach walk",
+                areas: Set(["Ears", "Body"])
+            )
+        )
+
+        _ = try harness.state.performAutomationAction(
+            .logToday(spfLevel: 30, notes: "   "),
+            invocation: .shortcut
+        )
+
+        let todayRecord = try XCTUnwrap(harness.state.record(for: now))
+        XCTAssertEqual(todayRecord.spfLevel, 30)
+        XCTAssertNil(todayRecord.notes)
+        XCTAssertTrue(SunManualLogInput.coveredAreas(in: todayRecord.notes).isEmpty)
+    }
+
     func testAutomationNormalizesSPFAndNotesAcrossWriteActions() throws {
         let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
         let harness = try makeHarness(clock: { now })

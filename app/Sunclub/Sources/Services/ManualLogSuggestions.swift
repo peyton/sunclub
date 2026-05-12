@@ -49,6 +49,42 @@ struct ManualLogSuggestionState: Equatable {
     )
 }
 
+struct SunManualLogResolvedDefaults: Equatable {
+    let spfLevel: Int?
+    let coveredAreas: Set<String>
+
+    static let empty = SunManualLogResolvedDefaults(spfLevel: nil, coveredAreas: [])
+
+    var oneTapNotes: String? {
+        guard !coveredAreas.isEmpty else {
+            return nil
+        }
+
+        return SunManualLogInput.notesWithCoveredAreas("", areas: coveredAreas)
+    }
+}
+
+enum SunManualLogDefaultResolver {
+    static func oneTapDefaults(
+        from records: [DailyRecord],
+        excluding day: Date? = nil,
+        calendar: Calendar = Calendar.current
+    ) -> SunManualLogResolvedDefaults {
+        let sortedRecords = ManualLogSuggestionEngine.sortedRecords(
+            from: records,
+            excluding: day,
+            calendar: calendar
+        )
+        let spfLevel = sortedRecords.first { $0.spfLevel != nil }?.spfLevel
+        let coveredAreas = sortedRecords
+            .lazy
+            .map { SunManualLogInput.coveredAreas(in: $0.notes) }
+            .first { !$0.isEmpty } ?? []
+
+        return SunManualLogResolvedDefaults(spfLevel: spfLevel, coveredAreas: coveredAreas)
+    }
+}
+
 enum ManualLogSuggestionEngine {
     static func suggestions(
         from records: [DailyRecord],
@@ -57,21 +93,7 @@ enum ManualLogSuggestionEngine {
         noteLimit: Int = 3,
         scannedSPFLevels: [Int] = []
     ) -> ManualLogSuggestionState {
-        let filteredRecords = records.filter { record in
-            guard let day else {
-                return true
-            }
-
-            return !calendar.isDate(record.startOfDay, inSameDayAs: day)
-        }
-
-        let sortedRecords = filteredRecords.sorted { lhs, rhs in
-            if lhs.verifiedAt != rhs.verifiedAt {
-                return lhs.verifiedAt > rhs.verifiedAt
-            }
-
-            return lhs.startOfDay > rhs.startOfDay
-        }
+        let sortedRecords = sortedRecords(from: records, excluding: day, calendar: calendar)
 
         let mostRecentReusableRecord = sortedRecords.first {
             $0.spfLevel != nil || $0.trimmedNotes != nil
@@ -108,5 +130,27 @@ enum ManualLogSuggestionEngine {
             noteSnippets: noteSnippets,
             scannedSPFLevels: SunclubGrowthSettings.normalizedSPFLevels(scannedSPFLevels)
         )
+    }
+
+    static func sortedRecords(
+        from records: [DailyRecord],
+        excluding day: Date? = nil,
+        calendar: Calendar = Calendar.current
+    ) -> [DailyRecord] {
+        let filteredRecords = records.filter { record in
+            guard let day else {
+                return true
+            }
+
+            return !calendar.isDate(record.startOfDay, inSameDayAs: day)
+        }
+
+        return filteredRecords.sorted { lhs, rhs in
+            if lhs.verifiedAt != rhs.verifiedAt {
+                return lhs.verifiedAt > rhs.verifiedAt
+            }
+
+            return lhs.startOfDay > rhs.startOfDay
+        }
     }
 }

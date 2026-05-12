@@ -154,6 +154,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Services/SunclubGrowthFeatureStore.swift",
             "Sources/Services/SunclubHistoricalUVStore.swift",
             "Sources/Services/SunclubHistoryService.swift",
+            "Sources/Services/ManualLogSuggestions.swift",
             "Sources/Services/SunclubQuickLogAction.swift",
             "Sources/Services/SunclubShareArtifactService.swift",
             "Sources/Services/SunclubUVForecastCache.swift",

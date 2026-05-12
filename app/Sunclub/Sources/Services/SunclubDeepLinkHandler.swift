@@ -46,8 +46,11 @@ enum SunclubDeepLinkHandler {
         }
 
         let now = appState.referenceDate
+        let input = appState.oneTapLogInput(for: now)
         _ = appState.recordVerificationSuccess(
             method: .quickLog,
+            spfLevel: input.spfLevel,
+            notes: input.oneTapNotes,
             context: AppLogContext(
                 date: now,
                 dayPart: appState.dayPart(for: now),

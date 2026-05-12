@@ -757,6 +757,45 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testOneTapDefaultsReuseLastSPFAndOnlyStructuredCoveredAreas() throws {
+        let yesterdayNotes = SunManualLogInput.notesWithCoveredAreas(
+            "Morning beach walk",
+            areas: Set(["Ears", "Body"])
+        )
+        let records = [
+            makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: 50, notes: yesterdayNotes),
+            makeDailyRecord(dayOffset: 2, hour: 8, spfLevel: 30, notes: "Before lunch")
+        ]
+
+        let defaults = SunManualLogDefaultResolver.oneTapDefaults(
+            from: records,
+            excluding: Date(),
+            calendar: Calendar.current
+        )
+
+        XCTAssertEqual(defaults.spfLevel, 50)
+        XCTAssertEqual(defaults.coveredAreas, Set(["Ears", "Body"]))
+        XCTAssertEqual(defaults.oneTapNotes, "Areas: Ears, Body")
+    }
+
+    @MainActor
+    func testOneTapDefaultsDoNotCopyFreeFormNotesWithoutAreaMetadata() {
+        let records = [
+            makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: 45, notes: "Hat day")
+        ]
+
+        let defaults = SunManualLogDefaultResolver.oneTapDefaults(
+            from: records,
+            excluding: Date(),
+            calendar: Calendar.current
+        )
+
+        XCTAssertEqual(defaults.spfLevel, 45)
+        XCTAssertTrue(defaults.coveredAreas.isEmpty)
+        XCTAssertNil(defaults.oneTapNotes)
+    }
+
+    @MainActor
     func testRememberScannedSPFStoresMostRecentLevels() throws {
         let state = try makeAppState()
 
@@ -2377,6 +2416,39 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testWidgetLogTodayDeepLinkReusesLastSPFAndCoveredAreas() throws {
+        let suiteName = "widget-log-defaults-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let widgetSnapshotStore = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        let state = try makeAppState(widgetSnapshotStore: widgetSnapshotStore)
+        let router = AppRouter()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
+        state.completeOnboarding()
+        state.saveManualRecord(
+            for: yesterday,
+            spfLevel: 50,
+            notes: SunManualLogInput.notesWithCoveredAreas(
+                "Beach walk",
+                areas: Set(["Ears", "Body"])
+            )
+        )
+
+        let handled = SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router)
+
+        XCTAssertTrue(handled)
+        let todayRecord = try XCTUnwrap(state.record(for: today))
+        XCTAssertEqual(todayRecord.method, .quickLog)
+        XCTAssertEqual(todayRecord.spfLevel, 50)
+        XCTAssertEqual(SunManualLogInput.coveredAreas(in: todayRecord.notes), Set(["Ears", "Body"]))
+        XCTAssertEqual(SunManualLogInput.notesRemovingCoveredAreas(todayRecord.notes), "")
+        XCTAssertEqual(widgetSnapshotStore.load().todaySPFLevel, 50)
+        XCTAssertEqual(router.path, [.verifySuccess])
+    }
+
+    @MainActor
     func testWidgetLogTodayDeepLinkUpdatesExistingRecordAsQuickLog() throws {
         let state = try makeAppState()
         let router = AppRouter()
@@ -2392,19 +2464,50 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testWidgetLogTodayDeepLinkPreservesExistingOptionalFields() throws {
+        let state = try makeAppState()
+        let router = AppRouter()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
+        state.completeOnboarding()
+        state.saveManualRecord(for: yesterday, spfLevel: 70, notes: nil)
+        state.saveManualRecord(for: today, spfLevel: 30, notes: "Local entry")
+
+        let handled = SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router)
+
+        XCTAssertTrue(handled)
+        let todayRecord = try XCTUnwrap(state.record(for: today))
+        XCTAssertEqual(todayRecord.method, .quickLog)
+        XCTAssertEqual(todayRecord.spfLevel, 30)
+        XCTAssertEqual(todayRecord.notes, "Local entry")
+        XCTAssertEqual(router.path, [.verifySuccess])
+    }
+
+    @MainActor
     func testWatchLogRecordsQuickLogAndReturnsUpdatedSnapshot() throws {
         let suiteName = "watch-log-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let widgetSnapshotStore = SunclubWidgetSnapshotStore(userDefaults: defaults)
         let state = try makeAppState(widgetSnapshotStore: widgetSnapshotStore)
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
         state.completeOnboarding()
+        state.saveManualRecord(
+            for: yesterday,
+            spfLevel: 45,
+            notes: SunManualLogInput.notesWithCoveredAreas("", areas: Set(["Face", "Neck"]))
+        )
 
         let snapshot = try state.recordWatchSunscreenLog()
 
-        XCTAssertEqual(state.records.count, 1)
-        XCTAssertEqual(state.record(for: Date())?.method, .quickLog)
+        XCTAssertEqual(state.records.count, 2)
+        let todayRecord = try XCTUnwrap(state.record(for: Date()))
+        XCTAssertEqual(todayRecord.method, .quickLog)
+        XCTAssertEqual(todayRecord.spfLevel, 45)
+        XCTAssertEqual(SunManualLogInput.coveredAreas(in: todayRecord.notes), Set(["Face", "Neck"]))
         XCTAssertTrue(snapshot.hasLoggedToday())
+        XCTAssertEqual(snapshot.todaySPFLevel, 45)
         XCTAssertEqual(widgetSnapshotStore.load(), snapshot)
     }
 

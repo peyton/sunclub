@@ -280,6 +280,7 @@ def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
     )[1].split("func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
 
     assert '"Sources/Services/SunclubAutomationRuntime.swift"' in widget_target
+    assert '"Sources/Services/ManualLogSuggestions.swift"' in widget_target
     assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
 
 
