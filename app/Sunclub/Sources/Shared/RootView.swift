@@ -167,6 +167,7 @@ struct RootView: View {
     }
 
     private func openManualLogFromCurrentTab() {
+        appState.clearManualLogPrefill()
         let selectedDay = appState.startOfLocalDay(appState.selectedDay)
         let targetDay = appState.canLog(on: selectedDay)
             ? selectedDay

@@ -376,6 +376,21 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testProductScannerPrefillOverridesUsualSPF() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_ROUTE=productScanner",
+            "UITEST_SEED_HISTORY=manualSuggestions",
+            "UITEST_MANUAL_LOG_PREFILL_SPF_70"
+        ])
+
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        let spfRow = manualLogSPFRow(in: app)
+        XCTAssertTrue(spfRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForValueContaining("70", on: spfRow))
+        XCTAssertFalse((spfRow.value as? String ?? "").contains("50"))
+    }
+
+    @MainActor
     func testHomeKeepsAccountabilityOffP0Settings() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_RESET_ACCOUNTABILITY",
@@ -514,6 +529,9 @@ final class SunclubUITests: XCTestCase {
 
         app.buttons["home.logManually"].tap()
 
+        let spfRow = manualLogSPFRow(in: app)
+        XCTAssertTrue(spfRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForValueContaining("50", on: spfRow))
         XCTAssertTrue(scrollToElement(app.buttons["manualLog.noteSnippet.0"], in: app))
         app.buttons["manualLog.noteSnippet.0"].tap()
 
@@ -657,6 +675,7 @@ final class SunclubUITests: XCTestCase {
     func testHistoryCanBackfillMissedDay() throws {
         let app = launchHistoryWithSeededRecords(route: "historyBackfillTwoDaysAgo")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForLabel("SPF 30 selected", on: app.staticTexts["historyEditor.spfState"]))
 
         app.buttons["historyEditor.spf.50"].tap()
         app.buttons["historyEditor.save"].tap()
@@ -1245,6 +1264,18 @@ final class SunclubUITests: XCTestCase {
         let predicate = NSPredicate(format: "label == %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForValueContaining(_ text: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "value CONTAINS %@", text)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func manualLogSPFRow(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)["manualLog.spfRow"]
     }
 
     @MainActor

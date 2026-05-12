@@ -487,7 +487,7 @@ enum SunclubAutomationRuntime {
         case let .logToday(spfLevel, notes):
             return try logToday(
                 spfLevel: normalizedSPF(spfLevel),
-                notes: normalizedNotes(notes),
+                notes: notes,
                 runtimeContext: runtimeContext,
                 growthSettings: growthSettings
             )
@@ -624,14 +624,24 @@ enum SunclubAutomationRuntime {
         growthSettings: SunclubGrowthSettings
     ) throws -> SunclubAutomationResult {
         let day = calendar.startOfDay(for: runtimeContext.now)
-        let isUpdate = try runtimeContext.historyService.record(for: day) != nil
+        let existingRecord = try runtimeContext.historyService.record(for: day)
+        let isUpdate = existingRecord != nil
+        let records = try runtimeContext.historyService.records()
+        let defaultInput: SunManualLogResolvedDefaults = existingRecord == nil
+            ? SunManualLogDefaultResolver.oneTapDefaults(
+                from: records,
+                excluding: day,
+                calendar: calendar
+            )
+            : .empty
+        let resolvedNotes = notes == nil ? defaultInput.oneTapNotes : normalizedNotes(notes)
         try upsertRecord(
             RecordMutation(
                 day: day,
                 verifiedAt: runtimeContext.now,
                 method: .quickLog,
-                spfLevel: spfLevel,
-                notes: notes,
+                spfLevel: spfLevel ?? defaultInput.spfLevel,
+                notes: resolvedNotes,
                 replaceOptionalFields: false,
                 preserveExistingDuration: false,
                 kind: .manualLog,

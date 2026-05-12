@@ -102,7 +102,7 @@ struct ManualLogView: View {
     private var manualLogNavigationHeader: some View {
         HStack(alignment: .center) {
             Button("Cancel") {
-                router.goBack()
+                closeLog()
             }
             .font(AppTextStyle.captionMedium.font)
             .foregroundStyle(AppPalette.sun)
@@ -184,6 +184,8 @@ struct ManualLogView: View {
             }
             .buttonStyle(.plain)
             .disabled(isFutureTarget)
+            .accessibilityLabel("SPF")
+            .accessibilityValue(selectedSPF.map { "SPF \($0) selected" } ?? "Choose")
             .accessibilityIdentifier("manualLog.spfRow")
 
             Divider()
@@ -202,6 +204,8 @@ struct ManualLogView: View {
             }
             .buttonStyle(.plain)
             .disabled(isFutureTarget)
+            .accessibilityLabel("Product")
+            .accessibilityValue(selectedSPF.map { "Sunclub Mineral SPF \($0)" } ?? "Choose product")
             .accessibilityIdentifier("manualLog.productRow")
         }
         .background(
@@ -212,7 +216,6 @@ struct ManualLogView: View {
             RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                 .stroke(AppPalette.hairlineStroke, lineWidth: 1)
         }
-        .accessibilityIdentifier("manualLog.referenceRows")
     }
 
     private var commonSPFLevels: [Int] {
@@ -333,7 +336,13 @@ struct ManualLogView: View {
         if appState.settings.reapplyReminderEnabled {
             appState.scheduleReapplyReminder()
         }
+        appState.clearManualLogPrefill()
         router.open(.home)
+    }
+
+    private func closeLog() {
+        appState.clearManualLogPrefill()
+        router.goBack()
     }
 
     private func syncInitialStateIfNeeded() {
@@ -356,10 +365,10 @@ struct ManualLogView: View {
             let prefillAreas = SunManualLogInput.coveredAreas(in: manualLogPrefill.notes)
             selectedAreas = prefillAreas.isEmpty ? SunManualLogInput.defaultCoveredAreas : prefillAreas
             notes = SunManualLogInput.notesRemovingCoveredAreas(manualLogPrefill.notes)
-            appState.clearManualLogPrefill()
             return
         }
 
+        selectedSPF = appState.manualLogSuggestionState(for: targetDate).defaultSPF
         selectedAreas = SunManualLogInput.defaultCoveredAreas
     }
 }

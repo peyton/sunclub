@@ -35,7 +35,15 @@ enum SunclubQuickLogAction {
                 throw SunclubQuickLogError.onboardingRequired
             }
 
-            try upsertQuickLogRecord(for: today, verifiedAt: now, in: context)
+            let input = try oneTapInput(for: today, calendar: calendar, in: context)
+
+            try upsertQuickLogRecord(
+                for: today,
+                verifiedAt: now,
+                spfLevel: input.spfLevel,
+                notes: input.oneTapNotes,
+                in: context
+            )
 
             let records = try fetchRecords(in: context)
             let currentStreak = CalendarAnalytics.currentStreak(
@@ -88,13 +96,42 @@ enum SunclubQuickLogAction {
         return try context.fetch(descriptor)
     }
 
-    private static func upsertQuickLogRecord(for day: Date, verifiedAt: Date, in context: ModelContext) throws {
+    private static func oneTapInput(
+        for day: Date,
+        calendar: Calendar,
+        in context: ModelContext
+    ) throws -> SunManualLogResolvedDefaults {
+        guard try record(for: day, in: context) == nil else {
+            return .empty
+        }
+        return SunManualLogDefaultResolver.oneTapDefaults(
+            from: try fetchRecords(in: context),
+            excluding: day,
+            calendar: calendar
+        )
+    }
+
+    private static func upsertQuickLogRecord(
+        for day: Date,
+        verifiedAt: Date,
+        spfLevel: Int?,
+        notes: String?,
+        in context: ModelContext
+    ) throws {
         if let existingRecord = try record(for: day, in: context) {
             existingRecord.verifiedAt = verifiedAt
             existingRecord.method = .quickLog
             existingRecord.verificationDuration = nil
         } else {
-            context.insert(DailyRecord(startOfDay: day, verifiedAt: verifiedAt, method: .quickLog))
+            context.insert(
+                DailyRecord(
+                    startOfDay: day,
+                    verifiedAt: verifiedAt,
+                    method: .quickLog,
+                    spfLevel: spfLevel,
+                    notes: notes
+                )
+            )
         }
     }
 

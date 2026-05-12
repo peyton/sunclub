@@ -2778,6 +2778,19 @@ final class AppState {
         )
     }
 
+    func oneTapLogInput(for day: Date) -> SunManualLogResolvedDefaults {
+        let targetDay = startOfLocalDay(day)
+        guard record(for: targetDay) == nil else {
+            return .empty
+        }
+
+        return SunManualLogDefaultResolver.oneTapDefaults(
+            from: records,
+            excluding: targetDay,
+            calendar: calendar
+        )
+    }
+
     func saveManualRecord(
         for day: Date,
         dayPart targetDayPart: DayPart? = nil,
@@ -2858,11 +2871,14 @@ final class AppState {
         }
 
         let now = currentDate()
+        let input = oneTapLogInput(for: now)
         _ = recordApplication(
             for: .quickLog,
             part: dayPart(for: now),
             on: now,
-            source: .watch
+            source: .watch,
+            spfLevel: input.spfLevel,
+            notes: input.oneTapNotes
         )
         if settings.reapplyReminderEnabled {
             scheduleReapplyReminder()

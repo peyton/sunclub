@@ -232,6 +232,10 @@ struct SunclubApp: App {
         if route == .verifySuccess {
             appState.verificationSuccessPresentation = VerificationSuccessPresentation(streak: 3, isPersonalBest: true)
         }
+        if route == .productScanner,
+           let prefillSPF = requestedUITestManualLogPrefillSPF(from: ProcessInfo.processInfo.arguments) {
+            appState.setManualLogPrefill(spfLevel: prefillSPF, notes: "")
+        }
         router.open(route)
     }
 
@@ -269,8 +273,19 @@ struct SunclubApp: App {
         requestedIntegerArgument(withPrefix: "UITEST_REAPPLY_INTERVAL=", from: arguments)
     }
 
+    private func requestedUITestManualLogPrefillSPF(from arguments: [String]) -> Int? {
+        if arguments.contains("UITEST_MANUAL_LOG_PREFILL_SPF_70") {
+            return 70
+        }
+        return requestedIntegerArgument(withPrefix: "UITEST_MANUAL_LOG_PREFILL_SPF=", from: arguments)
+    }
+
     private func requestedIntegerArgument(withPrefix prefix: String, from arguments: [String]) -> Int? {
         guard let argument = arguments.first(where: { $0.hasPrefix(prefix) }) else {
+            if prefix.hasSuffix("=") {
+                let environmentKey = String(prefix.dropLast())
+                return ProcessInfo.processInfo.environment[environmentKey].flatMap(Int.init)
+            }
             return nil
         }
 
@@ -285,6 +300,10 @@ struct SunclubApp: App {
         if let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) {
             let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
             applyUITestHistorySeed(scenario)
+        }
+
+        if let prefillSPF = requestedUITestManualLogPrefillSPF(from: arguments) {
+            appState.setManualLogPrefill(spfLevel: prefillSPF, notes: "")
         }
 
         if let notificationHealth = requestedUITestNotificationHealth(from: arguments) {
