@@ -276,7 +276,7 @@ private final class CapturingGrowthFeatureStore: SunclubGrowthFeatureStoring {
 
 @MainActor
 private final class AchievementTestCloudSyncCoordinator: CloudSyncControlling {
-    func start() async {}
+    func start() async -> CloudSyncStartResult { .noRemoteHistory }
     func setEnabled(_ enabled: Bool) async throws {}
     func queueBatchIfNeeded(_ batchID: UUID) async {}
     func syncNow() async {}
