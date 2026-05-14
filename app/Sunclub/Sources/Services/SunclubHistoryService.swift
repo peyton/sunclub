@@ -100,6 +100,36 @@ final class SunclubHistoryService {
         try loadOrCreateCloudSyncState()
     }
 
+    func isEffectivelyEmptyForInitialICloudRestore() throws -> Bool {
+        if try !records().isEmpty {
+            return false
+        }
+
+        if !Self.isDefaultSettingsSnapshot(try settings().projectionSnapshot) {
+            return false
+        }
+
+        let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
+        for batch in batches where try !isSyntheticEmptyDefaultBatch(batch) {
+            return false
+        }
+
+        return true
+    }
+
+    func cloudPublishableBatches() throws -> [SunclubChangeBatch] {
+        let predicate = #Predicate<SunclubChangeBatch> {
+            !$0.isLocalOnly && !$0.isPublishedToCloud
+        }
+        let batches = try context.fetch(
+            FetchDescriptor(
+                predicate: predicate,
+                sortBy: [SortDescriptor(\.createdAt, order: .forward)]
+            )
+        )
+        return try batches.filter { try !isSyntheticEmptyDefaultBatch($0) }
+    }
+
     func changeBatches(limit: Int = 50) throws -> [SunclubChangeBatch] {
         var descriptor = FetchDescriptor<SunclubChangeBatch>(
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
@@ -1149,6 +1179,22 @@ final class SunclubHistoryService {
     private func settingsRevision(forBatchID batchID: UUID) throws -> SettingsRevision? {
         let predicate = #Predicate<SettingsRevision> { $0.batchID == batchID }
         return try context.fetch(FetchDescriptor(predicate: predicate)).first
+    }
+
+    private func isSyntheticEmptyDefaultBatch(_ batch: SunclubChangeBatch) throws -> Bool {
+        guard batch.kind == .migrationSeed else {
+            return false
+        }
+
+        guard try revisions(forBatchID: batch.id).isEmpty else {
+            return false
+        }
+
+        guard let settingsRevision = try settingsRevision(forBatchID: batch.id) else {
+            return true
+        }
+
+        return Self.isDefaultSettingsSnapshot(settingsRevision.snapshot)
     }
 
     private func fetchBatch(id: UUID) throws -> SunclubChangeBatch {

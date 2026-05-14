@@ -3,8 +3,16 @@ import Foundation
 import SwiftData
 
 @MainActor
+enum CloudSyncStartResult: Equatable {
+    case restoredRemoteHistory
+    case noRemoteHistory
+    case skippedDisabled
+    case failed(String)
+}
+
+@MainActor
 protocol CloudSyncControlling: AnyObject {
-    func start() async
+    func start() async -> CloudSyncStartResult
     func setEnabled(_ enabled: Bool) async throws
     func queueBatchIfNeeded(_ batchID: UUID) async
     func syncNow() async
@@ -19,12 +27,18 @@ final class NoopCloudSyncCoordinator: CloudSyncControlling {
         self.historyService = historyService
     }
 
-    func start() async {
+    func start() async -> CloudSyncStartResult {
         guard let preference = try? historyService.syncPreference() else {
-            return
+            return .failed("Sunclub couldn't load iCloud sync settings.")
         }
         preference.status = preference.isICloudSyncEnabled ? .idle : .paused
         try? historyService.fetchContext().save()
+        guard preference.isICloudSyncEnabled else {
+            return .skippedDisabled
+        }
+        return (try? historyService.isEffectivelyEmptyForInitialICloudRestore()) == true
+            ? .noRemoteHistory
+            : .restoredRemoteHistory
     }
 
     func setEnabled(_ enabled: Bool) async throws {
@@ -42,7 +56,8 @@ final class NoopCloudSyncCoordinator: CloudSyncControlling {
         }
 
         guard let batch = try? historyService.fetchBatchForSync(id: batchID),
-              batch.isLocalOnly == false else {
+              batch.isLocalOnly == false,
+              (try? historyService.cloudPublishableBatches().contains(where: { $0.id == batchID })) == true else {
             return
         }
 
@@ -75,6 +90,44 @@ final class NoopCloudSyncCoordinator: CloudSyncControlling {
 }
 
 @MainActor
+protocol CloudSyncEngineDriving: AnyObject {
+    func addPendingDatabaseChanges(_ changes: [CKSyncEngine.PendingDatabaseChange])
+    func addPendingRecordZoneChanges(_ changes: [CKSyncEngine.PendingRecordZoneChange])
+    func sendAllChanges() async throws
+    func fetchAllChanges() async throws
+    func cancelOperations() async
+}
+
+@MainActor
+final class LiveCloudSyncEngineDriver: CloudSyncEngineDriving {
+    private let engine: CKSyncEngine
+
+    init(engine: CKSyncEngine) {
+        self.engine = engine
+    }
+
+    func addPendingDatabaseChanges(_ changes: [CKSyncEngine.PendingDatabaseChange]) {
+        engine.state.add(pendingDatabaseChanges: changes)
+    }
+
+    func addPendingRecordZoneChanges(_ changes: [CKSyncEngine.PendingRecordZoneChange]) {
+        engine.state.add(pendingRecordZoneChanges: changes)
+    }
+
+    func sendAllChanges() async throws {
+        try await engine.sendChanges(.init(scope: .all))
+    }
+
+    func fetchAllChanges() async throws {
+        try await engine.fetchChanges(.init(scope: .all))
+    }
+
+    func cancelOperations() async {
+        await engine.cancelOperations()
+    }
+}
+
+@MainActor
 final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDelegate, @unchecked Sendable {
     private let historyService: SunclubHistoryService
     private let containerIdentifier: String
@@ -82,33 +135,66 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
     private let zoneID = CKRecordZone.ID(zoneName: "sunclub-history", ownerName: CKCurrentUserDefaultName)
 
     private var syncEngine: CKSyncEngine?
+    private var syncEngineDriver: CloudSyncEngineDriving?
     private var hasQueuedZoneSave = false
 
     init(
         historyService: SunclubHistoryService,
         containerIdentifier: String = SunclubRuntimeConfiguration.cloudKitContainerIdentifier,
-        cloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding = CodeSignatureCloudKitEntitlementProvider()
+        cloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding = CodeSignatureCloudKitEntitlementProvider(),
+        syncEngineDriver: CloudSyncEngineDriving? = nil
     ) {
         self.historyService = historyService
         self.containerIdentifier = containerIdentifier
         self.cloudKitEntitlementProvider = cloudKitEntitlementProvider
+        self.syncEngineDriver = syncEngineDriver
         super.init()
     }
 
-    func start() async {
+    func start() async -> CloudSyncStartResult {
         do {
             let preference = try historyService.syncPreference()
             guard preference.isICloudSyncEnabled else {
                 preference.status = .paused
                 try historyService.fetchContext().save()
-                return
+                return .skippedDisabled
             }
 
+            let shouldRestoreFirst = try historyService.isEffectivelyEmptyForInitialICloudRestore()
             try configureEngineIfNeeded()
+            preference.status = .syncing
+            try historyService.fetchContext().save()
+
+            if shouldRestoreFirst {
+                try await fetchCloudChanges()
+                try historyService.refreshProjectedState()
+
+                if try !historyService.isEffectivelyEmptyForInitialICloudRestore() {
+                    let queuedLocalChanges = try await queueAllUnpublishedBatches()
+                    if queuedLocalChanges {
+                        try await sendPendingChangesIfNeeded()
+                    }
+                    await finishSync()
+                    return .restoredRemoteHistory
+                }
+
+                try ensureZoneSaveQueuedIfNeeded()
+                try await queueAllUnpublishedBatches()
+                try await sendPendingChangesIfNeeded()
+                try await fetchCloudChanges()
+                await finishSync()
+                return .noRemoteHistory
+            }
+
+            try ensureZoneSaveQueuedIfNeeded()
             try await queueAllUnpublishedBatches()
-            await syncNow()
+            try await sendPendingChangesIfNeeded()
+            try await fetchCloudChanges()
+            await finishSync()
+            return .noRemoteHistory
         } catch {
             await record(error: error, level: .warning)
+            return .failed(Self.errorMessage(for: error))
         }
     }
 
@@ -121,10 +207,11 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
 
         if enabled {
             try configureEngineIfNeeded()
+            try ensureZoneSaveQueuedIfNeeded()
             try await queueAllUnpublishedBatches()
             await syncNow()
         } else {
-            await syncEngine?.cancelOperations()
+            await syncEngineDriver?.cancelOperations()
         }
     }
 
@@ -134,8 +221,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
             guard preference.isICloudSyncEnabled else {
                 return
             }
-            guard let batch = try historyService.fetchBatchForSync(id: batchID),
-                  !batch.isLocalOnly else {
+            guard try historyService.cloudPublishableBatches().contains(where: { $0.id == batchID }) else {
                 return
             }
 
@@ -154,12 +240,11 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
             }
 
             preference.status = .syncing
-            let engine = try configuredEngine()
-            try await engine.sendChanges(.init(scope: .all))
-            try await engine.fetchChanges(.init(scope: .all))
-            preference.status = .idle
-            preference.lastSyncAt = Date()
-            preference.lastSyncErrorDescription = nil
+            try ensureZoneSaveQueuedIfNeeded()
+            try await queueAllUnpublishedBatches()
+            try await sendPendingChangesIfNeeded()
+            try await fetchCloudChanges()
+            await finishSync()
         } catch {
             await record(error: error, level: .error)
         }
@@ -181,7 +266,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
         case let .stateUpdate(update):
             await persist(stateSerialization: update.stateSerialization)
         case let .sentRecordZoneChanges(changes):
-            await handleSentRecordZoneChanges(changes.savedRecords)
+            await handleSentRecordZoneChanges(changes)
         case let .fetchedRecordZoneChanges(changes):
             await handleFetchedRecordZoneChanges(changes.modifications)
         case let .accountChange(change):
@@ -198,7 +283,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
                 level: .info
             )
         case let .sentDatabaseChanges(changes):
-            hasQueuedZoneSave = changes.failedZoneSaves.isEmpty
+            await handleSentDatabaseChanges(changes)
         default:
             break
         }
@@ -231,7 +316,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
     }
 
     private func configureEngineIfNeeded() throws {
-        guard syncEngine == nil else {
+        guard syncEngineDriver == nil else {
             return
         }
 
@@ -246,17 +331,16 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
             delegate: self
         )
         let engine = CKSyncEngine(configuration)
-        engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
-        hasQueuedZoneSave = true
         syncEngine = engine
+        syncEngineDriver = LiveCloudSyncEngineDriver(engine: engine)
     }
 
-    private func configuredEngine() throws -> CKSyncEngine {
+    private func configuredEngineDriver() throws -> CloudSyncEngineDriving {
         try configureEngineIfNeeded()
-        guard let syncEngine else {
+        guard let syncEngineDriver else {
             throw CloudSyncError.engineUnavailable
         }
-        return syncEngine
+        return syncEngineDriver
     }
 
     private func currentStateSerialization() throws -> CKSyncEngine.State.Serialization? {
@@ -267,14 +351,11 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
     }
 
     private func enqueueBatch(_ batchID: UUID) throws {
-        let engine = try configuredEngine()
-        if !hasQueuedZoneSave {
-            engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
-            hasQueuedZoneSave = true
-        }
+        let driver = try configuredEngineDriver()
+        try ensureZoneSaveQueuedIfNeeded()
 
         let batchRecordID = Self.recordID(for: .batch(batchID), zoneID: zoneID)
-        engine.state.add(pendingRecordZoneChanges: [.saveRecord(batchRecordID)])
+        driver.addPendingRecordZoneChanges([.saveRecord(batchRecordID)])
 
         guard try historyService.fetchBatchForSync(id: batchID) != nil else {
             return
@@ -283,29 +364,44 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
         let recordRevisionPredicate = #Predicate<DailyRecordRevision> { $0.batchID == batchID }
         let recordDescriptors = try historyService.fetchContext().fetch(FetchDescriptor(predicate: recordRevisionPredicate))
         for revision in recordDescriptors {
-            engine.state.add(pendingRecordZoneChanges: [.saveRecord(Self.recordID(for: .recordRevision(revision.id), zoneID: zoneID))])
+            driver.addPendingRecordZoneChanges([
+                .saveRecord(Self.recordID(for: .recordRevision(revision.id), zoneID: zoneID))
+            ])
         }
 
         let settingsRevisionPredicate = #Predicate<SettingsRevision> { $0.batchID == batchID }
         let settingsDescriptors = try historyService.fetchContext().fetch(FetchDescriptor(predicate: settingsRevisionPredicate))
         for revision in settingsDescriptors {
-            engine.state.add(pendingRecordZoneChanges: [.saveRecord(Self.recordID(for: .settingsRevision(revision.id), zoneID: zoneID))])
+            driver.addPendingRecordZoneChanges([
+                .saveRecord(Self.recordID(for: .settingsRevision(revision.id), zoneID: zoneID))
+            ])
         }
     }
 
-    private func queueAllUnpublishedBatches() async throws {
-        let predicate = #Predicate<SunclubChangeBatch> {
-            !$0.isLocalOnly && !$0.isPublishedToCloud
-        }
-        let batches = try historyService.fetchContext().fetch(
-            FetchDescriptor(
-                predicate: predicate,
-                sortBy: [SortDescriptor(\.createdAt, order: .forward)]
-            )
-        )
+    @discardableResult
+    private func queueAllUnpublishedBatches() async throws -> Bool {
+        let batches = try historyService.cloudPublishableBatches()
         for batch in batches {
             try enqueueBatch(batch.id)
         }
+        return !batches.isEmpty
+    }
+
+    private func ensureZoneSaveQueuedIfNeeded() throws {
+        guard !hasQueuedZoneSave else {
+            return
+        }
+        let driver = try configuredEngineDriver()
+        driver.addPendingDatabaseChanges([.saveZone(CKRecordZone(zoneID: zoneID))])
+        hasQueuedZoneSave = true
+    }
+
+    private func sendPendingChangesIfNeeded() async throws {
+        try await configuredEngineDriver().sendAllChanges()
+    }
+
+    private func fetchCloudChanges() async throws {
+        try await configuredEngineDriver().fetchAllChanges()
     }
 
     private func recordForCloudKit(_ recordID: CKRecord.ID) async -> CKRecord? {
@@ -340,10 +436,11 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
         }
     }
 
-    private func handleSentRecordZoneChanges(_ records: [CKRecord]) async {
+    private func handleSentRecordZoneChanges(_ changes: CKSyncEngine.Event.SentRecordZoneChanges) async {
         do {
+            try await handleFailedRecordSaves(changes.failedRecordSaves)
             var touchedImportSessionIDs = Set<UUID>()
-            for record in records {
+            for record in changes.savedRecords {
                 switch try Self.recordTarget(for: record.recordID.recordName) {
                 case let .batch(batchID):
                     let batch = try historyService.fetchBatchForSync(id: batchID)
@@ -361,6 +458,40 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
             await finishSync()
         } catch {
             await record(error: error, level: .warning)
+        }
+    }
+
+    private func handleSentDatabaseChanges(_ changes: CKSyncEngine.Event.SentDatabaseChanges) async {
+        if changes.failedZoneSaves.isEmpty {
+            hasQueuedZoneSave = false
+            return
+        }
+
+        hasQueuedZoneSave = false
+        for failure in changes.failedZoneSaves {
+            await record(message: Self.errorMessage(for: failure.error), level: .warning)
+        }
+    }
+
+    private func handleFailedRecordSaves(
+        _ failures: [CKSyncEngine.Event.SentRecordZoneChanges.FailedRecordSave]
+    ) async throws {
+        for failure in failures {
+            try await recoverFailedRecordSave(recordID: failure.record.recordID, error: failure.error)
+        }
+    }
+
+    func recoverFailedRecordSave(recordID: CKRecord.ID, error: Error) async throws {
+        switch Self.sendFailureRecoveryAction(for: error) {
+        case .requeueZoneAndFetch:
+            hasQueuedZoneSave = false
+            try ensureZoneSaveQueuedIfNeeded()
+            try configuredEngineDriver().addPendingRecordZoneChanges([.saveRecord(recordID)])
+            try await fetchCloudChanges()
+        case .fetchRemote:
+            try await fetchCloudChanges()
+        case .recordOnly:
+            await record(message: Self.errorMessage(for: error), level: .warning)
         }
     }
 
@@ -435,7 +566,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
     }
 
     private func record(error: Error, level: CloudSyncDiagnosticLevel) async {
-        let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        let message = Self.errorMessage(for: error)
         await record(message: message, level: level)
         do {
             let preference = try historyService.syncPreference()
@@ -455,6 +586,31 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
         } catch {
             // Ignore diagnostics failures.
         }
+    }
+
+    enum SendFailureRecoveryAction: Equatable {
+        case requeueZoneAndFetch
+        case fetchRemote
+        case recordOnly
+    }
+
+    nonisolated static func sendFailureRecoveryAction(for error: Error) -> SendFailureRecoveryAction {
+        guard let cloudError = error as? CKError else {
+            return .recordOnly
+        }
+
+        switch cloudError.code {
+        case .zoneNotFound, .unknownItem:
+            return .requeueZoneAndFetch
+        case .serverRecordChanged:
+            return .fetchRemote
+        default:
+            return .recordOnly
+        }
+    }
+
+    private static func errorMessage(for error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
     private enum RecordTarget {

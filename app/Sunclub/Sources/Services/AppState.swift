@@ -238,6 +238,15 @@ struct CloudSyncStatusPresentation: Equatable {
     let pendingImportedBatchCount: Int
 }
 
+enum InitialICloudRestoreState: Equatable {
+    case notNeeded
+    case checking
+    case restored
+    case noRemoteHistory
+    case failed(String)
+    case continuedLocally
+}
+
 struct ManualLogPrefill: Equatable {
     let spfLevel: Int?
     let notes: String
@@ -470,6 +479,7 @@ final class AppState {
     private(set) var importSessions: [SunclubImportSession] = []
     private(set) var conflicts: [SunclubConflictItem] = []
     private(set) var syncPreference: CloudSyncPreference?
+    private(set) var initialICloudRestoreState: InitialICloudRestoreState = .notNeeded
     private(set) var uvReading: UVReading?
     private(set) var uvForecast: SunclubUVForecast?
     private var uvRefreshGeneration = 0
@@ -604,6 +614,10 @@ final class AppState {
             historyService: resolvedHistoryService,
             runtimeEnvironment: runtimeEnvironment
         )
+        initialICloudRestoreState = Self.initialICloudRestoreState(
+            historyService: resolvedHistoryService,
+            runtimeEnvironment: runtimeEnvironment
+        )
         self.homeExitReminderMonitor.setStateProvider { [weak self] in
             self
         }
@@ -626,7 +640,8 @@ final class AppState {
                         launchRecoveryResult.importSessionID
                     )
                 }
-                await self.cloudSyncCoordinator.start()
+                let result = await self.cloudSyncCoordinator.start()
+                self.applyCloudSyncStartResult(result)
                 self.refresh()
             }
         }
@@ -701,6 +716,34 @@ final class AppState {
         }
 
         return SunclubAccountabilityService()
+    }
+
+    private static func initialICloudRestoreState(
+        historyService: SunclubHistoryService,
+        runtimeEnvironment: RuntimeEnvironmentSnapshot
+    ) -> InitialICloudRestoreState {
+        guard runtimeEnvironment.shouldStartCloudSyncOnLaunch else {
+            return .notNeeded
+        }
+
+        guard (try? historyService.syncPreference().isICloudSyncEnabled) == true else {
+            return .notNeeded
+        }
+
+        guard (try? historyService.isEffectivelyEmptyForInitialICloudRestore()) == true else {
+            return .notNeeded
+        }
+
+        return .checking
+    }
+
+    var shouldShowInitialICloudRestoreGate: Bool {
+        switch initialICloudRestoreState {
+        case .checking, .failed:
+            return !settings.hasCompletedOnboarding
+        case .notNeeded, .restored, .noRemoteHistory, .continuedLocally:
+            return false
+        }
     }
 
     func refresh() {
@@ -1158,6 +1201,19 @@ final class AppState {
             await cloudSyncCoordinator.syncNow()
             refresh()
         }
+    }
+
+    func retryInitialICloudRestore() {
+        initialICloudRestoreState = .checking
+        Task {
+            let result = await cloudSyncCoordinator.start()
+            applyCloudSyncStartResult(result)
+            refresh()
+        }
+    }
+
+    func continueWithoutInitialICloudRestore() {
+        initialICloudRestoreState = .continuedLocally
     }
 
     func publishImportedChanges(for sessionID: UUID) {
@@ -3739,6 +3795,25 @@ final class AppState {
 
         Task {
             await cloudSyncCoordinator.queueBatchIfNeeded(batch.id)
+        }
+    }
+
+    private func applyCloudSyncStartResult(_ result: CloudSyncStartResult) {
+        switch result {
+        case .restoredRemoteHistory:
+            initialICloudRestoreState = .restored
+        case .noRemoteHistory:
+            if initialICloudRestoreState == .checking {
+                initialICloudRestoreState = .noRemoteHistory
+            }
+        case .skippedDisabled:
+            if initialICloudRestoreState == .checking {
+                initialICloudRestoreState = .notNeeded
+            }
+        case let .failed(message):
+            if initialICloudRestoreState == .checking {
+                initialICloudRestoreState = .failed(message)
+            }
         }
     }
 

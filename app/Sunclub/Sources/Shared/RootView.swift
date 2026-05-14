@@ -6,7 +6,9 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if appState.settings.hasCompletedOnboarding {
+            if appState.shouldShowInitialICloudRestoreGate {
+                InitialICloudRestoreView()
+            } else if appState.settings.hasCompletedOnboarding {
                 tabbedRoot
             } else {
                 onboardingRoot
@@ -179,6 +181,71 @@ struct RootView: View {
             source: context.source
         )
         router.push(.manualLog, targetDate: context.date, targetDayPart: context.dayPart)
+    }
+}
+
+private struct InitialICloudRestoreView: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        SunLightScreen {
+            VStack(alignment: .leading, spacing: AppSpacing.xl) {
+                Spacer(minLength: AppSpacing.xl)
+                SunBrandLockup()
+                    .accessibilityHidden(true)
+                SunScreenTitleBlock(
+                    eyebrow: "iCloud",
+                    title: title,
+                    detail: detail
+                )
+                if case .checking = appState.initialICloudRestoreState {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(AppPalette.sun)
+                        .accessibilityLabel("Checking iCloud")
+                }
+                Spacer(minLength: AppSpacing.xl)
+            }
+        } footer: {
+            if case .failed = appState.initialICloudRestoreState {
+                VStack(spacing: AppSpacing.sm) {
+                    Button("Try Again") {
+                        appState.retryInitialICloudRestore()
+                    }
+                    .buttonStyle(SunPrimaryButtonStyle())
+                    .accessibilityIdentifier("icloudRestore.retry")
+
+                    Button("Continue on This Phone") {
+                        appState.continueWithoutInitialICloudRestore()
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("icloudRestore.continue")
+                }
+            }
+        }
+        .accessibilityIdentifier("icloudRestore.gate")
+    }
+
+    private var title: String {
+        switch appState.initialICloudRestoreState {
+        case .checking:
+            return "Checking iCloud"
+        case .failed:
+            return "iCloud needs attention"
+        case .notNeeded, .restored, .noRemoteHistory, .continuedLocally:
+            return "Checking iCloud"
+        }
+    }
+
+    private var detail: String {
+        switch appState.initialICloudRestoreState {
+        case .checking:
+            return "Looking for your synced Sunclub history before setup continues."
+        case let .failed(message):
+            return message
+        case .notNeeded, .restored, .noRemoteHistory, .continuedLocally:
+            return "Looking for your synced Sunclub history before setup continues."
+        }
     }
 }
 

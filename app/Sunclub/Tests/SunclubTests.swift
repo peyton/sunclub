@@ -66,9 +66,14 @@ final class MockNotificationManager: NotificationScheduling {
 @MainActor
 final class ProbeCloudSyncCoordinator: CloudSyncControlling {
     private(set) var startCallCount = 0
+    var startResults: [CloudSyncStartResult] = [.noRemoteHistory]
 
-    func start() async {
+    func start() async -> CloudSyncStartResult {
         startCallCount += 1
+        if startResults.count > 1 {
+            return startResults.removeFirst()
+        }
+        return startResults.first ?? .noRemoteHistory
     }
 
     func setEnabled(_ enabled: Bool) async throws {}
@@ -79,6 +84,63 @@ final class ProbeCloudSyncCoordinator: CloudSyncControlling {
 
     func publishImportedSession(_ sessionID: UUID) async throws -> CloudPublishResult {
         CloudPublishResult(importSessionID: sessionID, publishedBatchCount: 0)
+    }
+}
+
+@MainActor
+final class FakeCloudSyncEngineDriver: CloudSyncEngineDriving {
+    enum Operation: Equatable {
+        case saveZone
+        case saveRecord(String)
+        case send
+        case fetch
+        case cancel
+    }
+
+    private(set) var operations: [Operation] = []
+    var fetchHandler: (() throws -> Void)?
+    var sendError: Error?
+
+    func addPendingDatabaseChanges(_ changes: [CKSyncEngine.PendingDatabaseChange]) {
+        for change in changes {
+            switch change {
+            case .saveZone:
+                operations.append(.saveZone)
+            case .deleteZone:
+                break
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    func addPendingRecordZoneChanges(_ changes: [CKSyncEngine.PendingRecordZoneChange]) {
+        for change in changes {
+            switch change {
+            case let .saveRecord(recordID):
+                operations.append(.saveRecord(recordID.recordName))
+            case .deleteRecord:
+                break
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    func sendAllChanges() async throws {
+        operations.append(.send)
+        if let sendError {
+            throw sendError
+        }
+    }
+
+    func fetchAllChanges() async throws {
+        operations.append(.fetch)
+        try fetchHandler?()
+    }
+
+    func cancelOperations() async {
+        operations.append(.cancel)
     }
 }
 
@@ -1462,7 +1524,7 @@ final class SunclubTests: XCTestCase {
             containerIdentifier: "$(SUNCLUB_ICLOUD_CONTAINER)"
         )
 
-        await coordinator.start()
+        _ = await coordinator.start()
 
         let preference = try historyService.syncPreference()
         XCTAssertEqual(preference.status, .error)
@@ -1484,7 +1546,7 @@ final class SunclubTests: XCTestCase {
             cloudKitEntitlementProvider: StaticCloudKitEntitlementProvider(entitlements: [:])
         )
 
-        await coordinator.start()
+        _ = await coordinator.start()
 
         let preference = try historyService.syncPreference()
         XCTAssertEqual(preference.status, .error)
@@ -2238,6 +2300,220 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(coordinator.startCallCount, 1)
         XCTAssertTrue(state.syncPreference?.isICloudSyncEnabled ?? false)
+    }
+
+    @MainActor
+    func testFreshInstallFetchesICloudBeforeSendingEmptyBootstrap() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        try historyService.bootstrapIfNeeded()
+        let driver = FakeCloudSyncEngineDriver()
+        let coordinator = CloudSyncCoordinator(
+            historyService: historyService,
+            syncEngineDriver: driver
+        )
+
+        let result = await coordinator.start()
+
+        XCTAssertEqual(result, .noRemoteHistory)
+        XCTAssertEqual(Array(driver.operations.prefix(1)), [.fetch])
+        XCTAssertTrue(driver.operations.contains(.saveZone))
+        XCTAssertTrue(driver.operations.contains(.send))
+    }
+
+    @MainActor
+    func testFreshInstallRestoresRemoteSettingsAndRecords() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let historyService = SunclubHistoryService(context: context)
+        try historyService.bootstrapIfNeeded()
+        let driver = FakeCloudSyncEngineDriver()
+        let remoteDay = Calendar.current.startOfDay(for: Date(timeIntervalSince1970: 1_710_000_000))
+        let remoteBatch = SunclubChangeBatch(
+            kind: .manualLog,
+            scope: .timeline,
+            scopeIdentifier: "timeline",
+            authorDeviceID: "remote-device",
+            summary: "Remote restored history.",
+            isLocalOnly: false,
+            isPublishedToCloud: true,
+            cloudPublishedAt: Date()
+        )
+        let remoteSettings = SettingsProjectionSnapshot(
+            hasCompletedOnboarding: true,
+            reminderHour: 9,
+            reminderMinute: 15,
+            weeklyHour: 18,
+            weeklyWeekday: 1,
+            dailyPhraseState: nil,
+            weeklyPhraseState: nil,
+            smartReminderSettingsData: nil,
+            reapplyReminderEnabled: false,
+            reapplyIntervalMinutes: 120,
+            usesLiveUV: false
+        )
+        let remoteRecord = DailyRecordProjectionSnapshot(
+            startOfDay: remoteDay,
+            verifiedAt: remoteDay.addingTimeInterval(9 * 60 * 60),
+            methodRawValue: VerificationMethod.manual.rawValue,
+            verificationDuration: nil,
+            spfLevel: 50,
+            notes: "Restored from iCloud",
+            reapplyCount: 1,
+            lastReappliedAt: remoteDay.addingTimeInterval(12 * 60 * 60)
+        )
+        let settingsRevision = SettingsRevision(
+            batch: remoteBatch,
+            snapshot: remoteSettings,
+            changedFields: [.hasCompletedOnboarding, .reminderHour, .reminderMinute]
+        )
+        let recordRevision = DailyRecordRevision(
+            batch: remoteBatch,
+            snapshot: remoteRecord,
+            changedFields: [.verifiedAt, .methodRawValue, .spfLevel, .notes, .reapplyCount, .lastReappliedAt]
+        )
+        driver.fetchHandler = {
+            try historyService.upsertRemoteBatch(BatchWire(batch: remoteBatch))
+            try historyService.upsertRemoteSettingsRevision(SettingsRevisionWire(revision: settingsRevision))
+            try historyService.upsertRemoteRecordRevision(RecordRevisionWire(revision: recordRevision))
+        }
+        let coordinator = CloudSyncCoordinator(
+            historyService: historyService,
+            syncEngineDriver: driver
+        )
+
+        let result = await coordinator.start()
+
+        XCTAssertEqual(result, .restoredRemoteHistory)
+        XCTAssertTrue(try historyService.settings().hasCompletedOnboarding)
+        let restoredRecord = try XCTUnwrap(historyService.record(for: remoteDay))
+        XCTAssertEqual(restoredRecord.spfLevel, 50)
+        XCTAssertEqual(restoredRecord.notes, "Restored from iCloud")
+        XCTAssertEqual(driver.operations, [.fetch])
+    }
+
+    @MainActor
+    func testSyntheticEmptyBootstrapIsNotPublishedToCloud() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        try historyService.bootstrapIfNeeded()
+
+        XCTAssertTrue(try historyService.isEffectivelyEmptyForInitialICloudRestore())
+        XCTAssertTrue(try historyService.cloudPublishableBatches().isEmpty)
+    }
+
+    @MainActor
+    func testInitialICloudRestoreNoRemoteHistoryFallsThroughToOnboarding() async throws {
+        let coordinator = ProbeCloudSyncCoordinator()
+        coordinator.startResults = [.noRemoteHistory]
+
+        let state = try makeAppState(
+            cloudSyncCoordinator: coordinator,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: false,
+                isPreviewing: false,
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
+            )
+        )
+        XCTAssertEqual(state.initialICloudRestoreState, .checking)
+
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(coordinator.startCallCount, 1)
+        XCTAssertEqual(state.initialICloudRestoreState, .noRemoteHistory)
+        XCTAssertFalse(state.settings.hasCompletedOnboarding)
+        XCTAssertFalse(state.shouldShowInitialICloudRestoreGate)
+    }
+
+    @MainActor
+    func testInitialICloudRestoreFailureCanRetryOrContinueLocally() async throws {
+        let coordinator = ProbeCloudSyncCoordinator()
+        coordinator.startResults = [.failed("iCloud is offline."), .noRemoteHistory]
+
+        let state = try makeAppState(
+            cloudSyncCoordinator: coordinator,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: false,
+                isPreviewing: false,
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
+            )
+        )
+        await waitForMainActorTasks()
+
+        XCTAssertEqual(state.initialICloudRestoreState, .failed("iCloud is offline."))
+        XCTAssertTrue(state.shouldShowInitialICloudRestoreGate)
+
+        state.continueWithoutInitialICloudRestore()
+        XCTAssertEqual(state.initialICloudRestoreState, .continuedLocally)
+        XCTAssertFalse(state.shouldShowInitialICloudRestoreGate)
+
+        state.retryInitialICloudRestore()
+        await waitForMainActorTasks()
+        XCTAssertEqual(state.initialICloudRestoreState, .noRemoteHistory)
+        XCTAssertEqual(coordinator.startCallCount, 2)
+    }
+
+    func testCloudSyncSendFailureRecoveryActions() {
+        XCTAssertEqual(
+            CloudSyncCoordinator.sendFailureRecoveryAction(for: CKError(.zoneNotFound)),
+            .requeueZoneAndFetch
+        )
+        XCTAssertEqual(
+            CloudSyncCoordinator.sendFailureRecoveryAction(for: CKError(.unknownItem)),
+            .requeueZoneAndFetch
+        )
+        XCTAssertEqual(
+            CloudSyncCoordinator.sendFailureRecoveryAction(for: CKError(.serverRecordChanged)),
+            .fetchRemote
+        )
+    }
+
+    @MainActor
+    func testZoneMissingSendFailureRequeuesZoneAndRecordBeforeFetch() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        try historyService.bootstrapIfNeeded()
+        let driver = FakeCloudSyncEngineDriver()
+        let coordinator = CloudSyncCoordinator(
+            historyService: historyService,
+            syncEngineDriver: driver
+        )
+        let recordID = CKRecord.ID(
+            recordName: "DailyRecordRevision:failed-record",
+            zoneID: CKRecordZone.ID(zoneName: "sunclub-history", ownerName: CKCurrentUserDefaultName)
+        )
+
+        try await coordinator.recoverFailedRecordSave(recordID: recordID, error: CKError(.zoneNotFound))
+
+        XCTAssertEqual(
+            driver.operations,
+            [.saveZone, .saveRecord("DailyRecordRevision:failed-record"), .fetch]
+        )
+    }
+
+    @MainActor
+    func testUnknownItemSendFailureRequeuesZoneAndRecordBeforeFetch() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let historyService = SunclubHistoryService(context: ModelContext(container))
+        try historyService.bootstrapIfNeeded()
+        let driver = FakeCloudSyncEngineDriver()
+        let coordinator = CloudSyncCoordinator(
+            historyService: historyService,
+            syncEngineDriver: driver
+        )
+        let recordID = CKRecord.ID(
+            recordName: "SettingsRevision:failed-settings",
+            zoneID: CKRecordZone.ID(zoneName: "sunclub-history", ownerName: CKCurrentUserDefaultName)
+        )
+
+        try await coordinator.recoverFailedRecordSave(recordID: recordID, error: CKError(.unknownItem))
+
+        XCTAssertEqual(
+            driver.operations,
+            [.saveZone, .saveRecord("SettingsRevision:failed-settings"), .fetch]
+        )
     }
 
     @MainActor
@@ -3875,6 +4151,7 @@ final class SunclubTests: XCTestCase {
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
         uvIndexService: UVIndexService? = nil,
         uvBriefingService: SunclubUVBriefingService? = nil,
+        cloudSyncCoordinator: CloudSyncControlling? = nil,
         accountabilityService: SunclubAccountabilityServing? = nil,
         growthFeatureStore: SunclubGrowthFeatureStoring? = nil,
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
@@ -3887,6 +4164,7 @@ final class SunclubTests: XCTestCase {
             notificationManager: notificationManager ?? NotificationManager.shared,
             uvIndexService: uvIndexService ?? UVIndexService(),
             uvBriefingService: uvBriefingService,
+            cloudSyncCoordinator: cloudSyncCoordinator,
             widgetSnapshotStore: widgetSnapshotStore,
             growthFeatureStore: growthFeatureStore ?? SunclubGrowthFeatureStore.shared,
             accountabilityService: accountabilityService,
