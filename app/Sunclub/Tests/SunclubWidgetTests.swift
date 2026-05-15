@@ -436,7 +436,10 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
-        XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
+        XCTAssertEqual(
+            snapshot.accountabilitySummary.primaryPokeFriendID?.uuidString,
+            "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47"
+        )
         XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You reminded Maya.")
     }
 

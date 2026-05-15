@@ -29,6 +29,7 @@ struct SunclubFlavor {
     let cloudKitContainerIdentifier: String
     let displayName: String
     let urlScheme: String
+    let publicAccountabilityTransportEnabled: Bool
 
     var appPathName: String { appTargetName }
 }
@@ -49,7 +50,8 @@ let productionFlavor = SunclubFlavor(
     appGroupID: "group.app.peyton.sunclub",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub",
     displayName: "Sunclub",
-    urlScheme: "sunclub"
+    urlScheme: "sunclub",
+    publicAccountabilityTransportEnabled: true
 )
 
 let developmentFlavor = SunclubFlavor(
@@ -68,7 +70,8 @@ let developmentFlavor = SunclubFlavor(
     appGroupID: "group.app.peyton.sunclub.dev",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev",
     displayName: "Sunclub Dev",
-    urlScheme: "sunclub-dev"
+    urlScheme: "sunclub-dev",
+    publicAccountabilityTransportEnabled: false
 )
 
 func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
@@ -79,7 +82,9 @@ func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
         "SUNCLUB_ICLOUD_ENVIRONMENT": .string(cloudKitEnvironment),
         "SUNCLUB_URL_SCHEME": .string(flavor.urlScheme),
         "SUNCLUB_DISPLAY_NAME": .string(flavor.displayName),
-        "SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED": .string("NO")
+        "SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED": .string(
+            flavor.publicAccountabilityTransportEnabled ? "YES" : "NO"
+        )
     ]
 }
 

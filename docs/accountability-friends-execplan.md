@@ -22,6 +22,7 @@ Sunclub should make accountability easy to find after the user has started build
 - [x] (2026-04-12T08:06Z) Fixed reciprocal direct-poke token validation, background push handling, subscription retry state, friend-tile actions, name-save feedback, press feedback, and "coated" language.
 - [x] (2026-04-12T08:34Z) Ran focused unit tests, Home accountability UI coverage, copy scan, and repo lint for the accountability changes.
 - [x] (2026-04-24) Reworked the accountability widget gallery label to `Buddies` and redesigned inactive/no-friend widget states as intentional setup cards instead of zero-count dashboards.
+- [x] (2026-05-15) Enabled the public CloudKit accountability transport for production builds and updated App Privacy metadata to disclose the minimal Activity sharing data used for friend status and poke delivery.
 
 ## Surprises & Discoveries
 
@@ -51,6 +52,9 @@ Sunclub should make accountability easy to find after the user has started build
 
 - Observation: Subscription install failures could be persisted as successful installs.
   Evidence: `publishAccountabilityProfileIfNeeded()` used `try?` for `installSubscriptions(for:)` and then set `subscriptionsInstalledAt` unconditionally, so transient CloudKit failures would not retry on later launches.
+
+- Observation: Direct poke notifications were still disabled in release-default builds even though the service, subscription, and local notification plumbing existed.
+  Evidence: `SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED` was hardcoded to `NO`, which made `AppState.defaultAccountabilityService` choose `NoopSunclubAccountabilityService`.
 
 ## Decision Log
 
@@ -89,6 +93,10 @@ Sunclub should make accountability easy to find after the user has started build
 - Decision: Keep the small Buddies widget available, but treat inactive and no-friend states as setup status rather than empty analytics.
   Rationale: Home Screen widgets should show current value, not onboarding grids. With no active friend data, Buddies now says `Add a sunscreen buddy`, `Share check-ins, not streak pressure`, uses `person.badge.plus.fill`, and hides the `0 open / 0 logged / 0 friends` grid.
   Date/Author: 2026-04-24 / Codex
+
+- Decision: Enable direct public CloudKit accountability transport for production builds and disclose Activity sharing collection in App Privacy metadata.
+  Rationale: Poke notifications require off-device delivery through public CloudKit records. Apple treats developer-accessible, retained off-device data as collected, so the runtime flag and privacy answers must change together.
+  Date/Author: 2026-05-15 / Codex
 
 ## Context And Orientation
 
@@ -181,3 +189,4 @@ Upgrade behavior:
 - Friends are surfaced on Home for opted-in users, and friend removal is no longer a prominent row action.
 - Upgrade safety is covered without a SwiftData migration by defaulting the extended JSON payloads and preserving existing local friend snapshots.
 - Buddies widgets now avoid zero-count metric grids until accountability is active with friends; inactive and no-friend states show a quiet setup affordance instead.
+- Production builds now instantiate the direct accountability service by default, so existing CloudKit profile, invite response, poke, subscription, remote event, and local notification paths can run in TestFlight with matching privacy disclosures.

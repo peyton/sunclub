@@ -83,12 +83,14 @@ What's New: Initial release. Log sunscreen use quickly, keep your streak on trac
 ## App Privacy
 
 - Tracking: no
-- Data collection: none
-- Public CloudKit accountability transport: no
+- Data collection: app_functionality
+- Collected data types: Name, User ID, Other User Content, Other Usage Data
+- Collection purpose: App Functionality
+- Public CloudKit accountability transport: yes
 - Notification purpose: Notifications remind the user to apply or reapply sunscreen.
 - App Store Connect questionnaire gate: `SUNCLUB_APP_PRIVACY_COMPLETED=1`
 
-Manual App Store Connect answer: data not collected for the default release build. Keep this answer only while public CloudKit accountability transport remains disabled.
+Manual App Store Connect answer: disclose Name, User ID, Other User Content, and Other Usage Data as collected for App Functionality. Optional Activity sharing uses Apple's public CloudKit database for friend invite responses, friend display names and status snapshots, relationship tokens, and poke reminder messages/timestamps. Do not mark tracking, ads, or analytics.
 
 ## Age Rating
 
@@ -136,7 +138,7 @@ Manual App Store Connect answer: data not collected for the default release buil
 - kids_category: no
 - iphone_only_v1: yes
 - accessibility_criteria_reviewed: yes
-- public_cloudkit_accountability_transport_enabled: no
+- public_cloudkit_accountability_transport_enabled: yes
 
 ## Medical Device Status
 

@@ -194,7 +194,7 @@ def test_info_plist_declares_copyright_owner() -> None:
     )
 
 
-def test_public_accountability_transport_defaults_off() -> None:
+def test_public_accountability_transport_enabled_for_production() -> None:
     info = load_info_plist()
     source = PROJECT_SWIFT.read_text()
 
@@ -202,7 +202,10 @@ def test_public_accountability_transport_defaults_off() -> None:
         info["SunclubPublicAccountabilityTransportEnabled"]
         == "$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"
     )
-    assert '"SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED": .string("NO")' in source
+    assert "let publicAccountabilityTransportEnabled: Bool" in source
+    assert "publicAccountabilityTransportEnabled: true" in source
+    assert "publicAccountabilityTransportEnabled: false" in source
+    assert 'flavor.publicAccountabilityTransportEnabled ? "YES" : "NO"' in source
     assert "SunclubPublicAccountabilityTransportEnabled" in source
 
 
@@ -914,10 +917,25 @@ def test_privacy_manifest_declares_no_tracking() -> None:
     assert manifest["NSPrivacyTracking"] is False
 
 
-def test_privacy_manifest_declares_no_collected_data_types() -> None:
+def test_privacy_manifest_discloses_activity_sharing_collection() -> None:
     manifest = load_privacy_manifest()
 
-    assert manifest["NSPrivacyCollectedDataTypes"] == []
+    collected_types = {
+        item["NSPrivacyCollectedDataType"]: item
+        for item in manifest["NSPrivacyCollectedDataTypes"]
+    }
+    assert set(collected_types) == {
+        "NSPrivacyCollectedDataTypeName",
+        "NSPrivacyCollectedDataTypeUserID",
+        "NSPrivacyCollectedDataTypeOtherUserContent",
+        "NSPrivacyCollectedDataTypeOtherUsageData",
+    }
+    for item in collected_types.values():
+        assert item["NSPrivacyCollectedDataTypeLinked"] is True
+        assert item["NSPrivacyCollectedDataTypeTracking"] is False
+        assert item["NSPrivacyCollectedDataTypePurposes"] == [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        ]
 
 
 def test_public_cloudkit_database_usage_is_guarded_by_transport_flag() -> None:

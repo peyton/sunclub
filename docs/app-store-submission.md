@@ -57,7 +57,7 @@ These steps still require real App Store Connect data and cannot be faked safely
 - Sunclub is free-only for v1.
 - The app is iPhone-only.
 - Sunclub is not a regulated medical device; it is sunscreen habit guidance, not diagnosis, monitoring, prevention, or treatment.
-- Public CloudKit accountability transport is disabled for the first App Store review build. Private iCloud history sync remains enabled.
+- Public CloudKit accountability transport is enabled for optional Activity sharing. App Privacy answers must disclose Name, User ID, Other User Content, and Other Usage Data as collected for App Functionality, with no tracking, ads, or analytics.
 - This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
 - Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
 - To navigate to WeatherKit functionality: complete onboarding, open Settings, expand Travel & Health, find UV & Health, enable Live UV with the Use Apple Weather for Live UV switch, grant location permission if prompted, then return to Timeline/Home.
