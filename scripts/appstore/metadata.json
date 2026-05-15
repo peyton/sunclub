@@ -66,12 +66,20 @@
   },
   "privacy": {
     "tracking": false,
-    "data_collection": "none",
+    "data_collection": "app_functionality",
+    "collected_data_types": [
+      "Name",
+      "User ID",
+      "Other User Content",
+      "Other Usage Data"
+    ],
+    "collection_purpose": "App Functionality",
+    "collection_notes": "Optional Activity sharing uses Apple's public CloudKit database to deliver friend invite responses, friend display names and status snapshots, relationship tokens, and poke reminder messages/timestamps. This data is used only to provide Activity sharing and poke notifications; it is not used for tracking, ads, or analytics.",
     "app_store_connect_completed": {
       "env": "SUNCLUB_APP_PRIVACY_COMPLETED",
       "equals": "1"
     },
-    "public_cloudkit_accountability_transport": false,
+    "public_cloudkit_accountability_transport": true,
     "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
   },
   "age_rating_questionnaire": {
@@ -104,7 +112,7 @@
     "kids_category": false,
     "iphone_only_v1": true,
     "accessibility_criteria_reviewed": true,
-    "public_cloudkit_accountability_transport_enabled": false
+    "public_cloudkit_accountability_transport_enabled": true
   },
   "regulatory": {
     "regulated_medical_device": {

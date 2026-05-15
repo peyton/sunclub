@@ -33,7 +33,7 @@ VALID_SCREENSHOT_DISPLAY_TYPES = {"APP_IPHONE_67"}
 VALID_PRIMARY_CATEGORIES = {"HEALTH_AND_FITNESS"}
 VALID_SECONDARY_CATEGORIES = {"LIFESTYLE"}
 VALID_AGE_RATINGS = {"4+"}
-VALID_DATA_COLLECTION_VALUES = {"none"}
+VALID_DATA_COLLECTION_VALUES = {"none", "app_functionality"}
 VALID_MEDICAL_DEVICE_STATUSES = {"not_regulated"}
 REQUIRED_MEDICAL_DEVICE_ASC_VALUE = "NOT_MEDICAL_DEVICE"
 REQUIRED_AGE_RATING_FIELDS = {
@@ -61,7 +61,7 @@ REQUIRED_ATTESTATIONS = {
     "kids_category": False,
     "iphone_only_v1": True,
     "accessibility_criteria_reviewed": True,
-    "public_cloudkit_accountability_transport_enabled": False,
+    "public_cloudkit_accountability_transport_enabled": True,
 }
 ACCESSIBILITY_FIELDS = {
     "supports_audio_descriptions",
@@ -372,7 +372,10 @@ def validate_manifest(
         if privacy.get("tracking") not in (True, False):
             errors.append("privacy.tracking must be a boolean.")
         if privacy.get("data_collection") not in VALID_DATA_COLLECTION_VALUES:
-            errors.append("privacy.data_collection must be 'none' for this release.")
+            errors.append(
+                "privacy.data_collection must be one of "
+                f"{sorted(VALID_DATA_COLLECTION_VALUES)} for this release."
+            )
         public_transport = privacy.get("public_cloudkit_accountability_transport")
         if public_transport not in (True, False):
             errors.append(
@@ -381,6 +384,26 @@ def validate_manifest(
         elif public_transport is True and privacy.get("data_collection") == "none":
             errors.append(
                 "Public CloudKit accountability transport requires conservative App Privacy data-collection answers, not privacy.data_collection='none'."
+            )
+        collected_data_types = privacy.get("collected_data_types", [])
+        if privacy.get("data_collection") == "app_functionality":
+            if not isinstance(collected_data_types, list) or not all(
+                isinstance(item, str) and item.strip() for item in collected_data_types
+            ):
+                errors.append(
+                    "privacy.collected_data_types must list the App Privacy data types collected for app functionality."
+                )
+            if not str(privacy.get("collection_purpose", "")).strip():
+                errors.append(
+                    "privacy.collection_purpose is required when data is collected."
+                )
+            if not str(privacy.get("collection_notes", "")).strip():
+                errors.append(
+                    "privacy.collection_notes is required when data is collected."
+                )
+        elif collected_data_types:
+            errors.append(
+                "privacy.collected_data_types must be empty unless privacy.data_collection is 'app_functionality'."
             )
         if not str(privacy.get("notifications_usage_description", "")).strip():
             errors.append("privacy.notifications_usage_description is required.")
@@ -428,7 +451,7 @@ def validate_manifest(
         for field, expected in REQUIRED_ATTESTATIONS.items():
             if attestations.get(field) != expected:
                 errors.append(
-                    f"attestations.{field} must be {expected!r} for the first submission."
+                    f"attestations.{field} must be {expected!r} for this release."
                 )
 
     regulatory = manifest.get("regulatory")

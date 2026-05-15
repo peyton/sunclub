@@ -120,6 +120,9 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             "",
             f"- Tracking: {yes_no(privacy['tracking'])}",
             f"- Data collection: {privacy['data_collection']}",
+            "- Collected data types: "
+            + ", ".join(privacy.get("collected_data_types", [])),
+            f"- Collection purpose: {privacy.get('collection_purpose', 'App Functionality')}",
             (
                 "- Public CloudKit accountability transport: "
                 f"{yes_no(privacy['public_cloudkit_accountability_transport'])}"
@@ -127,7 +130,7 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             f"- Notification purpose: {privacy['notifications_usage_description']}",
             "- App Store Connect questionnaire gate: `SUNCLUB_APP_PRIVACY_COMPLETED=1`",
             "",
-            "Manual App Store Connect answer: data not collected for the default release build. Keep this answer only while public CloudKit accountability transport remains disabled.",
+            "Manual App Store Connect answer: disclose Name, User ID, Other User Content, and Other Usage Data as collected for App Functionality. Optional Activity sharing uses Apple's public CloudKit database for friend invite responses, friend display names and status snapshots, relationship tokens, and poke reminder messages/timestamps. Do not mark tracking, ads, or analytics.",
             "",
             "## Age Rating",
             "",

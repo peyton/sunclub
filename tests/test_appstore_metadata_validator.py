@@ -322,15 +322,12 @@ def test_strict_validation_requires_privacy_and_medical_gates() -> None:
 def test_public_cloudkit_transport_requires_conservative_privacy_answers() -> None:
     manifest = current_manifest()
     manifest["privacy"]["public_cloudkit_accountability_transport"] = True
-    manifest["attestations"]["public_cloudkit_accountability_transport_enabled"] = True
+    manifest["privacy"]["data_collection"] = "none"
+    manifest["privacy"]["collected_data_types"] = []
 
     errors, _warnings = validator.validate_manifest(manifest, allow_draft=False)
 
     assert (
         "Public CloudKit accountability transport requires conservative App Privacy data-collection answers, not privacy.data_collection='none'."
-        in errors
-    )
-    assert (
-        "attestations.public_cloudkit_accountability_transport_enabled must be False for the first submission."
         in errors
     )
