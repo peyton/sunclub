@@ -408,6 +408,8 @@ private struct WeeklyRecentNoteRow: View {
 }
 
 private struct WeeklyMetricPill: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let value: String
     let label: String
     let accessibilityIdentifier: String
@@ -425,10 +427,12 @@ private struct WeeklyMetricPill: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
-        )
+        .background {
+            if colorScheme == .light {
+                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                    .fill(AppPalette.cardFill.opacity(0.72))
+            }
+        }
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 }
