@@ -12,7 +12,6 @@ struct HistoryView: View {
     @State private var lastDeletedBatchID: UUID?
     @State private var lastDeletedDay: Date?
     @State private var isShowingMonthlyInsights = true
-    @State private var selectedRange: HistoryRange = .month
 
     let showsBackButton: Bool
 
@@ -34,8 +33,6 @@ struct HistoryView: View {
                 SunLightHeader(title: "History", showsBack: showsBackButton, onBack: {
                     router.goBack()
                 })
-
-                historyRangePicker
 
                 monthNavigator
 
@@ -85,16 +82,6 @@ struct HistoryView: View {
                 existingRecord: appState.record(for: presentation.day)
             )
         }
-    }
-
-    private var historyRangePicker: some View {
-        Picker("History range", selection: $selectedRange) {
-            ForEach(HistoryRange.allCases) { range in
-                Text(range.title).tag(range)
-            }
-        }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("history.rangePicker")
     }
 
     private func historyOverviewCard(presentation: HistoryPresentation) -> some View {
@@ -1279,25 +1266,6 @@ private struct HistoryMonthStats {
     let bestStreak: Int
 
     var totalDays: Int { appliedCount + openCount }
-}
-
-private enum HistoryRange: String, CaseIterable, Identifiable {
-    case day
-    case week
-    case month
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .day:
-            return "Day"
-        case .week:
-            return "Week"
-        case .month:
-            return "Month"
-        }
-    }
 }
 
 private struct HistoryMonthNavigationButtonStyle: ButtonStyle {
