@@ -161,10 +161,11 @@ GitHub run cross-check:
   keychain, and use that certificate ID for every missing App Store profile.
   The release workflow carries only App Store Connect API credentials, not a
   reusable `.p12` signing secret.
-- Keep the app-owned left-edge back gesture in `RootView` when hiding the
-  native navigation bar. Do not rely only on UIKit
-  `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed to
-  trigger it even though the visible `screen.back` button still worked.
+- Keep native `interactivePopGestureRecognizer` enabled when hiding the
+  navigation bar so real devices get the standard interactive back drag. Keep
+  the app-owned `RootView` left-edge fallback active in UI tests because CI
+  simulator runs on Xcode 26 failed to trigger UIKit's gesture even though the
+  visible `screen.back` button still worked.
 - Before trusting a TestFlight release, inspect the downloaded workflow artifact
   entitlements from `.build/release-diagnostics`, not just the provisioning
   profile or checked-in entitlement files.

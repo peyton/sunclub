@@ -2545,6 +2545,13 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(AppRoute.uvForecast.rawValue, "uvForecast")
         XCTAssertEqual(AppRoute.privacy.rawValue, "privacy")
         XCTAssertEqual(AppRoute.support.rawValue, "support")
+        XCTAssertEqual(AppRoute.settingsSunscreenReminders.rawValue, "settingsSunscreenReminders")
+        XCTAssertEqual(AppRoute.settingsReapplyReminder.rawValue, "settingsReapplyReminder")
+        XCTAssertEqual(AppRoute.settingsNotifications.rawValue, "settingsNotifications")
+        XCTAssertEqual(AppRoute.settingsHealthWeather.rawValue, "settingsHealthWeather")
+        XCTAssertEqual(AppRoute.settingsData.rawValue, "settingsData")
+        XCTAssertEqual(AppRoute.settingsShortcuts.rawValue, "settingsShortcuts")
+        XCTAssertEqual(AppRoute.settingsHelp.rawValue, "settingsHelp")
     }
 
     @MainActor
@@ -2563,6 +2570,24 @@ final class SunclubTests: XCTestCase {
         router.open(.settings)
         XCTAssertEqual(router.selectedTab, .settings)
         XCTAssertTrue(router.path.isEmpty)
+    }
+
+    @MainActor
+    func testAppRouterKeepsSettingsDetailRoutesInsideSettingsTab() {
+        let router = AppRouter()
+
+        router.open(.settings)
+        router.push(.settingsSunscreenReminders)
+
+        XCTAssertEqual(router.selectedTab, .settings)
+        XCTAssertEqual(router.path, [.settingsSunscreenReminders])
+        XCTAssertTrue(router.canGoBack)
+
+        router.goBack()
+
+        XCTAssertEqual(router.selectedTab, .settings)
+        XCTAssertTrue(router.path.isEmpty)
+        XCTAssertFalse(router.canGoBack)
     }
 
     @MainActor
