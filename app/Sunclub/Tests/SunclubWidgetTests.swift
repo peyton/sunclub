@@ -561,6 +561,84 @@ final class SunclubWidgetTests: XCTestCase {
         )
     }
 
+    func testLiveActivityContentStateCarriesReapplyDatesAndUVPillCopy() throws {
+        let calendar = fixedCalendar()
+        let verifiedAt = try fixedDate(calendar: calendar, hour: 9)
+        let reappliedAt = try fixedDate(calendar: calendar, hour: 11, minute: 15)
+        let deadline = try fixedDate(calendar: calendar, hour: 13, minute: 15)
+        let record = DailyRecord(
+            startOfDay: try fixedDate(calendar: calendar, hour: 0),
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: 50,
+            lastReappliedAt: reappliedAt
+        )
+        let payload = SunclubLiveActivityUVPayload(currentUVIndex: 6, peakUVIndex: 8, level: .high)
+
+        let state = SunclubLiveActivityCoordinator.contentState(
+            record: record,
+            uvPayload: payload,
+            reapplyStartDate: reappliedAt,
+            reapplyDeadline: deadline,
+            now: try fixedDate(calendar: calendar, hour: 12)
+        )
+
+        XCTAssertEqual(state.reapplyStartDate, reappliedAt)
+        XCTAssertEqual(state.reapplyDeadline, deadline)
+        XCTAssertEqual(state.reapplyInterval?.lowerBound, reappliedAt)
+        XCTAssertEqual(state.reapplyInterval?.upperBound, deadline)
+        XCTAssertEqual(state.uvPillLabel, "UV 6 High")
+        XCTAssertEqual(state.appliedLabel, "Applied \(state.lastAppliedLabel)")
+        XCTAssertEqual(state.statusTitle(now: try fixedDate(calendar: calendar, hour: 12)), "Reapply in")
+        XCTAssertTrue(try XCTUnwrap(state.nextReapplyLabel(now: try fixedDate(calendar: calendar, hour: 12))).hasPrefix("Next "))
+    }
+
+    func testLiveActivityDueStateOmitsNextReapplyLabel() throws {
+        let calendar = fixedCalendar()
+        let verifiedAt = try fixedDate(calendar: calendar, hour: 9)
+        let deadline = try fixedDate(calendar: calendar, hour: 11)
+        let record = DailyRecord(
+            startOfDay: try fixedDate(calendar: calendar, hour: 0),
+            verifiedAt: verifiedAt,
+            method: .manual,
+            spfLevel: 50
+        )
+        let payload = SunclubLiveActivityUVPayload(currentUVIndex: 7, peakUVIndex: 8, level: .high)
+
+        let state = SunclubLiveActivityCoordinator.contentState(
+            record: record,
+            uvPayload: payload,
+            reapplyStartDate: verifiedAt,
+            reapplyDeadline: deadline,
+            now: deadline
+        )
+
+        XCTAssertEqual(state.countdownLabel, "due")
+        XCTAssertTrue(state.isReapplyDue(now: deadline))
+        XCTAssertEqual(state.statusTitle(now: deadline), "Reapply due")
+        XCTAssertEqual(state.fallbackTimerText(now: deadline), "Due")
+        XCTAssertNil(state.nextReapplyLabel(now: deadline))
+        XCTAssertEqual(state.accessibilitySummary(now: deadline), "Reapply due. UV 7 High. \(state.appliedLabel).")
+    }
+
+    func testLiveActivityFallsBackToCountdownWhenDatesAreMissing() {
+        let state = SunclubLiveActivityAttributes.ContentState(
+            currentUVIndex: 6,
+            peakUVIndex: 6,
+            countdownLabel: "in 1h 29m",
+            lastAppliedLabel: "11:59 AM",
+            lastLogDetail: "SPF 50",
+            reapplyStartDate: nil,
+            reapplyDeadline: nil
+        )
+
+        XCTAssertNil(state.reapplyInterval)
+        XCTAssertFalse(state.isReapplyDue())
+        XCTAssertEqual(state.statusTitle(), "Reapply in")
+        XCTAssertEqual(state.fallbackTimerText(), "1h 29m")
+        XCTAssertEqual(state.uvPillLabel, "UV 6 High")
+    }
+
     func testLiveActivityLastLogDetailUsesSPFWithoutStreak() throws {
         let calendar = fixedCalendar()
         let record = DailyRecord(
