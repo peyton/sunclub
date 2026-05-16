@@ -43,13 +43,12 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             return
         }
 
-        let lastAppliedLabel = record.verifiedAt.formatted(date: .omitted, time: .shortened)
-        let contentState = SunclubLiveActivityAttributes.ContentState(
-            currentUVIndex: uvPayload.currentUVIndex,
-            peakUVIndex: uvPayload.peakUVIndex,
-            countdownLabel: Self.reapplyCountdownLabel(deadline: reapplyDeadline, now: now),
-            lastAppliedLabel: lastAppliedLabel,
-            lastLogDetail: Self.lastLogDetail(for: record)
+        let contentState = Self.contentState(
+            record: record,
+            uvPayload: uvPayload,
+            reapplyStartDate: reapplyStartDate,
+            reapplyDeadline: reapplyDeadline,
+            now: now
         )
 
         let attributes = SunclubLiveActivityAttributes(headline: "Reapply timer")
@@ -117,6 +116,24 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
 
     static func lastLogDetail(for record: DailyRecord) -> String {
         record.spfLevel.map { "SPF \($0)" } ?? "Logged"
+    }
+
+    static func contentState(
+        record: DailyRecord,
+        uvPayload: SunclubLiveActivityUVPayload,
+        reapplyStartDate: Date,
+        reapplyDeadline: Date,
+        now: Date
+    ) -> SunclubLiveActivityAttributes.ContentState {
+        SunclubLiveActivityAttributes.ContentState(
+            currentUVIndex: uvPayload.currentUVIndex,
+            peakUVIndex: uvPayload.peakUVIndex,
+            countdownLabel: Self.reapplyCountdownLabel(deadline: reapplyDeadline, now: now),
+            lastAppliedLabel: record.verifiedAt.formatted(date: .omitted, time: .shortened),
+            lastLogDetail: Self.lastLogDetail(for: record),
+            reapplyStartDate: reapplyStartDate,
+            reapplyDeadline: reapplyDeadline
+        )
     }
 
     private static func compactSurfaceReading(
