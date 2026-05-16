@@ -1226,6 +1226,7 @@ button:focus-visible {
 .privacy-points a {
   color: var(--leaf-strong);
   font-weight: 730;
+  overflow-wrap: anywhere;
 }
 
 .support-grid {
@@ -1269,6 +1270,7 @@ button:focus-visible {
   gap: 12px 16px;
   align-items: start;
   color: var(--ink);
+  font-weight: 400;
   text-decoration: none;
 }
 
@@ -1284,11 +1286,13 @@ button:focus-visible {
 
 .docs-index-card h2 {
   margin: 0;
+  font-weight: 780;
 }
 
 .docs-index-card p {
   grid-column: 2 / 4;
   margin: 0;
+  font-weight: 520;
 }
 
 .card-chevron {
@@ -2280,7 +2284,11 @@ button:focus-visible {
 
 @media (max-width: 620px) {
   [id] {
-    scroll-margin-top: 132px;
+    scroll-margin-top: 28px;
+  }
+
+  .site-header {
+    position: static;
   }
 
   .nav {
@@ -2289,8 +2297,19 @@ button:focus-visible {
     min-height: 0;
     width: auto;
     margin-inline: 16px;
-    padding: 14px 0;
-    gap: 10px;
+    padding: 12px 0 10px;
+    gap: 8px;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brand,
+  .home-page .brand,
+  .doc-page .brand {
+    font-size: 23px;
   }
 
   .nav-links {
@@ -2456,11 +2475,42 @@ button:focus-visible {
 
 @media (max-width: 620px) {
   .doc-shell {
-    padding: 36px 0 clamp(96px, 18vw, 148px);
+    padding: 28px 0 clamp(88px, 16vw, 132px);
+  }
+
+  .doc-sidebar {
+    padding-bottom: 14px;
+  }
+
+  .doc-sidebar nav {
+    gap: 7px;
+  }
+
+  .doc-sidebar nav a {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 
   .doc-hero-card h1 {
-    font-size: 36px;
+    font-size: 34px;
+    text-wrap: balance;
+  }
+
+  .doc-hero-card {
+    border-radius: 20px;
+    padding: 24px;
+  }
+
+  .doc-hero-card .lead {
+    font-size: 16px;
+    text-wrap: pretty;
+  }
+
+  .doc-phone-preview {
+    width: min(62vw, 176px);
+    max-height: 300px;
+    border-width: 5px;
+    border-radius: 24px;
   }
 
   .doc-steps,
@@ -2497,6 +2547,8 @@ button:focus-visible {
   .doc-step {
     grid-template-columns: 52px minmax(0, 1fr);
     gap: 14px;
+    border-radius: 14px;
+    padding: 16px;
   }
 
   .doc-step-icon {
@@ -2507,6 +2559,74 @@ button:focus-visible {
   .doc-step h2 {
     display: block;
     margin: 8px 0 0;
+  }
+
+  .doc-card-grid article,
+  .uv-scale-grid article,
+  .support-item {
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  .support-grid {
+    gap: 16px;
+  }
+
+  .support-action-panel {
+    border-radius: 16px;
+    padding: 14px;
+  }
+
+  .support-action-row {
+    grid-template-columns: 42px minmax(0, 1fr) 16px;
+    gap: 12px;
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .support-action-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .support-prep-card {
+    margin-top: 34px;
+    padding-left: 18px;
+  }
+
+  .docs-index-card {
+    grid-template-columns: 30px minmax(0, 1fr) 18px;
+    gap: 6px 12px;
+    min-height: 0;
+    align-items: start;
+  }
+
+  .docs-index-card .resource-icon {
+    grid-column: 1;
+    grid-row: 1;
+    margin-top: 1px;
+  }
+
+  .docs-index-card .card-chevron {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    font-size: 22px;
+  }
+
+  .docs-index-card h2 {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 22px;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  .docs-index-card p {
+    grid-column: 2 / 4;
+    font-size: 15px;
+    line-height: 1.42;
+    text-wrap: pretty;
   }
 }
 
@@ -2576,35 +2696,38 @@ button:focus-visible {
 
   .home-page .nav {
     align-items: flex-start;
-    padding: 14px 0;
-    gap: 12px;
+    padding: 12px 0 10px;
+    gap: 8px;
   }
 
   .home-page .nav-links {
-    gap: 8px 18px;
+    gap: 6px 16px;
     order: 3;
   }
 
   .nav-store-badge {
     position: absolute;
     right: 0;
-    top: 12px;
-    width: 106px;
-    min-height: 36px;
+    top: 10px;
+    width: 104px;
+    min-height: 35px;
   }
 
   .landing-hero h1 {
-    font-size: 36px;
+    font-size: 34px;
     line-height: 1.1;
+    text-wrap: balance;
   }
 
   .landing-hero .hero-copy {
-    font-size: 17px;
+    font-size: 16px;
+    text-wrap: pretty;
   }
 
   .hero-pill {
     max-width: 100%;
-    font-size: 14px;
+    padding: 7px 13px;
+    font-size: 13px;
   }
 
   .hero-actions {
@@ -2612,7 +2735,7 @@ button:focus-visible {
   }
 
   .store-callout {
-    width: 170px;
+    width: 164px;
   }
 
   .compatibility {
@@ -2620,7 +2743,7 @@ button:focus-visible {
   }
 
   .landing-hero {
-    min-height: 740px;
+    min-height: 640px;
   }
 
   .landing-hero::before {
@@ -2645,40 +2768,57 @@ button:focus-visible {
   }
 
   .hero-scene {
-    min-height: 740px;
+    min-height: 640px;
     align-items: flex-start;
   }
 
   .landing-hero .hero-copy-block {
-    padding: 58px 0 0;
+    padding: 46px 0 0;
   }
 
   .feature-showcase {
     margin-top: -10px;
-    padding: 42px 0 48px;
+    padding: 38px 0 44px;
   }
 
   .feature-showcase h2,
   .resources-section h2 {
-    font-size: 26px;
+    font-size: 24px;
+    text-wrap: balance;
   }
 
   .feature-columns,
   .resource-cards {
     grid-template-columns: 1fr;
-    gap: 24px;
-    margin-top: 32px;
+    gap: 28px;
+    margin-top: 28px;
   }
 
   .feature-column {
     width: 100%;
-    max-width: 360px;
+    max-width: 348px;
     margin: 0 auto;
   }
 
   .feature-column h3,
   .feature-column p {
     min-height: 0;
+  }
+
+  .feature-column p {
+    font-size: 13px;
+    text-wrap: pretty;
+  }
+
+  .feature-visual {
+    width: min(100%, 312px);
+    margin-right: auto;
+    margin-left: auto;
+    border-radius: 16px;
+  }
+
+  .feature-visual img {
+    aspect-ratio: 2 / 3;
   }
 
   .soft-panel {
@@ -2711,6 +2851,30 @@ button:focus-visible {
 
   .home-footer {
     gap: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav,
+  .home-page .nav {
+    margin-inline: 14px;
+  }
+
+  .brand,
+  .home-page .brand,
+  .doc-page .brand {
+    font-size: 22px;
+  }
+
+  .nav-links,
+  .home-page .nav-links {
+    gap: 6px 12px;
+    font-size: 14px;
+  }
+
+  .nav-store-badge {
+    width: 98px;
+    min-height: 33px;
   }
 }
 
