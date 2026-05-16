@@ -283,11 +283,12 @@ struct SunManualLogFields: View {
                     VStack(spacing: 8) {
                         ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
                             areaButton(area)
-                                .frame(width: 124)
                         }
                     }
+                    .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("\(accessibilityPrefix).areas")
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 12) {
                     SunCoveredAreaIllustration()
