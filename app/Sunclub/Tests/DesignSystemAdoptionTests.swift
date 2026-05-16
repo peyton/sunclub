@@ -97,6 +97,24 @@ final class DesignSystemAdoptionTests: XCTestCase {
         )
     }
 
+    func testWeeklySummaryMetricPillsAvoidDarkModeCardFill() throws {
+        let content = try source("app/Sunclub/Sources/Views/WeeklyReportView.swift")
+        guard let start = content.range(of: "private struct WeeklyMetricPill: View {"),
+              let end = content.range(of: "#Preview", range: start.upperBound..<content.endIndex) else {
+            return XCTFail("WeeklyReportView.swift should keep WeeklyMetricPill as a distinct view.")
+        }
+
+        let metricPill = content[start.lowerBound..<end.lowerBound]
+        XCTAssertTrue(
+            metricPill.contains("@Environment(\\.colorScheme)"),
+            "Weekly metric pills should inspect the color scheme before drawing card backgrounds."
+        )
+        XCTAssertTrue(
+            metricPill.contains("if colorScheme == .light"),
+            "Weekly metric pills should avoid the light gray card fill on the dark Insights surface."
+        )
+    }
+
     func testScreenCodeRoutesVisualStylingThroughDesignSystem() throws {
         let root = try repoRoot
         let checkedRoots = [
