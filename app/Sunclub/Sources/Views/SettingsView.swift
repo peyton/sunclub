@@ -25,13 +25,14 @@ struct SettingsView: View {
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
     @State private var automationFeedback = ""
-    @State private var selectedSettingsDetail: SettingsDetail?
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
     let showsBackButton: Bool
+    let detail: SettingsDetail?
 
-    init(showsBackButton: Bool = true) {
+    init(showsBackButton: Bool = true, detail: SettingsDetail? = nil) {
         self.showsBackButton = showsBackButton
+        self.detail = detail
     }
 
     var body: some View {
@@ -44,8 +45,8 @@ struct SettingsView: View {
                     handleSettingsBack()
                 })
 
-                if let selectedSettingsDetail {
-                    settingsDetailContent(for: selectedSettingsDetail)
+                if let detail {
+                    settingsDetailContent(for: detail)
                 } else {
                     settingsHome
                 }
@@ -102,19 +103,15 @@ struct SettingsView: View {
     }
 
     private var settingsTitle: String {
-        selectedSettingsDetail?.title ?? "Settings"
+        detail?.title ?? "Settings"
     }
 
     private var showsSettingsBackButton: Bool {
-        showsBackButton || selectedSettingsDetail != nil
+        showsBackButton || detail != nil
     }
 
     private func handleSettingsBack() {
-        if selectedSettingsDetail != nil {
-            selectedSettingsDetail = nil
-        } else {
-            router.goBack()
-        }
+        router.goBack()
     }
 
     private var settingsHome: some View {
@@ -129,7 +126,7 @@ struct SettingsView: View {
                     tint: AppPalette.sun,
                     accessibilityIdentifier: "settings.section.reminders"
                 ) {
-                    selectedSettingsDetail = .sunscreenReminders
+                    router.push(.settingsSunscreenReminders)
                 }
 
                 settingsHomeRow(
@@ -139,7 +136,7 @@ struct SettingsView: View {
                     tint: AppPalette.sun,
                     accessibilityIdentifier: "settings.section.progress"
                 ) {
-                    selectedSettingsDetail = .reapplyReminder
+                    router.push(.settingsReapplyReminder)
                 }
 
                 settingsHomeRow(
@@ -149,7 +146,7 @@ struct SettingsView: View {
                     tint: AppPalette.pool,
                     accessibilityIdentifier: "settings.reference.notifications"
                 ) {
-                    selectedSettingsDetail = .notifications
+                    router.push(.settingsNotifications)
                 }
             }
 
@@ -161,7 +158,7 @@ struct SettingsView: View {
                     tint: AppPalette.pool,
                     accessibilityIdentifier: "settings.section.advanced"
                 ) {
-                    selectedSettingsDetail = .healthWeather
+                    router.push(.settingsHealthWeather)
                 }
 
                 settingsHomeRow(
@@ -171,7 +168,7 @@ struct SettingsView: View {
                     tint: AppPalette.aloe,
                     accessibilityIdentifier: "settings.section.data"
                 ) {
-                    selectedSettingsDetail = .data
+                    router.push(.settingsData)
                 }
 
                 settingsHomeRow(
@@ -181,7 +178,7 @@ struct SettingsView: View {
                     tint: AppPalette.pool,
                     accessibilityIdentifier: "settings.section.automation"
                 ) {
-                    selectedSettingsDetail = .shortcuts
+                    router.push(.settingsShortcuts)
                 }
             }
 
@@ -213,7 +210,7 @@ struct SettingsView: View {
                     tint: AppPalette.pool,
                     accessibilityIdentifier: "settings.section.help"
                 ) {
-                    selectedSettingsDetail = .help
+                    router.push(.settingsHelp)
                 }
 
                 settingsHomeRow(
@@ -1407,7 +1404,7 @@ struct SettingsView: View {
     }
 }
 
-private enum SettingsDetail: Hashable {
+enum SettingsDetail: Hashable {
     case sunscreenReminders
     case reapplyReminder
     case notifications

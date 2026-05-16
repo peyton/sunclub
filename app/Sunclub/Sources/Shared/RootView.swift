@@ -15,8 +15,10 @@ struct RootView: View {
             }
         }
         .overlay(alignment: .leading) {
-            EdgeBackSwipeOverlay(canGoBack: router.canGoBack) {
-                router.goBack()
+            if RuntimeEnvironment.isUITesting {
+                EdgeBackSwipeOverlay(canGoBack: router.canGoBack) {
+                    router.goBack()
+                }
             }
         }
         .interactivePopGestureEnabled()
@@ -35,9 +37,6 @@ struct RootView: View {
     private var tabbedRoot: some View {
         NavigationStack(path: pathBinding(for: router.selectedTab)) {
             tabRoot(for: router.selectedTab)
-                .transaction { transaction in
-                    transaction.animation = nil
-                }
                 .navigationDestination(for: AppRoute.self) { route in
                     destination(for: route)
                 }
@@ -100,6 +99,20 @@ struct RootView: View {
             WeeklyReportView()
         case .settings:
             SettingsView()
+        case .settingsSunscreenReminders:
+            SettingsView(detail: .sunscreenReminders)
+        case .settingsReapplyReminder:
+            SettingsView(detail: .reapplyReminder)
+        case .settingsNotifications:
+            SettingsView(detail: .notifications)
+        case .settingsHealthWeather:
+            SettingsView(detail: .healthWeather)
+        case .settingsData:
+            SettingsView(detail: .data)
+        case .settingsShortcuts:
+            SettingsView(detail: .shortcuts)
+        case .settingsHelp:
+            SettingsView(detail: .help)
         case .automation:
             AutomationView()
         case .uvForecast:

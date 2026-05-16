@@ -10,6 +10,13 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case reapplyCheckIn
     case weeklySummary
     case settings
+    case settingsSunscreenReminders
+    case settingsReapplyReminder
+    case settingsNotifications
+    case settingsHealthWeather
+    case settingsData
+    case settingsShortcuts
+    case settingsHelp
     case automation
     case uvForecast
     case privacy
@@ -66,7 +73,20 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
             return .history
         case .weeklySummary, .achievements, .skinHealthReport, .yearInReview:
             return .insights
-        case .settings, .automation, .privacy, .support, .recovery, .friends, .accountabilityOnboarding:
+        case .settings,
+             .settingsSunscreenReminders,
+             .settingsReapplyReminder,
+             .settingsNotifications,
+             .settingsHealthWeather,
+             .settingsData,
+             .settingsShortcuts,
+             .settingsHelp,
+             .automation,
+             .privacy,
+             .support,
+             .recovery,
+             .friends,
+             .accountabilityOnboarding:
             return .settings
         default:
             return .today

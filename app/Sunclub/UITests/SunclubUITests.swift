@@ -250,6 +250,23 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsDetailCanPopWithLeftEdgeSwipe() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
+        app.buttons["settings.section.reminders"].tap()
+        XCTAssertTrue(app.staticTexts["Sunscreen & Reminders"].waitForExistence(timeout: 5))
+
+        dragFromLeftEdge(in: app)
+
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["screen.back"].exists)
+    }
+
+    @MainActor
     func testBackupHarnessExportsAndImportsHistoryAndSettings() throws {
         let backupURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -1616,25 +1633,32 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    private func dragFromLeftEdge(in app: XCUIApplication) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
+        let finish = app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: finish)
+    }
+
+    @MainActor
     private func tapSettingsSectionControl(
         _ sectionControl: XCUIElement,
         in app: XCUIApplication,
         attempts: Int
     ) -> Bool {
-        if sectionControl.waitForExistence(timeout: 2) {
+        if sectionControl.waitForExistence(timeout: 2), sectionControl.isHittable {
             return true
         }
 
         for _ in 0..<attempts {
             app.swipeUp()
-            if sectionControl.waitForExistence(timeout: 1) {
+            if sectionControl.waitForExistence(timeout: 1), sectionControl.isHittable {
                 return true
             }
         }
 
         for _ in 0..<attempts {
             app.swipeDown()
-            if sectionControl.waitForExistence(timeout: 1) {
+            if sectionControl.waitForExistence(timeout: 1), sectionControl.isHittable {
                 return true
             }
         }
