@@ -163,6 +163,7 @@ def main() -> int:
             if complete_onboarding:
                 arguments.append("UITEST_COMPLETE_ONBOARDING")
             arguments.extend(launch_arguments)
+            settle_seconds = float(screen.get("settle_seconds", 1.5))
 
             run(
                 ["xcrun", "simctl", "terminate", simulator_udid, bundle_id], check=False
@@ -170,7 +171,7 @@ def main() -> int:
             run_logged(
                 ["xcrun", "simctl", "launch", simulator_udid, bundle_id, *arguments]
             )
-            time.sleep(1.5)
+            time.sleep(settle_seconds)
 
             output_path = raw_output_dir / f"{screen_id}.png"
             if output_path.exists():
@@ -203,7 +204,7 @@ def main() -> int:
         cwd=REPO_ROOT,
     )
 
-    print(f"\nSaved {len(screens)} framed screenshots to {output_dir}")
+    print(f"\nSaved {len(screens)} marketing screenshots to {output_dir}")
     print(f"Raw simulator screenshots are in {raw_output_dir}")
     return 0
 

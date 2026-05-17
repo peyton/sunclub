@@ -254,6 +254,7 @@ def test_validator_rejects_submission_automation_shape_errors() -> None:
     manifest = current_manifest()
     manifest["privacy"]["app_store_connect_completed"] = "yes"
     manifest["assets"]["screenshots"]["display_type"] = "APP_IPHONE_65"
+    manifest["assets"]["screenshots"]["screens"][0]["settle_seconds"] = -1
     manifest["submission"]["release_type"] = "AUTO"
     manifest["accessibility"]["iphone"]["ready"] = True
     del manifest["accessibility"]["iphone"]["supports_voiceover"]
@@ -268,6 +269,10 @@ def test_validator_rejects_submission_automation_shape_errors() -> None:
     assert "assets.screenshots.display_type must be one of ['APP_IPHONE_67']." in errors
     assert (
         "submission.release_type must be one of ['AFTER_APPROVAL', 'MANUAL', 'SCHEDULED']."
+        in errors
+    )
+    assert (
+        "assets.screenshots.screens[0].settle_seconds must be a number between 0 and 15."
         in errors
     )
     assert "accessibility.iphone.supports_larger_text must be a boolean." in errors

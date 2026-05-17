@@ -37,11 +37,16 @@ def test_appstore_screenshot_capture_composes_marketing_frames() -> None:
         REPO_ROOT / "scripts" / "appstore" / "capture_screenshots.py"
     ).read_text()
     compose_script = REPO_ROOT / "scripts" / "appstore" / "compose_screenshots.swift"
+    compose_source = compose_script.read_text()
 
     assert compose_script.is_file()
     assert 'raw_output_dir = output_dir / "raw"' in capture_script
     assert "compose_screenshots.swift" in capture_script
-    assert "Saved {len(screens)} framed screenshots" in capture_script
+    assert 'settle_seconds = float(screen.get("settle_seconds", 1.5))' in capture_script
+    assert "Saved {len(screens)} marketing screenshots" in capture_script
+    assert "drawCampaignPage" in compose_source
+    assert "drawSceneArt" in compose_source
+    assert "Captured from the current build" in compose_source
 
 
 def test_tooling_config_matches_repo_contract() -> None:

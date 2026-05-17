@@ -142,6 +142,7 @@
           "complete_onboarding": true,
           "headline": "Log SPF in seconds",
           "caption": "Record SPF, timing, covered areas, and notes without an account.",
+          "settle_seconds": 5,
           "launch_arguments": ["UITEST_SEED_HISTORY=manualSuggestions"]
         },
         {

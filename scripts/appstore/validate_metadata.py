@@ -566,6 +566,16 @@ def validate_manifest(
                         errors.append(
                             f"assets.screenshots.screens[{index}].caption must be {SCREENSHOT_CAPTION_LIMIT} characters or fewer."
                         )
+                    settle_seconds = screen.get("settle_seconds")
+                    if settle_seconds is not None and (
+                        isinstance(settle_seconds, bool)
+                        or not isinstance(settle_seconds, (int, float))
+                        or settle_seconds < 0
+                        or settle_seconds > 15
+                    ):
+                        errors.append(
+                            f"assets.screenshots.screens[{index}].settle_seconds must be a number between 0 and 15."
+                        )
 
     accessibility = manifest.get("accessibility")
     if accessibility is not None:
