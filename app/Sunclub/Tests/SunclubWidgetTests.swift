@@ -135,10 +135,10 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.state, .open)
         XCTAssertEqual(presentation.iconName, "sun.max.fill")
-        XCTAssertEqual(presentation.title, "Log sunscreen")
-        XCTAssertEqual(presentation.subtitle, "Not logged yet")
+        XCTAssertEqual(presentation.title, "Log today")
+        XCTAssertEqual(presentation.subtitle, "Ready")
         XCTAssertEqual(presentation.detail, "UV 7 High")
-        XCTAssertEqual(presentation.actionText, "Log")
+        XCTAssertEqual(presentation.actionText, "Log today")
         XCTAssertFalse(presentation.title.contains("Today"))
         XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
     }
@@ -163,10 +163,11 @@ final class SunclubWidgetTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(presentation.title, "Log sunscreen")
-        XCTAssertEqual(presentation.detail, "Usual SPF 50")
+        XCTAssertEqual(presentation.title, "Log today")
+        XCTAssertEqual(presentation.subtitle, "SPF 50 usual")
+        XCTAssertEqual(presentation.detail, "SPF 50 · UV 7 High")
         XCTAssertEqual(presentation.metrics.map(\.title), ["Week", "Month", "UV"])
-        XCTAssertEqual(presentation.metrics.map(\.value), ["3/7", "20%", "9 Very High"])
+        XCTAssertEqual(presentation.metrics.map(\.value), ["3/7", "20%", "UV 9"])
     }
 
     func testLogTodayLargeLoggedPresentationShowsUpdateStateAndReapply() throws {
@@ -509,11 +510,11 @@ final class SunclubWidgetTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(presentation.title, "July sunscreen history")
-        XCTAssertEqual(presentation.compactTitle, "July history")
-        XCTAssertEqual(presentation.weekSummary, "4/7 this week")
-        XCTAssertEqual(presentation.streakSummary, "4 recent")
-        XCTAssertEqual(presentation.monthSummary, "33% month")
+        XCTAssertEqual(presentation.title, "July")
+        XCTAssertEqual(presentation.compactTitle, "July")
+        XCTAssertEqual(presentation.weekSummary, "4/7")
+        XCTAssertEqual(presentation.streakSummary, "4d")
+        XCTAssertEqual(presentation.monthSummary, "33%")
     }
 
     func testSunclubDeepLinkParsesWidgetRoutes() throws {
