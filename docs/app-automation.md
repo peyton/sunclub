@@ -10,7 +10,7 @@
 
 ## Settings Knobs
 
-- `shortcutWritesEnabled`: blocks App Intent writes when off.
+- `shortcutWritesEnabled`: blocks user-run Shortcut/App Intent writes when off. App-owned widget and Control Center buttons use the widget invocation path below.
 - `urlOpenActionsEnabled`: blocks URL routes that open app screens when off.
 - `urlWriteActionsEnabled`: blocks URL and x-callback writes when off.
 - `callbackResultDetailsEnabled`: removes action-specific callback fields when off.
@@ -30,6 +30,7 @@
 - `Set Sunclub Toggle`: updates travel timezone, daily UV briefing, extreme UV alert, iCloud sync, or Apple Health availability settings.
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Export Sunclub History`: returns a PDF `IntentFile`.
+- Widget and Control Center buttons use non-discoverable widget intents for Log Today and Reapply so they can complete in place without opening Sunclub or inheriting user Shortcut toggles.
 
 ## App Shortcuts
 
@@ -98,6 +99,7 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 ## Runtime Requirements
 
 - Outside-app writes go through `SunclubAutomationRuntime`.
+- Widget and Control Center writes use `SunclubAutomationInvocation.widget`; user Shortcut writes use `SunclubAutomationInvocation.shortcut`; URL and x-callback writes use `SunclubAutomationInvocation.url`.
 - Logging, save-log, and reapply write through `SunclubHistoryService`.
 - Outside-app writes must refresh projected state and widget snapshots.
 - Duplicate same-day logs update the existing day rather than adding another visible day.
@@ -111,6 +113,7 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Unit: malformed automation links fail before creating requests or mutating app state.
 - Unit: callback success and error payloads encode correctly.
 - Unit: settings toggles block URL and Shortcut writes while preserving open-only routing rules.
+- Unit: widget invocation logs in place even when URL and Shortcut writes are disabled.
 - Unit: automation logging uses revision history and refreshes widget snapshots.
 - Unit: old growth settings payloads decode with default automation preferences.
 - Unit: file-producing intents return expected file metadata.

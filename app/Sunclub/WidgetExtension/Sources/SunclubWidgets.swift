@@ -142,7 +142,7 @@ struct SunclubLogTodayControl: ControlWidget {
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: kind) {
-            ControlWidgetButton(action: LogSunscreenIntent()) {
+            ControlWidgetButton(action: LogTodayWidgetIntent()) {
                 Label("Today", systemImage: "sun.max.fill")
             }
         }
@@ -220,24 +220,55 @@ private struct SunclubLogTodayWidgetView: View {
 
     @ViewBuilder
     private func tapSurface<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        if entry.snapshot.isOnboardingComplete, !entry.snapshot.hasLoggedToday(now: entry.date) {
-            Button(intent: LogSunscreenIntent()) {
-                content()
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: entry.snapshot,
+            now: entry.date,
+            family: presentationFamily
+        )
+
+        switch presentation.tapAction {
+        case .logTodayInPlace:
+            Button(intent: LogTodayWidgetIntent()) {
+                fullSizeTapContent(content)
             }
             .buttonStyle(.plain)
-        } else {
-            Link(destination: loggedRouteURL) {
-                content()
+        case .logReapplyInPlace:
+            Button(intent: LogReapplyWidgetIntent()) {
+                fullSizeTapContent(content)
+            }
+            .buttonStyle(.plain)
+        case let .open(route):
+            Link(destination: route.url) {
+                fullSizeTapContent(content)
             }
         }
     }
 
-    private var loggedRouteURL: URL {
-        if entry.snapshot.isOnboardingComplete {
-            return SunclubWidgetRoute.updateToday.url
-        }
+    private func fullSizeTapContent<Content: View>(_ content: () -> Content) -> some View {
+        content()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+    }
 
-        return SunclubWidgetRoute.summary.url
+    private var presentationFamily: SunclubLogTodayWidgetFamily {
+        switch family {
+        case .systemSmall:
+            return .systemSmall
+        case .systemMedium:
+            return .systemMedium
+        case .systemLarge:
+            return .systemLarge
+        case .systemExtraLarge:
+            return .systemExtraLarge
+        case .accessoryInline:
+            return .accessoryInline
+        case .accessoryCircular:
+            return .accessoryCircular
+        case .accessoryRectangular:
+            return .accessoryRectangular
+        default:
+            return .accessoryRectangular
+        }
     }
 }
 

@@ -20,6 +20,9 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-04-12) Ran the unit, lint, and UI validation suites to completion.
 - [x] (2026-04-24) Reworked the widget suite around at-a-glance status and trend value: `Today`, `Streak`, `Stats`, `History`, and `Buddies` gallery names; simpler stat hierarchy; Today reapply-due copy; and a large History flagship calendar.
 - [x] (2026-04-24) Added `todaySPFLevel` to the app-group snapshot with legacy decode defaults and added presentation coverage for Today, History, current-week counts, and Buddies empty/active states.
+- [x] (2026-05-18) Split app-owned widget/control logging from user-run Shortcuts with non-discoverable widget intents and a `SunclubAutomationInvocation.widget` runtime path.
+- [x] (2026-05-18) Made the Today widget tap contract explicit in presentation state: open days log in place, reapply-due days log reapply in place, setup opens summary, and logged days open edit.
+- [x] (2026-05-18) Expanded Today widget button/link labels to the full rendered surface so iOS 26 Home Screen taps do not fall through to app navigation outside the visible content.
 - [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
@@ -52,6 +55,14 @@ Sunclub's product loop is stronger when the user can see daily state before open
   Rationale: Medium Today answers "Am I protected today?" with status, streak, this-week progress, and week dots. Large History leans into the product-specific calendar language with month title, grid, and week/streak/month summary row.
   Date/Author: 2026-04-24 / Codex
 
+- Decision: Treat widget and Control Center buttons as app-owned widget invocations instead of user-run Shortcut invocations.
+  Rationale: The user's widget should remain one tap even when they have disabled arbitrary Shortcut writes. The runtime still goes through `SunclubAutomationRuntime` and `SunclubHistoryService`, so revision history, default SPF/area reuse, widget snapshot refresh, and duplicate-day upsert behavior stay shared with the rest of automation.
+  Date/Author: 2026-05-18 / Codex
+
+- Decision: Put the widget tap behavior behind `SunclubLogTodayWidgetPresentation.tapAction`.
+  Rationale: A pure presentation decision is unit-testable and avoids drift between visible action copy and the actual SwiftUI `Button` or `Link` wrapper. It also keeps stale snapshot data out of default resolution; the widget uses the snapshot only to choose which action to run, and the action reads current storage at execution time.
+  Date/Author: 2026-05-18 / Codex
+
 ## Context And Orientation
 
 The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Project.swift). Shared widget snapshot and route logic lives in [app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift). App state sync lives in [app/Sunclub/Sources/Services/AppState.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Services/AppState.swift). Widget and control surfaces live in [app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift). App routes and deep-link parsing live in [app/Sunclub/Sources/Shared/SunclubDeepLink.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Shared/SunclubDeepLink.swift).
@@ -82,28 +93,39 @@ Out of scope:
 1. Keep widget-support types shared between the app and widget extension.
 2. Persist a compact snapshot mirror into shared `UserDefaults` and refresh it whenever onboarding or records change.
 3. Render Home Screen and Lock Screen layouts from that snapshot with low-text, state-forward designs.
-4. Use `LogSunscreenIntent` for in-place logging and route-based intents/deep links for navigation-only widget and control surfaces.
+4. Use non-discoverable widget intents for app-owned in-place logging and reapply, keep `LogSunscreenIntent` for user-run Shortcuts, and use route-based intents/deep links for navigation-only widget and control surfaces.
 5. Verify snapshot math, route parsing, app routing, and repo-level build/test/lint flows.
 
 ## Validation And Acceptance
 
 1. Every iPhone Home Screen and Lock Screen family listed above is exposed by the widget bundle.
 2. `Today` logs in place only when the current day is still open.
-3. When today is already logged, the Today widget shows useful completion/streak state and routes into the app instead of re-logging.
-4. Stats and History widgets derive current-day state from stored dates plus current time, not stale strings.
-5. Control Center exposes `Today`, `Stats`, and `History`.
-6. Unit tests cover snapshot rollover math and new widget/control deep-link routes.
-7. Repo validation commands pass from the repo root.
+3. When today is already logged and reapply is not due, the Today widget shows useful completion/streak state and routes into the app for editing instead of re-logging.
+4. When today is logged and reapply is due, the Today widget logs the reapply in place instead of opening the app.
+5. Stats and History widgets derive current-day state from stored dates plus current time, not stale strings.
+6. Control Center exposes `Today`, `Stats`, and `History`.
+7. Unit tests cover snapshot rollover math, widget tap actions, runtime invocation permissions, and widget/control deep-link routes.
+8. Repo validation commands pass from the repo root.
 
 ## Outcomes & Retrospective
 
 - Outcome: Shared snapshot-backed widget suite implemented with Home Screen, Lock Screen, and Control Center coverage.
 - Outcome: `Log Today` now uses an icon-led compact small layout, expands into metrics/history on larger Home Screen sizes, and keeps Lock Screen copy short enough for accessory families.
 - Outcome: The 2026-04-24 polish pass made the public suite `Today`, `Streak`, `Stats`, `History`, and `Buddies`; Today now has open/protected/reapply-due states; Stats/Streak are one-stat-forward; and large History is the flagship calendar surface.
-- Verification:
+- Outcome: The 2026-05-18 widget action fix made Home Screen Today taps complete in place through widget-only intents, preserved shared automation runtime writes, and widened the tappable surface for iOS 26 widget hosts.
+- Verification recorded during the 2026-04-24 polish pass:
   - `just generate` passed
   - `just test-unit` passed: 273 tests, 0 failures
   - `just lint` passed with non-serious existing SwiftLint warnings
   - `just ci-build` passed
+- Verification for the 2026-05-18 widget action fix:
+  - `git diff --check` passed
+  - `just test-python` passed: 196 tests
+  - `just generate` passed
+  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit` passed: 327 tests
+  - `just lint` passed with non-serious existing SwiftLint warnings
+  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build` passed; the repo wrapper treated the known post-success Tuist trace trap as success after `Build Succeeded`
+  - `MISE_CONFIG_DIR=.config/mise MISE_TRUSTED_CONFIG_PATHS=$PWD MISE_YES=1 mise --locked exec -- just --version` passed with `just 1.51.0`
+  - `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just run` built, installed, and launched the dev app on an iOS 26.5 simulator; the unsigned local dev install reached the expected iCloud entitlement guard, so real widget/app-group behavior remains a signed-build CI/TestFlight verification item
 - Follow-up:
   - Manually add each widget/control in Simulator and confirm the visible state and tap behavior match the supported-family matrix above. WidgetKit Simulator was attempted on 2026-04-24 against the freshly built extension, but it did not create an inspectable window in this desktop session.

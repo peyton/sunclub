@@ -140,6 +140,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.detail, "UV 7 High")
         XCTAssertEqual(presentation.actionText, "Log")
         XCTAssertFalse(presentation.title.contains("Today"))
+        XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
     }
 
     func testLogTodayMediumPresentationAddsHabitMetrics() throws {
@@ -195,6 +196,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.subtitle.replacingOccurrences(of: "\u{202F}", with: " "), "Logged 9:00 AM")
         XCTAssertEqual(presentation.actionText, "Edit")
         XCTAssertEqual(presentation.detail, "Reapply in 30m")
+        XCTAssertEqual(presentation.tapAction, .open(.updateToday))
     }
 
     func testLogTodayLoggedPresentationUsesTodaySPFOnly() throws {
@@ -249,6 +251,29 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.title, "Reapply due")
         XCTAssertEqual(presentation.actionText, "Reapply")
         XCTAssertEqual(presentation.detail, "Reapply due")
+        XCTAssertEqual(presentation.tapAction, .logReapplyInPlace)
+    }
+
+    func testLogTodaySetupPresentationOpensSummaryInsteadOfWriting() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [],
+            longestStreak: 0,
+            now: now,
+            calendar: calendar,
+            isOnboardingComplete: false
+        )
+
+        let presentation = SunclubLogTodayWidgetPresentation.make(
+            snapshot: snapshot,
+            now: now,
+            family: .systemSmall,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(presentation.state, .needsSetup)
+        XCTAssertEqual(presentation.tapAction, .open(.summary))
     }
 
     func testReapplyDeadlineIgnoresExpiredTimerFromYesterday() throws {

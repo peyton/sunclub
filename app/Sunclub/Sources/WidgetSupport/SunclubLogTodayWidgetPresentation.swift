@@ -17,6 +17,12 @@ enum SunclubLogTodayWidgetState: String, Sendable {
     case reapplyDue
 }
 
+enum SunclubLogTodayWidgetTapAction: Equatable, Sendable {
+    case logTodayInPlace
+    case logReapplyInPlace
+    case open(SunclubWidgetRoute)
+}
+
 struct SunclubLogTodayWidgetMetric: Equatable, Identifiable, Sendable {
     let id: String
     let title: String
@@ -46,6 +52,19 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
 
     var accessibilityLabel: String {
         "\(eyebrow), \(title), \(subtitle), \(detail)"
+    }
+
+    var tapAction: SunclubLogTodayWidgetTapAction {
+        switch state {
+        case .needsSetup:
+            return .open(.summary)
+        case .open:
+            return .logTodayInPlace
+        case .logged:
+            return .open(.updateToday)
+        case .reapplyDue:
+            return .logReapplyInPlace
+        }
     }
 
     static func make(
