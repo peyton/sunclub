@@ -5,6 +5,7 @@ import WidgetKit
 
 enum SunclubAutomationInvocation: Equatable {
     case shortcut
+    case widget
     case url
 }
 
@@ -607,6 +608,8 @@ enum SunclubAutomationRuntime {
             if action.isWriteAction, !preferences.shortcutWritesEnabled {
                 throw SunclubAutomationError.shortcutWritesDisabled
             }
+        case .widget:
+            break
         case .url:
             if action.isOpenAction, !preferences.urlOpenActionsEnabled {
                 throw SunclubAutomationError.urlOpenActionsDisabled

@@ -260,6 +260,38 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(result.route, "automation")
     }
 
+    func testWidgetInvocationLogsEvenWhenShortcutAndURLWritesAreDisabled() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))
+        let harness = try makeHarness(clock: { now })
+        harness.state.completeOnboarding()
+        harness.state.saveManualRecord(
+            for: yesterday,
+            spfLevel: 70,
+            notes: SunManualLogInput.notesWithCoveredAreas(
+                "Beach walk",
+                areas: Set(["Face", "Neck"])
+            )
+        )
+        var preferences = harness.state.automationPreferences
+        preferences.shortcutWritesEnabled = false
+        preferences.urlWriteActionsEnabled = false
+        harness.state.updateAutomationPreferences(preferences)
+
+        let result = try harness.state.performAutomationAction(
+            .logToday(spfLevel: nil, notes: nil),
+            invocation: .widget
+        )
+
+        XCTAssertEqual(result.message, "Logged sunscreen for today.")
+        let todayRecord = try XCTUnwrap(harness.state.record(for: now))
+        XCTAssertEqual(todayRecord.method, .quickLog)
+        XCTAssertEqual(todayRecord.spfLevel, 70)
+        XCTAssertEqual(SunManualLogInput.coveredAreas(in: todayRecord.notes), Set(["Face", "Neck"]))
+        XCTAssertEqual(harness.widgetStore.load().todaySPFLevel, 70)
+        XCTAssertTrue(harness.state.changeBatches.contains { $0.kind == .manualLog })
+    }
+
     func testLogSaveAndReapplyAutomationUseRevisionHistoryAndRefreshWidgets() throws {
         let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
         let harness = try makeHarness(clock: { now })

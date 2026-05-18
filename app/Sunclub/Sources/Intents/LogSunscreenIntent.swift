@@ -320,6 +320,35 @@ struct LogSunscreenIntent: AppIntent {
     }
 }
 
+struct LogTodayWidgetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log Today"
+    static let description = IntentDescription("Logs today's sunscreen check-in from a Sunclub widget.")
+    static let openAppWhenRun = false
+    static let isDiscoverable = false
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        _ = try SunclubAutomationRuntime.performStandalone(
+            .logToday(spfLevel: nil, notes: nil),
+            invocation: .widget
+        )
+        return .result()
+    }
+}
+
+struct LogReapplyWidgetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log Reapply"
+    static let description = IntentDescription("Logs a sunscreen reapply check-in from a Sunclub widget.")
+    static let openAppWhenRun = false
+    static let isDiscoverable = false
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        _ = try SunclubAutomationRuntime.performStandalone(.reapply, invocation: .widget)
+        return .result()
+    }
+}
+
 struct SaveSunscreenLogIntent: AppIntent {
     static let title: LocalizedStringResource = "Save Sunscreen Log"
     static let description = IntentDescription("Saves or updates a Sunclub sunscreen log for today or a selected date.")
