@@ -243,13 +243,10 @@ private struct SunclubLogTodayWidgetView: View {
     }
 
     private func shouldRouteWholeWidget(for presentation: SunclubLogTodayWidgetPresentation) -> Bool {
-        switch (family, presentation.tapAction) {
-        case (.accessoryInline, _),
-             (.accessoryCircular, _),
-             (.accessoryRectangular, _),
-             (_, .open(_)):
+        switch presentation.tapAction {
+        case .open:
             return true
-        default:
+        case .logTodayInPlace, .logReapplyInPlace:
             return false
         }
     }
@@ -479,7 +476,7 @@ private struct SunclubAccountabilityMediumView: View {
                 .frame(width: 92, alignment: .leading)
             }
         }
-        .padding(18)
+        .padding(14)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -494,7 +491,7 @@ private struct SunclubAccountabilityLargeView: View {
             family: maxFriends > 3 ? .systemExtraLarge : .systemLarge
         )
 
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Sharing")
@@ -668,40 +665,26 @@ private struct SunclubLogSmallView: View {
             family: .systemSmall
         )
 
-        ZStack(alignment: .topTrailing) {
-            SunclubWidgetMotif(kind: presentation.state == .logged ? .shieldGlow : .sunRing)
-                .frame(width: 86, height: 86)
-                .opacity(0.16)
-                .offset(x: 22, y: -20)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 6) {
-                SunclubLogIconBadge(presentation: presentation, size: 42)
-
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                SunclubLogStatusChip(presentation: presentation)
                 Spacer(minLength: 0)
-
-                Text(presentation.title)
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundStyle(SunclubWidgetPalette.ink)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.72)
-
-                Text(presentation.subtitle)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(SunclubWidgetPalette.softInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Text(presentation.detail)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(SunclubWidgetPalette.ink)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.78)
-
-                SunclubLogActionPill(presentation: presentation, compact: true)
+                SunclubLogIconBadge(presentation: presentation, size: 28)
             }
+
+            Spacer(minLength: 0)
+
+            Text(presentation.title)
+                .font(.system(size: 23, weight: .black, design: .rounded))
+                .foregroundStyle(SunclubWidgetPalette.ink)
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
+
+            SunclubLogDetailText(presentation: presentation, compact: true)
+
+            SunclubLogActionPill(presentation: presentation, compact: false)
         }
-        .padding(16)
+        .padding(12)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -717,17 +700,17 @@ private struct SunclubLogMediumView: View {
             family: .systemMedium
         )
 
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .top, spacing: 16) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
                 SunclubLogHeroPanel(presentation: presentation, compact: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(presentation.metrics.prefix(2))) { metric in
                         SunclubLogMetricPair(metric: metric)
                     }
                 }
-                .frame(width: 116, alignment: .leading)
+                .frame(width: 92, alignment: .leading)
             }
 
             Spacer(minLength: 0)
@@ -735,7 +718,7 @@ private struct SunclubLogMediumView: View {
             SunclubWeekStrip(snapshot: snapshot, now: now, cellSize: 10, spacing: 5)
                 .frame(maxWidth: .infinity)
         }
-        .padding(18)
+        .padding(14)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -751,29 +734,29 @@ private struct SunclubLogLargeView: View {
             family: .systemLarge
         )
 
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             SunclubLogHeader(presentation: presentation)
 
-            HStack(alignment: .top, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
                 SunclubLogHeroPanel(presentation: presentation, compact: false)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(presentation.metrics.prefix(3))) { metric in
                         SunclubLogMetricPair(metric: metric)
                     }
                 }
-                .frame(width: 136, alignment: .leading)
+                .frame(width: 110, alignment: .leading)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 7) {
                 Text("This week")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
                 SunclubWeekStrip(snapshot: snapshot, now: now, cellSize: 13, spacing: 5, showsLabels: true)
             }
         }
-        .padding(20)
+        .padding(16)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -789,11 +772,11 @@ private struct SunclubLogExtraLargeView: View {
             family: .systemExtraLarge
         )
 
-        HStack(alignment: .top, spacing: 22) {
-            VStack(alignment: .leading, spacing: 18) {
+        HStack(alignment: .top, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 SunclubLogHeader(presentation: presentation)
                 SunclubLogHeroPanel(presentation: presentation, compact: false)
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
                     ForEach(Array(presentation.metrics.prefix(3))) { metric in
                         SunclubLogMetricPair(metric: metric)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -802,7 +785,7 @@ private struct SunclubLogExtraLargeView: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text(now.formatted(.dateTime.month(.wide).year()))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(SunclubWidgetPalette.softInk)
@@ -811,9 +794,9 @@ private struct SunclubLogExtraLargeView: View {
 
                 SunclubWeekStrip(snapshot: snapshot, now: now, cellSize: 12, spacing: 5, showsLabels: true)
             }
-            .frame(width: 250, alignment: .topLeading)
+            .frame(width: 236, alignment: .topLeading)
         }
-        .padding(22)
+        .padding(14)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -829,7 +812,9 @@ private struct SunclubLogInlineView: View {
             family: .accessoryInline
         )
 
-        Text(presentation.inlineText)
+        SunclubLogActionButton(presentation: presentation) {
+            Text(presentation.inlineText)
+        }
     }
 }
 
@@ -844,18 +829,20 @@ private struct SunclubLogCircularView: View {
             family: .accessoryCircular
         )
 
-        ZStack {
-            Circle()
-                .fill(SunclubWidgetPalette.warm.opacity(0.85))
-            VStack(spacing: 2) {
-                Image(systemName: presentation.iconName)
-                    .font(.system(size: 16, weight: .bold))
-                Text(presentation.circularText)
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+        SunclubLogActionButton(presentation: presentation) {
+            ZStack {
+                Circle()
+                    .fill(SunclubWidgetPalette.warm.opacity(0.85))
+                VStack(spacing: 2) {
+                    Image(systemName: presentation.iconName)
+                        .font(.system(size: 16, weight: .bold))
+                    Text(presentation.circularText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .foregroundStyle(presentation.accentColor)
             }
-            .foregroundStyle(presentation.accentColor)
         }
         .accessibilityLabel(presentation.accessibilityLabel)
     }
@@ -872,26 +859,30 @@ private struct SunclubLogRectangularView: View {
             family: .accessoryRectangular
         )
 
-        HStack(spacing: 10) {
-            SunclubLogIconBadge(presentation: presentation, size: 26)
+        SunclubLogActionButton(presentation: presentation) {
+            HStack(spacing: 8) {
+                SunclubLogIconBadge(presentation: presentation, size: 24)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(presentation.title)
-                    .font(.system(size: 14, weight: .semibold))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(presentation.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text(presentation.detail)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(presentation.actionText)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(presentation.accentColor)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(presentation.subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.72)
             }
-
-            Spacer(minLength: 0)
-
-            Text(presentation.actionText)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(presentation.accentColor)
         }
         .accessibilityLabel(presentation.accessibilityLabel)
     }
@@ -903,9 +894,7 @@ private struct SunclubLogHeader: View {
     var body: some View {
         HStack(spacing: 8) {
             SunclubLogIconBadge(presentation: presentation, size: 28)
-            Text(presentation.eyebrow)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SunclubWidgetPalette.softInk)
+            SunclubLogStatusChip(presentation: presentation)
             Spacer(minLength: 0)
             SunclubLogActionCapsule(presentation: presentation, compact: true)
         }
@@ -917,31 +906,68 @@ private struct SunclubLogHeroPanel: View {
     let compact: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 9 : 12) {
-            SunclubLogIconBadge(presentation: presentation, size: compact ? 40 : 50)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(presentation.title)
-                    .font(.system(size: compact ? 21 : 27, weight: .black, design: .rounded))
-                    .foregroundStyle(SunclubWidgetPalette.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                Text(presentation.subtitle)
-                    .font(.system(size: compact ? 13 : 15, weight: .semibold))
-                    .foregroundStyle(SunclubWidgetPalette.softInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+            HStack(spacing: 8) {
+                SunclubLogIconBadge(presentation: presentation, size: compact ? 34 : 44)
+                SunclubLogStatusChip(presentation: presentation)
             }
 
-            Text(presentation.detail)
-                .font(.system(size: compact ? 11 : 12, weight: .medium))
-                .foregroundStyle(SunclubWidgetPalette.softInk)
-                .lineLimit(2)
-                .minimumScaleFactor(0.82)
+            Text(presentation.title)
+                .font(.system(size: compact ? 21 : 26, weight: .black, design: .rounded))
+                .foregroundStyle(SunclubWidgetPalette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            SunclubLogDetailText(presentation: presentation, compact: compact)
 
             if compact {
                 SunclubLogActionPill(presentation: presentation, compact: false)
+            }
+        }
+    }
+}
+
+private struct SunclubLogStatusChip: View {
+    let presentation: SunclubLogTodayWidgetPresentation
+
+    var body: some View {
+        Label(presentation.statusText, systemImage: presentation.statusIconName)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(presentation.accentColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(presentation.accentColor.opacity(0.12), in: Capsule())
+    }
+}
+
+private struct SunclubLogDetailText: View {
+    let presentation: SunclubLogTodayWidgetPresentation
+    let compact: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: compact ? 1 : 2) {
+            if presentation.state == .open {
+                Text(presentation.detail)
+                    .font(.system(size: compact ? 11 : 12, weight: .semibold))
+                    .foregroundStyle(SunclubWidgetPalette.softInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            } else {
+                Text(presentation.subtitle)
+                    .font(.system(size: compact ? 11 : 13, weight: .semibold))
+                    .foregroundStyle(SunclubWidgetPalette.softInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+
+                if presentation.detail != presentation.subtitle {
+                    Text(presentation.detail)
+                        .font(.system(size: compact ? 10 : 11, weight: .medium))
+                        .foregroundStyle(SunclubWidgetPalette.softInk)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.76)
+                }
             }
         }
     }
@@ -980,7 +1006,9 @@ private struct SunclubLogActionPill: View {
             Text(presentation.actionText)
                 .font(.system(size: compact ? 10 : 11, weight: .bold))
                 .lineLimit(1)
+                .minimumScaleFactor(0.78)
         }
+        .frame(maxWidth: .infinity)
         .foregroundStyle(presentation.accentColor)
         .padding(.horizontal, compact ? 8 : 10)
         .padding(.vertical, compact ? 5 : 6)
@@ -1063,6 +1091,30 @@ private extension SunclubLogTodayWidgetPresentation {
             return SunclubWidgetPalette.sun
         case .logged:
             return SunclubWidgetPalette.success
+        }
+    }
+
+    var statusText: String {
+        switch state {
+        case .needsSetup:
+            return "Setup"
+        case .open:
+            return "Today"
+        case .logged:
+            return "Logged"
+        case .reapplyDue:
+            return "Reapply"
+        }
+    }
+
+    var statusIconName: String {
+        switch state {
+        case .needsSetup, .open:
+            return "sun.max.fill"
+        case .logged:
+            return "checkmark"
+        case .reapplyDue:
+            return "arrow.clockwise"
         }
     }
 }
@@ -1153,7 +1205,7 @@ private struct SunclubStreakRectangularView: View {
                 Text("This week")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
-                Text("\(snapshot.currentWeekAppliedValue(now: now))/7 logged")
+                Text("\(snapshot.currentWeekAppliedValue(now: now))/7 week")
                     .font(.system(size: 15, weight: .semibold))
                 Text(snapshot.monthlyPercent(now: now))
                     .font(.system(size: 12, weight: .medium))
@@ -1173,7 +1225,7 @@ private struct SunclubStatsMediumView: View {
     let now: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("This week")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
@@ -1192,7 +1244,7 @@ private struct SunclubStatsMediumView: View {
 
             SunclubWeekStrip(snapshot: snapshot, now: now, cellSize: 11, spacing: 5)
         }
-        .padding(18)
+        .padding(14)
     }
 }
 
@@ -1201,14 +1253,14 @@ private struct SunclubStatsLargeView: View {
     let now: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Stats")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
 
             HStack(alignment: .center, spacing: 18) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(snapshot.currentWeekAppliedValue(now: now))/7 days")
+                    Text("\(snapshot.currentWeekAppliedValue(now: now))/7")
                         .font(.system(size: 32, weight: .black, design: .rounded))
                         .foregroundStyle(SunclubWidgetPalette.ink)
                         .lineLimit(1)
@@ -1228,7 +1280,7 @@ private struct SunclubStatsLargeView: View {
 
             SunclubWeekStrip(snapshot: snapshot, now: now, cellSize: 13, spacing: 5, showsLabels: true)
         }
-        .padding(20)
+        .padding(16)
     }
 }
 
@@ -1237,7 +1289,7 @@ private struct SunclubStatsInlineView: View {
     let now: Date
 
     var body: some View {
-        Text("Stats \(snapshot.currentWeekAppliedValue(now: now))/7 - \(snapshot.monthlyPercent(now: now))")
+        Text("\(snapshot.currentWeekAppliedValue(now: now))/7 week · \(snapshot.monthlyPercent(now: now))")
     }
 }
 
@@ -1267,7 +1319,7 @@ private struct SunclubCalendarMediumView: View {
     var body: some View {
         let presentation = SunclubHistoryWidgetPresentation.make(snapshot: snapshot, now: now)
 
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 9) {
             Text(presentation.compactTitle)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
@@ -1279,7 +1331,7 @@ private struct SunclubCalendarMediumView: View {
                 .foregroundStyle(SunclubWidgetPalette.ink)
                 .lineLimit(1)
         }
-        .padding(18)
+        .padding(14)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -1291,7 +1343,7 @@ private struct SunclubCalendarLargeView: View {
     var body: some View {
         let presentation = SunclubHistoryWidgetPresentation.make(snapshot: snapshot, now: now)
 
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(presentation.title)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
@@ -1304,7 +1356,7 @@ private struct SunclubCalendarLargeView: View {
                 SunclubCompactStat(title: "Month", value: presentation.monthSummary)
             }
         }
-        .padding(20)
+        .padding(16)
         .accessibilityLabel(presentation.accessibilityLabel)
     }
 }
@@ -1324,7 +1376,7 @@ private struct SunclubCalendarRectangularView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("This week")
+            Text("Week")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 

@@ -20,10 +20,10 @@ struct SunclubHistoryWidgetPresentation: Equatable, Sendable {
         let recentLoggedRun = snapshot.streakValue(now: now, calendar: calendar)
 
         return SunclubHistoryWidgetPresentation(
-            title: "\(monthName) sunscreen history",
-            compactTitle: "\(monthName) history",
-            weekSummary: "\(snapshot.currentWeekAppliedValue(now: now, calendar: calendar))/7 this week",
-            streakSummary: "\(recentLoggedRun) recent",
+            title: monthName,
+            compactTitle: monthName,
+            weekSummary: "\(snapshot.currentWeekAppliedValue(now: now, calendar: calendar))/7",
+            streakSummary: "\(recentLoggedRun)d",
             monthSummary: monthPercent(snapshot: snapshot, now: now, calendar: calendar)
         )
     }
@@ -36,9 +36,9 @@ struct SunclubHistoryWidgetPresentation: Equatable, Sendable {
         let applied = snapshot.monthlyAppliedValue(now: now, calendar: calendar)
         let total = snapshot.monthlyDayValue(now: now, calendar: calendar)
         guard total > 0 else {
-            return "0% month"
+            return "0%"
         }
 
-        return "\(Int((Double(applied) / Double(total)) * 100))% month"
+        return "\(Int((Double(applied) / Double(total)) * 100))%"
     }
 }

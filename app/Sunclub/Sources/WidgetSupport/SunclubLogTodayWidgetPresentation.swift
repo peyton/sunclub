@@ -132,7 +132,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .needsSetup:
             return "Set up"
         case .open:
-            return "Log sunscreen"
+            return "Log today"
         case .logged:
             return "Logged"
         case .reapplyDue:
@@ -149,7 +149,10 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .needsSetup:
             return "Start tracking"
         case .open:
-            return "Not logged yet"
+            if let mostUsedSPF = snapshot.mostUsedSPF {
+                return "SPF \(mostUsedSPF) usual"
+            }
+            return "Ready"
         case .logged, .reapplyDue:
             if let todaySPFLevel = snapshot.todaySPFLevel {
                 return "SPF \(todaySPFLevel)"
@@ -170,10 +173,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .needsSetup:
             return "Open the app to finish setup."
         case .open:
-            if let mostUsedSPF = snapshot.mostUsedSPF {
-                return family == .systemSmall ? uvText : "Usual SPF \(mostUsedSPF)"
-            }
-            return uvText == "Log today" ? "Log sunscreen" : uvText
+            return openDetail(snapshot: snapshot, uvText: uvText, family: family)
         case .logged:
             return reapplyText ?? loggedTimeLabel(for: snapshot, calendar: calendar)
         case .reapplyDue:
@@ -186,7 +186,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .needsSetup:
             return "Open"
         case .open:
-            return "Log"
+            return "Log today"
         case .logged:
             return "Edit"
         case .reapplyDue:
@@ -215,7 +215,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         case .needsSetup:
             return "Set up Sunclub"
         case .open:
-            return uvText == "Log today" ? "Log sunscreen" : "Log, \(uvText)"
+            return uvText == "Log today" ? "Log today" : "Log today, \(uvText)"
         case .logged:
             return reapplyText ?? subtitle
         case .reapplyDue:
@@ -267,7 +267,7 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             metrics.append(
                 SunclubLogTodayWidgetMetric(
                     title: "UV",
-                    value: "\(peakUVIndex) \(UVLevel.from(index: peakUVIndex).displayName)",
+                    value: "UV \(peakUVIndex)",
                     systemImageName: "sun.max.fill"
                 )
             )
@@ -284,6 +284,25 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
             return "UV \(peakUVIndex) \(UVLevel.from(index: peakUVIndex).displayName)"
         }
         return "Log today"
+    }
+
+    private static func openDetail(
+        snapshot: SunclubWidgetSnapshot,
+        uvText: String,
+        family: SunclubLogTodayWidgetFamily
+    ) -> String {
+        let shortUVText = uvText == "Log today" ? nil : uvText
+        guard let mostUsedSPF = snapshot.mostUsedSPF else {
+            return shortUVText ?? "Ready"
+        }
+
+        if family == .accessoryInline || family == .accessoryCircular {
+            return "SPF \(mostUsedSPF)"
+        }
+        if let shortUVText {
+            return "SPF \(mostUsedSPF) · \(shortUVText)"
+        }
+        return "SPF \(mostUsedSPF) usual"
     }
 
     private static func monthPercent(

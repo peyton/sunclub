@@ -304,6 +304,9 @@ def test_today_widget_keeps_app_intents_off_root_view() -> None:
     assert "Button(intent: LogTodayWidgetIntent())" not in today_view
     assert "Button(intent: LogReapplyWidgetIntent())" not in today_view
     assert "SunclubLogActionButton(presentation: presentation)" in source
+    assert "case (.accessoryInline, _)" not in today_view
+    assert "case (.accessoryCircular, _)" not in today_view
+    assert "case (.accessoryRectangular, _)" not in today_view
 
 
 def test_widget_extension_avoids_large_bitmap_backgrounds() -> None:
