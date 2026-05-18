@@ -26,6 +26,14 @@ WATCH_WIDGET_ENTITLEMENTS = (
 )
 PRIVACY_MANIFEST = REPO_ROOT / "app" / "Sunclub" / "Resources" / "PrivacyInfo.xcprivacy"
 PROJECT_SWIFT = REPO_ROOT / "app" / "Sunclub" / "Project.swift"
+WIDGETS_SWIFT = (
+    REPO_ROOT
+    / "app"
+    / "Sunclub"
+    / "WidgetExtension"
+    / "Sources"
+    / "SunclubWidgets.swift"
+)
 SOURCES_DIR = REPO_ROOT / "app" / "Sunclub" / "Sources"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 RELEASE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
@@ -285,6 +293,24 @@ def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
     assert '"Sources/Services/SunclubAutomationRuntime.swift"' in widget_target
     assert '"Sources/Services/ManualLogSuggestions.swift"' in widget_target
     assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
+
+
+def test_today_widget_keeps_app_intents_off_root_view() -> None:
+    source = WIDGETS_SWIFT.read_text()
+    today_view = source.split("private struct SunclubLogTodayWidgetView: View {", 1)[
+        1
+    ].split("private struct SunclubStreakWidgetView: View {", 1)[0]
+
+    assert "Button(intent: LogTodayWidgetIntent())" not in today_view
+    assert "Button(intent: LogReapplyWidgetIntent())" not in today_view
+    assert "SunclubLogActionButton(presentation: presentation)" in source
+
+
+def test_widget_extension_avoids_large_bitmap_backgrounds() -> None:
+    source = WIDGETS_SWIFT.read_text()
+
+    assert 'Image("WidgetTexture' not in source
+    assert 'Image("Motif' not in source
 
 
 def test_project_embeds_watch_app_in_release_app() -> None:

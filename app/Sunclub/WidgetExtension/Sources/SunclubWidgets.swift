@@ -226,28 +226,32 @@ private struct SunclubLogTodayWidgetView: View {
             family: presentationFamily
         )
 
-        switch presentation.tapAction {
-        case .logTodayInPlace:
-            Button(intent: LogTodayWidgetIntent()) {
-                fullSizeTapContent(content)
-            }
-            .buttonStyle(.plain)
-        case .logReapplyInPlace:
-            Button(intent: LogReapplyWidgetIntent()) {
-                fullSizeTapContent(content)
-            }
-            .buttonStyle(.plain)
-        case let .open(route):
+        if shouldRouteWholeWidget(for: presentation) {
+            let route = presentation.wholeWidgetRoute
             Link(destination: route.url) {
-                fullSizeTapContent(content)
+                widgetContent(content)
             }
+        } else {
+            widgetContent(content)
         }
     }
 
-    private func fullSizeTapContent<Content: View>(_ content: () -> Content) -> some View {
+    private func widgetContent<Content: View>(_ content: () -> Content) -> some View {
         content()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
+    }
+
+    private func shouldRouteWholeWidget(for presentation: SunclubLogTodayWidgetPresentation) -> Bool {
+        switch (family, presentation.tapAction) {
+        case (.accessoryInline, _),
+             (.accessoryCircular, _),
+             (.accessoryRectangular, _),
+             (_, .open(_)):
+            return true
+        default:
+            return false
+        }
     }
 
     private var presentationFamily: SunclubLogTodayWidgetFamily {
@@ -665,9 +669,7 @@ private struct SunclubLogSmallView: View {
         )
 
         ZStack(alignment: .topTrailing) {
-            Image(presentation.state == .logged ? "MotifShieldGlow" : "MotifSunRing")
-                .resizable()
-                .scaledToFit()
+            SunclubWidgetMotif(kind: presentation.state == .logged ? .shieldGlow : .sunRing)
                 .frame(width: 86, height: 86)
                 .opacity(0.16)
                 .offset(x: 22, y: -20)
@@ -905,12 +907,7 @@ private struct SunclubLogHeader: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SunclubWidgetPalette.softInk)
             Spacer(minLength: 0)
-            Text(presentation.actionText)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(presentation.accentColor)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(presentation.accentColor.opacity(0.14), in: Capsule())
+            SunclubLogActionCapsule(presentation: presentation, compact: true)
         }
     }
 }
@@ -971,6 +968,12 @@ private struct SunclubLogActionPill: View {
     let compact: Bool
 
     var body: some View {
+        SunclubLogActionButton(presentation: presentation) {
+            label
+        }
+    }
+
+    private var label: some View {
         HStack(spacing: 5) {
             Image(systemName: presentation.state == .logged ? "checkmark.seal.fill" : "sun.max.fill")
                 .font(.system(size: compact ? 9 : 10, weight: .bold))
@@ -982,6 +985,44 @@ private struct SunclubLogActionPill: View {
         .padding(.horizontal, compact ? 8 : 10)
         .padding(.vertical, compact ? 5 : 6)
         .background(presentation.accentColor.opacity(0.14), in: Capsule())
+    }
+}
+
+private struct SunclubLogActionCapsule: View {
+    let presentation: SunclubLogTodayWidgetPresentation
+    let compact: Bool
+
+    var body: some View {
+        SunclubLogActionButton(presentation: presentation) {
+            Text(presentation.actionText)
+                .font(.system(size: compact ? 11 : 12, weight: .bold))
+                .foregroundStyle(presentation.accentColor)
+                .padding(.horizontal, compact ? 10 : 12)
+                .padding(.vertical, compact ? 5 : 6)
+                .background(presentation.accentColor.opacity(0.14), in: Capsule())
+        }
+    }
+}
+
+private struct SunclubLogActionButton<LabelContent: View>: View {
+    let presentation: SunclubLogTodayWidgetPresentation
+    @ViewBuilder var label: () -> LabelContent
+
+    var body: some View {
+        switch presentation.tapAction {
+        case .logTodayInPlace:
+            Button(intent: LogTodayWidgetIntent()) {
+                label()
+            }
+            .buttonStyle(.plain)
+        case .logReapplyInPlace:
+            Button(intent: LogReapplyWidgetIntent()) {
+                label()
+            }
+            .buttonStyle(.plain)
+        case .open:
+            label()
+        }
     }
 }
 
@@ -1005,6 +1046,15 @@ private struct SunclubLogMetricPair: View {
 }
 
 private extension SunclubLogTodayWidgetPresentation {
+    var wholeWidgetRoute: SunclubWidgetRoute {
+        switch tapAction {
+        case let .open(route):
+            return route
+        case .logTodayInPlace, .logReapplyInPlace:
+            return .updateToday
+        }
+    }
+
     var accentColor: Color {
         switch state {
         case .needsSetup:
@@ -1023,9 +1073,7 @@ private struct SunclubStreakSmallView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Image("MotifSunRing")
-                .resizable()
-                .scaledToFit()
+            SunclubWidgetMotif(kind: .sunRing)
                 .frame(width: 108, height: 108)
                 .opacity(0.22)
                 .offset(x: 30, y: -28)
@@ -1399,16 +1447,14 @@ private struct SunclubWidgetBackground: View {
 
     var body: some View {
         ZStack {
-            Image(textureName)
-                .resizable()
-                .scaledToFill()
-
             LinearGradient(
                 colors: colors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .opacity(0.52)
+
+            SunclubWidgetTextureOverlay(style: style)
+                .opacity(0.22)
         }
     }
 
@@ -1423,12 +1469,87 @@ private struct SunclubWidgetBackground: View {
         }
     }
 
-    private var textureName: String {
+}
+
+private struct SunclubWidgetTextureOverlay: View {
+    let style: SunclubWidgetBackground.Style
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            ZStack {
+                LinearGradient(
+                    colors: overlayColors,
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+
+                Path { path in
+                    for index in 0..<8 {
+                        let yPosition = size.height * CGFloat(index) / 7
+                        path.move(to: CGPoint(x: -size.width * 0.15, y: yPosition))
+                        path.addLine(to: CGPoint(x: size.width * 1.15, y: yPosition + size.height * 0.16))
+                    }
+                }
+                .stroke(SunclubWidgetPalette.ink.opacity(0.05), lineWidth: 1)
+
+                Circle()
+                    .fill(highlightColor.opacity(0.22))
+                    .frame(width: max(size.width * 0.72, 120), height: max(size.width * 0.72, 120))
+                    .offset(x: size.width * 0.28, y: -size.height * 0.38)
+            }
+        }
+        .clipped()
+    }
+
+    private var overlayColors: [Color] {
+        switch style {
+        case .warm:
+            return [.white.opacity(0.3), SunclubWidgetPalette.warm.opacity(0.1)]
+        case .warmStrong:
+            return [SunclubWidgetPalette.warmStrong.opacity(0.45), .white.opacity(0.16)]
+        case .cool:
+            return [.white.opacity(0.36), SunclubWidgetPalette.pool.opacity(0.12)]
+        }
+    }
+
+    private var highlightColor: Color {
         switch style {
         case .warm, .warmStrong:
-            return "WidgetTextureWarm"
+            return SunclubWidgetPalette.sun
         case .cool:
-            return "WidgetTextureCool"
+            return SunclubWidgetPalette.pool
+        }
+    }
+}
+
+private struct SunclubWidgetMotif: View {
+    enum Kind {
+        case sunRing
+        case shieldGlow
+    }
+
+    let kind: Kind
+
+    var body: some View {
+        ZStack {
+            switch kind {
+            case .sunRing:
+                Circle()
+                    .stroke(SunclubWidgetPalette.sun.opacity(0.45), lineWidth: 8)
+                Circle()
+                    .stroke(SunclubWidgetPalette.sun.opacity(0.24), lineWidth: 1)
+                    .padding(16)
+                Image(systemName: "sun.max.fill")
+                    .font(.system(size: 32, weight: .black))
+                    .foregroundStyle(SunclubWidgetPalette.sun)
+            case .shieldGlow:
+                Circle()
+                    .fill(SunclubWidgetPalette.success.opacity(0.24))
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 40, weight: .black))
+                    .foregroundStyle(SunclubWidgetPalette.success)
+            }
         }
     }
 }
