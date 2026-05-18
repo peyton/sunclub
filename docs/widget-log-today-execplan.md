@@ -23,6 +23,9 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-05-18) Split app-owned widget/control logging from user-run Shortcuts with non-discoverable widget intents and a `SunclubAutomationInvocation.widget` runtime path.
 - [x] (2026-05-18) Made the Today widget tap contract explicit in presentation state: open days log in place, reapply-due days log reapply in place, setup opens summary, and logged days open edit.
 - [x] (2026-05-18) Expanded Today widget button/link labels to the full rendered surface so iOS 26 Home Screen taps do not fall through to app navigation outside the visible content.
+- [x] (2026-05-18) Reproduced the stuck Home Screen Today widget in Simulator and traced it to WidgetKit archive failures from 2400x2400 bitmap widget artwork.
+- [x] (2026-05-18) Removed oversized bitmap backgrounds/motifs from the widget render tree and kept Home Screen AppIntent buttons on only the visible action affordance.
+- [x] (2026-05-18) Verified Today small and medium Home Screen previews render real content in Simulator instead of the gray loading skeleton.
 - [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
@@ -61,6 +64,14 @@ Sunclub's product loop is stronger when the user can see daily state before open
 
 - Decision: Put the widget tap behavior behind `SunclubLogTodayWidgetPresentation.tapAction`.
   Rationale: A pure presentation decision is unit-testable and avoids drift between visible action copy and the actual SwiftUI `Button` or `Link` wrapper. It also keeps stale snapshot data out of default resolution; the widget uses the snapshot only to choose which action to run, and the action reads current storage at execution time.
+  Date/Author: 2026-05-18 / Codex
+
+- Decision: Keep `Log Today` Home Screen widget artwork vector/procedural.
+  Rationale: iOS 26 WidgetKit rejected the Today widget archive when the SwiftUI tree contained 2400x2400 bitmap texture and motif images, leaving the Home Screen on the gray loading skeleton. Procedural gradients, paths, circles, and SF Symbols keep the visual language without exceeding WidgetKit archive image limits.
+  Date/Author: 2026-05-18 / Codex
+
+- Decision: Do not wrap the whole Home Screen Today widget in `Button(intent:)`.
+  Rationale: The root view should archive as stable content. In-place logging and reapply stay on the explicit visible action pill/capsule; setup, logged, and accessory/Lock Screen states route into the app with `Link` or widget URL behavior.
   Date/Author: 2026-05-18 / Codex
 
 ## Context And Orientation
@@ -113,6 +124,16 @@ Out of scope:
 - Outcome: `Log Today` now uses an icon-led compact small layout, expands into metrics/history on larger Home Screen sizes, and keeps Lock Screen copy short enough for accessory families.
 - Outcome: The 2026-04-24 polish pass made the public suite `Today`, `Streak`, `Stats`, `History`, and `Buddies`; Today now has open/protected/reapply-due states; Stats/Streak are one-stat-forward; and large History is the flagship calendar surface.
 - Outcome: The 2026-05-18 widget action fix made Home Screen Today taps complete in place through widget-only intents, preserved shared automation runtime writes, and widened the tappable surface for iOS 26 widget hosts.
+- Outcome: The 2026-05-18 stuck-widget fix removed the 2400x2400 bitmap artwork from the widget source and moved AppIntent buttons off the root Today widget surface.
+- Root cause evidence:
+  - `.build/widget-verification/after-widget-gallery-placeholder.jpg` captured the Simulator widget gallery stuck on the gray loading skeleton.
+  - `.build/widget-verification/before-image-too-large-log.txt` captured `WidgetArchiver.ArchivingError.imageTooLarge(size: (2400.0, 2400.0))` and `timelineReloadFailed` for Today small, medium, and large widget archives.
+- Simulator verification for the stuck-widget fix:
+  - `.build/widget-verification/after-widget-gallery-small-fixed.jpg` shows the Today small preview rendering real content.
+  - `.build/widget-verification/after-widget-gallery-medium-fixed.jpg` shows the Today medium preview rendering real content.
+  - `.build/widget-verification/after-home-small-medium-widget-fixed.jpg` shows small and medium Today widgets added to the Home Screen without the gray loading skeleton.
+  - `.build/widget-verification/after-widget-success-log.txt` captured successful Today small and medium archive requests after removing bitmap artwork.
+  - `.build/widget-verification/after-widget-open-route.jpg` captured the setup/route state opening the app from the visible widget affordance.
 - Verification recorded during the 2026-04-24 polish pass:
   - `just generate` passed
   - `just test-unit` passed: 273 tests, 0 failures
