@@ -128,7 +128,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
 - The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
 - The widget suite now covers all iPhone Home Screen and Lock Screen families supported by the app:
-  - `Log Today`: `systemSmall`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
+  - `Log Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryCircular`, `accessoryRectangular`
   - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
   - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
   - `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`

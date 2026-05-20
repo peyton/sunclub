@@ -295,15 +295,19 @@ def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
     assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
 
 
-def test_today_widget_keeps_app_intents_off_root_view() -> None:
+def test_today_widget_uses_whole_surface_intents_for_interactive_families() -> None:
     source = WIDGETS_SWIFT.read_text()
+    today_widget = source.split("struct SunclubLogTodayWidget: Widget {", 1)[1].split(
+        "struct SunclubStreakWidget: Widget {", 1
+    )[0]
     today_view = source.split("private struct SunclubLogTodayWidgetView: View {", 1)[
         1
     ].split("private struct SunclubStreakWidgetView: View {", 1)[0]
 
-    assert "Button(intent: LogTodayWidgetIntent())" not in today_view
-    assert "Button(intent: LogReapplyWidgetIntent())" not in today_view
+    assert ".accessoryInline" not in today_widget
+    assert "SunclubLogWholeSurfaceButton(presentation: presentation)" in today_view
     assert "SunclubLogActionButton(presentation: presentation)" in source
+    assert "sunclubLogWholeSurfaceHandlesAction" in source
     assert "case (.accessoryInline, _)" not in today_view
     assert "case (.accessoryCircular, _)" not in today_view
     assert "case (.accessoryRectangular, _)" not in today_view

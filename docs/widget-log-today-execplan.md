@@ -27,6 +27,8 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-05-18) Removed oversized bitmap backgrounds/motifs from the widget render tree and kept Home Screen AppIntent buttons on only the visible action affordance.
 - [x] (2026-05-18) Verified Today small and medium Home Screen previews render real content in Simulator instead of the gray loading skeleton.
 - [x] (2026-05-18) Uploaded a current widget contact sheet to ChatGPT image generation and implemented the compact status-chip redesign guidance across Today, Stats, and History widgets.
+- [x] (2026-05-20) Made the whole interactive Today widget surface run the widget-only log or reapply intent, with nested action pills rendered as passive labels under that whole-surface button.
+- [x] (2026-05-20) Removed the Today `accessoryInline` family because Apple's iOS 18 interactive-widget button support covers Home Screen families plus accessory circular and rectangular, not inline.
 - [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
@@ -71,9 +73,13 @@ Sunclub's product loop is stronger when the user can see daily state before open
   Rationale: iOS 26 WidgetKit rejected the Today widget archive when the SwiftUI tree contained 2400x2400 bitmap texture and motif images, leaving the Home Screen on the gray loading skeleton. Procedural gradients, paths, circles, and SF Symbols keep the visual language without exceeding WidgetKit archive image limits.
   Date/Author: 2026-05-18 / Codex
 
-- Decision: Do not wrap the whole Home Screen Today widget in `Button(intent:)`.
-  Rationale: The root view should archive as stable content. In-place logging and reapply stay on the explicit visible action pill/capsule. Setup and logged states route into the app with `Link` or widget URL behavior; accessory/Lock Screen open and reapply states use the same in-place widget intents as Home Screen controls.
-  Date/Author: 2026-05-18 / Codex
+- Decision: Wrap the whole interactive Today widget surface in `Button(intent:)`.
+  Rationale: The requested one-click widget should log from any tap on the rendered Today surface, not only from the action pill. The prior archive failure was traced to oversized bitmap artwork, which is no longer in the widget tree. Nested action pills now render as passive labels when the whole surface owns the AppIntent, while setup and logged states still route into the app with `Link`.
+  Date/Author: 2026-05-20 / Codex
+
+- Decision: Do not ship `accessoryInline` for the Today widget.
+  Rationale: On iOS 18, WidgetKit's documented interactive-button families include Home Screen families plus accessory circular and rectangular on iPhone and iPad. Inline accessory widgets are too constrained for the required in-place logging contract, so Today stays available only in families that can run the widget-only AppIntent.
+  Date/Author: 2026-05-20 / Codex
 
 - Decision: Keep the redesigned widget copy to one status chip, one primary value, one compact detail line, and one visible action where applicable.
   Rationale: The ChatGPT image-generation pass over the current widget contact sheet identified overflow from duplicate metadata, long status phrases, decorative space, and excessive padding. The implementation uses shorter titles such as `Log today`, `July`, and `4/7`, reduces widget padding, and gives accessory `Log today` / `Reapply` states in-place AppIntent actions instead of app-opening routes.
@@ -87,7 +93,7 @@ The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.code
 
 Supported widget families:
 
-- `Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`
+- `Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryCircular`, `accessoryRectangular`
 - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
 - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
 - `History`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
@@ -115,7 +121,7 @@ Out of scope:
 ## Validation And Acceptance
 
 1. Every iPhone Home Screen and Lock Screen family listed above is exposed by the widget bundle.
-2. `Today` logs in place only when the current day is still open.
+2. `Today` logs in place from the whole rendered widget surface when the current day is still open.
 3. When today is already logged and reapply is not due, the Today widget shows useful completion/streak state and routes into the app for editing instead of re-logging.
 4. When today is logged and reapply is due, the Today widget logs the reapply in place instead of opening the app.
 5. Stats and History widgets derive current-day state from stored dates plus current time, not stale strings.
@@ -131,6 +137,7 @@ Out of scope:
 - Outcome: The 2026-05-18 widget action fix made Home Screen Today taps complete in place through widget-only intents, preserved shared automation runtime writes, and widened the tappable surface for iOS 26 widget hosts.
 - Outcome: The 2026-05-18 stuck-widget fix removed the 2400x2400 bitmap artwork from the widget source and moved AppIntent buttons off the root Today widget surface.
 - Outcome: The 2026-05-18 compact redesign reduces Today/Stats/History text density and padding, shortens History metric copy, and keeps Lock Screen open/reapply Today widgets as in-place widget actions instead of app launches.
+- Outcome: The 2026-05-20 Today widget pass made the whole open/reapply widget surface run the widget-only AppIntent, kept setup/logged states as whole-surface app links, and stopped advertising the non-interactive inline Today family for iOS 18.
 - Root cause evidence:
   - `.build/widget-verification/after-widget-gallery-placeholder.jpg` captured the Simulator widget gallery stuck on the gray loading skeleton.
   - `.build/widget-verification/before-image-too-large-log.txt` captured `WidgetArchiver.ArchivingError.imageTooLarge(size: (2400.0, 2400.0))` and `timelineReloadFailed` for Today small, medium, and large widget archives.
