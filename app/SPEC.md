@@ -214,7 +214,7 @@ Expected sequence:
 - Widgets should stay glanceable and low-text across all supported families.
 - The Home Screen suite should include `Log Today`, `Streak`, `Stats`, and `Calendar` layouts.
 - The Lock Screen suite should cover `accessoryInline`, `accessoryCircular`, and `accessoryRectangular` layouts with content appropriate to the family.
-- `Log Today` should log in place only when the current day is still open.
+- `Log Today` should log in place from the whole widget surface when the current day is still open.
 - If the current day is already logged, the primary widget should surface completion and streak state, then route into the existing app flow for viewing or updating.
 - Widget state should come from a lightweight shared snapshot mirror rather than direct widget access to the live SwiftData store.
 - Widgets should refresh at the next local midnight so daily state and streak continuity roll over correctly without requiring an app launch.

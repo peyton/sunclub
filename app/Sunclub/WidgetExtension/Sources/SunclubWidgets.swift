@@ -58,7 +58,6 @@ struct SunclubLogTodayWidget: Widget {
             .systemMedium,
             .systemLarge,
             .systemExtraLarge,
-            .accessoryInline,
             .accessoryCircular,
             .accessoryRectangular
         ])
@@ -219,20 +218,23 @@ private struct SunclubLogTodayWidgetView: View {
     }
 
     @ViewBuilder
-    private func tapSurface<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func tapSurface<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
         let presentation = SunclubLogTodayWidgetPresentation.make(
             snapshot: entry.snapshot,
             now: entry.date,
             family: presentationFamily
         )
 
-        if shouldRouteWholeWidget(for: presentation) {
+        switch presentation.tapAction {
+        case .logTodayInPlace, .logReapplyInPlace:
+            SunclubLogWholeSurfaceButton(presentation: presentation) {
+                widgetContent(content)
+            }
+        case .open:
             let route = presentation.wholeWidgetRoute
             Link(destination: route.url) {
                 widgetContent(content)
             }
-        } else {
-            widgetContent(content)
         }
     }
 
@@ -240,15 +242,6 @@ private struct SunclubLogTodayWidgetView: View {
         content()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
-    }
-
-    private func shouldRouteWholeWidget(for presentation: SunclubLogTodayWidgetPresentation) -> Bool {
-        switch presentation.tapAction {
-        case .open:
-            return true
-        case .logTodayInPlace, .logReapplyInPlace:
-            return false
-        }
     }
 
     private var presentationFamily: SunclubLogTodayWidgetFamily {
@@ -270,6 +263,17 @@ private struct SunclubLogTodayWidgetView: View {
         default:
             return .accessoryRectangular
         }
+    }
+}
+
+private struct SunclubLogWholeSurfaceActionKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private extension EnvironmentValues {
+    var sunclubLogWholeSurfaceHandlesAction: Bool {
+        get { self[SunclubLogWholeSurfaceActionKey.self] }
+        set { self[SunclubLogWholeSurfaceActionKey.self] = newValue }
     }
 }
 
@@ -1032,7 +1036,7 @@ private struct SunclubLogActionCapsule: View {
     }
 }
 
-private struct SunclubLogActionButton<LabelContent: View>: View {
+private struct SunclubLogWholeSurfaceButton<LabelContent: View>: View {
     let presentation: SunclubLogTodayWidgetPresentation
     @ViewBuilder var label: () -> LabelContent
 
@@ -1040,14 +1044,50 @@ private struct SunclubLogActionButton<LabelContent: View>: View {
         switch presentation.tapAction {
         case .logTodayInPlace:
             Button(intent: LogTodayWidgetIntent()) {
-                label()
+                actionLabel
             }
             .buttonStyle(.plain)
         case .logReapplyInPlace:
             Button(intent: LogReapplyWidgetIntent()) {
-                label()
+                actionLabel
             }
             .buttonStyle(.plain)
+        case .open:
+            actionLabel
+        }
+    }
+
+    private var actionLabel: some View {
+        label()
+            .environment(\.sunclubLogWholeSurfaceHandlesAction, true)
+    }
+}
+
+private struct SunclubLogActionButton<LabelContent: View>: View {
+    let presentation: SunclubLogTodayWidgetPresentation
+    @Environment(\.sunclubLogWholeSurfaceHandlesAction) private var wholeSurfaceHandlesAction
+    @ViewBuilder var label: () -> LabelContent
+
+    var body: some View {
+        switch presentation.tapAction {
+        case .logTodayInPlace:
+            if wholeSurfaceHandlesAction {
+                label()
+            } else {
+                Button(intent: LogTodayWidgetIntent()) {
+                    label()
+                }
+                .buttonStyle(.plain)
+            }
+        case .logReapplyInPlace:
+            if wholeSurfaceHandlesAction {
+                label()
+            } else {
+                Button(intent: LogReapplyWidgetIntent()) {
+                    label()
+                }
+                .buttonStyle(.plain)
+            }
         case .open:
             label()
         }
