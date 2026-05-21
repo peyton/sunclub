@@ -136,7 +136,7 @@ version = "3.8.3"
 backend = "npm:prettier"
 
 [[tools."npm:wrangler"]]
-version = "4.91.0"
+version = "4.92.0"
 backend = "npm:wrangler"
 
 [[tools.pkl]]
@@ -250,42 +250,42 @@ url = "https://github.com/astral-sh/ruff/releases/download/0.15.13/ruff-x86_64-p
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.1.92"
+version = "0.1.93"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:ff671f55ddede20558ea16cbca07d4f951337b4390b67730db5fd421e3a6efc5"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:34eb77833b5f202feb6e4c1376e8a9104c431061bba9a8c93fc532c6c3bfed97"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-arm64-musl"]
-checksum = "sha256:ff671f55ddede20558ea16cbca07d4f951337b4390b67730db5fd421e3a6efc5"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:34eb77833b5f202feb6e4c1376e8a9104c431061bba9a8c93fc532c6c3bfed97"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:413ff374c7394f9fb044faefec440c119328096d91c0a09c1cf0a9b80533aad8"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:51e17b35e0e74d73191e675b76719a11713a9fcf03505d901b0880556d0a7ef6"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64-musl"]
-checksum = "sha256:413ff374c7394f9fb044faefec440c119328096d91c0a09c1cf0a9b80533aad8"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:51e17b35e0e74d73191e675b76719a11713a9fcf03505d901b0880556d0a7ef6"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:5c339213a4fa4e6b8bb92820e536aff75fb7098993e3c25fcd277d24b5bf87fb"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:e034b9e38bcdb5f89361c5d97f477b04650ff6666fefa474c1fa77621bb91add"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-aarch64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-x64"]
-checksum = "sha256:c4900d57dce43e0213ebf6c7412d290bb66e2f4ecb01a5cda83d30fbdc18b664"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-x86_64-apple-darwin.tar.gz"
+checksum = "sha256:29c0c3986417ca2380052939f31fbc0d594e784a457360dcb0ad4b3d898803a6"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-x86_64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.windows-x64"]
-checksum = "sha256:f723fe4e01e57de947f69006b10cad4c3f22eafecf9674b59becfdf1c32c8db7"
-url = "https://github.com/rvben/rumdl/releases/download/v0.1.92/rumdl-v0.1.92-x86_64-pc-windows-msvc.zip"
+checksum = "sha256:b09ca27e486dd197212f91aaed3b98810d8e41d478621e11fbba2e881e83c9b4"
+url = "https://github.com/rvben/rumdl/releases/download/v0.1.93/rumdl-v0.1.93-x86_64-pc-windows-msvc.zip"
 provenance = "github-attestations"
 
 [[tools.shellcheck]]
@@ -381,32 +381,32 @@ checksum = "sha256:c59a405c85f95b92ced677a500804e081596a4cae4a6a485af76065557d6e
 url = "https://github.com/realm/SwiftLint/releases/download/0.63.2/portable_swiftlint.zip"
 
 [[tools.tuist]]
-version = "4.194.1"
+version = "4.195.0"
 backend = "aqua:tuist/tuist"
 
 [tools.tuist."platforms.linux-arm64"]
-checksum = "sha256:74de80b5a80639bafb9e696ed8d21dde5bf01dd3e099111fa01771b63843f4b6"
-url = "https://github.com/tuist/tuist/releases/download/4.194.1/tuist-linux-aarch64.tar.gz"
+checksum = "sha256:3b46a93f091aeb697bd9cf3f55d37727fc0fe14b1991f5acd5a83b65eb966266"
+url = "https://github.com/tuist/tuist/releases/download/4.195.0/tuist-linux-aarch64.tar.gz"
 
 [tools.tuist."platforms.linux-arm64-musl"]
-checksum = "sha256:74de80b5a80639bafb9e696ed8d21dde5bf01dd3e099111fa01771b63843f4b6"
-url = "https://github.com/tuist/tuist/releases/download/4.194.1/tuist-linux-aarch64.tar.gz"
+checksum = "sha256:3b46a93f091aeb697bd9cf3f55d37727fc0fe14b1991f5acd5a83b65eb966266"
+url = "https://github.com/tuist/tuist/releases/download/4.195.0/tuist-linux-aarch64.tar.gz"
 
 [tools.tuist."platforms.linux-x64"]
-checksum = "sha256:fe36ca5cf899dd421732a5c6a058ebea969cd5586dde36497dcf74ca17063748"
-url = "https://github.com/tuist/tuist/releases/download/4.194.1/tuist-linux-x86_64.tar.gz"
+checksum = "sha256:294f82ee689e3a0e13b386b928a1ade3041358f5bda609b390080c4c917c64de"
+url = "https://github.com/tuist/tuist/releases/download/4.195.0/tuist-linux-x86_64.tar.gz"
 
 [tools.tuist."platforms.linux-x64-musl"]
-checksum = "sha256:fe36ca5cf899dd421732a5c6a058ebea969cd5586dde36497dcf74ca17063748"
-url = "https://github.com/tuist/tuist/releases/download/4.194.1/tuist-linux-x86_64.tar.gz"
+checksum = "sha256:294f82ee689e3a0e13b386b928a1ade3041358f5bda609b390080c4c917c64de"
+url = "https://github.com/tuist/tuist/releases/download/4.195.0/tuist-linux-x86_64.tar.gz"
 
 [tools.tuist."platforms.macos-arm64"]
-checksum = "sha256:ed6da8b73eb9b4c9a31d54eed520fd821d7194d5a98e3e36dc10cba79480b567"
-url = "https://github.com/tuist/tuist/releases/download/4.194.1/tuist.zip"
+checksum = "sha256:773a4de6b242b182c4a908024f92bf516270dcc26b3d0d1cc661ade242bd7c24"
+url = "https://github.com/tuist/tuist/releases/download/4.195.0/tuist.zip"
 
 [tools.tuist."platforms.macos-x64"]
-checksum = "sha256:ed6da8b73eb9b4c9a31d54eed520fd821d7194d5a98e3e36dc10cba79480b567"
-url = "https://github.com/tuist/tuist/releases/download/4.194.1/tuist.zip"
+checksum = "sha256:773a4de6b242b182c4a908024f92bf516270dcc26b3d0d1cc661ade242bd7c24"
+url = "https://github.com/tuist/tuist/releases/download/4.195.0/tuist.zip"
 
 [[tools.uv]]
 version = "0.11.14"
@@ -448,36 +448,35 @@ url = "https://github.com/astral-sh/uv/releases/download/0.11.14/uv-x86_64-pc-wi
 provenance = "github-attestations"
 
 [[tools.zizmor]]
-version = "1.25.0"
+version = "1.25.2"
 backend = "aqua:zizmorcore/zizmor"
 
 [tools.zizmor."platforms.linux-arm64"]
-checksum = "sha256:6214a8e291a07a3b33c652260ee5caa6501e192cf20ff3a06db7a350e93bad93"
-url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.0/zizmor-aarch64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:4b4b9491112c2a09b318101c0d3349b73af1c4f532e097dd6d0164f2abda760d"
+url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.2/zizmor-aarch64-unknown-linux-gnu.tar.gz"
 provenance = "github-attestations"
 
 [tools.zizmor."platforms.linux-arm64-musl"]
 provenance = "github-attestations"
 
 [tools.zizmor."platforms.linux-x64"]
-checksum = "sha256:a16853f39c9e059aed04f3f7961acb75468af67b235ae36a9faff337d61e3d24"
-url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.0/zizmor-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:aa1facd105f0d83fe5c55b1adcd9d7417de5d83aa27471f91dc0b66cf3803577"
+url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.2/zizmor-x86_64-unknown-linux-gnu.tar.gz"
 provenance = "github-attestations"
 
 [tools.zizmor."platforms.linux-x64-musl"]
 provenance = "github-attestations"
 
 [tools.zizmor."platforms.macos-arm64"]
-checksum = "sha256:d57861fd237055b2730e6a008289ffd8e8107e7d348ca31564d25863b7c66e64"
-url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.0/zizmor-aarch64-apple-darwin.tar.gz"
-provenance = "github-attestations"
+checksum = "sha256:624ef0e09521aecd862126be0f6d7754669af2646750d68ac48a114be33c3146"
+url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.2/zizmor-aarch64-apple-darwin.tar.gz"
 
 [tools.zizmor."platforms.macos-x64"]
-checksum = "sha256:3c4b4faeb40779cbb0063eb934809c03a570dd367892c2b41a1e87e27721da01"
-url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.0/zizmor-x86_64-apple-darwin.tar.gz"
+checksum = "sha256:353271b9ec301dd4ba158af481323c831c6e9b494d5ac3f5aa58cf4b207699cc"
+url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.2/zizmor-x86_64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [tools.zizmor."platforms.windows-x64"]
-checksum = "sha256:63620198d7c1292fdcc3500abfc7b72f706c99807c5f76e96ac127f1d62254d3"
-url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.0/zizmor-x86_64-pc-windows-msvc.zip"
+checksum = "sha256:65d46a8144f701200621b580f632076d80d082d60856de9f88793a95fb5882d7"
+url = "https://github.com/zizmorcore/zizmor/releases/download/v1.25.2/zizmor-x86_64-pc-windows-msvc.zip"
 provenance = "github-attestations"
