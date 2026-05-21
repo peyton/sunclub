@@ -295,7 +295,7 @@ def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
     assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
 
 
-def test_today_widget_uses_whole_surface_intents_for_interactive_families() -> None:
+def test_today_widget_is_single_non_opening_log_button() -> None:
     source = WIDGETS_SWIFT.read_text()
     today_widget = source.split("struct SunclubLogTodayWidget: Widget {", 1)[1].split(
         "struct SunclubStreakWidget: Widget {", 1
@@ -305,9 +305,17 @@ def test_today_widget_uses_whole_surface_intents_for_interactive_families() -> N
     ].split("private struct SunclubStreakWidgetView: View {", 1)[0]
 
     assert ".accessoryInline" not in today_widget
-    assert "SunclubLogWholeSurfaceButton(presentation: presentation)" in today_view
-    assert "SunclubLogActionButton(presentation: presentation)" in source
-    assert "sunclubLogWholeSurfaceHandlesAction" in source
+    assert "Button(intent: LogTodayWidgetIntent())" in today_view
+    assert "SunclubLogSunscreenButtonSurface(presentation: presentation)" in today_view
+    assert "Link(destination:" not in today_view
+    assert "LogReapplyWidgetIntent" not in today_view
+    assert ".none:" in today_view
+    assert (
+        "Log Sunscreen"
+        in (
+            SOURCES_DIR / "WidgetSupport" / "SunclubLogTodayWidgetPresentation.swift"
+        ).read_text()
+    )
     assert "case (.accessoryInline, _)" not in today_view
     assert "case (.accessoryCircular, _)" not in today_view
     assert "case (.accessoryRectangular, _)" not in today_view

@@ -30,7 +30,7 @@
 - `Set Sunclub Toggle`: updates travel timezone, daily UV briefing, extreme UV alert, iCloud sync, or Apple Health availability settings.
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Export Sunclub History`: returns a PDF `IntentFile`.
-- Widget and Control Center buttons use non-discoverable widget intents for Log Today and Reapply so they can complete in place without opening Sunclub or inheriting user Shortcut toggles.
+- Widget and Control Center buttons use non-discoverable widget intents for Log Today so they can complete in place without opening Sunclub or inheriting user Shortcut toggles. User-run Shortcuts still expose Log Reapply separately.
 
 ## App Shortcuts
 
