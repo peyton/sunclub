@@ -51,8 +51,8 @@ struct SunclubLogTodayWidget: Widget {
                     SunclubWidgetBackground(style: .warm)
                 }
         }
-        .configurationDisplayName("Today")
-        .description("Quick log and today status.")
+        .configurationDisplayName("Log Sunscreen")
+        .description("Log sunscreen without opening the app.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
@@ -183,42 +183,6 @@ private struct SunclubLogTodayWidgetView: View {
     let entry: SunclubSnapshotEntry
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            tapSurface {
-                SunclubLogSmallView(snapshot: entry.snapshot, now: entry.date)
-            }
-        case .systemMedium:
-            tapSurface {
-                SunclubLogMediumView(snapshot: entry.snapshot, now: entry.date)
-            }
-        case .systemLarge:
-            tapSurface {
-                SunclubLogLargeView(snapshot: entry.snapshot, now: entry.date)
-            }
-        case .systemExtraLarge:
-            tapSurface {
-                SunclubLogExtraLargeView(snapshot: entry.snapshot, now: entry.date)
-            }
-        case .accessoryInline:
-            tapSurface {
-                SunclubLogInlineView(snapshot: entry.snapshot, now: entry.date)
-            }
-        case .accessoryCircular:
-            tapSurface {
-                SunclubLogCircularView(snapshot: entry.snapshot, now: entry.date)
-            }
-        case .accessoryRectangular:
-            tapSurface {
-                SunclubLogRectangularView(snapshot: entry.snapshot, now: entry.date)
-            }
-        default:
-            SunclubLogRectangularView(snapshot: entry.snapshot, now: entry.date)
-        }
-    }
-
-    @ViewBuilder
-    private func tapSurface<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
         let presentation = SunclubLogTodayWidgetPresentation.make(
             snapshot: entry.snapshot,
             now: entry.date,
@@ -226,22 +190,14 @@ private struct SunclubLogTodayWidgetView: View {
         )
 
         switch presentation.tapAction {
-        case .logTodayInPlace, .logReapplyInPlace:
-            SunclubLogWholeSurfaceButton(presentation: presentation) {
-                widgetContent(content)
+        case .logTodayInPlace:
+            Button(intent: LogTodayWidgetIntent()) {
+                SunclubLogSunscreenButtonSurface(presentation: presentation)
             }
-        case .open:
-            let route = presentation.wholeWidgetRoute
-            Link(destination: route.url) {
-                widgetContent(content)
-            }
+            .buttonStyle(.plain)
+        case .logReapplyInPlace, .open, .none:
+            SunclubLogSunscreenButtonSurface(presentation: presentation)
         }
-    }
-
-    private func widgetContent<Content: View>(_ content: () -> Content) -> some View {
-        content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
     }
 
     private var presentationFamily: SunclubLogTodayWidgetFamily {
@@ -254,8 +210,6 @@ private struct SunclubLogTodayWidgetView: View {
             return .systemLarge
         case .systemExtraLarge:
             return .systemExtraLarge
-        case .accessoryInline:
-            return .accessoryInline
         case .accessoryCircular:
             return .accessoryCircular
         case .accessoryRectangular:
@@ -263,6 +217,151 @@ private struct SunclubLogTodayWidgetView: View {
         default:
             return .accessoryRectangular
         }
+    }
+}
+
+private struct SunclubLogSunscreenButtonSurface: View {
+    let presentation: SunclubLogTodayWidgetPresentation
+
+    var body: some View {
+        switch presentation.family {
+        case .accessoryCircular:
+            circularContent
+        case .accessoryRectangular:
+            rectangularContent
+        case .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge:
+            homeScreenContent
+        }
+    }
+
+    private var homeScreenContent: some View {
+        VStack {
+            Spacer(minLength: 0)
+
+            if presentation.state == .logged {
+                loggedMark(size: homeScreenCheckmarkSize)
+            } else {
+                logButtonLabel
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(homeScreenPadding)
+        .contentShape(Rectangle())
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private var rectangularContent: some View {
+        HStack(spacing: 8) {
+            if presentation.state == .logged {
+                Image(systemName: presentation.iconName)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(SunclubWidgetPalette.success)
+                Spacer(minLength: 0)
+            } else {
+                Text(presentation.actionText)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(SunclubWidgetPalette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private var circularContent: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+
+            if presentation.state == .logged {
+                Image(systemName: presentation.iconName)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(SunclubWidgetPalette.success)
+            } else {
+                VStack(spacing: 2) {
+                    Image(systemName: presentation.iconName)
+                        .font(.system(size: 13, weight: .black))
+                    Text(presentation.circularText)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .foregroundStyle(SunclubWidgetPalette.ink)
+            }
+        }
+        .contentShape(Circle())
+        .accessibilityLabel(presentation.accessibilityLabel)
+    }
+
+    private var logButtonLabel: some View {
+        Text(presentation.actionText)
+            .font(.system(size: homeScreenFontSize, weight: .bold, design: .rounded))
+            .lineLimit(1)
+            .minimumScaleFactor(0.68)
+            .foregroundStyle(SunclubWidgetPalette.ink)
+            .padding(.horizontal, homeScreenHorizontalPadding)
+            .padding(.vertical, homeScreenVerticalPadding)
+            .frame(maxWidth: presentation.family == .systemSmall ? .infinity : nil)
+            .background(SunclubWidgetPalette.sun.opacity(0.92), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func loggedMark(size: CGFloat) -> some View {
+        Image(systemName: presentation.iconName)
+            .font(.system(size: size * 0.48, weight: .black))
+            .foregroundStyle(SunclubWidgetPalette.success)
+            .frame(width: size, height: size)
+            .background(SunclubWidgetPalette.success.opacity(0.14), in: Circle())
+    }
+
+    private var homeScreenFontSize: CGFloat {
+        switch presentation.family {
+        case .systemSmall:
+            return 16
+        case .systemMedium:
+            return 18
+        case .systemLarge, .systemExtraLarge:
+            return 20
+        case .accessoryCircular, .accessoryRectangular:
+            return 13
+        }
+    }
+
+    private var homeScreenCheckmarkSize: CGFloat {
+        switch presentation.family {
+        case .systemSmall:
+            return 54
+        case .systemMedium:
+            return 62
+        case .systemLarge, .systemExtraLarge:
+            return 72
+        case .accessoryCircular, .accessoryRectangular:
+            return 24
+        }
+    }
+
+    private var homeScreenPadding: CGFloat {
+        switch presentation.family {
+        case .systemSmall:
+            return 16
+        case .systemMedium:
+            return 18
+        case .systemLarge, .systemExtraLarge:
+            return 22
+        case .accessoryCircular, .accessoryRectangular:
+            return 0
+        }
+    }
+
+    private var homeScreenHorizontalPadding: CGFloat {
+        presentation.family == .systemSmall ? 12 : 20
+    }
+
+    private var homeScreenVerticalPadding: CGFloat {
+        presentation.family == .systemSmall ? 11 : 13
     }
 }
 
@@ -813,7 +912,7 @@ private struct SunclubLogInlineView: View {
         let presentation = SunclubLogTodayWidgetPresentation.make(
             snapshot: snapshot,
             now: now,
-            family: .accessoryInline
+            family: .accessoryRectangular
         )
 
         SunclubLogActionButton(presentation: presentation) {
@@ -1052,7 +1151,7 @@ private struct SunclubLogWholeSurfaceButton<LabelContent: View>: View {
                 actionLabel
             }
             .buttonStyle(.plain)
-        case .open:
+        case .open, .none:
             actionLabel
         }
     }
@@ -1088,7 +1187,7 @@ private struct SunclubLogActionButton<LabelContent: View>: View {
                 }
                 .buttonStyle(.plain)
             }
-        case .open:
+        case .open, .none:
             label()
         }
     }
@@ -1118,16 +1217,14 @@ private extension SunclubLogTodayWidgetPresentation {
         switch tapAction {
         case let .open(route):
             return route
-        case .logTodayInPlace, .logReapplyInPlace:
+        case .logTodayInPlace, .logReapplyInPlace, .none:
             return .updateToday
         }
     }
 
     var accentColor: Color {
         switch state {
-        case .needsSetup:
-            return SunclubWidgetPalette.softInk
-        case .open, .reapplyDue:
+        case .open:
             return SunclubWidgetPalette.sun
         case .logged:
             return SunclubWidgetPalette.success
@@ -1136,25 +1233,19 @@ private extension SunclubLogTodayWidgetPresentation {
 
     var statusText: String {
         switch state {
-        case .needsSetup:
-            return "Setup"
         case .open:
-            return "Today"
+            return "Log"
         case .logged:
             return "Logged"
-        case .reapplyDue:
-            return "Reapply"
         }
     }
 
     var statusIconName: String {
         switch state {
-        case .needsSetup, .open:
+        case .open:
             return "sun.max.fill"
         case .logged:
             return "checkmark"
-        case .reapplyDue:
-            return "arrow.clockwise"
         }
     }
 }

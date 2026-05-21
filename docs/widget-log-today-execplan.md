@@ -29,6 +29,7 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-05-18) Uploaded a current widget contact sheet to ChatGPT image generation and implemented the compact status-chip redesign guidance across Today, Stats, and History widgets.
 - [x] (2026-05-20) Made the whole interactive Today widget surface run the widget-only log or reapply intent, with nested action pills rendered as passive labels under that whole-surface button.
 - [x] (2026-05-20) Removed the Today `accessoryInline` family because Apple's iOS 18 interactive-widget button support covers Home Screen families plus accessory circular and rectangular, not inline.
+- [x] (2026-05-21) Simplified the Today widget to a single `Log Sunscreen` intent button that becomes a non-opening checkmark state after today's log exists.
 - [ ] Manually verify all supported widget families and Control Center controls in Simulator.
 
 ## Decision Log
@@ -85,6 +86,10 @@ Sunclub's product loop is stronger when the user can see daily state before open
   Rationale: The ChatGPT image-generation pass over the current widget contact sheet identified overflow from duplicate metadata, long status phrases, decorative space, and excessive padding. The implementation uses shorter titles such as `Log today`, `July`, and `4/7`, reduces widget padding, and gives accessory `Log today` / `Reapply` states in-place AppIntent actions instead of app-opening routes.
   Date/Author: 2026-05-18 / Codex
 
+- Decision: Reduce the Today widget to one visible action and one completion state.
+  Rationale: The requested widget should be a single `Log Sunscreen` button and should never open the app on tap. After the widget-only log intent writes today's record and refreshes snapshots, the Today widget renders only a checkmark.
+  Date/Author: 2026-05-21 / Codex
+
 ## Context And Orientation
 
 The Tuist target wiring lives in [app/Sunclub/Project.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Project.swift). Shared widget snapshot and route logic lives in [app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/WidgetSupport/SunclubWidgetSupport.swift). App state sync lives in [app/Sunclub/Sources/Services/AppState.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Services/AppState.swift). Widget and control surfaces live in [app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/WidgetExtension/Sources/SunclubWidgets.swift). App routes and deep-link parsing live in [app/Sunclub/Sources/Shared/SunclubDeepLink.swift](/Users/peyton/.codex/worktrees/d7ea/sunclub/app/Sunclub/Sources/Shared/SunclubDeepLink.swift).
@@ -115,15 +120,15 @@ Out of scope:
 1. Keep widget-support types shared between the app and widget extension.
 2. Persist a compact snapshot mirror into shared `UserDefaults` and refresh it whenever onboarding or records change.
 3. Render Home Screen and Lock Screen layouts from that snapshot with low-text, state-forward designs.
-4. Use non-discoverable widget intents for app-owned in-place logging and reapply, keep `LogSunscreenIntent` for user-run Shortcuts, and use route-based intents/deep links for navigation-only widget and control surfaces.
+4. Use non-discoverable widget intents for app-owned in-place logging, keep `LogSunscreenIntent` and `LogReapplyIntent` for user-run Shortcuts, and use route-based intents/deep links for navigation-only widget and control surfaces.
 5. Verify snapshot math, route parsing, app routing, and repo-level build/test/lint flows.
 
 ## Validation And Acceptance
 
 1. Every iPhone Home Screen and Lock Screen family listed above is exposed by the widget bundle.
 2. `Today` logs in place from the whole rendered widget surface when the current day is still open.
-3. When today is already logged and reapply is not due, the Today widget shows useful completion/streak state and routes into the app for editing instead of re-logging.
-4. When today is logged and reapply is due, the Today widget logs the reapply in place instead of opening the app.
+3. When today is already logged, the Today widget shows only a checkmark and does not open Sunclub.
+4. Reapply remains available through app and Shortcut surfaces, not through the Today widget.
 5. Stats and History widgets derive current-day state from stored dates plus current time, not stale strings.
 6. Control Center exposes `Today`, `Stats`, and `History`.
 7. Unit tests cover snapshot rollover math, widget tap actions, runtime invocation permissions, and widget/control deep-link routes.
@@ -138,6 +143,7 @@ Out of scope:
 - Outcome: The 2026-05-18 stuck-widget fix removed the 2400x2400 bitmap artwork from the widget source and moved AppIntent buttons off the root Today widget surface.
 - Outcome: The 2026-05-18 compact redesign reduces Today/Stats/History text density and padding, shortens History metric copy, and keeps Lock Screen open/reapply Today widgets as in-place widget actions instead of app launches.
 - Outcome: The 2026-05-20 Today widget pass made the whole open/reapply widget surface run the widget-only AppIntent, kept setup/logged states as whole-surface app links, and stopped advertising the non-interactive inline Today family for iOS 18.
+- Outcome: The 2026-05-21 Today widget simplification replaced status chips, metrics, edit links, and reapply UI with a single `Log Sunscreen` intent button and a non-opening checkmark state.
 - Root cause evidence:
   - `.build/widget-verification/after-widget-gallery-placeholder.jpg` captured the Simulator widget gallery stuck on the gray loading skeleton.
   - `.build/widget-verification/before-image-too-large-log.txt` captured `WidgetArchiver.ArchivingError.imageTooLarge(size: (2400.0, 2400.0))` and `timelineReloadFailed` for Today small, medium, and large widget archives.

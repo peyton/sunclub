@@ -14,7 +14,6 @@ final class SunclubWidgetTests: XCTestCase {
                 "systemMedium",
                 "systemLarge",
                 "systemExtraLarge",
-                "accessoryInline",
                 "accessoryCircular",
                 "accessoryRectangular"
             ]
@@ -114,7 +113,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.friends.first?.status, "Not logged")
     }
 
-    func testLogTodaySmallOpenPresentationUsesShortIconLedCopy() throws {
+    func testLogTodayOpenPresentationIsSingleLogSunscreenButton() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
         let snapshot = makeWidgetSnapshot(
@@ -135,15 +134,18 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(presentation.state, .open)
         XCTAssertEqual(presentation.iconName, "sun.max.fill")
-        XCTAssertEqual(presentation.title, "Log today")
-        XCTAssertEqual(presentation.subtitle, "Ready")
-        XCTAssertEqual(presentation.detail, "UV 7 High")
-        XCTAssertEqual(presentation.actionText, "Log today")
-        XCTAssertFalse(presentation.title.contains("Today"))
+        XCTAssertEqual(presentation.title, "Log Sunscreen")
+        XCTAssertEqual(presentation.subtitle, "")
+        XCTAssertEqual(presentation.detail, "")
+        XCTAssertEqual(presentation.actionText, "Log Sunscreen")
+        XCTAssertEqual(presentation.inlineText, "Log Sunscreen")
+        XCTAssertEqual(presentation.circularText, "Log")
+        XCTAssertEqual(presentation.metrics, [])
+        XCTAssertEqual(presentation.accessibilityLabel, "Log Sunscreen")
         XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
     }
 
-    func testLogTodayMediumPresentationAddsHabitMetrics() throws {
+    func testLogTodayPresentationDoesNotExposeHabitMetadata() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
         let snapshot = makeWidgetSnapshot(
@@ -163,14 +165,13 @@ final class SunclubWidgetTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(presentation.title, "Log today")
-        XCTAssertEqual(presentation.subtitle, "SPF 50 usual")
-        XCTAssertEqual(presentation.detail, "SPF 50 · UV 7 High")
-        XCTAssertEqual(presentation.metrics.map(\.title), ["Week", "Month", "UV"])
-        XCTAssertEqual(presentation.metrics.map(\.value), ["3/7", "20%", "UV 9"])
+        XCTAssertEqual(presentation.title, "Log Sunscreen")
+        XCTAssertEqual(presentation.actionText, "Log Sunscreen")
+        XCTAssertEqual(presentation.metrics, [])
+        XCTAssertEqual(presentation.accessibilityLabel, "Log Sunscreen")
     }
 
-    func testLogTodayLargeLoggedPresentationShowsUpdateStateAndReapply() throws {
+    func testLogTodayLoggedPresentationBecomesNonOpeningCheckmark() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 11)
         let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
@@ -192,15 +193,16 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.state, .logged)
-        XCTAssertEqual(presentation.iconName, "checkmark.seal.fill")
-        XCTAssertEqual(presentation.title, "Logged")
-        XCTAssertEqual(presentation.subtitle.replacingOccurrences(of: "\u{202F}", with: " "), "Logged 9:00 AM")
-        XCTAssertEqual(presentation.actionText, "Edit")
-        XCTAssertEqual(presentation.detail, "Reapply in 30m")
-        XCTAssertEqual(presentation.tapAction, .open(.updateToday))
+        XCTAssertEqual(presentation.iconName, "checkmark")
+        XCTAssertEqual(presentation.title, "")
+        XCTAssertEqual(presentation.actionText, "")
+        XCTAssertEqual(presentation.detail, "")
+        XCTAssertEqual(presentation.metrics, [])
+        XCTAssertEqual(presentation.accessibilityLabel, "Sunscreen logged")
+        XCTAssertEqual(presentation.tapAction, .none)
     }
 
-    func testLogTodayLoggedPresentationUsesTodaySPFOnly() throws {
+    func testLogTodayLoggedPresentationIgnoresSPFMetadata() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 11)
         let snapshot = makeWidgetSnapshot(
@@ -220,13 +222,12 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.state, .logged)
-        XCTAssertEqual(presentation.title, "Logged")
-        XCTAssertEqual(presentation.subtitle, "SPF 50")
-        XCTAssertEqual(presentation.metrics.last?.title, "SPF")
-        XCTAssertEqual(presentation.metrics.last?.value, "50")
+        XCTAssertEqual(presentation.title, "")
+        XCTAssertEqual(presentation.subtitle, "")
+        XCTAssertEqual(presentation.metrics, [])
     }
 
-    func testLogTodayPresentationShowsReapplyDueStateAfterDeadline() throws {
+    func testLogTodayPresentationDoesNotExposeReapplyActionAfterDeadline() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 12)
         let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
@@ -247,15 +248,13 @@ final class SunclubWidgetTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(presentation.state, .reapplyDue)
-        XCTAssertEqual(presentation.iconName, "sun.max.fill")
-        XCTAssertEqual(presentation.title, "Reapply due")
-        XCTAssertEqual(presentation.actionText, "Reapply")
-        XCTAssertEqual(presentation.detail, "Reapply due")
-        XCTAssertEqual(presentation.tapAction, .logReapplyInPlace)
+        XCTAssertEqual(presentation.state, .logged)
+        XCTAssertEqual(presentation.iconName, "checkmark")
+        XCTAssertEqual(presentation.actionText, "")
+        XCTAssertEqual(presentation.tapAction, .none)
     }
 
-    func testLogTodaySetupPresentationOpensSummaryInsteadOfWriting() throws {
+    func testLogTodaySetupPresentationStaysNonOpeningLogButton() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
         let snapshot = makeWidgetSnapshot(
@@ -273,8 +272,9 @@ final class SunclubWidgetTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(presentation.state, .needsSetup)
-        XCTAssertEqual(presentation.tapAction, .open(.summary))
+        XCTAssertEqual(presentation.state, .open)
+        XCTAssertEqual(presentation.actionText, "Log Sunscreen")
+        XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
     }
 
     func testReapplyDeadlineIgnoresExpiredTimerFromYesterday() throws {
