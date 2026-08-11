@@ -1,5 +1,16 @@
 import Foundation
 
+enum HomeDailyPlanAction: String, Codable, Equatable, Sendable {
+    case logToday
+    case backfillYesterday
+    case logReapply
+    case addDetails
+    case viewProgress
+    case reviewRecovery
+    case repairReminders
+    case openSettings
+}
+
 enum SunclubWidgetDefaults {
     static let appGroupID = SunclubRuntimeConfiguration.appGroupID
     static let snapshotKey = "sunclub.widget.snapshot"
@@ -46,6 +57,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let currentUVIndex: Int?
     let peakUVIndex: Int?
     let peakUVHour: Date?
+    let uvValidUntil: Date?
     let reapplyReminderEnabled: Bool
     let reapplyIntervalMinutes: Int
     let accountabilitySummary: SunclubAccountabilitySummary
@@ -66,6 +78,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         currentUVIndex: nil,
         peakUVIndex: nil,
         peakUVHour: nil,
+        uvValidUntil: nil,
         reapplyReminderEnabled: false,
         reapplyIntervalMinutes: 120,
         accountabilitySummary: .empty
@@ -87,6 +100,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         case currentUVIndex
         case peakUVIndex
         case peakUVHour
+        case uvValidUntil
         case reapplyReminderEnabled
         case reapplyIntervalMinutes
         case accountabilitySummary
@@ -108,6 +122,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         currentUVIndex: Int?,
         peakUVIndex: Int?,
         peakUVHour: Date?,
+        uvValidUntil: Date? = nil,
         reapplyReminderEnabled: Bool,
         reapplyIntervalMinutes: Int,
         accountabilitySummary: SunclubAccountabilitySummary = .empty
@@ -127,6 +142,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         self.currentUVIndex = currentUVIndex
         self.peakUVIndex = peakUVIndex
         self.peakUVHour = peakUVHour
+        self.uvValidUntil = uvValidUntil
         self.reapplyReminderEnabled = reapplyReminderEnabled
         self.reapplyIntervalMinutes = reapplyIntervalMinutes
         self.accountabilitySummary = accountabilitySummary
@@ -149,6 +165,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         currentUVIndex = try container.decodeIfPresent(Int.self, forKey: .currentUVIndex)
         peakUVIndex = try container.decodeIfPresent(Int.self, forKey: .peakUVIndex)
         peakUVHour = try container.decodeIfPresent(Date.self, forKey: .peakUVHour)
+        uvValidUntil = try container.decodeIfPresent(Date.self, forKey: .uvValidUntil)
         reapplyReminderEnabled = try container.decodeIfPresent(Bool.self, forKey: .reapplyReminderEnabled) ?? false
         reapplyIntervalMinutes = max(1, try container.decodeIfPresent(Int.self, forKey: .reapplyIntervalMinutes) ?? 120)
         accountabilitySummary = try container.decodeIfPresent(SunclubAccountabilitySummary.self, forKey: .accountabilitySummary) ?? .empty
@@ -220,6 +237,36 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: baseDate)
     }
 
+    func currentUVIndex(at now: Date = Date()) -> Int? {
+        guard let uvValidUntil, now <= uvValidUntil else {
+            return nil
+        }
+        return currentUVIndex
+    }
+
+    func peakUVIndex(at now: Date = Date()) -> Int? {
+        guard let uvValidUntil, now <= uvValidUntil else {
+            return nil
+        }
+        return peakUVIndex
+    }
+
+    func homeDailyPlanAction(
+        now: Date = Date(),
+        calendar: Calendar = Calendar.current
+    ) -> HomeDailyPlanAction {
+        guard isOnboardingComplete else {
+            return .openSettings
+        }
+        guard hasLoggedToday(now: now, calendar: calendar) else {
+            return .logToday
+        }
+        if let deadline = reapplyDeadline(now: now, calendar: calendar), deadline <= now {
+            return .logReapply
+        }
+        return .viewProgress
+    }
+
     func nextTimelineRefreshDate(after now: Date = Date(), calendar: Calendar = Calendar.current) -> Date {
         let nextMidnightRefresh = calendar.nextDate(
             after: now,
@@ -227,12 +274,15 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
             matchingPolicy: .nextTime
         ) ?? now.addingTimeInterval(3_600)
 
-        guard let reapplyDeadline = reapplyDeadline(now: now, calendar: calendar),
-              reapplyDeadline > now else {
-            return nextMidnightRefresh
+        var refreshCandidates = [nextMidnightRefresh]
+        if let reapplyDeadline = reapplyDeadline(now: now, calendar: calendar),
+           reapplyDeadline > now {
+            refreshCandidates.append(reapplyDeadline)
         }
-
-        return min(reapplyDeadline, nextMidnightRefresh)
+        if let uvValidUntil, uvValidUntil >= now {
+            refreshCandidates.append(uvValidUntil.addingTimeInterval(1))
+        }
+        return refreshCandidates.min() ?? nextMidnightRefresh
     }
 
     private func monthInterval(now: Date, calendar: Calendar) -> DateInterval {
@@ -249,6 +299,8 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
 }
 
 enum SunclubWidgetSnapshotBuilder {
+    private static let verifiedUVMaxAge: TimeInterval = 2 * 60 * 60
+
     static func make(
         settings: Settings,
         records: [DailyRecord],
@@ -276,6 +328,14 @@ enum SunclubWidgetSnapshotBuilder {
         let monthlyDayCount = max(calendar.dateComponents([.day], from: monthStart, to: effectiveMonthEnd).day ?? 0, 0)
         let compactUVReading = compactSurfaceReading(from: uvReading, now: now, calendar: calendar)
         let compactUVPeakHour = compactSurfacePeakHour(from: uvForecast, now: now, calendar: calendar)
+        let compactUVForecastGeneratedAt = compactUVPeakHour == nil ? nil : uvForecast?.generatedAt
+        let uvValidUntil = [
+            compactUVReading?.timestamp,
+            compactUVForecastGeneratedAt
+        ]
+        .compactMap { $0 }
+        .map { $0.addingTimeInterval(verifiedUVMaxAge) }
+        .min()
 
         return SunclubWidgetSnapshot(
             isOnboardingComplete: settings.hasCompletedOnboarding,
@@ -293,6 +353,7 @@ enum SunclubWidgetSnapshotBuilder {
             currentUVIndex: compactUVReading?.index,
             peakUVIndex: compactUVPeakHour?.index,
             peakUVHour: compactUVPeakHour?.date,
+            uvValidUntil: uvValidUntil,
             reapplyReminderEnabled: settings.reapplyReminderEnabled,
             reapplyIntervalMinutes: settings.reapplyIntervalMinutes,
             accountabilitySummary: accountabilitySummary(from: growthSettings)
@@ -304,19 +365,13 @@ enum SunclubWidgetSnapshotBuilder {
         now: Date,
         calendar: Calendar
     ) -> UVReading? {
-        guard let reading else {
+        _ = calendar
+        guard let reading,
+              reading.source == .weatherKit,
+              reading.isFresh(at: now, maxAge: verifiedUVMaxAge) else {
             return nil
         }
-
-        guard reading.source == .weatherKit else {
-            return reading
-        }
-
-        return UVReading(
-            index: SunclubUVEstimator.estimatedIndex(at: now, calendar: calendar),
-            timestamp: now,
-            source: .heuristic
-        )
+        return reading
     }
 
     private static func compactSurfacePeakHour(
@@ -324,31 +379,17 @@ enum SunclubWidgetSnapshotBuilder {
         now: Date,
         calendar: Calendar
     ) -> SunclubUVHourForecast? {
+        _ = calendar
         guard let forecast else {
             return nil
         }
-
-        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel else {
-            return forecast.peakHour
+        let age = now.timeIntervalSince(forecast.generatedAt)
+        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel,
+              age >= 0,
+              age <= verifiedUVMaxAge else {
+            return nil
         }
-
-        return heuristicPeakHour(now: now, calendar: calendar)
-    }
-
-    private static func heuristicPeakHour(now: Date, calendar: Calendar) -> SunclubUVHourForecast? {
-        let dayStart = calendar.startOfDay(for: now)
-        return (6...18)
-            .compactMap { hour in
-                calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart)
-            }
-            .map { hourDate in
-                SunclubUVHourForecast(
-                    date: hourDate,
-                    index: SunclubUVEstimator.estimatedIndex(at: hourDate, calendar: calendar),
-                    sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
-                )
-            }
-            .max(by: { $0.index < $1.index })
+        return forecast.peakHour
     }
 
     private static func accountabilitySummary(from settings: SunclubGrowthSettings) -> SunclubAccountabilitySummary {

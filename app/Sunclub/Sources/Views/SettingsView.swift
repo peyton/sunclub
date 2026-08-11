@@ -25,6 +25,8 @@ struct SettingsView: View {
     @State private var backupStatus: BackupFeedback?
     @State private var backupAlert: BackupAlert?
     @State private var automationFeedback = ""
+    @State private var notificationToolFeedback = ""
+    @State private var isChoosingUVCity = false
 
     private let reapplyOptions = [30, 60, 90, 120, 180, 240]
     let showsBackButton: Bool
@@ -56,6 +58,15 @@ struct SettingsView: View {
         }
         .sheet(item: $selectedReminderPicker) { schedule in
             reminderPickerSheet(for: schedule)
+        }
+        .sheet(isPresented: $isChoosingUVCity) {
+            CitySearchView { place in
+                guard appState.updateSelectedUVPlace(place) else {
+                    return false
+                }
+                liveUVEnabled = false
+                return true
+            }
         }
         .fileExporter(
             isPresented: $isExportingBackup,
@@ -593,31 +604,49 @@ struct SettingsView: View {
     }
 
     private var notificationHealthSection: some View {
-        Group {
-            if let presentation = appState.notificationHealthPresentation {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Notification Help")
-                        .font(AppFont.rounded(size: 14, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Notification Help")
+                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .foregroundStyle(AppPalette.softInk)
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        SunStatusCard(
-                            title: presentation.title,
-                            detail: presentation.detail,
-                            tint: AppColor.warning.opacity(0.72),
-                            symbol: "bell.badge.fill"
-                        )
+            VStack(alignment: .leading, spacing: 14) {
+                if let presentation = appState.notificationHealthPresentation {
+                    SunStatusCard(
+                        title: presentation.title,
+                        detail: presentation.detail,
+                        tint: AppColor.warning.opacity(0.72),
+                        symbol: "bell.badge.fill"
+                    )
 
-                        Button(presentation.actionTitle) {
-                            handleNotificationHealthAction(for: presentation)
-                        }
-                        .buttonStyle(SunSecondaryButtonStyle())
-                        .accessibilityIdentifier("settings.notificationHealth.action")
+                    Button(presentation.actionTitle) {
+                        handleNotificationHealthAction(for: presentation)
                     }
-                    .padding(18)
-                    .background(cardBackground)
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("settings.notificationHealth.action")
+                }
+
+                Button("Send Test Reminder") {
+                    sendTestNotification()
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("settings.notificationHealth.sendTest")
+
+                Button("Copy Diagnostics") {
+                    copyNotificationDiagnostics()
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("settings.notificationHealth.copyDiagnostics")
+
+                if !notificationToolFeedback.isEmpty {
+                    Text(notificationToolFeedback)
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppPalette.softInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("settings.notificationHealth.feedback")
                 }
             }
+            .padding(18)
+            .background(cardBackground)
         }
     }
 
@@ -628,7 +657,7 @@ struct SettingsView: View {
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("Export a backup before you reinstall the app or move to a new device. Import restores this phone first and leaves iCloud unchanged until you send those changes.")
+                Text("Export a backup before you reinstall the app or move to a new device. Backups contain private logs, settings, automation choices, and connection data, so store them securely. Import restores this phone first and leaves iCloud unchanged until you send those changes.")
                     .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
 
@@ -743,28 +772,57 @@ struct SettingsView: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             Text("Live UV")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $liveUVEnabled) {
                     Text("Use Apple Weather for Live UV")
-                        .font(AppFont.rounded(size: 17, weight: .medium))
+                        .font(AppTextStyle.bodyMedium.font)
                         .foregroundStyle(AppPalette.ink)
                 }
                 .tint(AppPalette.sun)
                 .onChange(of: liveUVEnabled) { _, newValue in
-                    appState.updateLiveUVPreference(
+                    let didSave = appState.updateLiveUVPreference(
                         enabled: newValue,
                         allowPermissionPrompt: newValue
                     )
+                    if !didSave {
+                        liveUVEnabled = appState.settings.usesLiveUV
+                    }
                 }
                 .accessibilityIdentifier("settings.liveUVToggle")
 
-                Text("Optional and off by default. Manual logging, reminders, widgets, and watch surfaces keep using Sunclub's local estimate if Live UV is off or unavailable.")
-                    .font(AppFont.rounded(size: 14))
+                Text("Choose Current Location or save a city. If Apple Weather data is more than two hours old, Sunclub shows UV unavailable instead of an estimate.")
+                    .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Button(appState.settings.selectedUVPlace == nil ? "Choose a City" : "Change UV City") {
+                    isChoosingUVCity = true
+                }
+                .buttonStyle(SunSecondaryButtonStyle())
+                .accessibilityIdentifier("settings.liveUV.chooseCity")
+
+                if let selectedPlace = appState.settings.selectedUVPlace {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("Saved city: \(selectedPlace.displayName)")
+                            .font(AppTextStyle.captionMedium.font)
+                            .foregroundStyle(AppPalette.ink)
+
+                        Spacer(minLength: 8)
+
+                        Button("Remove") {
+                            if appState.updateSelectedUVPlace(nil) {
+                                appState.refreshUVForecastIfNeeded()
+                            }
+                        }
+                        .font(AppTextStyle.captionMedium.font)
+                        .foregroundStyle(AppColor.warning)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("settings.liveUV.removeCity")
+                    }
+                }
 
                 SunStatusCard(
                     title: presentation.title,
@@ -775,7 +833,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.liveUV.status")
 
                 Text("When Apple Weather UV appears in Sunclub, the main app shows Apple Weather attribution and a Data Sources link.")
-                    .font(AppFont.rounded(size: 13))
+                    .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -1144,9 +1202,41 @@ struct SettingsView: View {
                 openURL(settingsURL)
             }
         case .stale:
-            appState.repairReminderSchedule()
+            repairNotificationSchedule()
         case .healthy:
             break
+        }
+    }
+
+    private func repairNotificationSchedule() {
+        notificationToolFeedback = "Rebuilding reminders…"
+        Task {
+            let report = await NotificationManager.shared.scheduleReminders(using: appState)
+            if report.isSuccessful {
+                notificationToolFeedback = "Reminders refreshed."
+            } else {
+                let requestLabel = report.failedCount == 1 ? "request" : "requests"
+                notificationToolFeedback = "Sunclub couldn't schedule \(report.failedCount) reminder \(requestLabel). "
+                    + "Copy diagnostics for details."
+            }
+            appState.refreshNotificationHealth()
+        }
+    }
+
+    private func sendTestNotification() {
+        notificationToolFeedback = "Scheduling test reminder…"
+        Task {
+            let result = await NotificationManager.shared.sendTestNotification()
+            notificationToolFeedback = result.message
+            appState.refreshNotificationHealth()
+        }
+    }
+
+    private func copyNotificationDiagnostics() {
+        Task {
+            let diagnostics = await NotificationManager.shared.diagnostics(using: appState)
+            UIPasteboard.general.string = diagnostics
+            notificationToolFeedback = "Notification diagnostics copied."
         }
     }
 

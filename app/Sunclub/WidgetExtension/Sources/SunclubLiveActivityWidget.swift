@@ -29,21 +29,37 @@ struct SunclubLiveActivityWidget: Widget {
                     }
                 }
             } compactLeading: {
-                HStack(spacing: 3) {
-                    Image(systemName: "sun.max.fill")
-                    Text("\(context.state.currentUVIndex)")
+                let now = Date()
+                if context.state.hasFreshUV(now: now) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "sun.max.fill")
+                        Text("\(context.state.currentUVIndex)")
+                    }
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(uvTint(for: context.state.currentUVIndex))
+                    .accessibilityLabel(context.state.uvPillLabel(now: now))
+                } else {
+                    Image(systemName: "sun.haze.fill")
+                        .foregroundStyle(.white.opacity(0.7))
+                        .accessibilityLabel("UV unavailable")
                 }
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(uvTint(for: context.state.currentUVIndex))
-                .accessibilityLabel(context.state.uvPillLabel)
             } compactTrailing: {
                 SunclubCompactTimer(state: context.state)
             } minimal: {
-                Image(systemName: "sun.max.fill")
-                    .foregroundStyle(uvTint(for: context.state.currentUVIndex))
-                    .accessibilityLabel(context.state.uvPillLabel)
+                let now = Date()
+                Image(systemName: context.state.hasFreshUV(now: now) ? "sun.max.fill" : "sun.haze.fill")
+                    .foregroundStyle(
+                        context.state.hasFreshUV(now: now)
+                            ? uvTint(for: context.state.currentUVIndex)
+                            : .white.opacity(0.7)
+                    )
+                    .accessibilityLabel(context.state.uvPillLabel(now: now))
             }
-            .keylineTint(uvTint(for: context.state.currentUVIndex))
+            .keylineTint(
+                context.state.hasFreshUV()
+                    ? uvTint(for: context.state.currentUVIndex)
+                    : .white.opacity(0.7)
+            )
         }
     }
 }
@@ -201,17 +217,22 @@ private struct SunclubLiveActivityUVPill: View {
     let colorScheme: ColorScheme
 
     var body: some View {
-        Text(state.uvPillLabel)
+        let now = Date()
+
+        Text(state.uvPillLabel(now: now))
             .font(.system(size: colorScheme == .light ? 12 : 11, weight: .bold))
-            .foregroundStyle(foregroundColor)
+            .foregroundStyle(foregroundColor(now: now))
             .lineLimit(1)
             .padding(.horizontal, colorScheme == .light ? 8 : 7)
             .padding(.vertical, colorScheme == .light ? 5 : 4)
-            .background(backgroundColor, in: Capsule())
-            .accessibilityLabel(state.uvPillLabel)
+            .background(backgroundColor(now: now), in: Capsule())
+            .accessibilityLabel(state.uvPillLabel(now: now))
     }
 
-    private var foregroundColor: Color {
+    private func foregroundColor(now: Date) -> Color {
+        guard state.hasFreshUV(now: now) else {
+            return colorScheme == .light ? SunclubLiveActivityPalette.mutedInk : .white.opacity(0.75)
+        }
         switch colorScheme {
         case .light:
             return SunclubLiveActivityPalette.ink
@@ -220,7 +241,10 @@ private struct SunclubLiveActivityUVPill: View {
         }
     }
 
-    private var backgroundColor: Color {
+    private func backgroundColor(now: Date) -> Color {
+        guard state.hasFreshUV(now: now) else {
+            return colorScheme == .light ? .white.opacity(0.55) : .white.opacity(0.18)
+        }
         switch colorScheme {
         case .light:
             return SunclubLiveActivityPalette.amber.opacity(0.24)

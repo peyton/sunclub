@@ -47,7 +47,14 @@ final class AchievementTests: XCTestCase {
         XCTAssertTrue(try achievement(.spfSampler, records: spfRecords([15, 30, 45, 50, 70])).isUnlocked)
         XCTAssertTrue(try achievement(.noteTaker, records: records(count: 10, notes: { "Log \($0)" })).isUnlocked)
         XCTAssertTrue(try achievement(.reapplyRelay, records: [record(day: date(year: 2026, month: 4, day: 1), reapplyCount: 3)]).isUnlocked)
-        XCTAssertTrue(try achievement(.highUVHero, records: records(count: 10, startingAt: date(year: 2026, month: 7, day: 1))).isUnlocked)
+        let highUVRecords = records(count: 10, startingAt: date(year: 2026, month: 7, day: 1))
+        XCTAssertTrue(
+            try achievement(
+                .highUVHero,
+                records: highUVRecords,
+                historicalUVIndexes: verifiedHighUVIndexes(for: highUVRecords)
+            ).isUnlocked
+        )
         XCTAssertTrue(try achievement(.homeBase, settings: makeSettings(homeBase: true)).isUnlocked)
         XCTAssertTrue(try achievement(.liveSignal, growthSettings: makeGrowthSettings(dailyUVBriefingEnabled: true)).isUnlocked)
         XCTAssertTrue(try achievement(.bottleDetective, growthSettings: SunclubGrowthSettings(telemetry: SunclubGrowthTelemetry(productScanUseCount: 1))).isUnlocked)
@@ -60,7 +67,14 @@ final class AchievementTests: XCTestCase {
         XCTAssertFalse(try achievement(.spfSampler, records: spfRecords([15, 30, 45, 50])).isUnlocked)
         XCTAssertFalse(try achievement(.noteTaker, records: records(count: 9, notes: { "Log \($0)" })).isUnlocked)
         XCTAssertFalse(try achievement(.reapplyRelay, records: [record(day: date(year: 2026, month: 4, day: 1), reapplyCount: 2)]).isUnlocked)
-        XCTAssertFalse(try achievement(.highUVHero, records: records(count: 9, startingAt: date(year: 2026, month: 7, day: 1))).isUnlocked)
+        let highUVRecords = records(count: 9, startingAt: date(year: 2026, month: 7, day: 1))
+        XCTAssertFalse(
+            try achievement(
+                .highUVHero,
+                records: highUVRecords,
+                historicalUVIndexes: verifiedHighUVIndexes(for: highUVRecords)
+            ).isUnlocked
+        )
         XCTAssertFalse(try achievement(.homeBase, settings: makeSettings(homeBase: false)).isUnlocked)
         XCTAssertFalse(try achievement(.liveSignal, growthSettings: makeGrowthSettings(dailyUVBriefingEnabled: false)).isUnlocked)
         XCTAssertFalse(try achievement(.bottleDetective, growthSettings: SunclubGrowthSettings()).isUnlocked)
@@ -128,7 +142,8 @@ final class AchievementTests: XCTestCase {
         _ id: SunclubAchievementID,
         records: [DailyRecord] = [],
         settings: Settings? = nil,
-        growthSettings: SunclubGrowthSettings = SunclubGrowthSettings()
+        growthSettings: SunclubGrowthSettings = SunclubGrowthSettings(),
+        historicalUVIndexes: [Date: Int] = [:]
     ) throws -> SunclubAchievement {
         try XCTUnwrap(
             SunclubGrowthAnalytics.achievements(
@@ -136,11 +151,18 @@ final class AchievementTests: XCTestCase {
                 changeBatches: [],
                 settings: settings,
                 growthSettings: growthSettings,
+                historicalUVIndexes: historicalUVIndexes,
                 now: date(year: 2026, month: 7, day: 15),
                 calendar: calendar
             )
             .first(where: { $0.id == id })
         )
+    }
+
+    private func verifiedHighUVIndexes(for records: [DailyRecord]) -> [Date: Int] {
+        Dictionary(uniqueKeysWithValues: records.map {
+            (calendar.startOfDay(for: $0.startOfDay), 7)
+        })
     }
 
     private func makeAppState(growthFeatureStore: SunclubGrowthFeatureStoring) throws -> AppState {

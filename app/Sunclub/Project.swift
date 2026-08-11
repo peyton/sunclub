@@ -51,7 +51,7 @@ let productionFlavor = SunclubFlavor(
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub",
     displayName: "Sunclub",
     urlScheme: "sunclub",
-    publicAccountabilityTransportEnabled: true
+    publicAccountabilityTransportEnabled: false
 )
 
 let developmentFlavor = SunclubFlavor(
@@ -233,6 +233,7 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Models/AccountabilityModels.swift",
             "Sources/Models/DailyRecord.swift",
             "Sources/Models/GrowthFeatures.swift",
+            "Sources/Models/SunclubRestorablePreferences.swift",
             "Sources/Models/Settings.swift",
             "Sources/Models/UVSupport.swift",
             "Sources/Models/VerificationMethod.swift",
@@ -293,6 +294,7 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Models/AccountabilityModels.swift",
             "Sources/Models/DailyRecord.swift",
             "Sources/Models/GrowthFeatures.swift",
+            "Sources/Models/SunclubRestorablePreferences.swift",
             "Sources/Models/Settings.swift",
             "Sources/Models/UVSupport.swift",
             "Sources/Models/VerificationMethod.swift",

@@ -8,7 +8,7 @@ struct SunclubUVForecastCachePolicy: Sendable {
     let locationRadiusMeters: CLLocationDistance
 
     static let `default` = SunclubUVForecastCachePolicy(
-        maxAge: 60 * 60 * 3,
+        maxAge: 60 * 60 * 2,
         locationRadiusMeters: 5_000
     )
 }

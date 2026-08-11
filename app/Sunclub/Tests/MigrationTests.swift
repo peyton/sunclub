@@ -117,8 +117,14 @@ final class MigrationTests: XCTestCase {
         let migrationBatch = try XCTUnwrap(try context.fetch(FetchDescriptor<SunclubChangeBatch>()).first)
         XCTAssertEqual(try context.fetch(FetchDescriptor<SunclubChangeBatch>()).count, 1)
         XCTAssertFalse(migrationBatch.isLocalOnly)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<SettingsRevision>()).count, 1)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<DailyRecordRevision>()).count, 1)
+        XCTAssertEqual(migrationBatch.logicalOrder, 1)
+        XCTAssertNil(migrationBatch.serverReceivedAt)
+        let settingsRevision = try XCTUnwrap(try context.fetch(FetchDescriptor<SettingsRevision>()).first)
+        let recordRevision = try XCTUnwrap(try context.fetch(FetchDescriptor<DailyRecordRevision>()).first)
+        XCTAssertEqual(settingsRevision.logicalOrder, 1)
+        XCTAssertEqual(recordRevision.logicalOrder, 1)
+        XCTAssertNil(settingsRevision.serverReceivedAt)
+        XCTAssertNil(recordRevision.serverReceivedAt)
     }
 
     func testMigrationFromEmptyV3StoreCreatesLocalOnlyDefaultSeed() throws {
@@ -141,8 +147,73 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(migrationBatch.kind, .migrationSeed)
         XCTAssertTrue(migrationBatch.isLocalOnly)
         XCTAssertFalse(migrationBatch.isPublishedToCloud)
+        XCTAssertEqual(migrationBatch.logicalOrder, 1)
         XCTAssertEqual(try context.fetch(FetchDescriptor<SettingsRevision>()).count, 1)
         XCTAssertTrue(try context.fetch(FetchDescriptor<DailyRecordRevision>()).isEmpty)
+    }
+
+    func testMigrationFromV4PreservesSettingsAndSeedsNewOptionalValues() throws {
+        let storeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: storeDirectory) }
+
+        let storeURL = storeDirectory.appendingPathComponent("Sunclub.store")
+        let fixture = try LegacyStoreFixture.seedCurrentV4Store(at: storeURL)
+
+        let container = try SunclubModelContainerFactory.makeDiskBackedContainer(url: storeURL)
+        let context = ModelContext(container)
+
+        let settings = try XCTUnwrap(try context.fetch(FetchDescriptor<Settings>()).first)
+        XCTAssertTrue(settings.hasCompletedOnboarding)
+        XCTAssertTrue(settings.usesLiveUV)
+        XCTAssertEqual(settings.reapplyIntervalMinutes, 90)
+        XCTAssertNil(settings.selectedUVPlace)
+        XCTAssertNil(settings.sunscreenProfile)
+        XCTAssertNil(settings.restorablePreferences)
+
+        let revisionID = fixture.settingsRevisionID
+        let revisionPredicate = #Predicate<SettingsRevision> { $0.id == revisionID }
+        let revision = try XCTUnwrap(
+            try context.fetch(FetchDescriptor(predicate: revisionPredicate)).first
+        )
+        XCTAssertTrue(revision.snapshot.usesLiveUV)
+        XCTAssertNil(revision.snapshot.selectedUVPlace)
+        XCTAssertNil(revision.snapshot.sunscreenProfile)
+        XCTAssertNil(revision.snapshot.restorablePreferences)
+        XCTAssertEqual(revision.logicalOrder, 2)
+        XCTAssertNil(revision.serverReceivedAt)
+
+        let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
+            .sorted { ($0.logicalOrder ?? 0) < ($1.logicalOrder ?? 0) }
+        XCTAssertEqual(batches.map(\.id), fixture.orderedBatchIDs)
+        XCTAssertEqual(batches.map(\.logicalOrder), [1, 2])
+        XCTAssertTrue(batches.allSatisfy { $0.createdAt == Date(timeIntervalSince1970: 1_800_000_000) })
+        XCTAssertTrue(batches.allSatisfy { $0.serverReceivedAt == nil })
+
+        let recordRevisionID = fixture.recordRevisionID
+        let recordRevision = try XCTUnwrap(
+            try context.fetch(
+                FetchDescriptor<DailyRecordRevision>(predicate: #Predicate { $0.id == recordRevisionID })
+            ).first
+        )
+        XCTAssertEqual(recordRevision.logicalOrder, 1)
+        XCTAssertNil(recordRevision.serverReceivedAt)
+        XCTAssertEqual(recordRevision.snapshot?.startOfDay, fixture.day)
+        XCTAssertEqual(recordRevision.snapshot?.spfLevel, 50)
+        XCTAssertEqual(recordRevision.snapshot?.notes, "V4 history")
+        let fixtureDay = fixture.day
+        let projectedRecord = try XCTUnwrap(
+            try context.fetch(
+                FetchDescriptor<DailyRecord>(predicate: #Predicate { $0.startOfDay == fixtureDay })
+            ).first
+        )
+        XCTAssertEqual(projectedRecord.spfLevel, 50)
+        XCTAssertEqual(projectedRecord.notes, "V4 history")
+
+        let cloudState = try XCTUnwrap(try context.fetch(FetchDescriptor<CloudSyncState>()).first)
+        XCTAssertEqual(cloudState.stateSerializationData, Data("state".utf8))
+        XCTAssertNil(cloudState.unresolvedCloudRecordFailuresData)
     }
 
     func testDiskBackedContainerCreatesMissingParentDirectory() throws {

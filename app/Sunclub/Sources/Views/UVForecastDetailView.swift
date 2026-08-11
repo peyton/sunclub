@@ -17,24 +17,34 @@ struct UVForecastDetailView: View {
             VStack(alignment: .leading, spacing: 18) {
                 forecastHeader
 
-                UVForecastHeroCard(
-                    index: currentUV.index,
-                    level: currentUV.level,
-                    sourceLabel: currentUV.sourceLabel,
-                    recommendation: currentUV.recommendation
-                )
+                if let currentUV {
+                    UVForecastHeroCard(
+                        index: currentUV.index,
+                        level: currentUV.level,
+                        sourceLabel: currentUV.sourceLabel,
+                        recommendation: currentUV.recommendation
+                    )
 
-                if currentUV.sourceLabel == "Unavailable" {
+                    SunStatusCard(
+                        title: "Verified UV",
+                        detail: verificationDetail,
+                        tint: AppPalette.pool,
+                        symbol: "checkmark.seal.fill"
+                    )
+                    .accessibilityIdentifier("uvForecast.verified")
+                } else {
                     SunStatusCard(
                         title: "UV data unavailable",
-                        detail: "Showing local estimates when live data is not available. Try again from Settings if you use Live UV.",
+                        detail: appState.liveUVStatusPresentation.detail,
                         tint: AppPalette.sun,
                         symbol: "arrow.clockwise"
                     )
                     .accessibilityIdentifier("uvForecast.unavailable")
                 }
 
-                hourlyForecastCard
+                if !forecastHours.isEmpty {
+                    hourlyForecastCard
+                }
 
                 protectionTipsCard
 
@@ -52,7 +62,7 @@ struct UVForecastDetailView: View {
                 router.goBack()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(AppFont.rounded(size: 18, weight: .semibold))
+                    .font(AppTextStyle.sectionHeader.font)
                     .foregroundStyle(AppPalette.ink)
                     .frame(width: 44, height: 44)
             }
@@ -66,10 +76,10 @@ struct UVForecastDetailView: View {
                 HStack(spacing: 5) {
                     Text(locationTitle)
                     Image(systemName: "location.fill")
-                        .font(AppFont.rounded(size: 10, weight: .semibold))
+                        .font(AppTextStyle.captionMedium.font)
                         .accessibilityHidden(true)
                 }
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.ink)
 
                 Text(selectedDay.formatted(.dateTime.month(.wide).day().year()))
@@ -84,7 +94,7 @@ struct UVForecastDetailView: View {
                 openURL(SunclubWebLinks.docs)
             } label: {
                 Image(systemName: "info.circle")
-                    .font(AppFont.rounded(size: 18, weight: .semibold))
+                    .font(AppTextStyle.sectionHeader.font)
                     .foregroundStyle(AppPalette.ink)
                     .frame(width: 44, height: 44)
             }
@@ -94,8 +104,15 @@ struct UVForecastDetailView: View {
         }
     }
 
-    private var currentUV: UVForecastPresentationReading {
+    private var currentUV: UVForecastPresentationReading? {
+        guard appState.uvStatus.availability == .available,
+              appState.uvStatus.freshness == .fresh else {
+            return nil
+        }
+
         if let reading = appState.uvReading,
+           reading.source == .weatherKit,
+           reading.isFresh(at: appState.referenceDate),
            Calendar.current.isDate(reading.timestamp, inSameDayAs: selectedDay) {
             return UVForecastPresentationReading(
                 index: reading.index,
@@ -105,7 +122,8 @@ struct UVForecastDetailView: View {
             )
         }
 
-        if let peakHour = forecastHours.max(by: { $0.index < $1.index }) {
+        if appState.uvForecast?.isAvailable == true,
+           let peakHour = forecastHours.max(by: { $0.index < $1.index }) {
             return UVForecastPresentationReading(
                 index: peakHour.index,
                 level: peakHour.level,
@@ -114,16 +132,20 @@ struct UVForecastDetailView: View {
             )
         }
 
-        return UVForecastPresentationReading(
-            index: 0,
-            level: .unknown,
-            sourceLabel: "Unavailable",
-            recommendation: "Check again when forecast data is available."
-        )
+        return nil
     }
 
     private var locationTitle: String {
-        appState.isUITesting ? "San Diego, CA" : "Current location"
+        appState.uvStatus.source?.displayName ?? "UV location not set"
+    }
+
+    private var verificationDetail: String {
+        let source = appState.uvStatus.source?.displayName ?? "your UV location"
+        let updated = appState.uvStatus.updatedAt?.formatted(date: .omitted, time: .shortened) ?? "recently"
+        if let window = appState.uvProtectionWindow {
+            return "Apple Weather · \(source) · Updated \(updated). Protection recommended \(window.start.formatted(date: .omitted, time: .shortened))–\(window.end.formatted(date: .omitted, time: .shortened))."
+        }
+        return "Apple Weather · \(source) · Updated \(updated)."
     }
 
     private var hourlyForecastCard: some View {
@@ -156,13 +178,13 @@ struct UVForecastDetailView: View {
                 .frame(width: 48, alignment: .leading)
 
             Image(systemName: hour.level.symbolName)
-                .font(AppFont.rounded(size: 16, weight: .semibold))
+                .font(AppTextStyle.bodyMedium.font)
                 .foregroundStyle(AppPalette.sun)
                 .frame(width: 24)
                 .accessibilityHidden(true)
 
             Text("\(hour.index)")
-                .font(AppFont.rounded(size: 15, weight: .bold))
+                .font(AppTextStyle.metric.font)
                 .foregroundStyle(AppPalette.ink)
                 .frame(width: 28, alignment: .leading)
 
@@ -208,17 +230,7 @@ struct UVForecastDetailView: View {
             return Array((lateMorningHours.isEmpty ? liveHours : lateMorningHours).prefix(6))
         }
 
-        return [10, 11, 12, 13, 14, 15].compactMap { hour in
-            guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day) else {
-                return nil
-            }
-
-            return SunclubUVHourForecast(
-                date: date,
-                index: UVIndexService.estimatedUVIndex(at: date, calendar: calendar),
-                sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
-            )
-        }
+        return []
     }
 }
 
@@ -240,7 +252,7 @@ private struct UVForecastHeroCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .center, spacing: 16) {
                     Text("\(index)")
-                        .font(AppFont.rounded(size: 76, weight: .bold))
+                        .font(AppTypography.streakNumber)
                         .foregroundStyle(AppPalette.sun)
                         .frame(minWidth: 88, alignment: .leading)
 
@@ -250,7 +262,7 @@ private struct UVForecastHeroCard: View {
                             .foregroundStyle(AppPalette.sun)
 
                         Text(level.displayName)
-                            .font(AppFont.rounded(size: 30, weight: .semibold))
+                            .font(AppTypography.screenTitle)
                             .foregroundStyle(AppPalette.sun)
 
                         Text(sourceLabel)

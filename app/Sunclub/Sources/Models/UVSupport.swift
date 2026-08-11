@@ -58,30 +58,6 @@ enum UVLevel: Equatable, Sendable {
         }
     }
 
-    var reapplyAdvanceMinutes: Int {
-        switch self {
-        case .high:
-            return 30
-        case .veryHigh, .extreme:
-            return 60
-        default:
-            return 0
-        }
-    }
-
-    var strongerReapplyMessage: String? {
-        switch self {
-        case .high:
-            return "UV is high today, so reapply sooner if you're outside."
-        case .veryHigh:
-            return "UV is very high today, so reapply sooner and stay covered."
-        case .extreme:
-            return "UV is extreme today, so reapply as early as you can and minimize direct sun."
-        default:
-            return nil
-        }
-    }
-
     var reapplyLabelPrefix: String? {
         switch self {
         case .high:
@@ -108,89 +84,89 @@ enum UVLevel: Equatable, Sendable {
 }
 
 enum UVReadingSource: Equatable, Sendable {
-    case heuristic
     case weatherKit
 
-    static let heuristicSourceLabel = "Estimated locally"
-    static let heuristicHourlySourceLabel = "Estimated"
     static let weatherKitSourceLabel = "Apple Weather"
+    static let unavailableSourceLabel = "UV unavailable"
 
     var statusLabel: String {
-        switch self {
-        case .heuristic:
-            return Self.heuristicSourceLabel
-        case .weatherKit:
-            return Self.weatherKitSourceLabel
-        }
+        Self.weatherKitSourceLabel
     }
 
     var forecastLabel: String {
-        switch self {
-        case .heuristic:
-            return Self.heuristicSourceLabel
-        case .weatherKit:
-            return Self.weatherKitSourceLabel
-        }
+        Self.weatherKitSourceLabel
     }
 
     var hourlySourceLabel: String {
-        switch self {
-        case .heuristic:
-            return Self.heuristicHourlySourceLabel
-        case .weatherKit:
-            return Self.weatherKitSourceLabel
-        }
+        Self.weatherKitSourceLabel
     }
 
     var shouldDisplayAttribution: Bool {
-        self == .weatherKit
+        true
     }
 }
 
-enum SunclubUVEstimator {
-    nonisolated static func estimatedIndex(
-        at date: Date,
-        calendar: Calendar = .current,
-        latitude: Double? = nil
-    ) -> Int {
-        let hour = calendar.component(.hour, from: date)
-        let rawMonth = calendar.component(.month, from: date)
+enum SunclubUVAvailability: Equatable, Sendable {
+    case available
+    case unavailable
+}
 
-        let isSouthernHemisphere = latitude.map { $0 < 0 } ?? false
-        let month = isSouthernHemisphere ? ((rawMonth + 5) % 12) + 1 : rawMonth
+enum SunclubUVLocationSource: Equatable, Sendable {
+    case liveLocation
+    case selectedPlace(displayName: String)
 
-        let seasonalBase: Int
-        switch month {
-        case 6, 7, 8:
-            seasonalBase = 8
-        case 5, 9:
-            seasonalBase = 6
-        case 4, 10:
-            seasonalBase = 4
-        case 3, 11:
-            seasonalBase = 3
-        default:
-            seasonalBase = 2
+    var displayName: String {
+        switch self {
+        case .liveLocation:
+            return "Current Location"
+        case .selectedPlace(let displayName):
+            return displayName
+        }
+    }
+}
+
+enum SunclubUVFreshness: Equatable, Sendable {
+    case fresh
+    case stale
+    case unavailable
+}
+
+struct SunclubUVStatus: Equatable, Sendable {
+    let availability: SunclubUVAvailability
+    let source: SunclubUVLocationSource?
+    let freshness: SunclubUVFreshness
+    let updatedAt: Date?
+
+    static let unavailable = SunclubUVStatus(
+        availability: .unavailable,
+        source: nil,
+        freshness: .unavailable,
+        updatedAt: nil
+    )
+}
+
+struct SunclubUVProtectionWindow: Equatable, Sendable {
+    let start: Date
+    let end: Date
+}
+
+extension SunclubUVForecastBundle {
+    func protectionWindow(
+        for day: Date,
+        calendar: Calendar = .current
+    ) -> SunclubUVProtectionWindow? {
+        let elevatedHours = hourly
+            .filter { calendar.isDate($0.date, inSameDayAs: day) && $0.index >= 3 }
+            .sorted { $0.date < $1.date }
+        guard let first = elevatedHours.first,
+              let last = elevatedHours.last else {
+            return nil
         }
 
-        let timeMultiplier: Double
-        switch hour {
-        case 0...5: timeMultiplier = 0.0
-        case 6: timeMultiplier = 0.1
-        case 7: timeMultiplier = 0.2
-        case 8: timeMultiplier = 0.4
-        case 9: timeMultiplier = 0.6
-        case 10: timeMultiplier = 0.8
-        case 11, 12, 13: timeMultiplier = 1.0
-        case 14: timeMultiplier = 0.9
-        case 15: timeMultiplier = 0.7
-        case 16: timeMultiplier = 0.5
-        case 17: timeMultiplier = 0.3
-        case 18: timeMultiplier = 0.1
-        default: timeMultiplier = 0.0
-        }
-
-        return max(0, Int(Double(seasonalBase) * timeMultiplier))
+        return SunclubUVProtectionWindow(
+            start: first.date,
+            end: calendar.date(byAdding: .hour, value: 1, to: last.date) ?? last.date
+        )
     }
 }
 
@@ -211,7 +187,7 @@ struct UVReading: Equatable, Sendable {
     init(
         index: Int,
         timestamp: Date = Date(),
-        source: UVReadingSource = .heuristic
+        source: UVReadingSource = .weatherKit
     ) {
         self.index = index
         self.level = UVLevel.from(index: index)
@@ -220,6 +196,14 @@ struct UVReading: Equatable, Sendable {
     }
 
     var isStale: Bool {
-        Date().timeIntervalSince(timestamp) > 3600
+        !isFresh(at: Date())
+    }
+
+    func isFresh(
+        at date: Date,
+        maxAge: TimeInterval = 2 * 60 * 60
+    ) -> Bool {
+        let age = date.timeIntervalSince(timestamp)
+        return age >= 0 && age <= maxAge
     }
 }

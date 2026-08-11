@@ -38,7 +38,7 @@ struct TimelineLogSection: View {
     private var sectionHeader: some View {
         HStack {
             Text(sectionTitle)
-                .font(AppFont.rounded(size: 22, weight: .bold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
 
             Spacer(minLength: 0)
@@ -46,7 +46,7 @@ struct TimelineLogSection: View {
             Button("History") {
                 router.open(.history)
             }
-            .font(AppFont.rounded(size: 15, weight: .semibold))
+            .font(AppTextStyle.bodyMedium.font)
             .foregroundStyle(AppPalette.pool)
             .buttonStyle(.plain)
             .accessibilityIdentifier(identifier("timeline.forecast.history"))
@@ -69,20 +69,35 @@ struct TimelineLogSection: View {
         } ? UVReadingSource.weatherKit.forecastLabel : nil
     }
 
+    @ViewBuilder
     private var forecastBlockGroup: some View {
         let blocks = forecastBlocks
-        return VStack(spacing: 0) {
-            ForEach(blocks) { block in
-                forecastRow(
-                    for: block,
-                    status: summary.category == .future ? nil : status(for: block.dayPart)
+        if blocks.isEmpty {
+            AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+                SunInfoRow(
+                    title: "UV unavailable",
+                    detail: "No fresh Apple Weather forecast is available for this day.",
+                    systemImage: "sun.haze.fill",
+                    tint: AppPalette.muted
                 )
-                if block.id != blocks.last?.id {
-                    rowDivider
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("UV unavailable. No fresh Apple Weather forecast is available for this day.")
+            .accessibilityIdentifier(identifier("timeline.forecast.unavailable"))
+        } else {
+            VStack(spacing: 0) {
+                ForEach(blocks) { block in
+                    forecastRow(
+                        for: block,
+                        status: summary.category == .future ? nil : status(for: block.dayPart)
+                    )
+                    if block.id != blocks.last?.id {
+                        rowDivider
+                    }
                 }
             }
+            .background(rowGroupBackground)
         }
-        .background(rowGroupBackground)
     }
 
     private var rowDivider: some View {
@@ -109,7 +124,7 @@ struct TimelineLogSection: View {
 
     private func forecastBlock(for dayPart: DayPart) -> TimelineUVForecastBlock? {
         let hours = forecastHours(for: dayPart)
-        guard let peakHour = hours.max(by: { $0.index < $1.index }) ?? fallbackForecastHour(for: dayPart) else {
+        guard let peakHour = hours.max(by: { $0.index < $1.index }) else {
             return nil
         }
         return TimelineUVForecastBlock(
@@ -122,51 +137,27 @@ struct TimelineLogSection: View {
     }
 
     private func forecastHours(for dayPart: DayPart) -> [SunclubUVHourForecast] {
-        let calendar = Calendar.current
-        let selectedDay = calendar.startOfDay(for: summary.day)
-        let liveOrCachedHours = uvForecast?.hours.filter { hour in
-            calendar.isDate(hour.date, inSameDayAs: selectedDay)
-                && dayPart.forecastHours.contains(calendar.component(.hour, from: hour.date))
-        } ?? []
+        Self.verifiedForecastHours(
+            in: uvForecast,
+            for: summary.day,
+            dayPart: dayPart
+        )
+    }
 
-        if !liveOrCachedHours.isEmpty {
-            return liveOrCachedHours
-        }
-
-        if summary.category == .future {
+    static func verifiedForecastHours(
+        in forecast: SunclubUVForecast?,
+        for day: Date,
+        dayPart: DayPart,
+        calendar: Calendar = .current
+    ) -> [SunclubUVHourForecast] {
+        guard let forecast, forecast.isAvailable else {
             return []
         }
-
-        return dayPart.forecastHours.compactMap { hour in
-            estimatedForecastHour(on: selectedDay, hour: hour)
+        let selectedDay = calendar.startOfDay(for: day)
+        return forecast.hours.filter { hour in
+            calendar.isDate(hour.date, inSameDayAs: selectedDay)
+                && dayPart.forecastHours.contains(calendar.component(.hour, from: hour.date))
         }
-    }
-
-    private func fallbackForecastHour(for dayPart: DayPart) -> SunclubUVHourForecast? {
-        if summary.category == .future {
-            return nil
-        }
-
-        return estimatedForecastHour(
-            on: Calendar.current.startOfDay(for: summary.day),
-            hour: dayPart.defaultHour
-        ) ?? SunclubUVHourForecast(
-            date: summary.day,
-            index: 0,
-            sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
-        )
-    }
-
-    private func estimatedForecastHour(on day: Date, hour: Int) -> SunclubUVHourForecast? {
-        let calendar = Calendar.current
-        guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day) else {
-            return nil
-        }
-        return SunclubUVHourForecast(
-            date: date,
-            index: UVIndexService.estimatedUVIndex(at: date, calendar: calendar),
-            sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
-        )
     }
 
     private func timeRange(for dayPart: DayPart) -> String {
@@ -187,7 +178,37 @@ struct TimelineLogSection: View {
     }
 
     private func forecastRow(for block: TimelineUVForecastBlock, status: TimelineDayPartStatus?) -> some View {
-        HStack(spacing: 12) {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: AppSpacing.xs) {
+                forecastIdentity(for: block, status: status)
+
+                Spacer(minLength: AppSpacing.xs)
+
+                forecastValue(for: block)
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                forecastIdentity(for: block, status: status)
+                forecastValue(for: block)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, AppSpacing.sm)
+        .padding(.vertical, AppSpacing.sm)
+        .frame(minHeight: 60)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(block.dayPart.title) \(summary.category == .future ? "UV forecast" : "log and UV context")")
+        .accessibilityValue(
+            forecastAccessibilityValue(for: block, status: status)
+        )
+        .accessibilityIdentifier(identifier("timeline.forecast.part.\(block.dayPart.rawValue)"))
+    }
+
+    private func forecastIdentity(
+        for block: TimelineUVForecastBlock,
+        status: TimelineDayPartStatus?
+    ) -> some View {
+        HStack(alignment: .top, spacing: AppSpacing.xs) {
             Image(systemName: block.level.symbolName)
                 .font(AppFont.rounded(size: 16, weight: .semibold))
                 .foregroundStyle(AppPalette.sun)
@@ -197,41 +218,32 @@ struct TimelineLogSection: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(block.dayPart.title)
-                    .font(AppFont.rounded(size: 16, weight: .semibold))
+                    .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
 
                 Text(block.timeRange)
-                    .font(AppFont.rounded(size: 14, weight: .medium))
+                    .font(AppTextStyle.captionMedium.font)
                     .foregroundStyle(AppPalette.softInk)
 
                 if let status {
                     Text(status.statusText)
-                        .font(AppFont.rounded(size: 13, weight: .semibold))
+                        .font(AppTextStyle.captionMedium.font)
                         .foregroundStyle(status.isCompleted ? AppPalette.success : AppPalette.softInk)
                 }
             }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("UV \(block.uvIndex)")
-                    .font(AppFont.rounded(size: 16, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text(block.level.displayName)
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-            }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .frame(minHeight: 60)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(block.dayPart.title) \(summary.category == .future ? "UV forecast" : "log and UV context")")
-        .accessibilityValue(
-            forecastAccessibilityValue(for: block, status: status)
-        )
-        .accessibilityIdentifier(identifier("timeline.forecast.part.\(block.dayPart.rawValue)"))
+    }
+
+    private func forecastValue(for block: TimelineUVForecastBlock) -> some View {
+        VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
+            Text("UV \(block.uvIndex)")
+                .font(AppTextStyle.bodyMedium.font)
+                .foregroundStyle(AppPalette.ink)
+
+            Text(block.level.displayName)
+                .font(AppTextStyle.captionMedium.font)
+                .foregroundStyle(AppPalette.softInk)
+        }
     }
 
     private func forecastAccessibilityValue(
@@ -252,15 +264,15 @@ struct TimelineLogSection: View {
     private func futurePlanCard(_ preview: FutureDayPreview) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Suggested routine")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
 
             Text("SPF \(preview.suggestedSPF)+")
-                .font(AppFont.rounded(size: 20, weight: .bold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
 
             Text(preview.suggestionText)
-                .font(AppFont.rounded(size: 14))
+                .font(AppTextStyle.body.font)
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -286,10 +298,10 @@ struct TimelineLogSection: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Daily log")
-                    .font(AppFont.rounded(size: 15, weight: .semibold))
+                    .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
                 Text(detail)
-                    .font(AppFont.rounded(size: 14))
+                    .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
             }
             Spacer(minLength: 0)

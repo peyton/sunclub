@@ -107,6 +107,96 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(record.notes, "Beach day")
     }
 
+    func testBackupRoundTripPreservesHistoryOrderingMetadata() throws {
+        let backupService = SunclubBackupService()
+        let sourceContainer = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let sourceContext = ModelContext(sourceContainer)
+        let sourceHistory = SunclubHistoryService(context: sourceContext)
+        try sourceHistory.bootstrapIfNeeded()
+
+        let sourceDate = Date(timeIntervalSince1970: 1_900_000_000)
+        let serverDate = Date(timeIntervalSince1970: 2_000_000_000)
+        let day = Calendar.current.startOfDay(for: sourceDate)
+        let authorDeviceID = try sourceHistory.syncPreference().deviceID
+        let batch = SunclubChangeBatch(
+            createdAt: sourceDate,
+            logicalOrder: 42,
+            serverReceivedAt: serverDate,
+            kind: .historyEdit,
+            scope: .timeline,
+            scopeIdentifier: "timeline",
+            authorDeviceID: authorDeviceID,
+            summary: "Metadata round trip"
+        )
+        let recordRevision = DailyRecordRevision(
+            batch: batch,
+            snapshot: DailyRecordProjectionSnapshot(
+                startOfDay: day,
+                verifiedAt: day.addingTimeInterval(9 * 60 * 60),
+                methodRawValue: VerificationMethod.manual.rawValue,
+                verificationDuration: nil,
+                spfLevel: 50,
+                notes: "Metadata round trip",
+                reapplyCount: 0,
+                lastReappliedAt: nil
+            ),
+            changedFields: [.verifiedAt, .methodRawValue, .spfLevel, .notes]
+        )
+        let settingsRevision = SettingsRevision(
+            batch: batch,
+            snapshot: SettingsProjectionSnapshot(
+                hasCompletedOnboarding: true,
+                reminderHour: 9,
+                reminderMinute: 0,
+                weeklyHour: 18,
+                weeklyWeekday: 1,
+                dailyPhraseState: nil,
+                weeklyPhraseState: nil,
+                smartReminderSettingsData: nil,
+                reapplyReminderEnabled: false,
+                reapplyIntervalMinutes: 120,
+                usesLiveUV: false
+            ),
+            changedFields: [.hasCompletedOnboarding, .reminderHour]
+        )
+        sourceContext.insert(batch)
+        sourceContext.insert(recordRevision)
+        sourceContext.insert(settingsRevision)
+        try sourceContext.save()
+        try sourceHistory.refreshProjectedState()
+
+        let document = try backupService.exportDocument(from: sourceContext)
+        let targetContainer = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let targetContext = ModelContext(targetContainer)
+        _ = try backupService.importBackupDocument(document, into: targetContext)
+
+        let batchID = batch.id
+        let recordRevisionID = recordRevision.id
+        let settingsRevisionID = settingsRevision.id
+        let restoredBatch = try XCTUnwrap(
+            try targetContext.fetch(
+                FetchDescriptor<SunclubChangeBatch>(predicate: #Predicate { $0.id == batchID })
+            ).first
+        )
+        let restoredRecordRevision = try XCTUnwrap(
+            try targetContext.fetch(
+                FetchDescriptor<DailyRecordRevision>(predicate: #Predicate { $0.id == recordRevisionID })
+            ).first
+        )
+        let restoredSettingsRevision = try XCTUnwrap(
+            try targetContext.fetch(
+                FetchDescriptor<SettingsRevision>(predicate: #Predicate { $0.id == settingsRevisionID })
+            ).first
+        )
+        XCTAssertEqual(restoredBatch.createdAt, sourceDate)
+        XCTAssertEqual(restoredBatch.logicalOrder, 42)
+        XCTAssertEqual(restoredBatch.serverReceivedAt, serverDate)
+        XCTAssertEqual(restoredRecordRevision.logicalOrder, 42)
+        XCTAssertEqual(restoredRecordRevision.serverReceivedAt, serverDate)
+        XCTAssertEqual(restoredSettingsRevision.logicalOrder, 42)
+        XCTAssertEqual(restoredSettingsRevision.serverReceivedAt, serverDate)
+    }
+
     func testImportedBackupRequiresExplicitPublishBeforeMarkingImportSynced() async throws {
         let source = try makeAppState(notificationManager: MockNotificationManager())
         source.completeOnboarding()
@@ -128,12 +218,169 @@ final class BackupTests: XCTestCase {
         XCTAssertNotNil(target.recentImportSession?.publishedAt)
     }
 
-    private func makeAppState(notificationManager: NotificationScheduling) throws -> AppState {
+    func testBackupRestoresAutomationPrivacyAndAccountabilityPreferences() async throws {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let friend = SunclubFriendSnapshot(
+            name: "Maya",
+            currentStreak: 4,
+            longestStreak: 8,
+            hasLoggedToday: true,
+            lastSharedAt: now,
+            seasonStyle: .summerGlow
+        )
+        let accountability = SunclubAccountabilitySettings(
+            displayName: "Peyton",
+            inviteTokens: [SunclubAccountabilityInviteToken(token: "restore-token", createdAt: now)],
+            activatedAt: now,
+            lastPublishedAt: now,
+            subscriptionsInstalledAt: now,
+            subscriptionInstallVersion: 2
+        )
+        let sourceGrowthSettings = SunclubGrowthSettings(
+            preferredName: "Peyton",
+            uvBriefing: SunclubUVBriefingPreferences(
+                dailyBriefingEnabled: false,
+                extremeAlertEnabled: true,
+                morningHour: 9,
+                morningMinute: 15
+            ),
+            friends: [friend],
+            accountability: accountability,
+            automation: SunclubAutomationPreferences(
+                shortcutWritesEnabled: false,
+                urlOpenActionsEnabled: true,
+                urlWriteActionsEnabled: false,
+                callbackResultDetailsEnabled: false
+            )
+        )
+        let sourceStore = BackupMemoryGrowthFeatureStore(settings: sourceGrowthSettings)
+        let source = try makeAppState(
+            notificationManager: MockNotificationManager(),
+            growthFeatureStore: sourceStore
+        )
+        let expectedPreferences = SunclubRestorablePreferences(growthSettings: sourceGrowthSettings)
+        let expectedAccountability = expectedPreferences.accountability
+        XCTAssertEqual(source.settings.restorablePreferences, expectedPreferences)
+        XCTAssertTrue(
+            source.changeBatches.contains { $0.kind == .preferenceSettings }
+        )
+
+        let document = try source.exportBackupDocument()
+        XCTAssertEqual(document.payload.restorablePreferences?.automation, sourceGrowthSettings.automation)
+        XCTAssertEqual(document.payload.restorablePreferences?.accountability, expectedAccountability)
+        XCTAssertEqual(expectedAccountability.inviteTokens, accountability.inviteTokens)
+        XCTAssertNil(expectedAccountability.lastPublishedAt)
+        XCTAssertNil(expectedAccountability.subscriptionsInstalledAt)
+        XCTAssertEqual(expectedAccountability.subscriptionInstallVersion, 0)
+
+        let targetStore = BackupMemoryGrowthFeatureStore(settings: SunclubGrowthSettings())
+        let target = try makeAppState(
+            notificationManager: MockNotificationManager(),
+            growthFeatureStore: targetStore
+        )
+        let summary = try target.importBackupDocument(document)
+        await Task.yield()
+
+        XCTAssertEqual(summary.restoredPreferences, document.payload.restorablePreferences)
+        XCTAssertEqual(target.growthSettings.preferredName, "Peyton")
+        XCTAssertEqual(target.growthSettings.uvBriefing, sourceGrowthSettings.uvBriefing)
+        XCTAssertEqual(target.growthSettings.automation, sourceGrowthSettings.automation)
+        XCTAssertEqual(target.growthSettings.friends, [friend])
+        XCTAssertEqual(target.growthSettings.accountability, expectedAccountability)
+        XCTAssertEqual(targetStore.load(), target.growthSettings)
+        XCTAssertEqual(target.settings.restorablePreferences, expectedPreferences)
+    }
+
+    func testLegacyBackupWithoutPreferenceEnvelopePreservesCurrentPreferences() async throws {
+        let source = try makeAppState(notificationManager: MockNotificationManager())
+        let exported = try source.exportBackupDocument()
+        let legacyDocument = SunclubBackupDocument(
+            payload: SunclubBackupPayload(
+                createdAt: exported.payload.createdAt,
+                schemaVersion: exported.payload.schemaVersion,
+                storeFiles: exported.payload.storeFiles
+            )
+        )
+        let current = SunclubGrowthSettings(
+            automation: SunclubAutomationPreferences(
+                shortcutWritesEnabled: false,
+                urlOpenActionsEnabled: false,
+                urlWriteActionsEnabled: false,
+                callbackResultDetailsEnabled: false
+            )
+        )
+        let targetStore = BackupMemoryGrowthFeatureStore(settings: current)
+        let target = try makeAppState(
+            notificationManager: MockNotificationManager(),
+            growthFeatureStore: targetStore
+        )
+
+        let summary = try target.importBackupDocument(legacyDocument)
+        await Task.yield()
+
+        XCTAssertNil(summary.restoredPreferences)
+        XCTAssertEqual(target.growthSettings.automation, current.automation)
+    }
+
+    func testDefaultImportedPreferencesDoNotReplaceRicherCurrentChoices() {
+        let current = SunclubGrowthSettings(
+            uvBriefing: SunclubUVBriefingPreferences(
+                dailyBriefingEnabled: false,
+                extremeAlertEnabled: true,
+                morningHour: 10,
+                morningMinute: 30
+            ),
+            automation: SunclubAutomationPreferences(
+                shortcutWritesEnabled: false,
+                urlOpenActionsEnabled: false,
+                urlWriteActionsEnabled: false,
+                callbackResultDetailsEnabled: false
+            )
+        )
+        let importedDefaults = SunclubRestorablePreferences(
+            growthSettings: SunclubGrowthSettings()
+        )
+
+        let merged = importedDefaults.merging(into: current)
+
+        XCTAssertEqual(merged.uvBriefing, current.uvBriefing)
+        XCTAssertEqual(merged.automation, current.automation)
+    }
+
+    private func makeAppState(
+        notificationManager: NotificationScheduling,
+        growthFeatureStore: SunclubGrowthFeatureStoring = BackupMemoryGrowthFeatureStore(
+            settings: SunclubGrowthSettings()
+        )
+    ) throws -> AppState {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()
         return AppState(
             context: ModelContext(container),
             notificationManager: notificationManager,
-            uvIndexService: UVIndexService()
+            uvIndexService: UVIndexService(),
+            growthFeatureStore: growthFeatureStore,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: false,
+                isPreviewing: true,
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
+            )
         )
+    }
+}
+
+private final class BackupMemoryGrowthFeatureStore: SunclubGrowthFeatureStoring {
+    private var settings: SunclubGrowthSettings
+
+    init(settings: SunclubGrowthSettings) {
+        self.settings = settings
+    }
+
+    func load() -> SunclubGrowthSettings {
+        settings
+    }
+
+    func save(_ settings: SunclubGrowthSettings) {
+        self.settings = settings
     }
 }

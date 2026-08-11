@@ -450,6 +450,25 @@ enum SunclubAutomationRuntime {
         }
     }
 
+    static func performStandalone(
+        _ homeAction: HomeDailyPlanAction,
+        invocation: SunclubAutomationInvocation,
+        now: Date = Date()
+    ) throws -> SunclubAutomationResult {
+        switch homeAction {
+        case .logToday:
+            return try performStandalone(
+                .logToday(spfLevel: nil, notes: nil),
+                invocation: invocation,
+                now: now
+            )
+        case .logReapply:
+            return try performStandalone(.reapply, invocation: invocation, now: now)
+        default:
+            throw SunclubAutomationError.unsupportedAction(homeAction.rawValue)
+        }
+    }
+
     static func perform(
         _ action: SunclubAutomationAction,
         invocation: SunclubAutomationInvocation,
@@ -561,7 +580,11 @@ enum SunclubAutomationRuntime {
                 route: route.rawValue
             )
         case .exportBackup:
-            return try exportBackup(context: runtimeContext.modelContext, action: action.identifier)
+            return try exportBackup(
+                context: runtimeContext.modelContext,
+                growthSettings: growthSettings,
+                action: action.identifier
+            )
         case let .createSkinHealthReport(start, end):
             return try createSkinHealthReport(
                 start: start,
@@ -630,10 +653,12 @@ enum SunclubAutomationRuntime {
         let existingRecord = try runtimeContext.historyService.record(for: day)
         let isUpdate = existingRecord != nil
         let records = try runtimeContext.historyService.records()
+        let sunscreenProfileSPF = try runtimeContext.historyService.settings().sunscreenProfile?.spf
         let defaultInput: SunManualLogResolvedDefaults = existingRecord == nil
             ? SunManualLogDefaultResolver.oneTapDefaults(
                 from: records,
                 excluding: day,
+                profileSPF: sunscreenProfileSPF,
                 calendar: calendar
             )
             : .empty
@@ -955,8 +980,15 @@ enum SunclubAutomationRuntime {
         )
     }
 
-    private static func exportBackup(context: ModelContext, action: String) throws -> SunclubAutomationResult {
-        let document = try SunclubBackupService().exportDocument(from: context)
+    private static func exportBackup(
+        context: ModelContext,
+        growthSettings: SunclubGrowthSettings,
+        action: String
+    ) throws -> SunclubAutomationResult {
+        let document = try SunclubBackupService().exportDocument(
+            from: context,
+            restorablePreferences: SunclubRestorablePreferences(growthSettings: growthSettings)
+        )
         let fileURL = try temporaryFileURL(named: document.suggestedFilename)
         try document.serializedData().write(to: fileURL, options: .atomic)
         return SunclubAutomationResult(

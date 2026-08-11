@@ -31,6 +31,18 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
     attestations = raw_manifest["attestations"]
     medical = raw_manifest["regulatory"]["regulated_medical_device"]
     submission = raw_manifest["submission"]
+    if privacy["data_collection"] == "none" and not privacy.get("collected_data_types"):
+        manual_privacy_answer = (
+            "Manual App Store Connect answer: select Data Not Collected and do not mark "
+            "tracking, ads, or analytics. " + str(privacy.get("collection_notes", ""))
+        ).strip()
+    else:
+        manual_privacy_answer = (
+            "Manual App Store Connect answer: disclose "
+            + ", ".join(privacy.get("collected_data_types", []))
+            + f" for {privacy.get('collection_purpose', 'App Functionality')}. "
+            "Do not mark tracking unless the manifest says tracking is enabled."
+        )
     env_names = tuple(
         dict.fromkeys(
             (
@@ -121,7 +133,7 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             f"- Tracking: {yes_no(privacy['tracking'])}",
             f"- Data collection: {privacy['data_collection']}",
             "- Collected data types: "
-            + ", ".join(privacy.get("collected_data_types", [])),
+            + (", ".join(privacy.get("collected_data_types", [])) or "none"),
             f"- Collection purpose: {privacy.get('collection_purpose', 'App Functionality')}",
             (
                 "- Public CloudKit accountability transport: "
@@ -130,7 +142,7 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             f"- Notification purpose: {privacy['notifications_usage_description']}",
             "- App Store Connect questionnaire gate: `SUNCLUB_APP_PRIVACY_COMPLETED=1`",
             "",
-            "Manual App Store Connect answer: disclose Name, User ID, Other User Content, and Other Usage Data as collected for App Functionality. Optional Activity sharing uses Apple's public CloudKit database for friend invite responses, friend display names and status snapshots, relationship tokens, and poke reminder messages/timestamps. Do not mark tracking, ads, or analytics.",
+            manual_privacy_answer,
             "",
             "## Age Rating",
             "",

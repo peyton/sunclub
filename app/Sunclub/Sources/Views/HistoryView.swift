@@ -11,12 +11,12 @@ struct HistoryView: View {
     @State private var dayPendingDeletion: Date?
     @State private var lastDeletedBatchID: UUID?
     @State private var lastDeletedDay: Date?
+    @State private var failedDeletionDay: Date?
     @State private var isShowingMonthlyInsights = true
 
     let showsBackButton: Bool
 
     private let calendar = Calendar.current
-    private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
 
     init(preselectedDay: Date? = nil, showsBackButton: Bool = true) {
         self.showsBackButton = showsBackButton
@@ -41,6 +41,8 @@ struct HistoryView: View {
                 statsSection(stats: presentation.monthStats)
 
                 deleteUndoBanner
+
+                deletionErrorBanner
 
                 if let selectedDay = selectedDay {
                     dayDetailCard(for: selectedDay, presentation: presentation)
@@ -69,9 +71,12 @@ struct HistoryView: View {
         ) {
             Button("Delete", role: .destructive) {
                 if let day = dayPendingDeletion {
-                    deleteRecordAndPreserveSelection(for: day)
+                    if deleteRecordAndPreserveSelection(for: day) {
+                        dayPendingDeletion = nil
+                    } else {
+                        failedDeletionDay = day
+                    }
                 }
-                dayPendingDeletion = nil
             }
         } message: {
             Text(deleteDialogMessage)
@@ -138,11 +143,11 @@ struct HistoryView: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Entry deleted")
-                        .font(AppFont.rounded(size: 14, weight: .semibold))
+                        .font(AppTextStyle.bodyMedium.font)
                         .foregroundStyle(AppPalette.ink)
 
                     Text(lastDeletedDay.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(AppFont.rounded(size: 13, weight: .medium))
+                        .font(AppTextStyle.captionMedium.font)
                         .foregroundStyle(AppPalette.softInk)
                 }
 
@@ -154,7 +159,7 @@ struct HistoryView: View {
                     self.lastDeletedBatchID = nil
                     self.lastDeletedDay = nil
                 }
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .font(AppTextStyle.bodyMedium.font)
                 .foregroundStyle(AppPalette.ink)
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("history.undoDelete")
@@ -173,6 +178,49 @@ struct HistoryView: View {
         }
     }
 
+    @ViewBuilder
+    private var deletionErrorBanner: some View {
+        if let failedDeletionDay,
+           let errorMessage = appState.logActionErrorMessage {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                SunInfoRow(
+                    title: "Entry not deleted",
+                    detail: "\(failedDeletionDay.formatted(.dateTime.weekday(.wide).month(.wide).day())) is unchanged. \(errorMessage)",
+                    systemImage: "exclamationmark.triangle.fill",
+                    tint: AppColor.warning
+                )
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: AppSpacing.xs) {
+                        deletionErrorActions(for: failedDeletionDay)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        deletionErrorActions(for: failedDeletionDay)
+                    }
+                }
+            }
+            .padding(AppSpacing.sm)
+            .sunGlassCard(cornerRadius: AppRadius.card)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("history.deleteError")
+        }
+    }
+
+    @ViewBuilder
+    private func deletionErrorActions(for day: Date) -> some View {
+        PrimaryButton("Try Again", systemImage: "arrow.clockwise", identifier: "history.deleteRetry") {
+            if deleteRecordAndPreserveSelection(for: day) {
+                failedDeletionDay = nil
+            }
+        }
+
+        SecondaryPillButton("Keep Entry", identifier: "history.deleteCancel") {
+            failedDeletionDay = nil
+            appState.clearLogActionError()
+        }
+    }
+
     private var monthNavigator: some View {
         HStack {
             monthNavigationButton(systemName: "chevron.left") {
@@ -185,7 +233,7 @@ struct HistoryView: View {
             Spacer()
 
             Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
-                .font(AppFont.rounded(size: 24, weight: .semibold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("history.monthTitle")
 
@@ -223,12 +271,24 @@ struct HistoryView: View {
 
     private var weekdayHeader: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
-            ForEach(weekdaySymbols, id: \.self) { symbol in
-                Text(symbol)
-                    .font(AppFont.rounded(size: 12, weight: .medium))
+            ForEach(Array(weekdayHeaderSymbols.enumerated()), id: \.offset) { index, symbol in
+                Text(symbol.visible)
+                    .font(AppTextStyle.captionMedium.font)
                     .foregroundStyle(AppPalette.softInk)
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
+                    .accessibilityLabel(symbol.spoken)
+                    .accessibilityIdentifier("history.weekday.\(index)")
             }
+        }
+    }
+
+    private var weekdayHeaderSymbols: [(visible: String, spoken: String)] {
+        let visibleSymbols = dynamicTypeSize.isAccessibilitySize
+            ? calendar.veryShortStandaloneWeekdaySymbols
+            : calendar.shortStandaloneWeekdaySymbols
+        return Array(zip(visibleSymbols, calendar.standaloneWeekdaySymbols)).map {
+            (visible: $0.0, spoken: $0.1)
         }
     }
 
@@ -253,6 +313,12 @@ struct HistoryView: View {
                 accessibilityIdentifier: "history.legend.notLogged"
             )
             historyLegendItem(
+                title: "Not tracking yet",
+                color: AppPalette.muted,
+                symbol: "ellipsis.circle",
+                accessibilityIdentifier: "history.legend.untracked"
+            )
+            historyLegendItem(
                 title: "Future",
                 color: AppPalette.muted,
                 symbol: "circle",
@@ -274,7 +340,7 @@ struct HistoryView: View {
                 .foregroundStyle(color)
 
             Text(title)
-                .font(AppFont.rounded(size: 11, weight: .medium))
+                .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier(accessibilityIdentifier)
@@ -373,6 +439,7 @@ struct HistoryView: View {
                 for: dayStart,
                 with: presentation.recordDateSet,
                 now: presentation.today,
+                eligibleFrom: presentation.eligibilityStart,
                 calendar: calendar
             ),
             hasRecord: hasRecord,
@@ -437,7 +504,7 @@ struct HistoryView: View {
     private func calendarDayContent(day: Date, state: HistoryDayCellState) -> some View {
         VStack(spacing: 2) {
             Text("\(calendar.component(.day, from: day))")
-                .font(AppFont.rounded(size: 16, weight: state.isToday ? .bold : .regular))
+                .font(state.isToday ? AppTextStyle.bodyMedium.font : AppTextStyle.body.font)
                 .foregroundStyle(
                     dayTextColor(
                         isCurrentMonth: state.isCurrentMonth,
@@ -509,6 +576,7 @@ struct HistoryView: View {
         case .applied: return "checkmark.circle.fill"
         case .todayPending: return "circle.dashed"
         case .missed: return "xmark.circle"
+        case .untracked: return "ellipsis.circle"
         case .future: return "circle"
         }
     }
@@ -518,6 +586,7 @@ struct HistoryView: View {
         case .applied: return AppPalette.sun
         case .todayPending: return AppPalette.sun.opacity(0.55)
         case .missed: return AppPalette.softInk.opacity(0.58)
+        case .untracked: return AppPalette.muted
         case .future: return AppPalette.muted
         }
     }
@@ -536,7 +605,7 @@ struct HistoryView: View {
 
         VStack(alignment: .leading, spacing: 10) {
             Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
 
             dayDetailBody(record: record, status: status, conflict: conflict)
@@ -567,7 +636,7 @@ struct HistoryView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(statusTitle(for: status))
-                    .font(AppFont.rounded(size: 17, weight: .semibold))
+                    .font(AppTextStyle.sectionHeader.font)
                     .foregroundStyle(AppPalette.ink)
                     .accessibilityIdentifier("history.statusTitle")
 
@@ -584,11 +653,11 @@ struct HistoryView: View {
     private func dayRecordMetadata(_ record: DailyRecord?) -> some View {
         if let record {
             Text("\(record.method.displayName) log at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
-                .font(AppFont.rounded(size: 14))
+                .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
         } else {
             Text("No entry for this day yet.")
-                .font(AppFont.rounded(size: 14))
+                .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
         }
     }
@@ -597,13 +666,13 @@ struct HistoryView: View {
     private func dayRecordDetails(_ record: DailyRecord?) -> some View {
         if let spf = record?.spfLevel {
             Text("SPF \(spf)")
-                .font(AppFont.rounded(size: 13, weight: .medium))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.sun)
         }
 
         if let notes = record?.trimmedNotes {
             Text(notes)
-                .font(AppFont.rounded(size: 13))
+                .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("history.dayNote")
@@ -615,11 +684,11 @@ struct HistoryView: View {
         if let conflict {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Merged for review")
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
+                    .font(AppTextStyle.captionMedium.font)
                     .foregroundStyle(AppPalette.ink)
 
                 Text(conflict.summary)
-                    .font(AppFont.rounded(size: 13))
+                    .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -716,6 +785,11 @@ struct HistoryView: View {
         let recordDates = records.map { calendar.startOfDay(for: $0.startOfDay) }
         let recordDateSet = Set(recordDates)
         let today = calendar.startOfDay(for: appState.referenceDate)
+        let eligibilityStart = CalendarAnalytics.eligibilityStart(
+            records: recordDates,
+            now: today,
+            calendar: calendar
+        )
         var recordsByDay: [Date: DailyRecord] = [:]
         for record in records {
             recordsByDay[calendar.startOfDay(for: record.startOfDay)] = record
@@ -725,46 +799,50 @@ struct HistoryView: View {
             recordsByDay: recordsByDay,
             recordDateSet: recordDateSet,
             today: today,
+            eligibilityStart: eligibilityStart,
             monthDays: CalendarAnalytics.monthGridDays(for: displayedMonth, calendar: calendar),
-            monthStats: monthStats(recordDates: recordDates, records: records, today: today)
+            monthStats: monthStats(
+                recordDates: recordDates,
+                records: records,
+                today: today,
+                eligibilityStart: eligibilityStart
+            )
         )
     }
 
-    private func monthStats(recordDates: [Date], records: [DailyRecord], today: Date) -> HistoryMonthStats {
+    private func monthStats(
+        recordDates: [Date],
+        records: [DailyRecord],
+        today: Date,
+        eligibilityStart: Date
+    ) -> HistoryMonthStats {
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
         let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
         let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? today)
-        let monthRecords = recordDates.filter { $0 >= monthStart && $0 < effectiveEnd }
-        let daysInRange = daysInCurrentMonthRange(
-            monthEnd: monthEnd,
-            monthStart: monthStart,
-            effectiveEnd: effectiveEnd,
-            today: today
-        )
-        let rate = daysInRange > 0 ? Int(Double(monthRecords.count) / Double(daysInRange) * 100) : 0
+        let effectiveStart = max(monthStart, calendar.startOfDay(for: eligibilityStart))
+        let monthRecords = recordDates.filter { $0 >= effectiveStart && $0 < effectiveEnd }
+        let daysInRange = effectiveStart < effectiveEnd
+            ? calendar.dateComponents([.day], from: effectiveStart, to: effectiveEnd).day ?? 0
+            : 0
+        let rate = daysInRange > 0
+            ? "\(Int(Double(monthRecords.count) / Double(daysInRange) * 100))%"
+            : "—"
         let monthRecordSet = Set(monthRecords.map { calendar.startOfDay(for: $0) })
         let bestStreak = CalendarAnalytics.longestStreak(records: Array(monthRecordSet), calendar: calendar)
 
         return HistoryMonthStats(
             appliedCount: monthRecords.count,
             openCount: max(daysInRange - monthRecords.count, 0),
-            rate: "\(rate)%",
+            rate: rate,
             insights: MonthlyReviewAnalytics.insights(
                 from: records,
                 month: displayedMonth,
                 now: today,
+                eligibleFrom: eligibilityStart,
                 calendar: calendar
             ),
             bestStreak: bestStreak
         )
-    }
-
-    private func daysInCurrentMonthRange(monthEnd: Date, monthStart: Date, effectiveEnd: Date, today: Date) -> Int {
-        if monthEnd <= today {
-            return calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
-        }
-
-        return calendar.dateComponents([.day], from: monthStart, to: effectiveEnd).day ?? 0
     }
 
     @ViewBuilder
@@ -891,14 +969,17 @@ struct HistoryView: View {
         return parts.isEmpty ? "the visible entry" : parts.joined(separator: ", ")
     }
 
-    private func deleteRecordAndPreserveSelection(for day: Date) {
-        let existingBatchIDs = Set(appState.changeBatches.map(\.id))
-        appState.deleteRecord(for: day)
-        selectedDay = calendar.startOfDay(for: day)
-        lastDeletedDay = calendar.startOfDay(for: day)
-        lastDeletedBatchID = appState.changeBatches.first {
-            $0.kind == .deleteRecord && !existingBatchIDs.contains($0.id)
-        }?.id
+    private func deleteRecordAndPreserveSelection(for day: Date) -> Bool {
+        switch appState.deleteRecord(for: day) {
+        case let .success(receipt):
+            selectedDay = calendar.startOfDay(for: day)
+            lastDeletedDay = calendar.startOfDay(for: day)
+            lastDeletedBatchID = receipt.batchID
+            failedDeletionDay = nil
+            return true
+        case .failure:
+            return false
+        }
     }
 
     private func changeMonth(by offset: Int) {
@@ -940,7 +1021,7 @@ struct HistoryView: View {
         state: HistoryDayCellState
     ) -> String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        let status = state.hasRecord ? "Logged" : (state.isToday ? "Pending" : "No entry")
+        let status = statusTitle(for: state.status)
         var parts = [dateLabel, status]
 
         if let spfLevel = state.spfLevel {
@@ -981,10 +1062,10 @@ struct HistoryView: View {
     private func statBubble(value: String, label: String) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(AppFont.rounded(size: 22, weight: .bold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
             Text(label)
-                    .font(AppFont.rounded(size: 13, weight: .medium))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity)
@@ -1007,15 +1088,15 @@ struct HistoryView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(AppFont.rounded(size: 13, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
 
             Text(value)
-                .font(AppFont.rounded(size: 20, weight: .bold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
 
             Text(detail)
-                .font(AppFont.rounded(size: 14))
+                .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1033,6 +1114,7 @@ struct HistoryView: View {
         case .applied: return "checkmark.circle.fill"
         case .todayPending: return "circle.dashed"
         case .missed: return "xmark.circle"
+        case .untracked: return "ellipsis.circle"
         case .future: return "circle"
         }
     }
@@ -1042,6 +1124,7 @@ struct HistoryView: View {
         case .applied: return AppPalette.success
         case .todayPending: return AppPalette.sun
         case .missed: return AppPalette.softInk
+        case .untracked: return AppPalette.muted
         case .future: return AppPalette.muted
         }
     }
@@ -1049,8 +1132,9 @@ struct HistoryView: View {
     private func statusTitle(for status: DayStatus) -> String {
         switch status {
         case .applied: return "Logged"
-        case .todayPending: return "Pending"
+        case .todayPending: return "Open today"
         case .missed: return "Not logged"
+        case .untracked: return "Not tracking yet"
         case .future: return "Future"
         }
     }
@@ -1096,6 +1180,7 @@ struct HistoryRecordEditorView: View {
     @State private var selectedSPF: Int?
     @State private var selectedAreas: Set<String>
     @State private var notes: String
+    @State private var selectedTimestamp: Date
     @State private var hasLoadedInitialState = false
 
     init(
@@ -1112,6 +1197,7 @@ struct HistoryRecordEditorView: View {
         let existingAreas = SunManualLogInput.coveredAreas(in: existingRecord?.notes)
         _selectedAreas = State(initialValue: existingAreas.isEmpty ? SunManualLogInput.defaultCoveredAreas : existingAreas)
         _notes = State(initialValue: SunManualLogInput.notesRemovingCoveredAreas(existingRecord?.notes))
+        _selectedTimestamp = State(initialValue: existingRecord?.verifiedAt ?? day)
     }
 
     var body: some View {
@@ -1134,6 +1220,26 @@ struct HistoryRecordEditorView: View {
                 )
                 .accessibilityIdentifier("historyEditor.title")
 
+                SunclubCard(cornerRadius: AppRadius.card, padding: AppSpacing.sm) {
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        AppText("Application time", style: .bodyMedium)
+                        DatePicker(
+                            "Application time",
+                            selection: $selectedTimestamp,
+                            in: allowedTimestampRange,
+                            displayedComponents: .hourAndMinute
+                        )
+                        .datePickerStyle(.compact)
+                        .accessibilityIdentifier("historyEditor.timePicker")
+
+                        AppText(
+                            "Saved for \(selectedTimestamp.formatted(.dateTime.weekday(.wide).month(.wide).day().hour().minute())).",
+                            style: .caption,
+                            color: AppColor.Text.secondary
+                        )
+                    }
+                }
+
                 SunclubCard(cornerRadius: 20, padding: 16) {
                     SunManualLogFields(
                         selectedSPF: $selectedSPF,
@@ -1144,22 +1250,44 @@ struct HistoryRecordEditorView: View {
                         showsOptionalDisclosure: false
                     )
                 }
+
+                if let errorMessage = appState.logActionErrorMessage {
+                    SunInfoRow(
+                        title: "Couldn’t save",
+                        detail: errorMessage,
+                        systemImage: "exclamationmark.triangle.fill",
+                        tint: AppColor.warning
+                    )
+                    .padding(AppSpacing.sm)
+                    .sunGlassCard(cornerRadius: AppRadius.card)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Save error. \(errorMessage)")
+                    .accessibilityIdentifier("historyEditor.error")
+                }
             }
         } footer: {
             Button(primaryActionTitle) {
-                appState.saveManualRecord(
+                let result = appState.saveManualRecord(
                     for: targetContext?.date ?? day,
                     dayPart: targetContext?.dayPart,
-                    verifiedAt: existingRecord?.verifiedAt,
+                    verifiedAt: selectedTimestamp,
                     spfLevel: selectedSPF,
                     notes: SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas)
                 )
-                closeEditor()
+                if case .success = result {
+                    closeEditor()
+                }
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("historyEditor.save")
         }
-        .onAppear(perform: syncInitialStateIfNeeded)
+        .onAppear {
+            appState.clearLogActionError()
+            syncInitialStateIfNeeded()
+        }
+        .onDisappear {
+            appState.clearLogActionError()
+        }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -1173,11 +1301,14 @@ struct HistoryRecordEditorView: View {
             return "Add a log for this day so your history stays complete."
         }
 
-        return "Update the SPF or note for this day."
+        return "Update the time, SPF, covered areas, or note for this day."
     }
 
     private var primaryActionTitle: String {
-        existingRecord == nil ? "Save Backfill" : "Save Changes"
+        if appState.logActionErrorMessage != nil {
+            return "Try Again"
+        }
+        return existingRecord == nil ? "Save Backfill" : "Save Changes"
     }
 
     private func syncInitialStateIfNeeded() {
@@ -1193,6 +1324,32 @@ struct HistoryRecordEditorView: View {
 
         let suggestions = appState.manualLogSuggestionState(for: day)
         selectedSPF = suggestions.defaultSPF
+        selectedTimestamp = defaultTimestamp
+    }
+
+    private var allowedTimestampRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: targetContext?.date ?? day)
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let endOfDay = nextDay.addingTimeInterval(-1)
+        let upperBound = max(start, min(endOfDay, appState.referenceDate))
+        return start...upperBound
+    }
+
+    private var defaultTimestamp: Date {
+        let calendar = Calendar.current
+        let targetDay = calendar.startOfDay(for: targetContext?.date ?? day)
+        if calendar.isDate(targetDay, inSameDayAs: appState.referenceDate) {
+            return appState.referenceDate
+        }
+
+        let hour = switch targetContext?.dayPart ?? .morning {
+        case .morning: 9
+        case .afternoon: 13
+        case .evening: 18
+        case .night: 21
+        }
+        return calendar.date(bySettingHour: hour, minute: 0, second: 0, of: targetDay) ?? targetDay
     }
 
     private func closeEditor() {
@@ -1214,12 +1371,12 @@ struct HistoryEditorTestHarnessView: View {
         SunLightScreen {
             VStack(alignment: .leading, spacing: 12) {
                 Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                    .font(AppFont.rounded(size: 20, weight: .bold))
+                    .font(AppTextStyle.title.font)
                     .foregroundStyle(AppPalette.ink)
                     .accessibilityIdentifier("historyHarness.day")
 
                 Text(spfSummary)
-                    .font(AppFont.rounded(size: 16, weight: .medium))
+                    .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.softInk)
                     .accessibilityIdentifier("historyHarness.spf")
             }
@@ -1250,6 +1407,7 @@ private struct HistoryPresentation {
     let recordsByDay: [Date: DailyRecord]
     let recordDateSet: Set<Date>
     let today: Date
+    let eligibilityStart: Date
     let monthDays: [Date]
     let monthStats: HistoryMonthStats
 

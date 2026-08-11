@@ -24,6 +24,8 @@ V3 referenced top-level `DailyRecord.self` and `Settings.self` instead of defini
 
 ### 3. UV heuristic assumes Northern Hemisphere
 
+> Superseded in August 2026: Sunclub no longer presents a numeric heuristic. Current UV now requires fresh Apple Weather data for a live location or saved city and becomes unavailable after two hours.
+
 **File:** `app/Sunclub/Sources/Services/UVIndexService.swift`
 
 `estimatedUVIndex(at:calendar:)` hardcoded month-to-UV mappings for the Northern Hemisphere. Southern Hemisphere users received inverted UV estimates (low in their summer, high in their winter).

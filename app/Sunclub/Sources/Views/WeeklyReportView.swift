@@ -6,7 +6,6 @@ struct WeeklyReportView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var report = WeeklyReport(startDate: Date(), endDate: Date(), appliedCount: 0, totalDays: 7, missedDays: [], streak: 0)
-    @State private var insights = SunscreenUsageInsights.empty
     @State private var editorPresentation: WeeklyEditorPresentation?
 
     let showsBackButton: Bool
@@ -33,9 +32,7 @@ struct WeeklyReportView: View {
                     viewFullHistoryButton
                 }
 
-                if insights.hasContent {
-                    usageInsightsSection
-                }
+                usageInsightsSection
 
                 Spacer(minLength: 0)
             }
@@ -63,27 +60,40 @@ struct WeeklyReportView: View {
     }
 
     private var weeklySummaryRow: some View {
-        HStack(spacing: 12) {
-            WeeklyMetricPill(
-                value: "\(report.appliedCount)",
-                label: "logged days",
-                accessibilityIdentifier: "weekly.currentStreak"
-            )
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                weeklyMetricPills
+            }
 
-            WeeklyMetricPill(
-                value: "\(max(0, report.totalDays - report.appliedCount))",
-                label: "open days",
-                accessibilityIdentifier: "weekly.bestStreak"
-            )
+            VStack(spacing: 10) {
+                weeklyMetricPills
+            }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(report.appliedCount) days logged, \(max(0, report.totalDays - report.appliedCount)) open days")
+        .accessibilityLabel(
+            "Current run \(report.streak) days. Typical first log \(progressInsights.typicalApplicationTimeText() ?? "not available")"
+        )
+    }
+
+    @ViewBuilder
+    private var weeklyMetricPills: some View {
+        WeeklyMetricPill(
+            value: "\(report.streak)",
+            label: report.streak == 1 ? "day current run" : "days current run",
+            accessibilityIdentifier: "weekly.currentStreak"
+        )
+
+        WeeklyMetricPill(
+            value: progressInsights.typicalApplicationTimeText() ?? "—",
+            label: "typical first log",
+            accessibilityIdentifier: "weekly.typicalTime"
+        )
     }
 
     private var weeklyChart: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("This week")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
 
             LazyVGrid(columns: weekEntryColumns, spacing: 10) {
@@ -93,16 +103,20 @@ struct WeeklyReportView: View {
                     } label: {
                         VStack(spacing: 8) {
                             Text(entry.date.formatted(.dateTime.weekday(.narrow)))
-                                .font(AppFont.rounded(size: 12, weight: .semibold))
+                                .font(AppTextStyle.captionMedium.font)
                                 .foregroundStyle(AppPalette.softInk)
 
                             RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                                .fill(entry.applied ? AppPalette.sun : AppPalette.cardFill.opacity(0.9))
+                                .fill(weekEntryFill(entry))
                                 .overlay {
                                     if entry.applied {
                                         Image(systemName: "checkmark")
-                                            .font(AppFont.rounded(size: 14, weight: .bold))
+                                            .font(AppTextStyle.captionMedium.font)
                                             .foregroundStyle(AppPalette.onAccent)
+                                    } else if !entry.isEligible {
+                                        Image(systemName: "ellipsis")
+                                            .font(AppTextStyle.captionMedium.font)
+                                            .foregroundStyle(AppPalette.muted)
                                     }
                                 }
                                 .overlay {
@@ -115,7 +129,7 @@ struct WeeklyReportView: View {
                                 .frame(height: 46)
 
                             Text(entry.date.formatted(.dateTime.day()))
-                                .font(AppFont.rounded(size: 12, weight: .medium))
+                                .font(AppTextStyle.captionMedium.font)
                                 .foregroundStyle(AppPalette.softInk)
                         }
                         .frame(minWidth: 44, minHeight: 44)
@@ -129,8 +143,8 @@ struct WeeklyReportView: View {
                 }
             }
 
-            Text(report.missedDays.isEmpty ? "Every day is logged." : "Tap a blank day to backfill.")
-                .font(AppFont.rounded(size: 14, weight: .medium))
+            Text(weeklyChartHint)
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(report.missedDays.isEmpty ? AppPalette.softInk : AppPalette.ink)
                 .multilineTextAlignment(.leading)
         }
@@ -158,8 +172,8 @@ struct WeeklyReportView: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("\(report.appliedCount) logged")
-                    .font(AppFont.rounded(size: 58, weight: .light))
+                Text("\(progressInsights.consistencyPercent)%")
+                    .font(AppTextStyle.largeTitle.font)
                     .foregroundStyle(
                         LinearGradient(
                             colors: [AppPalette.streakAccent, AppPalette.coral],
@@ -169,11 +183,11 @@ struct WeeklyReportView: View {
                     )
                     .accessibilityIdentifier("weekly.summaryValue")
 
-                Text("Last 7 days")
-                    .font(AppFont.rounded(size: 17, weight: .semibold))
+                Text("30-day consistency")
+                    .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
 
-                Text(weeklyPlainSummary)
+                Text(progressInsights.consistencyDetail)
                     .font(AppTypography.body)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -217,16 +231,6 @@ struct WeeklyReportView: View {
         ]
     }
 
-    private var weeklyPlainSummary: String {
-        if report.appliedCount == 0 {
-            return "No sunscreen logs yet this week."
-        }
-        if report.appliedCount == 1 {
-            return "You logged sunscreen once this week."
-        }
-        return "You logged sunscreen \(report.appliedCount) times this week."
-    }
-
     private var weekEntries: [WeeklyEntry] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: report.endDate)
@@ -241,6 +245,7 @@ struct WeeklyReportView: View {
             return WeeklyEntry(
                 date: day,
                 applied: records.contains(calendar.startOfDay(for: day)),
+                isEligible: calendar.startOfDay(for: day) >= eligibilityStart,
                 isFuture: calendar.startOfDay(for: day) > today
             )
         }
@@ -248,39 +253,67 @@ struct WeeklyReportView: View {
 
     private var usageInsightsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("From Your Logs")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
+            Text("From your routine")
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
+                .accessibilityIdentifier("weekly.usageInsights")
 
-            if let mostUsedSPF = insights.mostUsedSPF {
+            if let highUVRateText = progressInsights.highUVRateText,
+               let highUVDetail = progressInsights.highUVDetail {
                 WeeklyInsightCard(
-                    eyebrow: "Most Used SPF",
-                    value: mostUsedSPF.title,
-                    detail: mostUsedSPF.detail,
-                    valueAccessibilityIdentifier: "weekly.mostUsedSPFValue"
+                    eyebrow: "UV 3+ days",
+                    value: highUVRateText,
+                    detail: highUVDetail,
+                    accessibilityIdentifier: "weekly.highUVRate"
                 )
             }
 
-            if !insights.recentNotes.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Recent Notes")
-                        .font(AppFont.rounded(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-
-                    VStack(spacing: 10) {
-                        ForEach(Array(insights.recentNotes.enumerated()), id: \.offset) { index, note in
-                            WeeklyRecentNoteRow(
-                                note: note,
-                                index: index
-                            )
-                        }
-                    }
-                }
-                .accessibilityIdentifier("weekly.recentNotes")
-            }
-
+            WeeklyInsightCard(
+                eyebrow: "Next step",
+                value: "Keep it simple",
+                detail: progressInsights.nextStep,
+                accessibilityIdentifier: "weekly.nextStep"
+            )
         }
-        .accessibilityIdentifier("weekly.usageInsights")
+    }
+
+    private var eligibilityStart: Date {
+        CalendarAnalytics.eligibilityStart(
+            records: appState.recordedDays,
+            now: appState.referenceDate
+        )
+    }
+
+    private var progressInsights: RoutineProgressInsights {
+        let highUVDays = Set(
+            appState.dailyUVForecast
+                .filter { $0.maxIndex >= 3 }
+                .map { Calendar.current.startOfDay(for: $0.day) }
+        )
+        return CalendarAnalytics.routineProgress(
+            recordDays: appState.recordedDays,
+            verifiedAtDates: appState.records.map(\.verifiedAt),
+            highUVDays: highUVDays,
+            now: appState.referenceDate,
+            eligibleFrom: eligibilityStart
+        )
+    }
+
+    private var weeklyChartHint: String {
+        if report.totalDays == 0 {
+            return "Earlier days are not counted."
+        }
+        return report.missedDays.isEmpty ? "Every active day is logged." : "Tap an open day to backfill."
+    }
+
+    private func weekEntryFill(_ entry: WeeklyEntry) -> Color {
+        if entry.applied {
+            return AppPalette.sun
+        }
+        if !entry.isEligible {
+            return AppPalette.muted.opacity(0.10)
+        }
+        return AppPalette.cardFill.opacity(0.9)
     }
 
     private var weekEntryColumns: [GridItem] {
@@ -292,8 +325,11 @@ struct WeeklyReportView: View {
     }
 
     private func refreshReport() {
-        report = appState.last7DaysReport()
-        insights = appState.sunscreenUsageInsights()
+        report = CalendarAnalytics.weeklyReport(
+            records: appState.recordedDays,
+            now: appState.referenceDate,
+            eligibleFrom: eligibilityStart
+        )
     }
 
     private func handleWeekEntryTap(_ entry: WeeklyEntry) {
@@ -323,7 +359,7 @@ struct WeeklyReportView: View {
 
     private func weekEntryAccessibilityLabel(_ entry: WeeklyEntry) -> String {
         let dateLabel = entry.date.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        let status = entry.applied ? "logged" : "not logged"
+        let status = entry.applied ? "logged" : (entry.isEligible ? "open" : "not tracking yet")
         return "\(dateLabel), \(status)"
     }
 
@@ -336,7 +372,11 @@ struct WeeklyReportView: View {
             return "Opens today's log."
         }
 
-        return "Opens this missed day for backfill."
+        if !entry.isEligible {
+            return "This day is not counted, but you can add a backfilled log if needed."
+        }
+
+        return "Opens this open day for backfill."
     }
 
     private func isToday(_ day: Date) -> Bool {
@@ -356,21 +396,20 @@ private struct WeeklyInsightCard: View {
     let eyebrow: String
     let value: String
     let detail: String
-    let valueAccessibilityIdentifier: String
+    let accessibilityIdentifier: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(eyebrow)
-                .font(AppFont.rounded(size: 13, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
 
             Text(value)
-                .font(AppFont.rounded(size: 22, weight: .bold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
-                .accessibilityIdentifier(valueAccessibilityIdentifier)
 
             Text(detail)
-                .font(AppFont.rounded(size: 14))
+                .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -379,31 +418,8 @@ private struct WeeklyInsightCard: View {
             RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
                 .fill(AppPalette.cardFill.opacity(0.72))
         )
-        .accessibilityIdentifier("weekly.mostUsedSPFCard")
-    }
-}
-
-private struct WeeklyRecentNoteRow: View {
-    let note: RecentUsageNote
-    let index: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(note.date.formatted(.dateTime.month(.abbreviated).day()))
-                .font(AppFont.rounded(size: 12, weight: .semibold))
-                .foregroundStyle(AppPalette.sun)
-
-            Text(note.text)
-                .font(AppFont.rounded(size: 14))
-                .foregroundStyle(AppPalette.ink)
-                .accessibilityIdentifier("weekly.recentNoteText.\(index)")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
-        )
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 }
 
@@ -417,11 +433,11 @@ private struct WeeklyMetricPill: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(value)
-                .font(AppFont.rounded(size: 22, weight: .bold))
+                .font(AppTextStyle.title.font)
                 .foregroundStyle(AppPalette.ink)
 
             Text(label)
-                .font(AppFont.rounded(size: 13, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -446,6 +462,7 @@ private struct WeeklyMetricPill: View {
 private struct WeeklyEntry: Identifiable {
     let date: Date
     let applied: Bool
+    let isEligible: Bool
     let isFuture: Bool
 
     var id: Date { date }

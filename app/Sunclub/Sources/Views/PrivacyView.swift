@@ -8,6 +8,7 @@ struct PrivacyView: View {
     @State private var isExportingBackup = false
     @State private var isConfirmingDeleteHistory = false
     @State private var exportError: String?
+    @State private var deleteError: String?
 
     var body: some View {
         SunLightScreen(
@@ -75,6 +76,17 @@ struct PrivacyView: View {
         } message: {
             Text(exportError ?? "")
         }
+        .alert("History was not deleted", isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("Try Again") {
+                deleteHistory()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(deleteError ?? "Your sunscreen history is unchanged. Please try again.")
+        }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
@@ -110,7 +122,7 @@ struct PrivacyView: View {
 
             privacyActionRow(
                 title: "Export Sunclub history",
-                detail: "Create a JSON backup with logs and settings.",
+                detail: "Create a private backup with logs, settings, and connection data. Store it securely.",
                 systemImage: "square.and.arrow.up.fill",
                 accessibilityIdentifier: "privacy.exportHistory",
                 action: beginBackupExport
@@ -167,9 +179,9 @@ struct PrivacyView: View {
     }
 
     private func deleteHistory() {
-        let days = Set(appState.records.map { appState.startOfLocalDay($0.startOfDay) })
-        for day in days {
-            appState.deleteRecord(for: day)
+        let result = appState.deleteAllHistory()
+        if case let .failure(error) = result {
+            deleteError = error.localizedDescription
         }
     }
 }

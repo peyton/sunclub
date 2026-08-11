@@ -33,9 +33,15 @@ struct SunclubApp: App {
         let modelContext = ModelContext(container)
         #if DEBUG
         if let liveUVFixture = UITestLiveUVFixture.make(arguments: ProcessInfo.processInfo.arguments) {
+            let weatherKitBudget = SunclubWeatherKitBudget(
+                appGroupID: "app.peyton.sunclub.uitest.weatherkit"
+            )
+            weatherKitBudget.resetForTesting()
             let uvIndexService = UVIndexService(
                 locationService: liveUVFixture.locationService,
-                weatherProvider: liveUVFixture.weatherProvider
+                weatherProvider: liveUVFixture.weatherProvider,
+                budget: weatherKitBudget,
+                networkPathProvider: { nil }
             )
             let uvBriefingService = SunclubUVBriefingService(
                 locationService: liveUVFixture.locationService,
@@ -156,7 +162,9 @@ struct SunclubApp: App {
         }
 
         if let requestedUVIndex {
-            appState.setUVReadingForTesting(UVReading(index: requestedUVIndex))
+            appState.setUVReadingForTesting(
+                UVReading(index: requestedUVIndex, source: .weatherKit)
+            )
         }
 
         if arguments.contains("UITEST_LIVE_UV_ENABLED") {
@@ -704,6 +712,9 @@ struct SunclubApp: App {
     private static func registerWatchSyncHandler(for state: AppState) {
         SunclubWatchSyncCoordinator.shared.setLogTodayHandler {
             try state.recordWatchSunscreenLog()
+        }
+        SunclubWatchSyncCoordinator.shared.setReapplyHandler {
+            try state.recordWatchReapplication()
         }
     }
 }

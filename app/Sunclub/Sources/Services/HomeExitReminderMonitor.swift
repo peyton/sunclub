@@ -210,18 +210,21 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
         }
 
         let level = effectiveUVLevel(for: state, now: now)
-        await notificationManager.scheduleLeaveHomeReminder(level: level, route: .manualLog)
-        await notificationManager.cancelDailyReminder(for: now, using: state)
+        let result = await notificationManager.scheduleLeaveHomeReminder(level: level, route: .manualLog)
+        guard result.isSuccessful else {
+            return
+        }
         stateStore.markFired(on: now, calendar: calendar)
     }
 
     private func effectiveUVLevel(for state: AppState, now: Date) -> UVLevel {
         if let reading = state.uvReading,
-           !reading.isStale {
+           reading.source == .weatherKit,
+           reading.isFresh(at: now) {
             return reading.level
         }
 
-        return UVLevel.from(index: UVIndexService.estimatedUVIndex(at: now))
+        return .unknown
     }
 
     private func regionsMatch(_ lhs: CLCircularRegion, _ rhs: CLCircularRegion) -> Bool {
