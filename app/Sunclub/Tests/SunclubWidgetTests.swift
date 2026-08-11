@@ -143,6 +143,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.metrics, [])
         XCTAssertEqual(presentation.accessibilityLabel, "Log Sunscreen")
         XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
+        XCTAssertEqual(presentation.homeAction, .logToday)
     }
 
     func testLogTodayPresentationDoesNotExposeHabitMetadata() throws {
@@ -171,7 +172,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.accessibilityLabel, "Log Sunscreen")
     }
 
-    func testLogTodayLoggedPresentationBecomesNonOpeningCheckmark() throws {
+    func testLogTodayLoggedPresentationOpensProgress() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 11)
         let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
@@ -199,7 +200,8 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.detail, "")
         XCTAssertEqual(presentation.metrics, [])
         XCTAssertEqual(presentation.accessibilityLabel, "Sunscreen logged")
-        XCTAssertEqual(presentation.tapAction, .none)
+        XCTAssertEqual(presentation.tapAction, .open(.summary))
+        XCTAssertEqual(presentation.homeAction, .viewProgress)
     }
 
     func testLogTodayLoggedPresentationIgnoresSPFMetadata() throws {
@@ -227,7 +229,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(presentation.metrics, [])
     }
 
-    func testLogTodayPresentationDoesNotExposeReapplyActionAfterDeadline() throws {
+    func testLogTodayPresentationExposesReapplyActionAfterDeadline() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 12)
         let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
@@ -248,10 +250,12 @@ final class SunclubWidgetTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(presentation.state, .logged)
-        XCTAssertEqual(presentation.iconName, "checkmark")
-        XCTAssertEqual(presentation.actionText, "")
-        XCTAssertEqual(presentation.tapAction, .none)
+        XCTAssertEqual(presentation.state, .open)
+        XCTAssertEqual(presentation.iconName, "timer")
+        XCTAssertEqual(presentation.actionText, "Reapply now")
+        XCTAssertEqual(presentation.accessibilityLabel, "Reapply sunscreen now")
+        XCTAssertEqual(presentation.tapAction, .logReapplyInPlace)
+        XCTAssertEqual(presentation.homeAction, .logReapply)
     }
 
     func testLogTodaySetupPresentationStaysNonOpeningLogButton() throws {
@@ -273,8 +277,9 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.state, .open)
-        XCTAssertEqual(presentation.actionText, "Log Sunscreen")
-        XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
+        XCTAssertEqual(presentation.actionText, "Open Sunclub")
+        XCTAssertEqual(presentation.tapAction, .open(.updateToday))
+        XCTAssertEqual(presentation.homeAction, .openSettings)
     }
 
     func testReapplyDeadlineIgnoresExpiredTimerFromYesterday() throws {
@@ -357,6 +362,30 @@ final class SunclubWidgetTests: XCTestCase {
         let refreshDate = snapshot.nextTimelineRefreshDate(after: now, calendar: calendar)
 
         XCTAssertEqual(refreshDate, try fixedDate(calendar: calendar, hour: 11, minute: 30))
+    }
+
+    func testSnapshotUVExpiresAfterTwoHoursAndRequestsARefresh() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 11)
+        let validUntil = now.addingTimeInterval(2 * 60 * 60)
+        let snapshot = makeWidgetSnapshot(
+            dayOffsets: [0],
+            longestStreak: 1,
+            now: now,
+            calendar: calendar,
+            currentUVIndex: 7,
+            peakUVIndex: 9,
+            uvValidUntil: validUntil
+        )
+
+        XCTAssertEqual(snapshot.currentUVIndex(at: now), 7)
+        XCTAssertEqual(snapshot.peakUVIndex(at: now), 9)
+        XCTAssertNil(snapshot.currentUVIndex(at: validUntil.addingTimeInterval(1)))
+        XCTAssertNil(snapshot.peakUVIndex(at: validUntil.addingTimeInterval(1)))
+        XCTAssertEqual(
+            snapshot.nextTimelineRefreshDate(after: now, calendar: calendar),
+            validUntil.addingTimeInterval(1)
+        )
     }
 
     func testWidgetSnapshotDecodesLegacyPayloadWithoutAccountabilitySummary() throws {
@@ -462,10 +491,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
         XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
-        XCTAssertEqual(
-            snapshot.accountabilitySummary.primaryPokeFriendID?.uuidString,
-            "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47"
-        )
+        XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
         XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You reminded Maya.")
     }
 
@@ -655,7 +681,8 @@ final class SunclubWidgetTests: XCTestCase {
             lastAppliedLabel: "11:59 AM",
             lastLogDetail: "SPF 50",
             reapplyStartDate: nil,
-            reapplyDeadline: nil
+            reapplyDeadline: nil,
+            uvValidUntil: .distantFuture
         )
 
         XCTAssertNil(state.reapplyInterval)
@@ -663,6 +690,56 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(state.statusTitle(), "Reapply in")
         XCTAssertEqual(state.fallbackTimerText(), "1h 29m")
         XCTAssertEqual(state.uvPillLabel, "UV 6 High")
+    }
+
+    func testLiveActivitySnoozeMovesCountdownWithoutChangingUVOrLogDetails() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 12)
+        let deadline = try XCTUnwrap(calendar.date(byAdding: .minute, value: 30, to: now))
+        let original = SunclubLiveActivityAttributes.ContentState(
+            currentUVIndex: 7,
+            peakUVIndex: 9,
+            countdownLabel: "due",
+            lastAppliedLabel: "10:00 AM",
+            lastLogDetail: "SPF 50",
+            reapplyStartDate: now.addingTimeInterval(-7_200),
+            reapplyDeadline: now,
+            uvValidUntil: now.addingTimeInterval(60 * 60)
+        )
+
+        let snoozed = SunclubLiveActivityCoordinator.snoozedContentState(
+            original,
+            until: deadline,
+            now: now
+        )
+
+        XCTAssertEqual(snoozed.countdownLabel, "in 30m")
+        XCTAssertEqual(snoozed.reapplyStartDate, now)
+        XCTAssertEqual(snoozed.reapplyDeadline, deadline)
+        XCTAssertEqual(snoozed.currentUVIndex, original.currentUVIndex)
+        XCTAssertEqual(snoozed.lastLogDetail, original.lastLogDetail)
+        XCTAssertEqual(snoozed.uvValidUntil, original.uvValidUntil)
+    }
+
+    func testLiveActivityUVBecomesUnavailableAfterVerifiedWindow() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 12)
+        let state = SunclubLiveActivityAttributes.ContentState(
+            currentUVIndex: 7,
+            peakUVIndex: 9,
+            countdownLabel: "in 1h",
+            lastAppliedLabel: "11:00 AM",
+            lastLogDetail: "SPF 50",
+            reapplyStartDate: now,
+            reapplyDeadline: now.addingTimeInterval(60 * 60),
+            uvValidUntil: now.addingTimeInterval(2 * 60 * 60)
+        )
+
+        XCTAssertEqual(state.uvPillLabel(now: now), "UV 7 High")
+        XCTAssertEqual(
+            state.uvPillLabel(now: now.addingTimeInterval(2 * 60 * 60 + 1)),
+            "UV unavailable"
+        )
     }
 
     func testLiveActivityLastLogDetailUsesSPFWithoutStreak() throws {
@@ -787,6 +864,7 @@ final class SunclubWidgetTests: XCTestCase {
         isOnboardingComplete: Bool = true,
         currentUVIndex: Int? = nil,
         peakUVIndex: Int? = nil,
+        uvValidUntil: Date? = nil,
         todaySPFLevel: Int? = nil,
         mostUsedSPF: Int? = nil,
         lastReappliedAt: Date? = nil,
@@ -817,6 +895,7 @@ final class SunclubWidgetTests: XCTestCase {
             currentUVIndex: currentUVIndex,
             peakUVIndex: peakUVIndex,
             peakUVHour: peakUVIndex == nil ? nil : calendar.date(byAdding: .hour, value: 13, to: today),
+            uvValidUntil: uvValidUntil,
             reapplyReminderEnabled: reapplyReminderEnabled,
             reapplyIntervalMinutes: reapplyIntervalMinutes
         )

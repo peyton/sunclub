@@ -52,7 +52,7 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
         )
 
         let attributes = SunclubLiveActivityAttributes(headline: "Reapply timer")
-        let content = ActivityContent(state: contentState, staleDate: Calendar.current.date(byAdding: .hour, value: 3, to: Date()))
+        let content = ActivityContent(state: contentState, staleDate: uvPayload.validUntil)
 
         if let existing = Activity<SunclubLiveActivityAttributes>.activities.first {
             await existing.update(content)
@@ -75,6 +75,19 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
         }
     }
 
+    func snoozeAll(until deadline: Date, now: Date = Date()) async {
+        for activity in Activity<SunclubLiveActivityAttributes>.activities {
+            let state = Self.snoozedContentState(activity.content.state, until: deadline, now: now)
+            let timerStaleDate = Calendar.current.date(byAdding: .hour, value: 1, to: deadline)
+            let staleDate = [state.uvValidUntil, timerStaleDate].compactMap { $0 }.min()
+            let content = ActivityContent(
+                state: state,
+                staleDate: staleDate
+            )
+            await activity.update(content)
+        }
+    }
+
     static func compactSurfaceUVPayload(
         reading: UVReading?,
         forecast: SunclubUVForecast?,
@@ -83,15 +96,19 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
     ) -> SunclubLiveActivityUVPayload? {
         guard let reading,
               let forecast,
+              let currentReading = compactSurfaceReading(from: reading, now: now, calendar: calendar),
               let peakHour = compactSurfacePeakHour(from: forecast, now: now, calendar: calendar) else {
             return nil
         }
-        let currentReading = compactSurfaceReading(from: reading, now: now, calendar: calendar)
 
         return SunclubLiveActivityUVPayload(
             currentUVIndex: currentReading.index,
             peakUVIndex: peakHour.index,
-            level: currentReading.level
+            level: currentReading.level,
+            validUntil: min(
+                currentReading.timestamp.addingTimeInterval(UVIndexService.verifiedDataMaxAge),
+                forecast.generatedAt.addingTimeInterval(UVIndexService.verifiedDataMaxAge)
+            )
         )
     }
 
@@ -132,24 +149,34 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             lastAppliedLabel: record.verifiedAt.formatted(date: .omitted, time: .shortened),
             lastLogDetail: Self.lastLogDetail(for: record),
             reapplyStartDate: reapplyStartDate,
-            reapplyDeadline: reapplyDeadline
+            reapplyDeadline: reapplyDeadline,
+            uvValidUntil: uvPayload.validUntil
         )
+    }
+
+    static func snoozedContentState(
+        _ state: SunclubLiveActivityAttributes.ContentState,
+        until deadline: Date,
+        now: Date
+    ) -> SunclubLiveActivityAttributes.ContentState {
+        var updated = state
+        updated.countdownLabel = reapplyCountdownLabel(deadline: deadline, now: now)
+        updated.reapplyStartDate = now
+        updated.reapplyDeadline = deadline
+        return updated
     }
 
     private static func compactSurfaceReading(
         from reading: UVReading,
         now: Date,
         calendar: Calendar
-    ) -> UVReading {
-        guard reading.source == .weatherKit else {
-            return reading
+    ) -> UVReading? {
+        _ = calendar
+        guard reading.source == .weatherKit,
+              reading.isFresh(at: now, maxAge: UVIndexService.verifiedDataMaxAge) else {
+            return nil
         }
-
-        return UVReading(
-            index: SunclubUVEstimator.estimatedIndex(at: now, calendar: calendar),
-            timestamp: now,
-            source: .heuristic
-        )
+        return reading
     }
 
     private static func compactSurfacePeakHour(
@@ -157,23 +184,14 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
         now: Date,
         calendar: Calendar
     ) -> SunclubUVHourForecast? {
-        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel else {
-            return forecast.peakHour
+        _ = calendar
+        let age = now.timeIntervalSince(forecast.generatedAt)
+        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel,
+              age >= 0,
+              age <= UVIndexService.verifiedDataMaxAge else {
+            return nil
         }
-
-        let dayStart = calendar.startOfDay(for: now)
-        return (6...18)
-            .compactMap { hour in
-                calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart)
-            }
-            .map { hourDate in
-                SunclubUVHourForecast(
-                    date: hourDate,
-                    index: SunclubUVEstimator.estimatedIndex(at: hourDate, calendar: calendar),
-                    sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
-                )
-            }
-            .max(by: { $0.index < $1.index })
+        return forecast.peakHour
     }
 }
 
@@ -181,6 +199,19 @@ struct SunclubLiveActivityUVPayload: Equatable {
     let currentUVIndex: Int
     let peakUVIndex: Int
     let level: UVLevel
+    let validUntil: Date
+
+    init(
+        currentUVIndex: Int,
+        peakUVIndex: Int,
+        level: UVLevel,
+        validUntil: Date = .distantFuture
+    ) {
+        self.currentUVIndex = currentUVIndex
+        self.peakUVIndex = peakUVIndex
+        self.level = level
+        self.validUntil = validUntil
+    }
 }
 
 private extension AppState {

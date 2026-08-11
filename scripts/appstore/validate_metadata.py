@@ -61,7 +61,7 @@ REQUIRED_ATTESTATIONS = {
     "kids_category": False,
     "iphone_only_v1": True,
     "accessibility_criteria_reviewed": True,
-    "public_cloudkit_accountability_transport_enabled": True,
+    "public_cloudkit_accountability_transport_enabled": False,
 }
 ACCESSIBILITY_FIELDS = {
     "supports_audio_descriptions",

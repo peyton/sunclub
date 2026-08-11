@@ -14,20 +14,21 @@ struct SunDayStrip: View {
     let forecastUVLevels: [Date: UVLevel]
     let extrasDays: Set<Date>
     let logDetails: [Date: SunDayDetails]
+    let eligibilityStart: Date
     let allowsFuture: Bool
     let scrubOffset: CGFloat
     let isExternalScrubbing: Bool
 
     private let calendar = Calendar.current
-    private let columnWidth: CGFloat = 60
-    private let chipBaseWidth: CGFloat = 48
-    private let chipBaseHeight: CGFloat = 56
-    private let currentChipWidth: CGFloat = 50
-    private let currentChipHeight: CGFloat = 58
-    private let selectedChipWidth: CGFloat = 54
-    private let selectedChipHeight: CGFloat = 64
-    private let columnSpacing: CGFloat = 8
-    private let weekdayRowHeight: CGFloat = 32
+    @ScaledMetric(relativeTo: .body) private var columnWidth: CGFloat = 60
+    @ScaledMetric(relativeTo: .body) private var chipBaseWidth: CGFloat = 48
+    @ScaledMetric(relativeTo: .body) private var chipBaseHeight: CGFloat = 56
+    @ScaledMetric(relativeTo: .body) private var currentChipWidth: CGFloat = 50
+    @ScaledMetric(relativeTo: .body) private var currentChipHeight: CGFloat = 58
+    @ScaledMetric(relativeTo: .body) private var selectedChipWidth: CGFloat = 54
+    @ScaledMetric(relativeTo: .body) private var selectedChipHeight: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var columnSpacing: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var weekdayRowHeight: CGFloat = 32
 
     @State private var scrollTargetDay: Date?
 
@@ -174,9 +175,21 @@ struct SunDayStrip: View {
             isSelected: state.isSelected,
             isFuture: state.status == .future,
             isComplete: state.status == .applied,
-            showsSecondaryDot: state.hasSecondaryActivity,
-            size: chipWidth(for: state)
+            showsSecondaryDot: false,
+            size: chipWidth(for: state),
+            dayNumber: "\(calendar.component(.day, from: state.day))",
+            statusSymbolName: state.statusSymbolName,
+            foreground: capsuleForeground(for: state)
         )
+    }
+
+    private func capsuleForeground(for state: ChipState) -> Color {
+        switch state.status {
+        case .applied:
+            return AppPalette.onAccent
+        case .todayPending, .missed, .untracked, .future:
+            return AppPalette.ink
+        }
     }
 
     private func dayCapsuleFill(for state: ChipState) -> Color {
@@ -189,6 +202,8 @@ struct SunDayStrip: View {
             return AppPalette.cardFill.opacity(0.40)
         case .missed:
             return AppPalette.muted.opacity(0.10)
+        case .untracked:
+            return AppPalette.cardFill.opacity(0.52)
         }
     }
 
@@ -206,6 +221,8 @@ struct SunDayStrip: View {
             return AppPalette.muted.opacity(0.26)
         case .missed:
             return AppPalette.hairlineStroke
+        case .untracked:
+            return AppPalette.muted.opacity(0.30)
         }
     }
 
@@ -437,7 +454,6 @@ struct SunDayStrip: View {
         let todayStart = calendar.startOfDay(for: today)
         let isToday = dayStart == todayStart
         let isFuture = dayStart > todayStart
-        let hasRecord = recordedDays.contains(dayStart)
         let isCurrentStreak = currentStreakDays.contains(dayStart)
         let hasExtras = extrasDays.contains(dayStart)
         let forecastUVLevel = forecastUVLevels[dayStart]
@@ -445,16 +461,13 @@ struct SunDayStrip: View {
         let isSelected = calendar.isDate(dayStart, inSameDayAs: selectedDay)
         let details = logDetails[dayStart]
 
-        let status: DayStatus
-        if hasRecord {
-            status = .applied
-        } else if isToday {
-            status = .todayPending
-        } else if isFuture {
-            status = .future
-        } else {
-            status = .missed
-        }
+        let status = CalendarAnalytics.status(
+            for: dayStart,
+            with: recordedDays,
+            now: today,
+            eligibleFrom: eligibilityStart,
+            calendar: calendar
+        )
 
         return ChipState(
             day: dayStart,
@@ -564,29 +577,38 @@ private struct ChipState {
             return forecastUVLevel == nil ? .ghost : .forecast
         case .missed:
             return .ghost
+        case .untracked:
+            return .ghost
         }
     }
 
     var statusLabel: String {
         switch status {
         case .applied:
-            var parts = ["Logged"]
-            if isHighProtection {
-                parts.append("high SPF")
-            }
-            if isReapplyDense {
-                parts.append("reapplied")
-            }
-            if isCurrentStreak {
-                parts.append("recent logged run")
-            }
-            return parts.joined(separator: " · ")
+            return "Logged"
         case .todayPending:
-            return "Pending — today"
+            return "Open today"
         case .missed:
             return "Not logged"
+        case .untracked:
+            return "Not tracking yet"
         case .future:
             return forecastUVLevel.map { "\($0.displayName) UV forecast" } ?? "Forecast"
+        }
+    }
+
+    var statusSymbolName: String {
+        switch status {
+        case .applied:
+            return "checkmark"
+        case .todayPending:
+            return "circle.dashed"
+        case .missed:
+            return "minus"
+        case .untracked:
+            return "ellipsis"
+        case .future:
+            return "arrow.forward"
         }
     }
 
@@ -600,6 +622,15 @@ private struct ChipState {
             parts.append("\(forecastUVLevel.displayName) UV expected")
         } else if isElevatedUV {
             parts.append("Elevated UV expected")
+        }
+        if isHighProtection {
+            parts.append("high SPF")
+        }
+        if isReapplyDense {
+            parts.append("reapplied")
+        }
+        if isCurrentStreak {
+            parts.append("recent logged run")
         }
         if hasSecondaryActivity {
             parts.append("has notes")

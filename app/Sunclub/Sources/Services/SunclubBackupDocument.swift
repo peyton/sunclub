@@ -16,17 +16,20 @@ struct SunclubBackupPayload: Codable, Equatable {
     let createdAt: Date
     let schemaVersion: String
     let storeFiles: [SunclubBackupStoreFile]
+    let restorablePreferences: SunclubRestorablePreferences?
 
     init(
         createdAt: Date,
         schemaVersion: String,
-        storeFiles: [SunclubBackupStoreFile]
+        storeFiles: [SunclubBackupStoreFile],
+        restorablePreferences: SunclubRestorablePreferences? = nil
     ) {
         self.formatIdentifier = Self.formatIdentifier
         self.formatVersion = Self.currentFormatVersion
         self.createdAt = createdAt
         self.schemaVersion = schemaVersion
         self.storeFiles = storeFiles
+        self.restorablePreferences = restorablePreferences
     }
 
     func validated() throws -> SunclubBackupPayload {

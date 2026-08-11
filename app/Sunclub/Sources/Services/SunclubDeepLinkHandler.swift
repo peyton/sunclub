@@ -47,7 +47,7 @@ enum SunclubDeepLinkHandler {
 
         let now = appState.referenceDate
         let input = appState.oneTapLogInput(for: now)
-        _ = appState.recordVerificationSuccess(
+        let result = appState.recordVerificationSuccess(
             method: .quickLog,
             spfLevel: input.spfLevel,
             notes: input.oneTapNotes,
@@ -57,6 +57,19 @@ enum SunclubDeepLinkHandler {
                 source: .widget
             )
         )
+        guard result.succeeded else {
+            appState.prepareManualLogRouteContext(
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now),
+                source: .widget
+            )
+            router.open(
+                .manualLog,
+                targetDate: now,
+                targetDayPart: appState.dayPart(for: now)
+            )
+            return true
+        }
         if let presentation = appState.verificationSuccessPresentation {
             appState.verificationSuccessPresentation = VerificationSuccessPresentation(
                 streak: presentation.streak,

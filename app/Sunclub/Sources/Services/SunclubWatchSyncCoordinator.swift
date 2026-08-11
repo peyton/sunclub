@@ -19,6 +19,7 @@ enum SunclubWatchSyncPayload {
     static let messageKey = "message"
     static let requestSnapshotCommand = "requestSnapshot"
     static let logTodayCommand = "logToday"
+    static let reapplyCommand = "reapply"
 
     static func context(snapshot: SunclubWidgetSnapshot, message: String? = nil) -> [String: Any]? {
         guard let data = try? JSONEncoder().encode(snapshot) else {
@@ -68,6 +69,7 @@ final class SunclubWatchSyncCoordinator: NSObject {
 
     private let session: WCSession?
     private var logTodayHandler: (() throws -> SunclubWidgetSnapshot)?
+    private var reapplyHandler: (() throws -> SunclubWidgetSnapshot)?
 
     private override init() {
         if WCSession.isSupported() {
@@ -93,6 +95,10 @@ final class SunclubWatchSyncCoordinator: NSObject {
 
     func setLogTodayHandler(_ handler: @escaping () throws -> SunclubWidgetSnapshot) {
         logTodayHandler = handler
+    }
+
+    func setReapplyHandler(_ handler: @escaping () throws -> SunclubWidgetSnapshot) {
+        reapplyHandler = handler
     }
 
     func push(snapshot: SunclubWidgetSnapshot) {
@@ -145,6 +151,27 @@ final class SunclubWatchSyncCoordinator: NSObject {
                     replyHandler?(SunclubWatchSyncPayload.errorReply("Sunclub could not log sunscreen right now."))
                 }
             }
+        case SunclubWatchSyncPayload.reapplyCommand:
+            Task { @MainActor in
+                do {
+                    let snapshot = try reapplySnapshot()
+                    push(snapshot: snapshot)
+                    replyHandler?(
+                        SunclubWatchSyncPayload.successReply(
+                            snapshot: snapshot,
+                            message: "Reapplication saved from your wrist."
+                        )
+                    )
+                } catch let error as LocalizedError {
+                    replyHandler?(
+                        SunclubWatchSyncPayload.errorReply(
+                            error.errorDescription ?? "Sunclub could not save that reapplication right now."
+                        )
+                    )
+                } catch {
+                    replyHandler?(SunclubWatchSyncPayload.errorReply("Sunclub could not save that reapplication right now."))
+                }
+            }
         default:
             replyHandler?(SunclubWatchSyncPayload.errorReply("Unknown watch request."))
         }
@@ -156,6 +183,15 @@ final class SunclubWatchSyncCoordinator: NSObject {
         }
 
         _ = try SunclubQuickLogAction.performStandalone()
+        return SunclubWidgetSnapshotStore().load()
+    }
+
+    private func reapplySnapshot() throws -> SunclubWidgetSnapshot {
+        if let reapplyHandler {
+            return try reapplyHandler()
+        }
+
+        _ = try SunclubAutomationRuntime.performStandalone(.logReapply, invocation: .widget)
         return SunclubWidgetSnapshotStore().load()
     }
 }
@@ -289,6 +325,20 @@ final class SunclubWatchSyncCoordinator: NSObject {
     }
 
     func logToday() async -> String {
+        await performWrite(
+            command: SunclubWatchSyncPayload.logTodayCommand,
+            successMessage: "Logged from your wrist."
+        )
+    }
+
+    func logReapply() async -> String {
+        await performWrite(
+            command: SunclubWatchSyncPayload.reapplyCommand,
+            successMessage: "Reapplication saved from your wrist."
+        )
+    }
+
+    private func performWrite(command: String, successMessage: String) async -> String {
         guard let session else {
             syncStatus = "Watch sync is unavailable."
             return syncStatus ?? "Watch sync is unavailable."
@@ -303,17 +353,18 @@ final class SunclubWatchSyncCoordinator: NSObject {
         if session.activationState == .activated, session.isReachable {
             return await withCheckedContinuation { continuation in
                 session.sendMessage(
-                    [SunclubWatchSyncPayload.commandKey: SunclubWatchSyncPayload.logTodayCommand],
+                    [SunclubWatchSyncPayload.commandKey: command],
                     replyHandler: { [weak self] reply in
                         Task { @MainActor in
-                            let message = self?.consume(payload: reply, fallbackMessage: "Logged from your wrist.")
-                                ?? "Logged from your wrist."
+                            let message = self?.consume(payload: reply, fallbackMessage: successMessage)
+                                ?? successMessage
                             continuation.resume(returning: message)
                         }
                     },
                     errorHandler: { [weak self] _ in
                         Task { @MainActor in
-                            let message = self?.queueLogToday(on: session) ?? "Queued for your iPhone."
+                            let message = self?.queueWrite(command: command, on: session)
+                                ?? "Queued for your iPhone."
                             continuation.resume(returning: message)
                         }
                     }
@@ -321,7 +372,7 @@ final class SunclubWatchSyncCoordinator: NSObject {
             }
         }
 
-        return queueLogToday(on: session)
+        return queueWrite(command: command, on: session)
     }
 
     private func consume(
@@ -362,9 +413,9 @@ final class SunclubWatchSyncCoordinator: NSObject {
         #endif
     }
 
-    private func queueLogToday(on session: WCSession) -> String {
+    private func queueWrite(command: String, on session: WCSession) -> String {
         session.transferUserInfo([
-            SunclubWatchSyncPayload.commandKey: SunclubWatchSyncPayload.logTodayCommand
+            SunclubWatchSyncPayload.commandKey: command
         ])
         syncStatus = "Queued for your iPhone."
         return syncStatus ?? "Queued for your iPhone."

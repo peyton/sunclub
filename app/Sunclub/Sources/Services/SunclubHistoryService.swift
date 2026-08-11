@@ -16,10 +16,16 @@ struct CloudPublishResult: Equatable {
 final class SunclubHistoryService {
     private let context: ModelContext
     private let calendar: Calendar
+    private let mutationGuard: () throws -> Void
 
-    init(context: ModelContext, calendar: Calendar = .current) {
+    init(
+        context: ModelContext,
+        calendar: Calendar = .current,
+        mutationGuard: @escaping () throws -> Void = {}
+    ) {
         self.context = context
         self.calendar = calendar
+        self.mutationGuard = mutationGuard
     }
 
     func fetchContext() -> ModelContext {
@@ -36,6 +42,7 @@ final class SunclubHistoryService {
         if existingBatchCount == 0 {
             let isEmptyDefaultSeed = Self.isDefaultSettingsSnapshot(settings.projectionSnapshot) && records.isEmpty
             let batch = SunclubChangeBatch(
+                logicalOrder: try nextLogicalOrder(),
                 kind: .migrationSeed,
                 scope: .timeline,
                 scopeIdentifier: "timeline",
@@ -194,17 +201,26 @@ final class SunclubHistoryService {
             return nil
         }
 
-        let batch = try createBatch(
-            kind: kind,
-            scope: .settings,
-            scopeIdentifier: "settings",
-            summary: summary,
-            isLocalOnly: isLocalOnly
-        )
-        context.insert(SettingsRevision(batch: batch, snapshot: snapshot, changedFields: changedFields))
-        try context.save()
-        try rebuildProjections()
-        return batch
+        var createdBatch: SunclubChangeBatch?
+        do {
+            try context.transaction {
+                let batch = try createBatch(
+                    kind: kind,
+                    scope: .settings,
+                    scopeIdentifier: "settings",
+                    summary: summary,
+                    isLocalOnly: isLocalOnly
+                )
+                context.insert(SettingsRevision(batch: batch, snapshot: snapshot, changedFields: changedFields))
+                try rebuildProjections(savingChanges: false)
+                try mutationGuard()
+                createdBatch = batch
+            }
+        } catch {
+            rollbackAndRestoreProjections()
+            throw error
+        }
+        return createdBatch
     }
 
     @discardableResult
@@ -224,35 +240,81 @@ final class SunclubHistoryService {
             return nil
         }
 
-        let batch = try createBatch(
-            kind: kind,
-            scope: .day,
-            scopeIdentifier: Self.scopeIdentifier(for: targetDay),
-            summary: summary,
-            isLocalOnly: isLocalOnly
-        )
+        var createdBatch: SunclubChangeBatch?
+        do {
+            try context.transaction {
+                let batch = try createBatch(
+                    kind: kind,
+                    scope: .day,
+                    scopeIdentifier: Self.scopeIdentifier(for: targetDay),
+                    summary: summary,
+                    isLocalOnly: isLocalOnly
+                )
 
-        if let nextSnapshot {
-            context.insert(
-                DailyRecordRevision(
-                    batch: batch,
-                    snapshot: nextSnapshot,
-                    changedFields: changedFields
-                )
-            )
-        } else {
-            context.insert(
-                DailyRecordRevision(
-                    deletedDay: targetDay,
-                    batch: batch,
-                    changedFields: changedFields.union([.isDeleted])
-                )
-            )
+                if let nextSnapshot {
+                    context.insert(
+                        DailyRecordRevision(
+                            batch: batch,
+                            snapshot: nextSnapshot,
+                            changedFields: changedFields
+                        )
+                    )
+                } else {
+                    context.insert(
+                        DailyRecordRevision(
+                            deletedDay: targetDay,
+                            batch: batch,
+                            changedFields: changedFields.union([.isDeleted])
+                        )
+                    )
+                }
+
+                try rebuildProjections(savingChanges: false)
+                try mutationGuard()
+                createdBatch = batch
+            }
+        } catch {
+            rollbackAndRestoreProjections()
+            throw error
+        }
+        return createdBatch
+    }
+
+    @discardableResult
+    func deleteAllRecords() throws -> SunclubChangeBatch? {
+        let currentRecords = try records()
+        guard !currentRecords.isEmpty else {
+            return nil
         }
 
-        try context.save()
-        try rebuildProjections()
-        return batch
+        var createdBatch: SunclubChangeBatch?
+        do {
+            try context.transaction {
+                let batch = try createBatch(
+                    kind: .deleteRecord,
+                    scope: .timeline,
+                    scopeIdentifier: "timeline",
+                    summary: "Deleted all sunscreen history."
+                )
+                for record in currentRecords {
+                    context.insert(
+                        DailyRecordRevision(
+                            deletedDay: calendar.startOfDay(for: record.startOfDay),
+                            batch: batch,
+                            changedFields: Self.allRecordFields.union([.isDeleted])
+                        )
+                    )
+                }
+
+                try rebuildProjections(savingChanges: false)
+                try mutationGuard()
+                createdBatch = batch
+            }
+        } catch {
+            rollbackAndRestoreProjections()
+            throw error
+        }
+        return createdBatch
     }
 
     @discardableResult
@@ -412,6 +474,8 @@ final class SunclubHistoryService {
             let clone = SunclubChangeBatch(
                 id: batch.id,
                 createdAt: batch.createdAt,
+                logicalOrder: batch.logicalOrder,
+                serverReceivedAt: batch.serverReceivedAt,
                 kind: batch.kind,
                 scope: batch.scope,
                 scopeIdentifier: batch.scopeIdentifier,
@@ -440,9 +504,11 @@ final class SunclubHistoryService {
                     id: revision.id,
                     batchID: revision.batchID,
                     createdAt: revision.createdAt,
+                    logicalOrder: revision.logicalOrder,
+                    serverReceivedAt: revision.serverReceivedAt,
                     authorDeviceID: revision.authorDeviceID,
                     startOfDay: revision.startOfDay,
-                    isDeleted: revision.isDeleted,
+                    isDeleted: revision.snapshot == nil,
                     verifiedAt: revision.verifiedAt,
                     methodRawValue: revision.methodRawValue,
                     verificationDuration: revision.verificationDuration,
@@ -466,6 +532,8 @@ final class SunclubHistoryService {
                     id: revision.id,
                     batchID: revision.batchID,
                     createdAt: revision.createdAt,
+                    logicalOrder: revision.logicalOrder,
+                    serverReceivedAt: revision.serverReceivedAt,
                     authorDeviceID: revision.authorDeviceID,
                     snapshot: revision.snapshot,
                     changedFields: revision.changedFields,
@@ -652,7 +720,7 @@ final class SunclubHistoryService {
         )
 
         if let settingsRevision = try settingsRevision(forBatchID: batch.id) {
-            let previousSettings = try previousSettingsSnapshot(before: settingsRevision.createdAt)
+            let previousSettings = try previousSettingsSnapshot(before: settingsRevision)
             context.insert(
                 SettingsRevision(
                     batch: inverseBatch,
@@ -663,7 +731,7 @@ final class SunclubHistoryService {
         }
 
         for revision in try revisions(forBatchID: batch.id) {
-            if let previous = try previousRecordRevision(for: revision.startOfDay, before: revision.createdAt)?.snapshot {
+            if let previous = try previousRecordRevision(for: revision.startOfDay, before: revision)?.snapshot {
                 context.insert(
                     DailyRecordRevision(
                         batch: inverseBatch,
@@ -755,7 +823,17 @@ final class SunclubHistoryService {
     }
 
     func upsertRemoteBatch(_ wire: BatchWire) throws {
-        if try fetchBatchForSync(id: wire.id) != nil {
+        let logicalOrder = Self.validLogicalOrder(wire.logicalOrder)
+        if let existing = try fetchBatchForSync(id: wire.id) {
+            if existing.logicalOrder == nil {
+                existing.logicalOrder = logicalOrder
+            }
+            if existing.serverReceivedAt == nil {
+                existing.serverReceivedAt = wire.serverReceivedAt
+            }
+            if context.hasChanges {
+                try context.save()
+            }
             return
         }
 
@@ -763,6 +841,8 @@ final class SunclubHistoryService {
             SunclubChangeBatch(
                 id: wire.id,
                 createdAt: wire.createdAt,
+                logicalOrder: logicalOrder,
+                serverReceivedAt: wire.serverReceivedAt,
                 kind: SunclubChangeKind(rawValue: wire.kindRawValue) ?? .manualLog,
                 scope: SunclubBatchScope(rawValue: wire.scopeRawValue) ?? .timeline,
                 scopeIdentifier: wire.scopeIdentifier,
@@ -775,11 +855,36 @@ final class SunclubHistoryService {
                 undoneByBatchID: wire.undoneByBatchID
             )
         )
+        if let logicalOrder {
+            let batchID = wire.id
+            let recordPredicate = #Predicate<DailyRecordRevision> { $0.batchID == batchID }
+            for revision in try context.fetch(FetchDescriptor(predicate: recordPredicate))
+                where revision.logicalOrder == nil {
+                revision.logicalOrder = logicalOrder
+            }
+            let settingsPredicate = #Predicate<SettingsRevision> { $0.batchID == batchID }
+            for revision in try context.fetch(FetchDescriptor(predicate: settingsPredicate))
+                where revision.logicalOrder == nil {
+                revision.logicalOrder = logicalOrder
+            }
+        }
         try context.save()
     }
 
     func upsertRemoteRecordRevision(_ wire: RecordRevisionWire) throws {
-        if try fetchRecordRevisionForSync(id: wire.id) != nil {
+        let batchLogicalOrder = try fetchBatchForSync(id: wire.batchID)?.logicalOrder
+        let logicalOrder = Self.validLogicalOrder(wire.logicalOrder)
+            ?? batchLogicalOrder
+        if let existing = try fetchRecordRevisionForSync(id: wire.id) {
+            if existing.logicalOrder == nil {
+                existing.logicalOrder = logicalOrder
+            }
+            if existing.serverReceivedAt == nil {
+                existing.serverReceivedAt = wire.serverReceivedAt
+            }
+            if context.hasChanges {
+                try context.save()
+            }
             return
         }
 
@@ -788,6 +893,8 @@ final class SunclubHistoryService {
                 id: wire.id,
                 batchID: wire.batchID,
                 createdAt: wire.createdAt,
+                logicalOrder: logicalOrder,
+                serverReceivedAt: wire.serverReceivedAt,
                 authorDeviceID: wire.authorDeviceID,
                 startOfDay: wire.startOfDay,
                 isDeleted: wire.isDeleted,
@@ -806,7 +913,19 @@ final class SunclubHistoryService {
     }
 
     func upsertRemoteSettingsRevision(_ wire: SettingsRevisionWire) throws {
-        if try fetchSettingsRevisionForSync(id: wire.id) != nil {
+        let batchLogicalOrder = try fetchBatchForSync(id: wire.batchID)?.logicalOrder
+        let logicalOrder = Self.validLogicalOrder(wire.logicalOrder)
+            ?? batchLogicalOrder
+        if let existing = try fetchSettingsRevisionForSync(id: wire.id) {
+            if existing.logicalOrder == nil {
+                existing.logicalOrder = logicalOrder
+            }
+            if existing.serverReceivedAt == nil {
+                existing.serverReceivedAt = wire.serverReceivedAt
+            }
+            if context.hasChanges {
+                try context.save()
+            }
             return
         }
 
@@ -815,6 +934,8 @@ final class SunclubHistoryService {
                 id: wire.id,
                 batchID: wire.batchID,
                 createdAt: wire.createdAt,
+                logicalOrder: logicalOrder,
+                serverReceivedAt: wire.serverReceivedAt,
                 authorDeviceID: wire.authorDeviceID,
                 snapshot: wire.snapshot,
                 changedFields: Set(wire.changedFields.compactMap(SunclubTrackedField.init(rawValue:))),
@@ -824,14 +945,12 @@ final class SunclubHistoryService {
         try context.save()
     }
 
-    private func rebuildProjections() throws {
+    private func rebuildProjections(savingChanges: Bool = true) throws {
         try ensureSettingsProjectionExists()
         try resolveConflictsIfNeeded()
 
         let settings = try loadOrCreateSettings()
-        let rawSettingsRevisions = try context.fetch(
-            FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
-        )
+        let rawSettingsRevisions = try context.fetch(FetchDescriptor<SettingsRevision>())
         let settingsRevisions = Self.settingsRevisionsForProjection(rawSettingsRevisions)
         if let latestSettings = settingsRevisions.last {
             settings.apply(snapshot: latestSettings.snapshot)
@@ -842,8 +961,8 @@ final class SunclubHistoryService {
             context.delete(record)
         }
 
-        let allRevisions = try context.fetch(
-            FetchDescriptor<DailyRecordRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
+        let allRevisions = Self.sortedRecordRevisions(
+            try context.fetch(FetchDescriptor<DailyRecordRevision>())
         )
         let grouped = Dictionary(grouping: allRevisions) { calendar.startOfDay(for: $0.startOfDay) }
         for day in grouped.keys.sorted() {
@@ -868,7 +987,18 @@ final class SunclubHistoryService {
             records: grouped.compactMap { $0.value.last?.snapshot?.startOfDay },
             calendar: calendar
         )
-        try context.save()
+        if savingChanges {
+            try context.save()
+        }
+    }
+
+    private func rollbackAndRestoreProjections() {
+        context.rollback()
+        do {
+            try rebuildProjections()
+        } catch {
+            context.rollback()
+        }
     }
 
     private func seedProjectedRowsIntoHistoryIfNeeded() throws {
@@ -888,6 +1018,7 @@ final class SunclubHistoryService {
             && orphanRecords.isEmpty
             && Self.isDefaultSettingsSnapshot(settings.projectionSnapshot)
         let batch = SunclubChangeBatch(
+            logicalOrder: try nextLogicalOrder(),
             kind: .migrationSeed,
             scope: .timeline,
             scopeIdentifier: "timeline",
@@ -921,20 +1052,16 @@ final class SunclubHistoryService {
     }
 
     private func resolveConflictsIfNeeded() throws {
-        var didCreateMerge = false
-
         if let latestConflictBatch = try resolveSettingsConflictIfNeeded() {
-            didCreateMerge = true
             try markPendingConflict(summary: "Settings changes were auto-merged for review.", mergedBatch: latestConflictBatch, competingBatchIDs: latestConflictBatch.inverseOfBatchID.map { [$0] } ?? [], scope: .settings, scopeIdentifier: "settings")
         }
 
-        let grouped = Dictionary(grouping: try context.fetch(
-            FetchDescriptor<DailyRecordRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
+        let grouped = Dictionary(grouping: Self.sortedRecordRevisions(
+            try context.fetch(FetchDescriptor<DailyRecordRevision>())
         )) { calendar.startOfDay(for: $0.startOfDay) }
 
         for day in grouped.keys.sorted() {
             if let latestConflictBatch = try resolveDayConflictIfNeeded(for: day, revisions: grouped[day] ?? []) {
-                didCreateMerge = true
                 try markPendingConflict(
                     summary: "Conflicting changes for \(day.formatted(.dateTime.month().day())) were auto-merged.",
                     mergedBatch: latestConflictBatch,
@@ -944,16 +1071,10 @@ final class SunclubHistoryService {
                 )
             }
         }
-
-        if didCreateMerge {
-            try context.save()
-        }
     }
 
     private func resolveSettingsConflictIfNeeded() throws -> SunclubChangeBatch? {
-        let rawRevisions = try context.fetch(
-            FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
-        )
+        let rawRevisions = try context.fetch(FetchDescriptor<SettingsRevision>())
         let revisions = Self.settingsRevisionsForProjection(rawRevisions)
         guard revisions.count >= 2 else {
             return nil
@@ -996,16 +1117,18 @@ final class SunclubHistoryService {
         for day: Date,
         revisions: [DailyRecordRevision]
     ) throws -> SunclubChangeBatch? {
+        let revisions = Self.sortedRecordRevisions(revisions)
         guard revisions.count >= 2 else {
             return nil
         }
 
         let latest = revisions[revisions.count - 1]
         let previous = revisions[revisions.count - 2]
-        guard latest.batchKind != .conflictAutoMerge,
+        guard latest.batchKind != .deleteRecord,
+              latest.batchKind != .conflictAutoMerge,
               previous.batchKind != .conflictAutoMerge,
               latest.authorDeviceID != previous.authorDeviceID,
-              latest.snapshot != previous.snapshot || latest.isDeleted != previous.isDeleted else {
+              latest.snapshot != previous.snapshot else {
             return nil
         }
 
@@ -1114,9 +1237,9 @@ final class SunclubHistoryService {
         inverseOfBatchID: UUID? = nil,
         importSessionID: UUID? = nil
     ) throws -> SunclubChangeBatch {
-        let createdAt = try nextBatchCreationDate()
         let batch = SunclubChangeBatch(
-            createdAt: createdAt,
+            createdAt: Date(),
+            logicalOrder: try nextLogicalOrder(),
             kind: kind,
             scope: scope,
             scopeIdentifier: scopeIdentifier,
@@ -1130,40 +1253,42 @@ final class SunclubHistoryService {
         return batch
     }
 
-    private func nextBatchCreationDate() throws -> Date {
-        let now = Date()
-        let latestCreatedAt = try context.fetch(
-            FetchDescriptor<SunclubChangeBatch>(
-                sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
-            )
-        ).first?.createdAt
+    private func nextLogicalOrder() throws -> Int64 {
+        let batchOrders = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
+            .compactMap(\.logicalOrder)
+        let recordRevisionOrders = try context.fetch(FetchDescriptor<DailyRecordRevision>())
+            .compactMap(\.logicalOrder)
+        let settingsRevisionOrders = try context.fetch(FetchDescriptor<SettingsRevision>())
+            .compactMap(\.logicalOrder)
+        let greatestObserved = (batchOrders + recordRevisionOrders + settingsRevisionOrders)
+            .filter { $0 >= 0 }
+            .max() ?? 0
 
-        guard let latestCreatedAt, latestCreatedAt >= now else {
-            return now
+        guard greatestObserved < Int64.max else {
+            throw HistoryServiceError.logicalOrderExhausted
         }
-
-        return latestCreatedAt.addingTimeInterval(0.001)
+        return greatestObserved + 1
     }
 
-    private func previousSettingsSnapshot(before date: Date) throws -> SettingsProjectionSnapshot {
-        let revisions = try context.fetch(
-            FetchDescriptor<SettingsRevision>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
+    private func previousSettingsSnapshot(before revision: SettingsRevision) throws -> SettingsProjectionSnapshot {
+        let revisions = Self.sortedSettingsRevisions(
+            try context.fetch(FetchDescriptor<SettingsRevision>())
         )
-        let previous = revisions.last(where: { $0.createdAt < date })
+        let previous = revisions.last(where: { Self.isOrderedBefore($0, revision) })
         return previous?.snapshot ?? Settings().projectionSnapshot
     }
 
-    private func previousRecordRevision(for day: Date, before date: Date) throws -> DailyRecordRevision? {
+    private func previousRecordRevision(
+        for day: Date,
+        before revision: DailyRecordRevision
+    ) throws -> DailyRecordRevision? {
         let targetDay = calendar.startOfDay(for: day)
         let predicate = #Predicate<DailyRecordRevision> {
-            $0.startOfDay == targetDay && $0.createdAt < date
+            $0.startOfDay == targetDay
         }
-        return try context.fetch(
-            FetchDescriptor(
-                predicate: predicate,
-                sortBy: [SortDescriptor(\.createdAt, order: .forward)]
-            )
-        ).last
+        return Self.sortedRecordRevisions(
+            try context.fetch(FetchDescriptor(predicate: predicate))
+        ).last(where: { Self.isOrderedBefore($0, revision) })
     }
 
     private func revisions(forBatchID batchID: UUID) throws -> [DailyRecordRevision] {
@@ -1208,8 +1333,93 @@ final class SunclubHistoryService {
     private static func settingsRevisionsForProjection(
         _ revisions: [SettingsRevision]
     ) -> [SettingsRevision] {
+        let revisions = sortedSettingsRevisions(revisions)
         let filtered = revisions.filter { !isSyntheticDefaultSettingsRevision($0) }
         return filtered.isEmpty ? revisions : filtered
+    }
+
+    private static func sortedRecordRevisions(
+        _ revisions: [DailyRecordRevision]
+    ) -> [DailyRecordRevision] {
+        revisions.sorted(by: isOrderedBefore)
+    }
+
+    private static func sortedSettingsRevisions(
+        _ revisions: [SettingsRevision]
+    ) -> [SettingsRevision] {
+        revisions.sorted(by: isOrderedBefore)
+    }
+
+    private static func isOrderedBefore(
+        _ lhs: DailyRecordRevision,
+        _ rhs: DailyRecordRevision
+    ) -> Bool {
+        isOrderedBefore(
+            HistoryOrderKey(
+                logicalOrder: lhs.logicalOrder,
+                serverReceivedAt: lhs.serverReceivedAt,
+                createdAt: lhs.createdAt,
+                id: lhs.id
+            ),
+            HistoryOrderKey(
+                logicalOrder: rhs.logicalOrder,
+                serverReceivedAt: rhs.serverReceivedAt,
+                createdAt: rhs.createdAt,
+                id: rhs.id
+            )
+        )
+    }
+
+    private static func isOrderedBefore(
+        _ lhs: SettingsRevision,
+        _ rhs: SettingsRevision
+    ) -> Bool {
+        isOrderedBefore(
+            HistoryOrderKey(
+                logicalOrder: lhs.logicalOrder,
+                serverReceivedAt: lhs.serverReceivedAt,
+                createdAt: lhs.createdAt,
+                id: lhs.id
+            ),
+            HistoryOrderKey(
+                logicalOrder: rhs.logicalOrder,
+                serverReceivedAt: rhs.serverReceivedAt,
+                createdAt: rhs.createdAt,
+                id: rhs.id
+            )
+        )
+    }
+
+    private static func isOrderedBefore(
+        _ lhs: HistoryOrderKey,
+        _ rhs: HistoryOrderKey
+    ) -> Bool {
+        if let lhsLogicalOrder = validLogicalOrder(lhs.logicalOrder),
+           let rhsLogicalOrder = validLogicalOrder(rhs.logicalOrder),
+           lhsLogicalOrder != rhsLogicalOrder {
+            return lhsLogicalOrder < rhsLogicalOrder
+        }
+
+        let lhsFallbackDate = lhs.serverReceivedAt ?? lhs.createdAt
+        let rhsFallbackDate = rhs.serverReceivedAt ?? rhs.createdAt
+        if lhsFallbackDate != rhsFallbackDate {
+            return lhsFallbackDate < rhsFallbackDate
+        }
+        if lhs.createdAt != rhs.createdAt {
+            return lhs.createdAt < rhs.createdAt
+        }
+        return lhs.id.uuidString < rhs.id.uuidString
+    }
+
+    private static func validLogicalOrder(_ logicalOrder: Int64?) -> Int64? {
+        logicalOrder.flatMap { $0 >= 0 ? $0 : nil }
+    }
+
+    private struct HistoryOrderKey {
+        let logicalOrder: Int64?
+        let serverReceivedAt: Date?
+        let createdAt: Date
+        let id: UUID
     }
 
     private static func isSyntheticDefaultSettingsRevision(_ revision: SettingsRevision) -> Bool {
@@ -1260,7 +1470,19 @@ final class SunclubHistoryService {
                 imported: imported.reapplyIntervalMinutes,
                 defaultValue: defaults.reapplyIntervalMinutes
             ),
-            usesLiveUV: current.usesLiveUV || imported.usesLiveUV
+            usesLiveUV: current.usesLiveUV || imported.usesLiveUV,
+            selectedUVPlace: recoveredOptionalField(
+                current: current.selectedUVPlace,
+                imported: imported.selectedUVPlace
+            ),
+            sunscreenProfile: recoveredOptionalField(
+                current: current.sunscreenProfile,
+                imported: imported.sunscreenProfile
+            ),
+            restorablePreferences: recoveredOptionalField(
+                current: current.restorablePreferences,
+                imported: imported.restorablePreferences
+            )
         )
     }
 
@@ -1295,7 +1517,10 @@ final class SunclubHistoryService {
             smartReminderSettingsData: nil,
             reapplyReminderEnabled: false,
             reapplyIntervalMinutes: 120,
-            usesLiveUV: false
+            usesLiveUV: false,
+            selectedUVPlace: nil,
+            sunscreenProfile: nil,
+            restorablePreferences: nil
         )
     }
 
@@ -1316,7 +1541,10 @@ final class SunclubHistoryService {
             smartReminderSettingsData: selectField(.smartReminderSettingsData, older: older.smartReminderSettingsData, olderChanged: olderChangedFields, newer: newer.smartReminderSettingsData, newerChanged: newerChangedFields),
             reapplyReminderEnabled: selectField(.reapplyReminderEnabled, older: older.reapplyReminderEnabled, olderChanged: olderChangedFields, newer: newer.reapplyReminderEnabled, newerChanged: newerChangedFields),
             reapplyIntervalMinutes: selectField(.reapplyIntervalMinutes, older: older.reapplyIntervalMinutes, olderChanged: olderChangedFields, newer: newer.reapplyIntervalMinutes, newerChanged: newerChangedFields),
-            usesLiveUV: selectField(.usesLiveUV, older: older.usesLiveUV, olderChanged: olderChangedFields, newer: newer.usesLiveUV, newerChanged: newerChangedFields)
+            usesLiveUV: selectField(.usesLiveUV, older: older.usesLiveUV, olderChanged: olderChangedFields, newer: newer.usesLiveUV, newerChanged: newerChangedFields),
+            selectedUVPlace: selectField(.selectedUVPlace, older: older.selectedUVPlace, olderChanged: olderChangedFields, newer: newer.selectedUVPlace, newerChanged: newerChangedFields),
+            sunscreenProfile: selectField(.sunscreenProfile, older: older.sunscreenProfile, olderChanged: olderChangedFields, newer: newer.sunscreenProfile, newerChanged: newerChangedFields),
+            restorablePreferences: selectField(.restorablePreferences, older: older.restorablePreferences, olderChanged: olderChangedFields, newer: newer.restorablePreferences, newerChanged: newerChangedFields)
         )
     }
 
@@ -1325,20 +1553,23 @@ final class SunclubHistoryService {
         older: DailyRecordRevision,
         newer: DailyRecordRevision
     ) -> DailyRecordProjectionSnapshot? {
-        if older.isDeleted && newer.isDeleted {
+        let olderSnapshot = older.snapshot
+        let newerSnapshot = newer.snapshot
+
+        if olderSnapshot == nil && newerSnapshot == nil {
             return nil
         }
 
-        if older.isDeleted, let snapshot = newer.snapshot {
-            return snapshot
+        if olderSnapshot == nil {
+            return newerSnapshot
         }
 
-        if newer.isDeleted, let snapshot = older.snapshot {
-            return snapshot
+        if newerSnapshot == nil {
+            return olderSnapshot
         }
 
-        guard let olderSnapshot = older.snapshot,
-              let newerSnapshot = newer.snapshot else {
+        guard let olderSnapshot,
+              let newerSnapshot else {
             return nil
         }
 
@@ -1410,7 +1641,10 @@ final class SunclubHistoryService {
         .smartReminderSettingsData,
         .reapplyReminderEnabled,
         .reapplyIntervalMinutes,
-        .usesLiveUV
+        .usesLiveUV,
+        .selectedUVPlace,
+        .sunscreenProfile,
+        .restorablePreferences
     ]
 
     private struct ImportedDomainSnapshot {
@@ -1452,6 +1686,7 @@ enum HistoryServiceError: LocalizedError {
     case batchAlreadyUndone
     case batchCannotRedo
     case importSessionNotFound
+    case logicalOrderExhausted
 
     var errorDescription: String? {
         switch self {
@@ -1463,6 +1698,8 @@ enum HistoryServiceError: LocalizedError {
             return "That change can't be redone right now."
         case .importSessionNotFound:
             return "Sunclub couldn't find that import anymore."
+        case .logicalOrderExhausted:
+            return "Sunclub couldn't assign the next history order."
         }
     }
 }

@@ -6,6 +6,7 @@ struct SunclubBackupImportSummary: Equatable {
     let exportedAt: Date
     let importedBatchCount: Int
     let importSessionID: UUID
+    let restoredPreferences: SunclubRestorablePreferences?
 
     var statusMessage: String {
         let noun = restoredRecordCount == 1 ? "day" : "days"
@@ -22,7 +23,10 @@ struct SunclubBackupService {
     }
 
     @MainActor
-    func exportDocument(from context: ModelContext) throws -> SunclubBackupDocument {
+    func exportDocument(
+        from context: ModelContext,
+        restorablePreferences: SunclubRestorablePreferences? = nil
+    ) throws -> SunclubBackupDocument {
         let historyService = SunclubHistoryService(context: context)
         try historyService.bootstrapIfNeeded()
         let temporaryDirectory = try makeTemporaryDirectory()
@@ -35,16 +39,24 @@ struct SunclubBackupService {
         return SunclubBackupDocument(
             payload: SunclubBackupPayload(
                 createdAt: Date(),
-                schemaVersion: "2.0.0",
-                storeFiles: storeFiles
+                schemaVersion: "5.0.0",
+                storeFiles: storeFiles,
+                restorablePreferences: restorablePreferences
             )
         )
     }
 
     @discardableResult
     @MainActor
-    func exportBackup(from context: ModelContext, to url: URL) throws -> SunclubBackupDocument {
-        let document = try exportDocument(from: context)
+    func exportBackup(
+        from context: ModelContext,
+        to url: URL,
+        restorablePreferences: SunclubRestorablePreferences? = nil
+    ) throws -> SunclubBackupDocument {
+        let document = try exportDocument(
+            from: context,
+            restorablePreferences: restorablePreferences
+        )
         let data = try document.serializedData()
         try data.write(to: url, options: .atomic)
         return document
@@ -71,7 +83,8 @@ struct SunclubBackupService {
             restoredRecordCount: importedSnapshot.records.count,
             exportedAt: document.payload.createdAt,
             importedBatchCount: importResult.importedBatchCount,
-            importSessionID: importResult.importSessionID
+            importSessionID: importResult.importSessionID,
+            restoredPreferences: document.payload.restorablePreferences
         )
     }
 
@@ -187,6 +200,8 @@ struct SunclubBackupService {
                     SunclubChangeBatch(
                         id: batch.id,
                         createdAt: batch.createdAt,
+                        logicalOrder: batch.logicalOrder,
+                        serverReceivedAt: batch.serverReceivedAt,
                         kind: batch.kind,
                         scope: batch.scope,
                         scopeIdentifier: batch.scopeIdentifier,
@@ -211,9 +226,11 @@ struct SunclubBackupService {
                         id: revision.id,
                         batchID: revision.batchID,
                         createdAt: revision.createdAt,
+                        logicalOrder: revision.logicalOrder,
+                        serverReceivedAt: revision.serverReceivedAt,
                         authorDeviceID: revision.authorDeviceID,
                         startOfDay: revision.startOfDay,
-                        isDeleted: revision.isDeleted,
+                        isDeleted: revision.snapshot == nil,
                         verifiedAt: revision.verifiedAt,
                         methodRawValue: revision.methodRawValue,
                         verificationDuration: revision.verificationDuration,
@@ -236,6 +253,8 @@ struct SunclubBackupService {
                         id: revision.id,
                         batchID: revision.batchID,
                         createdAt: revision.createdAt,
+                        logicalOrder: revision.logicalOrder,
+                        serverReceivedAt: revision.serverReceivedAt,
                         authorDeviceID: revision.authorDeviceID,
                         snapshot: revision.snapshot,
                         changedFields: revision.changedFields,
@@ -298,6 +317,9 @@ private struct SunclubBackupSettingsSnapshot: Equatable {
     let longestStreak: Int
     let reapplyReminderEnabled: Bool
     let reapplyIntervalMinutes: Int
+    let usesLiveUV: Bool
+    let selectedUVPlace: SunclubSelectedUVPlace?
+    let sunscreenProfile: SunclubSunscreenProfile?
 
     init(settings: Settings) {
         hasCompletedOnboarding = settings.hasCompletedOnboarding
@@ -311,6 +333,9 @@ private struct SunclubBackupSettingsSnapshot: Equatable {
         longestStreak = settings.longestStreak
         reapplyReminderEnabled = settings.reapplyReminderEnabled
         reapplyIntervalMinutes = settings.reapplyIntervalMinutes
+        usesLiveUV = settings.usesLiveUV
+        selectedUVPlace = settings.selectedUVPlace
+        sunscreenProfile = settings.sunscreenProfile
     }
 
     func apply(to settings: Settings) {
@@ -325,6 +350,9 @@ private struct SunclubBackupSettingsSnapshot: Equatable {
         settings.longestStreak = longestStreak
         settings.reapplyReminderEnabled = reapplyReminderEnabled
         settings.reapplyIntervalMinutes = reapplyIntervalMinutes
+        settings.usesLiveUV = usesLiveUV
+        settings.selectedUVPlace = selectedUVPlace
+        settings.sunscreenProfile = sunscreenProfile
     }
 }
 

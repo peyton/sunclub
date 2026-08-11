@@ -2,6 +2,11 @@ import CloudKit
 import Foundation
 import SwiftData
 
+private struct CloudSyncRecordFailure: Codable, Equatable, Sendable {
+    let recordName: String
+    let message: String
+}
+
 @MainActor
 enum CloudSyncStartResult: Equatable {
     case restoredRemoteHistory
@@ -498,24 +503,102 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
     private func handleFetchedRecordZoneChanges(
         _ modifications: [CKDatabase.RecordZoneChange.Modification]
     ) async {
-        do {
-            for modification in modifications {
-                guard modification.record.recordID.zoneID == zoneID,
-                      let payload = modification.record["payload"] as? Data else {
+        var unresolvedFailures = loadUnresolvedRecordFailures()
+
+        for modification in modifications {
+            let cloudRecord = modification.record
+            guard cloudRecord.recordID.zoneID == zoneID else {
+                continue
+            }
+
+            guard let payload = cloudRecord["payload"] as? Data else {
+                guard Self.isHistoryRecordType(cloudRecord.recordType) else {
                     continue
                 }
-
-                switch modification.record.recordType {
-                case "ChangeBatch":
-                    try historyService.upsertRemoteBatch(try JSONDecoder().decode(BatchWire.self, from: payload))
-                case "DailyRecordRevision":
-                    try historyService.upsertRemoteRecordRevision(try JSONDecoder().decode(RecordRevisionWire.self, from: payload))
-                case "SettingsRevision":
-                    try historyService.upsertRemoteSettingsRevision(try JSONDecoder().decode(SettingsRevisionWire.self, from: payload))
-                default:
-                    break
-                }
+                let message = "Missing history payload."
+                unresolvedFailures[cloudRecord.recordID.recordName] = CloudSyncRecordFailure(
+                    recordName: cloudRecord.recordID.recordName,
+                    message: message
+                )
+                await record(
+                    message: "Skipped invalid CloudKit record \(cloudRecord.recordID.recordName): \(message)",
+                    level: .warning
+                )
+                continue
             }
+
+            do {
+                try applyFetchedRecord(cloudRecord, payload: payload)
+                unresolvedFailures.removeValue(forKey: cloudRecord.recordID.recordName)
+            } catch {
+                let message = Self.errorMessage(for: error)
+                unresolvedFailures[cloudRecord.recordID.recordName] = CloudSyncRecordFailure(
+                    recordName: cloudRecord.recordID.recordName,
+                    message: message
+                )
+                await record(
+                    message: "Skipped invalid CloudKit record \(cloudRecord.recordID.recordName): \(message)",
+                    level: .warning
+                )
+            }
+        }
+
+        do {
+            try persistUnresolvedRecordFailures(unresolvedFailures)
+            try historyService.refreshProjectedState()
+            await finishSync()
+        } catch {
+            await record(error: error, level: .warning)
+        }
+    }
+
+    private func applyFetchedRecord(_ record: CKRecord, payload: Data) throws {
+        switch record.recordType {
+        case "ChangeBatch":
+            var wire = try JSONDecoder().decode(BatchWire.self, from: payload)
+            wire.serverReceivedAt = record.modificationDate
+            try historyService.upsertRemoteBatch(wire)
+        case "DailyRecordRevision":
+            var wire = try JSONDecoder().decode(RecordRevisionWire.self, from: payload)
+            wire.serverReceivedAt = record.modificationDate
+            try historyService.upsertRemoteRecordRevision(wire)
+        case "SettingsRevision":
+            var wire = try JSONDecoder().decode(SettingsRevisionWire.self, from: payload)
+            wire.serverReceivedAt = record.modificationDate
+            try historyService.upsertRemoteSettingsRevision(wire)
+        default:
+            break
+        }
+    }
+
+    func applyFetchedRecordsForTesting(_ records: [CKRecord]) async {
+        var unresolvedFailures = loadUnresolvedRecordFailures()
+
+        for record in records where record.recordID.zoneID == zoneID {
+            guard let payload = record["payload"] as? Data else {
+                guard Self.isHistoryRecordType(record.recordType) else {
+                    continue
+                }
+                unresolvedFailures[record.recordID.recordName] = CloudSyncRecordFailure(
+                    recordName: record.recordID.recordName,
+                    message: "Missing history payload."
+                )
+                continue
+            }
+            do {
+                try applyFetchedRecord(record, payload: payload)
+                unresolvedFailures.removeValue(forKey: record.recordID.recordName)
+            } catch {
+                let message = Self.errorMessage(for: error)
+                unresolvedFailures[record.recordID.recordName] = CloudSyncRecordFailure(
+                    recordName: record.recordID.recordName,
+                    message: message
+                )
+            }
+        }
+
+        do {
+            try persistUnresolvedRecordFailures(unresolvedFailures)
             try historyService.refreshProjectedState()
             await finishSync()
         } catch {
@@ -556,13 +639,46 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
     private func finishSync() async {
         do {
             let preference = try historyService.syncPreference()
-            preference.status = preference.isICloudSyncEnabled ? .idle : .paused
+            let unresolvedFailures = loadUnresolvedRecordFailures()
+            preference.status = unresolvedFailures.isEmpty
+                ? (preference.isICloudSyncEnabled ? .idle : .paused)
+                : .error
             preference.lastSyncAt = Date()
-            preference.lastSyncErrorDescription = nil
+            if unresolvedFailures.isEmpty {
+                preference.lastSyncErrorDescription = nil
+            } else {
+                let count = unresolvedFailures.count
+                let noun = count == 1 ? "record" : "records"
+                preference.lastSyncErrorDescription = "iCloud sync skipped \(count) invalid \(noun). Sunclub kept the rest of your history and will retry corrected records."
+            }
             try historyService.fetchContext().save()
         } catch {
             await record(error: error, level: .warning)
         }
+    }
+
+    private func loadUnresolvedRecordFailures() -> [String: CloudSyncRecordFailure] {
+        guard let data = try? historyService.cloudSyncState().unresolvedCloudRecordFailuresData,
+              let failures = try? JSONDecoder().decode([CloudSyncRecordFailure].self, from: data) else {
+            return [:]
+        }
+        return Dictionary(uniqueKeysWithValues: failures.map { ($0.recordName, $0) })
+    }
+
+    private func persistUnresolvedRecordFailures(
+        _ failures: [String: CloudSyncRecordFailure]
+    ) throws {
+        let state = try historyService.cloudSyncState()
+        state.unresolvedCloudRecordFailuresData = failures.isEmpty
+            ? nil
+            : try JSONEncoder().encode(failures.values.sorted { $0.recordName < $1.recordName })
+        try historyService.fetchContext().save()
+    }
+
+    private static func isHistoryRecordType(_ recordType: String) -> Bool {
+        recordType == "ChangeBatch"
+            || recordType == "DailyRecordRevision"
+            || recordType == "SettingsRevision"
     }
 
     private func record(error: Error, level: CloudSyncDiagnosticLevel) async {

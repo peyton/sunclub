@@ -6,6 +6,7 @@ enum SunclubGrowthAnalytics {
         changeBatches: [SunclubChangeBatch],
         settings: Settings? = nil,
         growthSettings: SunclubGrowthSettings = SunclubGrowthSettings(),
+        historicalUVIndexes: [Date: Int] = [:],
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> [SunclubAchievement] {
@@ -14,6 +15,7 @@ enum SunclubGrowthAnalytics {
             changeBatches: changeBatches,
             settings: settings,
             growthSettings: growthSettings,
+            historicalUVIndexes: historicalUVIndexes,
             now: now,
             calendar: calendar
         )
@@ -46,6 +48,7 @@ enum SunclubGrowthAnalytics {
     static func reportSummary(
         records: [DailyRecord],
         interval: DateInterval,
+        historicalUVIndexes: [Date: Int] = [:],
         calendar: Calendar = .current
     ) -> SunclubSkinHealthReportSummary {
         let filteredRecords = records
@@ -64,8 +67,13 @@ enum SunclubGrowthAnalytics {
             interval: interval,
             calendar: calendar
         )
+        let normalizedUVIndexes = historicalUVIndexes.reduce(into: [Date: Int]()) { result, entry in
+            let day = calendar.startOfDay(for: entry.key)
+            result[day] = max(result[day] ?? 0, entry.value)
+        }
         let highUVProtectedDays = filteredRecords.reduce(into: 0) { result, record in
-            guard middayUVLevel(for: record.startOfDay, calendar: calendar).rawValue >= UVLevel.high.rawValue else {
+            guard let verifiedIndex = normalizedUVIndexes[calendar.startOfDay(for: record.startOfDay)],
+                  verifiedIndex >= 6 else {
                 return
             }
             result += 1
@@ -139,6 +147,7 @@ enum SunclubGrowthAnalytics {
         changeBatches: [SunclubChangeBatch],
         settings: Settings?,
         growthSettings: SunclubGrowthSettings,
+        historicalUVIndexes: [Date: Int],
         now: Date,
         calendar: Calendar
     ) -> AchievementProgressContext {
@@ -155,7 +164,11 @@ enum SunclubGrowthAnalytics {
             distinctSPFCount: Set(records.compactMap(\.spfLevel)).count,
             notedLogCount: records.filter { $0.trimmedNotes != nil }.count,
             maxReapplyCount: records.map(\.reapplyCount).max() ?? 0,
-            highUVProtectedDays: highUVProtectedDayCount(records: records, calendar: calendar),
+            highUVProtectedDays: highUVProtectedDayCount(
+                records: records,
+                historicalUVIndexes: historicalUVIndexes,
+                calendar: calendar
+            ),
             hasHomeBase: leaveHomeReminder?.isEnabled == true && leaveHomeReminder?.homeLocation != nil,
             hasLiveSignal: growthSettings.uvBriefing.dailyBriefingEnabled,
             productScanUseCount: growthSettings.telemetry.productScanUseCount,
@@ -248,7 +261,7 @@ enum SunclubGrowthAnalytics {
         case .reapplyRelay:
             return isUnlocked ? "You checked in \(value) reapplications in one day." : "Log \(id.targetValue) reapply check-ins on one day."
         case .highUVHero:
-            return isUnlocked ? "You were protected on \(value) higher-UV days." : "Log protection on \(id.targetValue) days with high estimated UV."
+            return isUnlocked ? "You were protected on \(value) verified higher-UV days." : "Log protection on \(id.targetValue) days with verified high UV."
         case .homeBase:
             return isUnlocked ? "Your leave-home reminder has a saved home base." : "Turn on leave-home reminders and save your home base."
         case .liveSignal:
@@ -269,9 +282,18 @@ enum SunclubGrowthAnalytics {
         loggedDays(in: seasonalInterval(window, around: now, calendar: calendar), records: records, calendar: calendar).count
     }
 
-    private static func highUVProtectedDayCount(records: [DailyRecord], calendar: Calendar) -> Int {
-        records.reduce(into: 0) { result, record in
-            guard middayUVLevel(for: record.startOfDay, calendar: calendar).rawValue >= UVLevel.high.rawValue else {
+    private static func highUVProtectedDayCount(
+        records: [DailyRecord],
+        historicalUVIndexes: [Date: Int],
+        calendar: Calendar
+    ) -> Int {
+        let normalizedUVIndexes = historicalUVIndexes.reduce(into: [Date: Int]()) { result, entry in
+            let day = calendar.startOfDay(for: entry.key)
+            result[day] = max(result[day] ?? 0, entry.value)
+        }
+        return records.reduce(into: 0) { result, record in
+            guard let verifiedIndex = normalizedUVIndexes[calendar.startOfDay(for: record.startOfDay)],
+                  verifiedIndex >= 6 else {
                 return
             }
             result += 1
@@ -488,61 +510,6 @@ enum SunclubGrowthAnalytics {
         return entries
     }
 
-    private static func middayUVLevel(for date: Date, calendar: Calendar) -> UVLevel {
-        let midday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-        return UVLevel.from(index: estimatedUVIndex(at: midday, calendar: calendar))
-    }
-
-    private static func estimatedUVIndex(at date: Date, calendar: Calendar) -> Int {
-        let hour = calendar.component(.hour, from: date)
-        let month = calendar.component(.month, from: date)
-
-        let seasonalBase: Int
-        switch month {
-        case 6, 7, 8:
-            seasonalBase = 8
-        case 5, 9:
-            seasonalBase = 6
-        case 4, 10:
-            seasonalBase = 4
-        case 3, 11:
-            seasonalBase = 3
-        default:
-            seasonalBase = 2
-        }
-
-        let timeMultiplier: Double
-        switch hour {
-        case 0...5:
-            timeMultiplier = 0.0
-        case 6:
-            timeMultiplier = 0.1
-        case 7:
-            timeMultiplier = 0.2
-        case 8:
-            timeMultiplier = 0.4
-        case 9:
-            timeMultiplier = 0.6
-        case 10:
-            timeMultiplier = 0.8
-        case 11, 12, 13:
-            timeMultiplier = 1.0
-        case 14:
-            timeMultiplier = 0.9
-        case 15:
-            timeMultiplier = 0.7
-        case 16:
-            timeMultiplier = 0.5
-        case 17:
-            timeMultiplier = 0.3
-        case 18:
-            timeMultiplier = 0.1
-        default:
-            timeMultiplier = 0.0
-        }
-
-        return max(0, Int(Double(seasonalBase) * timeMultiplier))
-    }
 }
 
 enum SunclubFriendCodeCodec {
@@ -575,25 +542,6 @@ enum SunclubFriendCodeError: LocalizedError {
         switch self {
         case .invalidCode:
             return "That friend code could not be read."
-        }
-    }
-}
-
-private extension UVLevel {
-    var rawValue: Int {
-        switch self {
-        case .low:
-            return 0
-        case .moderate:
-            return 1
-        case .high:
-            return 2
-        case .veryHigh:
-            return 3
-        case .extreme:
-            return 4
-        case .unknown:
-            return -1
         }
     }
 }

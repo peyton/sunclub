@@ -87,7 +87,7 @@ final class FakeHomeExitReminderStateStore: HomeExitReminderStateStoring {
 
 @MainActor
 final class HomeExitReminderMonitorTests: XCTestCase {
-    func testFirstHomeExitSchedulesImmediateReminderAndCancelsTodayFallback() async throws {
+    func testFirstHomeExitSchedulesImmediateReminderWithoutRemovingRepeatingFallback() async throws {
         let calendar = Calendar.current
         let now = Date()
         let notificationManager = MockNotificationManager()
@@ -111,10 +111,39 @@ final class HomeExitReminderMonitorTests: XCTestCase {
         locationService.simulateExit()
         await Task.yield()
 
-        XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderLevels.count, 1)
+        XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderLevels, [.unknown])
         XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderRoutes, [.manualLog])
-        XCTAssertEqual(notificationManager.cancelDailyReminderDays.count, 1)
+        XCTAssertTrue(notificationManager.cancelDailyReminderDays.isEmpty)
         XCTAssertTrue(stateStore.hasFired(on: now, calendar: calendar))
+    }
+
+    func testFailedHomeExitScheduleRemainsEligibleForRetry() async throws {
+        let calendar = Calendar.current
+        let now = Date()
+        let notificationManager = MockNotificationManager()
+        notificationManager.notificationOperationResult = .failure("Queue unavailable.")
+        let locationService = FakeLocationService()
+        let stateStore = FakeHomeExitReminderStateStore()
+        let monitor = HomeExitReminderMonitor(
+            locationService: locationService,
+            notificationManager: notificationManager,
+            stateStore: stateStore,
+            calendar: calendar
+        )
+        let state = try makeAppState(notificationManager: notificationManager)
+        configureLeaveHomeReminder(
+            on: state,
+            enabled: true,
+            reminderTime: futureReminderTime(from: now, calendar: calendar)
+        )
+        monitor.setStateProvider { state }
+        stateStore.markObservedInside(on: now, calendar: calendar)
+
+        locationService.simulateExit()
+        await Task.yield()
+
+        XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderLevels, [.unknown])
+        XCTAssertFalse(stateStore.hasFired(on: now, calendar: calendar))
     }
 
     func testExitDoesNotFireWhenUserWasAlreadyAway() async throws {

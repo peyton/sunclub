@@ -14,7 +14,7 @@
   },
   "localizations": {
     "en-US": {
-      "description": "Sunclub is a private sunscreen tracker for quick SPF logging, local UV context, weekly progress, and reapply reminders.\n\nLog what you applied, keep your streak moving, review the last 7 days at a glance, and get reminders when it is time to apply or reapply.\n\nFeatures:\n\n• Manual Logging — Record today quickly, even when you're on the go.\n• Streak Tracking — Keep your current streak and personal best in view.\n• Weekly Summary — Review the last 7 days at a glance.\n• Reapply Reminders — Set daily and reapply reminders that open straight into Sunclub.\n• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.\n\nSunclub is built for people who want sun protection to be a routine instead of another task to remember.",
+      "description": "Sunclub is a private sunscreen tracker for exact application logging, live UV context, helpful progress, and reliable reapply reminders.\n\nRecord what you applied and when, see when sun protection is recommended, and keep the next useful action close at hand.\n\nFeatures:\n\n• Accurate Logging — Record an exact time, SPF, covered areas, and optional product details.\n• Live UV Context — See Apple Weather UV guidance with a clear source and update time.\n• Reliable Reminders — Set daily and reapply reminders, then log or snooze from the notification.\n• Apple Watch and Widgets — Check UV and log sunscreen from the surfaces you already use.\n• Shortcuts and Live Activities — Automate non-destructive actions and keep reapply timing visible.\n• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.\n\nSunclub supports a sunscreen routine without medical scoring or pressure-based goals.",
       "keywords": [
         "sunscreen",
         "spf",
@@ -26,8 +26,8 @@
         "skincare",
         "sun care"
       ],
-      "promotional_text": "Log sunscreen fast, track weekly progress, check local UV, and get reapply reminders — private by default.",
-      "whats_new": "Initial release. Log sunscreen use quickly, keep your streak on track, and stay consistent with reminders."
+      "promotional_text": "Log sunscreen with an exact time, check sourced UV guidance, and act on reliable reapply reminders — private by default.",
+      "whats_new": "This update makes logging and reminders more trustworthy: edit exact application times, see clearer live UV sources, use contextual next actions, and act on reapply notifications. It also improves Larger Text layouts and keeps public Activity sharing disabled while that feature is not part of the visible app."
     }
   },
   "urls": {
@@ -61,25 +61,20 @@
     },
     "demo_account_required": false,
     "demo_account_notes": "No account required. App data is stored on device and can sync through the user's private iCloud database when iCloud sync is enabled.",
-    "notes": "Yes, Sunclub includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather. Live UV is off by default; core manual logging, weekly summaries, reminders, widgets, and watch surfaces work without WeatherKit or location. To navigate to the WeatherKit functionality: complete onboarding, open Settings, expand Travel & Health, find UV & Health, enable Live UV with the Use Apple Weather for Live UV switch, grant location permission if prompted, then return to Timeline/Home. When Live UV is enabled, WeatherKit requests happen from foreground/user-initiated main-app refreshes, are cached and rate-limited, and fall back to local UV estimates if location, network, remote config, or Apple Weather is unavailable. Apple Weather data appears only in main-app surfaces that display Apple Weather attribution plus a visible legal data-source link named Data Sources. Widgets, watch, and Live Activities use local estimates instead of WeatherKit-derived UV values. Reviewers can complete onboarding, log sunscreen manually from Home, open Weekly Summary, and adjust reminder settings from Settings.",
+    "notes": "Yes, Sunclub includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather. Live UV is off by default; core manual logging, progress, reminders, widgets, and watch surfaces work without WeatherKit or location. To navigate to WeatherKit functionality: complete onboarding, open Settings, open UV & Health, enable Live UV, choose a city or grant location permission, then return to Timeline/Home. WeatherKit requests are foreground/user-initiated, cached for no more than two hours, and rate-limited. The fallback when location, network, remote config, or Apple Weather is unavailable is an explicit UV unavailable state rather than a numeric estimate. Apple Weather values show attribution plus a visible legal data-source link named Data Sources. Reviewers can complete onboarding, log sunscreen manually from Home, open Insights, and adjust reminder settings from Settings.",
     "attachments": []
   },
   "privacy": {
     "tracking": false,
-    "data_collection": "app_functionality",
-    "collected_data_types": [
-      "Name",
-      "User ID",
-      "Other User Content",
-      "Other Usage Data"
-    ],
-    "collection_purpose": "App Functionality",
-    "collection_notes": "Optional Activity sharing uses Apple's public CloudKit database to deliver friend invite responses, friend display names and status snapshots, relationship tokens, and poke reminder messages/timestamps. This data is used only to provide Activity sharing and poke notifications; it is not used for tracking, ads, or analytics.",
+    "data_collection": "none",
+    "collected_data_types": [],
+    "collection_purpose": "Not Collected",
+    "collection_notes": "The production build keeps public Activity sharing transport disabled. Local history and optional private iCloud sync remain user-controlled and are not accessible to the developer.",
     "app_store_connect_completed": {
       "env": "SUNCLUB_APP_PRIVACY_COMPLETED",
       "equals": "1"
     },
-    "public_cloudkit_accountability_transport": true,
+    "public_cloudkit_accountability_transport": false,
     "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
   },
   "age_rating_questionnaire": {
@@ -112,7 +107,7 @@
     "kids_category": false,
     "iphone_only_v1": true,
     "accessibility_criteria_reviewed": true,
-    "public_cloudkit_accountability_transport_enabled": true
+    "public_cloudkit_accountability_transport_enabled": false
   },
   "regulatory": {
     "regulated_medical_device": {
@@ -140,8 +135,8 @@
           "id": "log-spf",
           "route": "manualLog",
           "complete_onboarding": true,
-          "headline": "Log SPF in seconds",
-          "caption": "Record SPF, timing, covered areas, and notes without an account.",
+          "headline": "Log the exact time",
+          "caption": "Record time, SPF, covered areas, and an optional reusable profile.",
           "launch_arguments": ["UITEST_SEED_HISTORY=manualSuggestions"]
         },
         {
@@ -149,15 +144,15 @@
           "route": "home",
           "complete_onboarding": true,
           "headline": "Know today's UV",
-          "caption": "See current UV, peak hour, and hourly forecast on your timeline.",
+          "caption": "See sourced Apple Weather UV, its update time, and the next useful action.",
           "launch_arguments": ["UITEST_UV_INDEX=6"]
         },
         {
           "id": "reapply-time",
           "route": "verifySuccess",
           "complete_onboarding": true,
-          "headline": "Reapply on time",
-          "caption": "Set reminders that match your sunscreen routine.",
+          "headline": "Act on reminders",
+          "caption": "Follow your label, log a reapplication, or snooze for 30 minutes.",
           "launch_arguments": [
             "UITEST_REAPPLY_ENABLED",
             "UITEST_REAPPLY_INTERVAL=120"
@@ -167,8 +162,8 @@
           "id": "weekly-progress",
           "route": "weeklySummary",
           "complete_onboarding": true,
-          "headline": "Track your week",
-          "caption": "Review logged days, open days, and weekly progress at a glance.",
+          "headline": "Build from day one",
+          "caption": "Review eligible days and encouraging local-first progress insights.",
           "launch_arguments": ["UITEST_SEED_USAGE_INSIGHTS"]
         },
         {

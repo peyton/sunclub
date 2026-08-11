@@ -6,7 +6,7 @@
 - Universal Links: deferred for this release. Do not add Associated Domains or `apple-app-site-association`.
 - Direct writes: allowed for logging, reapply, reminders, supported toggles, and export-only history files. Prototype sharing links remain parseable for older Shortcuts but route to Settings in this release.
 - UI-only actions: destructive, review-heavy, permission-only, camera, and file-picker flows open Sunclub instead of running in the background.
-- Storage: automation preferences live in the Codable growth settings store, not SwiftData.
+- Storage: automation preferences use the app-group growth settings store and are mirrored into the versioned private settings envelope for backup and private iCloud restore.
 
 ## Settings Knobs
 
@@ -31,6 +31,7 @@
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Export Sunclub History`: returns a PDF `IntentFile`.
 - Widget and Control Center buttons use non-discoverable widget intents for Log Today so they can complete in place without opening Sunclub or inheriting user Shortcut toggles. User-run Shortcuts still expose Log Reapply separately.
+- Notification actions use the same runtime: `Reapplied now` performs a durable reapply write, while `Snooze 30 min` schedules one bounded local reminder.
 
 ## App Shortcuts
 
@@ -106,6 +107,8 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Timeline/manual logging uses an explicit `{date, dayPart, source}` context and does not silently fall back to wall-clock `Date()`.
 - Day parts are morning 5 AM-12 PM, afternoon 12-6 PM, evening 6-9 PM, and night 9 PM-5 AM.
 - Optional SPF and notes behavior must match the manual log flows, including SPF clamping and the 280-character note limit.
+- New one-tap logs prefer the most recent recorded SPF, then the saved sunscreen profile SPF. Structured covered areas come only from prior logs; free-form notes are never copied automatically.
+- A successful response is returned only after the revision-history transaction commits. Failed writes leave existing data and follow-up reminders unchanged.
 
 ## Testing Requirements
 

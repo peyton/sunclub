@@ -2,12 +2,16 @@ import Foundation
 
 @MainActor
 final class SunclubUVBriefingService {
+    private let cache: SunclubUVForecastCache
+
     init(
         locationService: SharedLocationManaging? = nil,
-        weatherProvider: (any LiveUVWeatherProviding)? = nil
+        weatherProvider: (any LiveUVWeatherProviding)? = nil,
+        cache: SunclubUVForecastCache? = nil
     ) {
         _ = locationService
         _ = weatherProvider
+        self.cache = cache ?? SunclubUVForecastCache()
     }
 
     func forecast(
@@ -19,20 +23,27 @@ final class SunclubUVBriefingService {
     ) async -> SunclubUVForecast {
         _ = allowPermissionPrompt
 
-        if prefersLiveData,
-           let liveBundle,
+        _ = prefersLiveData
+        if let liveBundle,
+           liveBundle.isFresh(now: referenceDate, ttl: UVIndexService.verifiedDataMaxAge),
            let forecast = liveForecast(from: liveBundle, referenceDate: referenceDate, calendar: calendar) {
             return forecast
         }
 
-        return heuristicForecast(referenceDate: referenceDate, calendar: calendar)
+        return .unavailable(generatedAt: referenceDate)
     }
 
     func notificationForecast(
         referenceDate: Date,
+        now: Date = Date(),
         calendar: Calendar = .current
     ) -> SunclubUVForecast {
-        heuristicForecast(referenceDate: referenceDate, calendar: calendar)
+        guard let bundle = cache.lastBundle(),
+              bundle.isFresh(now: now, ttl: UVIndexService.verifiedDataMaxAge),
+              let forecast = liveForecast(from: bundle, referenceDate: referenceDate, calendar: calendar) else {
+            return .unavailable(generatedAt: referenceDate)
+        }
+        return forecast
     }
 
     private func liveForecast(
@@ -54,47 +65,6 @@ final class SunclubUVBriefingService {
             hours: todayHours,
             peakHour: peak,
             recommendation: recommendation(for: peak?.level ?? .unknown)
-        )
-    }
-
-    private func heuristicForecast(
-        referenceDate: Date,
-        calendar: Calendar
-    ) -> SunclubUVForecast {
-        let hours = dayHours(for: referenceDate, calendar: calendar).map { hourDate in
-            SunclubUVHourForecast(
-                date: hourDate,
-                index: UVIndexService.estimatedUVIndex(at: hourDate, calendar: calendar),
-                sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
-            )
-        }
-
-        return makeForecast(
-            generatedAt: referenceDate,
-            sourceLabel: UVReadingSource.heuristic.forecastLabel,
-            hours: hours
-        )
-    }
-
-    private func dayHours(for date: Date, calendar: Calendar) -> [Date] {
-        let dayStart = calendar.startOfDay(for: date)
-        return (6...18).compactMap { hour in
-            calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart)
-        }
-    }
-
-    private func makeForecast(
-        generatedAt: Date,
-        sourceLabel: String,
-        hours: [SunclubUVHourForecast]
-    ) -> SunclubUVForecast {
-        let peakHour = hours.max(by: { $0.index < $1.index })
-        return SunclubUVForecast(
-            generatedAt: generatedAt,
-            sourceLabel: sourceLabel,
-            hours: hours,
-            peakHour: peakHour,
-            recommendation: recommendation(for: peakHour?.level ?? .unknown)
         )
     }
 

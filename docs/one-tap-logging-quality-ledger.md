@@ -2,16 +2,16 @@
 
 ## ExecPlan
 
-Goal: one-tap sunscreen logging should reuse the previous reusable SPF and structured covered-area metadata everywhere it can run outside the foreground app, while foreground manual logging preselects the last SPF without overwriting existing records or explicit scanner/automation inputs.
+Goal: one-tap sunscreen logging should reuse the previous reusable SPF and structured covered-area metadata everywhere it can run outside the foreground app, fall back to the optional saved profile when history has no SPF, and never overwrite existing records or explicit scanner/automation inputs.
 
-Status: in progress for PR `codex/widget-one-tap-spf-reuse`.
+Status: completed in the original one-tap pass and extended by `codex/trust-reliability-improvements` in August 2026.
 
 Scope:
 
 - Centralize reusable log defaults in `SunManualLogDefaultResolver`.
 - Wire widget/deep-link, watch, shortcut, Control Center/App Intent, and standalone quick-log paths to the shared resolver.
 - Keep free-form notes out of one-tap defaults unless the current caller explicitly supplies notes.
-- Keep SwiftData schema unchanged.
+- The original one-tap pass kept SwiftData unchanged; the later optional profile is stored through the versioned Settings schema and migration plan.
 - Keep unrelated `mise.lock` drift unstaged.
 
 Advisory feedback:
@@ -138,3 +138,9 @@ Verification plan:
 - [x] Q108 | Evidence: Python metadata tests should cover project source dependencies. | Fix: metadata test checks widget resolver dependency. | Verification: `just test-python`.
 - [x] Q109 | Evidence: Swift tests should cover behavior, not just code shape. | Fix: added unit and UI behavior assertions. | Verification: `just test-unit` and `just test-ui`.
 - [x] Q110 | Evidence: whitespace errors can break CI. | Fix: final verification includes `git diff --check`. | Verification: `git diff --check`.
+- [x] Q111 | Evidence: a user with a saved profile but no prior SPF still needs consistent one-tap behavior. | Fix: the shared resolver accepts the saved profile SPF as its final fallback. | Verification: `testOneTapDefaultsUseProfileSPFWhenHistoryHasNoSPF`.
+- [x] Q112 | Evidence: profile fallback must work in app, widget, Watch, Shortcut, URL, and standalone extension writes. | Fix: AppState, `SunclubAutomationRuntime`, and `SunclubQuickLogAction` all pass the current profile to the shared resolver. | Verification: target compilation plus one-tap surface tests.
+- [x] Q113 | Evidence: a prior recorded SPF is more specific than the general saved profile. | Fix: resolver order remains explicit input, existing value, recent recorded SPF, then profile SPF. | Verification: existing prior-SPF tests continue to expect their recorded values.
+- [x] Q114 | Evidence: profile fallback must not invent covered areas or copy profile text into notes. | Fix: covered areas remain independently derived only from structured prior-log metadata. | Verification: profile fallback test expects an empty area set and the no-free-form-copy regression remains in place.
+- [x] Q115 | Evidence: outside-app failures previously risked looking successful. | Fix: one-tap writes report success only after the revision transaction commits and suppress follow-up routing or reminders on failure. | Verification: `testFailedWidgetWriteKeepsDataAndSuppressesSuccessSideEffects`.
+- [x] Q116 | Evidence: profile and automation defaults are user-owned data. | Fix: versioned settings revisions, private sync, and local backups restore the profile and restorable automation/privacy preferences. | Verification: `UVPersistenceTests`, `MigrationTests`, and `BackupTests`.

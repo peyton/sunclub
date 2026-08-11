@@ -130,7 +130,7 @@ enum AppTypography {
     static let caption = AppTextStyle.caption.font
     static let captionMedium = AppTextStyle.captionMedium.font
     static let metric = AppTextStyle.metric.font
-    static let streakNumber = Font.system(size: 56, weight: .semibold, design: .rounded)
+    static let streakNumber = Font.system(.largeTitle, design: .rounded, weight: .semibold)
     static let pillLabel = AppTextStyle.pillLabel.font
 }
 
@@ -1404,32 +1404,65 @@ struct SunBottomNavigationBar: View {
     }
 }
 
+struct SunAppTabBarAction: Equatable {
+    let shortTitle: String
+    let title: String
+    let systemImage: String
+    let accessibilityHint: String
+
+    static let logSunscreen = SunAppTabBarAction(
+        shortTitle: "Log",
+        title: "Log Sunscreen",
+        systemImage: "plus",
+        accessibilityHint: "Opens the sunscreen log."
+    )
+
+}
+
 struct SunAppTabBar: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let selectedTab: AppTab
     let onSelectTab: (AppTab) -> Void
+    let centerAction: SunAppTabBarAction
     let onAdd: () -> Void
 
+    init(
+        selectedTab: AppTab,
+        onSelectTab: @escaping (AppTab) -> Void,
+        centerAction: SunAppTabBarAction = .logSunscreen,
+        onAdd: @escaping () -> Void
+    ) {
+        self.selectedTab = selectedTab
+        self.onSelectTab = onSelectTab
+        self.centerAction = centerAction
+        self.onAdd = onAdd
+    }
+
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            tabButton(.today)
-            tabButton(.history)
-
-            Button(action: onAdd) {
-                Image(systemName: "plus")
-                    .font(AppFont.rounded(size: 22, weight: .bold))
-                    .foregroundStyle(AppColor.onColor)
-                    .frame(width: 52, height: 52)
-                    .background(Circle().fill(AppColor.accent))
-                    .appShadow(AppShadow.floating)
+        VStack(spacing: AppSpacing.xxs) {
+            if dynamicTypeSize.isAccessibilitySize {
+                LazyVGrid(columns: accessibilityTabColumns, spacing: AppSpacing.xxs) {
+                    tabButton(.today)
+                    accessibilityCenterActionButton
+                    tabButton(.history)
+                    tabButton(.insights)
+                    Color.clear
+                        .frame(minHeight: 44)
+                        .accessibilityHidden(true)
+                    tabButton(.settings)
+                }
+            } else {
+                HStack(alignment: .center, spacing: AppSpacing.xxs) {
+                    tabButton(.today)
+                    tabButton(.history)
+                    centerActionButton(isExpanded: false)
+                    tabButton(.insights)
+                    tabButton(.settings)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Log Sunscreen")
-            .accessibilityHint("Opens the sunscreen log.")
-            .accessibilityIdentifier("home.logManually")
-
-            tabButton(.insights)
-            tabButton(.settings)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .padding(7)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
@@ -1460,6 +1493,78 @@ struct SunAppTabBar: View {
         .accessibilityIdentifier("app.tabBar")
     }
 
+    private var accessibilityTabColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: AppSpacing.xxs),
+            GridItem(.flexible(), spacing: AppSpacing.xxs),
+            GridItem(.flexible(), spacing: AppSpacing.xxs)
+        ]
+    }
+
+    private var accessibilityCenterActionButton: some View {
+        Button(action: onAdd) {
+            VStack(spacing: 4) {
+                Image(systemName: centerAction.systemImage)
+                    .font(AppFont.rounded(size: 18, weight: .semibold))
+                    .accessibilityHidden(true)
+
+                Text(centerAction.shortTitle)
+                    .font(AppTextStyle.caption.font)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(AppColor.onColor)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                    .fill(AppColor.accent)
+            )
+            .appShadow(AppShadow.floating)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(centerAction.title)
+        .accessibilityHint(centerAction.accessibilityHint)
+        .accessibilityIdentifier("home.logManually")
+    }
+
+    private func centerActionButton(isExpanded: Bool) -> some View {
+        Button(action: onAdd) {
+            HStack(spacing: AppSpacing.xxs) {
+                Image(systemName: centerAction.systemImage)
+                    .font(AppTextStyle.sectionHeader.font)
+                    .accessibilityHidden(true)
+
+                if isExpanded {
+                    Text(centerAction.title)
+                        .font(AppTextStyle.bodyMedium.font)
+                } else {
+                    Text(centerAction.shortTitle)
+                        .font(AppTextStyle.captionMedium.font)
+                }
+            }
+            .fixedSize(horizontal: !isExpanded, vertical: false)
+            .foregroundStyle(AppColor.onColor)
+            .frame(
+                minWidth: isExpanded ? nil : 72,
+                maxWidth: isExpanded ? .infinity : nil,
+                minHeight: 52
+            )
+            .padding(.horizontal, isExpanded ? AppSpacing.sm : AppSpacing.xs)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                    .fill(AppColor.accent)
+            )
+            .appShadow(AppShadow.floating)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .layoutPriority(1)
+        .accessibilityLabel(centerAction.title)
+        .accessibilityHint(centerAction.accessibilityHint)
+        .accessibilityIdentifier("home.logManually")
+    }
+
     private func tabButton(_ tab: AppTab) -> some View {
         let isSelected = selectedTab == tab
 
@@ -1472,7 +1577,12 @@ struct SunAppTabBar: View {
                     .accessibilityHidden(true)
 
                 Text(tab.title)
-                    .font(AppFont.rounded(size: 10, weight: .semibold))
+                    .font(
+                        dynamicTypeSize.isAccessibilitySize
+                            ? AppTextStyle.caption.font
+                            : AppTextStyle.captionMedium.font
+                    )
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(isSelected ? AppColor.accent : AppPalette.softInk)

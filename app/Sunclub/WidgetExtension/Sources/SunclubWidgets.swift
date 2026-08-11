@@ -1576,6 +1576,8 @@ private struct SunclubWeekStrip: View {
             return SunclubWidgetPalette.warm
         case .missed:
             return SunclubWidgetPalette.muted.opacity(0.5)
+        case .untracked:
+            return SunclubWidgetPalette.muted.opacity(0.28)
         case .future:
             return Color.white.opacity(0.85)
         }
@@ -1613,6 +1615,8 @@ private struct SunclubMonthGrid: View {
             return SunclubWidgetPalette.warmStrong
         case .missed:
             return SunclubWidgetPalette.muted.opacity(0.45)
+        case .untracked:
+            return SunclubWidgetPalette.muted.opacity(0.24)
         case .future:
             return Color.white.opacity(0.9)
         }
@@ -1754,11 +1758,11 @@ private extension SunclubWidgetSnapshot {
         return "\(Int((Double(applied) / Double(total)) * 100))%"
     }
 
-    var uvSummary: String {
-        if let currentUVIndex {
+    func uvSummary(now: Date) -> String {
+        if let currentUVIndex = currentUVIndex(at: now) {
             return "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
         }
-        if let peakUVIndex {
+        if let peakUVIndex = peakUVIndex(at: now) {
             return "UV \(peakUVIndex) \(UVLevel.from(index: peakUVIndex).displayName)"
         }
         return "Log today"
@@ -1810,6 +1814,7 @@ private extension SunclubWidgetSnapshot {
             currentUVIndex: 6,
             peakUVIndex: 8,
             peakUVHour: calendar.date(bySettingHour: 13, minute: 0, second: 0, of: today),
+            uvValidUntil: Date().addingTimeInterval(2 * 60 * 60),
             reapplyReminderEnabled: true,
             reapplyIntervalMinutes: 120
         )
@@ -1837,6 +1842,7 @@ private extension SunclubWidgetSnapshot {
             currentUVIndex: 7,
             peakUVIndex: 9,
             peakUVHour: calendar.date(bySettingHour: 12, minute: 0, second: 0, of: today),
+            uvValidUntil: Date().addingTimeInterval(2 * 60 * 60),
             reapplyReminderEnabled: true,
             reapplyIntervalMinutes: 90
         )

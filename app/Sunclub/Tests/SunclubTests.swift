@@ -20,6 +20,8 @@ final class MockNotificationManager: NotificationScheduling {
     private(set) var notificationHealthSnapshotCount = 0
 
     var requestAuthorizationResult = true
+    var scheduleRemindersResult: NotificationSchedulingReport = .empty
+    var notificationOperationResult = NotificationOperationResult.success("Scheduled.")
     var notificationHealthSnapshotResult: NotificationHealthSnapshot = .unknown
 
     func requestAuthorizationIfNeeded() async -> Bool {
@@ -27,30 +29,50 @@ final class MockNotificationManager: NotificationScheduling {
         return requestAuthorizationResult
     }
 
-    func scheduleReminders(using state: AppState) async {
+    @discardableResult
+    func scheduleReminders(using state: AppState) async -> NotificationSchedulingReport {
         scheduleRemindersCount += 1
+        return scheduleRemindersResult
     }
 
-    func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async {
+    @discardableResult
+    func scheduleReapplyReminder(
+        plan: ReapplyReminderPlan,
+        route: AppRoute
+    ) async -> NotificationOperationResult {
         scheduleReapplyReminderPlans.append(plan)
         scheduleReapplyReminderRoutes.append(route)
+        return notificationOperationResult
     }
 
-    func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async {
+    @discardableResult
+    func scheduleLeaveHomeReminder(
+        level: UVLevel,
+        route: AppRoute
+    ) async -> NotificationOperationResult {
         scheduleLeaveHomeReminderLevels.append(level)
         scheduleLeaveHomeReminderRoutes.append(route)
+        return notificationOperationResult
     }
 
-    func scheduleAccountabilityPokeNotification(friendName: String, message: String, route: AppRoute) async {
+    @discardableResult
+    func scheduleAccountabilityPokeNotification(
+        friendName: String,
+        message: String,
+        route: AppRoute
+    ) async -> NotificationOperationResult {
         accountabilityPokeNotifications.append((friendName, message, route))
+        return notificationOperationResult
     }
 
     func cancelDailyReminder(for day: Date, using state: AppState) async {
         cancelDailyReminderDays.append(day)
     }
 
-    func refreshStreakRiskReminder(using state: AppState) async {
+    @discardableResult
+    func refreshStreakRiskReminder(using state: AppState) async -> NotificationOperationResult {
         refreshStreakRiskReminderCount += 1
+        return notificationOperationResult
     }
 
     func cancelReapplyReminders() async {
@@ -66,6 +88,7 @@ final class MockNotificationManager: NotificationScheduling {
 @MainActor
 final class ProbeCloudSyncCoordinator: CloudSyncControlling {
     private(set) var startCallCount = 0
+    private(set) var queuedBatchIDs: [UUID] = []
     var startResults: [CloudSyncStartResult] = [.noRemoteHistory]
 
     func start() async -> CloudSyncStartResult {
@@ -78,7 +101,9 @@ final class ProbeCloudSyncCoordinator: CloudSyncControlling {
 
     func setEnabled(_ enabled: Bool) async throws {}
 
-    func queueBatchIfNeeded(_ batchID: UUID) async {}
+    func queueBatchIfNeeded(_ batchID: UUID) async {
+        queuedBatchIDs.append(batchID)
+    }
 
     func syncNow() async {}
 
@@ -294,17 +319,122 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testDayStatusAppliesToFutureTodayAndPast() {
+    func testDayStatusUsesFirstRecordEligibilityForFutureTodayAndPast() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let firstRecord = calendar.date(byAdding: .day, value: -2, to: today)!
+        let beforeTracking = calendar.date(byAdding: .day, value: -3, to: today)!
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
 
-        let set: Set<Date> = [today]
-        XCTAssertEqual(CalendarAnalytics.status(for: today, with: set, now: today, calendar: calendar), .applied)
+        let set: Set<Date> = [firstRecord]
+        XCTAssertEqual(CalendarAnalytics.status(for: firstRecord, with: set, now: today, calendar: calendar), .applied)
         XCTAssertEqual(CalendarAnalytics.status(for: tomorrow, with: set, now: today, calendar: calendar), .future)
         XCTAssertEqual(CalendarAnalytics.status(for: yesterday, with: set, now: today, calendar: calendar), .missed)
+        XCTAssertEqual(CalendarAnalytics.status(for: beforeTracking, with: set, now: today, calendar: calendar), .untracked)
+        XCTAssertEqual(CalendarAnalytics.status(for: today, with: set, now: today, calendar: calendar), .todayPending)
         XCTAssertEqual(CalendarAnalytics.status(for: today, with: [], now: today, calendar: calendar), .todayPending)
+    }
+
+    @MainActor
+    func testDayStatusKeepsPreEligibilityDaysNeutral() {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = calendar.startOfDay(for: Date())
+        let eligibilityStart = calendar.date(byAdding: .day, value: -2, to: today)!
+        let earlierDay = calendar.date(byAdding: .day, value: -3, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.status(
+                for: earlierDay,
+                with: [],
+                now: today,
+                eligibleFrom: eligibilityStart,
+                calendar: calendar
+            ),
+            .untracked
+        )
+        XCTAssertEqual(
+            CalendarAnalytics.status(
+                for: eligibilityStart,
+                with: [],
+                now: today,
+                eligibleFrom: eligibilityStart,
+                calendar: calendar
+            ),
+            .missed
+        )
+    }
+
+    @MainActor
+    func testEligibilityStartsAtEarliestOnboardingOrFirstRecord() {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = calendar.startOfDay(for: Date())
+        let onboarding = calendar.date(byAdding: .day, value: -4, to: today)!
+        let firstRecord = calendar.date(byAdding: .day, value: -2, to: today)!
+
+        XCTAssertEqual(
+            CalendarAnalytics.eligibilityStart(
+                records: [firstRecord],
+                onboardingCompletedAt: onboarding,
+                now: today,
+                calendar: calendar
+            ),
+            onboarding
+        )
+        XCTAssertEqual(
+            CalendarAnalytics.eligibilityStart(
+                records: [firstRecord],
+                now: today,
+                calendar: calendar
+            ),
+            firstRecord
+        )
+    }
+
+    @MainActor
+    func testWeeklyReportUsesFirstRecordAsDefaultEligibility() {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        let report = CalendarAnalytics.weeklyReport(
+            records: [yesterday],
+            now: today,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(report.totalDays, 2)
+        XCTAssertEqual(report.appliedCount, 1)
+        XCTAssertEqual(report.missedCount, 1)
+    }
+
+    @MainActor
+    func testRoutineProgressUsesEligibleWindowAndRealHighUVDays() {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = calendar.startOfDay(for: Date())
+        let eligibilityStart = calendar.date(byAdding: .day, value: -3, to: today)!
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        let morning = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: yesterday)!
+        let laterMorning = calendar.date(bySettingHour: 10, minute: 30, second: 0, of: twoDaysAgo)!
+
+        let insights = CalendarAnalytics.routineProgress(
+            recordDays: [yesterday, twoDaysAgo],
+            verifiedAtDates: [morning, laterMorning],
+            highUVDays: [yesterday, today],
+            now: today,
+            eligibleFrom: eligibilityStart,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(insights.eligibleDayCount, 4)
+        XCTAssertEqual(insights.loggedCount, 2)
+        XCTAssertEqual(insights.consistencyPercent, 50)
+        XCTAssertEqual(insights.typicalApplicationMinute, 600)
+        XCTAssertEqual(insights.highUVLoggedCount, 1)
+        XCTAssertEqual(insights.highUVEligibleDayCount, 2)
+        XCTAssertEqual(insights.highUVRateText, "50%")
+        XCTAssertEqual(insights.nextStep, "Today is open if you wore sunscreen.")
     }
 
     @MainActor
@@ -653,7 +783,7 @@ final class SunclubTests: XCTestCase {
             source: .manualLog
         )
 
-        XCTAssertFalse(didWrite)
+        XCTAssertFalse(didWrite.succeeded)
         XCTAssertEqual(state.logActionErrorMessage, "Cannot log future date.")
         XCTAssertTrue(state.records.isEmpty)
     }
@@ -677,7 +807,7 @@ final class SunclubTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(didWrite)
+        XCTAssertTrue(didWrite.succeeded)
         XCTAssertNotNil(state.record(for: yesterday))
         XCTAssertNil(state.record(for: afterMidnight))
     }
@@ -713,6 +843,170 @@ final class SunclubTests: XCTestCase {
         XCTAssertTrue(calendar.isDate(record.startOfDay, inSameDayAs: yesterday))
         XCTAssertTrue(calendar.isDate(record.verifiedAt, inSameDayAs: yesterday))
         XCTAssertEqual(state.dayStatus(for: yesterday), .applied)
+    }
+
+    @MainActor
+    func testSaveManualRecordPreservesExactTimeAndRejectsFutureTime() throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 14, minute: 30))
+        )
+        let state = try makeAppState(clock: { now })
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: now))
+        let exactTime = try XCTUnwrap(calendar.date(bySettingHour: 16, minute: 47, second: 0, of: yesterday))
+
+        let saved = state.saveManualRecord(
+            for: yesterday,
+            verifiedAt: exactTime,
+            spfLevel: 50,
+            notes: nil
+        )
+
+        XCTAssertTrue(saved.succeeded)
+        XCTAssertEqual(try XCTUnwrap(state.record(for: yesterday)).verifiedAt, exactTime)
+
+        let futureTime = now.addingTimeInterval(60)
+        let rejected = state.saveManualRecord(
+            for: now,
+            verifiedAt: futureTime,
+            spfLevel: 30,
+            notes: nil
+        )
+
+        XCTAssertEqual(rejected, .failure(.futureTime))
+        XCTAssertNil(state.record(for: now))
+    }
+
+    @MainActor
+    func testFailedWidgetWriteKeepsDataAndSuppressesSuccessSideEffects() async throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let seedHistoryService = SunclubHistoryService(context: context)
+        try seedHistoryService.bootstrapIfNeeded()
+        try seedHistoryService.applySettingsChange(
+            kind: .onboarding,
+            summary: "Completed setup.",
+            changedFields: [.hasCompletedOnboarding, .reapplyReminderEnabled]
+        ) { snapshot in
+            snapshot.hasCompletedOnboarding = true
+            snapshot.reapplyReminderEnabled = true
+        }
+
+        let failingHistoryService = SunclubHistoryService(context: context) {
+            throw NSError(domain: "SunclubTests", code: 1)
+        }
+        let notifications = MockNotificationManager()
+        let cloudSync = ProbeCloudSyncCoordinator()
+        let growthDefaults = try XCTUnwrap(UserDefaults(suiteName: "failed-write-\(UUID().uuidString)"))
+        let widgetDefaults = try XCTUnwrap(UserDefaults(suiteName: "failed-widget-\(UUID().uuidString)"))
+        let state = AppState(
+            context: context,
+            notificationManager: notifications,
+            uvIndexService: UVIndexService(),
+            historyService: failingHistoryService,
+            cloudSyncCoordinator: cloudSync,
+            widgetSnapshotStore: SunclubWidgetSnapshotStore(userDefaults: widgetDefaults),
+            growthFeatureStore: SunclubGrowthFeatureStore(userDefaults: growthDefaults),
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: true,
+                isPreviewing: false,
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
+            )
+        )
+        let router = AppRouter()
+        let reminderCount = notifications.scheduleReapplyReminderPlans.count
+        let widgetStore = SunclubWidgetSnapshotStore(userDefaults: widgetDefaults)
+        let widgetSnapshotBeforeWrite = widgetStore.load()
+
+        XCTAssertTrue(SunclubDeepLinkHandler.handle(.widgetLogToday, appState: state, router: router))
+        await waitForMainActorTasks()
+
+        XCTAssertTrue(state.records.isEmpty)
+        XCTAssertEqual(state.logActionErrorMessage, SunclubHistoryMutationError.persistenceFailure.localizedDescription)
+        XCTAssertEqual(router.path.last, .manualLog)
+        XCTAssertNil(state.verificationSuccessPresentation)
+        XCTAssertEqual(notifications.scheduleReapplyReminderPlans.count, reminderCount)
+        XCTAssertTrue(cloudSync.queuedBatchIDs.isEmpty)
+        XCTAssertEqual(widgetStore.load(), widgetSnapshotBeforeWrite)
+    }
+
+    @MainActor
+    func testFailedOnboardingWriteDoesNotCompleteSetupOrPublishSideEffects() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let failingHistoryService = SunclubHistoryService(context: context) {
+            throw NSError(domain: "SunclubTests", code: 3)
+        }
+        let cloudSync = ProbeCloudSyncCoordinator()
+        let state = AppState(
+            context: context,
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(),
+            historyService: failingHistoryService,
+            cloudSyncCoordinator: cloudSync,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: true,
+                isPreviewing: false,
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
+            )
+        )
+
+        XCTAssertEqual(state.completeOnboarding(), .failure(.persistenceFailure))
+        XCTAssertFalse(state.settings.hasCompletedOnboarding)
+        XCTAssertTrue(cloudSync.queuedBatchIDs.isEmpty)
+        XCTAssertEqual(state.logActionErrorMessage, SunclubHistoryMutationError.persistenceFailure.localizedDescription)
+    }
+
+    @MainActor
+    func testFailedBulkHistoryDeletionRollsBackEveryRecord() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let seedHistoryService = SunclubHistoryService(context: context)
+        try seedHistoryService.bootstrapIfNeeded()
+        let today = Calendar.current.startOfDay(for: Date())
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: today))
+        for day in [yesterday, today] {
+            try seedHistoryService.applyDayChange(
+                for: day,
+                kind: .manualLog,
+                summary: "Seeded a log.",
+                changedFields: [.verifiedAt, .methodRawValue]
+            ) { _ in
+                DailyRecordProjectionSnapshot(
+                    startOfDay: day,
+                    verifiedAt: day,
+                    methodRawValue: VerificationMethod.manual.rawValue,
+                    verificationDuration: nil,
+                    spfLevel: nil,
+                    notes: nil,
+                    reapplyCount: 0,
+                    lastReappliedAt: nil
+                )
+            }
+        }
+
+        let failingHistoryService = SunclubHistoryService(context: context) {
+            throw NSError(domain: "SunclubTests", code: 2)
+        }
+        let state = AppState(
+            context: context,
+            notificationManager: MockNotificationManager(),
+            uvIndexService: UVIndexService(),
+            historyService: failingHistoryService,
+            runtimeEnvironment: RuntimeEnvironmentSnapshot(
+                isRunningTests: true,
+                isPreviewing: false,
+                hasAppGroupContainer: false,
+                isPublicAccountabilityTransportEnabled: false
+            )
+        )
+
+        XCTAssertEqual(state.deleteAllHistory(), .failure(.persistenceFailure))
+        XCTAssertEqual(state.records.count, 2)
+        XCTAssertNotNil(state.record(for: yesterday))
+        XCTAssertNotNil(state.record(for: today))
     }
 
     @MainActor
@@ -855,6 +1149,17 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(defaults.spfLevel, 45)
         XCTAssertTrue(defaults.coveredAreas.isEmpty)
         XCTAssertNil(defaults.oneTapNotes)
+    }
+
+    @MainActor
+    func testOneTapDefaultsUseProfileSPFWhenHistoryHasNoSPF() {
+        let defaults = SunManualLogDefaultResolver.oneTapDefaults(
+            from: [makeDailyRecord(dayOffset: 1, hour: 9, spfLevel: nil, notes: "Hat day")],
+            profileSPF: 40
+        )
+
+        XCTAssertEqual(defaults.spfLevel, 40)
+        XCTAssertTrue(defaults.coveredAreas.isEmpty)
     }
 
     @MainActor
@@ -1704,12 +2009,18 @@ final class SunclubTests: XCTestCase {
         let state = try makeAppState(notificationManager: notificationManager)
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
 
+        state.saveManualRecord(for: yesterday, spfLevel: 30, notes: nil)
         state.markAppliedToday(method: .manual)
+        await Task.yield()
+        let refreshCountBeforeDelete = notificationManager.refreshStreakRiskReminderCount
         state.deleteRecord(for: yesterday)
 
         await Task.yield()
         XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 0)
-        XCTAssertEqual(notificationManager.refreshStreakRiskReminderCount, 2)
+        XCTAssertEqual(
+            notificationManager.refreshStreakRiskReminderCount,
+            refreshCountBeforeDelete + 1
+        )
     }
 
     @MainActor
@@ -1785,6 +2096,27 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testSnoozeReapplyReminderPropagatesSchedulingFailure() async throws {
+        let notificationManager = MockNotificationManager()
+        notificationManager.notificationOperationResult = .failure("Notifications are off.")
+        let daytime = try XCTUnwrap(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13))
+        )
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            clock: { daytime }
+        )
+        state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+
+        let result = await state.snoozeReapplyReminder(minutes: 15)
+
+        XCTAssertFalse(result.isSuccessful)
+        XCTAssertEqual(result.message, "Notifications are off.")
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [15])
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
+    }
+
+    @MainActor
     func testScheduleReapplyReminderSkipsPastSunset() async throws {
         let notificationManager = MockNotificationManager()
         let afterSunset = try XCTUnwrap(
@@ -1819,7 +2151,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(presentation.title, "Ready for today's log")
         XCTAssertEqual(presentation.uvHeadline, "UV is high today")
         XCTAssertEqual(presentation.uvSymbolName, UVLevel.high.symbolName)
-        XCTAssertTrue(presentation.detail.contains("reapply sooner"))
+        XCTAssertTrue(presentation.detail.contains("product label"))
     }
 
     @MainActor
@@ -1842,14 +2174,18 @@ final class SunclubTests: XCTestCase {
         let peakDate = try XCTUnwrap(
             calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 13, minute: 0))
         )
-        let peakHour = SunclubUVHourForecast(date: peakDate, index: 7, sourceLabel: "Estimated")
+        let peakHour = SunclubUVHourForecast(
+            date: peakDate,
+            index: 7,
+            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+        )
         let state = try makeAppState(clock: { now })
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
-        state.setUVReadingForTesting(UVReading(index: 7, timestamp: now))
+        state.setUVReadingForTesting(UVReading(index: 7, timestamp: now, source: .weatherKit))
         state.setUVForecastForTesting(
             SunclubUVForecast(
                 generatedAt: now,
-                sourceLabel: "Estimated locally",
+                sourceLabel: UVReadingSource.weatherKit.forecastLabel,
                 hours: [peakHour],
                 peakHour: peakHour,
                 recommendation: "High UV today."
@@ -1873,13 +2209,13 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(rows["logged"]?.title, "Last Saved")
         XCTAssertEqual(rows["spf"]?.value, "SPF 50")
         XCTAssertEqual(rows["notes"]?.value, "Saved")
-        XCTAssertEqual(rows["reapply"]?.value, "1h 30m, UV-adjusted")
-        XCTAssertEqual(rows["uvSource"]?.value, "Estimated locally")
+        XCTAssertEqual(rows["reapply"]?.value, "Label check in 2h")
+        XCTAssertEqual(rows["uvSource"]?.value, UVReadingSource.weatherKit.forecastLabel)
         XCTAssertTrue(presentation.accessibilityValue.contains("SPF: SPF 50"))
     }
 
     @MainActor
-    func testTodayCardPresentationShowsOpenDayReminderReapplyAndForecastRows() throws {
+    func testTodayCardPresentationRejectsUnverifiedForecastRows() throws {
         let calendar = Calendar.current
         let now = try XCTUnwrap(
             calendar.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 9, minute: 0))
@@ -1888,14 +2224,14 @@ final class SunclubTests: XCTestCase {
         let peakDate = try XCTUnwrap(
             calendar.date(from: DateComponents(year: 2026, month: 4, day: 14, hour: 12, minute: 0))
         )
-        let peakHour = SunclubUVHourForecast(date: peakDate, index: 5, sourceLabel: "Estimated")
+        let peakHour = SunclubUVHourForecast(date: peakDate, index: 5, sourceLabel: "Legacy estimate")
         let state = try makeAppState(clock: { now })
         state.updateReminderTime(for: .weekday, hour: 8, minute: 30)
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         state.setUVForecastForTesting(
             SunclubUVForecast(
                 generatedAt: now,
-                sourceLabel: "Estimated locally",
+                sourceLabel: "Legacy estimate",
                 hours: [peakHour],
                 peakHour: peakHour,
                 recommendation: "Moderate UV today."
@@ -1913,10 +2249,10 @@ final class SunclubTests: XCTestCase {
         let presentation = state.todayCardPresentation
         let rows = Dictionary(uniqueKeysWithValues: presentation.metadataRows.map { ($0.id, $0) })
 
-        XCTAssertEqual(presentation.metadataRows.map(\.id), ["reminder", "reapply", "uvPeak", "uvSource"])
+        XCTAssertEqual(presentation.metadataRows.map(\.id), ["reminder", "reapply"])
         XCTAssertTrue(rows["reminder"]?.value.contains("Weekdays") == true)
         XCTAssertEqual(rows["reapply"]?.value, "After today's log")
-        XCTAssertEqual(rows["uvSource"]?.value, "Estimated locally")
+        XCTAssertNil(rows["uvSource"])
     }
 
     @MainActor
@@ -2001,7 +2337,7 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testReapplyReminderPlanShortensIntervalOnHighUV() throws {
+    func testReapplyReminderPlanKeepsLabelBackedIntervalOnHighUV() throws {
         let daytime = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
         )
@@ -2013,14 +2349,14 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertTrue(plan.isElevated)
         XCTAssertEqual(plan.baseIntervalMinutes, 120)
-        XCTAssertEqual(plan.intervalMinutes, 90)
-        XCTAssertEqual(plan.notificationTitle, "Reapply sooner today")
-        XCTAssertTrue(plan.notificationBody.contains("UV is high today"))
-        XCTAssertEqual(plan.confirmationText, "High UV today: reminder in 1h 30m")
+        XCTAssertEqual(plan.intervalMinutes, 120)
+        XCTAssertEqual(plan.notificationTitle, "Time to check your sunscreen")
+        XCTAssertTrue(plan.notificationBody.contains("Follow your sunscreen label"))
+        XCTAssertEqual(plan.confirmationText, "High UV today: label check in 2h")
     }
 
     @MainActor
-    func testScheduleReapplyReminderUsesUVAwarePlan() async throws {
+    func testScheduleReapplyReminderDoesNotInventUVAwareInterval() async throws {
         let notificationManager = MockNotificationManager()
         let daytime = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
@@ -2035,8 +2371,8 @@ final class SunclubTests: XCTestCase {
         state.scheduleReapplyReminder()
 
         await Task.yield()
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [60])
-        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.first?.notificationBody.contains("very high today") ?? false)
+        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [120])
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.first?.notificationBody.contains("UV is elevated") ?? false)
     }
 
     @MainActor
@@ -2059,11 +2395,9 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testUVLevelHighTriggersStrongerReapplyRules() {
+    func testUVLevelHighUsesAdvisoryReapplyLabel() {
         XCTAssertEqual(UVLevel.high.homeHeadline, "UV is high today")
-        XCTAssertEqual(UVLevel.high.reapplyAdvanceMinutes, 30)
         XCTAssertEqual(UVLevel.high.reapplyLabelPrefix, "High UV today")
-        XCTAssertNotNil(UVLevel.high.strongerReapplyMessage)
     }
 
     @MainActor
@@ -2094,7 +2428,7 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testWidgetSnapshotPublishesEstimatedUVForCompactSurfacesWhenLiveUVIsWeatherKit() throws {
+    func testWidgetSnapshotPublishesFreshVerifiedWeatherKitUV() throws {
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let peakHour = SunclubUVHourForecast(
             date: now.addingTimeInterval(3_600),
@@ -2117,26 +2451,25 @@ final class SunclubTests: XCTestCase {
             now: now
         )
 
-        XCTAssertEqual(
-            snapshot.currentUVIndex,
-            SunclubUVEstimator.estimatedIndex(at: now)
-        )
-        XCTAssertNotEqual(snapshot.currentUVIndex, 9)
-        XCTAssertNotEqual(snapshot.peakUVIndex, 10)
-        XCTAssertNotNil(snapshot.peakUVHour)
+        XCTAssertEqual(snapshot.currentUVIndex, 9)
+        XCTAssertEqual(snapshot.peakUVIndex, 10)
+        XCTAssertEqual(snapshot.peakUVHour, peakHour.date)
+        XCTAssertEqual(snapshot.uvValidUntil, now.addingTimeInterval(2 * 60 * 60))
+        XCTAssertNil(snapshot.currentUVIndex(at: now.addingTimeInterval(2 * 60 * 60 + 1)))
+        XCTAssertNil(snapshot.peakUVIndex(at: now.addingTimeInterval(2 * 60 * 60 + 1)))
     }
 
     @MainActor
-    func testWidgetSnapshotKeepsEstimatedUVForCompactSurfaces() throws {
+    func testWidgetSnapshotRejectsUnverifiedUVForecast() throws {
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let peakHour = SunclubUVHourForecast(
             date: now.addingTimeInterval(3_600),
             index: 7,
-            sourceLabel: UVReadingSource.heuristic.hourlySourceLabel
+            sourceLabel: "Legacy estimate"
         )
         let forecast = SunclubUVForecast(
             generatedAt: now,
-            sourceLabel: UVReadingSource.heuristic.forecastLabel,
+            sourceLabel: "Legacy estimate",
             hours: [peakHour],
             peakHour: peakHour,
             recommendation: "High UV today."
@@ -2145,18 +2478,18 @@ final class SunclubTests: XCTestCase {
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: Settings(),
             records: [],
-            uvReading: UVReading(index: 6, timestamp: now, source: .heuristic),
+            uvReading: nil,
             uvForecast: forecast,
             now: now
         )
 
-        XCTAssertEqual(snapshot.currentUVIndex, 6)
-        XCTAssertEqual(snapshot.peakUVIndex, 7)
-        XCTAssertEqual(snapshot.peakUVHour, peakHour.date)
+        XCTAssertNil(snapshot.currentUVIndex)
+        XCTAssertNil(snapshot.peakUVIndex)
+        XCTAssertNil(snapshot.peakUVHour)
     }
 
     @MainActor
-    func testLiveActivityPayloadPublishesEstimatedUVWhenLiveUVIsWeatherKit() throws {
+    func testLiveActivityPayloadPublishesFreshVerifiedWeatherKitUV() throws {
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let peakHour = SunclubUVHourForecast(
             date: now.addingTimeInterval(3_600),
@@ -2178,8 +2511,8 @@ final class SunclubTests: XCTestCase {
         )
 
         XCTAssertNotNil(payload)
-        XCTAssertNotEqual(payload?.currentUVIndex, 9)
-        XCTAssertNotEqual(payload?.peakUVIndex, 10)
+        XCTAssertEqual(payload?.currentUVIndex, 9)
+        XCTAssertEqual(payload?.peakUVIndex, 10)
     }
 
     @MainActor
@@ -2813,6 +3146,24 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
+    func testWatchReapplyUsesDurableMutationAndReturnsUpdatedSnapshot() throws {
+        let suiteName = "watch-reapply-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let widgetSnapshotStore = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        let state = try makeAppState(widgetSnapshotStore: widgetSnapshotStore)
+        state.completeOnboarding()
+        state.markAppliedToday(method: .quickLog)
+
+        let snapshot = try state.recordWatchReapplication()
+
+        XCTAssertEqual(state.record(for: Date())?.reapplyCount, 1)
+        XCTAssertNotNil(state.record(for: Date())?.lastReappliedAt)
+        XCTAssertNotNil(snapshot.lastReappliedAt)
+        XCTAssertEqual(widgetSnapshotStore.load(), snapshot)
+    }
+
+    @MainActor
     func testWidgetLogTodayDeepLinkSchedulesReapplyReminderWhenEnabled() async throws {
         let notificationManager = MockNotificationManager()
         let daytime = try XCTUnwrap(
@@ -2907,9 +3258,11 @@ final class SunclubTests: XCTestCase {
 
     @MainActor
     func testRemoteDayConflictAutoMergesAndCreatesReviewItem() throws {
-        let state = try makeAppState()
-        let today = Calendar.current.startOfDay(for: Date())
-        let verifiedAt = Calendar.current.date(byAdding: .hour, value: 9, to: today) ?? today
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let referenceDate = calendar.date(byAdding: .hour, value: 12, to: today) ?? Date()
+        let state = try makeAppState(clock: { referenceDate })
+        let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today) ?? today
 
         state.saveManualRecord(for: today, verifiedAt: verifiedAt, spfLevel: 30, notes: "Local entry")
 
@@ -3371,13 +3724,13 @@ final class SunclubTests: XCTestCase {
     }
 
     @MainActor
-    func testLiveUVStatusPresentationDefaultsToEstimatedUVWhenDisabled() throws {
+    func testLiveUVStatusPresentationDefaultsToUnavailableWhenDisabled() throws {
         let state = try makeAppState()
 
-        XCTAssertEqual(state.liveUVStatusPresentation.title, "Estimated UV")
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "UV unavailable")
         XCTAssertNil(state.liveUVStatusPresentation.actionKind)
         XCTAssertTrue(
-            state.liveUVStatusPresentation.detail.contains("Sunclub's local estimate")
+            state.liveUVStatusPresentation.detail.contains("choose a city")
         )
     }
 
@@ -3428,12 +3781,12 @@ final class SunclubTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: true, allowPermissionPrompt: false)
 
-        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertNil(service.currentReading)
         XCTAssertEqual(service.liveUVAccessState, .needsPermission)
     }
 
     @MainActor
-    func testUVIndexServiceFallsBackToEstimateWhenProviderFails() async throws {
+    func testUVIndexServiceReportsUnavailableWhenProviderFails() async throws {
         let locationService = UITestLiveUVLocationService(
             authorizationStatus: .authorizedWhenInUse,
             location: CLLocation(latitude: -33.8688, longitude: 151.2093)
@@ -3453,13 +3806,13 @@ final class SunclubTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: true)
 
-        XCTAssertEqual(service.currentReading?.source, .heuristic)
+        XCTAssertNil(service.currentReading)
         XCTAssertEqual(service.liveUVAccessState, .unavailable)
         XCTAssertNotNil(service.errorMessage)
     }
 
     @MainActor
-    func testUVBriefingServiceAlwaysReturnsEstimatedForecast() async throws {
+    func testUVBriefingServiceReturnsUnavailableWithoutVerifiedForecast() async throws {
         let calendar = Calendar(identifier: .gregorian)
         let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let locationService = UITestLiveUVLocationService(
@@ -3477,9 +3830,9 @@ final class SunclubTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(forecast.sourceLabel, "Estimated locally")
-        XCTAssertFalse(forecast.hours.isEmpty)
-        XCTAssertEqual(Set(forecast.hours.map(\.sourceLabel)), ["Estimated"])
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
+        XCTAssertTrue(forecast.hours.isEmpty)
+        XCTAssertFalse(forecast.isAvailable)
     }
 
     @MainActor
@@ -3505,8 +3858,8 @@ final class SunclubTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(forecast.sourceLabel, "Estimated locally")
-        XCTAssertFalse(forecast.hours.isEmpty)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
+        XCTAssertTrue(forecast.hours.isEmpty)
     }
 
     @MainActor
@@ -3541,7 +3894,7 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(state.uvReading?.source, .weatherKit)
         XCTAssertEqual(state.uvForecast?.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
         XCTAssertEqual(state.weatherAttribution?.serviceName, UVReadingSource.weatherKit.forecastLabel)
-        XCTAssertEqual(state.liveUVStatusPresentation.title, "Live UV")
+        XCTAssertEqual(state.liveUVStatusPresentation.title, "UV available")
     }
 
     @MainActor
@@ -3973,7 +4326,7 @@ final class SunclubTests: XCTestCase {
             TimelineLogSection.attributionSourceLabel(
                 forDisplayedSourceLabels: [
                     UVReadingSource.weatherKit.hourlySourceLabel,
-                    UVReadingSource.heuristic.hourlySourceLabel
+                    "Legacy estimate"
                 ]
             ),
             UVReadingSource.weatherKit.forecastLabel
@@ -3982,10 +4335,69 @@ final class SunclubTests: XCTestCase {
         XCTAssertNil(
             TimelineLogSection.attributionSourceLabel(
                 forDisplayedSourceLabels: [
-                    UVReadingSource.heuristic.hourlySourceLabel,
-                    UVReadingSource.heuristic.forecastLabel
+                    "Legacy estimate",
+                    "Legacy local estimate"
                 ]
             )
+        )
+    }
+
+    @MainActor
+    func testTimelineLogSectionRejectsUnverifiedHourlyFallbacks() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let day = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13))
+        )
+        let verifiedHour = SunclubUVHourForecast(
+            date: day,
+            index: 7,
+            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+        )
+        let verifiedForecast = SunclubUVForecast(
+            generatedAt: day,
+            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+            hours: [verifiedHour],
+            peakHour: verifiedHour,
+            recommendation: "Protection recommended."
+        )
+        let unverifiedForecast = SunclubUVForecast(
+            generatedAt: day,
+            sourceLabel: "Legacy local estimate",
+            hours: [
+                SunclubUVHourForecast(
+                    date: day,
+                    index: 7,
+                    sourceLabel: "Legacy estimate"
+                )
+            ],
+            peakHour: verifiedHour,
+            recommendation: ""
+        )
+
+        XCTAssertEqual(
+            TimelineLogSection.verifiedForecastHours(
+                in: verifiedForecast,
+                for: day,
+                dayPart: .afternoon,
+                calendar: calendar
+            ),
+            [verifiedHour]
+        )
+        XCTAssertTrue(
+            TimelineLogSection.verifiedForecastHours(
+                in: unverifiedForecast,
+                for: day,
+                dayPart: .afternoon,
+                calendar: calendar
+            ).isEmpty
+        )
+        XCTAssertTrue(
+            TimelineLogSection.verifiedForecastHours(
+                in: nil,
+                for: day,
+                dayPart: .afternoon,
+                calendar: calendar
+            ).isEmpty
         )
     }
 

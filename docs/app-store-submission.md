@@ -57,13 +57,13 @@ These steps still require real App Store Connect data and cannot be faked safely
 - Sunclub is free-only for v1.
 - The app is iPhone-only.
 - Sunclub is not a regulated medical device; it is sunscreen habit guidance, not diagnosis, monitoring, prevention, or treatment.
-- Public CloudKit accountability transport is enabled for optional Activity sharing. App Privacy answers must disclose Name, User ID, Other User Content, and Other Usage Data as collected for App Functionality, with no tracking, ads, or analytics.
+- Public CloudKit Activity sharing transport is disabled while the social feature is not part of the visible production app. App Privacy answers should declare no developer-collected data for this build; optional sync uses the user's private iCloud database.
 - This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
 - Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
 - To navigate to WeatherKit functionality: complete onboarding, open Settings, expand Travel & Health, find UV & Health, enable Live UV with the Use Apple Weather for Live UV switch, grant location permission if prompted, then return to Timeline/Home.
 - WeatherKit requests are foreground/user-initiated from the main app, cached, rate-limited, and covered by the remote config at `https://sunclub.peyton.app/config/weatherkit.json`.
-- Main-app Apple Weather values show Apple Weather attribution and a visible legal/data-source link. Widgets, watch, and Live Activities use local estimates instead of WeatherKit-derived UV values.
-- Sunclub falls back to local UV estimates when location, network, remote config, or Apple Weather is unavailable.
+- Apple Weather values show Apple Weather attribution and a visible legal/data-source link wherever they appear.
+- The fallback when location, network, remote config, or Apple Weather is unavailable is an explicit UV unavailable state rather than a numeric local estimate.
 - The primary check-in flow is manual logging from Home.
 - Weekly Summary and reminder settings remain part of the submission flow.
 
@@ -85,7 +85,7 @@ To navigate to the WeatherKit functionality:
 6. Grant location permission if prompted.
 7. Return to Timeline/Home.
 
-When Live UV is enabled, Apple Weather UV data is shown only in the main app on surfaces that include Apple Weather attribution and a visible Data Sources/legal attribution link. Widgets, watch, and Live Activities use Sunclub's local UV estimates instead of WeatherKit-derived values.
+When Live UV is enabled, Apple Weather UV data is shown with Apple Weather attribution and a visible Data Sources/legal attribution link. Shared surfaces show only verified cached values that are still fresh; otherwise they show UV unavailable.
 
-WeatherKit requests are foreground/user-initiated, cached, rate-limited, and fall back to local UV estimates if location, network, remote config, or Apple Weather is unavailable.
+WeatherKit requests are foreground/user-initiated, cached, and rate-limited. The fallback when location, network, remote config, or Apple Weather is unavailable is an explicit UV unavailable state rather than a numeric estimate.
 ```

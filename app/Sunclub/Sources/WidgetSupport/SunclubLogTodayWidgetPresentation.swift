@@ -47,22 +47,35 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
     let inlineText: String
     let circularText: String
     let metrics: [SunclubLogTodayWidgetMetric]
+    let homeAction: HomeDailyPlanAction
 
     var accessibilityLabel: String {
-        switch state {
-        case .open:
+        switch homeAction {
+        case .logToday:
             return "Log Sunscreen"
-        case .logged:
+        case .logReapply:
+            return "Reapply sunscreen now"
+        case .viewProgress:
             return "Sunscreen logged"
+        case .openSettings:
+            return "Open Sunclub to finish setup"
+        default:
+            return actionText
         }
     }
 
     var tapAction: SunclubLogTodayWidgetTapAction {
-        switch state {
-        case .open:
+        switch homeAction {
+        case .logToday:
             return .logTodayInPlace
-        case .logged:
-            return .none
+        case .logReapply:
+            return .logReapplyInPlace
+        case .viewProgress:
+            return .open(.summary)
+        case .openSettings:
+            return .open(.updateToday)
+        default:
+            return .open(.updateToday)
         }
     }
 
@@ -72,19 +85,53 @@ struct SunclubLogTodayWidgetPresentation: Equatable, Sendable {
         family: SunclubLogTodayWidgetFamily,
         calendar: Calendar = Calendar.current
     ) -> SunclubLogTodayWidgetPresentation {
-        let isLogged = snapshot.hasLoggedToday(now: now, calendar: calendar)
+        let action = snapshot.homeDailyPlanAction(now: now, calendar: calendar)
+        let isReapply = action == .logReapply
+        let isLogged = action == .viewProgress
+        let title: String
+        let actionText: String
+        let iconName: String
+        let inlineText: String
+        let circularText: String
+        switch action {
+        case .logToday:
+            title = "Log Sunscreen"
+            actionText = "Log Sunscreen"
+            iconName = "sun.max.fill"
+            inlineText = "Log Sunscreen"
+            circularText = "Log"
+        case .logReapply:
+            title = "Reapply now"
+            actionText = "Reapply now"
+            iconName = "timer"
+            inlineText = "Reapply"
+            circularText = "Again"
+        case .viewProgress:
+            title = ""
+            actionText = ""
+            iconName = "checkmark"
+            inlineText = ""
+            circularText = "Done"
+        default:
+            title = "Open Sunclub"
+            actionText = "Open Sunclub"
+            iconName = "arrow.up.forward.app.fill"
+            inlineText = "Open Sunclub"
+            circularText = "Open"
+        }
         return SunclubLogTodayWidgetPresentation(
             family: family,
-            state: isLogged ? .logged : .open,
+            state: isLogged && !isReapply ? .logged : .open,
             eyebrow: "",
-            title: isLogged ? "" : "Log Sunscreen",
+            title: title,
             subtitle: "",
             detail: "",
-            actionText: isLogged ? "" : "Log Sunscreen",
-            iconName: isLogged ? "checkmark" : "sun.max.fill",
-            inlineText: isLogged ? "" : "Log Sunscreen",
-            circularText: isLogged ? "Done" : "Log",
-            metrics: []
+            actionText: actionText,
+            iconName: iconName,
+            inlineText: inlineText,
+            circularText: circularText,
+            metrics: [],
+            homeAction: action
         )
     }
 }

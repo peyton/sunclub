@@ -69,6 +69,8 @@ final class SunclubUITests: XCTestCase {
         assertHomeReadyForLogState(app)
         XCTAssertFalse(app.buttons["accountabilityOnboarding.next"].exists)
         XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.dailyPlan"].exists)
+        XCTAssertTrue(app.buttons["home.dailyPlan.action"].exists)
     }
 
     @MainActor
@@ -79,12 +81,28 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.skipLocation"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipUV"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipUV"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testOnboardingChooseCityOpensAppleMapsSearch() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("UITEST_MODE")
+        app.launch()
+
+        XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
+        app.buttons["welcome.getStarted"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipLocation"].tap()
+
+        XCTAssertTrue(app.textFields["citySearch.query"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["citySearch.submit"].exists)
+        XCTAssertTrue(app.buttons["citySearch.cancel"].exists)
     }
 
     @MainActor
@@ -104,10 +122,18 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     func testHomeUVCardOpensForecastDetail() throws {
-        let app = launchHome()
+        let app = launchHome(additionalArguments: liveTimelineForecastArguments)
 
-        XCTAssertTrue(app.buttons["home.uvIndexCard"].waitForExistence(timeout: 5))
-        app.buttons["home.uvIndexCard"].tap()
+        let uvCard = app.buttons["home.uvIndexCard"]
+        XCTAssertTrue(
+            waitForVerifiedUVForecast(in: app),
+            "Expected the deterministic Apple Weather fixture to finish loading."
+        )
+        XCTAssertTrue(
+            scrollToHittableElement(uvCard, in: app, attempts: 10),
+            "Expected the compact UV card to remain reachable below the contextual Home card."
+        )
+        uvCard.tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["uvForecast.hero"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["uvForecast.hourly"].exists)
@@ -334,7 +360,22 @@ final class SunclubUITests: XCTestCase {
             "UITEST_SEED_ACCOUNTABILITY_FRIEND"
         ])
 
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        let contextualAction = app.buttons["home.logManually"]
+        XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
+        XCTAssertLessThan(
+            contextualAction.frame.width,
+            app.frame.width / 2,
+            "Expected the accessibility center action to remain a labeled tab tile instead of covering the full tab bar."
+        )
+        let dailyPlanAction = app.buttons["home.dailyPlan.action"]
+        XCTAssertTrue(
+            scrollToHittableElement(dailyPlanAction, in: app, attempts: 6),
+            "Expected the in-card next action to remain reachable above the accessibility tab bar."
+        )
+        XCTAssertFalse(
+            dailyPlanAction.frame.intersects(contextualAction.frame),
+            "Expected the contextual tab action to reserve layout space instead of overlapping the in-card action."
+        )
         XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         XCTAssertTrue(app.buttons["home.streakCard"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
@@ -357,9 +398,13 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
         XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5), "Expected Today tab footer to remain reachable from Settings.")
         app.buttons["timeline.footer.today"].tap()
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5), "Expected Today tab home action after leaving Settings.")
+        let logAction = app.buttons["home.logManually"]
+        XCTAssertTrue(logAction.waitForExistence(timeout: 5), "Expected Today tab home action after leaving Settings.")
 
-        app.buttons["home.logManually"].tap()
+        let actionFrame = logAction.frame
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: actionFrame.midX, dy: actionFrame.midY))
+            .tap()
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5), "Expected manual log action to remain reachable in accessibility mode.")
     }
 
@@ -486,8 +531,8 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.skipLocation"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipUV"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipUV"].tap()
         XCTAssertTrue(app.buttons["onboarding.enableNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.enableNotifications"].tap()
 
@@ -525,7 +570,9 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(detail.waitForExistence(timeout: 5))
         XCTAssertTrue(detail.label.contains("SPF") || detail.label.contains("Optional"))
         XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
+        XCTAssertTrue(app.buttons["home.uvIndexCard"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.dailyPlan"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
     }
 
@@ -560,8 +607,16 @@ final class SunclubUITests: XCTestCase {
     func testHistoryViewShowsCalendar() throws {
         let app = launchAndCompleteOnboarding()
 
-        app.buttons["home.historyCard"].tap()
-        XCTAssertTrue(scrollToElement(app.staticTexts["history.monthTitle"], in: app))
+        let historyCard = app.buttons["home.historyCard"]
+        XCTAssertTrue(
+            scrollToHittableElement(historyCard, in: app, attempts: 10),
+            "Expected the History footer action to remain reachable below the contextual Home card."
+        )
+        historyCard.tap()
+        XCTAssertTrue(
+            scrollToElement(app.staticTexts["history.monthTitle"], in: app, attempts: 10),
+            "Expected the monthly calendar to remain reachable below the History summary."
+        )
         XCTAssertTrue(app.buttons["history.previousMonth"].exists)
     }
 
@@ -654,6 +709,7 @@ final class SunclubUITests: XCTestCase {
         todayButton.tap()
 
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.datePickers["historyEditor.timePicker"].exists)
     }
 
     @MainActor
@@ -864,7 +920,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testWeeklySummaryShowsUsageInsights() throws {
+    func testWeeklySummaryShowsRoutineInsights() throws {
         let app = XCUIApplication()
         app.launchArguments += [
             "UITEST_MODE",
@@ -874,13 +930,12 @@ final class SunclubUITests: XCTestCase {
         ]
         app.launch()
 
-        let mostUsedSPF = app.staticTexts["SPF 50"]
-        XCTAssertTrue(scrollToElement(mostUsedSPF, in: app))
-        XCTAssertEqual(mostUsedSPF.label, "SPF 50")
+        let consistency = app.staticTexts["weekly.summaryValue"]
+        XCTAssertTrue(scrollToElement(consistency, in: app))
+        XCTAssertTrue(consistency.label.hasSuffix("%"))
 
-        let recentNote = app.staticTexts["Before beach walk"]
-        XCTAssertTrue(scrollToElement(recentNote, in: app))
-        XCTAssertEqual(recentNote.label, "Before beach walk")
+        let nextStep = app.descendants(matching: .any)["weekly.nextStep"]
+        XCTAssertTrue(scrollToElement(nextStep, in: app))
     }
 
     @MainActor
@@ -978,20 +1033,24 @@ final class SunclubUITests: XCTestCase {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.dailyPlan"].exists)
+        XCTAssertTrue(app.buttons["home.dailyPlan.action"].exists)
+        XCTAssertTrue(app.buttons["home.uvIndexCard"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
             || app.staticTexts["home.todayStatus"].exists)
         XCTAssertTrue(app.staticTexts["Log"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.night"].exists)
     }
 
     @MainActor
     func testTimelineFutureDayShowsTomorrowForecast() throws {
         let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
+        XCTAssertTrue(waitForVerifiedUVForecast(in: app))
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
         let tomorrowChip = timelineDayChip(tomorrowIdentifier, in: app, direction: .future)
         XCTAssertTrue(tomorrowChip.exists)
@@ -1014,6 +1073,7 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineFutureManualLogActionFallsBackToToday() throws {
         let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
+        XCTAssertTrue(waitForVerifiedUVForecast(in: app))
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
         let tomorrowChip = timelineDayChip(tomorrowIdentifier, in: app, direction: .future)
         XCTAssertTrue(tomorrowChip.exists)
@@ -1036,10 +1096,18 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineAccessibilityTextCanBrowseFutureForecast() throws {
         let app = launchTimelineHome(additionalArguments: accessibilityScorecardArguments + liveTimelineForecastArguments)
+        XCTAssertTrue(waitForVerifiedUVForecast(in: app, timeout: 15))
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
-        let tomorrowRow = app.buttons[tomorrowIdentifier]
-
-        XCTAssertTrue(tomorrowRow.waitForExistence(timeout: 5))
+        let tomorrowRow = app.descendants(matching: .any)[tomorrowIdentifier]
+        XCTAssertTrue(
+            scrollToHittableElement(
+                tomorrowRow,
+                in: app,
+                attempts: 20,
+                scrollSurface: app.scrollViews.firstMatch
+            ),
+            "Expected tomorrow's forecast row to remain operable."
+        )
         tomorrowRow.tap()
 
         let headline = timelineHeadline(in: app)
@@ -1054,13 +1122,17 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineScreenSwipeMovesSelectedDay() throws {
         let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
+        XCTAssertTrue(waitForVerifiedUVForecast(in: app))
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         let headline = timelineHeadline(in: app)
         XCTAssertTrue(waitForLabelPrefix("Today,", on: headline))
-        let swipeSurface = app.descendants(matching: .any)["home.uvForecastExposureCard"]
-        XCTAssertTrue(swipeSurface.waitForExistence(timeout: 5))
+        let swipeSurface = app.buttons["home.uvIndexCard"]
+        XCTAssertTrue(
+            scrollToHittableElement(swipeSurface, in: app, attempts: 6),
+            "Expected the compact UV card to remain reachable before swiping the timeline."
+        )
 
-        dragTimelineBody(swipeSurface, direction: .future)
+        dragTimelineBody(swipeSurface, direction: .future, verticalPosition: 0.5)
         XCTAssertTrue(waitForLabelNotPrefix("Today,", on: headline))
         XCTAssertTrue(app.buttons["timeline.backToToday"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["home.uvIndexCard"].exists)
@@ -1075,6 +1147,7 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineFutureScrollStopsAtLastForecastDay() throws {
         let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments)
+        XCTAssertTrue(waitForVerifiedUVForecast(in: app))
         let lastForecastIdentifier = "timeline.day.\(dayIdentifier(offset: 6))"
         let beyondForecastIdentifier = "timeline.day.\(dayIdentifier(offset: 7))"
         let lastForecastChip = timelineDayChip(lastForecastIdentifier, in: app, direction: .future)
@@ -1096,7 +1169,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    func testTimelineAfterMidnightManualLogUsesSelectedDayContext() throws {
+    func testTimelineAfterMidnightContextualTabActionReturnsToTodayLog() throws {
         let app = launchTimelineHome(additionalArguments: ["UITEST_CURRENT_TIME=00:30"])
         let yesterdayIdentifier = "timeline.day.\(dayIdentifier(offset: -1))"
         let yesterdayChip = timelineDayChip(yesterdayIdentifier, in: app, direction: .past)
@@ -1109,7 +1182,7 @@ final class SunclubUITests: XCTestCase {
         let selectedStatus = app.staticTexts["timeline.dayStatus"]
         XCTAssertTrue(selectedStatus.waitForExistence(timeout: 3))
         XCTAssertEqual(selectedStatus.label, "No sunscreen logged")
-        XCTAssertTrue(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 3))
         app.buttons["home.logManually"].tap()
 
@@ -1260,8 +1333,8 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     private func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.skipLocation"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.skipLocation"].tap()
+        XCTAssertTrue(app.buttons["onboarding.skipUV"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.skipUV"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -1287,6 +1360,20 @@ final class SunclubUITests: XCTestCase {
     private func waitForValueContaining(_ text: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: "value CONTAINS %@", text)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForVerifiedUVForecast(
+        in app: XCUIApplication,
+        timeout: TimeInterval = 10
+    ) -> Bool {
+        let card = app.buttons["home.uvIndexCard"]
+        guard card.waitForExistence(timeout: 5) else {
+            return false
+        }
+        let predicate = NSPredicate(format: "label BEGINSWITH %@", "UV Index ")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: card)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
@@ -1410,16 +1497,22 @@ final class SunclubUITests: XCTestCase {
         direction: TimelineDayScrollDirection
     ) -> XCUIElement {
         let chip = app.descendants(matching: .any)[identifier]
-        if chip.waitForExistence(timeout: 2) {
+        if chip.waitForExistence(timeout: 5), chip.isHittable {
             return chip
         }
 
         let strip = app.descendants(matching: .any)["timeline.dayStrip"]
-        XCTAssertTrue(strip.waitForExistence(timeout: 5), "Expected timeline day strip to exist.")
+        XCTAssertTrue(
+            scrollToElement(strip, in: app, attempts: 10),
+            "Expected timeline day strip to remain reachable."
+        )
+        if chip.waitForExistence(timeout: 2), chip.isHittable {
+            return chip
+        }
 
         for _ in 0..<6 {
             dragTimelineStrip(strip, direction: direction)
-            if chip.waitForExistence(timeout: 1) {
+            if chip.waitForExistence(timeout: 1), chip.isHittable {
                 return chip
             }
         }
@@ -1437,11 +1530,15 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    private func dragTimelineBody(_ body: XCUIElement, direction: TimelineDayScrollDirection) {
+    private func dragTimelineBody(
+        _ body: XCUIElement,
+        direction: TimelineDayScrollDirection,
+        verticalPosition: CGFloat = 0.12
+    ) {
         let startX: CGFloat = direction == .future ? 0.82 : 0.18
         let endX: CGFloat = direction == .future ? 0.18 : 0.82
-        let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: 0.12))
-        let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: 0.12))
+        let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: verticalPosition))
+        let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: verticalPosition))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
@@ -1473,6 +1570,8 @@ final class SunclubUITests: XCTestCase {
         notificationsRow.tap()
         XCTAssertTrue(app.staticTexts["Notifications"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.buttons["settings.notificationHealth.action"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["settings.notificationHealth.sendTest"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["settings.notificationHealth.copyDiagnostics"], in: app))
         returnToSettingsHome(in: app)
     }
 
@@ -1649,15 +1748,18 @@ final class SunclubUITests: XCTestCase {
             return true
         }
 
+        let firstScrollView = app.scrollViews.firstMatch
+        let scrollSurface: XCUIElement = firstScrollView.exists ? firstScrollView : app
+
         for _ in 0..<attempts {
-            app.swipeUp()
+            scrollSurface.swipeUp()
             if sectionControl.waitForExistence(timeout: 1), sectionControl.isHittable {
                 return true
             }
         }
 
         for _ in 0..<attempts {
-            app.swipeDown()
+            scrollSurface.swipeDown()
             if sectionControl.waitForExistence(timeout: 1), sectionControl.isHittable {
                 return true
             }
@@ -1697,21 +1799,23 @@ final class SunclubUITests: XCTestCase {
     private func scrollToHittableElement(
         _ element: XCUIElement,
         in app: XCUIApplication,
-        attempts: Int = 6
+        attempts: Int = 6,
+        scrollSurface: XCUIElement? = nil
     ) -> Bool {
         if element.waitForExistence(timeout: 2), element.isHittable {
             return true
         }
 
+        let surface = scrollSurface ?? app
         for _ in 0..<attempts {
-            app.swipeUp()
+            surface.swipeUp()
             if element.waitForExistence(timeout: 1), element.isHittable {
                 return true
             }
         }
 
         for _ in 0..<attempts {
-            app.swipeDown()
+            surface.swipeDown()
             if element.waitForExistence(timeout: 1), element.isHittable {
                 return true
             }

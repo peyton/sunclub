@@ -4,6 +4,8 @@ struct ReapplyCheckInView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @State private var successFeedbackTrigger = 0
+    @State private var isSnoozing = false
+    @State private var snoozeErrorMessage: String?
 
     var body: some View {
         SunLightScreen(
@@ -15,6 +17,26 @@ struct ReapplyCheckInView: View {
                 SunLightHeader(title: "Reapply Check-In", showsBack: true, onBack: {
                     router.goBack()
                 })
+
+                if let errorMessage = appState.logActionErrorMessage {
+                    SunStatusCard(
+                        title: "Reapplication not saved",
+                        detail: errorMessage,
+                        tint: AppColor.warning.opacity(0.8),
+                        symbol: "exclamationmark.triangle.fill"
+                    )
+                    .accessibilityIdentifier("reapply.saveError")
+                }
+
+                if let snoozeErrorMessage {
+                    SunStatusCard(
+                        title: "Reminder not scheduled",
+                        detail: snoozeErrorMessage,
+                        tint: AppColor.warning.opacity(0.8),
+                        symbol: "bell.slash.fill"
+                    )
+                    .accessibilityIdentifier("reapply.snoozeError")
+                }
 
                 if let presentation = appState.reapplyCheckInPresentation {
                     reapplyContent(presentation: presentation)
@@ -110,18 +132,35 @@ struct ReapplyCheckInView: View {
     @ViewBuilder
     private func reapplyButtons(presentation: ReapplyCheckInPresentation) -> some View {
         Button("Log reapplication") {
-            appState.recordReapplication()
-            successFeedbackTrigger += 1
-            router.goHome()
+            snoozeErrorMessage = nil
+            let result = appState.recordReapplication()
+            if result.succeeded {
+                successFeedbackTrigger += 1
+                router.goHome()
+            }
         }
         .buttonStyle(SunPrimaryButtonStyle())
         .accessibilityIdentifier("reapply.log")
 
-        Button("Snooze 15 min") {
-            appState.snoozeReapplyReminder(minutes: 15)
-            router.goHome()
+        Button(isSnoozing ? "Scheduling…" : "Snooze 15 min") {
+            guard !isSnoozing else {
+                return
+            }
+            isSnoozing = true
+            snoozeErrorMessage = nil
+            Task {
+                let result = await appState.snoozeReapplyReminder(minutes: 15)
+                isSnoozing = false
+                if result.isSuccessful {
+                    router.goHome()
+                } else {
+                    snoozeErrorMessage = result.message
+                }
+            }
         }
         .buttonStyle(SunSecondaryButtonStyle())
+        .disabled(isSnoozing)
+        .accessibilityHint("Schedules another reapply reminder in 15 minutes.")
         .accessibilityIdentifier("reapply.snooze")
 
         Button("Dismiss") {
