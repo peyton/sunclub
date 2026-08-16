@@ -451,6 +451,20 @@ struct SunclubUVForecast: Equatable, Sendable {
 
         return "Peak UV \(peakHour.index) at \(peakHour.date.formatted(date: .omitted, time: .shortened))"
     }
+
+    var isAvailable: Bool {
+        sourceLabel == UVReadingSource.weatherKit.forecastLabel && !hours.isEmpty && peakHour != nil
+    }
+
+    static func unavailable(generatedAt: Date) -> SunclubUVForecast {
+        SunclubUVForecast(
+            generatedAt: generatedAt,
+            sourceLabel: UVReadingSource.unavailableSourceLabel,
+            hours: [],
+            peakHour: nil,
+            recommendation: "UV data is unavailable. Use shade, clothing, and sunscreen when you plan to be outside."
+        )
+    }
 }
 
 struct SunclubUVDayForecast: Codable, Equatable, Identifiable, Sendable {
@@ -472,7 +486,8 @@ struct SunclubUVForecastBundle: Codable, Equatable, Sendable {
     let daily: [SunclubUVDayForecast]
 
     func isFresh(now: Date, ttl: TimeInterval) -> Bool {
-        now.timeIntervalSince(generatedAt) < ttl
+        let age = now.timeIntervalSince(generatedAt)
+        return age >= 0 && age <= ttl
     }
 }
 

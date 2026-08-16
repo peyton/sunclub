@@ -68,6 +68,7 @@ enum SunManualLogDefaultResolver {
     static func oneTapDefaults(
         from records: [DailyRecord],
         excluding day: Date? = nil,
+        profileSPF: Int? = nil,
         calendar: Calendar = Calendar.current
     ) -> SunManualLogResolvedDefaults {
         let sortedRecords = ManualLogSuggestionEngine.sortedRecords(
@@ -76,6 +77,7 @@ enum SunManualLogDefaultResolver {
             calendar: calendar
         )
         let spfLevel = sortedRecords.first { $0.spfLevel != nil }?.spfLevel
+            ?? SunManualLogInput.normalizedSPF(profileSPF)
         let coveredAreas = sortedRecords
             .lazy
             .map { SunManualLogInput.coveredAreas(in: $0.notes) }

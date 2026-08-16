@@ -152,11 +152,34 @@ enum AppMotion {
 
 enum AppFont {
     static func rounded(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .system(textStyle(for: size), design: .rounded, weight: weight)
     }
 
     static func monospace(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        .system(textStyle(for: size), design: .monospaced, weight: weight)
+    }
+
+    private static func textStyle(for size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case 34...:
+            return .largeTitle
+        case 28..<34:
+            return .title
+        case 24..<28:
+            return .title2
+        case 20..<24:
+            return .title3
+        case 17..<20:
+            return .body
+        case 15..<17:
+            return .callout
+        case 13..<15:
+            return .subheadline
+        case 11..<13:
+            return .footnote
+        default:
+            return .caption2
+        }
     }
 }
 
@@ -174,23 +197,23 @@ enum AppTextStyle {
     var font: Font {
         switch self {
         case .largeTitle:
-            return .system(size: 32, weight: .semibold, design: .rounded)
+            return .system(.largeTitle, design: .rounded, weight: .semibold)
         case .title:
-            return .system(size: 26, weight: .semibold, design: .rounded)
+            return .system(.title2, design: .rounded, weight: .semibold)
         case .sectionHeader:
-            return .system(size: 21, weight: .semibold, design: .rounded)
+            return .system(.title3, design: .rounded, weight: .semibold)
         case .body:
-            return .system(size: 17, weight: .regular, design: .rounded)
+            return .system(.body, design: .rounded)
         case .bodyMedium:
-            return .system(size: 17, weight: .medium, design: .rounded)
+            return .system(.body, design: .rounded, weight: .medium)
         case .caption:
-            return .system(size: 14, weight: .regular, design: .rounded)
+            return .system(.subheadline, design: .rounded)
         case .captionMedium:
-            return .system(size: 14, weight: .medium, design: .rounded)
+            return .system(.subheadline, design: .rounded, weight: .medium)
         case .metric:
-            return .system(size: 18, weight: .semibold, design: .rounded)
+            return .system(.headline, design: .rounded, weight: .semibold)
         case .pillLabel:
-            return .system(size: 14, weight: .semibold, design: .rounded)
+            return .system(.subheadline, design: .rounded, weight: .semibold)
         }
     }
 
@@ -437,6 +460,9 @@ struct DayCapsule: View {
     var isComplete = false
     var showsSecondaryDot = false
     var size: CGFloat = 54
+    var dayNumber: String?
+    var statusSymbolName: String?
+    var foreground: Color = AppColor.Text.primary
 
     var body: some View {
         VStack(spacing: 6) {
@@ -461,6 +487,20 @@ struct DayCapsule: View {
                     Circle()
                         .strokeBorder(AppColor.surfaceElevated.opacity(0.92), lineWidth: 3)
                         .padding(5)
+                }
+
+                if dayNumber != nil || statusSymbolName != nil {
+                    VStack(spacing: 0) {
+                        if let dayNumber {
+                            Text(dayNumber)
+                                .font(AppTextStyle.captionMedium.font)
+                        }
+                        if let statusSymbolName {
+                            Image(systemName: statusSymbolName)
+                                .font(AppTextStyle.captionMedium.font)
+                        }
+                    }
+                    .foregroundStyle(foreground)
                 }
             }
             .frame(width: size, height: size)

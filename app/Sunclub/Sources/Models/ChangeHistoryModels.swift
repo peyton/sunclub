@@ -13,6 +13,7 @@ enum SunclubChangeKind: String, Codable, CaseIterable, Sendable {
     case weeklyReminder
     case reapplySettings
     case liveUVSettings
+    case preferenceSettings
     case phraseRotation
     case importRestorePoint
     case importLocal
@@ -47,6 +48,8 @@ enum SunclubChangeKind: String, Codable, CaseIterable, Sendable {
             return "Updated Reapply Settings"
         case .liveUVSettings:
             return "Updated UV Settings"
+        case .preferenceSettings:
+            return "Updated Private Preferences"
         case .phraseRotation:
             return "Updated Phrase History"
         case .importRestorePoint:
@@ -95,6 +98,9 @@ enum SunclubTrackedField: String, Codable, CaseIterable, Sendable {
     case reapplyReminderEnabled
     case reapplyIntervalMinutes
     case usesLiveUV
+    case selectedUVPlace
+    case sunscreenProfile
+    case restorablePreferences
 
     var displayTitle: String {
         switch self {
@@ -128,6 +134,12 @@ enum SunclubTrackedField: String, Codable, CaseIterable, Sendable {
             return "Reapply reminders"
         case .usesLiveUV:
             return "Live UV"
+        case .selectedUVPlace:
+            return "UV place"
+        case .sunscreenProfile:
+            return "Sunscreen profile"
+        case .restorablePreferences:
+            return "Private preferences"
         }
     }
 }
@@ -221,6 +233,9 @@ struct SettingsProjectionSnapshot: Codable, Equatable, Sendable {
     var reapplyReminderEnabled: Bool
     var reapplyIntervalMinutes: Int
     var usesLiveUV: Bool
+    var selectedUVPlace: SunclubSelectedUVPlace?
+    var sunscreenProfile: SunclubSunscreenProfile?
+    var restorablePreferences: SunclubRestorablePreferences?
 
     init(settings: Settings) {
         hasCompletedOnboarding = settings.hasCompletedOnboarding
@@ -234,6 +249,9 @@ struct SettingsProjectionSnapshot: Codable, Equatable, Sendable {
         reapplyReminderEnabled = settings.reapplyReminderEnabled
         reapplyIntervalMinutes = settings.reapplyIntervalMinutes
         usesLiveUV = settings.usesLiveUV
+        selectedUVPlace = settings.selectedUVPlace
+        sunscreenProfile = settings.sunscreenProfile
+        restorablePreferences = settings.restorablePreferences
     }
 
     init(
@@ -247,7 +265,10 @@ struct SettingsProjectionSnapshot: Codable, Equatable, Sendable {
         smartReminderSettingsData: Data?,
         reapplyReminderEnabled: Bool,
         reapplyIntervalMinutes: Int,
-        usesLiveUV: Bool
+        usesLiveUV: Bool,
+        selectedUVPlace: SunclubSelectedUVPlace? = nil,
+        sunscreenProfile: SunclubSunscreenProfile? = nil,
+        restorablePreferences: SunclubRestorablePreferences? = nil
     ) {
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.reminderHour = reminderHour
@@ -260,6 +281,9 @@ struct SettingsProjectionSnapshot: Codable, Equatable, Sendable {
         self.reapplyReminderEnabled = reapplyReminderEnabled
         self.reapplyIntervalMinutes = reapplyIntervalMinutes
         self.usesLiveUV = usesLiveUV
+        self.selectedUVPlace = selectedUVPlace
+        self.sunscreenProfile = sunscreenProfile
+        self.restorablePreferences = restorablePreferences
     }
 }
 
@@ -267,6 +291,8 @@ struct SettingsProjectionSnapshot: Codable, Equatable, Sendable {
 final class SunclubChangeBatch {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
+    var logicalOrder: Int64?
+    var serverReceivedAt: Date?
     var kindRawValue: String
     var scopeRawValue: String
     var scopeIdentifier: String
@@ -282,6 +308,8 @@ final class SunclubChangeBatch {
     init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
+        logicalOrder: Int64? = nil,
+        serverReceivedAt: Date? = nil,
         kind: SunclubChangeKind,
         scope: SunclubBatchScope,
         scopeIdentifier: String,
@@ -296,6 +324,8 @@ final class SunclubChangeBatch {
     ) {
         self.id = id
         self.createdAt = createdAt
+        self.logicalOrder = logicalOrder.flatMap { $0 >= 0 ? $0 : nil }
+        self.serverReceivedAt = serverReceivedAt
         self.kindRawValue = kind.rawValue
         self.scopeRawValue = scope.rawValue
         self.scopeIdentifier = scopeIdentifier
@@ -325,6 +355,8 @@ final class DailyRecordRevision {
     @Attribute(.unique) var id: UUID
     var batchID: UUID
     var createdAt: Date
+    var logicalOrder: Int64?
+    var serverReceivedAt: Date?
     var authorDeviceID: String
     var startOfDay: Date
     var isDeleted: Bool
@@ -342,6 +374,8 @@ final class DailyRecordRevision {
         id: UUID = UUID(),
         batchID: UUID,
         createdAt: Date,
+        logicalOrder: Int64? = nil,
+        serverReceivedAt: Date? = nil,
         authorDeviceID: String,
         startOfDay: Date,
         isDeleted: Bool,
@@ -358,6 +392,8 @@ final class DailyRecordRevision {
         self.id = id
         self.batchID = batchID
         self.createdAt = createdAt
+        self.logicalOrder = logicalOrder.flatMap { $0 >= 0 ? $0 : nil }
+        self.serverReceivedAt = serverReceivedAt
         self.authorDeviceID = authorDeviceID
         self.startOfDay = startOfDay
         self.isDeleted = isDeleted
@@ -380,6 +416,8 @@ final class DailyRecordRevision {
         self.init(
             batchID: batch.id,
             createdAt: batch.createdAt,
+            logicalOrder: batch.logicalOrder,
+            serverReceivedAt: batch.serverReceivedAt,
             authorDeviceID: batch.authorDeviceID,
             startOfDay: snapshot.startOfDay,
             isDeleted: false,
@@ -403,6 +441,8 @@ final class DailyRecordRevision {
         self.init(
             batchID: batch.id,
             createdAt: batch.createdAt,
+            logicalOrder: batch.logicalOrder,
+            serverReceivedAt: batch.serverReceivedAt,
             authorDeviceID: batch.authorDeviceID,
             startOfDay: startOfDay,
             isDeleted: true,
@@ -456,6 +496,8 @@ final class SettingsRevision {
     @Attribute(.unique) var id: UUID
     var batchID: UUID
     var createdAt: Date
+    var logicalOrder: Int64?
+    var serverReceivedAt: Date?
     var authorDeviceID: String
     var hasCompletedOnboarding: Bool
     var reminderHour: Int
@@ -468,6 +510,9 @@ final class SettingsRevision {
     var reapplyReminderEnabled: Bool
     var reapplyIntervalMinutes: Int
     var usesLiveUV: Bool
+    var selectedUVPlaceData: Data?
+    var sunscreenProfileData: Data?
+    var restorablePreferencesData: Data?
     var changedFieldsData: Data?
     var batchKindRawValue: String
 
@@ -475,6 +520,8 @@ final class SettingsRevision {
         id: UUID = UUID(),
         batchID: UUID,
         createdAt: Date,
+        logicalOrder: Int64? = nil,
+        serverReceivedAt: Date? = nil,
         authorDeviceID: String,
         snapshot: SettingsProjectionSnapshot,
         changedFields: Set<SunclubTrackedField>,
@@ -483,6 +530,8 @@ final class SettingsRevision {
         self.id = id
         self.batchID = batchID
         self.createdAt = createdAt
+        self.logicalOrder = logicalOrder.flatMap { $0 >= 0 ? $0 : nil }
+        self.serverReceivedAt = serverReceivedAt
         self.authorDeviceID = authorDeviceID
         self.hasCompletedOnboarding = snapshot.hasCompletedOnboarding
         self.reminderHour = snapshot.reminderHour
@@ -495,6 +544,9 @@ final class SettingsRevision {
         self.reapplyReminderEnabled = snapshot.reapplyReminderEnabled
         self.reapplyIntervalMinutes = snapshot.reapplyIntervalMinutes
         self.usesLiveUV = snapshot.usesLiveUV
+        self.selectedUVPlaceData = snapshot.selectedUVPlace.flatMap { try? JSONEncoder().encode($0) }
+        self.sunscreenProfileData = snapshot.sunscreenProfile.flatMap { try? JSONEncoder().encode($0) }
+        self.restorablePreferencesData = snapshot.restorablePreferences.flatMap { try? JSONEncoder().encode($0) }
         self.changedFieldsData = try? JSONEncoder().encode(Array(changedFields).map(\.rawValue).sorted())
         self.batchKindRawValue = batchKind.rawValue
     }
@@ -507,6 +559,8 @@ final class SettingsRevision {
         self.init(
             batchID: batch.id,
             createdAt: batch.createdAt,
+            logicalOrder: batch.logicalOrder,
+            serverReceivedAt: batch.serverReceivedAt,
             authorDeviceID: batch.authorDeviceID,
             snapshot: snapshot,
             changedFields: changedFields,
@@ -539,7 +593,16 @@ final class SettingsRevision {
             smartReminderSettingsData: smartReminderSettingsData,
             reapplyReminderEnabled: reapplyReminderEnabled,
             reapplyIntervalMinutes: reapplyIntervalMinutes,
-            usesLiveUV: usesLiveUV
+            usesLiveUV: usesLiveUV,
+            selectedUVPlace: selectedUVPlaceData.flatMap {
+                try? JSONDecoder().decode(SunclubSelectedUVPlace.self, from: $0)
+            },
+            sunscreenProfile: sunscreenProfileData.flatMap {
+                try? JSONDecoder().decode(SunclubSunscreenProfile.self, from: $0)
+            },
+            restorablePreferences: restorablePreferencesData.flatMap {
+                try? JSONDecoder().decode(SunclubRestorablePreferences.self, from: $0)
+            }
         )
     }
 }
@@ -579,10 +642,16 @@ final class CloudSyncPreference {
 final class CloudSyncState {
     @Attribute(.unique) var id: UUID
     var stateSerializationData: Data?
+    var unresolvedCloudRecordFailuresData: Data?
 
-    init(id: UUID = UUID(), stateSerializationData: Data? = nil) {
+    init(
+        id: UUID = UUID(),
+        stateSerializationData: Data? = nil,
+        unresolvedCloudRecordFailuresData: Data? = nil
+    ) {
         self.id = id
         self.stateSerializationData = stateSerializationData
+        self.unresolvedCloudRecordFailuresData = unresolvedCloudRecordFailuresData
     }
 }
 
@@ -735,5 +804,8 @@ extension Settings {
         reapplyReminderEnabled = snapshot.reapplyReminderEnabled
         reapplyIntervalMinutes = snapshot.reapplyIntervalMinutes
         usesLiveUV = snapshot.usesLiveUV
+        selectedUVPlace = snapshot.selectedUVPlace
+        sunscreenProfile = snapshot.sunscreenProfile
+        restorablePreferences = snapshot.restorablePreferences
     }
 }

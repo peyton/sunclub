@@ -40,6 +40,36 @@ struct SunclubWatchHomeView: View {
         colorScheme == .dark
     }
 
+    private var primaryAction: HomeDailyPlanAction {
+        snapshot.homeDailyPlanAction()
+    }
+
+    private var primaryActionTitle: String {
+        switch primaryAction {
+        case .logToday:
+            return "Log sunscreen"
+        case .logReapply:
+            return "Reapply now"
+        case .viewProgress:
+            return "Refresh progress"
+        default:
+            return "Open iPhone"
+        }
+    }
+
+    private var primaryActionSymbol: String {
+        switch primaryAction {
+        case .logReapply:
+            return "timer"
+        case .viewProgress:
+            return "arrow.clockwise"
+        case .logToday:
+            return "sun.max.fill"
+        default:
+            return "iphone"
+        }
+    }
+
     private var watchBackground: Color {
         isDarkMode ? AppColor.Watch.background : AppColor.background
     }
@@ -87,7 +117,7 @@ struct SunclubWatchHomeView: View {
 
             switch url.path {
             case "/log":
-                logFromWrist()
+                performPrimaryAction()
             case "/open":
                 syncCoordinator.refreshSnapshot()
             default:
@@ -110,15 +140,15 @@ struct SunclubWatchHomeView: View {
 
     private var logButton: some View {
         Button {
-            logFromWrist()
+            performPrimaryAction()
         } label: {
             if isLogging {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             } else {
                 Label(
-                    snapshot.hasLoggedToday() ? "Update log" : "Log sunscreen",
-                    systemImage: "sun.max.fill"
+                    primaryActionTitle,
+                    systemImage: primaryActionSymbol
                 )
                     .font(AppTextStyle.bodyMedium.font)
                     .frame(maxWidth: .infinity)
@@ -127,10 +157,8 @@ struct SunclubWatchHomeView: View {
         .buttonStyle(AppPrimaryButtonStyle())
         .controlSize(.large)
         .disabled(isLogging)
-        .accessibilityLabel(
-            snapshot.hasLoggedToday() ? "Update today's sunscreen log" : "Log sunscreen"
-        )
-        .accessibilityHint("Saves today's sunscreen log on your paired iPhone.")
+        .accessibilityLabel(primaryActionTitle)
+        .accessibilityHint("Uses the current Sunclub next action on your paired iPhone.")
         .accessibilityIdentifier("watch.logSunscreen")
     }
 
@@ -160,7 +188,8 @@ struct SunclubWatchHomeView: View {
     private var uvCard: some View {
         AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
             VStack(alignment: .leading, spacing: 7) {
-                if let currentUVIndex = snapshot.currentUVIndex {
+                let now = Date()
+                if let currentUVIndex = snapshot.currentUVIndex(at: now) {
                     let level = UVLevel.from(index: currentUVIndex)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         AppText("\(currentUVIndex)", style: .largeTitle, color: watchTint(for: level))
@@ -173,7 +202,7 @@ struct SunclubWatchHomeView: View {
                             )
                         }
                     }
-                    if let peakUVIndex = snapshot.peakUVIndex,
+                    if let peakUVIndex = snapshot.peakUVIndex(at: now),
                        let peakUVHour = snapshot.peakUVHour {
                         AppText(
                             "Peak \(peakUVIndex) at \(peakUVHour.formatted(date: .omitted, time: .shortened))",
@@ -230,14 +259,27 @@ struct SunclubWatchHomeView: View {
         }
     }
 
-    private func logFromWrist() {
+    private func performPrimaryAction() {
         guard !isLogging else {
             return
         }
 
+        switch primaryAction {
+        case .viewProgress, .openSettings, .backfillYesterday, .addDetails, .reviewRecovery, .repairReminders:
+            syncCoordinator.refreshSnapshot()
+            return
+        case .logToday, .logReapply:
+            break
+        }
+
         isLogging = true
         Task {
-            _ = await syncCoordinator.logToday()
+            switch primaryAction {
+            case .logReapply:
+                _ = await syncCoordinator.logReapply()
+            default:
+                _ = await syncCoordinator.logToday()
+            }
             isLogging = false
         }
     }

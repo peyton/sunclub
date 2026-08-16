@@ -40,6 +40,7 @@ enum MonthlyReviewAnalytics {
         from records: [DailyRecord],
         month: Date,
         now: Date = Date(),
+        eligibleFrom: Date? = nil,
         calendar: Calendar = Calendar.current
     ) -> MonthlyReviewInsights {
         guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)),
@@ -48,18 +49,19 @@ enum MonthlyReviewAnalytics {
         }
 
         let today = calendar.startOfDay(for: now)
+        let effectiveStart = max(monthStart, eligibleFrom.map { calendar.startOfDay(for: $0) } ?? monthStart)
         let effectiveEnd = min(monthEnd, calendar.date(byAdding: .day, value: 1, to: today) ?? monthEnd)
-        guard monthStart < effectiveEnd else {
+        guard effectiveStart < effectiveEnd else {
             return .empty
         }
 
         let monthRecords = records.filter { record in
             let day = calendar.startOfDay(for: record.startOfDay)
-            return day >= monthStart && day < effectiveEnd
+            return day >= effectiveStart && day < effectiveEnd
         }
 
         var totalByWeekday: [Int: Int] = [:]
-        var cursor = monthStart
+        var cursor = effectiveStart
         while cursor < effectiveEnd {
             let weekday = calendar.component(.weekday, from: cursor)
             totalByWeekday[weekday, default: 0] += 1

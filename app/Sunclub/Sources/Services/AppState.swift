@@ -22,7 +22,6 @@ struct HomeTodayCardPresentation: Equatable {
     let streakRiskBadgeText: String?
     let uvHeadline: String?
     let uvSymbolName: String?
-    let uvIsEstimated: Bool
     let metadataRows: [HomeTodayMetadataRow]
 
     var accessibilityValue: String {
@@ -42,17 +41,6 @@ struct HomeRecoveryAction: Equatable, Identifiable {
     let buttonTitle: String
 
     var id: Kind { kind }
-}
-
-enum HomeDailyPlanAction: String, Equatable {
-    case logToday
-    case backfillYesterday
-    case logReapply
-    case addDetails
-    case viewProgress
-    case reviewRecovery
-    case repairReminders
-    case openSettings
 }
 
 enum HomeDailyPlanTone: Equatable {
@@ -117,31 +105,31 @@ struct ReapplyReminderPlan: Equatable {
         calendar: Calendar = Calendar.current
     ) {
         let level = uvReading?.level ?? .unknown
-        let adjustedInterval = max(30, baseIntervalMinutes - level.reapplyAdvanceMinutes)
+        let labelInterval = max(30, min(480, baseIntervalMinutes))
         let isElevated = level.reapplyLabelPrefix != nil
         let scheduledFireDate = ReminderPlanner.reapplyFireDate(
             from: now,
-            intervalMinutes: adjustedInterval,
+            intervalMinutes: labelInterval,
             calendar: calendar
         )
 
-        self.baseIntervalMinutes = baseIntervalMinutes
-        self.intervalMinutes = adjustedInterval
+        self.baseIntervalMinutes = labelInterval
+        self.intervalMinutes = labelInterval
         self.isElevated = isElevated
-        self.notificationTitle = isElevated ? "Reapply sooner today" : "Time to reapply"
+        self.notificationTitle = "Time to check your sunscreen"
         self.fireDate = scheduledFireDate
 
-        if let strongerMessage = level.strongerReapplyMessage {
-            self.notificationBody = "\(strongerMessage) It's been \(adjustedInterval) minutes since the last log."
+        if isElevated {
+            self.notificationBody = "UV is elevated. Follow your sunscreen label, and reapply after swimming, sweating, or toweling off."
         } else {
-            self.notificationBody = "It's been \(adjustedInterval) minutes since the last sunscreen log."
+            self.notificationBody = "Follow your sunscreen label, and reapply after swimming, sweating, or toweling off."
         }
 
         if scheduledFireDate != nil {
             if let prefix = level.reapplyLabelPrefix {
-                self.confirmationText = "\(prefix): reminder in \(Self.formattedInterval(adjustedInterval))"
+                self.confirmationText = "\(prefix): label check in \(Self.formattedInterval(labelInterval))"
             } else {
-                self.confirmationText = "Reapply reminder in \(Self.formattedInterval(adjustedInterval))"
+                self.confirmationText = "Label check in \(Self.formattedInterval(labelInterval))"
             }
             self.confirmationSymbolName = "timer"
         } else {
@@ -404,6 +392,53 @@ struct AppLogContext: Equatable, Codable, Sendable {
     let source: LogSource
 }
 
+struct SunclubHistoryMutationReceipt: Equatable, Sendable {
+    let batchID: UUID?
+    let day: Date
+    let verifiedAt: Date?
+    let kind: SunclubChangeKind
+    let didChange: Bool
+}
+
+enum SunclubHistoryMutationError: Error, Equatable, Sendable, LocalizedError {
+    case futureDate
+    case futureTime
+    case missingRecord
+    case persistenceFailure
+
+    var errorDescription: String? {
+        switch self {
+        case .futureDate:
+            return "Cannot log future date."
+        case .futureTime:
+            return "Choose a time that is not in the future."
+        case .missingRecord:
+            return "Log sunscreen for this day before recording a reapplication."
+        case .persistenceFailure:
+            return "Sunclub couldn't save that change. Your edits are still here—please try again."
+        }
+    }
+}
+
+enum SunclubHistoryMutationResult: Equatable, Sendable {
+    case success(SunclubHistoryMutationReceipt)
+    case failure(SunclubHistoryMutationError)
+
+    var succeeded: Bool {
+        if case .success = self {
+            return true
+        }
+        return false
+    }
+
+    var error: SunclubHistoryMutationError? {
+        guard case let .failure(error) = self else {
+            return nil
+        }
+        return error
+    }
+}
+
 struct TimelineDayPartStatus: Equatable, Identifiable {
     let dayPart: DayPart
     let statusText: String
@@ -482,6 +517,8 @@ final class AppState {
     private(set) var initialICloudRestoreState: InitialICloudRestoreState = .notNeeded
     private(set) var uvReading: UVReading?
     private(set) var uvForecast: SunclubUVForecast?
+    private(set) var uvStatus: SunclubUVStatus = .unavailable
+    private(set) var uvProtectionWindow: SunclubUVProtectionWindow?
     private var uvRefreshGeneration = 0
     private(set) var notificationHealthSnapshot: NotificationHealthSnapshot = .unknown
     private(set) var leaveHomeAuthorizationState: LeaveHomeAuthorizationState = .notDetermined
@@ -508,6 +545,7 @@ final class AppState {
     private var notificationHealthOverride: NotificationHealthSnapshot?
     private var leaveHomeAuthorizationOverride: LeaveHomeAuthorizationState?
     private var isNormalizingSelectedDay = false
+    private var lastAppliedRestorablePreferences: SunclubRestorablePreferences?
 
     var referenceDate: Date {
         currentDate()
@@ -628,6 +666,7 @@ final class AppState {
         refreshLeaveHomeReminderStatus()
         refreshHealthKitStatus()
         syncAchievementCelebration()
+        syncRestorablePreferencesRevisionIfNeeded()
         Task {
             await self.liveActivityCoordinator.sync(using: self)
         }
@@ -750,6 +789,7 @@ final class AppState {
         do {
             try historyService.refreshProjectedState()
             settings = try historyService.settings()
+            applyRestorablePreferencesFromSettingsIfNeeded()
             records = try historyService.records()
             changeBatches = try historyService.changeBatches()
             importSessions = try historyService.importSessions()
@@ -1027,15 +1067,31 @@ final class AppState {
         importSessions.first
     }
 
-    func completeOnboarding() {
-        let batch = try? historyService.applySettingsChange(
-            kind: .onboarding,
-            summary: "Completed onboarding.",
-            changedFields: [.hasCompletedOnboarding]
-        ) { snapshot in
-            snapshot.hasCompletedOnboarding = true
+    @discardableResult
+    func completeOnboarding() -> SunclubHistoryMutationResult {
+        let today = startOfLocalDay(currentDate())
+        do {
+            let batch = try historyService.applySettingsChange(
+                kind: .onboarding,
+                summary: "Completed onboarding.",
+                changedFields: [.hasCompletedOnboarding]
+            ) { snapshot in
+                snapshot.hasCompletedOnboarding = true
+            }
+            finishDurableChange(batch, reschedulesReminders: false)
+            logActionErrorMessage = nil
+            return .success(
+                SunclubHistoryMutationReceipt(
+                    batchID: batch?.id,
+                    day: today,
+                    verifiedAt: nil,
+                    kind: .onboarding,
+                    didChange: batch != nil
+                )
+            )
+        } catch {
+            return historyMutationFailure(error)
         }
-        finishDurableChange(batch, reschedulesReminders: false)
     }
 
     @discardableResult
@@ -1335,7 +1391,6 @@ final class AppState {
                 streakRiskBadgeText: streakRiskBadgeText,
                 uvHeadline: nil,
                 uvSymbolName: nil,
-                uvIsEstimated: false,
                 metadataRows: metadataRows
             )
         }
@@ -1343,8 +1398,8 @@ final class AppState {
         let detail: String
         if reapplyReminderPlan.isElevated {
             detail = hasLoggedToday
-                ? "You've logged today. Reapply sooner if you're spending time outside."
-                : "Log now and plan to reapply sooner while UV stays high."
+                ? "You've logged today. Follow the product label and reapply after swimming or sweating."
+                : "Log now, then follow the product label while UV stays elevated."
         } else {
             detail = defaultDetail
         }
@@ -1356,7 +1411,6 @@ final class AppState {
             streakRiskBadgeText: streakRiskBadgeText,
             uvHeadline: uvHeadline,
             uvSymbolName: level.symbolName,
-            uvIsEstimated: uvReading?.source == .heuristic,
             metadataRows: metadataRows
         )
     }
@@ -1376,7 +1430,7 @@ final class AppState {
                 detail = "Today is still open. Add a log if you wore sunscreen."
             } else if reapplyReminderPlan.isElevated {
                 title = "Log before outdoor time"
-                detail = "UV is elevated today. Save the first log now, then reapply sooner if you stay outside."
+                detail = "UV is elevated today. Save the first log now, then follow the product label outdoors."
             } else if uvReading?.level == .low {
                 title = "Keep the routine steady"
                 detail = "UV is low, but logging now keeps the habit simple and consistent."
@@ -1564,7 +1618,9 @@ final class AppState {
     }
 
     private func uvDailyPlanFact() -> HomeDailyPlanFact? {
-        if let uvForecast, let peakHour = uvForecast.peakHour {
+        if let uvForecast,
+           uvForecast.isAvailable,
+           let peakHour = uvForecast.peakHour {
             return HomeDailyPlanFact(
                 id: "uv",
                 title: "Peak UV",
@@ -1686,11 +1742,7 @@ final class AppState {
             return "No reminder after sunset"
         }
 
-        if plan.isElevated {
-            return "\(plan.intervalSummary), UV-adjusted"
-        }
-
-        return "Every \(plan.intervalSummary)"
+        return "Label check in \(plan.intervalSummary)"
     }
 
     private func nextReminderSummary(now: Date) -> String {
@@ -1707,7 +1759,9 @@ final class AppState {
     }
 
     private func uvMetadataRows() -> [HomeTodayMetadataRow] {
-        if let uvForecast, let peakHour = uvForecast.peakHour {
+        if let uvForecast,
+           uvForecast.isAvailable,
+           let peakHour = uvForecast.peakHour {
             return [
                 HomeTodayMetadataRow(
                     id: "uvPeak",
@@ -1724,7 +1778,9 @@ final class AppState {
             ]
         }
 
-        if let uvReading {
+        if let uvReading,
+           uvReading.source == .weatherKit,
+           uvReading.isFresh(at: currentDate()) {
             return [
                 HomeTodayMetadataRow(
                     id: "uvNow",
@@ -1918,18 +1974,30 @@ final class AppState {
     }
 
     var liveUVStatusPresentation: LiveUVStatusPresentation {
-        switch uvIndexService.liveUVAccessState {
-        case .live:
+        if uvStatus.availability == .available,
+           uvStatus.freshness == .fresh,
+           let source = uvStatus.source,
+           let updatedAt = uvStatus.updatedAt {
             return LiveUVStatusPresentation(
-                title: "Live UV",
-                detail: "Using Apple Weather for your location.",
+                title: "UV available",
+                detail: "Apple Weather · \(source.displayName) · Updated \(updatedAt.formatted(date: .omitted, time: .shortened)).",
                 actionTitle: "Refresh",
+                actionKind: .refresh
+            )
+        }
+
+        switch uvIndexService.liveUVAccessState {
+        case .live, .unavailable:
+            return LiveUVStatusPresentation(
+                title: "UV unavailable",
+                detail: "Sunclub does not have a verified Apple Weather value from the last two hours.",
+                actionTitle: "Retry",
                 actionKind: .refresh
             )
         case .denied:
             return LiveUVStatusPresentation(
-                title: "Live UV Off",
-                detail: "Location permission denied. Enable in Settings to pull UV from Apple Weather.",
+                title: "UV unavailable",
+                detail: "Location permission is denied. Enable it or choose a city for Apple Weather UV.",
                 actionTitle: "Open Settings",
                 actionKind: .openSettings
             )
@@ -1940,17 +2008,10 @@ final class AppState {
                 actionTitle: "Allow Location",
                 actionKind: .requestPermission
             )
-        case .unavailable:
-            return LiveUVStatusPresentation(
-                title: "Estimated UV",
-                detail: "Live UV is temporarily unavailable. Using Sunclub's local estimate.",
-                actionTitle: "Retry",
-                actionKind: .refresh
-            )
         case .disabled:
             return LiveUVStatusPresentation(
-                title: "Estimated UV",
-                detail: "Using Sunclub's local estimate. Turn on Live UV in Settings for Apple Weather.",
+                title: "UV unavailable",
+                detail: "Enable live location or choose a city to get verified Apple Weather UV.",
                 actionTitle: nil,
                 actionKind: nil
             )
@@ -1963,6 +2024,7 @@ final class AppState {
             changeBatches: changeBatches,
             settings: settings,
             growthSettings: growthSettings,
+            historicalUVIndexes: historicalUVIndexes,
             now: currentDate(),
             calendar: calendar
         )
@@ -2322,6 +2384,7 @@ final class AppState {
                 }
                 await uvIndexService.fetchUVIndex(
                     prefersLiveData: prefersLiveData,
+                    selectedPlace: settings.selectedUVPlace,
                     allowPermissionPrompt: allowPermissionPrompt,
                     now: referenceDate
                 )
@@ -2331,6 +2394,7 @@ final class AppState {
             } else {
                 await uvIndexService.fetchUVIndex(
                     prefersLiveData: prefersLiveData,
+                    selectedPlace: settings.selectedUVPlace,
                     allowPermissionPrompt: allowPermissionPrompt,
                     now: referenceDate
                 )
@@ -2349,6 +2413,8 @@ final class AppState {
             }
             uvReading = resolvedReading
             uvForecast = resolvedForecast
+            uvStatus = uvIndexService.status
+            uvProtectionWindow = uvIndexService.protectionWindow
             syncWidgetSnapshot()
             reloadWidgetTimelines()
             await liveActivityCoordinator.sync(using: self)
@@ -2723,6 +2789,7 @@ final class AppState {
             summary: SunclubGrowthAnalytics.reportSummary(
                 records: records,
                 interval: interval,
+                historicalUVIndexes: historicalUVIndexes,
                 calendar: calendar
             ),
             preferredName: preferredDisplayName
@@ -2730,7 +2797,12 @@ final class AppState {
     }
 
     func skinHealthReportSummary(for interval: DateInterval) -> SunclubSkinHealthReportSummary {
-        SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
+        SunclubGrowthAnalytics.reportSummary(
+            records: records,
+            interval: interval,
+            historicalUVIndexes: historicalUVIndexes,
+            calendar: calendar
+        )
     }
 
     var yearInReviewSummary: SunclubSkinHealthReportSummary? {
@@ -2740,7 +2812,12 @@ final class AppState {
         let now = currentDate()
         let yearStart = calendar.date(from: calendar.dateComponents([.year], from: now)) ?? now
         let interval = DateInterval(start: yearStart, end: now)
-        return SunclubGrowthAnalytics.reportSummary(records: records, interval: interval, calendar: calendar)
+        return SunclubGrowthAnalytics.reportSummary(
+            records: records,
+            interval: interval,
+            historicalUVIndexes: historicalUVIndexes,
+            calendar: calendar
+        )
     }
 
     func nextDailyPhrase() -> String {
@@ -2777,18 +2854,29 @@ final class AppState {
         part: DayPart,
         on day: Date,
         source: LogSource,
+        verifiedAt requestedTimestamp: Date? = nil,
         verificationDuration: Double? = nil,
         spfLevel: Int? = nil,
         notes: String? = nil
-    ) -> Bool {
+    ) -> SunclubHistoryMutationResult {
         guard let targetDay = validatedLogDate(day) else {
-            return false
+            return .failure(.futureDate)
         }
 
         let now = currentDate()
         let today = startOfLocalDay(now)
         let resolvedTimestamp: Date
-        if calendar.isDate(targetDay, inSameDayAs: today), part == dayPart(for: now) {
+        if let requestedTimestamp {
+            guard calendar.isDate(requestedTimestamp, inSameDayAs: targetDay) else {
+                logActionErrorMessage = SunclubHistoryMutationError.futureTime.localizedDescription
+                return .failure(.futureTime)
+            }
+            guard requestedTimestamp <= now else {
+                logActionErrorMessage = SunclubHistoryMutationError.futureTime.localizedDescription
+                return .failure(.futureTime)
+            }
+            resolvedTimestamp = requestedTimestamp
+        } else if calendar.isDate(targetDay, inSameDayAs: today), part == dayPart(for: now) {
             resolvedTimestamp = now
         } else {
             resolvedTimestamp = verifiedAt(for: targetDay, in: part)
@@ -2801,29 +2889,35 @@ final class AppState {
         default:
             sourceLabel = ""
         }
-        upsertRecord(
-            RecordUpsertRequest(
-                day: targetDay,
-                verifiedAt: resolvedTimestamp,
-                verificationValues: (method, verificationDuration, SunManualLogInput.normalizedSPF(spfLevel), notes),
-                replaceOptionalFields: false,
-                preserveExistingDuration: false,
-                kind: .manualLog,
-                summary: "Logged \(part.shortTitle.lowercased()) sunscreen\(sourceLabel)."
+        do {
+            let receipt = try upsertRecord(
+                RecordUpsertRequest(
+                    day: targetDay,
+                    verifiedAt: resolvedTimestamp,
+                    verificationValues: (method, verificationDuration, SunManualLogInput.normalizedSPF(spfLevel), notes),
+                    replaceOptionalFields: false,
+                    preserveExistingDuration: false,
+                    kind: .manualLog,
+                    summary: "Logged \(part.shortTitle.lowercased()) sunscreen\(sourceLabel)."
+                )
             )
-        )
-        lastLogContext = AppLogContext(date: targetDay, dayPart: part, source: source)
-        return true
+            lastLogContext = AppLogContext(date: targetDay, dayPart: part, source: source)
+            logActionErrorMessage = nil
+            return .success(receipt)
+        } catch {
+            return historyMutationFailure(error)
+        }
     }
 
+    @discardableResult
     func markAppliedToday(
         method: VerificationMethod,
         verificationDuration: Double? = nil,
         spfLevel: Int? = nil,
         notes: String? = nil
-    ) {
+    ) -> SunclubHistoryMutationResult {
         let now = currentDate()
-        _ = recordApplication(
+        return recordApplication(
             for: method,
             part: dayPart(for: now),
             on: now,
@@ -2843,45 +2937,57 @@ final class AppState {
         return SunManualLogDefaultResolver.oneTapDefaults(
             from: records,
             excluding: targetDay,
+            profileSPF: settings.sunscreenProfile?.spf,
             calendar: calendar
         )
     }
 
+    @discardableResult
     func saveManualRecord(
         for day: Date,
         dayPart targetDayPart: DayPart? = nil,
         verifiedAt targetVerifiedAt: Date? = nil,
         spfLevel: Int?,
         notes: String?
-    ) {
+    ) -> SunclubHistoryMutationResult {
         guard let targetDay = validatedLogDate(day) else {
-            return
+            return .failure(.futureDate)
         }
         let existingTimestamp = record(for: targetDay)?.verifiedAt
         let timestamp = targetVerifiedAt
             ?? existingTimestamp
             ?? targetDayPart.map { verifiedAt(for: targetDay, in: $0) }
             ?? defaultVerifiedAt(for: targetDay)
+        guard timestamp <= currentDate() else {
+            logActionErrorMessage = SunclubHistoryMutationError.futureTime.localizedDescription
+            return .failure(.futureTime)
+        }
         let kind: SunclubChangeKind = record(for: targetDay) == nil ? .historyBackfill : .historyEdit
         let summary = kind == .historyBackfill
             ? "Backfilled \(startOfLocalDay(targetDay).formatted(.dateTime.month().day()))."
             : "Edited \(startOfLocalDay(targetDay).formatted(.dateTime.month().day()))."
-        upsertRecord(
-            RecordUpsertRequest(
-                day: targetDay,
-                verifiedAt: timestamp,
-                verificationValues: (.manual, nil, SunManualLogInput.normalizedSPF(spfLevel), notes),
-                replaceOptionalFields: true,
-                preserveExistingDuration: true,
-                kind: kind,
-                summary: summary
+        do {
+            let receipt = try upsertRecord(
+                RecordUpsertRequest(
+                    day: targetDay,
+                    verifiedAt: timestamp,
+                    verificationValues: (.manual, nil, SunManualLogInput.normalizedSPF(spfLevel), notes),
+                    replaceOptionalFields: true,
+                    preserveExistingDuration: true,
+                    kind: kind,
+                    summary: summary
+                )
             )
-        )
-        lastLogContext = AppLogContext(
-            date: targetDay,
-            dayPart: dayPart(for: timestamp),
-            source: .history
-        )
+            lastLogContext = AppLogContext(
+                date: targetDay,
+                dayPart: dayPart(for: timestamp),
+                source: .history
+            )
+            logActionErrorMessage = nil
+            return .success(receipt)
+        } catch {
+            return historyMutationFailure(error)
+        }
     }
 
     @discardableResult
@@ -2890,20 +2996,23 @@ final class AppState {
         verificationDuration: Double? = nil,
         spfLevel: Int? = nil,
         notes: String? = nil,
+        verifiedAt: Date? = nil,
         context: AppLogContext? = nil
-    ) -> Bool {
+    ) -> SunclubHistoryMutationResult {
         let previousLongestStreak = settings.longestStreak
         let resolvedContext = context ?? currentLogContext(for: selectedDay, source: .manualLog)
-        guard recordApplication(
+        let mutationResult = recordApplication(
             for: method,
             part: resolvedContext.dayPart,
             on: resolvedContext.date,
             source: resolvedContext.source,
+            verifiedAt: verifiedAt,
             verificationDuration: verificationDuration,
             spfLevel: spfLevel,
             notes: notes
-        ) else {
-            return false
+        )
+        guard mutationResult.succeeded else {
+            return mutationResult
         }
         var growthSettings = growthFeatureStore.load()
         let (successTitle, updatedSuccessState) = PhraseRotation.nextPhrase(
@@ -2918,7 +3027,7 @@ final class AppState {
             canAddDetails: spfLevel == nil && Self.normalizedNotes(notes) == nil,
             title: successTitle
         )
-        return true
+        return mutationResult
     }
 
     func recordWatchSunscreenLog() throws -> SunclubWidgetSnapshot {
@@ -2928,7 +3037,7 @@ final class AppState {
 
         let now = currentDate()
         let input = oneTapLogInput(for: now)
-        _ = recordApplication(
+        let result = recordApplication(
             for: .quickLog,
             part: dayPart(for: now),
             on: now,
@@ -2936,8 +3045,23 @@ final class AppState {
             spfLevel: input.spfLevel,
             notes: input.oneTapNotes
         )
+        if case let .failure(error) = result {
+            throw error
+        }
         if settings.reapplyReminderEnabled {
             scheduleReapplyReminder()
+        }
+        return widgetSnapshotStore.load()
+    }
+
+    func recordWatchReapplication() throws -> SunclubWidgetSnapshot {
+        guard settings.hasCompletedOnboarding else {
+            throw SunclubQuickLogError.onboardingRequired
+        }
+
+        let result = recordReapplication()
+        if case let .failure(error) = result {
+            throw error
         }
         return widgetSnapshotStore.load()
     }
@@ -2946,24 +3070,65 @@ final class AppState {
         verificationSuccessPresentation = nil
     }
 
-    func deleteRecord(for day: Date) {
-        let batch = try? historyService.applyDayChange(
-            for: day,
-            kind: .deleteRecord,
-            summary: "Deleted \(calendar.startOfDay(for: day).formatted(.dateTime.month().day())).",
-            changedFields: [.isDeleted]
-        ) { existingSnapshot in
-            guard existingSnapshot != nil else {
-                return existingSnapshot
-            }
-            return nil
-        }
-
-        finishDurableChange(batch, reschedulesReminders: false)
-
+    @discardableResult
+    func deleteRecord(for day: Date) -> SunclubHistoryMutationResult {
         let target = calendar.startOfDay(for: day)
-        if calendar.isDate(target, inSameDayAs: currentDate()), record(for: target) == nil {
-            cancelReapplyRemindersIfNeeded()
+        do {
+            let batch = try historyService.applyDayChange(
+                for: target,
+                kind: .deleteRecord,
+                summary: "Deleted \(target.formatted(.dateTime.month().day())).",
+                changedFields: [.isDeleted]
+            ) { existingSnapshot in
+                guard existingSnapshot != nil else {
+                    return existingSnapshot
+                }
+                return nil
+            }
+            finishDurableChange(batch, reschedulesReminders: false)
+
+            if calendar.isDate(target, inSameDayAs: currentDate()), record(for: target) == nil {
+                cancelReapplyRemindersIfNeeded()
+            }
+            logActionErrorMessage = nil
+            return .success(
+                SunclubHistoryMutationReceipt(
+                    batchID: batch?.id,
+                    day: target,
+                    verifiedAt: nil,
+                    kind: .deleteRecord,
+                    didChange: batch != nil
+                )
+            )
+        } catch {
+            return historyMutationFailure(error)
+        }
+    }
+
+    @discardableResult
+    func deleteAllHistory() -> SunclubHistoryMutationResult {
+        let today = startOfLocalDay(currentDate())
+        let includedToday = record(for: today) != nil
+
+        do {
+            let batch = try historyService.deleteAllRecords()
+            finishDurableChange(batch, reschedulesReminders: false)
+
+            if includedToday, record(for: today) == nil {
+                cancelReapplyRemindersIfNeeded()
+            }
+            logActionErrorMessage = nil
+            return .success(
+                SunclubHistoryMutationReceipt(
+                    batchID: batch?.id,
+                    day: today,
+                    verifiedAt: nil,
+                    kind: .deleteRecord,
+                    didChange: batch != nil
+                )
+            )
+        } catch {
+            return historyMutationFailure(error)
         }
     }
 
@@ -2988,16 +3153,15 @@ final class AppState {
         }
     }
 
-    func snoozeReapplyReminder(minutes: Int = 15) {
-        guard settings.reapplyReminderEnabled else { return }
-        let plan = ReapplyReminderPlan(snoozeMinutes: minutes, now: currentDate(), calendar: calendar)
-
-        Task {
-            await notificationManager.scheduleReapplyReminder(
-                plan: plan,
-                route: preferredCheckInRoute
-            )
+    func snoozeReapplyReminder(minutes: Int = 15) async -> NotificationOperationResult {
+        guard settings.reapplyReminderEnabled else {
+            return .failure("Reapply reminders are off. Turn them on in Settings, then try again.")
         }
+        let plan = ReapplyReminderPlan(snoozeMinutes: minutes, now: currentDate(), calendar: calendar)
+        return await notificationManager.scheduleReapplyReminder(
+            plan: plan,
+            route: preferredCheckInRoute
+        )
     }
 
     func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
@@ -3022,52 +3186,141 @@ final class AppState {
         }
     }
 
-    func recordReapplication(for day: Date? = nil, performedAt: Date? = nil) {
+    @discardableResult
+    func recordReapplication(for day: Date? = nil, performedAt: Date? = nil) -> SunclubHistoryMutationResult {
         let now = performedAt ?? currentDate()
         let targetDay = startOfLocalDay(day ?? now)
         guard validatedLogDate(targetDay) != nil else {
-            return
+            return .failure(.futureDate)
         }
-        let batch = try? historyService.applyDayChange(
-            for: targetDay,
-            kind: .reapply,
-            summary: "Logged a reapply check-in.",
-            changedFields: [.reapplyCount, .lastReappliedAt]
-        ) { existingSnapshot in
-            guard var snapshot = existingSnapshot else {
-                return nil
-            }
-
-            snapshot.reapplyCount += 1
-            snapshot.lastReappliedAt = now
-            return snapshot
+        guard now <= currentDate() else {
+            logActionErrorMessage = SunclubHistoryMutationError.futureTime.localizedDescription
+            return .failure(.futureTime)
         }
-        finishDurableChange(batch, reschedulesReminders: false)
+        guard record(for: targetDay) != nil else {
+            logActionErrorMessage = SunclubHistoryMutationError.missingRecord.localizedDescription
+            return .failure(.missingRecord)
+        }
+        do {
+            let batch = try historyService.applyDayChange(
+                for: targetDay,
+                kind: .reapply,
+                summary: "Logged a reapply check-in.",
+                changedFields: [.reapplyCount, .lastReappliedAt]
+            ) { existingSnapshot in
+                guard var snapshot = existingSnapshot else {
+                    return nil
+                }
 
-        if calendar.isDate(targetDay, inSameDayAs: currentDate()) {
-            if settings.reapplyReminderEnabled {
-                scheduleReapplyReminder()
-            } else {
-                cancelReapplyRemindersIfNeeded()
+                snapshot.reapplyCount += 1
+                snapshot.lastReappliedAt = now
+                return snapshot
             }
+            guard let batch else {
+                logActionErrorMessage = SunclubHistoryMutationError.missingRecord.localizedDescription
+                return .failure(.missingRecord)
+            }
+            finishDurableChange(batch, reschedulesReminders: false)
+
+            if calendar.isDate(targetDay, inSameDayAs: currentDate()) {
+                if settings.reapplyReminderEnabled {
+                    scheduleReapplyReminder()
+                } else {
+                    cancelReapplyRemindersIfNeeded()
+                }
+            }
+            logActionErrorMessage = nil
+            return .success(
+                SunclubHistoryMutationReceipt(
+                    batchID: batch.id,
+                    day: targetDay,
+                    verifiedAt: now,
+                    kind: .reapply,
+                    didChange: true
+                )
+            )
+        } catch {
+            return historyMutationFailure(error)
         }
     }
 
-    func updateLiveUVPreference(enabled: Bool, allowPermissionPrompt: Bool = true) {
+    @discardableResult
+    func updateLiveUVPreference(enabled: Bool, allowPermissionPrompt: Bool = true) -> Bool {
         guard settings.usesLiveUV != enabled else {
-            return
+            return true
         }
 
-        let batch = try? historyService.applySettingsChange(
-            kind: .liveUVSettings,
-            summary: "Updated the live UV preference.",
-            changedFields: [.usesLiveUV]
-        ) { snapshot in
-            snapshot.usesLiveUV = enabled
+        do {
+            let batch = try historyService.applySettingsChange(
+                kind: .liveUVSettings,
+                summary: "Updated the live UV preference.",
+                changedFields: [.usesLiveUV]
+            ) { snapshot in
+                snapshot.usesLiveUV = enabled
+            }
+            finishDurableChange(batch, reschedulesReminders: false)
+            logActionErrorMessage = nil
+            refreshWeatherKitKillSwitchIfNeeded()
+            refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
+            return true
+        } catch {
+            _ = historyMutationFailure(error)
+            return false
         }
-        finishDurableChange(batch, reschedulesReminders: false)
-        refreshWeatherKitKillSwitchIfNeeded()
-        refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
+    }
+
+    @discardableResult
+    func updateSelectedUVPlace(_ place: SunclubSelectedUVPlace?) -> Bool {
+        guard settings.selectedUVPlace != place || (place != nil && settings.usesLiveUV) else {
+            return true
+        }
+
+        do {
+            var changedFields: Set<SunclubTrackedField> = [.selectedUVPlace]
+            if place != nil, settings.usesLiveUV {
+                changedFields.insert(.usesLiveUV)
+            }
+            let batch = try historyService.applySettingsChange(
+                kind: .liveUVSettings,
+                summary: place.map { "Selected \($0.displayName) for UV updates." } ?? "Removed the selected UV city.",
+                changedFields: changedFields
+            ) { snapshot in
+                snapshot.selectedUVPlace = place
+                if place != nil {
+                    snapshot.usesLiveUV = false
+                }
+            }
+            finishDurableChange(batch, reschedulesReminders: false)
+            logActionErrorMessage = nil
+            refreshUVForecastIfNeeded()
+            return true
+        } catch {
+            _ = historyMutationFailure(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func updateSunscreenProfile(_ profile: SunclubSunscreenProfile?) -> Bool {
+        guard settings.sunscreenProfile != profile else {
+            return true
+        }
+
+        do {
+            let batch = try historyService.applySettingsChange(
+                kind: .manualLog,
+                summary: profile.map { "Saved sunscreen profile \($0.name)." } ?? "Removed the saved sunscreen profile.",
+                changedFields: [.sunscreenProfile]
+            ) { snapshot in
+                snapshot.sunscreenProfile = profile
+            }
+            finishDurableChange(batch, reschedulesReminders: false)
+            logActionErrorMessage = nil
+            return true
+        } catch {
+            _ = historyMutationFailure(error)
+            return false
+        }
     }
 
     func performLiveUVAction(_ action: LiveUVActionKind) {
@@ -3092,17 +3345,25 @@ final class AppState {
     }
 
     func exportBackupDocument() throws -> SunclubBackupDocument {
-        try backupService.exportDocument(from: modelContext)
+        try backupService.exportDocument(
+            from: modelContext,
+            restorablePreferences: SunclubRestorablePreferences(growthSettings: growthSettings)
+        )
     }
 
     @discardableResult
     func exportBackup(to url: URL) throws -> SunclubBackupDocument {
-        try backupService.exportBackup(from: modelContext, to: url)
+        try backupService.exportBackup(
+            from: modelContext,
+            to: url,
+            restorablePreferences: SunclubRestorablePreferences(growthSettings: growthSettings)
+        )
     }
 
     @discardableResult
     func importBackupDocument(_ document: SunclubBackupDocument) throws -> SunclubBackupImportSummary {
         let summary = try backupService.importBackupDocument(document, into: modelContext)
+        restorePreferencesIfPresent(summary.restoredPreferences)
         finalizeImportedBackup(importedBatchCount: summary.importedBatchCount)
         return summary
     }
@@ -3110,6 +3371,7 @@ final class AppState {
     @discardableResult
     func importBackup(from url: URL) throws -> SunclubBackupImportSummary {
         let summary = try backupService.importBackup(from: url, into: modelContext)
+        restorePreferencesIfPresent(summary.restoredPreferences)
         finalizeImportedBackup(importedBatchCount: summary.importedBatchCount)
         return summary
     }
@@ -3432,6 +3694,7 @@ final class AppState {
         Task {
             await uvIndexService.fetchUVIndex(
                 prefersLiveData: settings.usesLiveUV,
+                selectedPlace: settings.selectedUVPlace,
                 allowPermissionPrompt: allowPermissionPrompt,
                 now: currentDate()
             )
@@ -3439,6 +3702,8 @@ final class AppState {
                 return
             }
             uvReading = uvIndexService.currentReading
+            uvStatus = uvIndexService.status
+            uvProtectionWindow = uvIndexService.protectionWindow
             syncWidgetSnapshot()
             reloadWidgetTimelines()
             await liveActivityCoordinator.sync(using: self)
@@ -3448,6 +3713,17 @@ final class AppState {
     func setUVReadingForTesting(_ reading: UVReading?) {
         uvReadingOverride = reading
         uvReading = reading
+        if let reading {
+            uvStatus = SunclubUVStatus(
+                availability: .available,
+                source: .liveLocation,
+                freshness: .fresh,
+                updatedAt: reading.timestamp
+            )
+        } else {
+            uvStatus = .unavailable
+            uvProtectionWindow = nil
+        }
     }
 
     func setUVForecastForTesting(_ forecast: SunclubUVForecast?) {
@@ -3677,9 +3953,9 @@ final class AppState {
         refreshLeaveHomeReminderStatus()
     }
 
-    private func upsertRecord(_ request: RecordUpsertRequest) {
+    private func upsertRecord(_ request: RecordUpsertRequest) throws -> SunclubHistoryMutationReceipt {
         let targetDay = startOfLocalDay(request.day)
-        let batch = try? historyService.applyDayChange(
+        let batch = try historyService.applyDayChange(
             for: targetDay,
             kind: request.kind,
             summary: request.summary,
@@ -3720,8 +3996,17 @@ final class AppState {
             )
         }
         finishDurableChange(batch, reschedulesReminders: false)
-        exportHealthKitLogIfNeeded(for: targetDay)
-        recordHistoricalUVIfApplicable(for: targetDay)
+        if batch != nil {
+            exportHealthKitLogIfNeeded(for: targetDay)
+            recordHistoricalUVIfApplicable(for: targetDay)
+        }
+        return SunclubHistoryMutationReceipt(
+            batchID: batch?.id,
+            day: targetDay,
+            verifiedAt: request.verifiedAt,
+            kind: request.kind,
+            didChange: batch != nil
+        )
     }
 
     private func recordHistoricalUVIfApplicable(for day: Date) {
@@ -3773,6 +4058,9 @@ final class AppState {
         _ batch: SunclubChangeBatch?,
         reschedulesReminders: Bool
     ) {
+        guard let batch else {
+            return
+        }
         refresh()
         syncAchievementCelebration()
         refreshUVForecastIfNeeded()
@@ -3787,15 +4075,18 @@ final class AppState {
 
         refreshStreakRiskReminder()
 
-        guard let batch else {
-            return
-        }
-
         reloadWidgetTimelines()
 
         Task {
             await cloudSyncCoordinator.queueBatchIfNeeded(batch.id)
         }
+    }
+
+    private func historyMutationFailure(_ underlyingError: Error) -> SunclubHistoryMutationResult {
+        Self.logger.error("Durable history mutation failed: \(String(describing: underlyingError), privacy: .public)")
+        let error = SunclubHistoryMutationError.persistenceFailure
+        logActionErrorMessage = error.localizedDescription
+        return .failure(error)
     }
 
     private func applyCloudSyncStartResult(_ result: CloudSyncStartResult) {
@@ -3819,6 +4110,46 @@ final class AppState {
 
     private func persistGrowthSettings() {
         growthFeatureStore.save(growthSettings)
+        syncRestorablePreferencesRevisionIfNeeded()
+    }
+
+    private func applyRestorablePreferencesFromSettingsIfNeeded() {
+        guard let preferences = settings.restorablePreferences,
+              preferences != lastAppliedRestorablePreferences else {
+            return
+        }
+        let previousUVBriefing = growthSettings.uvBriefing
+        growthSettings = preferences.merging(into: growthSettings)
+        growthFeatureStore.save(growthSettings)
+        lastAppliedRestorablePreferences = preferences
+        if growthSettings.uvBriefing != previousUVBriefing {
+            scheduleReminders()
+        }
+    }
+
+    private func syncRestorablePreferencesRevisionIfNeeded() {
+        let preferences = SunclubRestorablePreferences(growthSettings: growthSettings)
+        guard settings.restorablePreferences != preferences else {
+            lastAppliedRestorablePreferences = preferences
+            return
+        }
+        guard preferences.hasMeaningfulContent || settings.restorablePreferences != nil else {
+            return
+        }
+
+        do {
+            let batch = try historyService.applySettingsChange(
+                kind: .preferenceSettings,
+                summary: "Updated private restorable preferences.",
+                changedFields: [.restorablePreferences]
+            ) { snapshot in
+                snapshot.restorablePreferences = preferences
+            }
+            lastAppliedRestorablePreferences = preferences
+            finishDurableChange(batch, reschedulesReminders: false)
+        } catch {
+            _ = historyMutationFailure(error)
+        }
     }
 
     private var resolvedAccountabilityDisplayName: String {
@@ -3997,6 +4328,14 @@ final class AppState {
         refreshUVForecastIfNeeded()
         _ = importedBatchCount
         reloadWidgetTimelines()
+    }
+
+    private func restorePreferencesIfPresent(_ preferences: SunclubRestorablePreferences?) {
+        guard let preferences else {
+            return
+        }
+        growthSettings = preferences.merging(into: growthSettings)
+        persistGrowthSettings()
     }
 
     private func syncWidgetSnapshot() {

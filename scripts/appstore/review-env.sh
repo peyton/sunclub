@@ -76,7 +76,7 @@ prompt_required SUNCLUB_APP_REVIEW_CONTACT_PHONE "App Review contact phone"
 
 prompt_yes_no_gate \
   SUNCLUB_APP_PRIVACY_COMPLETED \
-  "Have you completed App Privacy in App Store Connect with Activity sharing data collected for App Functionality"
+  "Have you completed App Privacy in App Store Connect with no developer-collected data for this build"
 
 printf 'Type NOT_MEDICAL_DEVICE after setting regulated medical device status in App Store Connect: '
 IFS= read -r medical_status

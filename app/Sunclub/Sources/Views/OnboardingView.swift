@@ -120,6 +120,7 @@ struct EnableLocationView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @State private var feedbackTrigger = 0
+    @State private var isChoosingCity = false
 
     var body: some View {
         SunLightScreen(
@@ -134,13 +135,13 @@ struct EnableLocationView: View {
 
                 VStack(spacing: 14) {
                     Text("Use your location for local UV")
-                        .font(AppFont.rounded(size: 30, weight: .bold))
+                        .font(AppTextStyle.largeTitle.font)
                         .foregroundStyle(AppPalette.ink)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("Sunclub can show local UV and hourly forecast context. Defaults start with Face and Neck selected, SPF optional, and a 2-hour reapply reminder.")
-                        .font(AppFont.rounded(size: 17))
+                    Text("Sunclub can show local UV and hourly forecast context. Manual logging starts with Face and Neck selected, and reminder timing follows the interval you choose.")
+                        .font(AppTextStyle.body.font)
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -157,23 +158,45 @@ struct EnableLocationView: View {
                 .accessibilityIdentifier("onboarding.enableLocation")
 
                 Button("Choose a city instead") {
-                    continueToReminders(usesLiveUV: false)
+                    isChoosingCity = true
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .accessibilityHint("Continues setup without asking for location access.")
+                .accessibilityHint("Opens an Apple Maps city search without asking for location access.")
                 .accessibilityIdentifier("onboarding.skipLocation")
+
+                Button("Continue without UV") {
+                    continueToReminders(usesLiveUV: false)
+                }
+                .buttonStyle(SunTextButtonStyle())
+                .accessibilityHint("Continues setup without location or UV data. Sunclub will show UV unavailable.")
+                .accessibilityIdentifier("onboarding.skipUV")
             }
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: feedbackTrigger)
+        .sheet(isPresented: $isChoosingCity) {
+            CitySearchView { place in
+                guard appState.updateSelectedUVPlace(place) else {
+                    return false
+                }
+                feedbackTrigger += 1
+                router.open(.enableNotifications)
+                return true
+            }
+        }
         .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
 
     private func continueToReminders(usesLiveUV: Bool) {
-        feedbackTrigger += 1
-        if usesLiveUV, !appState.isUITesting {
-            appState.updateLiveUVPreference(enabled: true, allowPermissionPrompt: true)
+        if usesLiveUV {
+            guard appState.updateLiveUVPreference(
+                enabled: true,
+                allowPermissionPrompt: !appState.isUITesting
+            ) else {
+                return
+            }
         }
+        feedbackTrigger += 1
         router.open(.enableNotifications)
     }
 }
@@ -183,6 +206,7 @@ struct EnableNotificationsView: View {
     @Environment(AppRouter.self) private var router
     @State private var isCompleting = false
     @State private var completionFeedbackTrigger = 0
+    @State private var completionError: String?
 
     var body: some View {
         SunLightScreen(
@@ -197,11 +221,11 @@ struct EnableNotificationsView: View {
 
                 VStack(spacing: 14) {
                     Text("Enable reminders")
-                        .font(AppFont.rounded(size: 30, weight: .bold))
+                        .font(AppTextStyle.largeTitle.font)
                         .foregroundStyle(AppPalette.ink)
 
                     Text(reminderDescription)
-                        .font(AppFont.rounded(size: 17))
+                        .font(AppTextStyle.body.font)
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
 
@@ -210,6 +234,16 @@ struct EnableNotificationsView: View {
                         .foregroundStyle(AppPalette.ink)
                         .multilineTextAlignment(.center)
                         .padding(.top, 4)
+
+                    if let completionError {
+                        SunStatusCard(
+                            title: "Setup was not completed",
+                            detail: completionError,
+                            tint: AppColor.warning.opacity(0.8),
+                            symbol: "exclamationmark.triangle.fill"
+                        )
+                        .accessibilityIdentifier("onboarding.completionError")
+                    }
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -276,18 +310,31 @@ struct EnableNotificationsView: View {
             return
         }
 
-        completionFeedbackTrigger += 1
         isCompleting = true
+        completionError = nil
 
         Task { @MainActor in
+            let completionResult = appState.completeOnboarding()
+            guard completionResult.succeeded else {
+                completionError = appState.logActionErrorMessage
+                    ?? "Sunclub could not save your setup. Your choices are still here—please try again."
+                isCompleting = false
+                return
+            }
+
             if requestsNotifications, !appState.isUITesting {
                 let granted = await NotificationManager.shared.configure()
                 if granted {
-                    await NotificationManager.shared.scheduleReminders(using: appState)
+                    let report = await NotificationManager.shared.scheduleReminders(using: appState)
+                    if !report.isSuccessful {
+                        completionError = "Setup was saved, but some reminders could not be scheduled. Try again or continue without reminders."
+                        isCompleting = false
+                        return
+                    }
                 }
             }
 
-            appState.completeOnboarding()
+            completionFeedbackTrigger += 1
             isCompleting = false
 
             if appState.importPendingAccountabilityInvitesIfNeeded() {

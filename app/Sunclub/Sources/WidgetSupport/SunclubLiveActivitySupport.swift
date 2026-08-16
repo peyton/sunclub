@@ -10,6 +10,7 @@ struct SunclubLiveActivityAttributes: ActivityAttributes {
         var lastLogDetail: String
         var reapplyStartDate: Date?
         var reapplyDeadline: Date?
+        var uvValidUntil: Date?
     }
 
     var headline: String
@@ -27,7 +28,21 @@ extension SunclubLiveActivityAttributes.ContentState {
     }
 
     var uvPillLabel: String {
-        "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
+        uvPillLabel(now: Date())
+    }
+
+    func hasFreshUV(now: Date = Date()) -> Bool {
+        guard let uvValidUntil else {
+            return false
+        }
+        return now <= uvValidUntil
+    }
+
+    func uvPillLabel(now: Date = Date()) -> String {
+        guard hasFreshUV(now: now) else {
+            return "UV unavailable"
+        }
+        return "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
     }
 
     var appliedLabel: String {
@@ -71,9 +86,9 @@ extension SunclubLiveActivityAttributes.ContentState {
         let nextText = nextReapplyLabel(now: now).map { ". \($0)" } ?? ""
 
         if isReapplyDue(now: now) {
-            return "\(statusTitle(now: now)). \(uvPillLabel). \(appliedLabel)."
+            return "\(statusTitle(now: now)). \(uvPillLabel(now: now)). \(appliedLabel)."
         }
 
-        return "\(statusTitle(now: now)) \(fallbackTimerText(now: now)). \(uvPillLabel). \(appliedLabel)\(nextText)."
+        return "\(statusTitle(now: now)) \(fallbackTimerText(now: now)). \(uvPillLabel(now: now)). \(appliedLabel)\(nextText)."
     }
 }

@@ -69,12 +69,16 @@ final class WeatherKitLiveUVWeatherProvider: LiveUVWeatherProviding {
 @MainActor
 @Observable
 final class UVIndexService {
+    nonisolated static let verifiedDataMaxAge: TimeInterval = 2 * 60 * 60
+
     private(set) var currentReading: UVReading?
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var liveUVAccessState: LiveUVAccessState = .disabled
     private(set) var lastBundle: SunclubUVForecastBundle?
     private(set) var attribution: SunclubWeatherAttribution?
+    private(set) var status: SunclubUVStatus = .unavailable
+    private(set) var protectionWindow: SunclubUVProtectionWindow?
 
     private let locationService: SharedLocationManaging
     private let weatherProvider: any LiveUVWeatherProviding
@@ -96,18 +100,12 @@ final class UVIndexService {
         self.budget = budget ?? SunclubWeatherKitBudget()
         self.networkPathProvider = networkPathProvider
         self.lastBundle = self.cache.lastBundle()
-        if let cachedIndex = self.lastBundle?.currentIndex {
-            self.currentReading = UVReading(
-                index: cachedIndex,
-                timestamp: self.lastBundle?.generatedAt ?? Date(),
-                source: .weatherKit
-            )
-        }
     }
 
     /// Fetches a UV bundle (current + hourly + daily).
     /// - Parameters:
-    ///   - prefersLiveData: user setting; when false, falls back to heuristic.
+    ///   - prefersLiveData: when true, current location is preferred.
+    ///   - selectedPlace: saved coordinates used when current location is disabled or unavailable.
     ///   - allowPermissionPrompt: only true on explicit user action (tapping "Enable Live UV").
     ///   - now: injected for tests.
     /// This is the single entry point — it returns fast if the cache is fresh for the
@@ -115,6 +113,7 @@ final class UVIndexService {
     /// they should read `lastBundle` only.
     func fetchUVIndex(
         prefersLiveData: Bool,
+        selectedPlace: SunclubSelectedUVPlace? = nil,
         allowPermissionPrompt: Bool = false,
         now: Date = Date()
     ) async {
@@ -122,100 +121,143 @@ final class UVIndexService {
             return
         }
 
-        if !prefersLiveData {
-            liveUVAccessState = .disabled
-            currentReading = UVReading(
-                index: Self.estimatedUVIndex(at: now),
-                timestamp: now,
-                source: .heuristic
+        errorMessage = nil
+
+        if !prefersLiveData, let selectedPlace {
+            isLoading = true
+            defer { isLoading = false }
+            await fetchWeather(
+                for: CLLocation(latitude: selectedPlace.latitude, longitude: selectedPlace.longitude),
+                source: .selectedPlace(displayName: selectedPlace.displayName),
+                now: now
             )
             return
         }
 
-        if let cached = lastBundleIfLive(now: now) {
-            applyBundle(cached)
+        guard prefersLiveData else {
+            applyUnavailable(accessState: .disabled)
             return
         }
 
         isLoading = true
-        errorMessage = nil
         defer { isLoading = false }
 
         if allowPermissionPrompt {
             _ = await locationService.requestWhenInUseAuthorizationIfNeeded()
         }
 
-        let status = locationService.authorizationStatus
-        switch status {
+        guard let resolvedLocation = await preferredLocation(selectedPlace: selectedPlace) else {
+            return
+        }
+        await fetchWeather(
+            for: resolvedLocation.location,
+            source: resolvedLocation.source,
+            now: now
+        )
+    }
+
+    private func preferredLocation(
+        selectedPlace: SunclubSelectedUVPlace?
+    ) async -> (location: CLLocation, source: SunclubUVLocationSource)? {
+        switch locationService.authorizationStatus {
         case .denied, .restricted:
-            liveUVAccessState = .denied
-            currentReading = UVReading(
-                index: Self.estimatedUVIndex(at: now),
-                timestamp: now,
-                source: .heuristic
-            )
-            return
+            if let selectedPlace {
+                return selectedLocation(for: selectedPlace)
+            }
+            applyUnavailable(accessState: .denied, source: .liveLocation)
+            return nil
         case .notDetermined:
-            liveUVAccessState = .needsPermission
-            currentReading = UVReading(
-                index: Self.estimatedUVIndex(at: now),
-                timestamp: now,
-                source: .heuristic
-            )
-            return
+            if let selectedPlace {
+                return selectedLocation(for: selectedPlace)
+            }
+            applyUnavailable(accessState: .needsPermission, source: .liveLocation)
+            return nil
         default:
             break
         }
 
         do {
-            let location = try await locationService.currentLocation()
-
-            if let fresh = cache.freshBundle(for: location, now: now) {
-                applyBundle(fresh)
-                return
+            return (try await locationService.currentLocation(), .liveLocation)
+        } catch {
+            if let selectedPlace {
+                return selectedLocation(for: selectedPlace)
             }
+            applyUnavailable(
+                accessState: .unavailable,
+                source: .liveLocation,
+                errorMessage: error.localizedDescription
+            )
+            return nil
+        }
+    }
 
-            if let path = networkPathProvider(), path.isConstrained {
-                applyLowDataFallback(now: now)
-                return
-            }
+    private func selectedLocation(
+        for place: SunclubSelectedUVPlace
+    ) -> (location: CLLocation, source: SunclubUVLocationSource) {
+        (
+            CLLocation(latitude: place.latitude, longitude: place.longitude),
+            .selectedPlace(displayName: place.displayName)
+        )
+    }
 
-            switch budget.check(now: now) {
-            case .allow:
-                break
-            case .deny(let reason):
-                applyBudgetDeny(reason: reason, now: now)
-                return
-            }
+    private func fetchWeather(
+        for location: CLLocation,
+        source: SunclubUVLocationSource,
+        now: Date
+    ) async {
+        if let cached = cache.freshBundle(for: location, now: now),
+           cached.isFresh(now: now, ttl: Self.verifiedDataMaxAge) {
+            applyBundle(cached, source: source, now: now)
+            return
+        }
 
+        if let path = networkPathProvider(), path.isConstrained {
+            applyUnavailable(
+                accessState: .unavailable,
+                source: source,
+                location: location,
+                errorMessage: "UV data is unavailable in Low Data Mode."
+            )
+            return
+        }
+
+        switch budget.check(now: now) {
+        case .allow:
+            break
+        case .deny(let reason):
+            applyUnavailable(
+                accessState: .unavailable,
+                source: source,
+                location: location,
+                errorMessage: reason
+            )
+            return
+        }
+
+        do {
             let bundle = try await weatherProvider.uvBundle(for: location, referenceDate: now)
             budget.recordFetch(at: now)
             cache.store(bundle)
-            applyBundle(bundle)
-            liveUVAccessState = .live
+            applyBundle(bundle, source: source, now: now)
 
             if attribution == nil {
                 attribution = try? await weatherProvider.attributionMarkup()
             }
         } catch {
-            liveUVAccessState = .unavailable
-            errorMessage = error.localizedDescription
-            currentReading = UVReading(
-                index: Self.estimatedUVIndex(at: now),
-                timestamp: now,
-                source: .heuristic
+            applyUnavailable(
+                accessState: .unavailable,
+                source: source,
+                location: location,
+                errorMessage: error.localizedDescription
             )
         }
     }
 
-    private func lastBundleIfLive(now: Date) -> SunclubUVForecastBundle? {
-        guard let lastBundle else {
-            return nil
-        }
-        return lastBundle.isFresh(now: now, ttl: 60 * 30) ? lastBundle : nil
-    }
-
-    private func applyBundle(_ bundle: SunclubUVForecastBundle) {
+    private func applyBundle(
+        _ bundle: SunclubUVForecastBundle,
+        source: SunclubUVLocationSource,
+        now: Date
+    ) {
         lastBundle = bundle
         if let index = bundle.currentIndex {
             currentReading = UVReading(
@@ -223,45 +265,53 @@ final class UVIndexService {
                 timestamp: bundle.generatedAt,
                 source: .weatherKit
             )
+        } else {
+            currentReading = nil
         }
         liveUVAccessState = .live
-    }
-
-    private func applyLowDataFallback(now: Date) {
-        liveUVAccessState = .unavailable
-        errorMessage = "Low Data Mode: using Sunclub's local UV estimate."
-        currentReading = UVReading(
-            index: Self.estimatedUVIndex(at: now),
-            timestamp: now,
-            source: .heuristic
+        errorMessage = nil
+        status = SunclubUVStatus(
+            availability: .available,
+            source: source,
+            freshness: .fresh,
+            updatedAt: bundle.generatedAt
         )
+        protectionWindow = bundle.protectionWindow(for: now)
     }
 
-    private func applyBudgetDeny(reason: String, now: Date) {
-        liveUVAccessState = .unavailable
-        errorMessage = reason
-        if lastBundle == nil {
-            currentReading = UVReading(
-                index: Self.estimatedUVIndex(at: now),
-                timestamp: now,
-                source: .heuristic
-            )
+    private func applyUnavailable(
+        accessState: LiveUVAccessState,
+        source: SunclubUVLocationSource? = nil,
+        location: CLLocation? = nil,
+        errorMessage: String? = nil
+    ) {
+        let cached = cache.lastBundle()
+        let matchesLocation: Bool
+        if let cached, let location {
+            let cachedLocation = CLLocation(latitude: cached.latitude, longitude: cached.longitude)
+            matchesLocation = cachedLocation.distance(from: location) <= 5_000
+        } else {
+            matchesLocation = false
         }
+        if !matchesLocation {
+            cache.clear()
+        }
+
+        liveUVAccessState = accessState
+        self.errorMessage = errorMessage
+        currentReading = nil
+        lastBundle = nil
+        protectionWindow = nil
+        status = SunclubUVStatus(
+            availability: .unavailable,
+            source: source,
+            freshness: matchesLocation ? .stale : .unavailable,
+            updatedAt: matchesLocation ? cached?.generatedAt : nil
+        )
     }
 
     func setForTestingCurrentReading(_ reading: UVReading?) {
         currentReading = reading
     }
 
-    nonisolated static func estimatedUVIndex(
-        at date: Date,
-        calendar: Calendar = .current,
-        latitude: Double? = nil
-    ) -> Int {
-        SunclubUVEstimator.estimatedIndex(
-            at: date,
-            calendar: calendar,
-            latitude: latitude
-        )
-    }
 }

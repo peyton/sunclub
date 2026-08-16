@@ -134,58 +134,7 @@ final class ImprovementTests: XCTestCase {
         XCTAssertFalse(try context.fetch(FetchDescriptor<SettingsRevision>()).isEmpty)
     }
 
-    // MARK: - Fix 6: UV heuristic hemisphere support
-
-    func testEstimatedUVNorthernHemisphereSummerIsHigh() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-
-        // July noon, Northern Hemisphere
-        let julyNoon = calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 12))!
-        let uvNorth = UVIndexService.estimatedUVIndex(at: julyNoon, calendar: calendar, latitude: 40.0)
-        XCTAssertGreaterThanOrEqual(uvNorth, 6, "Northern Hemisphere summer noon should have high UV")
-    }
-
-    func testEstimatedUVSouthernHemisphereSummerIsHigh() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-
-        // January noon, Southern Hemisphere (their summer)
-        let janNoon = calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 12))!
-        let uvSouth = UVIndexService.estimatedUVIndex(at: janNoon, calendar: calendar, latitude: -33.0)
-        XCTAssertGreaterThanOrEqual(uvSouth, 6, "Southern Hemisphere January noon should have high UV")
-    }
-
-    func testEstimatedUVSouthernHemisphereWinterIsLow() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-
-        // July noon, Southern Hemisphere (their winter)
-        let julyNoon = calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 12))!
-        let uvSouth = UVIndexService.estimatedUVIndex(at: julyNoon, calendar: calendar, latitude: -33.0)
-        XCTAssertLessThanOrEqual(uvSouth, 3, "Southern Hemisphere July noon should have low UV")
-    }
-
-    func testEstimatedUVNilLatitudeDefaultsToNorthernHemisphere() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-
-        let julyNoon = calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 12))!
-        let uvDefault = UVIndexService.estimatedUVIndex(at: julyNoon, calendar: calendar, latitude: nil)
-        let uvNorth = UVIndexService.estimatedUVIndex(at: julyNoon, calendar: calendar, latitude: 40.0)
-        XCTAssertEqual(uvDefault, uvNorth, "nil latitude should behave like Northern Hemisphere")
-    }
-
-    func testEstimatedUVNighttimeIsZero() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-
-        let midnight = calendar.date(from: DateComponents(year: 2026, month: 7, day: 15, hour: 2))!
-        XCTAssertEqual(UVIndexService.estimatedUVIndex(at: midnight, calendar: calendar, latitude: 40.0), 0)
-        XCTAssertEqual(UVIndexService.estimatedUVIndex(at: midnight, calendar: calendar, latitude: -33.0), 0)
-    }
-
-    // MARK: - Fix 7 & 8: AppState error logging
+    // MARK: - AppState error logging
 
     func testAppStateHasLastRefreshErrorProperty() throws {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()

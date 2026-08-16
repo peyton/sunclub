@@ -29,6 +29,14 @@ def current_manifest(
     )
 
 
+def test_review_package_matches_data_not_collected_manifest() -> None:
+    package = review_package.generate_review_package(current_manifest())
+
+    assert "select Data Not Collected" in package
+    assert "disclose Name, User ID" not in package
+    assert "public Activity sharing transport disabled" in package
+
+
 def test_validator_rejects_legacy_submission_problems() -> None:
     manifest = json.loads(
         """

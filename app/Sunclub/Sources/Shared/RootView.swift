@@ -35,20 +35,23 @@ struct RootView: View {
     }
 
     private var tabbedRoot: some View {
-        NavigationStack(path: pathBinding(for: router.selectedTab)) {
-            tabRoot(for: router.selectedTab)
-                .navigationDestination(for: AppRoute.self) { route in
-                    destination(for: route)
-                }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        VStack(spacing: 0) {
+            NavigationStack(path: pathBinding(for: router.selectedTab)) {
+                tabRoot(for: router.selectedTab)
+                    .navigationDestination(for: AppRoute.self) { route in
+                        destination(for: route)
+                    }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
             if router.path(for: router.selectedTab).isEmpty {
                 SunAppTabBar(
                     selectedTab: router.selectedTab,
                     onSelectTab: { tab in
                         router.open(tab.rootRoute)
                     },
-                    onAdd: openManualLogFromCurrentTab
+                    centerAction: contextualTabAction,
+                    onAdd: performHomeDailyPlanAction
                 )
             }
         }
@@ -181,19 +184,51 @@ struct RootView: View {
         )
     }
 
-    private func openManualLogFromCurrentTab() {
-        appState.clearManualLogPrefill()
-        let selectedDay = appState.startOfLocalDay(appState.selectedDay)
-        let targetDay = appState.canLog(on: selectedDay)
-            ? selectedDay
-            : appState.startOfLocalDay(appState.referenceDate)
-        let context = appState.currentLogContext(for: targetDay, source: .manualLog)
-        appState.prepareManualLogRouteContext(
-            targetDate: context.date,
-            targetDayPart: context.dayPart,
-            source: context.source
+    private func performHomeDailyPlanAction() {
+        switch appState.homeDailyPlanPresentation.action {
+        case .logToday, .addDetails:
+            appState.clearManualLogPrefill()
+            let today = appState.startOfLocalDay(appState.referenceDate)
+            let context = appState.currentLogContext(for: today, source: .manualLog)
+            appState.prepareManualLogRouteContext(
+                targetDate: context.date,
+                targetDayPart: context.dayPart,
+                source: context.source
+            )
+            router.push(.manualLog, targetDate: context.date, targetDayPart: context.dayPart)
+        case .backfillYesterday:
+            router.open(.backfillYesterday)
+        case .logReapply:
+            router.open(.reapplyCheckIn)
+        case .viewProgress:
+            router.open(.weeklySummary)
+        case .reviewRecovery:
+            router.open(.recovery)
+        case .repairReminders:
+            appState.repairReminderSchedule()
+        case .openSettings:
+            router.open(.settingsNotifications)
+        }
+    }
+
+    private var contextualTabAction: SunAppTabBarAction {
+        let presentation = appState.homeDailyPlanPresentation
+        let shortTitle = switch presentation.action {
+        case .logToday: "Log"
+        case .backfillYesterday: "Backfill"
+        case .logReapply: "Reapply"
+        case .addDetails: "Details"
+        case .viewProgress: "Progress"
+        case .reviewRecovery: "Review"
+        case .repairReminders: "Repair"
+        case .openSettings: "Settings"
+        }
+        return SunAppTabBarAction(
+            shortTitle: shortTitle,
+            title: presentation.actionTitle,
+            systemImage: presentation.symbolName,
+            accessibilityHint: presentation.detail
         )
-        router.push(.manualLog, targetDate: context.date, targetDayPart: context.dayPart)
     }
 }
 
