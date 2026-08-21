@@ -390,11 +390,14 @@ final class SunclubUITests: XCTestCase {
 
         let contextualAction = app.buttons["home.logManually"]
         XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
-        XCTAssertLessThan(
+        XCTAssertGreaterThanOrEqual(
             contextualAction.frame.width,
             app.frame.width / 2,
-            "Expected the accessibility center action to remain a labeled tab tile instead of covering the full tab bar."
+            "Expected the expanded native accessory to reserve a full-width action surface."
         )
+        XCTAssertGreaterThanOrEqual(contextualAction.frame.height, 44)
+        XCTAssertTrue(contextualAction.isHittable)
+        XCTAssertFalse(contextualAction.label.isEmpty)
         let dailyPlanAction = app.buttons["home.dailyPlan.action"]
         XCTAssertTrue(
             scrollToHittableElement(dailyPlanAction, in: app, attempts: 6),
@@ -977,6 +980,9 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Sunscreen Logged"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["timeline.footer.today"].exists)
+        XCTAssertFalse(app.buttons["home.logManually"].exists)
         XCTAssertTrue(app.buttons["success.done"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["success.addDetails"], in: app))
 

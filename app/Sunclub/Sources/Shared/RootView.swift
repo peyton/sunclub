@@ -369,6 +369,8 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
     }
 
     final class InstallerViewController: UIViewController {
+        private var didInstallIdentifiers = false
+
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
             installIdentifiers()
@@ -380,7 +382,8 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
         }
 
         func installIdentifiers() {
-            guard let window = view.window,
+            guard !didInstallIdentifiers,
+                  let window = view.window,
                   let tabBar = findTabBar(in: window),
                   let items = tabBar.items,
                   items.count == AppTab.allCases.count else {
@@ -390,6 +393,7 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
             for (item, tab) in zip(items, AppTab.allCases) {
                 item.accessibilityIdentifier = tab.accessibilityIdentifier
             }
+            didInstallIdentifiers = true
         }
 
         private func findTabBar(in view: UIView) -> UITabBar? {

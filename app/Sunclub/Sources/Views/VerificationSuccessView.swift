@@ -81,7 +81,7 @@ struct VerificationSuccessView: View {
             completionFeedbackTrigger += 1
         }
         .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility(title: presentation.title, displayMode: .inline)
     }
 
     private var successNextStepCard: some View {
