@@ -38,7 +38,7 @@ struct AutomationView: View {
                         showsChevron: true
                     )
                     .padding(18)
-                    .sunGlassCard(cornerRadius: AppRadius.card)
+                    .sunGlassCard(cornerRadius: AppRadius.card, interactive: true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("automation.docs")

@@ -66,6 +66,23 @@ final class DesignSystemAdoptionTests: XCTestCase {
         }
     }
 
+    func testTappableGlassCardsOptIntoInteractiveSurface() throws {
+        let tappableCardRoutes: [String: String] = [
+            "app/Sunclub/Sources/Views/AutomationView.swift":
+                ".sunGlassCard(cornerRadius: AppRadius.card, interactive: true)",
+            "app/Sunclub/Sources/Views/TimelineHomeView.swift":
+                ".sunGlassCard(cornerRadius: AppRadius.card, interactive: true)"
+        ]
+
+        for (path, interactiveCard) in tappableCardRoutes {
+            let content = try source(path)
+            XCTAssertTrue(
+                content.contains(interactiveCard),
+                "Tappable card in \(path) must opt into interactive Liquid Glass."
+            )
+        }
+    }
+
     func testLegacyHomePathIsRemoved() throws {
         let root = try repoRoot
         XCTAssertFalse(

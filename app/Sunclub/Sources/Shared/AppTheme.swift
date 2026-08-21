@@ -1836,10 +1836,17 @@ extension View {
     }
 
     @ViewBuilder
-    func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.86) -> some View {
+    func sunGlassCard(
+        cornerRadius: CGFloat = AppRadius.card,
+        fillOpacity: Double = 0.86,
+        interactive: Bool = false
+    ) -> some View {
         #if os(iOS) && !os(watchOS)
         if #available(iOS 26.0, *) {
-            sunGlassSurface(cornerRadius: cornerRadius)
+            sunGlassSurface(
+                cornerRadius: cornerRadius,
+                style: interactive ? .interactive : .regular
+            )
         } else {
             legacySunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
         }

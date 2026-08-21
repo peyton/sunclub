@@ -661,7 +661,7 @@ struct TimelineHomeView: View {
                 showsChevron: false
             )
             .padding(14)
-            .sunGlassCard(cornerRadius: AppRadius.card)
+            .sunGlassCard(cornerRadius: AppRadius.card, interactive: true)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(
