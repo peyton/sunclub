@@ -70,6 +70,17 @@ Fix round 1 evidence on the final source state:
 - Compile-cache-disabled device builds: `SunclubDev` passed and production `Sunclub` passed; widget and Watch targets compiled in both.
 - Broader design/accessibility unit, exact focused UI, and full-unit reruns each reached `Testing started` and then produced no test output because the simulator service stalled. Each was attempted once, bounded, and had its orphaned `xcodebuild`/`simctl diagnose` processes terminated. No XCTest assertion failure was emitted. Aggregate `just ci` was not repeated after the already-recorded environment-only attempts.
 
+Final whole-branch review fix evidence:
+
+- Kept one structurally stable iOS 26 `TabView`; root chrome visibility now changes through stable toolbar and accessory modifiers instead of replacing the tab/navigation subtree.
+- Added `AppPalette.nativeChromeTint`, resolving to deep navy in light mode, amber in dark mode, black in increased-contrast light mode, and white in increased-contrast dark mode. Numeric tests require at least 4.5:1 against the corresponding light/dark chrome backgrounds.
+- Removed the explicit legacy primary-action foreground from `PrimaryButton` labels so native prominent glass controls choose their adaptive system foreground; the pre-iOS-26 button style still supplies the existing legacy foreground.
+- RED contrast: focused unit build failed because `AppPalette.nativeChromeTint` did not exist.
+- RED state retention: `testNativeTabShellPreservesHistoryMonthAcrossDetailPushAndPop` executed on the known iOS 26.5 simulator and failed after changing History month, pushing and popping a Settings detail, then returning to History.
+- GREEN contrast: 1 test executed, 0 failures. Focused design/accessibility/router tests: 28 executed, 0 failures. Full compile-cache-disabled unit suite: 381 executed, 0 failures.
+- The final state-retention UI rerun was attempted once after implementation but the simulator rejected the test runner before execution with `FBSOpenApplicationErrorDomain Code=6`, `Busy (Application failed preflight checks)`. No second post-fix retry was made. The regression remains configured for dark mode plus forced increased contrast, and a subsequent `build-for-testing` compiled and linked the final UI test bundle successfully.
+- Clean Python: 199 passed. Lint: passed with 52 existing warning-only SwiftLint findings and 0 serious violations. Compile-cache-disabled `SunclubDev` and production `Sunclub` device builds both succeeded, including widget and Watch targets.
+
 Commands:
 
 ```text
@@ -96,6 +107,19 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOC
 
 just test-python
 CI=1 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer TEST_XCODEBUILD_MAX_ATTEMPTS=1 just ci
+
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 TEST_XCODEBUILD_ARGS='-parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubTests/DarkModeThemeTests/testNativeChromeTintMaintainsContrastAcrossAppearancesAndContrastModes' just test-unit
+
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 MISE_CONFIG_DIR="$PWD/.config/mise" MISE_TRUSTED_CONFIG_PATHS="$PWD" MISE_YES=1 mise exec -- tuist xcodebuild test-without-building -workspace "$PWD/app/Sunclub.xcworkspace" -scheme Sunclub -configuration Debug -destination 'id=72D41449-7D9E-44E5-B376-CF6FC9B6B153' -derivedDataPath "$PWD/.DerivedData/test" -only-testing:SunclubUITests/SunclubUITests/testNativeTabShellPreservesHistoryMonthAcrossDetailPushAndPop -parallel-testing-enabled NO -maximum-parallel-testing-workers 1
+
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 TEST_XCODEBUILD_ARGS='-parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubTests/DarkModeThemeTests -only-testing:SunclubTests/DesignSystemAdoptionTests -only-testing:SunclubTests/AccessibilityScorecardTests -only-testing:SunclubTests/SunclubTests/testAppRouterKeepsPushedRoutesInsideSelectedTab -only-testing:SunclubTests/SunclubTests/testAppRouterPreservesFourIndependentTabStacks -only-testing:SunclubTests/SunclubTests/testContextualTabActionUsesDailyPlanCompactAndExpandedCopy' just test-unit
+
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit
+
+just test-python
+SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 just lint
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 SUNCLUB_FLAVOR=dev just build
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 SUNCLUB_FLAVOR=prod just build
 ```
 
 ## Task 4 Handoff

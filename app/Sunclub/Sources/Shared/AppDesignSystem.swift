@@ -483,7 +483,9 @@ struct PrimaryButton: View {
                         .accessibilityHidden(true)
                 }
 
-                AppText(title, style: .bodyMedium, color: AppColor.primaryActionForeground)
+                Text(title)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, minHeight: 56)
         }

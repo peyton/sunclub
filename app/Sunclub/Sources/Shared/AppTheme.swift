@@ -2,9 +2,23 @@ import SwiftUI
 import UIKit
 
 enum AppPalette {
-    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
+    private static func adaptive(
+        light: UIColor,
+        dark: UIColor,
+        increasedContrastLight: UIColor? = nil,
+        increasedContrastDark: UIColor? = nil
+    ) -> Color {
         Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark ? dark : light
+            switch (traits.userInterfaceStyle, traits.accessibilityContrast) {
+            case (.dark, .high):
+                increasedContrastDark ?? dark
+            case (.dark, _):
+                dark
+            case (_, .high):
+                increasedContrastLight ?? light
+            default:
+                light
+            }
         })
     }
 
@@ -26,6 +40,12 @@ enum AppPalette {
     static let sun = adaptive(
         light: uiColor(red: 0.970, green: 0.670, blue: 0.000),
         dark: uiColor(red: 1.000, green: 0.705, blue: 0.145)
+    )
+    static let nativeChromeTint = adaptive(
+        light: uiColor(red: 0.025, green: 0.108, blue: 0.205),
+        dark: uiColor(red: 1.000, green: 0.705, blue: 0.145),
+        increasedContrastLight: .black,
+        increasedContrastDark: .white
     )
     static let coral = adaptive(
         light: uiColor(red: 0.870, green: 0.290, blue: 0.220),

@@ -304,6 +304,33 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testNativeTabShellPreservesHistoryMonthAcrossDetailPushAndPop() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_HISTORY=monthlyReview",
+            "UITEST_FORCE_DARK_MODE",
+            "UITEST_FORCE_INCREASE_CONTRAST"
+        ])
+
+        app.buttons["home.historyCard"].tap()
+        let monthTitle = app.staticTexts["history.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 5))
+        let currentMonth = monthTitle.label
+        app.buttons["history.previousMonth"].tap()
+        XCTAssertTrue(waitForDifferentLabel(from: currentMonth, on: monthTitle))
+        let selectedMonth = monthTitle.label
+
+        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
+        app.buttons["settings.section.reminders"].tap()
+        XCTAssertTrue(app.navigationBars["Sunscreen & Reminders"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.buttons["home.historyCard"].waitForExistence(timeout: 5))
+        app.buttons["home.historyCard"].tap()
+        XCTAssertTrue(waitForLabel(selectedMonth, on: monthTitle))
+    }
+
+    @MainActor
     func testSettingsDetailCanPopWithLeftEdgeSwipe() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]

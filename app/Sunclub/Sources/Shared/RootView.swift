@@ -90,20 +90,18 @@ struct RootView: View {
     }
 
     @available(iOS 26.0, *)
-    @ViewBuilder
     private var nativeTabbedRoot: some View {
-        if router.showsRootTabChrome {
-            nativeTabView
-                .tabViewBottomAccessory {
+        nativeTabView
+            .tabViewBottomAccessory {
+                if router.showsRootTabChrome {
                     SunNativeTabAccessory(
                         action: contextualTabAction,
                         onPerform: performHomeDailyPlanAction
                     )
                 }
-        } else {
-            nativeTabView
-                .toolbar(.hidden, for: .tabBar)
-        }
+            }
+            .toolbar(router.showsRootTabChrome ? .visible : .hidden, for: .tabBar)
+            .tint(AppPalette.nativeChromeTint)
     }
 
     @available(iOS 26.0, *)
