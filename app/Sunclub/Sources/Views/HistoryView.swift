@@ -132,7 +132,8 @@ struct HistoryView: View {
             value: value,
             label: label,
             systemImage: label.contains("open") ? "calendar" : "checkmark.circle.fill",
-            tint: label.contains("open") ? AppPalette.sun : AppPalette.success
+            tint: label.contains("open") ? AppPalette.sun : AppPalette.success,
+            usesGlass: false
         )
     }
 
@@ -206,18 +207,21 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func deletionErrorActions(for day: Date) -> some View {
-        PrimaryButton("Try Again", systemImage: "arrow.clockwise", identifier: "history.deleteRetry") {
+        PrimaryButton(
+            "Try Again",
+            systemImage: "arrow.clockwise",
+            identifier: "history.deleteRetry",
+            usesGlass: false
+        ) {
             if deleteRecordAndPreserveSelection(for: day) {
                 failedDeletionDay = nil
             }
         }
-        .sunGlassPrimaryButton()
 
-        SecondaryPillButton("Keep Entry", identifier: "history.deleteCancel") {
+        SecondaryPillButton("Keep Entry", identifier: "history.deleteCancel", usesGlass: false) {
             failedDeletionDay = nil
             appState.clearLogActionError()
         }
-        .sunGlassSecondaryButton()
     }
 
     private var monthNavigator: some View {
@@ -260,8 +264,7 @@ struct HistoryView: View {
                 .foregroundStyle(isEnabled ? AppPalette.ink : AppPalette.muted)
                 .frame(width: 44, height: 44)
         }
-        .buttonStyle(HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))
-        .sunGlassIconButton()
+        .sunGlassIconButton(legacyStyle: HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))
         .disabled(!isEnabled)
     }
 
@@ -696,7 +699,6 @@ struct HistoryView: View {
                     router.push(.recovery)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("history.conflict.review")
             }
             .padding(.top, 6)
@@ -764,7 +766,8 @@ struct HistoryView: View {
             label: "logged days",
             symbolName: "checkmark.circle.fill",
             tint: AppPalette.success,
-            accessibilityIdentifier: "history.month.applied"
+            accessibilityIdentifier: "history.month.applied",
+            usesGlass: false
         )
 
         SunMetricPill(
@@ -772,7 +775,8 @@ struct HistoryView: View {
             label: "active days",
             symbolName: "calendar",
             tint: AppPalette.sun,
-            accessibilityIdentifier: "history.month.active"
+            accessibilityIdentifier: "history.month.active",
+            usesGlass: false
         )
 
         SunMetricPill(
@@ -780,7 +784,8 @@ struct HistoryView: View {
             label: "month",
             symbolName: "chart.bar.fill",
             tint: AppPalette.pool,
-            accessibilityIdentifier: "history.month.rate"
+            accessibilityIdentifier: "history.month.rate",
+            usesGlass: false
         )
     }
 
@@ -858,7 +863,6 @@ struct HistoryView: View {
                 }
             }
             .buttonStyle(SunSecondaryButtonStyle())
-            .sunGlassSecondaryButton()
             .accessibilityIdentifier("history.monthPatternsToggle")
 
             if isShowingMonthlyInsights {
@@ -915,25 +919,33 @@ struct HistoryView: View {
             PrimaryButton(
                 isToday(day) ? "Log Today" : "Backfill Day",
                 systemImage: isToday(day) ? "sun.max" : "calendar.badge.plus",
-                identifier: "history.backfillRecord"
+                identifier: "history.backfillRecord",
+                usesGlass: false
             ) {
                 editorPresentation = HistoryEditorPresentation(day: day)
             }
-            .sunGlassPrimaryButton()
         }
     }
 
     @ViewBuilder
     private func loggedDayActions(for day: Date) -> some View {
-        PrimaryButton("Edit Entry", systemImage: "pencil", identifier: "history.editRecord") {
+        PrimaryButton(
+            "Edit Entry",
+            systemImage: "pencil",
+            identifier: "history.editRecord",
+            usesGlass: false
+        ) {
             editorPresentation = HistoryEditorPresentation(day: day)
         }
-        .sunGlassPrimaryButton()
 
-        SecondaryPillButton("Delete", systemImage: "trash", identifier: "history.deleteRecord") {
+        SecondaryPillButton(
+            "Delete",
+            systemImage: "trash",
+            identifier: "history.deleteRecord",
+            usesGlass: false
+        ) {
             dayPendingDeletion = day
         }
-        .sunGlassSecondaryButton()
     }
 
     private func isToday(_ day: Date) -> Bool {
@@ -1285,7 +1297,6 @@ struct HistoryRecordEditorView: View {
                     closeEditor()
                 }
             }
-            .buttonStyle(SunPrimaryButtonStyle())
             .sunGlassPrimaryButton()
             .accessibilityIdentifier("historyEditor.save")
         }

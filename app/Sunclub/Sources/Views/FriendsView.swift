@@ -49,7 +49,6 @@ struct AccountabilityOnboardingView: View {
                         appState.recordShareActionStarted()
                         shareSheetItem = ShareSheetItem(items: [appState.accountabilityInviteShareText])
                     }
-                    .buttonStyle(SunPrimaryButtonStyle())
                     .sunGlassPrimaryButton()
                     .accessibilityIdentifier("accountabilityOnboarding.share")
 
@@ -57,7 +56,6 @@ struct AccountabilityOnboardingView: View {
                         appState.activateAccountability()
                         router.replace(with: .friends)
                     }
-                    .buttonStyle(SunSecondaryButtonStyle())
                     .sunGlassSecondaryButton()
                 }
 
@@ -74,7 +72,6 @@ struct AccountabilityOnboardingView: View {
                     router.replace(with: .friends)
                 }
             }
-            .buttonStyle(SunPrimaryButtonStyle())
             .sunGlassPrimaryButton()
             .accessibilityIdentifier("accountabilityOnboarding.next")
         }
@@ -228,7 +225,6 @@ struct FriendsView: View {
                 savePreferredName()
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.activate")
 
             if let statusMessage = localFeedbackMessage ?? appState.friendImportMessage {
@@ -371,7 +367,6 @@ struct FriendsView: View {
                     localFeedbackMessage = "Invite copied."
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("friends.copyInvite")
 
                 Button("Share") {
@@ -379,7 +374,6 @@ struct FriendsView: View {
                     sheet = .share([appState.accountabilityInviteShareText])
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
-                .sunGlassPrimaryButton()
                 .accessibilityIdentifier("friends.shareInvite")
             }
         }
@@ -421,7 +415,6 @@ struct FriendsView: View {
                 importFriend()
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.import")
         }
         .padding(18)
@@ -620,7 +613,6 @@ private struct FriendAccountabilityRow: View {
                 onPoke()
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.poke.\(friend.id.uuidString)")
         }
 
@@ -629,14 +621,12 @@ private struct FriendAccountabilityRow: View {
                 onSharePoke()
             }
             .buttonStyle(SunSecondaryButtonStyle())
-            .sunGlassSecondaryButton()
             .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
         } else {
             Button("Message") {
                 onSharePoke()
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
         }
 
@@ -655,7 +645,6 @@ private struct FriendAccountabilityRow: View {
                         .fill(AppPalette.cardFill.opacity(0.72))
                 )
         }
-        .sunGlassIconButton()
         .accessibilityLabel("More actions for \(friend.name)")
         .accessibilityIdentifier("friends.more.\(friend.id.uuidString)")
     }

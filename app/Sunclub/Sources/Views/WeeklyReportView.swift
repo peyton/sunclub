@@ -56,7 +56,6 @@ struct WeeklyReportView: View {
         SecondaryPillButton("View Full History", systemImage: "calendar", identifier: "weekly.viewFullHistory") {
             router.open(.history)
         }
-        .sunGlassSecondaryButton()
         .accessibilityHint("Opens your full calendar history.")
     }
 

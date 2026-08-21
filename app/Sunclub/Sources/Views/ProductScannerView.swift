@@ -176,7 +176,6 @@ struct ProductScannerView: View {
             Button("Scan label") {
                 requestCameraAccess()
             }
-            .buttonStyle(SunPrimaryButtonStyle())
             .sunGlassPrimaryButton()
             .disabled(isScanning)
             .accessibilityIdentifier("productScanner.useCamera")
@@ -186,7 +185,6 @@ struct ProductScannerView: View {
             Text("Choose photo")
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(SunSecondaryButtonStyle())
         .sunGlassSecondaryButton()
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.pickPhoto")
@@ -194,7 +192,6 @@ struct ProductScannerView: View {
         Button("Enter manually") {
             router.open(.manualLog)
         }
-        .buttonStyle(SunSecondaryButtonStyle())
         .sunGlassSecondaryButton()
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.enterManually")
@@ -263,7 +260,6 @@ struct ProductScannerView: View {
                 }
                 openURL(settingsURL)
             }
-            .buttonStyle(SunSecondaryButtonStyle())
             .sunGlassSecondaryButton()
             .accessibilityIdentifier("productScanner.openSettings")
 
@@ -280,7 +276,6 @@ struct ProductScannerView: View {
                     targetDayPart: appState.dayPart(for: now)
                 )
             }
-            .buttonStyle(SunSecondaryButtonStyle())
             .sunGlassSecondaryButton()
             .accessibilityIdentifier("productScanner.manualLog")
         }
@@ -309,7 +304,6 @@ struct ProductScannerView: View {
                 scanResultPendingUse = result
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .sunGlassPrimaryButton()
             .disabled(result.spfLevel == nil)
             .accessibilityIdentifier("productScanner.useResult")
 

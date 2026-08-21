@@ -221,7 +221,6 @@ struct AutomationSettingsPanel: View {
                     router.open(.automation)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.automation.openCatalog")
             }
         }
@@ -289,7 +288,6 @@ struct AutomationSettingsPanel: View {
                 }
             }
             .buttonStyle(SunSecondaryButtonStyle())
-            .sunGlassSecondaryButton()
             .accessibilityIdentifier("automation.openShortcuts")
         }
         .padding(18)
@@ -658,7 +656,6 @@ private struct AutomationExampleCard: View {
                     feedbackMessage = "Copied \(example.title)."
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityLabel("Copy \(example.title) URL")
                 .accessibilityIdentifier("automation.example.\(example.id).copy")
 
@@ -672,7 +669,6 @@ private struct AutomationExampleCard: View {
                         openURL(url)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
-                    .sunGlassSecondaryButton()
                     .accessibilityLabel("Test \(example.title) URL")
                     .accessibilityIdentifier("automation.example.\(example.id).test")
                 } else {

@@ -25,6 +25,8 @@
 - Keep regular glass neutral; reserve prominent glass for primary actions.
 - Mark a glass card interactive only when the whole card is tappable.
 - Group related floating controls with `SunGlassEffectContainer`.
+- Let one availability-aware modifier own each button style; do not chain a legacy style before a glass helper.
+- Keep one glass boundary per visual group. Controls and metric components inside a glass card stay flat.
 - Guard native APIs with iOS availability and non-widget/non-Watch branches.
 - Preserve visible copy, actions, routes, accessibility metadata, and stable identifiers.
 
@@ -59,6 +61,15 @@ All Xcode commands use `/Applications/Xcode-26.6.0.app/Contents/Developer`; simu
 - Clean `CI=1` full-CI control: lint and all 199 Python tests passed; the unit build then repeatedly reported local CAS `Connection refused (errno: 61)` and was interrupted after one bounded attempt. Its orphaned Xcode process was terminated; it did not report an XCTest assertion failure.
 - Tuist reported non-blocking 401 warnings for quarantine lookup and build/test-result upload on successful local tests.
 
+Fix round 1 evidence on the final source state:
+
+- RED — competing button styles plus known nested-material groups: 2 tests executed with 34 expected assertion failures, exit 65.
+- GREEN — the same two focused contracts: 2 tests executed, 0 failures; main app, widget, and Watch simulator targets compiled.
+- Clean Python: 199 passed in 7.10 seconds.
+- Lint: passed; SwiftLint reported 52 warning-only repository findings and 0 serious violations.
+- Compile-cache-disabled device builds: `SunclubDev` passed and production `Sunclub` passed; widget and Watch targets compiled in both.
+- Broader design/accessibility unit, exact focused UI, and full-unit reruns each reached `Testing started` and then produced no test output because the simulator service stalled. Each was attempted once, bounded, and had its orphaned `xcodebuild`/`simctl diagnose` processes terminated. No XCTest assertion failure was emitted. Aggregate `just ci` was not repeated after the already-recorded environment-only attempts.
+
 Commands:
 
 ```text
@@ -67,6 +78,14 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOC
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 TEST_XCODEBUILD_ARGS='-parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubTests/DesignSystemAdoptionTests -only-testing:SunclubTests/AccessibilityScorecardTests' just test-unit
 
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 TEST_XCODEBUILD_ARGS='-parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubTests/SunclubTests/testAppRouterKeepsPushedRoutesInsideSelectedTab -only-testing:SunclubTests/SunclubTests/testAppRouterPreservesFourIndependentTabStacks -only-testing:SunclubTests/SunclubTests/testContextualTabActionUsesDailyPlanCompactAndExpandedCopy' just test-unit
+
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 TEST_XCODEBUILD_ARGS='-parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubUITests/SunclubUITests/testNativeTabAndNavigationChromeHideForSettingsDetail -only-testing:SunclubUITests/SunclubUITests/testAccessibilityScorecardCoreTasksRemainUsable' just test-ui
+
+export DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1; source scripts/tooling/common.sh; setup_local_tooling_env; run_tuist_xcodebuild test -workspace "$REPO_ROOT/$APP_WORKSPACE" -scheme "$RELEASE_APP_SCHEME" -configuration Debug -destination 'id=72D41449-7D9E-44E5-B376-CF6FC9B6B153' -derivedDataPath "$REPO_ROOT/$TEST_DERIVED_DATA" -resultBundlePath "$REPO_ROOT/.build/test-ui-focused-20260821-1353.xcresult" -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubUITests/SunclubUITests/testNativeTabAndNavigationChromeHideForSettingsDetail -only-testing:SunclubUITests/SunclubUITests/testAccessibilityScorecardCoreTasksRemainUsable COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
+
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 TEST_XCODEBUILD_ARGS='-only-testing:SunclubTests/DesignSystemAdoptionTests/testMainAppButtonsRouteThroughLiquidGlassCompatibilityHelpers -only-testing:SunclubTests/DesignSystemAdoptionTests/testKnownGlassGroupsKeepSingleMaterialBoundary' just test-unit
+
+export DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1; source scripts/tooling/common.sh; setup_local_tooling_env; run_tuist_xcodebuild test -workspace "$REPO_ROOT/$APP_WORKSPACE" -scheme "$RELEASE_APP_SCHEME" -configuration Debug -destination 'id=72D41449-7D9E-44E5-B376-CF6FC9B6B153' -derivedDataPath "$REPO_ROOT/$TEST_DERIVED_DATA" -resultBundlePath "$REPO_ROOT/.build/test-ui-fix-round-1.xcresult" -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -only-testing:SunclubUITests/SunclubUITests/testNativeTabAndNavigationChromeHideForSettingsDetail -only-testing:SunclubUITests/SunclubUITests/testAccessibilityScorecardCoreTasksRemainUsable COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
 
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 just generate
 SUNCLUB_SKIP_LOCAL_TUIST_CACHE=1 just lint

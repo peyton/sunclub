@@ -53,7 +53,6 @@ struct VerificationSuccessView: View {
                     }
                     router.goHome()
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
                 .sunGlassPrimaryButton()
                 .accessibilityIdentifier("success.done")
 
@@ -113,7 +112,8 @@ struct VerificationSuccessView: View {
             label: "logged",
             symbolName: "checkmark.circle.fill",
             tint: AppPalette.success,
-            accessibilityIdentifier: "success.streakMetric"
+            accessibilityIdentifier: "success.streakMetric",
+            usesGlass: false
         )
 
         SunMetricPill(
@@ -121,7 +121,8 @@ struct VerificationSuccessView: View {
             label: "next reminder",
             symbolName: "bell.fill",
             tint: AppPalette.sun,
-            accessibilityIdentifier: "success.nextReminderMetric"
+            accessibilityIdentifier: "success.nextReminderMetric",
+            usesGlass: false
         )
     }
 

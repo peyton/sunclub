@@ -84,14 +84,12 @@ struct RecoveryView: View {
                         appState.publishImportedChanges(for: session.id)
                     }
                     .buttonStyle(SunPrimaryButtonStyle())
-                    .sunGlassPrimaryButton()
                     .accessibilityIdentifier("recovery.import.publish")
 
                     Button("Undo Import") {
                         appState.restoreImportedChanges(for: session.id)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
-                    .sunGlassSecondaryButton()
                     .accessibilityIdentifier("recovery.import.restore")
                 }
             }
@@ -138,14 +136,12 @@ struct RecoveryView: View {
                             appState.resolveConflict(conflict.id)
                         }
                         .buttonStyle(SunPrimaryButtonStyle())
-                        .sunGlassPrimaryButton()
                         .accessibilityIdentifier("recovery.conflict.undo")
 
                         Button("Mark Reviewed") {
                             appState.resolveConflict(conflict.id)
                         }
                         .buttonStyle(SunSecondaryButtonStyle())
-                        .sunGlassSecondaryButton()
                         .accessibilityIdentifier("recovery.conflict.resolve")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -199,14 +195,12 @@ struct RecoveryView: View {
                                 appState.undoChange(batch.id)
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
-                            .sunGlassSecondaryButton()
                             .accessibilityIdentifier("recovery.batch.\(index).undo")
                         } else if batch.undoneByBatchID != nil {
                             Button("Redo") {
                                 appState.redoChange(batch.id)
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
-                            .sunGlassSecondaryButton()
                             .accessibilityIdentifier("recovery.batch.\(index).redo")
                         }
                     }

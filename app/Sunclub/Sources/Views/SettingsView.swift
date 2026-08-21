@@ -392,7 +392,6 @@ struct SettingsView: View {
                             handleNotificationStatusAction(actionKind)
                         }
                         .buttonStyle(SunSecondaryButtonStyle())
-                        .sunGlassSecondaryButton()
                         .accessibilityIdentifier("settings.notificationStatus.action")
                     }
                 }
@@ -507,7 +506,6 @@ struct SettingsView: View {
                     handleLeaveHomeReminderAction(actionKind)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.leaveHome.action")
             }
 
@@ -516,7 +514,6 @@ struct SettingsView: View {
                     appState.clearSavedHomeLocation()
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.leaveHome.resetHome")
             }
         }
@@ -616,7 +613,6 @@ struct SettingsView: View {
                                 syncLocalState()
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
-                            .sunGlassSecondaryButton()
                             .accessibilityIdentifier("settings.coaching.\(suggestion.kind.rawValue)")
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -652,7 +648,6 @@ struct SettingsView: View {
                         handleNotificationHealthAction(for: presentation)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
-                    .sunGlassSecondaryButton()
                     .accessibilityIdentifier("settings.notificationHealth.action")
                 }
 
@@ -660,14 +655,12 @@ struct SettingsView: View {
                     sendTestNotification()
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.notificationHealth.sendTest")
 
                 Button("Copy Diagnostics") {
                     copyNotificationDiagnostics()
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.notificationHealth.copyDiagnostics")
 
                 if !notificationToolFeedback.isEmpty {
@@ -855,7 +848,6 @@ struct SettingsView: View {
                     isChoosingUVCity = true
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.liveUV.chooseCity")
 
                 if let selectedPlace = appState.settings.selectedUVPlace {
@@ -897,7 +889,6 @@ struct SettingsView: View {
                         handleLiveUVAction(actionKind)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
-                    .sunGlassSecondaryButton()
                     .accessibilityIdentifier("settings.liveUV.action")
                 }
             }
@@ -1042,7 +1033,6 @@ struct SettingsView: View {
                         handleCloudSyncAction()
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
-                    .sunGlassSecondaryButton()
                     .accessibilityIdentifier("settings.icloudAction")
                 }
 
@@ -1055,7 +1045,6 @@ struct SettingsView: View {
                     router.push(.recovery)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
-                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.recovery")
             }
             .padding(18)
@@ -1081,14 +1070,12 @@ struct SettingsView: View {
                 appState.publishImportedChanges(for: session.id)
             }
             .buttonStyle(SunPrimaryButtonStyle())
-            .sunGlassPrimaryButton()
             .accessibilityIdentifier("settings.icloud.publishImported")
 
             Button("Undo Import") {
                 appState.restoreImportedChanges(for: session.id)
             }
             .buttonStyle(SunSecondaryButtonStyle())
-            .sunGlassSecondaryButton()
             .accessibilityIdentifier("settings.icloud.restoreImported")
         }
     }
@@ -1400,7 +1387,6 @@ struct SettingsView: View {
                     syncLocalState()
                     selectedReminderPicker = nil
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
                 .sunGlassPrimaryButton()
             }
             .padding(24)
@@ -1542,7 +1528,6 @@ struct SettingsView: View {
                     }
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
-                .sunGlassPrimaryButton()
                 .accessibilityIdentifier("settings.backup.exportHarness")
             }
 
@@ -1551,7 +1536,6 @@ struct SettingsView: View {
                     importBackup(from: importURL)
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
-                .sunGlassPrimaryButton()
                 .accessibilityIdentifier("settings.backup.importHarness")
             }
 

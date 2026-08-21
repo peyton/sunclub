@@ -439,14 +439,12 @@ private struct InitialICloudRestoreView: View {
                     Button("Try Again") {
                         appState.retryInitialICloudRestore()
                     }
-                    .buttonStyle(SunPrimaryButtonStyle())
                     .sunGlassPrimaryButton()
                     .accessibilityIdentifier("icloudRestore.retry")
 
                     Button("Continue on This Phone") {
                         appState.continueWithoutInitialICloudRestore()
                     }
-                    .buttonStyle(SunSecondaryButtonStyle())
                     .sunGlassSecondaryButton()
                     .accessibilityIdentifier("icloudRestore.continue")
                 }

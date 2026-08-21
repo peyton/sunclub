@@ -740,13 +740,39 @@ struct SunScreenTitleBlock: View {
 }
 
 struct SunMetricPill: View {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
     let value: String
     let label: String
     var symbolName: String?
     var tint: Color = AppPalette.sun
     var accessibilityIdentifier: String?
+    var usesGlass = true
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if usesGlass, !isInsideGlassBoundary {
+                pillContent.sunGlassCard(
+                    cornerRadius: AppRadius.insetCard,
+                    fillOpacity: 0.72,
+                    legacyFill: AppPalette.controlFill,
+                    legacyStroke: AppPalette.hairlineStroke,
+                    legacyShadow: nil
+                )
+            } else {
+                pillContent
+            }
+        } else {
+            legacyPill
+        }
+        #else
+        legacyPill
+        #endif
+    }
+
+    private var pillContent: some View {
         HStack(alignment: .center, spacing: 8) {
             if let symbolName {
                 Image(systemName: symbolName)
@@ -769,6 +795,12 @@ struct SunMetricPill: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(accessibilityIdentifier ?? "sunclub.metricPill")
+    }
+
+    private var legacyPill: some View {
+        pillContent
         .sunGlassCard(
             cornerRadius: AppRadius.insetCard,
             fillOpacity: 0.72,
@@ -776,8 +808,6 @@ struct SunMetricPill: View {
             legacyStroke: AppPalette.hairlineStroke,
             legacyShadow: nil
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(accessibilityIdentifier ?? "sunclub.metricPill")
     }
 }
 
@@ -1107,6 +1137,67 @@ private struct SunNavigationBarCompatibilityModifier: ViewModifier {
     }
 }
 
+private struct SunGlassCardModifier: ViewModifier {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
+    let cornerRadius: CGFloat
+    let fillOpacity: Double
+    let interactive: Bool
+    let legacyFill: Color
+    let legacyStroke: Color
+    let legacyShadow: AppShadowStyle?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if isInsideGlassBoundary {
+                content
+            } else {
+                content.sunGlassSurface(
+                    cornerRadius: cornerRadius,
+                    style: interactive ? .interactive : .regular
+                )
+            }
+        } else {
+            legacyCard(content)
+        }
+        #else
+        legacyCard(content)
+        #endif
+    }
+
+    private func legacyCard(_ content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(legacyFill.opacity(fillOpacity))
+                    .appShadow(legacyShadow)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(legacyStroke, lineWidth: 1)
+            }
+    }
+}
+
+private struct SunGlassIconButtonStyleModifier: ViewModifier {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *), !isInsideGlassBoundary {
+            content.buttonStyle(.glass)
+        } else {
+            content.buttonStyle(.plain)
+        }
+        #else
+        content.buttonStyle(.plain)
+        #endif
+    }
+}
+
 extension View {
     func sunNavigationBarCompatibility(
         title: String? = nil,
@@ -1233,12 +1324,31 @@ struct SunSettingsRow: View {
 }
 
 struct SunStatusCard: View {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
     let title: String
     let detail: String
     let tint: Color
     let symbol: String
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if isInsideGlassBoundary {
+                cardContent
+            } else {
+                cardContent.sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
+            }
+        } else {
+            legacyCard
+        }
+        #else
+        legacyCard
+        #endif
+    }
+
+    private var cardContent: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .semibold))
@@ -1259,8 +1369,12 @@ struct SunStatusCard: View {
             }
         }
         .padding(16)
-        .sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
         .accessibilityElement(children: .combine)
+    }
+
+    private var legacyCard: some View {
+        cardContent
+        .sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
     }
 }
 
@@ -1989,46 +2103,18 @@ extension View {
         #endif
     }
 
-    @ViewBuilder
     func sunGlassPrimaryButton() -> some View {
-        #if os(iOS) && !os(watchOS)
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glassProminent)
-        } else {
-            self
-        }
-        #else
-        self
-        #endif
+        sunGlassPrimaryButton(legacyStyle: SunPrimaryButtonStyle())
     }
 
-    @ViewBuilder
     func sunGlassSecondaryButton() -> some View {
-        #if os(iOS) && !os(watchOS)
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glass)
-        } else {
-            self
-        }
-        #else
-        self
-        #endif
+        sunGlassSecondaryButton(legacyStyle: SunSecondaryButtonStyle())
     }
 
-    @ViewBuilder
     func sunGlassIconButton() -> some View {
-        #if os(iOS) && !os(watchOS)
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glass)
-        } else {
-            self
-        }
-        #else
-        self
-        #endif
+        modifier(SunGlassIconButtonStyleModifier())
     }
 
-    @ViewBuilder
     func sunGlassCard(
         cornerRadius: CGFloat = AppRadius.card,
         fillOpacity: Double = 0.86,
@@ -2037,49 +2123,16 @@ extension View {
         legacyStroke: Color = AppPalette.cardStroke,
         legacyShadow: AppShadowStyle? = AppShadow.soft
     ) -> some View {
-        #if os(iOS) && !os(watchOS)
-        if #available(iOS 26.0, *) {
-            sunGlassSurface(
-                cornerRadius: cornerRadius,
-                style: interactive ? .interactive : .regular
-            )
-        } else {
-            legacySunGlassCard(
+        modifier(
+            SunGlassCardModifier(
                 cornerRadius: cornerRadius,
                 fillOpacity: fillOpacity,
-                fill: legacyFill,
-                stroke: legacyStroke,
-                shadow: legacyShadow
+                interactive: interactive,
+                legacyFill: legacyFill,
+                legacyStroke: legacyStroke,
+                legacyShadow: legacyShadow
             )
-        }
-        #else
-        legacySunGlassCard(
-            cornerRadius: cornerRadius,
-            fillOpacity: fillOpacity,
-            fill: legacyFill,
-            stroke: legacyStroke,
-            shadow: legacyShadow
         )
-        #endif
-    }
-
-    private func legacySunGlassCard(
-        cornerRadius: CGFloat,
-        fillOpacity: Double,
-        fill: Color,
-        stroke: Color,
-        shadow: AppShadowStyle?
-    ) -> some View {
-        self
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(fill.opacity(fillOpacity))
-                    .appShadow(shadow)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(stroke, lineWidth: 1)
-            }
     }
 
     private func legacySunButtonBackground(

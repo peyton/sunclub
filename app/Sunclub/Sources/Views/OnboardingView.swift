@@ -24,7 +24,6 @@ struct WelcomeView: View {
                 startFeedbackTrigger += 1
                 router.open(.enableLocation)
             }
-            .buttonStyle(SunPrimaryButtonStyle())
             .sunGlassPrimaryButton()
             .accessibilityIdentifier("welcome.getStarted")
         }
@@ -155,14 +154,12 @@ struct EnableLocationView: View {
                 Button("Allow location") {
                     continueToReminders(usesLiveUV: true)
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
                 .sunGlassPrimaryButton()
                 .accessibilityIdentifier("onboarding.enableLocation")
 
                 Button("Choose a city instead") {
                     isChoosingCity = true
                 }
-                .buttonStyle(SunSecondaryButtonStyle())
                 .sunGlassSecondaryButton()
                 .accessibilityHint("Opens an Apple Maps city search without asking for location access.")
                 .accessibilityIdentifier("onboarding.skipLocation")
@@ -267,7 +264,6 @@ struct EnableNotificationsView: View {
                         Text(isCompleting ? "Setting up" : "Enable reminders")
                     }
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
                 .sunGlassPrimaryButton()
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.enableNotifications")
@@ -275,7 +271,6 @@ struct EnableNotificationsView: View {
                 Button("Not now") {
                     completeOnboarding(requestsNotifications: false)
                 }
-                .buttonStyle(SunSecondaryButtonStyle())
                 .sunGlassSecondaryButton()
                 .disabled(isCompleting)
                 .accessibilityHint("Finishes setup without turning on reminder notifications.")

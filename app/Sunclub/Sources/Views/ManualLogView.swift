@@ -103,7 +103,6 @@ struct ManualLogView: View {
             }
         } footer: {
             PrimaryButton("Save Log", identifier: "manualLog.logToday", action: saveLog)
-                .sunGlassPrimaryButton()
                 .disabled(isSaveDisabled)
         }
         .onAppear {
@@ -572,7 +571,6 @@ struct ManualLogView: View {
             saveProductProfile()
         }
         .buttonStyle(SunPrimaryButtonStyle())
-        .sunGlassPrimaryButton()
         .accessibilityIdentifier("manualLog.saveProductProfile")
     }
 
@@ -581,7 +579,6 @@ struct ManualLogView: View {
             removeProductProfile()
         }
         .buttonStyle(SunSecondaryButtonStyle())
-        .sunGlassSecondaryButton()
         .accessibilityIdentifier("manualLog.removeProductProfile")
     }
 }

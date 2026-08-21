@@ -47,7 +47,6 @@ struct CitySearchView: View {
                                 search()
                             }
                             .buttonStyle(SunPrimaryButtonStyle())
-                            .sunGlassPrimaryButton()
                             .disabled(trimmedQuery.isEmpty || isSearching)
                             .accessibilityIdentifier("citySearch.submit")
                         }

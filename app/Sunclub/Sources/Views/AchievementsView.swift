@@ -387,7 +387,6 @@ private struct AchievementCard: View {
                     fill: AppPalette.warmGlow.opacity(0.65),
                     stroke: AppPalette.sun.opacity(0.35)
                 )
-                .sunGlassSecondaryButton()
             }
         }
         .padding(18)
@@ -461,7 +460,6 @@ private struct ChallengeCard: View {
                     cornerRadius: AppRadius.small,
                     fill: AppPalette.warmGlow.opacity(0.65)
                 )
-                .sunGlassSecondaryButton()
             }
         }
         .padding(18)

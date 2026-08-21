@@ -183,7 +183,6 @@ struct SkinHealthReportView: View {
                 Button("Export History") {
                     exportPDFReport()
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
                 .sunGlassPrimaryButton()
             }
         }
