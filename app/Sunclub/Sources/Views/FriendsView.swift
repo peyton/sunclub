@@ -36,7 +36,12 @@ struct AccountabilityOnboardingView: View {
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardBackground)
+                .sunGlassCard(
+                    cornerRadius: AppRadius.button,
+                    fillOpacity: 0.72,
+                    legacyStroke: .clear,
+                    legacyShadow: nil
+                )
 
                 if step == 2 {
                     Button("Send Invite") {
@@ -45,6 +50,7 @@ struct AccountabilityOnboardingView: View {
                         shareSheetItem = ShareSheetItem(items: [appState.accountabilityInviteShareText])
                     }
                     .buttonStyle(SunPrimaryButtonStyle())
+                    .sunGlassPrimaryButton()
                     .accessibilityIdentifier("accountabilityOnboarding.share")
 
                     Button("Add Nearby") {
@@ -52,6 +58,7 @@ struct AccountabilityOnboardingView: View {
                         router.replace(with: .friends)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
+                    .sunGlassSecondaryButton()
                 }
 
                 Spacer(minLength: 0)
@@ -68,6 +75,7 @@ struct AccountabilityOnboardingView: View {
                 }
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("accountabilityOnboarding.next")
         }
         .sheet(item: $shareSheetItem) { item in
@@ -110,10 +118,6 @@ struct AccountabilityOnboardingView: View {
         }
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.72))
-    }
 }
 
 struct FriendsView: View {
@@ -224,6 +228,7 @@ struct FriendsView: View {
                 savePreferredName()
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.activate")
 
             if let statusMessage = localFeedbackMessage ?? appState.friendImportMessage {
@@ -236,7 +241,7 @@ struct FriendsView: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.button, fillOpacity: 0.72)
     }
 
     private var addFriendsCard: some View {
@@ -248,7 +253,7 @@ struct FriendsView: View {
             addFriendActions
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.button, fillOpacity: 0.72)
     }
 
     private var compactAddFriendsCard: some View {
@@ -291,7 +296,7 @@ struct FriendsView: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.button, fillOpacity: 0.72)
     }
 
     @ViewBuilder
@@ -366,6 +371,7 @@ struct FriendsView: View {
                     localFeedbackMessage = "Invite copied."
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
+                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("friends.copyInvite")
 
                 Button("Share") {
@@ -373,11 +379,12 @@ struct FriendsView: View {
                     sheet = .share([appState.accountabilityInviteShareText])
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
+                .sunGlassPrimaryButton()
                 .accessibilityIdentifier("friends.shareInvite")
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.button, fillOpacity: 0.72)
     }
 
     private var importCard: some View {
@@ -414,10 +421,11 @@ struct FriendsView: View {
                 importFriend()
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.import")
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.button, fillOpacity: 0.72)
     }
 
     private var friendsListSection: some View {
@@ -441,7 +449,7 @@ struct FriendsView: View {
                 }
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardBackground)
+                .sunGlassCard(cornerRadius: AppRadius.button, fillOpacity: 0.72)
                 .accessibilityIdentifier("friends.empty")
             } else {
                 ForEach(appState.friends) { friend in
@@ -525,23 +533,17 @@ struct FriendsView: View {
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .fill(AppPalette.cardFill.opacity(0.72))
+            .sunGlassCard(
+                cornerRadius: AppRadius.small,
+                fillOpacity: 0.72,
+                interactive: true,
+                legacyStroke: .clear,
+                legacyShadow: nil
             )
         }
         .buttonStyle(AccountabilityCardButtonStyle())
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.72))
-            .appShadow(AppShadow.soft)
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
-            }
-    }
 }
 
 private enum AccountabilitySheet: Identifiable {
@@ -591,25 +593,24 @@ private struct FriendAccountabilityRow: View {
                 .font(AppFont.rounded(size: 14))
                 .foregroundStyle(AppPalette.softInk)
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    friendActions
-                }
+            SunGlassEffectContainer(spacing: 8) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        friendActions
+                    }
 
-                VStack(spacing: 8) {
-                    friendActions
+                    VStack(spacing: 8) {
+                        friendActions
+                    }
                 }
             }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 0.72,
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
     }
 
     @ViewBuilder
@@ -619,6 +620,7 @@ private struct FriendAccountabilityRow: View {
                 onPoke()
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.poke.\(friend.id.uuidString)")
         }
 
@@ -627,12 +629,14 @@ private struct FriendAccountabilityRow: View {
                 onSharePoke()
             }
             .buttonStyle(SunSecondaryButtonStyle())
+            .sunGlassSecondaryButton()
             .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
         } else {
             Button("Message") {
                 onSharePoke()
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("friends.sharePoke.\(friend.id.uuidString)")
         }
 
@@ -651,6 +655,7 @@ private struct FriendAccountabilityRow: View {
                         .fill(AppPalette.cardFill.opacity(0.72))
                 )
         }
+        .sunGlassIconButton()
         .accessibilityLabel("More actions for \(friend.name)")
         .accessibilityIdentifier("friends.more.\(friend.id.uuidString)")
     }
@@ -793,9 +798,11 @@ private struct NearbyAccountabilitySheet: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 0.72,
+            legacyStroke: .clear,
+            legacyShadow: nil
         )
     }
 }

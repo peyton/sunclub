@@ -84,17 +84,24 @@ struct RecoveryView: View {
                         appState.publishImportedChanges(for: session.id)
                     }
                     .buttonStyle(SunPrimaryButtonStyle())
+                    .sunGlassPrimaryButton()
                     .accessibilityIdentifier("recovery.import.publish")
 
                     Button("Undo Import") {
                         appState.restoreImportedChanges(for: session.id)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
+                    .sunGlassSecondaryButton()
                     .accessibilityIdentifier("recovery.import.restore")
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -131,17 +138,24 @@ struct RecoveryView: View {
                             appState.resolveConflict(conflict.id)
                         }
                         .buttonStyle(SunPrimaryButtonStyle())
+                        .sunGlassPrimaryButton()
                         .accessibilityIdentifier("recovery.conflict.undo")
 
                         Button("Mark Reviewed") {
                             appState.resolveConflict(conflict.id)
                         }
                         .buttonStyle(SunSecondaryButtonStyle())
+                        .sunGlassSecondaryButton()
                         .accessibilityIdentifier("recovery.conflict.resolve")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(18)
-                    .background(cardBackground)
+                    .sunGlassCard(
+                        cornerRadius: AppRadius.card,
+                        fillOpacity: 0.82,
+                        legacyStroke: AppPalette.hairlineStroke,
+                        legacyShadow: nil
+                    )
                 }
             }
         }
@@ -185,18 +199,25 @@ struct RecoveryView: View {
                                 appState.undoChange(batch.id)
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
+                            .sunGlassSecondaryButton()
                             .accessibilityIdentifier("recovery.batch.\(index).undo")
                         } else if batch.undoneByBatchID != nil {
                             Button("Redo") {
                                 appState.redoChange(batch.id)
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
+                            .sunGlassSecondaryButton()
                             .accessibilityIdentifier("recovery.batch.\(index).redo")
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(18)
-                    .background(cardBackground)
+                    .sunGlassCard(
+                        cornerRadius: AppRadius.card,
+                        fillOpacity: 0.82,
+                        legacyStroke: AppPalette.hairlineStroke,
+                        legacyShadow: nil
+                    )
                 }
             }
         }
@@ -293,14 +314,6 @@ struct RecoveryView: View {
         }
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.82))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
-    }
 }
 
 private extension SunclubChangeKind {

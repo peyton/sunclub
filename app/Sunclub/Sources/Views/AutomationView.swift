@@ -121,7 +121,12 @@ private struct AutomationReferenceSummaryCard: View {
                     Spacer(minLength: 0)
                 }
                 .padding(14)
-                .background(referenceRowBackground)
+                .sunGlassCard(
+                    cornerRadius: AppRadius.medium,
+                    fillOpacity: 0.84,
+                    legacyStroke: AppPalette.hairlineStroke,
+                    legacyShadow: nil
+                )
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("automation.reference.askBeforeRunning")
             }
@@ -162,20 +167,18 @@ private struct AutomationReferenceSummaryCard: View {
                     .accessibilityHidden(true)
             }
             .padding(14)
-            .background(referenceRowBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.84,
+                interactive: true,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
-    private var referenceRowBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.84))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
-    }
 }
 
 struct AutomationSettingsPanel: View {
@@ -218,6 +221,7 @@ struct AutomationSettingsPanel: View {
                     router.open(.automation)
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
+                .sunGlassSecondaryButton()
                 .accessibilityIdentifier("settings.automation.openCatalog")
             }
         }
@@ -259,7 +263,12 @@ struct AutomationSettingsPanel: View {
             )
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
         .accessibilityIdentifier("automation.preferences")
     }
 
@@ -280,10 +289,16 @@ struct AutomationSettingsPanel: View {
                 }
             }
             .buttonStyle(SunSecondaryButtonStyle())
+            .sunGlassSecondaryButton()
             .accessibilityIdentifier("automation.openShortcuts")
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
         .accessibilityIdentifier("automation.shortcuts")
     }
 
@@ -299,7 +314,12 @@ struct AutomationSettingsPanel: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
         .accessibilityIdentifier("automation.shortcutFileActions")
     }
 
@@ -319,7 +339,12 @@ struct AutomationSettingsPanel: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
         .accessibilityIdentifier("automation.urlExamples")
     }
 
@@ -339,7 +364,12 @@ struct AutomationSettingsPanel: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
         .accessibilityIdentifier("automation.callbackExamples")
     }
 
@@ -513,14 +543,6 @@ struct AutomationSettingsPanel: View {
         SunclubRuntimeConfiguration.urlScheme
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.82))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
-    }
 }
 
 private struct AutomationHeroCard: View {
@@ -636,6 +658,7 @@ private struct AutomationExampleCard: View {
                     feedbackMessage = "Copied \(example.title)."
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
+                .sunGlassSecondaryButton()
                 .accessibilityLabel("Copy \(example.title) URL")
                 .accessibilityIdentifier("automation.example.\(example.id).copy")
 
@@ -649,6 +672,7 @@ private struct AutomationExampleCard: View {
                         openURL(url)
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
+                    .sunGlassSecondaryButton()
                     .accessibilityLabel("Test \(example.title) URL")
                     .accessibilityIdentifier("automation.example.\(example.id).test")
                 } else {
@@ -661,9 +685,12 @@ private struct AutomationExampleCard: View {
             }
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .fill(AppPalette.controlFill.opacity(0.58))
+        .sunGlassCard(
+            cornerRadius: AppRadius.medium,
+            fillOpacity: 0.58,
+            legacyFill: AppPalette.controlFill,
+            legacyStroke: .clear,
+            legacyShadow: nil
         )
         .accessibilityElement(children: .contain)
     }

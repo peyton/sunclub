@@ -83,6 +83,127 @@ final class DesignSystemAdoptionTests: XCTestCase {
         }
     }
 
+    func testMainAppButtonsRouteThroughLiquidGlassCompatibilityHelpers() throws {
+        let root = try repoRoot
+        let checkedFiles = try swiftFiles(in: root.appendingPathComponent("app/Sunclub/Sources/Views")) + [
+            root.appendingPathComponent("app/Sunclub/Sources/Shared/RootView.swift")
+        ]
+        let primaryStyle = #"\.buttonStyle\(SunPrimaryButtonStyle\(\)\)"#
+        let primaryAdoption = #"\.buttonStyle\(SunPrimaryButtonStyle\(\)\)\s*\.sunGlassPrimaryButton\(\)"#
+        let secondaryStyle = #"\.buttonStyle\(SunSecondaryButtonStyle\(\)\)"#
+        let secondaryAdoption = #"\.buttonStyle\(SunSecondaryButtonStyle\(\)\)\s*\.sunGlassSecondaryButton\(\)"#
+
+        for fileURL in checkedFiles {
+            let content = try String(contentsOf: fileURL, encoding: .utf8)
+            XCTAssertEqual(
+                matchCount(primaryStyle, in: content),
+                matchCount(primaryAdoption, in: content),
+                "\(relativePath(for: fileURL)) must apply sunGlassPrimaryButton after every legacy primary style."
+            )
+            XCTAssertEqual(
+                matchCount(secondaryStyle, in: content),
+                matchCount(secondaryAdoption, in: content),
+                "\(relativePath(for: fileURL)) must apply sunGlassSecondaryButton after every legacy secondary style."
+            )
+        }
+
+        let sharedComponentAdoptions: [String: (primary: Int, secondary: Int)] = [
+            "app/Sunclub/Sources/Views/HistoryView.swift": (3, 2),
+            "app/Sunclub/Sources/Views/ManualLogView.swift": (1, 0),
+            "app/Sunclub/Sources/Views/TimelineHomeView.swift": (1, 0),
+            "app/Sunclub/Sources/Views/WeeklyReportView.swift": (0, 1)
+        ]
+
+        for (path, expected) in sharedComponentAdoptions {
+            let content = try source(path)
+            let primaryStyleCount = content.components(separatedBy: ".buttonStyle(SunPrimaryButtonStyle())").count - 1
+            let secondaryStyleCount = content.components(separatedBy: ".buttonStyle(SunSecondaryButtonStyle())").count - 1
+            XCTAssertEqual(
+                content.components(separatedBy: ".sunGlassPrimaryButton()").count - 1,
+                primaryStyleCount + expected.primary,
+                "\(path) must route every PrimaryButton component through sunGlassPrimaryButton."
+            )
+            XCTAssertEqual(
+                content.components(separatedBy: ".sunGlassSecondaryButton()").count - 1,
+                secondaryStyleCount + expected.secondary,
+                "\(path) must route every SecondaryPillButton component through sunGlassSecondaryButton."
+            )
+        }
+    }
+
+    func testMainAppCardCallSitesUseLiquidGlassCompatibilitySurface() throws {
+        let migratedPaths = [
+            "app/Sunclub/Sources/Shared/SunDayStrip.swift",
+            "app/Sunclub/Sources/Views/AutomationView.swift",
+            "app/Sunclub/Sources/Views/FriendsView.swift",
+            "app/Sunclub/Sources/Views/HistoryView.swift",
+            "app/Sunclub/Sources/Views/ManualLogView.swift",
+            "app/Sunclub/Sources/Views/PrivacyView.swift",
+            "app/Sunclub/Sources/Views/RecoveryView.swift",
+            "app/Sunclub/Sources/Views/SettingsView.swift",
+            "app/Sunclub/Sources/Views/SkinHealthReportView.swift",
+            "app/Sunclub/Sources/Views/SupportView.swift",
+            "app/Sunclub/Sources/Views/Components/TimelineLogSection.swift"
+        ]
+
+        for path in migratedPaths {
+            let content = try source(path)
+            for legacyCall in [
+                ".background(cardBackground)",
+                ".background(referenceRowBackground)",
+                ".background(rowGroupBackground)"
+            ] {
+                XCTAssertFalse(
+                    content.contains(legacyCall),
+                    "\(path) must replace \(legacyCall) with the availability-aware glass card helper."
+                )
+            }
+            XCTAssertTrue(content.contains(".sunGlassCard("), "\(path) must adopt sunGlassCard.")
+        }
+
+        let interactiveCardPaths = [
+            "app/Sunclub/Sources/Shared/SunDayStrip.swift",
+            "app/Sunclub/Sources/Views/AutomationView.swift",
+            "app/Sunclub/Sources/Views/FriendsView.swift",
+            "app/Sunclub/Sources/Views/PrivacyView.swift",
+            "app/Sunclub/Sources/Views/SettingsView.swift",
+            "app/Sunclub/Sources/Views/SupportView.swift",
+            "app/Sunclub/Sources/Views/TimelineHomeView.swift"
+        ]
+        for path in interactiveCardPaths {
+            XCTAssertTrue(
+                try source(path).contains("interactive: true"),
+                "Tappable cards in \(path) must request interactive glass."
+            )
+        }
+    }
+
+    func testFixedFootersAndRelatedControlsUseNativeGlassContainers() throws {
+        let theme = try source("app/Sunclub/Sources/Shared/AppTheme.swift")
+        XCTAssertEqual(
+            theme.components(separatedBy: ".safeAreaInset(edge: .bottom").count - 1,
+            2,
+            "Light and dark fixed footers must allow scrolling content beneath their native safe-area overlays."
+        )
+        XCTAssertGreaterThanOrEqual(
+            theme.components(separatedBy: "SunGlassEffectContainer(").count - 1,
+            2,
+            "Both shared fixed footer variants must group their glass controls."
+        )
+        XCTAssertTrue(
+            theme.contains("private var legacyFooter"),
+            "The pre-iOS-26 light footer must retain its opaque gradient fallback."
+        )
+
+        let history = try source("app/Sunclub/Sources/Views/HistoryView.swift")
+        XCTAssertTrue(history.contains("SunGlassEffectContainer(spacing: 12)"))
+        XCTAssertTrue(history.contains(".sunGlassIconButton()"))
+
+        let scanner = try source("app/Sunclub/Sources/Views/ProductScannerView.swift")
+        XCTAssertTrue(scanner.contains("SunGlassEffectContainer(spacing: 12)"))
+        XCTAssertTrue(theme.contains(".sunGlassSurface(cornerRadius: AppRadius.pill)"))
+    }
+
     func testLegacyHomePathIsRemoved() throws {
         let root = try repoRoot
         XCTAssertFalse(
@@ -218,7 +339,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
             ],
             "app/Sunclub/Sources/Views/WeeklyReportView.swift": [
                 "SecondaryPillButton",
-                "AppShadow.soft"
+                ".sunGlassCard("
             ],
             "app/Sunclub/Sources/Views/HistoryView.swift": [
                 "SunInfoRow",
@@ -283,5 +404,15 @@ final class DesignSystemAdoptionTests: XCTestCase {
         }
 
         return String(url.path.dropFirst(rootPath.count + 1))
+    }
+
+    private func matchCount(_ pattern: String, in content: String) -> Int {
+        guard let expression = try? NSRegularExpression(pattern: pattern) else {
+            return 0
+        }
+        return expression.numberOfMatches(
+            in: content,
+            range: NSRange(content.startIndex..., in: content)
+        )
     }
 }

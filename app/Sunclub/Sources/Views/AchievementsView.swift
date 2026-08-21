@@ -123,11 +123,6 @@ struct AchievementsView: View {
         shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.72))
-    }
-
     private var achievementsPresentation: AchievementsPresentation {
         let achievements = sortedAchievements(appState.achievements)
         let challenges = sortedChallenges(appState.seasonalChallenges)
@@ -387,25 +382,22 @@ private struct AchievementCard: View {
                         .foregroundStyle(AppPalette.ink)
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .fill(AppPalette.warmGlow.opacity(0.65))
+                .sunLegacyButtonBackground(
+                    cornerRadius: AppRadius.small,
+                    fill: AppPalette.warmGlow.opacity(0.65),
+                    stroke: AppPalette.sun.opacity(0.35)
                 )
-                .overlay {
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .stroke(AppPalette.sun.opacity(0.35), lineWidth: 1)
-                }
+                .sunGlassSecondaryButton()
             }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.78))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 1,
+            legacyFill: achievement.isUnlocked ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.78),
+            legacyStroke: achievement.isUnlocked ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08),
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .stroke(achievement.isUnlocked ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
-        }
         .symbolEffect(.bounce, value: reduceMotion ? false : achievement.isUnlocked)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("achievement.card.\(achievement.id.rawValue)")
@@ -465,21 +457,21 @@ private struct ChallengeCard: View {
                         .foregroundStyle(AppPalette.ink)
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .fill(AppPalette.warmGlow.opacity(0.65))
+                .sunLegacyButtonBackground(
+                    cornerRadius: AppRadius.small,
+                    fill: AppPalette.warmGlow.opacity(0.65)
                 )
+                .sunGlassSecondaryButton()
             }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(challenge.isComplete ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.76))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 1,
+            legacyFill: challenge.isComplete ? AppPalette.warmGlow.opacity(0.34) : AppPalette.cardFill.opacity(0.76),
+            legacyStroke: challenge.isComplete ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08),
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .stroke(challenge.isComplete ? AppPalette.sun.opacity(0.34) : AppPalette.ink.opacity(0.08), lineWidth: 1)
-        }
     }
 }
 

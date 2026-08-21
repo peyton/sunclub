@@ -56,6 +56,7 @@ struct WeeklyReportView: View {
         SecondaryPillButton("View Full History", systemImage: "calendar", identifier: "weekly.viewFullHistory") {
             router.open(.history)
         }
+        .sunGlassSecondaryButton()
         .accessibilityHint("Opens your full calendar history.")
     }
 
@@ -150,18 +151,25 @@ struct WeeklyReportView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.86))
-                .appShadow(AppShadow.soft)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
+        .sunGlassCard(cornerRadius: AppRadius.card, fillOpacity: 0.86)
     }
 
+    @ViewBuilder
     private var weeklyPostcard: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            weeklyPostcardContent
+                .padding(22)
+                .sunGlassCard(cornerRadius: 24, fillOpacity: 0.52)
+        } else {
+            legacyWeeklyPostcard
+        }
+        #else
+        legacyWeeklyPostcard
+        #endif
+    }
+
+    private var weeklyPostcardContent: some View {
         ZStack(alignment: .bottomTrailing) {
             SunclubVisualAsset.motifSunRing.image
                 .resizable()
@@ -194,6 +202,10 @@ struct WeeklyReportView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var legacyWeeklyPostcard: some View {
+        weeklyPostcardContent
         .padding(22)
         .background {
             RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
@@ -414,9 +426,11 @@ private struct WeeklyInsightCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 0.72,
+            legacyStroke: .clear,
+            legacyShadow: nil
         )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -443,13 +457,20 @@ private struct WeeklyMetricPill: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background {
-            if colorScheme == .light {
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .fill(AppPalette.cardFill.opacity(0.72))
-            }
-        }
+        .sunGlassCard(
+            cornerRadius: AppRadius.medium,
+            fillOpacity: legacyFillOpacity,
+            legacyStroke: .clear,
+            legacyShadow: nil
+        )
         .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private var legacyFillOpacity: Double {
+        if colorScheme == .light {
+            return 0.72
+        }
+        return 0
     }
 }
 

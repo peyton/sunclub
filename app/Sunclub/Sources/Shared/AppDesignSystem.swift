@@ -589,7 +589,21 @@ struct StatCard: View {
     var systemImage: String
     var tint: Color = AppColor.accent
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            cardContent
+                .sunGlassSurface(cornerRadius: AppRadius.insetCard)
+        } else {
+            legacyCard
+        }
+        #else
+        legacyCard
+        #endif
+    }
+
+    private var cardContent: some View {
         HStack(spacing: AppSpacing.xxs) {
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
@@ -605,6 +619,12 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
         .padding(.horizontal, AppSpacing.xs)
         .padding(.vertical, AppSpacing.xxs)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(value) \(label)")
+    }
+
+    private var legacyCard: some View {
+        cardContent
         .background {
             RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
                 .fill(AppColor.surfaceElevated)
@@ -613,8 +633,6 @@ struct StatCard: View {
             RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
                 .stroke(AppColor.stroke, lineWidth: 1)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(value) \(label)")
     }
 }
 

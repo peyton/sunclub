@@ -61,7 +61,7 @@ struct SkinHealthReportView: View {
                 .foregroundStyle(AppPalette.softInk)
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.card, fillOpacity: 0.72)
     }
 
     private var dateRangeCard: some View {
@@ -74,7 +74,7 @@ struct SkinHealthReportView: View {
             DatePicker("End", selection: $endDate, displayedComponents: .date)
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.card, fillOpacity: 0.72)
     }
 
     private func metricsCard(summary: SunclubSkinHealthReportSummary) -> some View {
@@ -89,7 +89,7 @@ struct SkinHealthReportView: View {
             reportMetricRow(label: "High-UV logged days", value: "\(summary.highUVProtectedDays)")
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.card, fillOpacity: 0.72)
     }
 
     private func monthlyConsistencyCard(summary: SunclubSkinHealthReportSummary) -> some View {
@@ -125,7 +125,7 @@ struct SkinHealthReportView: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.card, fillOpacity: 0.72)
     }
 
     private func spfDistributionCard(summary: SunclubSkinHealthReportSummary) -> some View {
@@ -145,7 +145,7 @@ struct SkinHealthReportView: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(cornerRadius: AppRadius.card, fillOpacity: 0.72)
     }
 
     private func reportMetricRow(label: String, value: String) -> some View {
@@ -184,6 +184,7 @@ struct SkinHealthReportView: View {
                     exportPDFReport()
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
+                .sunGlassPrimaryButton()
             }
         }
     }
@@ -196,15 +197,6 @@ struct SkinHealthReportView: View {
         shareSheetItem = ShareSheetItem(items: [artifact.fileURL])
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.72))
-            .appShadow(AppShadow.soft)
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
-            }
-    }
 }
 
 #Preview {

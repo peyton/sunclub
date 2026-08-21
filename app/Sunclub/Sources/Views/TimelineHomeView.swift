@@ -731,6 +731,7 @@ struct TimelineHomeView: View {
                 ) {
                     dispatchDailyPlanAction(plan.action)
                 }
+                .sunGlassPrimaryButton()
 
                 if dynamicTypeSize.isAccessibilitySize {
                     AppText(plan.detail, style: .body, color: AppColor.Text.secondary)
@@ -889,15 +890,12 @@ struct TimelineHomeView: View {
                 .accessibilityHidden(true)
         }
         .padding(13)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(AppPalette.elevatedCardFill)
-                .appShadow(AppShadow.soft)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 1,
+            interactive: true,
+            legacyFill: AppPalette.elevatedCardFill
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
     }
 
     private func sunscreenLogStatusText(

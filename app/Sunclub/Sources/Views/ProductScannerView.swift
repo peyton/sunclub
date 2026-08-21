@@ -157,13 +157,15 @@ struct ProductScannerView: View {
     }
 
     private var actionRow: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                scannerActions
-            }
+        SunGlassEffectContainer(spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    scannerActions
+                }
 
-            VStack(spacing: 10) {
-                scannerActions
+                VStack(spacing: 10) {
+                    scannerActions
+                }
             }
         }
     }
@@ -175,6 +177,7 @@ struct ProductScannerView: View {
                 requestCameraAccess()
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .disabled(isScanning)
             .accessibilityIdentifier("productScanner.useCamera")
         }
@@ -184,6 +187,7 @@ struct ProductScannerView: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(SunSecondaryButtonStyle())
+        .sunGlassSecondaryButton()
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.pickPhoto")
 
@@ -191,6 +195,7 @@ struct ProductScannerView: View {
             router.open(.manualLog)
         }
         .buttonStyle(SunSecondaryButtonStyle())
+        .sunGlassSecondaryButton()
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.enterManually")
     }
@@ -259,6 +264,7 @@ struct ProductScannerView: View {
                 openURL(settingsURL)
             }
             .buttonStyle(SunSecondaryButtonStyle())
+            .sunGlassSecondaryButton()
             .accessibilityIdentifier("productScanner.openSettings")
 
             Button("Enter manually") {
@@ -275,6 +281,7 @@ struct ProductScannerView: View {
                 )
             }
             .buttonStyle(SunSecondaryButtonStyle())
+            .sunGlassSecondaryButton()
             .accessibilityIdentifier("productScanner.manualLog")
         }
     }
@@ -302,6 +309,7 @@ struct ProductScannerView: View {
                 scanResultPendingUse = result
             }
             .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .disabled(result.spfLevel == nil)
             .accessibilityIdentifier("productScanner.useResult")
 

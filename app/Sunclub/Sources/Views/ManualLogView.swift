@@ -103,6 +103,7 @@ struct ManualLogView: View {
             }
         } footer: {
             PrimaryButton("Save Log", identifier: "manualLog.logToday", action: saveLog)
+                .sunGlassPrimaryButton()
                 .disabled(isSaveDisabled)
         }
         .onAppear {
@@ -259,14 +260,12 @@ struct ManualLogView: View {
                 productEditor
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.medium,
+            fillOpacity: 0.72,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-        }
     }
 
     private var commonSPFLevels: [Int] {
@@ -573,6 +572,7 @@ struct ManualLogView: View {
             saveProductProfile()
         }
         .buttonStyle(SunPrimaryButtonStyle())
+        .sunGlassPrimaryButton()
         .accessibilityIdentifier("manualLog.saveProductProfile")
     }
 
@@ -581,6 +581,7 @@ struct ManualLogView: View {
             removeProductProfile()
         }
         .buttonStyle(SunSecondaryButtonStyle())
+        .sunGlassSecondaryButton()
         .accessibilityIdentifier("manualLog.removeProductProfile")
     }
 }

@@ -355,50 +355,22 @@ struct SunLightScreen<Content: View, Footer: View>: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
-                VStack(spacing: 0) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 22) {
-                            content
-                        }
-                        .frame(maxWidth: contentMaxWidth ?? .infinity, alignment: .leading)
-                        .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, showsFooter ? 24 : SunLayout.tabBarScrollUnderlapPadding)
-                        .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onScrollGeometryChange(
-                        for: Double.self,
-                        of: { geometry in
-                            SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
-                        },
-                        action: { _, newProgress in
-                            topStatusBarFadeProgress = newProgress
-                        }
-                    )
-
+                #if os(iOS) && !os(watchOS)
+                if #available(iOS 26.0, *) {
                     if showsFooter {
-                        footer
-                            .frame(maxWidth: footerMaxWidth ?? .infinity)
-                            .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 5)
-                            .padding(.bottom, 20)
-                            .background {
-                                LinearGradient(
-                                    colors: [
-                                        AppPalette.cardFill.opacity(0),
-                                        AppPalette.cardFill.opacity(0.92),
-                                        AppPalette.cardFill.opacity(0.98)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                                .ignoresSafeArea(edges: .bottom)
+                        scrollingContent(proxy: proxy)
+                            .safeAreaInset(edge: .bottom, spacing: 0) {
+                                nativeFooter
                             }
+                    } else {
+                        scrollingContent(proxy: proxy)
                     }
+                } else {
+                    legacyLayout(proxy: proxy)
                 }
+                #else
+                legacyLayout(proxy: proxy)
+                #endif
 
                 SunTopStatusBarFade(progress: topStatusBarFadeProgress, background: AppColor.background)
             }
@@ -407,6 +379,72 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         .background {
             SunBackdrop()
         }
+    }
+
+    private func scrollingContent(proxy: GeometryProxy) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 22) {
+                content
+            }
+            .frame(maxWidth: contentMaxWidth ?? .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, showsFooter ? 24 : SunLayout.tabBarScrollUnderlapPadding)
+            .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .onScrollGeometryChange(
+            for: Double.self,
+            of: { geometry in
+                SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
+            },
+            action: { _, newProgress in
+                topStatusBarFadeProgress = newProgress
+            }
+        )
+    }
+
+    private func legacyLayout(proxy: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            scrollingContent(proxy: proxy)
+
+            if showsFooter {
+                legacyFooter
+            }
+        }
+    }
+
+    private var nativeFooter: some View {
+        SunGlassEffectContainer(spacing: 10) {
+            footer
+                .frame(maxWidth: footerMaxWidth ?? .infinity)
+                .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 5)
+        .padding(.bottom, 20)
+    }
+
+    private var legacyFooter: some View {
+        footer
+            .frame(maxWidth: footerMaxWidth ?? .infinity)
+            .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
+            .padding(.horizontal, 20)
+            .padding(.top, 5)
+            .padding(.bottom, 20)
+            .background {
+                LinearGradient(
+                    colors: [
+                        AppPalette.cardFill.opacity(0),
+                        AppPalette.cardFill.opacity(0.92),
+                        AppPalette.cardFill.opacity(0.98)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea(edges: .bottom)
+            }
     }
 }
 
@@ -444,39 +482,62 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
-
-                VStack(spacing: 0) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 26) {
-                            content
+                #if os(iOS) && !os(watchOS)
+                if #available(iOS 26.0, *) {
+                    scrollingContent(proxy: proxy)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            SunGlassEffectContainer(spacing: 10) {
+                                footer
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 6)
+                            .padding(.bottom, 24)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 28)
-                        .padding(.bottom, 18)
-                        .frame(minHeight: proxy.size.height - 120, alignment: .top)
-                    }
-                    .onScrollGeometryChange(
-                        for: Double.self,
-                        of: { geometry in
-                            SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
-                        },
-                        action: { _, newProgress in
-                            topStatusBarFadeProgress = newProgress
-                        }
-                    )
-
-                    footer
-                        .padding(.horizontal, 24)
-                        .padding(.top, 6)
-                        .padding(.bottom, 24)
+                } else {
+                    legacyLayout(proxy: proxy)
                 }
+                #else
+                legacyLayout(proxy: proxy)
+                #endif
 
                 SunTopStatusBarFade(progress: topStatusBarFadeProgress, background: AppColor.background)
             }
         }
         .background {
             SunDarkBackdrop()
+        }
+    }
+
+    private func scrollingContent(proxy: GeometryProxy) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 26) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 24)
+            .padding(.top, 28)
+            .padding(.bottom, 18)
+            .frame(minHeight: proxy.size.height - 120, alignment: .top)
+        }
+        .onScrollGeometryChange(
+            for: Double.self,
+            of: { geometry in
+                SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
+            },
+            action: { _, newProgress in
+                topStatusBarFadeProgress = newProgress
+            }
+        )
+    }
+
+    private func legacyLayout(proxy: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            scrollingContent(proxy: proxy)
+
+            footer
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+                .padding(.bottom, 24)
         }
     }
 }
@@ -708,14 +769,13 @@ struct SunMetricPill: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                .fill(AppPalette.controlFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.insetCard,
+            fillOpacity: 0.72,
+            legacyFill: AppPalette.controlFill,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-        }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier ?? "sunclub.metricPill")
     }
@@ -1704,12 +1764,31 @@ struct SunCameraOverlayLabel: View {
     let title: String
     let tint: Color
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            label
+                .foregroundStyle(AppPalette.ink)
+                .sunGlassSurface(cornerRadius: AppRadius.pill)
+        } else {
+            legacyLabel
+        }
+        #else
+        legacyLabel
+        #endif
+    }
+
+    private var label: some View {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(AppPalette.onAccent)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
+    }
+
+    private var legacyLabel: some View {
+        label
+            .foregroundStyle(AppPalette.onAccent)
             .background(tint.opacity(0.92), in: Capsule())
     }
 }
@@ -1894,6 +1973,23 @@ struct SunclubBadgeMedallion: View {
 
 extension View {
     @ViewBuilder
+    func sunLegacyButtonBackground(
+        cornerRadius: CGFloat,
+        fill: Color,
+        stroke: Color = .clear
+    ) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            legacySunButtonBackground(cornerRadius: cornerRadius, fill: fill, stroke: stroke)
+        }
+        #else
+        legacySunButtonBackground(cornerRadius: cornerRadius, fill: fill, stroke: stroke)
+        #endif
+    }
+
+    @ViewBuilder
     func sunGlassPrimaryButton() -> some View {
         #if os(iOS) && !os(watchOS)
         if #available(iOS 26.0, *) {
@@ -1936,7 +2032,10 @@ extension View {
     func sunGlassCard(
         cornerRadius: CGFloat = AppRadius.card,
         fillOpacity: Double = 0.86,
-        interactive: Bool = false
+        interactive: Bool = false,
+        legacyFill: Color = AppPalette.cardFill,
+        legacyStroke: Color = AppPalette.cardStroke,
+        legacyShadow: AppShadowStyle? = AppShadow.soft
     ) -> some View {
         #if os(iOS) && !os(watchOS)
         if #available(iOS 26.0, *) {
@@ -1945,23 +2044,57 @@ extension View {
                 style: interactive ? .interactive : .regular
             )
         } else {
-            legacySunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
+            legacySunGlassCard(
+                cornerRadius: cornerRadius,
+                fillOpacity: fillOpacity,
+                fill: legacyFill,
+                stroke: legacyStroke,
+                shadow: legacyShadow
+            )
         }
         #else
-        legacySunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
+        legacySunGlassCard(
+            cornerRadius: cornerRadius,
+            fillOpacity: fillOpacity,
+            fill: legacyFill,
+            stroke: legacyStroke,
+            shadow: legacyShadow
+        )
         #endif
     }
 
-    private func legacySunGlassCard(cornerRadius: CGFloat, fillOpacity: Double) -> some View {
+    private func legacySunGlassCard(
+        cornerRadius: CGFloat,
+        fillOpacity: Double,
+        fill: Color,
+        stroke: Color,
+        shadow: AppShadowStyle?
+    ) -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(AppPalette.cardFill.opacity(fillOpacity))
-                    .appShadow(AppShadow.soft)
+                    .fill(fill.opacity(fillOpacity))
+                    .appShadow(shadow)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
+                    .stroke(stroke, lineWidth: 1)
+            }
+    }
+
+    private func legacySunButtonBackground(
+        cornerRadius: CGFloat,
+        fill: Color,
+        stroke: Color
+    ) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(fill)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(stroke, lineWidth: 1)
             }
     }
 }

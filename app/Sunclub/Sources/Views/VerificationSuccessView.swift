@@ -54,6 +54,7 @@ struct VerificationSuccessView: View {
                     router.goHome()
                 }
                 .buttonStyle(SunPrimaryButtonStyle())
+                .sunGlassPrimaryButton()
                 .accessibilityIdentifier("success.done")
 
                 if presentation.canAddDetails {
@@ -155,9 +156,12 @@ struct VerificationSuccessView: View {
             }
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .fill(AppPalette.warmGlow.opacity(0.4))
+        .sunGlassCard(
+            cornerRadius: AppRadius.small,
+            fillOpacity: 0.4,
+            legacyFill: AppPalette.warmGlow,
+            legacyStroke: .clear,
+            legacyShadow: nil
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(appState.reapplyReminderPlan.confirmationText)
