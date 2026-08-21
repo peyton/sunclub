@@ -4,7 +4,7 @@
 
 - Implementation: complete locally on `feat/native-liquid-glass`.
 - Local verification: complete with the bounded environment-only exceptions recorded below.
-- PR, CI, merge, TestFlight, and exported-IPA entitlement verification: not performed.
+- PR, hosted CI, merge, TestFlight, and exported-IPA entitlement verification: pending.
 
 ## Platform Matrix
 
@@ -34,7 +34,7 @@
 
 - No persisted model, SwiftData schema, store path, CloudKit, entitlement, or signing changes.
 - No automation route, App Intent, URL callback, widget behavior, or Watch UI changes.
-- No PR, merge, release, TestFlight, or production entitlement action in this task.
+- No release signing, entitlement, persistence, or automation behavior is changed by the migration itself.
 
 ## Accessibility Checks
 
@@ -80,6 +80,15 @@ Final whole-branch review fix evidence:
 - GREEN contrast: 1 test executed, 0 failures. Focused design/accessibility/router tests: 28 executed, 0 failures. Full compile-cache-disabled unit suite: 381 executed, 0 failures.
 - The final state-retention UI rerun was attempted once after implementation but the simulator rejected the test runner before execution with `FBSOpenApplicationErrorDomain Code=6`, `Busy (Application failed preflight checks)`. No second post-fix retry was made. The regression remains configured for dark mode plus forced increased contrast, and a subsequent `build-for-testing` compiled and linked the final UI test bundle successfully.
 - Clean Python: 199 passed. Lint: passed with 52 existing warning-only SwiftLint findings and 0 serious violations. Compile-cache-disabled `SunclubDev` and production `Sunclub` device builds both succeeded, including widget and Watch targets.
+
+Final local release gate:
+
+- Independent whole-branch re-review: both state-retention and native-contrast findings addressed; no new findings.
+- Generate and lint: passed. Python: 199 passed. Full compile-cache-disabled unit suite: 381 passed.
+- Full final-source iOS 26.5 UI suite: 66 passed in 785.242 seconds, including native tab selection, accessory labels, detail chrome hiding, state retention, edge-swipe navigation, Dynamic Type, dark mode, and automation re-entry.
+- Compile-cache-disabled generic-device builds: Development and Production passed; widget and Watch targets compiled in both.
+- Manual iOS 26.5 simulator inspection: Timeline root and native accessory in light mode; dark plus increased contrast plus Reduce Motion; accessibility Dynamic Type plus Differentiate Without Color; Privacy detail with inline native title, glass back control, and hidden tab chrome. No clipping of essential controls or illegible foregrounds observed; content scrolls beneath root glass chrome as designed.
+- iOS 18.6-25 fallback: availability/source-contract tests and shared-target builds passed; no iOS 18 runtime is installed on this host, so hosted compile validation remains the fallback release evidence.
 
 Commands:
 
