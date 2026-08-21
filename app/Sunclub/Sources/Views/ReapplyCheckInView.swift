@@ -49,7 +49,7 @@ struct ReapplyCheckInView: View {
         } footer: {
             footerAction
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
         .sensoryFeedback(.success, trigger: successFeedbackTrigger)
     }

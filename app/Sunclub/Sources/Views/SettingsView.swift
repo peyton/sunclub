@@ -109,7 +109,7 @@ struct SettingsView: View {
             appState.refreshUVForecastIfNeeded()
             appState.refreshHealthKitStatus()
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

@@ -48,7 +48,7 @@ struct WeeklyReportView: View {
         .onAppear {
             refreshReport()
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

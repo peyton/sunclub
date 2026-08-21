@@ -46,7 +46,7 @@ struct SkinHealthReportView: View {
         .sheet(item: $shareSheetItem) { item in
             ActivityShareSheet(items: item.items)
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

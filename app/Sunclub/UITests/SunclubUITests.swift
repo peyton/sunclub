@@ -276,6 +276,34 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testNativeTabAndNavigationChromeHideForSettingsDetail() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["timeline.footer.today"].exists)
+        XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(app.buttons["home.streakCard"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
+        XCTAssertTrue(app.buttons["home.logManually"].exists)
+
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
+        app.buttons["settings.section.reminders"].tap()
+
+        XCTAssertTrue(app.navigationBars["Sunscreen & Reminders"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["screen.back"].exists)
+        XCTAssertFalse(app.buttons["timeline.footer.today"].exists)
+        XCTAssertFalse(app.buttons["home.logManually"].exists)
+
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["timeline.footer.today"].exists)
+        XCTAssertTrue(app.buttons["home.logManually"].exists)
+    }
+
+    @MainActor
     func testSettingsDetailCanPopWithLeftEdgeSwipe() throws {
         let app = XCUIApplication()
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]

@@ -381,7 +381,7 @@ struct TimelineHomeView: View {
             refresh()
         }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
     }
 
     private var selectedTimelineDayBinding: Binding<Date> {

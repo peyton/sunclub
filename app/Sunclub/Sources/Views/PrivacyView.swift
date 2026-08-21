@@ -87,7 +87,7 @@ struct PrivacyView: View {
         } message: {
             Text(deleteError ?? "Your sunscreen history is unchanged. Please try again.")
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

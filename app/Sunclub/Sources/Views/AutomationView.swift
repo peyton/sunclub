@@ -52,7 +52,7 @@ struct AutomationView: View {
                 Spacer(minLength: 0)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

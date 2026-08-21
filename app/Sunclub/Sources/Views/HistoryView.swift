@@ -59,7 +59,7 @@ struct HistoryView: View {
                 Spacer(minLength: 0)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
         .confirmationDialog(
             deleteDialogTitle,
@@ -1288,7 +1288,7 @@ struct HistoryRecordEditorView: View {
         .onDisappear {
             appState.clearLogActionError()
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

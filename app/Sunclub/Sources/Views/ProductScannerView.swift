@@ -152,7 +152,7 @@ struct ProductScannerView: View {
         } message: {
             Text("Sunclub will add this SPF to today's optional details. You can still edit it before logging.")
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

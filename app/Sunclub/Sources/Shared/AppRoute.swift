@@ -184,6 +184,10 @@ final class AppRouter {
         !path.isEmpty
     }
 
+    var showsRootTabChrome: Bool {
+        path(for: selectedTab).isEmpty
+    }
+
     func path(for tab: AppTab) -> [AppRoute] {
         switch tab {
         case .today:

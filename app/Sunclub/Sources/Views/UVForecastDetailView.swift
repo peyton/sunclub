@@ -51,12 +51,63 @@ struct UVForecastDetailView: View {
                 Spacer(minLength: 0)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
         .accessibilityIdentifier("uvForecast.detail")
     }
 
+    @ViewBuilder
     private var forecastHeader: some View {
+        if #available(iOS 26.0, *) {
+            nativeForecastHeader
+        } else {
+            legacyForecastHeader
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeForecastHeader: some View {
+        Color.clear
+            .frame(height: 0)
+            .accessibilityHidden(true)
+            .navigationTitle("UV Forecast")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        router.goBack()
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                    }
+                    .accessibilityLabel("Back")
+                    .accessibilityIdentifier("screen.back")
+                }
+
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text(locationTitle)
+                            .font(AppTextStyle.captionMedium.font)
+                        Text(selectedDay.formatted(.dateTime.month(.wide).day().year()))
+                            .font(AppTextStyle.caption.font)
+                            .foregroundStyle(AppPalette.softInk)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        openURL(SunclubWebLinks.docs)
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel("UV index documentation")
+                    .accessibilityIdentifier("uvForecast.docs")
+                }
+            }
+    }
+
+    private var legacyForecastHeader: some View {
         HStack {
             Button {
                 router.goBack()

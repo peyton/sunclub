@@ -111,11 +111,42 @@ struct ManualLogView: View {
         }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
         .sensoryFeedback(.impact(weight: .light), trigger: navigationFeedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
+    @ViewBuilder
     private var manualLogNavigationHeader: some View {
+        if #available(iOS 26.0, *) {
+            nativeManualLogNavigationHeader
+        } else {
+            legacyManualLogNavigationHeader
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeManualLogNavigationHeader: some View {
+        Color.clear
+            .frame(height: 0)
+            .accessibilityHidden(true)
+            .navigationTitle("Log Sunscreen")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel", action: closeLog)
+                        .accessibilityIdentifier("screen.back")
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save", action: saveLog)
+                        .disabled(isSaveDisabled)
+                        .accessibilityIdentifier("manualLog.saveTop")
+                }
+            }
+    }
+
+    private var legacyManualLogNavigationHeader: some View {
         HStack(alignment: .center) {
             Button("Cancel") {
                 closeLog()

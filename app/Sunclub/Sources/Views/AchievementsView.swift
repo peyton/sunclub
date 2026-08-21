@@ -31,7 +31,7 @@ struct AchievementsView: View {
             ActivityShareSheet(items: item.items)
         }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

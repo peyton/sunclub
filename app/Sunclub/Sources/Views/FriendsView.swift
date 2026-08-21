@@ -73,7 +73,7 @@ struct AccountabilityOnboardingView: View {
         .sheet(item: $shareSheetItem) { item in
             ActivityShareSheet(items: item.items)
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
@@ -187,7 +187,7 @@ struct FriendsView: View {
             appState.clearFriendImportMessage()
             localFeedbackMessage = nil
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

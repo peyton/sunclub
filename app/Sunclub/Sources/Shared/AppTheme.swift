@@ -912,6 +912,9 @@ struct SunLightHeader: View {
     let title: String
     let showsBack: Bool
     let trailingSystemImage: String?
+    let trailingAccessibilityLabel: String?
+    let trailingAccessibilityHint: String?
+    let trailingAccessibilityIdentifier: String?
     let onBack: (() -> Void)?
     let onTrailingTap: (() -> Void)?
 
@@ -920,16 +923,63 @@ struct SunLightHeader: View {
         showsBack: Bool = false,
         onBack: (() -> Void)? = nil,
         trailingSystemImage: String? = nil,
+        trailingAccessibilityLabel: String? = nil,
+        trailingAccessibilityHint: String? = nil,
+        trailingAccessibilityIdentifier: String? = nil,
         onTrailingTap: (() -> Void)? = nil
     ) {
         self.title = title
         self.showsBack = showsBack
         self.onBack = onBack
         self.trailingSystemImage = trailingSystemImage
+        self.trailingAccessibilityLabel = trailingAccessibilityLabel
+        self.trailingAccessibilityHint = trailingAccessibilityHint
+        self.trailingAccessibilityIdentifier = trailingAccessibilityIdentifier
         self.onTrailingTap = onTrailingTap
     }
 
+    @ViewBuilder
     var body: some View {
+        if #available(iOS 26.0, *) {
+            nativeHeader
+        } else {
+            legacyHeader
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeHeader: some View {
+        Color.clear
+            .frame(height: 0)
+            .accessibilityHidden(true)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(showsBack ? .inline : .large)
+            .navigationBarBackButtonHidden(showsBack)
+            .toolbar {
+                if showsBack {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: { onBack?() }) {
+                            Label("Back", systemImage: "chevron.left")
+                        }
+                        .accessibilityLabel("Back")
+                        .accessibilityIdentifier("screen.back")
+                    }
+                }
+
+                if let trailingSystemImage {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: { onTrailingTap?() }) {
+                            Image(systemName: trailingSystemImage)
+                        }
+                        .accessibilityLabel(trailingAccessibilityLabel ?? title)
+                        .accessibilityHint(trailingAccessibilityHint ?? "")
+                        .accessibilityIdentifier(trailingAccessibilityIdentifier ?? "")
+                    }
+                }
+            }
+    }
+
+    private var legacyHeader: some View {
         HStack(alignment: .top, spacing: 10) {
             if showsBack {
                 Button(
@@ -964,10 +1014,45 @@ struct SunLightHeader: View {
                     }
                 )
                 .buttonStyle(.plain)
+                .accessibilityLabel(trailingAccessibilityLabel ?? title)
+                .accessibilityHint(trailingAccessibilityHint ?? "")
+                .accessibilityIdentifier(trailingAccessibilityIdentifier ?? "")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 2)
+    }
+}
+
+private struct SunNavigationBarCompatibilityModifier: ViewModifier {
+    let title: String?
+    let displayMode: NavigationBarItem.TitleDisplayMode
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if let title {
+                content
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(displayMode)
+                    .toolbar(.visible, for: .navigationBar)
+            } else {
+                content
+                    .toolbar(.visible, for: .navigationBar)
+            }
+        } else {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+extension View {
+    func sunNavigationBarCompatibility(
+        title: String? = nil,
+        displayMode: NavigationBarItem.TitleDisplayMode = .inline
+    ) -> some View {
+        modifier(SunNavigationBarCompatibilityModifier(title: title, displayMode: displayMode))
     }
 }
 
@@ -1409,6 +1494,18 @@ struct SunAppTabBarAction: Equatable {
     let title: String
     let systemImage: String
     let accessibilityHint: String
+
+    init(
+        shortTitle: String,
+        title: String,
+        systemImage: String,
+        accessibilityHint: String
+    ) {
+        self.shortTitle = shortTitle
+        self.title = title
+        self.systemImage = systemImage
+        self.accessibilityHint = accessibilityHint
+    }
 
     static let logSunscreen = SunAppTabBarAction(
         shortTitle: "Log",
