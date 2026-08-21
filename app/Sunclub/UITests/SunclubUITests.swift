@@ -199,9 +199,12 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Privacy"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.buttons["privacy.exportHistory"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["privacy.deleteHistory"], in: app))
+        let deleteHistory = app.buttons["privacy.deleteHistory"]
+        XCTAssertTrue(scrollToHittableElement(deleteHistory, in: app))
+        app.swipeUp()
+        XCTAssertTrue(deleteHistory.isHittable)
 
-        app.buttons["privacy.deleteHistory"].tap()
+        deleteHistory.tap()
         XCTAssertTrue(app.staticTexts["Delete sunscreen history?"].waitForExistence(timeout: 5))
         let confirmationCopy = app.staticTexts.matching(NSPredicate(
             format: "label CONTAINS %@",
@@ -1092,7 +1095,10 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineHomeKeepsDefaultLogSurfaceSimple() throws {
         let app = launchTimelineHome()
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        let contextualAction = app.buttons["home.logManually"]
+        XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
+        XCTAssertTrue(contextualAction.isHittable)
+        XCTAssertEqual(contextualAction.label, "Log Today")
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["home.dailyPlan"].exists)
         XCTAssertTrue(app.buttons["home.dailyPlan.action"].exists)
@@ -1101,7 +1107,6 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
             || app.staticTexts["home.todayStatus"].exists)
-        XCTAssertTrue(app.staticTexts["Log"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
@@ -1192,6 +1197,8 @@ final class SunclubUITests: XCTestCase {
             scrollToHittableElement(swipeSurface, in: app, attempts: 6),
             "Expected the compact UV card to remain reachable before swiping the timeline."
         )
+        app.swipeUp()
+        XCTAssertTrue(swipeSurface.isHittable)
 
         dragTimelineBody(swipeSurface, direction: .future, verticalPosition: 0.5)
         XCTAssertTrue(waitForLabelNotPrefix("Today,", on: headline))
