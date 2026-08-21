@@ -28,6 +28,44 @@ final class DesignSystemAdoptionTests: XCTestCase {
         }
     }
 
+    func testLiquidGlassPrimitivesPreserveAvailabilityFallbacks() throws {
+        let designSystem = try source("app/Sunclub/Sources/Shared/AppDesignSystem.swift")
+        let theme = try source("app/Sunclub/Sources/Shared/AppTheme.swift")
+
+        let designSystemSymbols = [
+            "struct SunGlassEffectContainer",
+            "func sunGlassSurface(",
+            "case regular",
+            "case interactive",
+            "if #available(iOS 26.0, *)",
+            ".regular.interactive()",
+            "GlassEffectContainer"
+        ]
+
+        for symbol in designSystemSymbols {
+            XCTAssertTrue(
+                designSystem.contains(symbol),
+                "AppDesignSystem.swift must provide the availability-aware glass primitive: \(symbol)."
+            )
+        }
+
+        let themeSymbols = [
+            "func sunGlassPrimaryButton()",
+            "func sunGlassSecondaryButton()",
+            "func sunGlassIconButton()",
+            ".glassProminent",
+            ".glass",
+            "func sunGlassCard("
+        ]
+
+        for symbol in themeSymbols {
+            XCTAssertTrue(
+                theme.contains(symbol),
+                "AppTheme.swift must route shared controls through the glass compatibility layer: \(symbol)."
+            )
+        }
+    }
+
     func testLegacyHomePathIsRemoved() throws {
         let root = try repoRoot
         XCTAssertFalse(

@@ -1796,7 +1796,59 @@ struct SunclubBadgeMedallion: View {
 }
 
 extension View {
+    @ViewBuilder
+    func sunGlassPrimaryButton() -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glassProminent)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func sunGlassSecondaryButton() -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glass)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func sunGlassIconButton() -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glass)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
     func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.86) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            sunGlassSurface(cornerRadius: cornerRadius)
+        } else {
+            legacySunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
+        }
+        #else
+        legacySunGlassCard(cornerRadius: cornerRadius, fillOpacity: fillOpacity)
+        #endif
+    }
+
+    private func legacySunGlassCard(cornerRadius: CGFloat, fillOpacity: Double) -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

@@ -150,6 +150,59 @@ enum AppMotion {
     }
 }
 
+enum SunGlassSurfaceStyle {
+    case regular
+    case interactive
+}
+
+struct SunGlassEffectContainer<Content: View>: View {
+    var spacing: CGFloat?
+    let content: Content
+
+    init(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    @ViewBuilder
+    var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+private struct SunGlassSurfaceModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let style: SunGlassSurfaceStyle
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            switch style {
+            case .regular:
+                content.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            case .interactive:
+                content.glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
 enum AppFont {
     static func rounded(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(textStyle(for: size), design: .rounded, weight: weight)
@@ -271,7 +324,23 @@ struct AppCard<Content: View>: View {
         self.content = content()
     }
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(padding)
+                .sunGlassSurface(cornerRadius: cornerRadius)
+        } else {
+            legacyBody
+        }
+        #else
+        legacyBody
+        #endif
+    }
+
+    private var legacyBody: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(padding)
@@ -611,6 +680,13 @@ private struct DiagonalHatch: View {
 }
 
 extension View {
+    func sunGlassSurface(
+        cornerRadius: CGFloat = AppRadius.card,
+        style: SunGlassSurfaceStyle = .regular
+    ) -> some View {
+        modifier(SunGlassSurfaceModifier(cornerRadius: cornerRadius, style: style))
+    }
+
     func appShadow(_ style: AppShadowStyle?) -> some View {
         shadow(
             color: style?.color ?? .clear,
