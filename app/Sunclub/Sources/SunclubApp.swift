@@ -143,11 +143,15 @@ struct SunclubApp: App {
             requestedReapplyInterval: requestedReapplyInterval
         )
         applyUITestSeedData(from: arguments)
-        openUITestRequestedRoute(
-            url: requestedURL,
-            shortcutType: requestedShortcutType,
-            route: requestedRoute
-        )
+        Task { @MainActor in
+            await Task.yield()
+            appState.refresh()
+            openUITestRequestedRoute(
+                url: requestedURL,
+                shortcutType: requestedShortcutType,
+                route: requestedRoute
+            )
+        }
     }
 
     private func applyUITestFeatureConfiguration(
