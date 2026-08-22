@@ -42,14 +42,14 @@ jobs:
 
       - name: Install tools for act
         if: ${{ env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: false
           cache_save: false
       # Lockfile is required for all tool resolution to prevent CI drift.
       - name: Install tools
         if: ${{ !env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: true
       - name: Restore repo caches
@@ -93,14 +93,14 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Install tools for act
         if: ${{ env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: false
           cache_save: false
       # Lockfile is required for all tool resolution to prevent CI drift.
       - name: Install tools
         if: ${{ !env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: true
       - name: Restore repo caches
@@ -264,14 +264,14 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Install tools for act
         if: ${{ env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: false
           cache_save: false
       # Lockfile is required for all tool resolution to prevent CI drift.
       - name: Install tools
         if: ${{ !env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: true
       - name: Restore repo caches
@@ -334,14 +334,14 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Install tools for act
         if: ${{ env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: false
           cache_save: false
       # Lockfile is required for all tool resolution to prevent CI drift.
       - name: Install tools
         if: ${{ !env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: true
       - name: Restore repo caches
@@ -438,13 +438,13 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Install tools for act
         if: ${{ env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: false
           cache_save: false
       - name: Install tools
         if: ${{ !env.ACT }}
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
         with:
           cache: true
       - name: Restore repo caches
