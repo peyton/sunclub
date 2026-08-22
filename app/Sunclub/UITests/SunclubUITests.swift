@@ -1930,8 +1930,8 @@ final class SunclubUITests: XCTestCase {
 
     @MainActor
     private func nudgeScrollSurface(_ surface: XCUIElement, direction: ScrollDirection) {
-        let startY: CGFloat = direction == .down ? 0.35 : 0.65
-        let endY: CGFloat = direction == .down ? 0.65 : 0.35
+        let startY: CGFloat = direction == .scrollDown ? 0.35 : 0.65
+        let endY: CGFloat = direction == .scrollDown ? 0.65 : 0.35
         let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
         let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
         start.press(forDuration: 0.05, thenDragTo: end)
