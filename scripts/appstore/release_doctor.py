@@ -40,15 +40,13 @@ BUNDLE_SUFFIXES = {
     "main app": "",
     "widget extension": ".widgets",
     "watch app": ".watch",
-    "watch extension": ".watch.extension",
-    "watch container": ".watch.container",
     "watch widget extension": ".watch.widgets",
 }
 
 PROFILE_ENTITLEMENT_SOURCES = {
     "main app": "Sunclub.entitlements",
     "widget extension": "SunclubWidgetsExtension.entitlements",
-    "watch extension": "SunclubWatch.entitlements",
+    "watch app": "SunclubWatch.entitlements",
     "watch widget extension": "SunclubWatchWidgets.entitlements",
 }
 

@@ -166,6 +166,8 @@ validate_signed_ipa_entitlements() {
   local temp_dir
   local signed_app_path
   local entitlements_path
+  local watch_app_path
+  local watch_entitlements_path
   local expected_container
   local expected_app_group
 
@@ -184,6 +186,14 @@ validate_signed_ipa_entitlements() {
     fail "Could not read signed app entitlements"
   fi
 
+  watch_app_path="$(find "$signed_app_path/Watch" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME"'Watch.app' -type d -print -quit 2>/dev/null || true)"
+  [ -n "$watch_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME Watch app"
+  watch_entitlements_path="$temp_dir/watch-entitlements.plist"
+  if ! codesign -d --entitlements :- "$watch_app_path" >"$watch_entitlements_path" 2>"$temp_dir/watch-codesign.log"; then
+    cat "$temp_dir/watch-codesign.log" >&2
+    fail "Could not read signed watch app entitlements"
+  fi
+
   expected_container="iCloud.$RELEASE_APP_IDENTIFIER"
   expected_app_group="group.$RELEASE_APP_IDENTIFIER"
   assert_plist_string "$entitlements_path" "aps-environment" "$SUNCLUB_APS_ENVIRONMENT"
@@ -195,6 +205,10 @@ validate_signed_ipa_entitlements() {
     "$expected_container"
   assert_plist_array_contains \
     "$entitlements_path" \
+    "com.apple.security.application-groups" \
+    "$expected_app_group"
+  assert_plist_array_contains \
+    "$watch_entitlements_path" \
     "com.apple.security.application-groups" \
     "$expected_app_group"
   assert_plist_string "$entitlements_path" "com.apple.developer.weatherkit" "true"
@@ -209,6 +223,7 @@ validate_signed_ipa_watch_bundle() {
   local signed_app_path
   local watch_app_path
   local watch_info_path
+  local legacy_watch_extension_path
   local main_build_number
   local main_marketing_version
 
@@ -223,6 +238,9 @@ validate_signed_ipa_watch_bundle() {
 
   watch_app_path="$(find "$signed_app_path/Watch" -maxdepth 1 -name "$RELEASE_APP_PRODUCT_NAME"'Watch.app' -type d -print -quit 2>/dev/null || true)"
   [ -n "$watch_app_path" ] || fail "Exported IPA is missing $RELEASE_APP_PRODUCT_NAME Watch app"
+
+  legacy_watch_extension_path="$(find "$signed_app_path/Watch" -type d -name "$RELEASE_APP_PRODUCT_NAME"'WatchExtension.appex' -print -quit 2>/dev/null || true)"
+  [ -z "$legacy_watch_extension_path" ] || fail "Exported IPA contains a legacy WatchKit extension: $legacy_watch_extension_path"
 
   watch_info_path="$watch_app_path/Info.plist"
   [ -f "$watch_info_path" ] || fail "Exported watch app is missing Info.plist"
@@ -239,10 +257,6 @@ validate_signed_ipa_watch_bundle() {
 
   assert_plist_key_absent "$watch_info_path" "CFBundleIconName" "$RELEASE_APP_PRODUCT_NAME Watch app"
   assert_plist_key_absent "$watch_info_path" "CFBundleURLTypes" "$RELEASE_APP_PRODUCT_NAME Watch app"
-  assert_plist_key_absent "$watch_info_path" "SunclubAppGroupID" "$RELEASE_APP_PRODUCT_NAME Watch app"
-  assert_plist_key_absent "$watch_info_path" "SunclubICloudContainerIdentifier" "$RELEASE_APP_PRODUCT_NAME Watch app"
-  assert_plist_key_absent "$watch_info_path" "SunclubPublicAccountabilityTransportEnabled" "$RELEASE_APP_PRODUCT_NAME Watch app"
-  assert_plist_key_absent "$watch_info_path" "SunclubURLScheme" "$RELEASE_APP_PRODUCT_NAME Watch app"
 
   rm -rf "$temp_dir"
 }
@@ -370,7 +384,6 @@ adhoc_sign_archived_app_with_release_entitlements() {
   while IFS= read -r nested_path; do
     case "$(basename "$nested_path")" in
     "${RELEASE_APP_PRODUCT_NAME}WidgetsExtension.appex") entitlements_path="$widget_entitlements_path" ;;
-    "${RELEASE_APP_PRODUCT_NAME}WatchExtension.appex") entitlements_path="$watch_entitlements_path" ;;
     "${RELEASE_APP_PRODUCT_NAME}WatchWidgetsExtension.appex") entitlements_path="$watch_widget_entitlements_path" ;;
     *) entitlements_path="" ;;
     esac
@@ -379,7 +392,11 @@ adhoc_sign_archived_app_with_release_entitlements() {
 
   while IFS= read -r nested_path; do
     [ "$nested_path" != "$APP_BUNDLE_PATH" ] || continue
-    adhoc_sign "$nested_path"
+    case "$(basename "$nested_path")" in
+    "${RELEASE_APP_PRODUCT_NAME}Watch.app") entitlements_path="$watch_entitlements_path" ;;
+    *) entitlements_path="" ;;
+    esac
+    adhoc_sign "$nested_path" "$entitlements_path"
   done < <(find "$APP_BUNDLE_PATH" -type d -name '*.app' -print | awk '{ print gsub(/\//, "/") " " $0 }' | sort -rn | cut -d' ' -f2-)
 
   adhoc_sign "$APP_BUNDLE_PATH" "$app_entitlements_path"

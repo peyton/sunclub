@@ -92,23 +92,17 @@ class FakeProfilesClient:
         raise AssertionError(f"Unexpected PATCH: {path} {body}")
 
 
-def test_collect_archived_bundles_reads_app_and_nested_extensions(
+def test_collect_archived_bundles_reads_single_target_watch_app(
     tmp_path: Path,
 ) -> None:
     archive_path = tmp_path / "Sunclub.xcarchive"
     app_path = archive_path / "Products" / "Applications" / "Sunclub.app"
     widget_path = app_path / "PlugIns" / "SunclubWidgetsExtension.appex"
     watch_path = app_path / "Watch" / "SunclubWatch.app"
-    watch_extension_path = watch_path / "PlugIns" / "SunclubWatchExtension.appex"
 
     write_info_plist(app_path, "app.peyton.sunclub", "APPL")
     write_info_plist(widget_path, "app.peyton.sunclub.widgets", "XPC!")
     write_info_plist(watch_path, "app.peyton.sunclub.watch", "APPL")
-    write_info_plist(
-        watch_extension_path,
-        "app.peyton.sunclub.watch.extension",
-        "XPC!",
-    )
 
     bundles = collect_archived_bundles(archive_path, "Sunclub")
 
@@ -116,7 +110,6 @@ def test_collect_archived_bundles_reads_app_and_nested_extensions(
         "app.peyton.sunclub",
         "app.peyton.sunclub.watch",
         "app.peyton.sunclub.widgets",
-        "app.peyton.sunclub.watch.extension",
     ]
     assert {bundle.profile_type for bundle in bundles} == {APP_STORE_PROFILE_TYPE}
 
@@ -149,10 +142,10 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
             package_type="APPL",
         ),
         ArchivedBundle(
-            path=tmp_path / "SunclubWatchExtension.appex",
-            relative_path="SunclubWatch.app/PlugIns/SunclubWatchExtension.appex",
-            bundle_identifier="app.peyton.sunclub.watch.extension",
-            package_type="XPC!",
+            path=tmp_path / "SunclubWatch.app",
+            relative_path="Sunclub.app/Watch/SunclubWatch.app",
+            bundle_identifier="app.peyton.sunclub.watch",
+            package_type="APPL",
         ),
     ]
 
@@ -167,12 +160,12 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
     assert len(client.posts) == 1
     posted_data = client.posts[0]["data"]
     assert posted_data["attributes"]["name"].startswith(
-        "Sunclub App Store app.peyton.sunclub.watch.extension "
+        "Sunclub App Store app.peyton.sunclub.watch "
     )
     assert posted_data["attributes"]["profileType"] == APP_STORE_PROFILE_TYPE
     assert posted_data["relationships"]["bundleId"]["data"] == {
         "type": "bundleIds",
-        "id": "bundle-app.peyton.sunclub.watch.extension",
+        "id": "bundle-app.peyton.sunclub.watch",
     }
     assert posted_data["relationships"]["certificates"]["data"] == [
         {"type": "certificates", "id": "cert-profile-existing"}
@@ -181,9 +174,7 @@ def test_ensure_profiles_reuses_existing_profiles_and_creates_missing_ones(
         tmp_path / "profiles" / "uuid-profile-existing.mobileprovision"
     ).read_bytes()
     assert (
-        tmp_path
-        / "profiles"
-        / "uuid-bundle-app.peyton.sunclub.watch.extension.mobileprovision"
+        tmp_path / "profiles" / "uuid-bundle-app.peyton.sunclub.watch.mobileprovision"
     ).read_bytes()
 
 
@@ -437,12 +428,6 @@ def test_ensure_profiles_creates_one_distribution_certificate_for_missing_profil
             bundle_identifier="app.peyton.sunclub.watch",
             package_type="APPL",
         ),
-        ArchivedBundle(
-            path=tmp_path / "SunclubWatchExtension.appex",
-            relative_path="Sunclub.app/Watch/SunclubWatch.app/PlugIns/Ext.appex",
-            bundle_identifier="app.peyton.sunclub.watch.extension",
-            package_type="XPC!",
-        ),
     ]
 
     prepared = ensure_profiles(
@@ -452,9 +437,9 @@ def test_ensure_profiles_creates_one_distribution_certificate_for_missing_profil
         install_directory=None,
     )
 
-    assert [profile.created for profile in prepared] == [True, True]
+    assert [profile.created for profile in prepared] == [True]
     assert created_certificates == ["cert-created"]
-    assert len(client.posts) == 2
+    assert len(client.posts) == 1
     for post in client.posts:
         assert post["data"]["relationships"]["certificates"]["data"] == [
             {"type": "certificates", "id": "cert-created"}

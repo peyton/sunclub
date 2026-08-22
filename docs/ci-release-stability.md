@@ -100,20 +100,20 @@ GitHub run cross-check:
   own the release gate.
 - CI and release workflows enforce `mise --locked` execution, so changing
   pinned versions in `mise.toml` requires regenerating `mise.lock` before merge.
-- Keep generated iOS, widget, watch app, watch extension, watch container, and
-  watch widget `Info.plist` values aligned:
+- Keep generated iOS, widget, single-target watch app, and watch widget
+  `Info.plist` values aligned:
   - `CFBundleShortVersionString=$(MARKETING_VERSION)`
   - `CFBundleVersion=$(SUNCLUB_BUILD_NUMBER)`
 - Do not rely on Tuist defaults for embedded watch metadata. WatchKit
   `ValidateEmbeddedBinary` requires the embedded watch app marketing version to
   exactly match the companion app.
 - Keep the embedded watch app `Info.plist` App Store-safe. The watch app plist
-  must keep `WKCompanionAppBundleIdentifier` and version fields, but must not
-  inherit iOS app runtime keys like
-  `CFBundleURLTypes`, `SunclubAppGroupID`, `SunclubICloudContainerIdentifier`,
-  `SunclubPublicAccountabilityTransportEnabled`, or `SunclubURLScheme`. App
-  Store Connect also rejects `CFBundleIconName` in the embedded watch app plist,
-  so rely on compiled watch assets instead of that key.
+  must keep `WKCompanionAppBundleIdentifier`, version fields, and the
+  single-target runtime keys `SunclubAppGroupID`,
+  `SunclubICloudContainerIdentifier`, `SunclubPublicAccountabilityTransportEnabled`,
+  and `SunclubURLScheme`. It must not include `CFBundleURLTypes`. App Store
+  Connect also rejects `CFBundleIconName` in the embedded watch app plist, so
+  rely on compiled watch assets instead of that key.
 - Keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset` wired into the
   watch app resources. App Store Connect rejects embedded watch apps that do not
   export compiled icon assets.
@@ -127,9 +127,9 @@ GitHub run cross-check:
   App Store Connect, install them locally for export, and preserve
   `.build/release-diagnostics/provisioning-profiles.json` for audit.
 - Keep release-doctor coverage aligned with every production bundle ID emitted
-  by `Project.swift`, including watch extension, watch container, and watch
-  widget identifiers. A release can archive successfully and still fail profile
-  preparation when a nested watch bundle ID was never registered.
+  by `Project.swift`: main app, iOS widget, single-target watch app, and watch
+  widget. A release can archive successfully and still fail profile preparation
+  when a nested watch bundle ID was never registered.
 - The App Store Connect API can create Bundle IDs and enable the App Groups
   capability, but the specific App Group assignment may still need the Apple
   Developer portal Configure/Assign step before the generated App Store profile
@@ -151,10 +151,10 @@ GitHub run cross-check:
   certificate relationships from bundle profile listings while still returning
   them through the included profile resource.
 - Gather reusable release certificate IDs across all archived bundles before
-  creating any missing profiles. A watch extension can require a new profile
-  while App Store Connect hides the top-level certificate list from the API key,
-  so profile creation must be able to reuse the certificate attached to a valid
-  app, widget, or watch app profile.
+  creating any missing profiles. A single-target watch app can require a new
+  profile while App Store Connect hides the top-level certificate list from the
+  API key, so profile creation must be able to reuse the certificate attached to
+  a valid app, widget, or watch app profile.
 - If App Store Connect exposes no reusable certificate through existing
   profiles or `/certificates`, create a fresh Apple distribution certificate
   from a generated CSR, import its private key into a temporary release
@@ -174,7 +174,7 @@ GitHub run cross-check:
   profile or checked-in entitlement files.
 - Release diagnostics must include code-signing and entitlement dumps for the
   main app and every nested `.app` or `.appex` bundle inside the exported IPA,
-  including watch app, watch extension, iOS widget, and watch widget bundles.
+  including the single-target watch app, iOS widget, and watch widget bundles.
 - Run `just release-preflight` before cutting a TestFlight tag when a local
   macOS/Xcode environment is available. It combines strict metadata validation,
   Python release guard tests, release-safety unit tests, and the release build
