@@ -44,6 +44,14 @@ IOS_XCODE_WORKFLOWS = (
 )
 ARCHIVE_SCRIPT = REPO_ROOT / "scripts" / "appstore" / "archive-and-upload.sh"
 RESOLVE_ENTITLEMENTS = REPO_ROOT / "scripts" / "appstore" / "resolve_entitlements.py"
+APP_ICONSET = (
+    REPO_ROOT
+    / "app"
+    / "Sunclub"
+    / "Resources"
+    / "Assets.xcassets"
+    / "AppIcon.appiconset"
+)
 WATCH_APP_ICONSET = (
     REPO_ROOT
     / "app"
@@ -407,6 +415,18 @@ def test_watch_app_target_uses_app_store_safe_metadata_and_icons() -> None:
         "WKAppBundleIdentifier",
     ):
         assert invalid_key not in watch_app_target
+
+
+def test_ios_app_icons_do_not_contain_alpha_channels() -> None:
+    contents = json.loads((APP_ICONSET / "Contents.json").read_text())
+
+    for image in contents["images"]:
+        icon = APP_ICONSET / image["filename"]
+        png_header = icon.read_bytes()[:26]
+
+        assert png_header.startswith(b"\x89PNG\r\n\x1a\n")
+        assert png_header[24] == 8
+        assert png_header[25] == 2
 
 
 def test_watch_app_iconset_declares_watchos_icon_asset() -> None:
