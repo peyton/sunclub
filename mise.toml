@@ -3,22 +3,22 @@ min_version = { soft = '2026.4.20' }
 # CI and release workflows enforce lockfile installation with `mise --locked`.
 # Keep `mise.toml` and `mise.lock` aligned whenever tool versions change.
 [tools]
-just = "1.51.0"
-tuist = { version = "4.203.4", os = ["macos"] }
-hk = "1.46.0"
+just = "1.58.0"
+tuist = { version = "4.205.0", os = ["macos"] }
+hk = "1.56.0"
 actionlint = "1.7.12"
-python = "3.14.5"
-uv = "0.12.3"
-node = "25.9.0"
-"npm:prettier" = "3.8.3"
-"npm:wrangler" = "4.95.0"
-ruff = "0.15.15"
+python = "3.14.7"
+uv = "0.12.5"
+node = "26.7.0"
+"npm:prettier" = "3.9.6"
+"npm:wrangler" = "4.125.0"
+ruff = "0.16.4"
 shellcheck = "0.11.0"
-rumdl = "v0.2.3"
+rumdl = "v0.2.58"
 shfmt = "3.13.1"
-zizmor = "1.25.2"
-swiftlint = "0.63.3"
-pkl = "0.31.1"
+zizmor = "1.29.0"
+swiftlint = "0.65.0"
+pkl = "0.32.1"
 
 [settings]
 experimental = true
