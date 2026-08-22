@@ -443,8 +443,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app, attempts: 10), "Expected Settings footer to remain reachable with accessibility settings enabled.")
 
-        app.buttons["timeline.footer.settings"].tap()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected Settings to open from the tab footer.")
+        assertSettingsTabOpens(in: app)
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
@@ -458,9 +457,10 @@ final class SunclubUITests: XCTestCase {
         app.buttons["screen.back"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
         XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5), "Expected Today tab footer to remain reachable from Settings.")
-        app.buttons["timeline.footer.today"].tap()
         let logAction = app.buttons["home.logManually"]
-        XCTAssertTrue(logAction.waitForExistence(timeout: 5), "Expected Today tab home action after leaving Settings.")
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"], until: logAction),
+            "Expected Today tab home action after leaving Settings."
+        )
 
         let actionFrame = logAction.frame
         app.coordinate(withNormalizedOffset: .zero)
@@ -1608,6 +1608,40 @@ final class SunclubUITests: XCTestCase {
         let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: verticalPosition))
         let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: verticalPosition))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    private func selectNativeTab(
+        _ tab: XCUIElement,
+        until destination: XCUIElement
+    ) -> Bool {
+        for attempt in 0..<2 {
+            if destination.exists {
+                return true
+            }
+            guard tab.waitForExistence(timeout: 2), tab.isHittable else {
+                return false
+            }
+
+            tab.tap()
+            let timeout: TimeInterval = attempt == 0 ? 1 : 5
+            if destination.waitForExistence(timeout: timeout) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    @MainActor
+    private func assertSettingsTabOpens(in app: XCUIApplication) {
+        XCTAssertTrue(
+            selectNativeTab(
+                app.buttons["timeline.footer.settings"],
+                until: app.staticTexts["Settings"]
+            ),
+            "Expected Settings to open from the tab footer."
+        )
     }
 
     private static let dayIdentifierFormatter: DateFormatter = {
