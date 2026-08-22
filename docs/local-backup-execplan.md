@@ -77,8 +77,8 @@ Work from the repository root at `/Users/peyton/.codex/worktrees/dfa0/sunclub`.
 3. Add or update specs and tests.
 4. Run:
 
-    just test-unit
-    just test-ui
+   just test-unit
+   just test-ui
 
 Expected success after implementation:
 

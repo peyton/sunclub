@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import base64
+import plistlib
+import subprocess
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
-import plistlib
 from pathlib import Path
-import subprocess
 from typing import Any
 
-import scripts.appstore.provisioning_profiles as provisioning_profiles
+from scripts.appstore import provisioning_profiles
 from scripts.appstore.connect_api import AppStoreConnectError
 from scripts.appstore.provisioning_profiles import (
     APP_STORE_PROFILE_TYPE,

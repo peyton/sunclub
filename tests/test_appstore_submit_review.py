@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import copy
-from pathlib import Path
 import struct
-from typing import Any
 import zlib
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -22,7 +22,6 @@ from scripts.appstore.submit_review import (
     require_confirmation,
     write_checkpoint_summary,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "scripts" / "appstore" / "metadata.json"

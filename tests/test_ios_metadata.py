@@ -11,7 +11,6 @@ from scripts.appstore.release_doctor import (
     expected_profile_entitlements,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
 APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
@@ -485,7 +484,12 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
         )
         == 3
     )
-    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in workflow
+    assert (
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
+        not in workflow
+    )
     assert workflow.count("timeout-minutes: 45") == 3
     assert "test-ios-unit:" in workflow
     assert "name: iOS Unit Tests" in workflow
@@ -649,7 +653,9 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     release_safety_body = release_safety_step.group("body")
     assert "timeout-minutes: 45" in release_safety_body
     assert (
-        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
         not in release_safety_body
     )
     assert "mise --locked exec -- just test-unit" in release_safety_body
@@ -657,7 +663,9 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
     assert (
-        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
         not in archive_upload_body
     )
     assert (
@@ -714,7 +722,12 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
         in workflow
     )
-    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in workflow
+    assert (
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
+        not in workflow
+    )
 
     assert screenshot_step is not None
     screenshot_body = screenshot_step.group("body")
@@ -725,7 +738,9 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
     assert (
-        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
         not in archive_upload_body
     )
     assert (
@@ -910,9 +925,18 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
-    assert "_".join(("SWIFT", "ENABLE", "COMPILE", "CACHE")) + "=NO" not in script
     assert (
-        "_".join(("COMPILATION", "CACHE", "REMOTE", "SERVICE", "PATH")) + "="
+        "_".join(  # noqa: FLY002
+            ("SWIFT", "ENABLE", "COMPILE", "CACHE")
+        )
+        + "=NO"
+        not in script
+    )
+    assert (
+        "_".join(  # noqa: FLY002
+            ("COMPILATION", "CACHE", "REMOTE", "SERVICE", "PATH")
+        )
+        + "="
         not in script
     )
     assert "APPLE_TEAM_ID" not in script

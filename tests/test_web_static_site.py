@@ -8,7 +8,6 @@ from scripts.web.validate_static_site import (
     validate_site,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 

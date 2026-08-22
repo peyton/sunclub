@@ -6,7 +6,6 @@ from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore import review_package
 from scripts.appstore import validate_metadata as validator
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "scripts" / "appstore" / "metadata.json"
 READY_ENV = {

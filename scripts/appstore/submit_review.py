@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 import hashlib
 import json
 import os
-from pathlib import Path
 import struct
 import sys
 import time
-from typing import Any, Protocol
 import zlib
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Protocol
 
 from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore import validate_metadata
@@ -21,7 +21,6 @@ from scripts.appstore.connect_api import (
     JsonObject,
 )
 from scripts.tooling.resolve_versions import REPO_ROOT, resolve_versions
-
 
 PLATFORM = "IOS"
 SCREENSHOT_COMPLETE_STATES = {"UPLOAD_COMPLETE", "COMPLETE"}

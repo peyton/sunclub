@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 import io
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 from urllib import error, request
 
 from scripts.appstore.connect_api import AppStoreConnectClient, ecdsa_der_to_raw
@@ -18,7 +18,7 @@ class FakeResponse:
             else payload
         )
 
-    def __enter__(self) -> "FakeResponse":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_args: object) -> None:

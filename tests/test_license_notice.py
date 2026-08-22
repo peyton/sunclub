@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COPYRIGHT_NOTICE = "Copyright (c) 2026 Peyton Randolph. All rights reserved."
 POLYFORM_LICENSE = "PolyForm Strict License 1.0.0"

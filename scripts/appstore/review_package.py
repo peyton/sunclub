@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
 import os
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from scripts.appstore import manifest as appstore_manifest
 from scripts.appstore import validate_metadata
 from scripts.tooling.resolve_versions import REPO_ROOT, resolve_versions
-
 
 DEFAULT_PACKAGE_PATH = REPO_ROOT / "docs" / "app-store-review-package.md"
 DEFAULT_CHECKPOINT_PATH = (
