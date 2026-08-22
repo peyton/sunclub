@@ -83,6 +83,11 @@ final class AccessibilityScorecardTests: XCTestCase {
                 "SunclubApp or RuntimeEnvironment must apply \(modifier)."
             )
         }
+
+        XCTAssertTrue(
+            appEntry.contains("if isRunningTests, !appliedUITestLaunchConfiguration"),
+            "UI-test state and routes must be configured before RootView constructs its native tab hierarchy."
+        )
     }
 
     private var repoRoot: URL {
