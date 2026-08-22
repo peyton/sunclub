@@ -78,13 +78,7 @@ struct SunclubApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if isRunningTests, !appliedUITestLaunchConfiguration {
-                    Color.clear
-                } else {
-                    RootView()
-                }
-            }
+            RootView()
                 .environment(appState)
                 .environment(router)
                 .modelContainer(container)
