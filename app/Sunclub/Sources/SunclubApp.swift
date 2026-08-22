@@ -78,50 +78,58 @@ struct SunclubApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(appState)
-                .environment(router)
-                .modelContainer(container)
-                .preferredColorScheme(RuntimeEnvironment.preferredColorSchemeOverride)
-                .sunclubDynamicTypeSizeOverride(RuntimeEnvironment.dynamicTypeSizeOverride)
-                .sunclubAccessibilityReduceMotionOverride(RuntimeEnvironment.accessibilityReduceMotionOverride)
-                .sunclubAccessibilityDifferentiateWithoutColorOverride(RuntimeEnvironment.differentiateWithoutColorOverride)
-                .sunclubColorSchemeContrastOverride(RuntimeEnvironment.shouldUseIncreasedAccessibilityContrast ? .increased : nil)
-                .onOpenURL { url in
-                    handleIncomingURL(url)
+            Group {
+                if isRunningTests && !appliedUITestLaunchConfiguration {
+                    Color.clear
+                        .onAppear {
+                            NotificationManager.shared.setRouteHandler { route in
+                                router.open(route)
+                            }
+                            applyUITestLaunchConfigurationIfNeeded()
+                        }
+                } else {
+                    RootView()
+                        .onAppear {
+                            NotificationManager.shared.setRouteHandler { route in
+                                router.open(route)
+                            }
+                            guard scenePhase == .active, !hasRefreshedForegroundSinceVisibility else {
+                                return
+                            }
+                            hasRefreshedForegroundSinceVisibility = true
+                            refreshAppStateForForeground()
+                        }
+                        .onChange(of: scenePhase) { _, newPhase in
+                            guard newPhase == .active else {
+                                hasRefreshedForegroundSinceVisibility = false
+                                return
+                            }
+                            guard !hasRefreshedForegroundSinceVisibility else { return }
+                            hasRefreshedForegroundSinceVisibility = true
+                            refreshAppStateForForeground()
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                            refreshAppStateForForeground()
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                            refreshAppStateForForeground()
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: .sunclubRemoteNotificationReceived)) { _ in
+                            appState.processRemoteAccountabilityEvents()
+                        }
                 }
-                .onAppear {
-                    NotificationManager.shared.setRouteHandler { route in
-                        router.open(route)
-                    }
-                    guard !isRunningTests else {
-                        applyUITestLaunchConfigurationIfNeeded()
-                        return
-                    }
-                    guard scenePhase == .active, !hasRefreshedForegroundSinceVisibility else {
-                        return
-                    }
-                    hasRefreshedForegroundSinceVisibility = true
-                    refreshAppStateForForeground()
-                }
-                .onChange(of: scenePhase) { _, newPhase in
-                    guard newPhase == .active else {
-                        hasRefreshedForegroundSinceVisibility = false
-                        return
-                    }
-                    guard !hasRefreshedForegroundSinceVisibility else { return }
-                    hasRefreshedForegroundSinceVisibility = true
-                    refreshAppStateForForeground()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                    refreshAppStateForForeground()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
-                    refreshAppStateForForeground()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .sunclubRemoteNotificationReceived)) { _ in
-                    appState.processRemoteAccountabilityEvents()
-                }
+            }
+            .environment(appState)
+            .environment(router)
+            .modelContainer(container)
+            .preferredColorScheme(RuntimeEnvironment.preferredColorSchemeOverride)
+            .sunclubDynamicTypeSizeOverride(RuntimeEnvironment.dynamicTypeSizeOverride)
+            .sunclubAccessibilityReduceMotionOverride(RuntimeEnvironment.accessibilityReduceMotionOverride)
+            .sunclubAccessibilityDifferentiateWithoutColorOverride(RuntimeEnvironment.differentiateWithoutColorOverride)
+            .sunclubColorSchemeContrastOverride(RuntimeEnvironment.shouldUseIncreasedAccessibilityContrast ? .increased : nil)
+            .onOpenURL { url in
+                handleIncomingURL(url)
+            }
         }
     }
 
@@ -143,15 +151,12 @@ struct SunclubApp: App {
             requestedReapplyInterval: requestedReapplyInterval
         )
         applyUITestSeedData(from: arguments)
-        Task { @MainActor in
-            await Task.yield()
-            appState.refresh()
-            openUITestRequestedRoute(
-                url: requestedURL,
-                shortcutType: requestedShortcutType,
-                route: requestedRoute
-            )
-        }
+        appState.refresh()
+        openUITestRequestedRoute(
+            url: requestedURL,
+            shortcutType: requestedShortcutType,
+            route: requestedRoute
+        )
     }
 
     private func applyUITestFeatureConfiguration(
