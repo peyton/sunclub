@@ -1167,7 +1167,8 @@ final class SunclubUITests: XCTestCase {
                 tomorrowRow,
                 in: app,
                 attempts: 20,
-                scrollSurface: app.scrollViews.firstMatch
+                scrollSurface: app.scrollViews.firstMatch,
+                scrollDownFirst: true
             ),
             "Expected tomorrow's forecast row to remain operable."
         )
@@ -1896,28 +1897,44 @@ final class SunclubUITests: XCTestCase {
         _ element: XCUIElement,
         in app: XCUIApplication,
         attempts: Int = 6,
-        scrollSurface: XCUIElement? = nil
+        scrollSurface: XCUIElement? = nil,
+        scrollDownFirst: Bool = false
     ) -> Bool {
         if element.waitForExistence(timeout: 2), element.isHittable {
             return true
         }
 
         let surface = scrollSurface ?? app
+        let firstScroll: () -> Void = scrollDownFirst
+            ? { self.nudgeScrollSurface(surface, direction: .scrollDown) }
+            : surface.swipeUp
+        let secondScroll: () -> Void = scrollDownFirst
+            ? { self.nudgeScrollSurface(surface, direction: .scrollUp) }
+            : surface.swipeDown
         for _ in 0..<attempts {
-            surface.swipeUp()
+            firstScroll()
             if element.waitForExistence(timeout: 1), element.isHittable {
                 return true
             }
         }
 
         for _ in 0..<attempts {
-            surface.swipeDown()
+            secondScroll()
             if element.waitForExistence(timeout: 1), element.isHittable {
                 return true
             }
         }
 
         return false
+    }
+
+    @MainActor
+    private func nudgeScrollSurface(_ surface: XCUIElement, direction: ScrollDirection) {
+        let startY: CGFloat = direction == .down ? 0.35 : 0.65
+        let endY: CGFloat = direction == .down ? 0.65 : 0.35
+        let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
+        let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     @MainActor
@@ -1956,4 +1973,9 @@ private enum CalendarGridDragDirection {
 private enum TimelineDayScrollDirection {
     case past
     case future
+}
+
+private enum ScrollDirection {
+    case scrollUp
+    case scrollDown
 }

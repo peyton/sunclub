@@ -6,9 +6,8 @@ import UIKit
 struct SunclubApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var appState: AppState
-    @State private var router = AppRouter()
-    @State private var appliedUITestLaunchConfiguration = false
+    private let appState: AppState
+    private let router: AppRouter
     @State private var hasRefreshedForegroundSinceVisibility = false
     private let container: ModelContainer
     private let isRunningTests = RuntimeEnvironment.isRunningTests
@@ -53,10 +52,14 @@ struct SunclubApp: App {
                 uvIndexService: uvIndexService,
                 uvBriefingService: uvBriefingService
             )
-            _appState = State(initialValue: state)
+            self.appState = state
+            self.router = AppRouter()
             Self.registerRemoteNotificationHandler(for: state)
             Self.registerWatchSyncHandler(for: state)
             SunclubWatchSyncCoordinator.shared.activate()
+            if RuntimeEnvironment.isRunningTests {
+                applyUITestLaunchConfigurationIfNeeded()
+            }
             return
         }
         #endif
@@ -70,55 +73,49 @@ struct SunclubApp: App {
             uvIndexService: uvIndexService,
             weatherKitKillSwitch: weatherKitKillSwitch
         )
-        _appState = State(initialValue: state)
+        self.appState = state
+        self.router = AppRouter()
         Self.registerRemoteNotificationHandler(for: state)
         Self.registerWatchSyncHandler(for: state)
         SunclubWatchSyncCoordinator.shared.activate()
+        if RuntimeEnvironment.isRunningTests {
+            applyUITestLaunchConfigurationIfNeeded()
+        }
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if isRunningTests && !appliedUITestLaunchConfiguration {
-                    Color.clear
-                        .onAppear {
-                            NotificationManager.shared.setRouteHandler { route in
-                                router.open(route)
-                            }
-                            applyUITestLaunchConfigurationIfNeeded()
-                        }
-                } else {
-                    RootView()
-                        .onAppear {
-                            NotificationManager.shared.setRouteHandler { route in
-                                router.open(route)
-                            }
-                            guard scenePhase == .active, !hasRefreshedForegroundSinceVisibility else {
-                                return
-                            }
-                            hasRefreshedForegroundSinceVisibility = true
-                            refreshAppStateForForeground()
-                        }
-                        .onChange(of: scenePhase) { _, newPhase in
-                            guard newPhase == .active else {
-                                hasRefreshedForegroundSinceVisibility = false
-                                return
-                            }
-                            guard !hasRefreshedForegroundSinceVisibility else { return }
-                            hasRefreshedForegroundSinceVisibility = true
-                            refreshAppStateForForeground()
-                        }
-                        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                            refreshAppStateForForeground()
-                        }
-                        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
-                            refreshAppStateForForeground()
-                        }
-                        .onReceive(NotificationCenter.default.publisher(for: .sunclubRemoteNotificationReceived)) { _ in
-                            appState.processRemoteAccountabilityEvents()
-                        }
+            RootView()
+                .onAppear {
+                    NotificationManager.shared.setRouteHandler { route in
+                        router.open(route)
+                    }
+                    guard !isRunningTests,
+                          scenePhase == .active,
+                          !hasRefreshedForegroundSinceVisibility else {
+                        return
+                    }
+                    hasRefreshedForegroundSinceVisibility = true
+                    refreshAppStateForForeground()
                 }
-            }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else {
+                        hasRefreshedForegroundSinceVisibility = false
+                        return
+                    }
+                    guard !isRunningTests, !hasRefreshedForegroundSinceVisibility else { return }
+                    hasRefreshedForegroundSinceVisibility = true
+                    refreshAppStateForForeground()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                    refreshAppStateForForeground()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                    refreshAppStateForForeground()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .sunclubRemoteNotificationReceived)) { _ in
+                    appState.processRemoteAccountabilityEvents()
+                }
             .environment(appState)
             .environment(router)
             .modelContainer(container)
@@ -134,9 +131,6 @@ struct SunclubApp: App {
     }
 
     private func applyUITestLaunchConfigurationIfNeeded() {
-        guard !appliedUITestLaunchConfiguration else { return }
-        appliedUITestLaunchConfiguration = true
-
         let arguments = ProcessInfo.processInfo.arguments
         let requestedRoute = requestedUITestRoute(from: arguments)
         let requestedURL = requestedUITestURL(from: arguments)
@@ -368,7 +362,7 @@ struct SunclubApp: App {
     private func seedHistoryEditBackfillScenario() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today)
+        let verifiedAt = seedTimestamp(for: today, hour: 9)
         appState.saveManualRecord(for: today, verifiedAt: verifiedAt, spfLevel: 30, notes: "Seeded today")
         appState.refresh()
     }
@@ -398,7 +392,7 @@ struct SunclubApp: App {
     private func seedReapplyTodayScenario() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let lastReappliedAt = calendar.date(byAdding: .hour, value: 2, to: today)
+        let lastReappliedAt = seedTimestamp(for: today, hour: 2)
         insertSeedRecord(
             day: today,
             hour: 9,
@@ -470,7 +464,7 @@ struct SunclubApp: App {
     private func seedDayConflictScenario() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: today) ?? today
+        let verifiedAt = seedTimestamp(for: today, hour: 9)
         appState.saveManualRecord(for: today, verifiedAt: verifiedAt, spfLevel: 30, notes: "Local entry")
 
         let remoteCreatedAt = Date().addingTimeInterval(60)
@@ -557,14 +551,13 @@ struct SunclubApp: App {
         ]
 
         for entry in seedData {
-            guard let day = calendar.date(byAdding: .day, value: -entry.dayOffset, to: today),
-                  let verifiedAt = calendar.date(byAdding: .hour, value: 9, to: day) else {
+            guard let day = calendar.date(byAdding: .day, value: -entry.dayOffset, to: today) else {
                 continue
             }
 
             appState.saveManualRecord(
                 for: day,
-                verifiedAt: verifiedAt,
+                verifiedAt: seedTimestamp(for: day, hour: 9),
                 spfLevel: entry.spfLevel,
                 notes: entry.notes
             )
@@ -606,7 +599,7 @@ struct SunclubApp: App {
     ) {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: day)
-        let verifiedAt = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: startOfDay) ?? startOfDay
+        let verifiedAt = seedTimestamp(for: startOfDay, hour: hour, minute: minute)
 
         appState.saveManualRecord(
             for: startOfDay,
@@ -620,6 +613,19 @@ struct SunclubApp: App {
                 appState.recordReapplication(for: startOfDay, performedAt: lastReappliedAt)
             }
         }
+    }
+
+    private func seedTimestamp(for day: Date, hour: Int, minute: Int = 0) -> Date {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: day)
+        let requestedTimestamp = calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: 0,
+            of: startOfDay
+        ) ?? startOfDay
+        let latestAllowedTimestamp = appState.referenceDate.addingTimeInterval(-1)
+        return min(requestedTimestamp, max(startOfDay, latestAllowedTimestamp))
     }
 
     private func requestedUITestNotificationHealth(from arguments: [String]) -> UITestNotificationHealth? {
