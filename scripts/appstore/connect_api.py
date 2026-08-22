@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import base64
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import subprocess
 import time
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Self
 from urllib import error, parse, request
-
 
 JsonObject = dict[str, Any]
 JsonBody = Mapping[str, Any]
@@ -65,9 +64,7 @@ class AppStoreConnectCredentials:
             "exp": now + lifetime_seconds,
             "aud": "appstoreconnect-v1",
         }
-        signing_input = f"{urlsafe_json(header)}.{urlsafe_json(payload)}".encode(
-            "utf-8"
-        )
+        signing_input = f"{urlsafe_json(header)}.{urlsafe_json(payload)}".encode()
         try:
             result = subprocess.run(
                 ["openssl", "dgst", "-sha256", "-sign", str(self.key_file)],

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import time
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from scripts.appstore.connect_api import (
@@ -16,7 +16,6 @@ from scripts.appstore.connect_api import (
     AppStoreConnectError,
 )
 from scripts.tooling.resolve_versions import resolve_versions
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METADATA_PATH = REPO_ROOT / "scripts" / "appstore" / "metadata.json"

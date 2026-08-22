@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 PLACEHOLDER_RE = re.compile(r"\$\(([^)]+)\)")
 
 

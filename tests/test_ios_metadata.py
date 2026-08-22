@@ -11,16 +11,13 @@ from scripts.appstore.release_doctor import (
     expected_profile_entitlements,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INFO_PLIST = REPO_ROOT / "app" / "Sunclub" / "Info.plist"
 APP_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "Sunclub.entitlements"
 WIDGET_ENTITLEMENTS = (
     REPO_ROOT / "app" / "Sunclub" / "SunclubWidgetsExtension.entitlements"
 )
-WATCH_EXTENSION_ENTITLEMENTS = (
-    REPO_ROOT / "app" / "Sunclub" / "SunclubWatch.entitlements"
-)
+WATCH_ENTITLEMENTS = REPO_ROOT / "app" / "Sunclub" / "SunclubWatch.entitlements"
 WATCH_WIDGET_ENTITLEMENTS = (
     REPO_ROOT / "app" / "Sunclub" / "SunclubWatchWidgets.entitlements"
 )
@@ -107,8 +104,6 @@ def test_release_doctor_covers_all_production_bundle_ids() -> None:
         "main app": "",
         "widget extension": ".widgets",
         "watch app": ".watch",
-        "watch extension": ".watch.extension",
-        "watch container": ".watch.container",
         "watch widget extension": ".watch.widgets",
     }
 
@@ -118,9 +113,9 @@ def test_release_doctor_uses_target_entitlement_templates() -> None:
 
     main_entitlements = expected_profile_entitlements(ctx, "main app")
     widget_entitlements = expected_profile_entitlements(ctx, "widget extension")
-    watch_extension_entitlements = expected_profile_entitlements(
+    watch_entitlements = expected_profile_entitlements(
         ctx,
-        "watch extension",
+        "watch app",
     )
 
     assert main_entitlements["aps-environment"] == "production"
@@ -133,11 +128,10 @@ def test_release_doctor_uses_target_entitlement_templates() -> None:
     assert widget_entitlements == {
         "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
     }
-    assert watch_extension_entitlements == {
+    assert watch_entitlements == {
         "com.apple.security.application-groups": ["group.app.peyton.sunclub"]
     }
     assert main_entitlements["com.apple.developer.weatherkit"] is True
-    assert expected_profile_entitlements(ctx, "watch app") == {}
 
 
 def test_remote_notification_background_mode_has_push_entitlement() -> None:
@@ -256,11 +250,7 @@ def test_weatherkit_entitlement_is_main_app_only() -> None:
     app_entitlements = load_entitlements(APP_ENTITLEMENTS)
     extension_entitlements = [
         load_entitlements(path)
-        for path in (
-            WIDGET_ENTITLEMENTS,
-            WATCH_EXTENSION_ENTITLEMENTS,
-            WATCH_WIDGET_ENTITLEMENTS,
-        )
+        for path in (WIDGET_ENTITLEMENTS, WATCH_ENTITLEMENTS, WATCH_WIDGET_ENTITLEMENTS)
     ]
 
     assert app_entitlements.get("com.apple.developer.weatherkit") is True
@@ -339,37 +329,57 @@ def test_project_embeds_watch_app_in_release_app() -> None:
 
 def test_watch_targets_compile_shared_snapshot_model_dependencies() -> None:
     source = PROJECT_SWIFT.read_text()
-    watch_extension_target = source.split(
-        "func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {", 1
-    )[1].split("func watchContainerTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+    watch_app_target = source.split(
+        "func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
     watch_widget_target = source.split(
         "func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {", 1
     )[1].split("let project = Project(", 1)[0]
 
-    for target_source in (watch_extension_target, watch_widget_target):
+    for target_source in (watch_app_target, watch_widget_target):
         assert '"Sources/Models/AccountabilityModels.swift"' in target_source
         assert '"Sources/Models/VerificationMethod.swift"' in target_source
         assert '"Sources/WidgetSupport/SunclubWidgetSupport.swift"' in target_source
 
 
-def test_watchkit_extension_declares_nested_app_bundle_identifier() -> None:
+def test_single_target_watch_app_owns_watch_sources_and_metadata() -> None:
     source = PROJECT_SWIFT.read_text()
-    watch_extension_target = source.split(
-        "func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {", 1
-    )[1].split("func watchContainerTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+    watch_app_target = source.split(
+        "func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1
+    )[1].split("func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
 
-    assert '"NSExtensionAttributes": .dictionary([' in watch_extension_target
-    assert (
-        '"WKAppBundleIdentifier": .string(flavor.watchBundleID)'
-        in watch_extension_target
-    )
+    assert "product: .app" in watch_app_target
+    assert "sources: [" in watch_app_target
+    assert '"WatchApp/Sources/**"' in watch_app_target
+    assert 'entitlements: "SunclubWatch.entitlements"' in watch_app_target
+    assert ".target(name: flavor.watchWidgetTargetName)" in watch_app_target
+    for runtime_key in (
+        "SunclubAppGroupID",
+        "SunclubICloudContainerIdentifier",
+        "SunclubPublicAccountabilityTransportEnabled",
+        "SunclubURLScheme",
+    ):
+        assert f'"{runtime_key}"' in watch_app_target
+
+    for legacy_marker in (
+        ".watch2Extension",
+        ".watch2AppContainer",
+        "watchExtensionTargetName",
+        "watchContainerTargetName",
+        "watchExtensionBundleID",
+        "watchContainerBundleID",
+    ):
+        assert legacy_marker not in source
+
+    for legacy_marker in ("NSExtensionPointIdentifier", "WKAppBundleIdentifier"):
+        assert legacy_marker not in watch_app_target
 
 
 def test_watch_app_target_uses_app_store_safe_metadata_and_icons() -> None:
     source = PROJECT_SWIFT.read_text()
     watch_app_target = source.split(
         "func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1
-    )[1].split("func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
+    )[1].split("func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
 
     assert (
         '"CFBundleShortVersionString": .string("$(MARKETING_VERSION)")'
@@ -379,15 +389,22 @@ def test_watch_app_target_uses_app_store_safe_metadata_and_icons() -> None:
     assert (
         '"WKCompanionAppBundleIdentifier": .string(flavor.bundleID)' in watch_app_target
     )
+    assert '"WKApplication": .boolean(true)' in watch_app_target
     assert '"WatchApp/Resources/**"' in watch_app_target
 
-    for invalid_key in (
-        "CFBundleIconName",
-        "CFBundleURLTypes",
+    for required_key in (
         "SunclubAppGroupID",
         "SunclubICloudContainerIdentifier",
         "SunclubPublicAccountabilityTransportEnabled",
         "SunclubURLScheme",
+    ):
+        assert required_key in watch_app_target
+
+    for invalid_key in (
+        "CFBundleIconName",
+        "CFBundleURLTypes",
+        "NSExtension",
+        "WKAppBundleIdentifier",
     ):
         assert invalid_key not in watch_app_target
 
@@ -467,7 +484,12 @@ def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
         )
         == 3
     )
-    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in workflow
+    assert (
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
+        not in workflow
+    )
     assert workflow.count("timeout-minutes: 45") == 3
     assert "test-ios-unit:" in workflow
     assert "name: iOS Unit Tests" in workflow
@@ -631,7 +653,9 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     release_safety_body = release_safety_step.group("body")
     assert "timeout-minutes: 45" in release_safety_body
     assert (
-        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
         not in release_safety_body
     )
     assert "mise --locked exec -- just test-unit" in release_safety_body
@@ -639,7 +663,9 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
     assert (
-        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
         not in archive_upload_body
     )
     assert (
@@ -696,7 +722,12 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
         in workflow
     )
-    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in workflow
+    assert (
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
+        not in workflow
+    )
 
     assert screenshot_step is not None
     screenshot_body = screenshot_step.group("body")
@@ -707,7 +738,9 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
     archive_upload_body = archive_upload_step.group("body")
     assert "timeout-minutes: 90" in archive_upload_body
     assert (
-        "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE"))
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
         not in archive_upload_body
     )
     assert (
@@ -838,6 +871,10 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert 'validate_signed_ipa_entitlements "$IPA_FILE"' in script
     assert 'validate_signed_ipa_nested_bundle_identifiers "$IPA_FILE"' in script
     assert 'validate_signed_ipa_watch_bundle "$IPA_FILE"' in script
+    assert 'codesign -d --entitlements :- "$watch_app_path"' in script
+    assert "watch_entitlements_path=" in script
+    assert "legacy_watch_extension_path=" in script
+    assert "legacy WatchKit extension" in script
     assert "assert_codesign_identifier_matches_bundle" in script
     assert "WatchKit stub code-signing identifier com.apple.WK" in script
     assert 'Print :CFBundleShortVersionString" "$signed_app_path/Info.plist"' in script
@@ -850,15 +887,26 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
         'assert_info_plist_string "$watch_info_path" "CFBundleVersion" "$main_build_number"'
         in script
     )
-    assert '"${RELEASE_APP_PRODUCT_NAME}WatchExtension.appex"' in script
+    assert (
+        '"${RELEASE_APP_PRODUCT_NAME}Watch.app") entitlements_path="$watch_entitlements_path" ;;'
+        in script
+    )
+    assert '"${RELEASE_APP_PRODUCT_NAME}WatchExtension.appex"' not in script
     assert '"${RELEASE_APP_PRODUCT_NAME}WatchWidgetsExtension.appex"' in script
     assert (
         "$RELEASE_APP_PRODUCT_NAME Watch app is missing compiled icon assets" in script
     )
     assert 'assert_plist_key_absent "$watch_info_path" "CFBundleIconName"' in script
     assert "CFBundleURLTypes" in script
-    assert "SunclubICloudContainerIdentifier" in script
-    assert "SunclubPublicAccountabilityTransportEnabled" in script
+    for runtime_key in (
+        "SunclubAppGroupID",
+        "SunclubICloudContainerIdentifier",
+        "SunclubPublicAccountabilityTransportEnabled",
+        "SunclubURLScheme",
+    ):
+        assert (
+            f'assert_plist_key_absent "$watch_info_path" "{runtime_key}"' not in script
+        )
     assert "CODE_SIGNING_ALLOWED=NO" in script
     assert "CODE_SIGNING_REQUIRED=NO" in script
     assert "prepare_app_store_provisioning_profiles" in profile_step
@@ -877,9 +925,18 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '-authenticationKeyPath "$ASC_KEY_FILE"' in script
     assert '-authenticationKeyID "$ASC_KEY_ID"' in script
     assert '-authenticationKeyIssuerID "$ASC_ISSUER_ID"' in script
-    assert "_".join(("SWIFT", "ENABLE", "COMPILE", "CACHE")) + "=NO" not in script
     assert (
-        "_".join(("COMPILATION", "CACHE", "REMOTE", "SERVICE", "PATH")) + "="
+        "_".join(  # noqa: FLY002
+            ("SWIFT", "ENABLE", "COMPILE", "CACHE")
+        )
+        + "=NO"
+        not in script
+    )
+    assert (
+        "_".join(  # noqa: FLY002
+            ("COMPILATION", "CACHE", "REMOTE", "SERVICE", "PATH")
+        )
+        + "="
         not in script
     )
     assert "APPLE_TEAM_ID" not in script

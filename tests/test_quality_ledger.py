@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 LEDGER = Path("docs/one-tap-logging-quality-ledger.md")
 
 

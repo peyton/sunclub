@@ -53,7 +53,9 @@ def test_web_deploy_to_cloudflare_is_push_only() -> None:
 def test_web_package_builds_before_packaging() -> None:
     justfile = (REPO_ROOT / "justfile").read_text(encoding="utf-8")
 
-    assert re.search(r"^web-package VERSION='local': web-build$", justfile, re.M)
+    assert re.search(
+        r"^web-package VERSION='local': web-build$", justfile, re.MULTILINE
+    )
 
 
 def test_manual_cloudflare_pages_deploy_is_exposed_through_just() -> None:

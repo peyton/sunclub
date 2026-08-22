@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
-from pathlib import Path
 import re
 import shlex
-
+from dataclasses import dataclass
+from pathlib import Path
 
 CONFIG_PATH = Path(__file__).with_name("sunclub.env")
 DEFAULT_PATTERN = re.compile(r"^\$\{(?P<name>[A-Z0-9_]+):-(?P<default>.*)\}$")

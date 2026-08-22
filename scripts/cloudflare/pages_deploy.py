@@ -8,10 +8,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from scripts.cloudflare.common import (
+    REPO_ROOT,
     ConfigError,
     JsonObject,
     MissingEnvironmentError,
-    REPO_ROOT,
     load_pages_config,
     validate_pages_config,
 )

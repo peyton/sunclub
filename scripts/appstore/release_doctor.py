@@ -40,15 +40,13 @@ BUNDLE_SUFFIXES = {
     "main app": "",
     "widget extension": ".widgets",
     "watch app": ".watch",
-    "watch extension": ".watch.extension",
-    "watch container": ".watch.container",
     "watch widget extension": ".watch.widgets",
 }
 
 PROFILE_ENTITLEMENT_SOURCES = {
     "main app": "Sunclub.entitlements",
     "widget extension": "SunclubWidgetsExtension.entitlements",
-    "watch extension": "SunclubWatch.entitlements",
+    "watch app": "SunclubWatch.entitlements",
     "watch widget extension": "SunclubWatchWidgets.entitlements",
 }
 
@@ -491,6 +489,7 @@ def check_cloudkit(ctx: DoctorContext) -> None:
     try:
         result = subprocess.run(
             ["xcrun", "cktool", "get-teams", *token_args],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
@@ -534,6 +533,7 @@ def check_cloudkit(ctx: DoctorContext) -> None:
                 "--output-file",
                 "/dev/null",
             ],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
@@ -587,6 +587,7 @@ def check_metadata(ctx: DoctorContext) -> None:
                 "scripts.appstore.validate_metadata",
                 "--allow-draft",
             ],
+            check=False,
             capture_output=True,
             text=True,
             cwd=str(REPO_ROOT),
@@ -617,6 +618,7 @@ def check_xcode(ctx: DoctorContext) -> None:
     try:
         result = subprocess.run(
             ["xcodebuild", "-version"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=10,

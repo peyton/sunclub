@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import re
 import shlex
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from scripts.tooling.resolve_versions import REPO_ROOT
-
 
 DEFAULT_MANIFEST_PATH = REPO_ROOT / "scripts" / "appstore" / "metadata.json"
 DEFAULT_REVIEW_ENV_PATH = REPO_ROOT / ".state" / "appstore" / "review.env"

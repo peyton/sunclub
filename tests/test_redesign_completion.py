@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
 import shutil
-import subprocess
 import struct
+import subprocess
 import sys
 import zlib
+from pathlib import Path
 
 import pytest
-
 from conftest import REPO_ROOT
-
 
 LEDGER_PATTERN = re.compile(r"^- \[x\] \[(?P<category>[^\]]+)\] \d{3}\. ", re.MULTILINE)
 

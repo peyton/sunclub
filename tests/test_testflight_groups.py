@@ -8,7 +8,11 @@ import pytest
 from scripts.appstore.connect_api import AppStoreConnectError
 from scripts.appstore.testflight_groups import (
     TestFlightGroupAssigner as GroupAssigner,
+)
+from scripts.appstore.testflight_groups import (
     TestFlightGroupContext as GroupContext,
+)
+from scripts.appstore.testflight_groups import (
     build_context,
 )
 

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import json
-from pathlib import Path
 import re
 import shlex
 import subprocess
-from typing import Mapping
-
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SEMVER_TAG_PATTERN = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)$")

@@ -19,6 +19,7 @@ Sunclub's watch app must ship inside the iPhone app, mirror the phone's latest s
 - [x] (2026-04-14) Built the watch widget extension target separately so complication code cannot silently rot outside the app scheme graph.
 - [x] (2026-04-14) Ran unit tests, Python metadata tests, watch widget build, diff whitespace check, and lint.
 - [x] (2026-04-14) Manually ran the iPhone and watch apps in paired simulators and verified snapshot refresh plus wrist logging.
+- [x] (2026-08-21) Migrated `SunclubWatch` and `SunclubDevWatch` to single-target watchOS apps while preserving their `.watch` bundle identifiers, app-group entitlements, and WatchConnectivity behavior.
 
 ## Decision Log
 
@@ -34,21 +35,26 @@ Sunclub's watch app must ship inside the iPhone app, mirror the phone's latest s
   Rationale: Generated watch schemes are not enough for App Store release. The app artifact must include watch content under its embedded watch path.
   Date/Author: 2026-04-14 / Codex
 
+- Decision: Keep the shipped `.watch` bundle identifiers and move the legacy extension’s sources, runtime metadata, and entitlements into the watch app target.
+  Rationale: This preserves in-place App Store updates and keeps the existing app-group snapshot contract while adopting Apple’s single-target watchOS configuration.
+  Date/Author: 2026-08-21 / Codex
+
 ## Validation And Acceptance
 
-1. `Sunclub` and `SunclubDev` app target graphs build the watch app and watch extension through the iPhone app scheme.
+1. `Sunclub` and `SunclubDev` app target graphs build a single watch app through the iPhone app scheme.
 2. The built iPhone app artifact contains watch content under `Watch/`, not only iOS app extensions.
 3. The watch app loads a cached snapshot when the iPhone is unreachable.
 4. The watch app refreshes immediately when the iPhone becomes reachable.
 5. Tapping `Log Sunscreen` on watch sends a live message when reachable and queues a log when delivery fails.
 6. iPhone activation and reachability changes push the latest widget snapshot to the watch.
 7. Unit and metadata tests cover payload round trips, malformed payloads, success/error replies, and Tuist packaging dependencies.
-8. The watch widget extension target builds as a separate release check. The Tuist manifest currently cannot make the legacy `watch2App` target embed the watch WidgetKit extension without invalid target relationships, so the shippable artifact source of truth is the watch app plus WatchKit extension.
+8. The watch widget extension target builds as a separate release check; no legacy WatchKit extension or watch container target is emitted.
 
 ## Outcomes & Retrospective
 
 - Fixed a release-blocking packaging gap where the iPhone app artifact did not include embedded watch content.
 - Fixed a WatchKit install blocker by moving `WKAppBundleIdentifier` under `NSExtension.NSExtensionAttributes`.
+- Migrated the watch app to the single-target configuration, with the watch app now owning its runtime Info.plist keys and app-group entitlements.
 - Hardened phone-to-watch delivery by pushing snapshots on activation and reachability, with application context, complication user info, and live messages when reachable.
 - Hardened watch-to-phone logging by using live `sendMessage` when reachable and queued `transferUserInfo` when the phone is unavailable or delivery fails.
 - Routed reachable wrist logs through the running iPhone `AppState` before falling back to the standalone SwiftData path, so foreground phone state and the watch reply stay aligned.

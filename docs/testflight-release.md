@@ -125,14 +125,19 @@ Do not rely on Tuist default watch `Info.plist` metadata. App Store and CI
 WatchKit validation require the embedded watch app marketing version to exactly
 match the companion app.
 
-The embedded watch app plist must stay minimal and App Store-safe:
+The embedded single-target watch app plist must stay minimal and App Store-safe:
 
 - keep `WKCompanionAppBundleIdentifier`
 - keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset`
-- do not include `CFBundleURLTypes`, `SunclubAppGroupID`,
+- keep the runtime configuration keys `SunclubAppGroupID`,
   `SunclubICloudContainerIdentifier`,
-  `SunclubPublicAccountabilityTransportEnabled`, `SunclubURLScheme`, or
-  `CFBundleIconName`
+  `SunclubPublicAccountabilityTransportEnabled`, and `SunclubURLScheme`
+- do not include `CFBundleURLTypes` or `CFBundleIconName`
+
+The watch app owns `SunclubWatch.entitlements`, including the app-group
+entitlement used by the shared snapshot store. Legacy `.watch.extension` and
+`.watch.container` targets are no longer emitted; existing external identifiers
+are not removed automatically.
 
 The release script validates the exported IPA before upload. It must fail if the
 watch app code signature identifier does not match its `CFBundleIdentifier`, if

@@ -13,7 +13,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE = REPO_ROOT / "scripts/art/sources/CoverageFaceDiagram.png"
 DEFAULT_ASSET_CATALOG = REPO_ROOT / "app/Sunclub/Resources/Assets.xcassets"

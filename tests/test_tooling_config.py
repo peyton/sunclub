@@ -2,7 +2,6 @@ from pathlib import Path
 
 from scripts.tooling.config import CONFIG, _resolve_shell_default
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -29,7 +28,12 @@ def test_justfile_exposes_app_review_submission_commands() -> None:
     assert "just test-python" in justfile
     assert "just test-unit" in justfile
     assert "just ci-build" in justfile
-    assert "_".join(("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")) not in justfile
+    assert (
+        "_".join(  # noqa: FLY002
+            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
+        )
+        not in justfile
+    )
 
 
 def test_appstore_screenshot_capture_composes_marketing_frames() -> None:

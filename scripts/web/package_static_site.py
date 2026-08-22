@@ -78,16 +78,18 @@ def package_site(
     archive_path = output_dir / f"sunclub-web-{normalized_version}.tar.gz"
     checksum_path = output_dir / f"{archive_path.name}.sha256"
 
-    with archive_path.open("wb") as raw_archive:
-        with gzip.GzipFile(
+    with (
+        archive_path.open("wb") as raw_archive,
+        gzip.GzipFile(
             filename="",
             mode="wb",
             fileobj=raw_archive,
             mtime=0,
-        ) as gzip_archive:
-            with tarfile.open(fileobj=gzip_archive, mode="w") as tar:
-                for path in files:
-                    add_file_to_tar(tar, resolved_source_root, path)
+        ) as gzip_archive,
+        tarfile.open(fileobj=gzip_archive, mode="w") as tar,
+    ):
+        for path in files:
+            add_file_to_tar(tar, resolved_source_root, path)
 
     digest = sha256_file(archive_path)
     checksum_path.write_text(f"{digest}  {archive_path.name}\n", encoding="utf-8")

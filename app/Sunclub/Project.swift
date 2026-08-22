@@ -16,14 +16,10 @@ struct SunclubFlavor {
     let appTargetName: String
     let widgetTargetName: String
     let watchTargetName: String
-    let watchExtensionTargetName: String
-    let watchContainerTargetName: String
     let watchWidgetTargetName: String
     let bundleID: String
     let widgetBundleID: String
     let watchBundleID: String
-    let watchExtensionBundleID: String
-    let watchContainerBundleID: String
     let watchWidgetBundleID: String
     let appGroupID: String
     let cloudKitContainerIdentifier: String
@@ -38,14 +34,10 @@ let productionFlavor = SunclubFlavor(
     appTargetName: "Sunclub",
     widgetTargetName: "SunclubWidgetsExtension",
     watchTargetName: "SunclubWatch",
-    watchExtensionTargetName: "SunclubWatchExtension",
-    watchContainerTargetName: "SunclubWatchContainer",
     watchWidgetTargetName: "SunclubWatchWidgetsExtension",
     bundleID: "app.peyton.sunclub",
     widgetBundleID: "app.peyton.sunclub.widgets",
     watchBundleID: "app.peyton.sunclub.watch",
-    watchExtensionBundleID: "app.peyton.sunclub.watch.extension",
-    watchContainerBundleID: "app.peyton.sunclub.watch.container",
     watchWidgetBundleID: "app.peyton.sunclub.watch.widgets",
     appGroupID: "group.app.peyton.sunclub",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub",
@@ -58,14 +50,10 @@ let developmentFlavor = SunclubFlavor(
     appTargetName: "SunclubDev",
     widgetTargetName: "SunclubDevWidgetsExtension",
     watchTargetName: "SunclubDevWatch",
-    watchExtensionTargetName: "SunclubDevWatchExtension",
-    watchContainerTargetName: "SunclubDevWatchContainer",
     watchWidgetTargetName: "SunclubDevWatchWidgetsExtension",
     bundleID: "app.peyton.sunclub.dev",
     widgetBundleID: "app.peyton.sunclub.dev.widgets",
     watchBundleID: "app.peyton.sunclub.dev.watch",
-    watchExtensionBundleID: "app.peyton.sunclub.dev.watch.extension",
-    watchContainerBundleID: "app.peyton.sunclub.dev.watch.container",
     watchWidgetBundleID: "app.peyton.sunclub.dev.watch.widgets",
     appGroupID: "group.app.peyton.sunclub.dev",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev",
@@ -187,46 +175,19 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
     .target(
         name: flavor.watchTargetName,
         destinations: .watchOS,
-        product: .watch2App,
+        product: .app,
         bundleId: flavor.watchBundleID,
         deploymentTargets: defaultWatchDeploymentTarget,
         infoPlist: .extendingDefault(with: [
             "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
             "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
-            "WKCompanionAppBundleIdentifier": .string(flavor.bundleID)
-        ]),
-        resources: [
-            "WatchApp/Resources/**"
-        ],
-        dependencies: [
-            .target(name: flavor.watchExtensionTargetName)
-        ],
-        settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
-    )
-}
-
-func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
-    .target(
-        name: flavor.watchExtensionTargetName,
-        destinations: .watchOS,
-        product: .watch2Extension,
-        bundleId: flavor.watchExtensionBundleID,
-        deploymentTargets: defaultWatchDeploymentTarget,
-        infoPlist: .extendingDefault(with: [
-            "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME)"),
-            "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
-            "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
+            "WKCompanionAppBundleIdentifier": .string(flavor.bundleID),
+            "WKApplication": .boolean(true),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
             "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
-            "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
-            "NSExtension": .dictionary([
-                "NSExtensionPointIdentifier": .string("com.apple.watchkit"),
-                "NSExtensionAttributes": .dictionary([
-                    "WKAppBundleIdentifier": .string(flavor.watchBundleID)
-                ])
-            ])
+            "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)")
         ]),
         sources: [
             "WatchApp/Sources/**",
@@ -246,27 +207,14 @@ func watchExtensionTarget(for flavor: SunclubFlavor) -> Target {
             "Sources/Shared/SunclubRuntimeConfiguration.swift",
             "Sources/WidgetSupport/SunclubWidgetSupport.swift"
         ],
-        entitlements: "SunclubWatch.entitlements",
-        settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
-    )
-}
-
-func watchContainerTarget(for flavor: SunclubFlavor) -> Target {
-    .target(
-        name: flavor.watchContainerTargetName,
-        destinations: .iOS,
-        product: .watch2AppContainer,
-        bundleId: flavor.watchContainerBundleID,
-        deploymentTargets: defaultDeploymentTarget,
-        infoPlist: .extendingDefault(with: [
-            "CFBundleDisplayName": .string("$(SUNCLUB_DISPLAY_NAME) Watch"),
-            "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
-            "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)")
-        ]),
-        dependencies: [
-            .target(name: flavor.watchTargetName)
+        resources: [
+            "WatchApp/Resources/**"
         ],
-        settings: targetSettings(for: flavor, supportedPlatforms: "iphoneos iphonesimulator")
+        entitlements: "SunclubWatch.entitlements",
+        dependencies: [
+            .target(name: flavor.watchWidgetTargetName)
+        ],
+        settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
     )
 }
 
@@ -359,14 +307,10 @@ let project = Project(
         appTarget(for: productionFlavor),
         widgetTarget(for: productionFlavor),
         watchAppTarget(for: productionFlavor),
-        watchExtensionTarget(for: productionFlavor),
-        watchContainerTarget(for: productionFlavor),
         watchWidgetTarget(for: productionFlavor),
         appTarget(for: developmentFlavor),
         widgetTarget(for: developmentFlavor),
         watchAppTarget(for: developmentFlavor),
-        watchExtensionTarget(for: developmentFlavor),
-        watchContainerTarget(for: developmentFlavor),
         watchWidgetTarget(for: developmentFlavor),
         .target(
             name: "SunclubTests",

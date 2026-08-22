@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import argparse
 import base64
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import json
 import os
 import plistlib
-from pathlib import Path
 import secrets
 import shlex
 import subprocess
 import tempfile
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Protocol
 
 from scripts.appstore.connect_api import (
@@ -20,7 +20,6 @@ from scripts.appstore.connect_api import (
     AppStoreConnectError,
     JsonObject,
 )
-
 
 APP_STORE_PROFILE_TYPE = "IOS_APP_STORE"
 DISTRIBUTION_CERTIFICATE_TYPES = ("DISTRIBUTION", "IOS_DISTRIBUTION")
