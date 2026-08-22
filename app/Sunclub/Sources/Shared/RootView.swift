@@ -115,7 +115,7 @@ struct RootView: View {
         .background {
             SunNativeTabAccessibilityIdentifierInstaller()
         }
-        .tabBarMinimizeBehavior(.automatic)
+        .tabBarMinimizeBehavior(.never)
     }
 
     private var selectedTabBinding: Binding<AppTab> {
