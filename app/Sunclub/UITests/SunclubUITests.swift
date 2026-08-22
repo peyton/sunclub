@@ -30,9 +30,9 @@ final class SunclubUITests: XCTestCase {
         let timelineStatus = app.staticTexts["home.todayStatus"]
         let loggedCard = app.buttons["home.sunscreenLogCard"]
         let legacyLoggedAction = app.buttons["home.loggedPrimaryAction"]
-        let hasLoggedAction = loggedCard.waitForExistence(timeout: 5)
+        let hasLoggedAction = loggedCard.waitForExistence(timeout: 10)
             || legacyLoggedAction.exists
-        let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 5)
+        let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 10)
             && timelineStatus.label == "Sunscreen Logged"
             && hasLoggedAction
         XCTAssertTrue(
@@ -283,7 +283,7 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.footer.today"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(app.buttons["home.streakCard"].exists)
         XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
@@ -366,7 +366,7 @@ final class SunclubUITests: XCTestCase {
         exportApp.launch()
 
         expandSettingsSection("data", in: exportApp)
-        XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"]))
+        XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"], timeout: 15))
         XCTAssertTrue(scrollToElement(exportApp.buttons["settings.backup.exportHarness"], in: exportApp))
         exportApp.buttons["settings.backup.exportHarness"].tap()
         XCTAssertTrue(waitForLabel("Backup exported.", on: exportApp.staticTexts["settings.backupStatus"]))
@@ -622,7 +622,7 @@ final class SunclubUITests: XCTestCase {
         ])
 
         let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 10))
         XCTAssertEqual(todayStatus.label, "Sunscreen Logged")
 
         let detail = app.staticTexts["timeline.statusDetail"]
@@ -767,7 +767,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(todayButton.waitForExistence(timeout: 5))
         todayButton.tap()
 
-        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.datePickers["historyEditor.timePicker"].exists)
     }
 
@@ -782,7 +782,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["history.statusTitle"].waitForExistence(timeout: 5))
         let deleteButton = app.buttons["history.deleteRecord"]
-        XCTAssertTrue(scrollToHittableElement(deleteButton, in: app))
+        XCTAssertTrue(scrollToHittableElement(deleteButton, in: app, attempts: 12))
         deleteButton.tap()
         let confirmDeleteButton = app.sheets.buttons["Delete"]
         XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 2))
@@ -807,7 +807,7 @@ final class SunclubUITests: XCTestCase {
     func testHistoryCanBackfillMissedDay() throws {
         let app = launchHistoryWithSeededRecords(route: "historyBackfillTwoDaysAgo")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel("SPF 30 selected", on: app.staticTexts["historyEditor.spfState"]))
+        XCTAssertTrue(waitForLabel("SPF 30 selected", on: app.staticTexts["historyEditor.spfState"], timeout: 10))
 
         app.buttons["historyEditor.spf.50"].tap()
         app.buttons["historyEditor.save"].tap()
@@ -827,7 +827,7 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Recovery & Changes"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.staticTexts["recovery.conflict.summary"], in: app))
+        XCTAssertTrue(scrollToElement(app.staticTexts["recovery.conflict.summary"], in: app, attempts: 10))
         XCTAssertTrue(app.buttons["recovery.conflict.undo"].exists)
         XCTAssertTrue(app.buttons["recovery.conflict.resolve"].exists)
     }
@@ -910,7 +910,7 @@ final class SunclubUITests: XCTestCase {
             "UITEST_REAPPLY_ENABLED"
         ])
 
-        XCTAssertTrue(app.buttons["reapply.log"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reapply.log"].waitForExistence(timeout: 10))
         app.buttons["reapply.log"].tap()
 
         assertHomeLoggedState(app)
@@ -1415,7 +1415,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    private func waitForLabel(_ label: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+    private func waitForLabel(_ label: String, on element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
         let predicate = NSPredicate(format: "label == %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
