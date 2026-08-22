@@ -29,7 +29,7 @@ struct YearInReviewView: View {
         } footer: {
             EmptyView()
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

@@ -59,7 +59,7 @@ struct HistoryView: View {
                 Spacer(minLength: 0)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
         .confirmationDialog(
             deleteDialogTitle,
@@ -132,7 +132,8 @@ struct HistoryView: View {
             value: value,
             label: label,
             systemImage: label.contains("open") ? "calendar" : "checkmark.circle.fill",
-            tint: label.contains("open") ? AppPalette.sun : AppPalette.success
+            tint: label.contains("open") ? AppPalette.sun : AppPalette.success,
+            usesGlass: false
         )
     }
 
@@ -165,14 +166,11 @@ struct HistoryView: View {
                 .accessibilityIdentifier("history.undoDelete")
             }
             .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .fill(AppPalette.cardFill.opacity(0.76))
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.76,
+                legacyShadow: nil
             )
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
-            }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("history.deleteUndoBanner")
         }
@@ -209,42 +207,49 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func deletionErrorActions(for day: Date) -> some View {
-        PrimaryButton("Try Again", systemImage: "arrow.clockwise", identifier: "history.deleteRetry") {
+        PrimaryButton(
+            "Try Again",
+            systemImage: "arrow.clockwise",
+            identifier: "history.deleteRetry",
+            usesGlass: false
+        ) {
             if deleteRecordAndPreserveSelection(for: day) {
                 failedDeletionDay = nil
             }
         }
 
-        SecondaryPillButton("Keep Entry", identifier: "history.deleteCancel") {
+        SecondaryPillButton("Keep Entry", identifier: "history.deleteCancel", usesGlass: false) {
             failedDeletionDay = nil
             appState.clearLogActionError()
         }
     }
 
     private var monthNavigator: some View {
-        HStack {
-            monthNavigationButton(systemName: "chevron.left") {
-                changeMonth(by: -1)
+        SunGlassEffectContainer(spacing: 12) {
+            HStack {
+                monthNavigationButton(systemName: "chevron.left") {
+                    changeMonth(by: -1)
+                }
+                .accessibilityLabel("Previous month")
+                .accessibilityHint("Shows the previous month in history.")
+                .accessibilityIdentifier("history.previousMonth")
+
+                Spacer()
+
+                Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
+                    .font(AppTextStyle.title.font)
+                    .foregroundStyle(AppPalette.ink)
+                    .accessibilityIdentifier("history.monthTitle")
+
+                Spacer()
+
+                monthNavigationButton(systemName: "chevron.right", isEnabled: canGoForward) {
+                    changeMonth(by: 1)
+                }
+                .accessibilityLabel("Next month")
+                .accessibilityHint(canGoForward ? "Shows the next month in history." : "The next month is in the future.")
+                .accessibilityIdentifier("history.nextMonth")
             }
-            .accessibilityLabel("Previous month")
-            .accessibilityHint("Shows the previous month in history.")
-            .accessibilityIdentifier("history.previousMonth")
-
-            Spacer()
-
-            Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
-                .font(AppTextStyle.title.font)
-                .foregroundStyle(AppPalette.ink)
-                .accessibilityIdentifier("history.monthTitle")
-
-            Spacer()
-
-            monthNavigationButton(systemName: "chevron.right", isEnabled: canGoForward) {
-                changeMonth(by: 1)
-            }
-            .accessibilityLabel("Next month")
-            .accessibilityHint(canGoForward ? "Shows the next month in history." : "The next month is in the future.")
-            .accessibilityIdentifier("history.nextMonth")
         }
     }
 
@@ -257,8 +262,9 @@ struct HistoryView: View {
             Image(systemName: systemName)
                 .font(AppFont.rounded(size: 16, weight: .semibold))
                 .foregroundStyle(isEnabled ? AppPalette.ink : AppPalette.muted)
+                .frame(width: 44, height: 44)
         }
-        .buttonStyle(HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))
+        .sunGlassIconButton(legacyStyle: HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))
         .disabled(!isEnabled)
     }
 
@@ -614,14 +620,11 @@ struct HistoryView: View {
                 .padding(.top, 4)
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 0.72,
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
     }
 
     private func dayDetailBody(
@@ -737,9 +740,12 @@ struct HistoryView: View {
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                        .fill(AppPalette.warmGlow.opacity(0.3))
+                .sunGlassCard(
+                    cornerRadius: AppRadius.insetCard,
+                    fillOpacity: 0.3,
+                    legacyFill: AppPalette.warmGlow,
+                    legacyStroke: .clear,
+                    legacyShadow: nil
                 )
                 .accessibilityIdentifier("history.monthSummary")
             }
@@ -760,7 +766,8 @@ struct HistoryView: View {
             label: "logged days",
             symbolName: "checkmark.circle.fill",
             tint: AppPalette.success,
-            accessibilityIdentifier: "history.month.applied"
+            accessibilityIdentifier: "history.month.applied",
+            usesGlass: false
         )
 
         SunMetricPill(
@@ -768,7 +775,8 @@ struct HistoryView: View {
             label: "active days",
             symbolName: "calendar",
             tint: AppPalette.sun,
-            accessibilityIdentifier: "history.month.active"
+            accessibilityIdentifier: "history.month.active",
+            usesGlass: false
         )
 
         SunMetricPill(
@@ -776,7 +784,8 @@ struct HistoryView: View {
             label: "month",
             symbolName: "chart.bar.fill",
             tint: AppPalette.pool,
-            accessibilityIdentifier: "history.month.rate"
+            accessibilityIdentifier: "history.month.rate",
+            usesGlass: false
         )
     }
 
@@ -910,7 +919,8 @@ struct HistoryView: View {
             PrimaryButton(
                 isToday(day) ? "Log Today" : "Backfill Day",
                 systemImage: isToday(day) ? "sun.max" : "calendar.badge.plus",
-                identifier: "history.backfillRecord"
+                identifier: "history.backfillRecord",
+                usesGlass: false
             ) {
                 editorPresentation = HistoryEditorPresentation(day: day)
             }
@@ -919,11 +929,21 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func loggedDayActions(for day: Date) -> some View {
-        PrimaryButton("Edit Entry", systemImage: "pencil", identifier: "history.editRecord") {
+        PrimaryButton(
+            "Edit Entry",
+            systemImage: "pencil",
+            identifier: "history.editRecord",
+            usesGlass: false
+        ) {
             editorPresentation = HistoryEditorPresentation(day: day)
         }
 
-        SecondaryPillButton("Delete", systemImage: "trash", identifier: "history.deleteRecord") {
+        SecondaryPillButton(
+            "Delete",
+            systemImage: "trash",
+            identifier: "history.deleteRecord",
+            usesGlass: false
+        ) {
             dayPendingDeletion = day
         }
     }
@@ -1070,14 +1090,11 @@ struct HistoryView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.small,
+            fillOpacity: 0.72,
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
     }
 
     private func monthInsightCard(
@@ -1101,9 +1118,11 @@ struct HistoryView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.72))
+        .sunGlassCard(
+            cornerRadius: AppRadius.button,
+            fillOpacity: 0.72,
+            legacyStroke: .clear,
+            legacyShadow: nil
         )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -1278,7 +1297,7 @@ struct HistoryRecordEditorView: View {
                     closeEditor()
                 }
             }
-            .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("historyEditor.save")
         }
         .onAppear {
@@ -1288,7 +1307,7 @@ struct HistoryRecordEditorView: View {
         .onDisappear {
             appState.clearLogActionError()
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 

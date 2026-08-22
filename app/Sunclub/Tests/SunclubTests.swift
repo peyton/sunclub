@@ -2927,18 +2927,65 @@ final class SunclubTests: XCTestCase {
     func testAppRouterKeepsPushedRoutesInsideSelectedTab() {
         let router = AppRouter()
 
+        XCTAssertTrue(router.showsRootTabChrome)
+
         router.open(.settings)
         router.push(.privacy)
         XCTAssertEqual(router.selectedTab, .settings)
         XCTAssertEqual(router.path, [.privacy])
         XCTAssertTrue(router.canGoBack)
+        XCTAssertFalse(router.showsRootTabChrome)
 
         router.selectTab(.today)
         XCTAssertEqual(router.selectedTab, .today)
         XCTAssertTrue(router.path.isEmpty)
+        XCTAssertTrue(router.showsRootTabChrome)
 
         router.selectTab(.settings)
         XCTAssertEqual(router.path, [.privacy])
+        XCTAssertFalse(router.showsRootTabChrome)
+    }
+
+    @MainActor
+    func testAppRouterPreservesFourIndependentTabStacks() {
+        let router = AppRouter()
+        let expectedPaths: [AppTab: [AppRoute]] = [
+            .today: [.manualLog],
+            .history: [.backfillYesterday],
+            .insights: [.yearInReview],
+            .settings: [.privacy]
+        ]
+
+        for tab in AppTab.allCases {
+            router.selectTab(tab)
+            router.setPath(expectedPaths[tab] ?? [], for: tab)
+        }
+
+        for tab in AppTab.allCases {
+            router.selectTab(tab)
+            XCTAssertEqual(router.path, expectedPaths[tab])
+            XCTAssertFalse(router.showsRootTabChrome)
+        }
+    }
+
+    @MainActor
+    func testContextualTabActionUsesDailyPlanCompactAndExpandedCopy() {
+        let presentation = HomeDailyPlanPresentation(
+            title: "Plan the next reapply",
+            detail: "Reapply around 2:30 PM when you are outdoors.",
+            actionTitle: "Log Reapply",
+            action: .logReapply,
+            symbolName: "clock.arrow.circlepath",
+            tone: .action,
+            facts: []
+        )
+
+        let action = SunAppTabBarAction(presentation: presentation)
+
+        XCTAssertEqual(action.shortTitle, "Reapply")
+        XCTAssertEqual(action.title, "Log Reapply")
+        XCTAssertEqual(action.systemImage, "clock.arrow.circlepath")
+        XCTAssertEqual(action.accessibilityHint, "Reapply around 2:30 PM when you are outdoors.")
     }
 
     @MainActor

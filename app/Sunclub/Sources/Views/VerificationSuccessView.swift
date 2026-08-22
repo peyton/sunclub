@@ -53,7 +53,7 @@ struct VerificationSuccessView: View {
                     }
                     router.goHome()
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
+                .sunGlassPrimaryButton()
                 .accessibilityIdentifier("success.done")
 
                 if presentation.canAddDetails {
@@ -81,7 +81,7 @@ struct VerificationSuccessView: View {
             completionFeedbackTrigger += 1
         }
         .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility(title: presentation.title, displayMode: .inline)
     }
 
     private var successNextStepCard: some View {
@@ -112,7 +112,8 @@ struct VerificationSuccessView: View {
             label: "logged",
             symbolName: "checkmark.circle.fill",
             tint: AppPalette.success,
-            accessibilityIdentifier: "success.streakMetric"
+            accessibilityIdentifier: "success.streakMetric",
+            usesGlass: false
         )
 
         SunMetricPill(
@@ -120,7 +121,8 @@ struct VerificationSuccessView: View {
             label: "next reminder",
             symbolName: "bell.fill",
             tint: AppPalette.sun,
-            accessibilityIdentifier: "success.nextReminderMetric"
+            accessibilityIdentifier: "success.nextReminderMetric",
+            usesGlass: false
         )
     }
 
@@ -155,9 +157,12 @@ struct VerificationSuccessView: View {
             }
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .fill(AppPalette.warmGlow.opacity(0.4))
+        .sunGlassCard(
+            cornerRadius: AppRadius.small,
+            fillOpacity: 0.4,
+            legacyFill: AppPalette.warmGlow,
+            legacyStroke: .clear,
+            legacyShadow: nil
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(appState.reapplyReminderPlan.confirmationText)

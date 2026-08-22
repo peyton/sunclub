@@ -150,6 +150,147 @@ enum AppMotion {
     }
 }
 
+enum SunGlassSurfaceStyle {
+    case regular
+    case interactive
+}
+
+private struct SunGlassBoundaryActiveKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var sunGlassBoundaryActive: Bool {
+        get { self[SunGlassBoundaryActiveKey.self] }
+        set { self[SunGlassBoundaryActiveKey.self] = newValue }
+    }
+}
+
+struct SunGlassEffectContainer<Content: View>: View {
+    var spacing: CGFloat?
+    let content: Content
+
+    init(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    @ViewBuilder
+    var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+private struct SunGlassSurfaceModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let style: SunGlassSurfaceStyle
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            switch style {
+            case .regular:
+                content
+                    .environment(\.sunGlassBoundaryActive, true)
+                    .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            case .interactive:
+                content
+                    .environment(\.sunGlassBoundaryActive, true)
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+private enum SunGlassButtonRole {
+    case primary
+    case secondary
+    case icon
+}
+
+private struct SunGlassButtonStyleModifier<LegacyStyle: ButtonStyle>: ViewModifier {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
+    let role: SunGlassButtonRole
+    let legacyStyle: LegacyStyle
+    let usesGlass: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *), usesGlass, !isInsideGlassBoundary {
+            switch role {
+            case .primary:
+                content.buttonStyle(.glassProminent)
+            case .secondary, .icon:
+                content.buttonStyle(.glass)
+            }
+        } else {
+            content.buttonStyle(legacyStyle)
+        }
+        #else
+        content.buttonStyle(legacyStyle)
+        #endif
+    }
+}
+
+extension View {
+    func sunGlassPrimaryButton<LegacyStyle: ButtonStyle>(
+        legacyStyle: LegacyStyle,
+        usesGlass: Bool = true
+    ) -> some View {
+        modifier(
+            SunGlassButtonStyleModifier(
+                role: .primary,
+                legacyStyle: legacyStyle,
+                usesGlass: usesGlass
+            )
+        )
+    }
+
+    func sunGlassSecondaryButton<LegacyStyle: ButtonStyle>(
+        legacyStyle: LegacyStyle,
+        usesGlass: Bool = true
+    ) -> some View {
+        modifier(
+            SunGlassButtonStyleModifier(
+                role: .secondary,
+                legacyStyle: legacyStyle,
+                usesGlass: usesGlass
+            )
+        )
+    }
+
+    func sunGlassIconButton<LegacyStyle: ButtonStyle>(
+        legacyStyle: LegacyStyle,
+        usesGlass: Bool = true
+    ) -> some View {
+        modifier(
+            SunGlassButtonStyleModifier(
+                role: .icon,
+                legacyStyle: legacyStyle,
+                usesGlass: usesGlass
+            )
+        )
+    }
+}
+
 enum AppFont {
     static func rounded(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(textStyle(for: size), design: .rounded, weight: weight)
@@ -251,6 +392,8 @@ struct AppText: View {
 }
 
 struct AppCard<Content: View>: View {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
     var padding: CGFloat = AppSpacing.md
     var cornerRadius: CGFloat = AppRadius.card
     var fill: Color = AppColor.surfaceElevated
@@ -271,7 +414,29 @@ struct AppCard<Content: View>: View {
         self.content = content()
     }
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if isInsideGlassBoundary {
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(padding)
+            } else {
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(padding)
+                    .sunGlassSurface(cornerRadius: cornerRadius)
+            }
+        } else {
+            legacyBody
+        }
+        #else
+        legacyBody
+        #endif
+    }
+
+    private var legacyBody: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(padding)
@@ -291,17 +456,20 @@ struct PrimaryButton: View {
     let title: String
     var systemImage: String?
     var identifier: String?
+    var usesGlass: Bool
     let action: () -> Void
 
     init(
         _ title: String,
         systemImage: String? = nil,
         identifier: String? = nil,
+        usesGlass: Bool = true,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.systemImage = systemImage
         self.identifier = identifier
+        self.usesGlass = usesGlass
         self.action = action
     }
 
@@ -315,11 +483,13 @@ struct PrimaryButton: View {
                         .accessibilityHidden(true)
                 }
 
-                AppText(title, style: .bodyMedium, color: AppColor.primaryActionForeground)
+                Text(title)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, minHeight: 56)
         }
-        .buttonStyle(AppPrimaryButtonStyle())
+        .sunGlassPrimaryButton(legacyStyle: AppPrimaryButtonStyle(), usesGlass: usesGlass)
 
         if let identifier {
             button.accessibilityIdentifier(identifier)
@@ -333,17 +503,20 @@ struct SecondaryPillButton: View {
     let title: String
     var systemImage: String?
     var identifier: String?
+    var usesGlass: Bool
     let action: () -> Void
 
     init(
         _ title: String,
         systemImage: String? = nil,
         identifier: String? = nil,
+        usesGlass: Bool = true,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.systemImage = systemImage
         self.identifier = identifier
+        self.usesGlass = usesGlass
         self.action = action
     }
 
@@ -361,7 +534,7 @@ struct SecondaryPillButton: View {
             }
             .frame(maxWidth: .infinity, minHeight: 52)
         }
-        .buttonStyle(AppSecondaryPillButtonStyle())
+        .sunGlassSecondaryButton(legacyStyle: AppSecondaryPillButtonStyle(), usesGlass: usesGlass)
 
         if let identifier {
             button.accessibilityIdentifier(identifier)
@@ -515,12 +688,33 @@ struct DayCapsule: View {
 }
 
 struct StatCard: View {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
     let value: String
     let label: String
     var systemImage: String
     var tint: Color = AppColor.accent
+    var usesGlass = true
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if usesGlass, !isInsideGlassBoundary {
+                cardContent
+                    .sunGlassSurface(cornerRadius: AppRadius.insetCard)
+            } else {
+                cardContent
+            }
+        } else {
+            legacyCard
+        }
+        #else
+        legacyCard
+        #endif
+    }
+
+    private var cardContent: some View {
         HStack(spacing: AppSpacing.xxs) {
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
@@ -536,6 +730,12 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
         .padding(.horizontal, AppSpacing.xs)
         .padding(.vertical, AppSpacing.xxs)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(value) \(label)")
+    }
+
+    private var legacyCard: some View {
+        cardContent
         .background {
             RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
                 .fill(AppColor.surfaceElevated)
@@ -544,8 +744,6 @@ struct StatCard: View {
             RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
                 .stroke(AppColor.stroke, lineWidth: 1)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(value) \(label)")
     }
 }
 
@@ -611,6 +809,13 @@ private struct DiagonalHatch: View {
 }
 
 extension View {
+    func sunGlassSurface(
+        cornerRadius: CGFloat = AppRadius.card,
+        style: SunGlassSurfaceStyle = .regular
+    ) -> some View {
+        modifier(SunGlassSurfaceModifier(cornerRadius: cornerRadius, style: style))
+    }
+
     func appShadow(_ style: AppShadowStyle?) -> some View {
         shadow(
             color: style?.color ?? .clear,

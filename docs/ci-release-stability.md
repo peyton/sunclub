@@ -166,6 +166,9 @@ GitHub run cross-check:
   the app-owned `RootView` left-edge fallback active in UI tests because CI
   simulator runs on Xcode 26 failed to trigger UIKit's gesture even though the
   visible `screen.back` button still worked.
+- Preserve the failure-only `ios-ui-test-result` artifact. GitHub's compact
+  Xcode output omits assertion locations and screenshots needed to diagnose
+  simulator-only native navigation and Liquid Glass failures.
 - Before trusting a TestFlight release, inspect the downloaded workflow artifact
   entitlements from `.build/release-diagnostics`, not just the provisioning
   profile or checked-in entitlement files.

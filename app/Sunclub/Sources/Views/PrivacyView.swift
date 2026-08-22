@@ -87,7 +87,7 @@ struct PrivacyView: View {
         } message: {
             Text(deleteError ?? "Your sunscreen history is unchanged. Please try again.")
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
@@ -100,7 +100,12 @@ struct PrivacyView: View {
                 tint: AppPalette.aloe
             )
             .padding(16)
-            .background(referenceRowBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.84,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
 
             SunInfoRow(
                 title: "Private iCloud sync",
@@ -109,7 +114,12 @@ struct PrivacyView: View {
                 tint: AppPalette.aloe
             )
             .padding(16)
-            .background(referenceRowBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.84,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
 
             SunInfoRow(
                 title: "Export or delete anytime",
@@ -118,7 +128,12 @@ struct PrivacyView: View {
                 tint: AppPalette.aloe
             )
             .padding(16)
-            .background(referenceRowBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.84,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
 
             privacyActionRow(
                 title: "Export Sunclub history",
@@ -154,19 +169,16 @@ struct PrivacyView: View {
                 showsChevron: true
             )
             .padding(16)
-            .background(referenceRowBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.84,
+                interactive: true,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
-    }
-
-    private var referenceRowBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.84))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
     }
 
     private func beginBackupExport() {

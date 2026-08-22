@@ -92,9 +92,12 @@ struct CitySearchView: View {
                                     }
                                     .padding(14)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                                            .fill(AppPalette.cardFill)
+                                    .sunGlassCard(
+                                        cornerRadius: AppRadius.medium,
+                                        fillOpacity: 1,
+                                        interactive: true,
+                                        legacyStroke: .clear,
+                                        legacyShadow: nil
                                     )
                                 }
                                 .buttonStyle(.plain)

@@ -54,14 +54,19 @@ struct SupportView: View {
                         showsChevron: false
                     )
                     .padding(16)
-                    .background(referenceRowBackground)
+                    .sunGlassCard(
+                        cornerRadius: AppRadius.medium,
+                        fillOpacity: 0.84,
+                        legacyStroke: AppPalette.hairlineStroke,
+                        legacyShadow: nil
+                    )
                     .accessibilityIdentifier("support.about")
                 }
 
                 Spacer(minLength: 0)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
@@ -83,19 +88,16 @@ struct SupportView: View {
                 showsChevron: true
             )
             .padding(16)
-            .background(referenceRowBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.medium,
+                fillOpacity: 0.84,
+                interactive: true,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
-    }
-
-    private var referenceRowBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.84))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
     }
 
     private var appVersion: String {

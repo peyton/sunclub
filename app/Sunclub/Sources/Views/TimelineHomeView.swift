@@ -381,7 +381,7 @@ struct TimelineHomeView: View {
             refresh()
         }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
     }
 
     private var selectedTimelineDayBinding: Binding<Date> {
@@ -661,7 +661,7 @@ struct TimelineHomeView: View {
                 showsChevron: false
             )
             .padding(14)
-            .sunGlassCard(cornerRadius: AppRadius.card)
+            .sunGlassCard(cornerRadius: AppRadius.card, interactive: true)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(
@@ -727,7 +727,8 @@ struct TimelineHomeView: View {
                 PrimaryButton(
                     plan.actionTitle,
                     systemImage: plan.symbolName,
-                    identifier: "home.dailyPlan.action"
+                    identifier: "home.dailyPlan.action",
+                    usesGlass: false
                 ) {
                     dispatchDailyPlanAction(plan.action)
                 }
@@ -889,15 +890,12 @@ struct TimelineHomeView: View {
                 .accessibilityHidden(true)
         }
         .padding(13)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(AppPalette.elevatedCardFill)
-                .appShadow(AppShadow.soft)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 1,
+            interactive: true,
+            legacyFill: AppPalette.elevatedCardFill
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
     }
 
     private func sunscreenLogStatusText(
@@ -1393,7 +1391,8 @@ private struct TimelineTodayStatusCard: View {
             value: "\(weekLoggedCount)/7",
             label: "logged this week",
             systemImage: "checkmark.circle.fill",
-            tint: AppPalette.streakAccent
+            tint: AppPalette.streakAccent,
+            usesGlass: false
         )
         .accessibilityIdentifier(identifier("timeline.status.weekLogged"))
 
@@ -1401,7 +1400,8 @@ private struct TimelineTodayStatusCard: View {
             value: reapplyStatusValue,
             label: "reapply",
             systemImage: "timer",
-            tint: AppPalette.sun
+            tint: AppPalette.sun,
+            usesGlass: false
         )
         .accessibilityIdentifier(identifier("timeline.status.reapply"))
     }

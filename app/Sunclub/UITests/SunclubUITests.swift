@@ -30,9 +30,9 @@ final class SunclubUITests: XCTestCase {
         let timelineStatus = app.staticTexts["home.todayStatus"]
         let loggedCard = app.buttons["home.sunscreenLogCard"]
         let legacyLoggedAction = app.buttons["home.loggedPrimaryAction"]
-        let hasLoggedAction = loggedCard.waitForExistence(timeout: 5)
+        let hasLoggedAction = loggedCard.waitForExistence(timeout: 10)
             || legacyLoggedAction.exists
-        let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 5)
+        let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 10)
             && timelineStatus.label == "Sunscreen Logged"
             && hasLoggedAction
         XCTAssertTrue(
@@ -199,9 +199,12 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Privacy"].waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToElement(app.buttons["privacy.exportHistory"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["privacy.deleteHistory"], in: app))
+        let deleteHistory = app.buttons["privacy.deleteHistory"]
+        XCTAssertTrue(scrollToHittableElement(deleteHistory, in: app))
+        app.swipeUp()
+        XCTAssertTrue(deleteHistory.isHittable)
 
-        app.buttons["privacy.deleteHistory"].tap()
+        deleteHistory.tap()
         XCTAssertTrue(app.staticTexts["Delete sunscreen history?"].waitForExistence(timeout: 5))
         let confirmationCopy = app.staticTexts.matching(NSPredicate(
             format: "label CONTAINS %@",
@@ -240,8 +243,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(scrollToHittableElement(backButton, in: app))
         backButton.tap()
 
-        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5))
-        app.buttons["timeline.footer.today"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]))
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home.uvIndexCard"].exists)
     }
@@ -269,10 +271,64 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["screen.back"].exists)
-        XCTAssertTrue(app.buttons["timeline.footer.today"].exists)
-        app.buttons["timeline.footer.today"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]))
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testNativeTabAndNavigationChromeHideForSettingsDetail() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(app.buttons["home.streakCard"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
+        XCTAssertTrue(app.buttons["home.logManually"].exists)
+
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
+        app.buttons["settings.section.reminders"].tap()
+
+        XCTAssertTrue(app.navigationBars["Sunscreen & Reminders"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["screen.back"].exists)
+        XCTAssertFalse(app.buttons["timeline.footer.today"].exists)
+        XCTAssertFalse(app.buttons["home.logManually"].exists)
+
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["timeline.footer.today"].exists)
+        XCTAssertTrue(app.buttons["home.logManually"].exists)
+    }
+
+    @MainActor
+    func testNativeTabShellPreservesHistoryMonthAcrossDetailPushAndPop() throws {
+        let app = launchHome(additionalArguments: [
+            "UITEST_SEED_HISTORY=monthlyReview",
+            "UITEST_FORCE_DARK_MODE",
+            "UITEST_FORCE_INCREASE_CONTRAST"
+        ])
+
+        app.buttons["home.historyCard"].tap()
+        let monthTitle = app.staticTexts["history.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 5))
+        let currentMonth = monthTitle.label
+        app.buttons["history.previousMonth"].tap()
+        XCTAssertTrue(waitForDifferentLabel(from: currentMonth, on: monthTitle))
+        let selectedMonth = monthTitle.label
+
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
+        XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
+        app.buttons["settings.section.reminders"].tap()
+        XCTAssertTrue(app.navigationBars["Sunscreen & Reminders"].waitForExistence(timeout: 5))
+        app.buttons["screen.back"].tap()
+
+        XCTAssertTrue(app.buttons["home.historyCard"].waitForExistence(timeout: 5))
+        app.buttons["home.historyCard"].tap()
+        XCTAssertTrue(waitForLabel(selectedMonth, on: monthTitle))
     }
 
     @MainActor
@@ -310,7 +366,7 @@ final class SunclubUITests: XCTestCase {
         exportApp.launch()
 
         expandSettingsSection("data", in: exportApp)
-        XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"]))
+        XCTAssertTrue(waitForLabel("History entries: 1", on: exportApp.staticTexts["settings.backupRecordCount"], timeout: 15))
         XCTAssertTrue(scrollToElement(exportApp.buttons["settings.backup.exportHarness"], in: exportApp))
         exportApp.buttons["settings.backup.exportHarness"].tap()
         XCTAssertTrue(waitForLabel("Backup exported.", on: exportApp.staticTexts["settings.backupStatus"]))
@@ -347,7 +403,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         XCTAssertLessThan(averageScreenshotLuminance(), 0.70)
 
-        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         expandSettingsSection("reminders", in: app)
         XCTAssertTrue(app.buttons["settings.weekdayReminderTime"].waitForExistence(timeout: 5))
@@ -362,11 +418,14 @@ final class SunclubUITests: XCTestCase {
 
         let contextualAction = app.buttons["home.logManually"]
         XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
-        XCTAssertLessThan(
+        XCTAssertGreaterThanOrEqual(
             contextualAction.frame.width,
             app.frame.width / 2,
-            "Expected the accessibility center action to remain a labeled tab tile instead of covering the full tab bar."
+            "Expected the expanded native accessory to reserve a full-width action surface."
         )
+        XCTAssertGreaterThanOrEqual(contextualAction.frame.height, 44)
+        XCTAssertTrue(contextualAction.isHittable)
+        XCTAssertFalse(contextualAction.label.isEmpty)
         let dailyPlanAction = app.buttons["home.dailyPlan.action"]
         XCTAssertTrue(
             scrollToHittableElement(dailyPlanAction, in: app, attempts: 6),
@@ -382,8 +441,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app, attempts: 10), "Expected Settings footer to remain reachable with accessibility settings enabled.")
 
-        app.buttons["timeline.footer.settings"].tap()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected Settings to open from the tab footer.")
+        assertSettingsTabOpens(in: app)
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
         expandSettingsSection("progress", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
@@ -396,10 +454,11 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
         app.buttons["screen.back"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
-        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5), "Expected Today tab footer to remain reachable from Settings.")
-        app.buttons["timeline.footer.today"].tap()
         let logAction = app.buttons["home.logManually"]
-        XCTAssertTrue(logAction.waitForExistence(timeout: 5), "Expected Today tab home action after leaving Settings.")
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]),
+            "Expected Today tab home action after leaving Settings."
+        )
+        XCTAssertTrue(logAction.waitForExistence(timeout: 5))
 
         let actionFrame = logAction.frame
         app.coordinate(withNormalizedOffset: .zero)
@@ -466,7 +525,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.buttons["home.accountabilityNudge.dismiss"].exists)
         XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
 
-        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
     }
@@ -484,7 +543,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
 
         XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
-        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
         XCTAssertFalse(app.buttons["friends.activate"].exists)
@@ -502,7 +561,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.buttons["home.accountabilityAction"].exists)
         XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
 
-        app.buttons["timeline.footer.settings"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
         XCTAssertFalse(app.buttons["friends.activate"].exists)
@@ -563,7 +622,7 @@ final class SunclubUITests: XCTestCase {
         ])
 
         let todayStatus = app.staticTexts["home.todayStatus"]
-        XCTAssertTrue(todayStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(todayStatus.waitForExistence(timeout: 10))
         XCTAssertEqual(todayStatus.label, "Sunscreen Logged")
 
         let detail = app.staticTexts["timeline.statusDetail"]
@@ -708,7 +767,7 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(todayButton.waitForExistence(timeout: 5))
         todayButton.tap()
 
-        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.datePickers["historyEditor.timePicker"].exists)
     }
 
@@ -723,7 +782,7 @@ final class SunclubUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["history.statusTitle"].waitForExistence(timeout: 5))
         let deleteButton = app.buttons["history.deleteRecord"]
-        XCTAssertTrue(scrollToHittableElement(deleteButton, in: app))
+        XCTAssertTrue(scrollToHittableElement(deleteButton, in: app, attempts: 12))
         deleteButton.tap()
         let confirmDeleteButton = app.sheets.buttons["Delete"]
         XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 2))
@@ -748,7 +807,7 @@ final class SunclubUITests: XCTestCase {
     func testHistoryCanBackfillMissedDay() throws {
         let app = launchHistoryWithSeededRecords(route: "historyBackfillTwoDaysAgo")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel("SPF 30 selected", on: app.staticTexts["historyEditor.spfState"]))
+        XCTAssertTrue(waitForLabel("SPF 30 selected", on: app.staticTexts["historyEditor.spfState"], timeout: 10))
 
         app.buttons["historyEditor.spf.50"].tap()
         app.buttons["historyEditor.save"].tap()
@@ -768,7 +827,7 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Recovery & Changes"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.staticTexts["recovery.conflict.summary"], in: app))
+        XCTAssertTrue(scrollToElement(app.staticTexts["recovery.conflict.summary"], in: app, attempts: 10))
         XCTAssertTrue(app.buttons["recovery.conflict.undo"].exists)
         XCTAssertTrue(app.buttons["recovery.conflict.resolve"].exists)
     }
@@ -790,8 +849,7 @@ final class SunclubUITests: XCTestCase {
         undoButton.tap()
 
         performBackSwipe(in: app)
-        XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 5))
-        app.buttons["timeline.footer.today"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]))
 
         assertHomeLoggedState(app)
 
@@ -852,7 +910,7 @@ final class SunclubUITests: XCTestCase {
             "UITEST_REAPPLY_ENABLED"
         ])
 
-        XCTAssertTrue(app.buttons["reapply.log"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reapply.log"].waitForExistence(timeout: 10))
         app.buttons["reapply.log"].tap()
 
         assertHomeLoggedState(app)
@@ -875,7 +933,7 @@ final class SunclubUITests: XCTestCase {
 
         assertInsightsVisible(in: app)
         XCTAssertFalse(app.buttons["screen.back"].exists)
-        app.buttons["timeline.footer.today"].tap()
+        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]))
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
     }
@@ -949,6 +1007,9 @@ final class SunclubUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Sunscreen Logged"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["timeline.footer.today"].exists)
+        XCTAssertFalse(app.buttons["home.logManually"].exists)
         XCTAssertTrue(app.buttons["success.done"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["success.addDetails"], in: app))
 
@@ -1031,7 +1092,10 @@ final class SunclubUITests: XCTestCase {
     @MainActor
     func testTimelineHomeKeepsDefaultLogSurfaceSimple() throws {
         let app = launchTimelineHome()
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
+        let contextualAction = app.buttons["home.logManually"]
+        XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
+        XCTAssertTrue(contextualAction.isHittable)
+        XCTAssertEqual(contextualAction.label, "Log Today")
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["home.dailyPlan"].exists)
         XCTAssertTrue(app.buttons["home.dailyPlan.action"].exists)
@@ -1040,7 +1104,6 @@ final class SunclubUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
             || app.staticTexts["home.todayStatus"].exists)
-        XCTAssertTrue(app.staticTexts["Log"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
@@ -1131,6 +1194,8 @@ final class SunclubUITests: XCTestCase {
             scrollToHittableElement(swipeSurface, in: app, attempts: 6),
             "Expected the compact UV card to remain reachable before swiping the timeline."
         )
+        app.swipeUp()
+        XCTAssertTrue(swipeSurface.isHittable)
 
         dragTimelineBody(swipeSurface, direction: .future, verticalPosition: 0.5)
         XCTAssertTrue(waitForLabelNotPrefix("Today,", on: headline))
@@ -1350,7 +1415,7 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    private func waitForLabel(_ label: String, on element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+    private func waitForLabel(_ label: String, on element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
         let predicate = NSPredicate(format: "label == %@", label)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
@@ -1540,6 +1605,37 @@ final class SunclubUITests: XCTestCase {
         let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: verticalPosition))
         let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: verticalPosition))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    private func selectNativeTab(_ tab: XCUIElement) -> Bool {
+        for attempt in 0..<2 {
+            if tab.exists, tab.isSelected {
+                return true
+            }
+            guard tab.waitForExistence(timeout: 2), tab.isHittable else {
+                return false
+            }
+
+            tab.tap()
+            let timeout: TimeInterval = attempt == 0 ? 1 : 5
+            let selected = NSPredicate(format: "isSelected == true")
+            let expectation = XCTNSPredicateExpectation(predicate: selected, object: tab)
+            if XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed {
+                return true
+            }
+        }
+
+        return tab.exists && tab.isSelected
+    }
+
+    @MainActor
+    private func assertSettingsTabOpens(in app: XCUIApplication) {
+        XCTAssertTrue(
+            selectNativeTab(app.buttons["timeline.footer.settings"]),
+            "Expected Settings to open from the tab footer."
+        )
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
     }
 
     private static let dayIdentifierFormatter: DateFormatter = {

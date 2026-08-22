@@ -2,9 +2,23 @@ import SwiftUI
 import UIKit
 
 enum AppPalette {
-    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
+    private static func adaptive(
+        light: UIColor,
+        dark: UIColor,
+        increasedContrastLight: UIColor? = nil,
+        increasedContrastDark: UIColor? = nil
+    ) -> Color {
         Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark ? dark : light
+            switch (traits.userInterfaceStyle, traits.accessibilityContrast) {
+            case (.dark, .high):
+                increasedContrastDark ?? dark
+            case (.dark, _):
+                dark
+            case (_, .high):
+                increasedContrastLight ?? light
+            default:
+                light
+            }
         })
     }
 
@@ -26,6 +40,12 @@ enum AppPalette {
     static let sun = adaptive(
         light: uiColor(red: 0.970, green: 0.670, blue: 0.000),
         dark: uiColor(red: 1.000, green: 0.705, blue: 0.145)
+    )
+    static let nativeChromeTint = adaptive(
+        light: uiColor(red: 0.025, green: 0.108, blue: 0.205),
+        dark: uiColor(red: 1.000, green: 0.705, blue: 0.145),
+        increasedContrastLight: .black,
+        increasedContrastDark: .white
     )
     static let coral = adaptive(
         light: uiColor(red: 0.870, green: 0.290, blue: 0.220),
@@ -355,50 +375,22 @@ struct SunLightScreen<Content: View, Footer: View>: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
-                VStack(spacing: 0) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 22) {
-                            content
-                        }
-                        .frame(maxWidth: contentMaxWidth ?? .infinity, alignment: .leading)
-                        .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, showsFooter ? 24 : SunLayout.tabBarScrollUnderlapPadding)
-                        .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onScrollGeometryChange(
-                        for: Double.self,
-                        of: { geometry in
-                            SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
-                        },
-                        action: { _, newProgress in
-                            topStatusBarFadeProgress = newProgress
-                        }
-                    )
-
+                #if os(iOS) && !os(watchOS)
+                if #available(iOS 26.0, *) {
                     if showsFooter {
-                        footer
-                            .frame(maxWidth: footerMaxWidth ?? .infinity)
-                            .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 5)
-                            .padding(.bottom, 20)
-                            .background {
-                                LinearGradient(
-                                    colors: [
-                                        AppPalette.cardFill.opacity(0),
-                                        AppPalette.cardFill.opacity(0.92),
-                                        AppPalette.cardFill.opacity(0.98)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                                .ignoresSafeArea(edges: .bottom)
+                        scrollingContent(proxy: proxy)
+                            .safeAreaInset(edge: .bottom, spacing: 0) {
+                                nativeFooter
                             }
+                    } else {
+                        scrollingContent(proxy: proxy)
                     }
+                } else {
+                    legacyLayout(proxy: proxy)
                 }
+                #else
+                legacyLayout(proxy: proxy)
+                #endif
 
                 SunTopStatusBarFade(progress: topStatusBarFadeProgress, background: AppColor.background)
             }
@@ -407,6 +399,72 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         .background {
             SunBackdrop()
         }
+    }
+
+    private func scrollingContent(proxy: GeometryProxy) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 22) {
+                content
+            }
+            .frame(maxWidth: contentMaxWidth ?? .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: contentFrameAlignment)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, showsFooter ? 24 : SunLayout.tabBarScrollUnderlapPadding)
+            .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .onScrollGeometryChange(
+            for: Double.self,
+            of: { geometry in
+                SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
+            },
+            action: { _, newProgress in
+                topStatusBarFadeProgress = newProgress
+            }
+        )
+    }
+
+    private func legacyLayout(proxy: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            scrollingContent(proxy: proxy)
+
+            if showsFooter {
+                legacyFooter
+            }
+        }
+    }
+
+    private var nativeFooter: some View {
+        SunGlassEffectContainer(spacing: 10) {
+            footer
+                .frame(maxWidth: footerMaxWidth ?? .infinity)
+                .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 5)
+        .padding(.bottom, 20)
+    }
+
+    private var legacyFooter: some View {
+        footer
+            .frame(maxWidth: footerMaxWidth ?? .infinity)
+            .frame(maxWidth: .infinity, alignment: footerFrameAlignment)
+            .padding(.horizontal, 20)
+            .padding(.top, 5)
+            .padding(.bottom, 20)
+            .background {
+                LinearGradient(
+                    colors: [
+                        AppPalette.cardFill.opacity(0),
+                        AppPalette.cardFill.opacity(0.92),
+                        AppPalette.cardFill.opacity(0.98)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea(edges: .bottom)
+            }
     }
 }
 
@@ -444,39 +502,62 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
-
-                VStack(spacing: 0) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 26) {
-                            content
+                #if os(iOS) && !os(watchOS)
+                if #available(iOS 26.0, *) {
+                    scrollingContent(proxy: proxy)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            SunGlassEffectContainer(spacing: 10) {
+                                footer
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 6)
+                            .padding(.bottom, 24)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 28)
-                        .padding(.bottom, 18)
-                        .frame(minHeight: proxy.size.height - 120, alignment: .top)
-                    }
-                    .onScrollGeometryChange(
-                        for: Double.self,
-                        of: { geometry in
-                            SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
-                        },
-                        action: { _, newProgress in
-                            topStatusBarFadeProgress = newProgress
-                        }
-                    )
-
-                    footer
-                        .padding(.horizontal, 24)
-                        .padding(.top, 6)
-                        .padding(.bottom, 24)
+                } else {
+                    legacyLayout(proxy: proxy)
                 }
+                #else
+                legacyLayout(proxy: proxy)
+                #endif
 
                 SunTopStatusBarFade(progress: topStatusBarFadeProgress, background: AppColor.background)
             }
         }
         .background {
             SunDarkBackdrop()
+        }
+    }
+
+    private func scrollingContent(proxy: GeometryProxy) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 26) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 24)
+            .padding(.top, 28)
+            .padding(.bottom, 18)
+            .frame(minHeight: proxy.size.height - 120, alignment: .top)
+        }
+        .onScrollGeometryChange(
+            for: Double.self,
+            of: { geometry in
+                SunLayout.topStatusBarFadeProgress(for: geometry.sunclubVerticalScrollOffset)
+            },
+            action: { _, newProgress in
+                topStatusBarFadeProgress = newProgress
+            }
+        )
+    }
+
+    private func legacyLayout(proxy: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            scrollingContent(proxy: proxy)
+
+            footer
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+                .padding(.bottom, 24)
         }
     }
 }
@@ -679,13 +760,39 @@ struct SunScreenTitleBlock: View {
 }
 
 struct SunMetricPill: View {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
     let value: String
     let label: String
     var symbolName: String?
     var tint: Color = AppPalette.sun
     var accessibilityIdentifier: String?
+    var usesGlass = true
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if usesGlass, !isInsideGlassBoundary {
+                pillContent.sunGlassCard(
+                    cornerRadius: AppRadius.insetCard,
+                    fillOpacity: 0.72,
+                    legacyFill: AppPalette.controlFill,
+                    legacyStroke: AppPalette.hairlineStroke,
+                    legacyShadow: nil
+                )
+            } else {
+                pillContent
+            }
+        } else {
+            legacyPill
+        }
+        #else
+        legacyPill
+        #endif
+    }
+
+    private var pillContent: some View {
         HStack(alignment: .center, spacing: 8) {
             if let symbolName {
                 Image(systemName: symbolName)
@@ -708,16 +815,19 @@ struct SunMetricPill: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                .fill(AppPalette.controlFill.opacity(0.72))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.insetCard, style: .continuous)
-                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-        }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier ?? "sunclub.metricPill")
+    }
+
+    private var legacyPill: some View {
+        pillContent
+        .sunGlassCard(
+            cornerRadius: AppRadius.insetCard,
+            fillOpacity: 0.72,
+            legacyFill: AppPalette.controlFill,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
     }
 }
 
@@ -912,6 +1022,9 @@ struct SunLightHeader: View {
     let title: String
     let showsBack: Bool
     let trailingSystemImage: String?
+    let trailingAccessibilityLabel: String?
+    let trailingAccessibilityHint: String?
+    let trailingAccessibilityIdentifier: String?
     let onBack: (() -> Void)?
     let onTrailingTap: (() -> Void)?
 
@@ -920,16 +1033,63 @@ struct SunLightHeader: View {
         showsBack: Bool = false,
         onBack: (() -> Void)? = nil,
         trailingSystemImage: String? = nil,
+        trailingAccessibilityLabel: String? = nil,
+        trailingAccessibilityHint: String? = nil,
+        trailingAccessibilityIdentifier: String? = nil,
         onTrailingTap: (() -> Void)? = nil
     ) {
         self.title = title
         self.showsBack = showsBack
         self.onBack = onBack
         self.trailingSystemImage = trailingSystemImage
+        self.trailingAccessibilityLabel = trailingAccessibilityLabel
+        self.trailingAccessibilityHint = trailingAccessibilityHint
+        self.trailingAccessibilityIdentifier = trailingAccessibilityIdentifier
         self.onTrailingTap = onTrailingTap
     }
 
+    @ViewBuilder
     var body: some View {
+        if #available(iOS 26.0, *) {
+            nativeHeader
+        } else {
+            legacyHeader
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeHeader: some View {
+        Color.clear
+            .frame(height: 0)
+            .accessibilityHidden(true)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(showsBack ? .inline : .large)
+            .navigationBarBackButtonHidden(showsBack)
+            .toolbar {
+                if showsBack {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: { onBack?() }) {
+                            Label("Back", systemImage: "chevron.left")
+                        }
+                        .accessibilityLabel("Back")
+                        .accessibilityIdentifier("screen.back")
+                    }
+                }
+
+                if let trailingSystemImage {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: { onTrailingTap?() }) {
+                            Image(systemName: trailingSystemImage)
+                        }
+                        .accessibilityLabel(trailingAccessibilityLabel ?? title)
+                        .accessibilityHint(trailingAccessibilityHint ?? "")
+                        .accessibilityIdentifier(trailingAccessibilityIdentifier ?? "")
+                    }
+                }
+            }
+    }
+
+    private var legacyHeader: some View {
         HStack(alignment: .top, spacing: 10) {
             if showsBack {
                 Button(
@@ -964,10 +1124,106 @@ struct SunLightHeader: View {
                     }
                 )
                 .buttonStyle(.plain)
+                .accessibilityLabel(trailingAccessibilityLabel ?? title)
+                .accessibilityHint(trailingAccessibilityHint ?? "")
+                .accessibilityIdentifier(trailingAccessibilityIdentifier ?? "")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 2)
+    }
+}
+
+private struct SunNavigationBarCompatibilityModifier: ViewModifier {
+    let title: String?
+    let displayMode: NavigationBarItem.TitleDisplayMode
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if let title {
+                content
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(displayMode)
+                    .toolbar(.visible, for: .navigationBar)
+            } else {
+                content
+                    .toolbar(.visible, for: .navigationBar)
+            }
+        } else {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+private struct SunGlassCardModifier: ViewModifier {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
+    let cornerRadius: CGFloat
+    let fillOpacity: Double
+    let interactive: Bool
+    let legacyFill: Color
+    let legacyStroke: Color
+    let legacyShadow: AppShadowStyle?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if isInsideGlassBoundary {
+                content
+            } else {
+                content.sunGlassSurface(
+                    cornerRadius: cornerRadius,
+                    style: interactive ? .interactive : .regular
+                )
+            }
+        } else {
+            legacyCard(content)
+        }
+        #else
+        legacyCard(content)
+        #endif
+    }
+
+    private func legacyCard(_ content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(legacyFill.opacity(fillOpacity))
+                    .appShadow(legacyShadow)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(legacyStroke, lineWidth: 1)
+            }
+    }
+}
+
+private struct SunGlassIconButtonStyleModifier: ViewModifier {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *), !isInsideGlassBoundary {
+            content.buttonStyle(.glass)
+        } else {
+            content.buttonStyle(.plain)
+        }
+        #else
+        content.buttonStyle(.plain)
+        #endif
+    }
+}
+
+extension View {
+    func sunNavigationBarCompatibility(
+        title: String? = nil,
+        displayMode: NavigationBarItem.TitleDisplayMode = .inline
+    ) -> some View {
+        modifier(SunNavigationBarCompatibilityModifier(title: title, displayMode: displayMode))
     }
 }
 
@@ -1088,12 +1344,31 @@ struct SunSettingsRow: View {
 }
 
 struct SunStatusCard: View {
+    @Environment(\.sunGlassBoundaryActive) private var isInsideGlassBoundary
+
     let title: String
     let detail: String
     let tint: Color
     let symbol: String
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            if isInsideGlassBoundary {
+                cardContent
+            } else {
+                cardContent.sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
+            }
+        } else {
+            legacyCard
+        }
+        #else
+        legacyCard
+        #endif
+    }
+
+    private var cardContent: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .semibold))
@@ -1114,8 +1389,12 @@ struct SunStatusCard: View {
             }
         }
         .padding(16)
-        .sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
         .accessibilityElement(children: .combine)
+    }
+
+    private var legacyCard: some View {
+        cardContent
+        .sunGlassCard(cornerRadius: 18, fillOpacity: 0.88)
     }
 }
 
@@ -1410,6 +1689,18 @@ struct SunAppTabBarAction: Equatable {
     let systemImage: String
     let accessibilityHint: String
 
+    init(
+        shortTitle: String,
+        title: String,
+        systemImage: String,
+        accessibilityHint: String
+    ) {
+        self.shortTitle = shortTitle
+        self.title = title
+        self.systemImage = systemImage
+        self.accessibilityHint = accessibilityHint
+    }
+
     static let logSunscreen = SunAppTabBarAction(
         shortTitle: "Log",
         title: "Log Sunscreen",
@@ -1607,12 +1898,31 @@ struct SunCameraOverlayLabel: View {
     let title: String
     let tint: Color
 
+    @ViewBuilder
     var body: some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            label
+                .foregroundStyle(AppPalette.ink)
+                .sunGlassSurface(cornerRadius: AppRadius.pill)
+        } else {
+            legacyLabel
+        }
+        #else
+        legacyLabel
+        #endif
+    }
+
+    private var label: some View {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(AppPalette.onAccent)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
+    }
+
+    private var legacyLabel: some View {
+        label
+            .foregroundStyle(AppPalette.onAccent)
             .background(tint.opacity(0.92), in: Capsule())
     }
 }
@@ -1796,16 +2106,68 @@ struct SunclubBadgeMedallion: View {
 }
 
 extension View {
-    func sunGlassCard(cornerRadius: CGFloat = AppRadius.card, fillOpacity: Double = 0.86) -> some View {
+    @ViewBuilder
+    func sunLegacyButtonBackground(
+        cornerRadius: CGFloat,
+        fill: Color,
+        stroke: Color = .clear
+    ) -> some View {
+        #if os(iOS) && !os(watchOS)
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            legacySunButtonBackground(cornerRadius: cornerRadius, fill: fill, stroke: stroke)
+        }
+        #else
+        legacySunButtonBackground(cornerRadius: cornerRadius, fill: fill, stroke: stroke)
+        #endif
+    }
+
+    func sunGlassPrimaryButton() -> some View {
+        sunGlassPrimaryButton(legacyStyle: SunPrimaryButtonStyle())
+    }
+
+    func sunGlassSecondaryButton() -> some View {
+        sunGlassSecondaryButton(legacyStyle: SunSecondaryButtonStyle())
+    }
+
+    func sunGlassIconButton() -> some View {
+        modifier(SunGlassIconButtonStyleModifier())
+    }
+
+    func sunGlassCard(
+        cornerRadius: CGFloat = AppRadius.card,
+        fillOpacity: Double = 0.86,
+        interactive: Bool = false,
+        legacyFill: Color = AppPalette.cardFill,
+        legacyStroke: Color = AppPalette.cardStroke,
+        legacyShadow: AppShadowStyle? = AppShadow.soft
+    ) -> some View {
+        modifier(
+            SunGlassCardModifier(
+                cornerRadius: cornerRadius,
+                fillOpacity: fillOpacity,
+                interactive: interactive,
+                legacyFill: legacyFill,
+                legacyStroke: legacyStroke,
+                legacyShadow: legacyShadow
+            )
+        )
+    }
+
+    private func legacySunButtonBackground(
+        cornerRadius: CGFloat,
+        fill: Color,
+        stroke: Color
+    ) -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(AppPalette.cardFill.opacity(fillOpacity))
-                    .appShadow(AppShadow.soft)
+                    .fill(fill)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
+                    .stroke(stroke, lineWidth: 1)
             }
     }
 }

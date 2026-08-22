@@ -32,7 +32,7 @@ struct RecoveryView: View {
                 Spacer(minLength: 0)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
@@ -94,7 +94,12 @@ struct RecoveryView: View {
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -141,7 +146,12 @@ struct RecoveryView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(18)
-                    .background(cardBackground)
+                    .sunGlassCard(
+                        cornerRadius: AppRadius.card,
+                        fillOpacity: 0.82,
+                        legacyStroke: AppPalette.hairlineStroke,
+                        legacyShadow: nil
+                    )
                 }
             }
         }
@@ -196,7 +206,12 @@ struct RecoveryView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(18)
-                    .background(cardBackground)
+                    .sunGlassCard(
+                        cornerRadius: AppRadius.card,
+                        fillOpacity: 0.82,
+                        legacyStroke: AppPalette.hairlineStroke,
+                        legacyShadow: nil
+                    )
                 }
             }
         }
@@ -293,14 +308,6 @@ struct RecoveryView: View {
         }
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.82))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
-    }
 }
 
 private extension SunclubChangeKind {

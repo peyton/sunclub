@@ -152,18 +152,20 @@ struct ProductScannerView: View {
         } message: {
             Text("Sunclub will add this SPF to today's optional details. You can still edit it before logging.")
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
     private var actionRow: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                scannerActions
-            }
+        SunGlassEffectContainer(spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    scannerActions
+                }
 
-            VStack(spacing: 10) {
-                scannerActions
+                VStack(spacing: 10) {
+                    scannerActions
+                }
             }
         }
     }
@@ -174,7 +176,7 @@ struct ProductScannerView: View {
             Button("Scan label") {
                 requestCameraAccess()
             }
-            .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .disabled(isScanning)
             .accessibilityIdentifier("productScanner.useCamera")
         }
@@ -183,14 +185,14 @@ struct ProductScannerView: View {
             Text("Choose photo")
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(SunSecondaryButtonStyle())
+        .sunGlassSecondaryButton()
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.pickPhoto")
 
         Button("Enter manually") {
             router.open(.manualLog)
         }
-        .buttonStyle(SunSecondaryButtonStyle())
+        .sunGlassSecondaryButton()
         .disabled(isScanning)
         .accessibilityIdentifier("productScanner.enterManually")
     }
@@ -258,7 +260,7 @@ struct ProductScannerView: View {
                 }
                 openURL(settingsURL)
             }
-            .buttonStyle(SunSecondaryButtonStyle())
+            .sunGlassSecondaryButton()
             .accessibilityIdentifier("productScanner.openSettings")
 
             Button("Enter manually") {
@@ -274,7 +276,7 @@ struct ProductScannerView: View {
                     targetDayPart: appState.dayPart(for: now)
                 )
             }
-            .buttonStyle(SunSecondaryButtonStyle())
+            .sunGlassSecondaryButton()
             .accessibilityIdentifier("productScanner.manualLog")
         }
     }

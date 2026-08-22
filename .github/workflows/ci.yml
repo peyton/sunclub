@@ -366,6 +366,14 @@ jobs:
       - name: Run UI tests
         timeout-minutes: 45
         run: mise --locked exec -- just test-ui
+      - name: Upload failed UI test result
+        if: ${{ failure() && !env.ACT }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ios-ui-test-result
+          path: .build/test-ui.xcresult
+          if-no-files-found: error
+          retention-days: 3
 
   test-ios:
     name: iOS Tests

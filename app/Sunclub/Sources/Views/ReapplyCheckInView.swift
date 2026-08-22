@@ -49,7 +49,7 @@ struct ReapplyCheckInView: View {
         } footer: {
             footerAction
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
         .sensoryFeedback(.success, trigger: successFeedbackTrigger)
     }
@@ -124,7 +124,7 @@ struct ReapplyCheckInView: View {
                     targetDayPart: appState.dayPart(for: now)
                 )
             }
-            .buttonStyle(SunPrimaryButtonStyle())
+            .sunGlassPrimaryButton()
             .accessibilityIdentifier("reapply.logTodayFallback")
         }
     }
@@ -139,7 +139,7 @@ struct ReapplyCheckInView: View {
                 router.goHome()
             }
         }
-        .buttonStyle(SunPrimaryButtonStyle())
+        .sunGlassPrimaryButton()
         .accessibilityIdentifier("reapply.log")
 
         Button(isSnoozing ? "Scheduling…" : "Snooze 15 min") {
@@ -158,7 +158,7 @@ struct ReapplyCheckInView: View {
                 }
             }
         }
-        .buttonStyle(SunSecondaryButtonStyle())
+        .sunGlassSecondaryButton()
         .disabled(isSnoozing)
         .accessibilityHint("Schedules another reapply reminder in 15 minutes.")
         .accessibilityIdentifier("reapply.snooze")

@@ -18,6 +18,7 @@ infra/cloudflare/.env
 # Local Codex state
 .codex/environments/
 .codex/config.toml
+.worktrees/
 
 # Xcode local/build artifacts
 .DerivedData/

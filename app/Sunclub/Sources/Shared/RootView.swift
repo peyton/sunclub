@@ -1,4 +1,27 @@
 import SwiftUI
+import UIKit
+
+extension SunAppTabBarAction {
+    init(presentation: HomeDailyPlanPresentation) {
+        let shortTitle: String
+        switch presentation.action {
+        case .logToday: shortTitle = "Log"
+        case .backfillYesterday: shortTitle = "Backfill"
+        case .logReapply: shortTitle = "Reapply"
+        case .addDetails: shortTitle = "Details"
+        case .viewProgress: shortTitle = "Progress"
+        case .reviewRecovery: shortTitle = "Review"
+        case .repairReminders: shortTitle = "Repair"
+        case .openSettings: shortTitle = "Settings"
+        }
+        self.init(
+            shortTitle: shortTitle,
+            title: presentation.actionTitle,
+            systemImage: presentation.symbolName,
+            accessibilityHint: presentation.detail
+        )
+    }
+}
 
 struct RootView: View {
     @Environment(AppState.self) private var appState
@@ -34,7 +57,16 @@ struct RootView: View {
         }
     }
 
+    @ViewBuilder
     private var tabbedRoot: some View {
+        if #available(iOS 26.0, *) {
+            nativeTabbedRoot
+        } else {
+            legacyTabbedRoot
+        }
+    }
+
+    private var legacyTabbedRoot: some View {
         VStack(spacing: 0) {
             NavigationStack(path: pathBinding(for: router.selectedTab)) {
                 tabRoot(for: router.selectedTab)
@@ -55,6 +87,61 @@ struct RootView: View {
                 )
             }
         }
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeTabbedRoot: some View {
+        nativeTabView
+            .tabViewBottomAccessory {
+                if router.showsRootTabChrome {
+                    SunNativeTabAccessory(
+                        action: contextualTabAction,
+                        onPerform: performHomeDailyPlanAction
+                    )
+                }
+            }
+            .toolbar(router.showsRootTabChrome ? .visible : .hidden, for: .tabBar)
+            .tint(AppPalette.nativeChromeTint)
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeTabView: some View {
+        TabView(selection: selectedTabBinding) {
+            nativeTab(.today)
+            nativeTab(.history)
+            nativeTab(.insights)
+            nativeTab(.settings)
+        }
+        .background {
+            SunNativeTabAccessibilityIdentifierInstaller()
+        }
+        .tabBarMinimizeBehavior(.never)
+    }
+
+    private var selectedTabBinding: Binding<AppTab> {
+        Binding(
+            get: { router.selectedTab },
+            set: { router.selectTab($0) }
+        )
+    }
+
+    @available(iOS 26.0, *)
+    private func nativeTab(_ tab: AppTab) -> some TabContent<AppTab> {
+        Tab(value: tab) {
+            NavigationStack(path: pathBinding(for: tab)) {
+                tabRoot(for: tab)
+                    .navigationTitle(tab.title)
+                    .navigationBarTitleDisplayMode(.large)
+                    .navigationDestination(for: AppRoute.self) { route in
+                        destination(for: route)
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+            }
+            .toolbar(router.path(for: tab).isEmpty ? .visible : .hidden, for: .tabBar)
+        } label: {
+            Label(tab.title, systemImage: tab.systemImage)
+        }
+        .accessibilityIdentifier(tab.accessibilityIdentifier)
     }
 
     private func pathBinding(for tab: AppTab) -> Binding<[AppRoute]> {
@@ -212,23 +299,113 @@ struct RootView: View {
     }
 
     private var contextualTabAction: SunAppTabBarAction {
-        let presentation = appState.homeDailyPlanPresentation
-        let shortTitle = switch presentation.action {
-        case .logToday: "Log"
-        case .backfillYesterday: "Backfill"
-        case .logReapply: "Reapply"
-        case .addDetails: "Details"
-        case .viewProgress: "Progress"
-        case .reviewRecovery: "Review"
-        case .repairReminders: "Repair"
-        case .openSettings: "Settings"
+        SunAppTabBarAction(presentation: appState.homeDailyPlanPresentation)
+    }
+}
+
+@available(iOS 26.0, *)
+private struct SunNativeTabAccessory: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    let action: SunAppTabBarAction
+    let onPerform: () -> Void
+
+    var body: some View {
+        Button(action: onPerform) {
+            if placement == .expanded {
+                expandedLabel
+            } else {
+                compactLabel
+            }
         }
-        return SunAppTabBarAction(
-            shortTitle: shortTitle,
-            title: presentation.actionTitle,
-            systemImage: presentation.symbolName,
-            accessibilityHint: presentation.detail
-        )
+        .buttonStyle(.plain)
+        .accessibilityLabel(action.title)
+        .accessibilityHint(action.accessibilityHint)
+        .accessibilityIdentifier("home.logManually")
+    }
+
+    private var compactLabel: some View {
+        HStack(spacing: AppSpacing.xxs) {
+            Image(systemName: action.systemImage)
+                .accessibilityHidden(true)
+            Text(action.shortTitle)
+                .font(AppTextStyle.captionMedium.font)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    private var expandedLabel: some View {
+        HStack(spacing: AppSpacing.xs) {
+            Image(systemName: action.systemImage)
+                .font(AppTextStyle.sectionHeader.font)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                Text(action.title)
+                    .font(AppTextStyle.bodyMedium.font)
+                Text(action.accessibilityHint)
+                    .font(AppTextStyle.caption.font)
+                    .foregroundStyle(AppPalette.softInk)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .contentShape(Rectangle())
+    }
+}
+
+@available(iOS 26.0, *)
+private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> InstallerViewController {
+        InstallerViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: InstallerViewController, context: Context) {
+        uiViewController.installIdentifiers()
+    }
+
+    final class InstallerViewController: UIViewController {
+        private var didInstallIdentifiers = false
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            installIdentifiers()
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            installIdentifiers()
+        }
+
+        func installIdentifiers() {
+            guard !didInstallIdentifiers,
+                  let window = view.window,
+                  let tabBar = findTabBar(in: window),
+                  let items = tabBar.items,
+                  items.count == AppTab.allCases.count else {
+                return
+            }
+
+            for (item, tab) in zip(items, AppTab.allCases) {
+                item.accessibilityIdentifier = tab.accessibilityIdentifier
+            }
+            didInstallIdentifiers = true
+        }
+
+        private func findTabBar(in view: UIView) -> UITabBar? {
+            if let tabBar = view as? UITabBar {
+                return tabBar
+            }
+
+            for subview in view.subviews {
+                if let tabBar = findTabBar(in: subview) {
+                    return tabBar
+                }
+            }
+            return nil
+        }
     }
 }
 
@@ -260,13 +437,13 @@ private struct InitialICloudRestoreView: View {
                     Button("Try Again") {
                         appState.retryInitialICloudRestore()
                     }
-                    .buttonStyle(SunPrimaryButtonStyle())
+                    .sunGlassPrimaryButton()
                     .accessibilityIdentifier("icloudRestore.retry")
 
                     Button("Continue on This Phone") {
                         appState.continueWithoutInitialICloudRestore()
                     }
-                    .buttonStyle(SunSecondaryButtonStyle())
+                    .sunGlassSecondaryButton()
                     .accessibilityIdentifier("icloudRestore.continue")
                 }
             }

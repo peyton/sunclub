@@ -96,7 +96,11 @@ struct TimelineLogSection: View {
                     }
                 }
             }
-            .background(rowGroupBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.button,
+                fillOpacity: 0.76,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -105,15 +109,6 @@ struct TimelineLogSection: View {
             .fill(AppPalette.hairlineStroke)
             .frame(height: 1)
             .padding(.leading, 18)
-    }
-
-    private var rowGroupBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.76))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                    .stroke(AppPalette.cardStroke, lineWidth: 1)
-            }
     }
 
     private var forecastBlocks: [TimelineUVForecastBlock] {

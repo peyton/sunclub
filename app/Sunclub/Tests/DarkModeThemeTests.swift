@@ -60,16 +60,44 @@ final class DarkModeThemeTests: XCTestCase {
         }
     }
 
+    func testNativeChromeTintMaintainsContrastAcrossAppearancesAndContrastModes() {
+        let cases: [(UIUserInterfaceStyle, UIAccessibilityContrast, Color)] = [
+            (.light, .normal, .white),
+            (.light, .high, .white),
+            (.dark, .normal, AppPalette.darkCanvas),
+            (.dark, .high, AppPalette.darkCanvas)
+        ]
+
+        for (style, accessibilityContrast, background) in cases {
+            assertContrast(
+                AppPalette.nativeChromeTint,
+                against: background,
+                style: style,
+                accessibilityContrast: accessibilityContrast,
+                minimum: 4.5
+            )
+        }
+    }
+
     private func assertContrast(
         _ foreground: Color,
         against background: Color,
         style: UIUserInterfaceStyle,
+        accessibilityContrast: UIAccessibilityContrast = .normal,
         minimum: Double,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let foregroundColor = resolvedColor(foreground, style: style)
-        let backgroundColor = resolvedColor(background, style: style)
+        let foregroundColor = resolvedColor(
+            foreground,
+            style: style,
+            accessibilityContrast: accessibilityContrast
+        )
+        let backgroundColor = resolvedColor(
+            background,
+            style: style,
+            accessibilityContrast: accessibilityContrast
+        )
         let ratio = contrastRatio(foregroundColor, backgroundColor)
 
         XCTAssertGreaterThanOrEqual(
@@ -81,8 +109,16 @@ final class DarkModeThemeTests: XCTestCase {
         )
     }
 
-    private func resolvedColor(_ color: Color, style: UIUserInterfaceStyle) -> UIColor {
-        UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+    private func resolvedColor(
+        _ color: Color,
+        style: UIUserInterfaceStyle,
+        accessibilityContrast: UIAccessibilityContrast
+    ) -> UIColor {
+        let traits = UITraitCollection { traits in
+            traits.userInterfaceStyle = style
+            traits.accessibilityContrast = accessibilityContrast
+        }
+        return UIColor(color).resolvedColor(with: traits)
     }
 
     private func contrastRatio(_ first: UIColor, _ second: UIColor) -> Double {

@@ -437,14 +437,13 @@ struct SunDayStrip: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(minHeight: 48)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .fill(state.isSelected ? AppPalette.warmGlow.opacity(0.5) : AppPalette.cardFill.opacity(0.62))
+        .sunGlassCard(
+            cornerRadius: AppRadius.small,
+            fillOpacity: 1,
+            interactive: true,
+            legacyFill: state.isSelected ? AppPalette.warmGlow.opacity(0.5) : AppPalette.cardFill.opacity(0.62),
+            legacyShadow: nil
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(state.isSelected ? .isSelected : [])
     }

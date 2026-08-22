@@ -109,7 +109,7 @@ struct SettingsView: View {
             appState.refreshUVForecastIfNeeded()
             appState.refreshHealthKitStatus()
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
 
@@ -265,7 +265,12 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 content()
             }
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -453,7 +458,13 @@ struct SettingsView: View {
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                interactive: true,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier(for: kind))
@@ -507,7 +518,12 @@ struct SettingsView: View {
             }
         }
         .padding(18)
-        .background(cardBackground)
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
+        )
     }
 
     private var leaveHomeReminderSection: some View {
@@ -562,7 +578,12 @@ struct SettingsView: View {
                     .foregroundStyle(AppPalette.softInk)
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -596,7 +617,12 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(18)
-                        .background(cardBackground)
+                        .sunGlassCard(
+                            cornerRadius: AppRadius.card,
+                            fillOpacity: 0.82,
+                            legacyStroke: AppPalette.hairlineStroke,
+                            legacyShadow: nil
+                        )
                     }
                 }
             }
@@ -646,7 +672,12 @@ struct SettingsView: View {
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -693,7 +724,12 @@ struct SettingsView: View {
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -727,7 +763,12 @@ struct SettingsView: View {
                 )
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -763,7 +804,12 @@ struct SettingsView: View {
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -847,7 +893,12 @@ struct SettingsView: View {
                 }
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -997,7 +1048,12 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.recovery")
             }
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
     }
 
@@ -1048,15 +1104,6 @@ struct SettingsView: View {
         case .idle:
             return "icloud.fill"
         }
-    }
-
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-            .fill(AppPalette.cardFill.opacity(0.82))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-            }
     }
 
     private func formattedReminderTime(for kind: ReminderScheduleKind) -> String {
@@ -1340,7 +1387,7 @@ struct SettingsView: View {
                     syncLocalState()
                     selectedReminderPicker = nil
                 }
-                .buttonStyle(SunPrimaryButtonStyle())
+                .sunGlassPrimaryButton()
             }
             .padding(24)
             .navigationTitle(schedule.title)
@@ -1403,7 +1450,13 @@ struct SettingsView: View {
                 showsChevron: true
             )
             .padding(18)
-            .background(cardBackground)
+            .sunGlassCard(
+                cornerRadius: AppRadius.card,
+                fillOpacity: 0.82,
+                interactive: true,
+                legacyStroke: AppPalette.hairlineStroke,
+                legacyShadow: nil
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -1554,13 +1607,11 @@ private struct ReminderToggleCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(AppPalette.cardFill.opacity(0.82))
-                .overlay {
-                    RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                        .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-                }
+        .sunGlassCard(
+            cornerRadius: AppRadius.card,
+            fillOpacity: 0.82,
+            legacyStroke: AppPalette.hairlineStroke,
+            legacyShadow: nil
         )
     }
 }
