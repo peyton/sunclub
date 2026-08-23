@@ -1183,12 +1183,14 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(waitForVerifiedUVForecast(in: app, timeout: 15))
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
         let tomorrowRow = app.descendants(matching: .any)[tomorrowIdentifier]
+        let timelineScroll = app.scrollViews["timeline.scroll"]
+        XCTAssertTrue(timelineScroll.waitForExistence(timeout: 5))
         XCTAssertTrue(
             scrollToHittableElement(
                 tomorrowRow,
                 in: app,
                 attempts: 20,
-                scrollSurface: app.scrollViews.firstMatch,
+                scrollSurface: timelineScroll,
                 scrollDownFirst: true
             ),
             "Expected tomorrow's forecast row to remain operable."

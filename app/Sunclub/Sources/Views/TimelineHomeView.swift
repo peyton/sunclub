@@ -350,7 +350,7 @@ struct TimelineHomeView: View {
         let sharedPresentation = TimelineHomeSharedPresentation(appState: appState)
         let presentation = TimelineHomePresentation(appState: appState, shared: sharedPresentation)
 
-        SunLightScreen {
+        SunLightScreen(scrollAccessibilityIdentifier: "timeline.scroll") {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 timelineHeader(for: presentation)
 

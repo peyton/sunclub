@@ -354,8 +354,6 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
     }
 
     final class InstallerViewController: UIViewController {
-        private var didInstallIdentifiers = false
-
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
             installIdentifiers()
@@ -375,11 +373,8 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
                 return
             }
 
-            if !didInstallIdentifiers {
-                for (item, identifier) in zip(items, identifiers) {
-                    item.accessibilityIdentifier = identifier
-                }
-                didInstallIdentifiers = true
+            for (item, identifier) in zip(items, identifiers) {
+                item.accessibilityIdentifier = identifier
             }
         }
 
