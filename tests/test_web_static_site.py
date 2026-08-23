@@ -395,3 +395,14 @@ def test_static_site_package_rejects_symlinks_outside_site_root(
 
     with pytest.raises(PackageError, match="symbolic link"):
         package_site(source_root, "1.2.3", tmp_path / "releases")
+
+
+def test_static_site_package_rejects_symlinked_source_root(tmp_path: Path) -> None:
+    real_root = tmp_path / "real-web-build"
+    real_root.mkdir()
+    (real_root / "index.html").write_text("secret\n", encoding="utf-8")
+    source_root = tmp_path / "web-build"
+    source_root.symlink_to(real_root, target_is_directory=True)
+
+    with pytest.raises(PackageError, match="source root"):
+        package_site(source_root, "1.2.3", tmp_path / "releases")

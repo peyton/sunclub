@@ -311,6 +311,12 @@ def test_manifest_environment_discovery_ignores_literal_env_fields() -> None:
     )
 
 
+def test_manifest_environment_discovery_stops_at_env_references() -> None:
+    reference = {"env": "A", "equals": [{"env": "B"}]}
+
+    assert appstore_manifest.env_reference_names(reference) == ("A",)
+
+
 def test_manifest_does_not_use_process_environment_for_empty_mapping(
     monkeypatch,
 ) -> None:

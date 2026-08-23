@@ -70,6 +70,18 @@ def test_client_preserves_absolute_http_api_urls() -> None:
     )
 
 
+def test_client_appends_query_before_absolute_url_fragment() -> None:
+    client = AppStoreConnectClient(jwt_factory=lambda: "test-token")
+
+    assert (
+        client.api_url(
+            "http://localhost:8080/v1/apps?existing=1#fragment",
+            {"page": 2},
+        )
+        == "http://localhost:8080/v1/apps?existing=1&page=2#fragment"
+    )
+
+
 def test_credentials_do_not_fall_back_to_process_environment_for_empty_mapping(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

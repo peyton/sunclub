@@ -158,6 +158,7 @@ def collect_env_reference_names(value: Any, names: set[str]) -> None:
     if isinstance(value, dict):
         if _is_env_reference(value):
             names.add(value[ENV_REFERENCE_KEY])
+            return
         for child in value.values():
             collect_env_reference_names(child, names)
     elif isinstance(value, list):

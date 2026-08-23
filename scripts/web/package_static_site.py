@@ -86,8 +86,8 @@ def package_site(
     output_dir: Path,
 ) -> PackageResult:
     normalized_version = validate_package_version(version)
+    files = iter_package_files(source_root)
     resolved_source_root = source_root.resolve()
-    files = iter_package_files(resolved_source_root)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     archive_path = output_dir / f"sunclub-web-{normalized_version}.tar.gz"

@@ -173,3 +173,9 @@
 - [x] Run `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit`.
 - [x] Run `git diff --check` and inspect `git status --short`.
 - [x] Report each defect, regression test, and verification result with no unverified completion claims.
+
+## Review Follow-ups
+
+- [x] Reject a symlinked package source root before resolving it.
+- [x] Stop environment-reference discovery when resolution replaces a recognized reference.
+- [x] Merge App Store Connect query parameters before existing URL fragments.

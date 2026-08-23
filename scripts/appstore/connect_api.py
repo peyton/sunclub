@@ -221,7 +221,14 @@ class AppStoreConnectClient:
             base = f"{self.base_url}/{path.lstrip('/')}"
         if not query:
             return base
-        return f"{base}?{encode_query(query)}"
+        parsed_base = parse.urlparse(base)
+        encoded_query = encode_query(query)
+        combined_query = (
+            f"{parsed_base.query}&{encoded_query}"
+            if parsed_base.query
+            else encoded_query
+        )
+        return parse.urlunparse(parsed_base._replace(query=combined_query))
 
     def jwt(self) -> str:
         if self.jwt_factory is not None:
