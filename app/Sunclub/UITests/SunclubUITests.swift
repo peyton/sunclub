@@ -1186,12 +1186,11 @@ final class SunclubUITests: XCTestCase {
         let timelineScroll = app.scrollViews["timeline.scroll"]
         XCTAssertTrue(timelineScroll.waitForExistence(timeout: 5))
         XCTAssertTrue(
-            scrollToHittableElement(
+            scrollToHittableElementByPosition(
                 tomorrowRow,
                 in: app,
-                attempts: 20,
-                scrollSurface: timelineScroll,
-                scrollDownFirst: true
+                attempts: 60,
+                scrollSurface: timelineScroll
             ),
             "Expected tomorrow's forecast row to remain operable."
         )
@@ -1952,9 +1951,41 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    private func nudgeScrollSurface(_ surface: XCUIElement, direction: ScrollDirection) {
-        let startY: CGFloat = direction == .scrollDown ? 0.35 : 0.65
-        let endY: CGFloat = direction == .scrollDown ? 0.65 : 0.35
+    private func scrollToHittableElementByPosition(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int,
+        scrollSurface: XCUIElement
+    ) -> Bool {
+        if element.waitForExistence(timeout: 2), element.isHittable {
+            return true
+        }
+
+        for _ in 0..<attempts {
+            let direction: ScrollDirection
+            if element.exists, element.frame.maxY <= app.frame.minY {
+                direction = .scrollDown
+            } else {
+                direction = .scrollUp
+            }
+            nudgeScrollSurface(scrollSurface, direction: direction, distance: 0.12)
+            if element.waitForExistence(timeout: 0.5), element.isHittable {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    @MainActor
+    private func nudgeScrollSurface(
+        _ surface: XCUIElement,
+        direction: ScrollDirection,
+        distance: CGFloat = 0.3
+    ) {
+        let halfDistance = distance / 2
+        let startY: CGFloat = direction == .scrollDown ? 0.5 - halfDistance : 0.5 + halfDistance
+        let endY: CGFloat = direction == .scrollDown ? 0.5 + halfDistance : 0.5 - halfDistance
         let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
         let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
         start.press(forDuration: 0.05, thenDragTo: end)
