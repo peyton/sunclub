@@ -56,6 +56,7 @@ def resolve_entitlements(
 
     missing: set[str] = set()
     resolved = _resolve_value(entitlements, replacements, missing)
+    _collect_placeholders(resolved, missing)
     if missing:
         missing_names = ", ".join(sorted(missing))
         raise ValueError(f"Unresolved entitlement placeholder(s): {missing_names}")
@@ -63,6 +64,17 @@ def resolve_entitlements(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("wb") as output_file:
         plistlib.dump(resolved, output_file, sort_keys=False)
+
+
+def _collect_placeholders(value: Any, missing: set[str]) -> None:
+    if isinstance(value, str):
+        missing.update(PLACEHOLDER_RE.findall(value))
+    elif isinstance(value, list):
+        for item in value:
+            _collect_placeholders(item, missing)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _collect_placeholders(item, missing)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

@@ -1355,7 +1355,10 @@ def local_validation(
 def resolve_submission_context(
     environment: Mapping[str, str] | None = None,
 ) -> SubmissionContext:
-    versions = resolve_versions(environment or os.environ, REPO_ROOT)
+    versions = resolve_versions(
+        os.environ if environment is None else environment,
+        REPO_ROOT,
+    )
     return SubmissionContext(
         marketing_version=versions.marketing_version,
         build_number=versions.build_number,

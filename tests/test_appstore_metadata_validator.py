@@ -301,6 +301,31 @@ def test_manifest_resolver_overlays_review_contact_from_env() -> None:
     )
 
 
+def test_manifest_environment_discovery_ignores_literal_env_fields() -> None:
+    literal_object = {"env": "display", "value": "literal"}
+
+    assert appstore_manifest.env_reference_names(literal_object) == ()
+    assert (
+        appstore_manifest.resolve_env_references(literal_object, {}, set())
+        == literal_object
+    )
+
+
+def test_manifest_does_not_use_process_environment_for_empty_mapping(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SUNCLUB_TEST_AMBIENT_ONLY", "ambient")
+
+    merged, loaded = appstore_manifest.merged_review_environment(
+        {},
+        env_file=Path("/definitely/missing/review.env"),
+        load_env_file=True,
+    )
+
+    assert loaded is False
+    assert "SUNCLUB_TEST_AMBIENT_ONLY" not in merged
+
+
 def test_strict_validation_requires_privacy_and_medical_gates() -> None:
     env = {
         key: value

@@ -82,7 +82,7 @@ class CloudflareClient:
                 key: value for key, value in query.items() if value is not None
             }
             if clean_query:
-                target = f"{target}?{urlencode(clean_query)}"
+                target = f"{target}?{urlencode(clean_query, doseq=True)}"
 
         data = None
         headers = {

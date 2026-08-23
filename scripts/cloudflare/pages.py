@@ -248,6 +248,12 @@ def ensure_pages_dns_record(
 
 
 def _dns_record_matches(record: JsonObject, payload: JsonObject) -> bool:
+    try:
+        record_ttl = int(record["ttl"])
+        payload_ttl = int(payload["ttl"])
+    except KeyError, TypeError, ValueError:
+        return False
+
     return (
         str(record.get("type", "")).upper() == str(payload["type"]).upper()
         and _normalize_hostname(str(record.get("name", "")))
@@ -255,6 +261,7 @@ def _dns_record_matches(record: JsonObject, payload: JsonObject) -> bool:
         and _normalize_hostname(str(record.get("content", "")))
         == _normalize_hostname(str(payload["content"]))
         and bool(record.get("proxied")) == bool(payload["proxied"])
+        and record_ttl == payload_ttl
     )
 
 

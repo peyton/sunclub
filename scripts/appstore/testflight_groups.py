@@ -233,7 +233,7 @@ def build_context(
     args: argparse.Namespace,
     environment: Mapping[str, str] | None = None,
 ) -> TestFlightGroupContext:
-    values = environment or os.environ
+    values = os.environ if environment is None else environment
     versions = resolve_versions(values)
     return TestFlightGroupContext(
         bundle_id=args.bundle_id,

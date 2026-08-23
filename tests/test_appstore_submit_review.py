@@ -20,6 +20,7 @@ from scripts.appstore.submit_review import (
     dry_run_lines,
     local_validation,
     require_confirmation,
+    resolve_submission_context,
     write_checkpoint_summary,
 )
 
@@ -33,6 +34,18 @@ READY_ENV = {
     "SUNCLUB_APP_PRIVACY_COMPLETED": "1",
     "SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS": "NOT_MEDICAL_DEVICE",
 }
+
+
+def test_submission_context_does_not_use_process_environment_for_empty_mapping(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SUNCLUB_MARKETING_VERSION", "99.99.99")
+    monkeypatch.setenv("SUNCLUB_BUILD_NUMBER", "ambient-build")
+
+    context = resolve_submission_context({})
+
+    assert context.marketing_version != "99.99.99"
+    assert context.build_number != "ambient-build"
 
 
 class FakeSubmissionClient:

@@ -447,6 +447,17 @@ def test_watch_app_iconset_declares_watchos_icon_asset() -> None:
     ]
 
 
+def test_watch_asset_catalog_declares_accent_color() -> None:
+    accent_path = WATCH_APP_ICONSET.parent / "AccentColor.colorset" / "Contents.json"
+
+    assert accent_path.exists()
+    contents = json.loads(accent_path.read_text())
+    assert contents["info"] == {"author": "xcode", "version": 1}
+    assert contents["colors"]
+    assert contents["colors"][0]["idiom"] == "universal"
+    assert contents["colors"][0]["color"]["color-space"] == "srgb"
+
+
 def test_project_uses_tuist_version_helpers_and_explicit_bundle_build_number() -> None:
     source = PROJECT_SWIFT.read_text()
 
@@ -850,6 +861,35 @@ def test_resolve_entitlements_rejects_unresolved_placeholders(tmp_path: Path) ->
 
     assert result.returncode == 1
     assert "SUNCLUB_APS_ENVIRONMENT" in result.stderr
+    assert not output.exists()
+
+
+def test_resolve_entitlements_rejects_placeholders_introduced_by_replacements(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "Source.entitlements"
+    output = tmp_path / "Resolved.entitlements"
+    with source.open("wb") as source_file:
+        plistlib.dump({"aps-environment": "$(A)"}, source_file)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RESOLVE_ENTITLEMENTS),
+            "--source",
+            str(source),
+            "--output",
+            str(output),
+            "--set",
+            "A=$(B)",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 1
+    assert "B" in result.stderr
     assert not output.exists()
 
 
