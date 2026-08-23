@@ -120,7 +120,7 @@ struct RootView: View {
             nativeActionTab(role: actionRole)
         }
         .background {
-            SunNativeTabAccessibilityIdentifierInstaller()
+            SunNativeTabAccessibilityIdentifierInstaller(actionTitle: contextualTabAction.title)
         }
         .tabBarMinimizeBehavior(.never)
     }
@@ -345,15 +345,30 @@ private enum SunNativeTabSelection: Hashable {
 
 @available(iOS 26.0, *)
 private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRepresentable {
+    let actionTitle: String
+
     func makeUIViewController(context: Context) -> InstallerViewController {
-        InstallerViewController()
+        InstallerViewController(actionTitle: actionTitle)
     }
 
     func updateUIViewController(_ uiViewController: InstallerViewController, context: Context) {
+        uiViewController.actionTitle = actionTitle
         uiViewController.installIdentifiers()
     }
 
     final class InstallerViewController: UIViewController {
+        var actionTitle: String
+
+        init(actionTitle: String) {
+            self.actionTitle = actionTitle
+            super.init(nibName: nil, bundle: nil)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
             installIdentifiers()
@@ -365,30 +380,58 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
         }
 
         func installIdentifiers() {
-            let identifiers = AppTab.allCases.map(\.accessibilityIdentifier) + ["home.logManually"]
-            guard let window = view.window,
-                  let tabBar = findTabBar(in: window),
-                  let items = tabBar.items,
-                  items.count == identifiers.count else {
+            guard let window = view.window else {
                 return
             }
 
-            for (item, identifier) in zip(items, identifiers) {
-                item.accessibilityIdentifier = identifier
+            let contentIdentifiers = Dictionary(
+                uniqueKeysWithValues: AppTab.allCases.map { ($0.title, $0.accessibilityIdentifier) }
+            )
+            var actionCandidates: [UITabBarItem] = []
+
+            for tabBar in findTabBars(in: window) {
+                for item in tabBar.items ?? [] {
+                    if let title = item.title,
+                       let identifier = contentIdentifiers[title] {
+                        item.accessibilityIdentifier = identifier
+                    } else {
+                        actionCandidates.append(item)
+                    }
+                }
+            }
+
+            if let actionItem = actionCandidates.first {
+                actionItem.accessibilityIdentifier = "home.logManually"
+            } else {
+                installActionIdentifier(in: window)
             }
         }
 
-        private func findTabBar(in view: UIView) -> UITabBar? {
+        private func findTabBars(in view: UIView) -> [UITabBar] {
+            var tabBars: [UITabBar] = []
             if let tabBar = view as? UITabBar {
-                return tabBar
+                tabBars.append(tabBar)
             }
 
             for subview in view.subviews {
-                if let tabBar = findTabBar(in: subview) {
-                    return tabBar
-                }
+                tabBars.append(contentsOf: findTabBars(in: subview))
             }
-            return nil
+            return tabBars
+        }
+
+        private func installActionIdentifier(in window: UIWindow) {
+            let candidates = accessibilityViews(in: window).filter { candidate in
+                candidate.accessibilityLabel == actionTitle
+                    && candidate.accessibilityTraits.contains(.button)
+                    && candidate.convert(candidate.bounds, to: window).midY > window.bounds.height * 0.7
+            }
+            candidates.min { lhs, rhs in
+                lhs.bounds.width * lhs.bounds.height < rhs.bounds.width * rhs.bounds.height
+            }?.accessibilityIdentifier = "home.logManually"
+        }
+
+        private func accessibilityViews(in view: UIView) -> [UIView] {
+            [view] + view.subviews.flatMap(accessibilityViews(in:))
         }
     }
 }

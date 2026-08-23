@@ -1187,6 +1187,17 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(timelineScroll.waitForExistence(timeout: 5))
         XCTAssertTrue(
             scrollToHittableElementByPosition(
+                timelineHeadline(in: app),
+                in: app,
+                attempts: 160,
+                scrollSurface: timelineScroll,
+                directionWhenMissing: .scrollDown,
+                distance: 0.6
+            ),
+            "Expected the timeline to return to its top before browsing future days."
+        )
+        XCTAssertTrue(
+            scrollToHittableElementByPosition(
                 tomorrowRow,
                 in: app,
                 attempts: 60,
@@ -1955,7 +1966,9 @@ final class SunclubUITests: XCTestCase {
         _ element: XCUIElement,
         in app: XCUIApplication,
         attempts: Int,
-        scrollSurface: XCUIElement
+        scrollSurface: XCUIElement,
+        directionWhenMissing: ScrollDirection = .scrollUp,
+        distance: CGFloat = 0.12
     ) -> Bool {
         if element.waitForExistence(timeout: 2), element.isHittable {
             return true
@@ -1965,10 +1978,12 @@ final class SunclubUITests: XCTestCase {
             let direction: ScrollDirection
             if element.exists, element.frame.maxY <= app.frame.minY {
                 direction = .scrollDown
-            } else {
+            } else if element.exists {
                 direction = .scrollUp
+            } else {
+                direction = directionWhenMissing
             }
-            nudgeScrollSurface(scrollSurface, direction: direction, distance: 0.12)
+            nudgeScrollSurface(scrollSurface, direction: direction, distance: distance)
             if element.waitForExistence(timeout: 0.5), element.isHittable {
                 return true
             }
