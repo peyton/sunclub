@@ -86,6 +86,10 @@ func targetSettings(for flavor: SunclubFlavor, supportedPlatforms: String? = nil
     if let supportedPlatforms {
         base["SUPPORTED_PLATFORMS"] = .string(supportedPlatforms)
     }
+    base["SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]"] =
+        .string("$(inherited) SUNCLUB_HAS_PROMINENT_TAB_ROLE")
+    base["SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]"] =
+        .string("$(inherited) SUNCLUB_HAS_PROMINENT_TAB_ROLE")
 
     return .settings(base: base)
 }

@@ -393,6 +393,31 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testLiquidGlassTabBarKeepsLogTodayInTrailingTabRow() throws {
+        let app = launchHome()
+        let timelineTab = app.buttons["timeline.footer.today"]
+        let settingsTab = app.buttons["timeline.footer.settings"]
+        let logToday = app.buttons["home.logManually"]
+
+        XCTAssertTrue(timelineTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(logToday.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            logToday.frame.midY,
+            timelineTab.frame.midY,
+            accuracy: 8,
+            "Expected Log Today and the navigation tabs to share one bottom row."
+        )
+        XCTAssertGreaterThan(
+            logToday.frame.minX - settingsTab.frame.maxX,
+            8,
+            "Expected visible separation between the navigation group and Log Today."
+        )
+        XCTAssertGreaterThanOrEqual(logToday.frame.height, 44)
+        XCTAssertTrue(logToday.isHittable)
+    }
+
+    @MainActor
     func testDarkModeHomeAndSettingsRemainUsable() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_FORCE_DARK_MODE",
@@ -418,11 +443,7 @@ final class SunclubUITests: XCTestCase {
 
         let contextualAction = app.buttons["home.logManually"]
         XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(
-            contextualAction.frame.width,
-            app.frame.width / 2,
-            "Expected the expanded native accessory to reserve a full-width action surface."
-        )
+        XCTAssertGreaterThanOrEqual(contextualAction.frame.width, 44)
         XCTAssertGreaterThanOrEqual(contextualAction.frame.height, 44)
         XCTAssertTrue(contextualAction.isHittable)
         XCTAssertFalse(contextualAction.label.isEmpty)
