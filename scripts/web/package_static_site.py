@@ -38,11 +38,25 @@ def validate_package_version(version: str) -> str:
 
 
 def iter_package_files(source_root: Path) -> list[Path]:
+    if source_root.is_symlink():
+        raise PackageError(
+            f"Static site source root cannot be a symbolic link: {source_root}"
+        )
+
     resolved_root = source_root.resolve()
     if not resolved_root.is_dir():
         raise PackageError(f"Static site build output not found: {source_root}")
 
-    return sorted(path for path in resolved_root.rglob("*") if path.is_file())
+    files: list[Path] = []
+    for path in resolved_root.rglob("*"):
+        if path.is_symlink():
+            relative = path.relative_to(resolved_root)
+            raise PackageError(
+                f"Static site package cannot contain symbolic link: {relative}"
+            )
+        if path.is_file():
+            files.append(path)
+    return sorted(files)
 
 
 def add_file_to_tar(tar: tarfile.TarFile, source_root: Path, path: Path) -> None:
@@ -53,6 +67,7 @@ def add_file_to_tar(tar: tarfile.TarFile, source_root: Path, path: Path) -> None
     info.uname = ""
     info.gname = ""
     info.mtime = 0
+    info.mode = 0o644
     with path.open("rb") as file:
         tar.addfile(info, file)
 
@@ -71,8 +86,8 @@ def package_site(
     output_dir: Path,
 ) -> PackageResult:
     normalized_version = validate_package_version(version)
+    files = iter_package_files(source_root)
     resolved_source_root = source_root.resolve()
-    files = iter_package_files(resolved_source_root)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     archive_path = output_dir / f"sunclub-web-{normalized_version}.tar.gz"

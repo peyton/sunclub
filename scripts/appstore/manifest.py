@@ -75,7 +75,7 @@ def merged_review_environment(
     if load_env_file and env_file.is_file():
         merged.update(parse_review_env_file(env_file))
         loaded = True
-    merged.update(dict(environment or os.environ))
+    merged.update(dict(os.environ if environment is None else environment))
     return merged, loaded
 
 
@@ -126,9 +126,7 @@ def resolve_env_references(
     missing_env_vars: set[str],
 ) -> Any:
     if isinstance(value, dict):
-        if set(value).issubset({ENV_REFERENCE_KEY, ENV_EQUALS_KEY}) and isinstance(
-            value.get(ENV_REFERENCE_KEY), str
-        ):
+        if _is_env_reference(value):
             env_name = value[ENV_REFERENCE_KEY]
             raw_value = environment.get(env_name)
             if raw_value is None:
@@ -158,14 +156,22 @@ def env_reference_names(value: Any) -> tuple[str, ...]:
 
 def collect_env_reference_names(value: Any, names: set[str]) -> None:
     if isinstance(value, dict):
-        env_name = value.get(ENV_REFERENCE_KEY)
-        if isinstance(env_name, str):
-            names.add(env_name)
+        if _is_env_reference(value):
+            names.add(value[ENV_REFERENCE_KEY])
+            return
         for child in value.values():
             collect_env_reference_names(child, names)
     elif isinstance(value, list):
         for child in value:
             collect_env_reference_names(child, names)
+
+
+def _is_env_reference(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value).issubset({ENV_REFERENCE_KEY, ENV_EQUALS_KEY})
+        and isinstance(value.get(ENV_REFERENCE_KEY), str)
+    )
 
 
 def redacted_summary_lines(

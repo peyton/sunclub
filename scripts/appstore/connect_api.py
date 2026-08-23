@@ -32,7 +32,7 @@ class AppStoreConnectCredentials:
 
     @classmethod
     def from_env(cls, environment: Mapping[str, str] | None = None) -> Self:
-        values = environment or os.environ
+        values = os.environ if environment is None else environment
         missing = [
             key
             for key in ("ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_FILE")
@@ -214,13 +214,21 @@ class AppStoreConnectClient:
         path: str,
         query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
     ) -> str:
-        if path.startswith("https://"):
+        parsed_path = parse.urlparse(path)
+        if parsed_path.scheme in {"http", "https"} and parsed_path.netloc:
             base = path
         else:
             base = f"{self.base_url}/{path.lstrip('/')}"
         if not query:
             return base
-        return f"{base}?{encode_query(query)}"
+        parsed_base = parse.urlparse(base)
+        encoded_query = encode_query(query)
+        combined_query = (
+            f"{parsed_base.query}&{encoded_query}"
+            if parsed_base.query
+            else encoded_query
+        )
+        return parse.urlunparse(parsed_base._replace(query=combined_query))
 
     def jwt(self) -> str:
         if self.jwt_factory is not None:

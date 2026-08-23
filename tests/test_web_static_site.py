@@ -2,9 +2,13 @@ import json
 import tarfile
 from pathlib import Path
 
-from scripts.web.package_static_site import package_site, sha256_file
+import pytest
+
+from scripts.web.package_static_site import PackageError, package_site, sha256_file
 from scripts.web.validate_static_site import (
     WEATHERKIT_CONFIG_EXPECTED_VALUES,
+    LinkReference,
+    validate_internal_link,
     validate_site,
 )
 
@@ -284,6 +288,24 @@ def test_static_site_validator_rejects_placeholder_and_missing_contact(
     assert any("schemas/weatherkit-config.v1.json" in error for error in errors)
 
 
+def test_static_site_validator_rejects_network_path_references(
+    tmp_path: Path,
+) -> None:
+    site_root = tmp_path / "web"
+    site_root.mkdir()
+    source = site_root / "index.html"
+    source.write_text("<!doctype html>\n", encoding="utf-8")
+
+    error = validate_internal_link(
+        site_root,
+        source,
+        LinkReference(attribute="href", target="//evil.example/path", line=1),
+    )
+
+    assert error is not None
+    assert "network-path URL" in error
+
+
 def test_static_site_validator_accepts_weatherkit_config_shape(tmp_path: Path) -> None:
     site_root = tmp_path / "web"
     config_dir = site_root / "config"
@@ -342,3 +364,45 @@ def test_static_site_package_contains_relative_site_files(tmp_path: Path) -> Non
             assert member.uid == 0
             assert member.gid == 0
             assert member.mtime == 0
+
+
+def test_static_site_package_is_reproducible_across_file_modes(
+    tmp_path: Path,
+) -> None:
+    source_a = tmp_path / "web-a"
+    source_b = tmp_path / "web-b"
+    source_a.mkdir()
+    source_b.mkdir()
+    (source_a / "index.html").write_text("same bytes\n", encoding="utf-8")
+    (source_b / "index.html").write_text("same bytes\n", encoding="utf-8")
+    (source_a / "index.html").chmod(0o644)
+    (source_b / "index.html").chmod(0o755)
+
+    result_a = package_site(source_a, "1.2.3", tmp_path / "release-a")
+    result_b = package_site(source_b, "1.2.3", tmp_path / "release-b")
+
+    assert result_a.digest == result_b.digest
+
+
+def test_static_site_package_rejects_symlinks_outside_site_root(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "web-build"
+    source_root.mkdir()
+    outside = tmp_path / "secret.txt"
+    outside.write_text("not for the web artifact\n", encoding="utf-8")
+    (source_root / "secret.txt").symlink_to(outside)
+
+    with pytest.raises(PackageError, match="symbolic link"):
+        package_site(source_root, "1.2.3", tmp_path / "releases")
+
+
+def test_static_site_package_rejects_symlinked_source_root(tmp_path: Path) -> None:
+    real_root = tmp_path / "real-web-build"
+    real_root.mkdir()
+    (real_root / "index.html").write_text("secret\n", encoding="utf-8")
+    source_root = tmp_path / "web-build"
+    source_root.symlink_to(real_root, target_is_directory=True)
+
+    with pytest.raises(PackageError, match="source root"):
+        package_site(source_root, "1.2.3", tmp_path / "releases")

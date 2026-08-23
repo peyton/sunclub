@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -42,6 +44,42 @@ def test_cloudflare_config_files_are_valid() -> None:
     assert email_config["zone_name"] == "peyton.app"
     assert email_config["mail_domain"] == "mail.sunclub.peyton.app"
     assert email_config["routes"] == ["support", "privacy", "security", "contact"]
+
+
+def test_cloudflare_client_encodes_sequence_query_values_as_repeated_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_urls: list[str] = []
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"success": True, "result": {}}).encode()
+
+    def opener(request, *, timeout: int):
+        del timeout
+        requested_urls.append(request.full_url)
+        return Response()
+
+    monkeypatch.setattr(common, "urlopen", opener)
+    client = common.CloudflareClient("token")
+
+    client.request(
+        "GET",
+        "/zones",
+        query={"status": ["active", "pending"]},
+    )
+
+    assert parse_qs(urlparse(requested_urls[0]).query) == {
+        "status": ["active", "pending"]
+    }
 
 
 def test_pages_project_payload_matches_github_actions_direct_upload_plan() -> None:
@@ -249,6 +287,7 @@ def test_pages_dns_setup_ignores_email_records_when_cname_exists() -> None:
         "name": "sunclub.peyton.app",
         "content": "sunclub.pages.dev",
         "proxied": True,
+        "ttl": 1,
     }
     client = FakeCloudflareClient(
         {
@@ -274,6 +313,32 @@ def test_pages_dns_setup_ignores_email_records_when_cname_exists() -> None:
 
     assert result == {"action": "exists", "record": cname_record}
     assert client.calls == [("GET", dns_path, None)]
+
+
+def test_pages_dns_setup_updates_matching_record_when_ttl_drifts() -> None:
+    config = common.load_pages_config()
+    dns_path = "/zones/a004f01ed99de3582152debde5a96a08/dns_records"
+    record_path = f"{dns_path}/record-id"
+    client = FakeCloudflareClient(
+        {
+            ("GET", dns_path): [
+                {
+                    "id": "record-id",
+                    "type": "CNAME",
+                    "name": "sunclub.peyton.app",
+                    "content": "sunclub.pages.dev",
+                    "proxied": True,
+                    "ttl": 300,
+                }
+            ],
+            ("PATCH", record_path): {"id": "record-id"},
+        }
+    )
+
+    result = pages.ensure_pages_dns_record(client, config)
+
+    assert result["action"] == "updated"
+    assert client.calls[-1][0:2] == ("PATCH", record_path)
 
 
 def test_pages_dns_setup_updates_mismatched_cname() -> None:

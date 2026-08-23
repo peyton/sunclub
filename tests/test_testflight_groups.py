@@ -209,3 +209,28 @@ def test_build_context_uses_release_workflow_environment() -> None:
     assert context.marketing_version == "1.0.45"
     assert context.build_number.endswith(".44.1")
     assert context.group_name == "Internal"
+
+
+def test_build_context_does_not_use_process_environment_for_empty_mapping(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    args = type(
+        "Args",
+        (),
+        {
+            "bundle_id": "app.peyton.sunclub",
+            "marketing_version": None,
+            "build_number": None,
+            "group": "Internal",
+            "timeout_seconds": 120,
+            "poll_interval_seconds": 5,
+            "uses_non_exempt_encryption": False,
+        },
+    )()
+    monkeypatch.setenv("SUNCLUB_MARKETING_VERSION", "99.99.99")
+    monkeypatch.setenv("SUNCLUB_BUILD_NUMBER", "ambient-build")
+
+    context = build_context(args, {})
+
+    assert context.marketing_version != "99.99.99"
+    assert context.build_number != "ambient-build"

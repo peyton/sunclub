@@ -7,7 +7,14 @@ from pathlib import Path
 from typing import Any, Self
 from urllib import error, request
 
-from scripts.appstore.connect_api import AppStoreConnectClient, ecdsa_der_to_raw
+import pytest
+
+from scripts.appstore.connect_api import (
+    AppStoreConnectClient,
+    AppStoreConnectCredentials,
+    AppStoreConnectError,
+    ecdsa_der_to_raw,
+)
 
 
 class FakeResponse:
@@ -53,6 +60,39 @@ def test_client_adds_bearer_auth_and_paginates() -> None:
     assert calls[0].get_header("Authorization") == "Bearer test-token"
     assert "filter%5BbundleId%5D=app.peyton.sunclub" in calls[0].full_url
     assert calls[1].full_url.endswith("/v1/apps?page=2")
+
+
+def test_client_preserves_absolute_http_api_urls() -> None:
+    client = AppStoreConnectClient(jwt_factory=lambda: "test-token")
+
+    assert client.api_url("http://localhost:8080/v1/apps") == (
+        "http://localhost:8080/v1/apps"
+    )
+
+
+def test_client_appends_query_before_absolute_url_fragment() -> None:
+    client = AppStoreConnectClient(jwt_factory=lambda: "test-token")
+
+    assert (
+        client.api_url(
+            "http://localhost:8080/v1/apps?existing=1#fragment",
+            {"page": 2},
+        )
+        == "http://localhost:8080/v1/apps?existing=1&page=2#fragment"
+    )
+
+
+def test_credentials_do_not_fall_back_to_process_environment_for_empty_mapping(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key_file = tmp_path / "AuthKey.p8"
+    key_file.write_text("not a real key", encoding="utf-8")
+    monkeypatch.setenv("ASC_KEY_ID", "ambient-key")
+    monkeypatch.setenv("ASC_ISSUER_ID", "ambient-issuer")
+    monkeypatch.setenv("ASC_KEY_FILE", str(key_file))
+
+    with pytest.raises(AppStoreConnectError, match="ASC_KEY_ID"):
+        AppStoreConnectCredentials.from_env({})
 
 
 def test_client_retries_transient_http_errors() -> None:

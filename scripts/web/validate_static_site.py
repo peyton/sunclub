@@ -262,6 +262,11 @@ def resolve_internal_target(root: Path, source: Path, raw_target: str) -> Path |
 def validate_internal_link(root: Path, source: Path, link: LinkReference) -> str | None:
     target = link.target
     parsed = urlparse(target)
+    if parsed.netloc and not parsed.scheme:
+        return (
+            f"{source.relative_to(root)}:{link.line}: network-path URL "
+            f"{target!r} is not allowed in {link.attribute}."
+        )
     if parsed.scheme:
         if parsed.scheme not in ALLOWED_EXTERNAL_SCHEMES:
             return (
