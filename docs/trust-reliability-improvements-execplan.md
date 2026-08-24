@@ -25,6 +25,7 @@ The same behavior must hold across the iPhone app, widgets, Watch, App Intents, 
 - [x] (2026-08-11 04:15Z) Converted shared typography and layout behavior to support accessibility sizes, contextual action labels, non-color status, increased contrast, dark mode, and Reduce Motion.
 - [x] (2026-08-11 04:15Z) Made progress eligibility begin at first meaningful history for existing users and added compact, non-punitive local insights.
 - [x] (2026-08-11 07:15Z) Completed generation, focused and full tests, Python/web/lint gates, eighteen Simulator visual captures, draft storefront validation, and a cache-disabled unsigned production archive plus entitlement validation.
+- [x] (2026-08-23) Updated current UV behavior: Apple Weather forecasts remain fresh in the cache for up to eight hours, last-known Apple Weather values can be shown for up to 24 hours with their age, and an explicitly labeled on-device local estimate is shown when no Apple Weather value is usable. The estimate uses available latitude, season, and time, or generic season and time without location.
 
 ## Surprises & Discoveries
 
@@ -78,6 +79,10 @@ The same behavior must hold across the iPhone app, widgets, Watch, App Intents, 
   Rationale: without a real coordinate and recent weather response, the number is too easy to interpret as current environmental data. The app will show unavailable state and general non-numeric safety guidance instead.
   Date/Author: 2026-08-11 / Codex
 
+- Decision: Supersede the 2026-08-11 unavailable-only UV fallback with a clearly labeled on-device local estimate when no Apple Weather value is usable.
+  Rationale: a bounded, explicitly non-Apple estimate preserves a user-visible planning signal without presenting it as verified environmental data. It uses available latitude, season, and time; without location it uses generic season and time. Apple Weather values remain separately attributed.
+  Date/Author: 2026-08-23 / Codex
+
 - Decision: Use Apple frameworks already available to the app for city geocoding and weather; add no external dependency.
   Rationale: this preserves the repository’s self-contained architecture and privacy posture.
   Date/Author: 2026-08-11 / Codex
@@ -124,7 +129,7 @@ Sunclub is a Swift 6 SwiftUI application generated with Tuist from `app/Sunclub/
 
 `NotificationManager` in `app/Sunclub/Sources/Services/NotificationManager.swift` creates daily, UV, weekly, streak, extreme-UV, and reapply local notifications. “Pending” means requests registered with `UNUserNotificationCenter` but not yet delivered. The system retains only a finite number, so Sunclub must budget across categories rather than let each scheduler enqueue independently. `NotificationHealth` interprets authorization and pending requests for Settings and Home repair UI.
 
-`UVIndexService` in `app/Sunclub/Sources/Services/UVIndexService.swift` combines location and WeatherKit data. `UVSupport.swift` defines the verified source, availability, freshness, and protection-window presentation models. A selected city is a user-chosen display name plus latitude and longitude resolved with Apple geocoding. A reading is “fresh” for at most two hours after its WeatherKit observation or fetch timestamp. A “protection window” is the first through last forecast hour in which UV Index is at least three; it is guidance to use shade, clothing, and sunscreen, not a promise of safe exposure outside the window.
+`UVIndexService` in `app/Sunclub/Sources/Services/UVIndexService.swift` combines location and WeatherKit data. `UVSupport.swift` defines source, availability, freshness, and protection-window presentation models. A selected city is a user-chosen display name plus latitude and longitude resolved with Apple geocoding. Apple Weather forecasts are fresh in cache for up to eight hours; a last-known Apple Weather value may remain visible for up to 24 hours with its age shown. If neither is usable, the app presents a clearly labeled on-device local estimate based on available latitude, season, and time, or generic season and time without location. WeatherKit requests occur only while the main app is active, are cache- and budget-gated, and may start automatically on launch or foreground activation as well as after a user refresh or settings action. A “protection window” is the first through last forecast hour in which UV Index is at least three; it is guidance to use shade, clothing, and sunscreen, not a promise of safe exposure outside the window.
 
 `ManualLogView` edits the existing `DailyRecord.verifiedAt` timestamp, SPF, covered-area metadata, and note. Exact time therefore does not require a `DailyRecord` schema change. The new optional sunscreen profile does require settings fields: a user-entered display name, SPF, and water-resistance duration of nil, forty, or eighty minutes. Swimming, sweating, and towel-drying remain user-entered context that may prompt an earlier reminder but must not calculate an exact protection duration.
 
@@ -259,3 +264,5 @@ The existing `HomeDailyPlanAction` and `HomeDailyPlanPresentation` remain the si
 Revision note (2026-08-11 04:15Z): Updated the living plan after implementation and focused integration review, recording the completed product behavior, V5 migration shape, rollback and passive-UV discoveries, deliberate relationship-restore policy, verified gates, and remaining final UI/visual and external storefront steps.
 
 Revision note (2026-08-11 07:15Z): Closed the final verification milestone with exact unit/UI/Python/lint results, current visual-review artifacts, production archive evidence, the midnight fixture correction, and the remaining account-owned storefront confirmations.
+
+Revision note (2026-08-23): The 2026-08-11 UV fallback decisions and verification steps above are historical facts, not current behavior. Current behavior is an eight-hour Apple Weather cache, a last-known Apple Weather display window of up to 24 hours with age shown, and a clearly labeled on-device local estimate when no Apple Weather value is usable. WeatherKit may refresh automatically while the foreground main app is active; it is not exclusively user-initiated.

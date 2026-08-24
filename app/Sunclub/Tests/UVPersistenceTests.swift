@@ -113,7 +113,7 @@ final class UVPersistenceTests: XCTestCase {
         XCTAssertNotNil(service.protectionWindow)
     }
 
-    func testUnavailableUVNeverCreatesAHeuristicCurrentReading() async throws {
+    func testWeatherProviderFailureCreatesALocationBasedEstimate() async throws {
         let now = Date()
         let service = makeService(
             locationStatus: .authorizedWhenInUse,
@@ -122,14 +122,82 @@ final class UVPersistenceTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: true, now: now)
 
-        XCTAssertNil(service.currentReading)
+        XCTAssertNotNil(service.currentReading)
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+        XCTAssertEqual(service.currentReading?.timestamp, now)
         XCTAssertNil(service.lastBundle)
-        XCTAssertEqual(service.status.availability, .unavailable)
+        XCTAssertEqual(service.status.availability, .available)
+        XCTAssertEqual(service.status.freshness, .estimated)
         XCTAssertEqual(service.liveUVAccessState, .unavailable)
         XCTAssertNotNil(service.errorMessage)
     }
 
-    func testDisablingEveryUVSourceClearsCachedWeather() async throws {
+    func testFarAwayCachedWeatherIsNotRetainedOrUsedByLocalFallbackBriefing() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 16
+        )))
+        let farAwayPlace = SunclubSelectedUVPlace(
+            displayName: "New York",
+            latitude: 40.7128,
+            longitude: -74.0060
+        )
+        let cache = makeCache(maxAge: 24 * 60 * 60)
+        cache.store(makeBundle(generatedAt: now, place: farAwayPlace, calendar: calendar))
+        let service = makeService(
+            locationStatus: .authorizedWhenInUse,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 9, shouldFail: true),
+            cache: cache
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true, now: now)
+
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+        XCTAssertNil(service.lastBundle)
+
+        let briefing = SunclubUVBriefingService(cache: cache)
+        let forecast = await briefing.forecast(
+            prefersLiveData: true,
+            liveBundle: service.lastBundle,
+            readingSource: service.currentReading?.source,
+            fallbackLatitude: service.fallbackLatitude,
+            referenceDate: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.localEstimate.forecastLabel)
+    }
+
+    func testBriefingUsesLocalEstimateWhenTheReadingIsLocal() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 16
+        )))
+        let place = SunclubSelectedUVPlace(displayName: "Pasadena", latitude: 34.1478, longitude: -118.1445)
+        let bundle = makeBundle(generatedAt: now, place: place, calendar: calendar)
+        let briefing = SunclubUVBriefingService(cache: makeCache())
+
+        let forecast = await briefing.forecast(
+            prefersLiveData: true,
+            liveBundle: bundle,
+            readingSource: .localEstimate,
+            fallbackLatitude: place.latitude,
+            referenceDate: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.localEstimate.forecastLabel)
+    }
+
+    func testDisablingEveryUVSourceUsesEstimateAndPreservesCache() async throws {
         let cache = makeCache()
         let now = Date()
         let place = SunclubSelectedUVPlace(displayName: "Pasadena", latitude: 34.1478, longitude: -118.1445)
@@ -142,17 +210,50 @@ final class UVPersistenceTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: false, now: now)
 
-        XCTAssertNil(service.currentReading)
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+        XCTAssertEqual(service.status.availability, .available)
+        XCTAssertEqual(service.status.freshness, .estimated)
+        XCTAssertNil(service.status.source)
         XCTAssertNil(service.lastBundle)
-        XCTAssertNil(cache.lastBundle())
-        XCTAssertEqual(service.status, .unavailable)
+        XCTAssertNotNil(cache.lastBundle())
     }
 
-    func testCachedWeatherOlderThanTwoHoursIsUnavailable() async throws {
-        let cache = makeCache(maxAge: 12 * 60 * 60)
-        let fetchedAt = Date(timeIntervalSinceReferenceDate: 800_000_000)
+    func testDeniedCurrentLocationDoesNotRelabelSavedPlaceCache() async throws {
+        let cache = makeCache(maxAge: 24 * 60 * 60)
+        let now = Date()
+        let savedPlace = SunclubSelectedUVPlace(
+            displayName: "New York",
+            latitude: 40.7128,
+            longitude: -74.0060
+        )
+        cache.store(makeBundle(generatedAt: now, place: savedPlace))
+        let service = makeService(
+            locationStatus: .denied,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 9),
+            cache: cache
+        )
+
+        await service.fetchUVIndex(prefersLiveData: true, now: now)
+
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+        XCTAssertNil(service.lastBundle)
+        XCTAssertNil(service.status.source)
+        XCTAssertEqual(service.status.freshness, .estimated)
+        XCTAssertNotNil(cache.lastBundle())
+    }
+
+    func testCachedWeatherBridgesTheFormerTwoToThreeHourBudgetGap() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let cache = makeCache(maxAge: 8 * 60 * 60)
+        let fetchedAt = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 10
+        )))
         let place = SunclubSelectedUVPlace(displayName: "Pasadena", latitude: 34.1478, longitude: -118.1445)
-        cache.store(makeBundle(generatedAt: fetchedAt, place: place))
+        cache.store(makeBundle(generatedAt: fetchedAt, place: place, calendar: calendar))
         let service = makeService(
             locationStatus: .denied,
             weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 9, shouldFail: true),
@@ -162,13 +263,114 @@ final class UVPersistenceTests: XCTestCase {
         await service.fetchUVIndex(
             prefersLiveData: false,
             selectedPlace: place,
-            now: fetchedAt.addingTimeInterval(UVIndexService.verifiedDataMaxAge + 1)
+            now: fetchedAt.addingTimeInterval(2 * 60 * 60 + 1)
         )
 
-        XCTAssertNil(service.currentReading)
-        XCTAssertNil(service.lastBundle)
+        XCTAssertEqual(service.currentReading?.source, .cachedWeatherKit)
+        XCTAssertNotNil(service.lastBundle)
+        XCTAssertEqual(service.status.availability, .available)
+        XCTAssertEqual(service.status.freshness, .fresh)
+        XCTAssertEqual(service.status.updatedAt, fetchedAt)
+    }
+
+    func testLastKnownWeatherIsUsedForUpToTwentyFourHoursAfterRefreshFailure() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let fetchedAt = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 6
+        )))
+        let now = fetchedAt.addingTimeInterval(9 * 60 * 60)
+        let cache = makeCache(maxAge: 24 * 60 * 60)
+        let place = SunclubSelectedUVPlace(displayName: "Pasadena", latitude: 34.1478, longitude: -118.1445)
+        cache.store(makeBundle(generatedAt: fetchedAt, place: place, calendar: calendar))
+        let service = makeService(
+            locationStatus: .denied,
+            weatherProvider: UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 9, shouldFail: true),
+            cache: cache
+        )
+
+        await service.fetchUVIndex(prefersLiveData: false, selectedPlace: place, now: now)
+
+        XCTAssertEqual(service.currentReading?.source, .cachedWeatherKit)
+        XCTAssertEqual(service.currentReading?.index, 3)
+        XCTAssertEqual(service.status.availability, .available)
         XCTAssertEqual(service.status.freshness, .stale)
         XCTAssertEqual(service.status.updatedAt, fetchedAt)
+    }
+
+    func testFailedWeatherRequestCountsAgainstTheRequestInterval() async throws {
+        let provider = CountingUVWeatherProvider(shouldFail: true)
+        let budget = makeBudget(minFetchInterval: 8 * 60 * 60)
+        let service = makeService(
+            locationStatus: .authorizedWhenInUse,
+            weatherProvider: provider,
+            budget: budget
+        )
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        await service.fetchUVIndex(prefersLiveData: true, now: now)
+        await service.fetchUVIndex(prefersLiveData: true, now: now.addingTimeInterval(60))
+
+        XCTAssertEqual(provider.requestCount, 1)
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+    }
+
+    func testConcurrentRefreshWaitsForTheSharedWeatherRequest() async throws {
+        let provider = CountingUVWeatherProvider(delay: .milliseconds(100))
+        let service = makeService(
+            locationStatus: .authorizedWhenInUse,
+            weatherProvider: provider
+        )
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let firstRefresh = Task {
+            await service.fetchUVIndex(prefersLiveData: true, now: now)
+        }
+
+        for _ in 0..<100 {
+            if provider.requestCount > 0 {
+                break
+            }
+            await Task.yield()
+        }
+        XCTAssertEqual(provider.requestCount, 1)
+        await service.fetchUVIndex(prefersLiveData: true, now: now)
+
+        XCTAssertEqual(provider.requestCount, 1)
+        XCTAssertEqual(service.currentReading?.source, .weatherKit)
+        await firstRefresh.value
+    }
+
+    func testLocalEstimatorUsesHemisphereSeasonAndAlwaysReturnsAGenericValue() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let januaryNoon = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 1,
+            day: 15,
+            hour: 12
+        )))
+        let julyNoon = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 15,
+            hour: 12
+        )))
+
+        XCTAssertGreaterThan(
+            SunclubUVEstimator.estimatedIndex(at: januaryNoon, calendar: calendar, latitude: -34),
+            SunclubUVEstimator.estimatedIndex(at: januaryNoon, calendar: calendar, latitude: 34)
+        )
+        XCTAssertGreaterThan(
+            SunclubUVEstimator.estimatedIndex(at: julyNoon, calendar: calendar, latitude: 34),
+            SunclubUVEstimator.estimatedIndex(at: julyNoon, calendar: calendar, latitude: -34)
+        )
+        XCTAssertGreaterThan(
+            SunclubUVEstimator.estimatedIndex(at: januaryNoon, calendar: calendar, latitude: nil),
+            0
+        )
     }
 
     func testProtectionWindowUsesOnlyElevatedHoursOnRequestedDay() throws {
@@ -198,27 +400,119 @@ final class UVPersistenceTests: XCTestCase {
         XCTAssertEqual(calendar.component(.hour, from: window.end), 13)
     }
 
-    func testBriefingReturnsUnavailableForMissingOrStaleWeather() async throws {
-        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+    func testBriefingFallsBackForMissingOrStaleWeather() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 16
+        )))
         let place = SunclubSelectedUVPlace(displayName: "Pasadena", latitude: 34.1478, longitude: -118.1445)
         let staleBundle = makeBundle(
-            generatedAt: now.addingTimeInterval(-UVIndexService.verifiedDataMaxAge - 1),
-            place: place
+            generatedAt: now.addingTimeInterval(-9 * 60 * 60),
+            place: place,
+            calendar: calendar
         )
         let service = SunclubUVBriefingService(cache: makeCache())
 
-        let missing = await service.forecast(prefersLiveData: true, referenceDate: now)
+        let missing = await service.forecast(
+            prefersLiveData: true,
+            fallbackLatitude: place.latitude,
+            referenceDate: now,
+            calendar: calendar
+        )
         let stale = await service.forecast(
             prefersLiveData: true,
             liveBundle: staleBundle,
-            referenceDate: now
+            readingSource: .cachedWeatherKit,
+            fallbackLatitude: place.latitude,
+            referenceDate: now,
+            calendar: calendar
         )
 
-        XCTAssertFalse(missing.isAvailable)
-        XCTAssertEqual(missing.sourceLabel, UVReadingSource.unavailableSourceLabel)
-        XCTAssertTrue(missing.hours.isEmpty)
-        XCTAssertFalse(stale.isAvailable)
-        XCTAssertTrue(stale.hours.isEmpty)
+        XCTAssertTrue(missing.isAvailable)
+        XCTAssertEqual(missing.sourceLabel, UVReadingSource.localEstimate.forecastLabel)
+        XCTAssertFalse(missing.hours.isEmpty)
+        XCTAssertTrue(stale.isAvailable)
+        XCTAssertEqual(stale.sourceLabel, UVReadingSource.cachedWeatherKit.forecastLabel)
+        XCTAssertFalse(stale.hours.isEmpty)
+    }
+
+    func testNotificationForecastRejectsNineHourLastKnownWeather() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 16
+        )))
+        let place = SunclubSelectedUVPlace(displayName: "Pasadena", latitude: 34.1478, longitude: -118.1445)
+        let cache = makeCache(maxAge: 24 * 60 * 60)
+        cache.store(makeBundle(
+            generatedAt: now.addingTimeInterval(-9 * 60 * 60),
+            place: place,
+            calendar: calendar
+        ))
+        let service = SunclubUVBriefingService(cache: cache)
+
+        let forecast = service.notificationForecast(
+            referenceDate: now,
+            readingSource: .cachedWeatherKit,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertFalse(forecast.isAvailable)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
+    }
+
+    func testNotificationForecastRejectsPersistentWeatherAfterLocalFallback() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 10,
+            hour: 16
+        )))
+        let place = SunclubSelectedUVPlace(displayName: "New York", latitude: 40.7128, longitude: -74.0060)
+        let cache = makeCache(maxAge: 24 * 60 * 60)
+        cache.store(makeBundle(generatedAt: now, place: place, calendar: calendar))
+        let service = SunclubUVBriefingService(cache: cache)
+
+        let forecast = service.notificationForecast(
+            referenceDate: now,
+            readingSource: .localEstimate,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertFalse(forecast.isAvailable)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
+    }
+
+    func testNotificationForecastRejectsCacheWithoutResolvedProvenance() throws {
+        let now = Date()
+        let place = SunclubSelectedUVPlace(
+            displayName: "New York",
+            latitude: 40.7128,
+            longitude: -74.0060
+        )
+        let cache = makeCache(maxAge: 24 * 60 * 60)
+        cache.store(makeBundle(generatedAt: now, place: place))
+        let service = SunclubUVBriefingService(cache: cache)
+
+        let forecast = service.notificationForecast(
+            referenceDate: now,
+            readingSource: nil,
+            now: now
+        )
+
+        XCTAssertFalse(forecast.isAvailable)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
     }
 
     private func makeSettingsSnapshot(
@@ -245,7 +539,8 @@ final class UVPersistenceTests: XCTestCase {
     private func makeService(
         locationStatus: CLAuthorizationStatus,
         weatherProvider: any LiveUVWeatherProviding,
-        cache: SunclubUVForecastCache? = nil
+        cache: SunclubUVForecastCache? = nil,
+        budget: SunclubWeatherKitBudget? = nil
     ) -> UVIndexService {
         UVIndexService(
             locationService: UITestLiveUVLocationService(
@@ -254,13 +549,29 @@ final class UVPersistenceTests: XCTestCase {
             ),
             weatherProvider: weatherProvider,
             cache: cache ?? makeCache(),
-            budget: SunclubWeatherKitBudget(
+            budget: budget ?? SunclubWeatherKitBudget(
                 appGroupID: "group.test.\(UUID().uuidString)",
                 policyKey: "test-policy-\(UUID().uuidString)",
                 counterKey: "test-counter-\(UUID().uuidString)"
             ),
             networkPathProvider: { nil }
         )
+    }
+
+    private func makeBudget(minFetchInterval: TimeInterval) -> SunclubWeatherKitBudget {
+        let budget = SunclubWeatherKitBudget(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            policyKey: "test-policy-\(UUID().uuidString)",
+            counterKey: "test-counter-\(UUID().uuidString)"
+        )
+        budget.storePolicy(SunclubWeatherKitBudgetPolicy(
+            weatherKitEnabled: true,
+            minFetchIntervalSeconds: minFetchInterval,
+            maxDailyFetchesPerDevice: 2,
+            maxMonthlyFetchesPerDevice: 60,
+            reason: ""
+        ))
+        return budget
     }
 
     private func makeCache(maxAge: TimeInterval = UVIndexService.verifiedDataMaxAge) -> SunclubUVForecastCache {
@@ -273,9 +584,9 @@ final class UVPersistenceTests: XCTestCase {
 
     private func makeBundle(
         generatedAt: Date,
-        place: SunclubSelectedUVPlace
+        place: SunclubSelectedUVPlace,
+        calendar: Calendar = .current
     ) -> SunclubUVForecastBundle {
-        let calendar = Calendar.current
         let dayStart = calendar.startOfDay(for: generatedAt)
         let hourly = [9, 12, 15].compactMap { hour -> SunclubUVHourForecast? in
             guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart) else { return nil }
@@ -290,4 +601,36 @@ final class UVPersistenceTests: XCTestCase {
             daily: []
         )
     }
+}
+
+@MainActor
+private final class CountingUVWeatherProvider: LiveUVWeatherProviding {
+    private(set) var requestCount = 0
+    private let shouldFail: Bool
+    private let delay: Duration?
+
+    init(shouldFail: Bool = false, delay: Duration? = nil) {
+        self.shouldFail = shouldFail
+        self.delay = delay
+    }
+
+    func uvBundle(for location: CLLocation, referenceDate: Date) async throws -> SunclubUVForecastBundle {
+        requestCount += 1
+        if let delay {
+            try await Task.sleep(for: delay)
+        }
+        if shouldFail {
+            throw CountingUVWeatherProviderError.unavailable
+        }
+        return try await UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 9)
+            .uvBundle(for: location, referenceDate: referenceDate)
+    }
+
+    func attributionMarkup() async throws -> SunclubWeatherAttribution {
+        try await UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 9).attributionMarkup()
+    }
+}
+
+private enum CountingUVWeatherProviderError: Error {
+    case unavailable
 }

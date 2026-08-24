@@ -9,6 +9,8 @@ import XCTest
 final class MockNotificationManager: NotificationScheduling {
     private(set) var requestAuthorizationIfNeededCount = 0
     private(set) var scheduleRemindersCount = 0
+    private(set) var scheduledUVReadingSources: [UVReadingSource?] = []
+    private(set) var scheduledUVPlaces: [SunclubSelectedUVPlace?] = []
     private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
     private(set) var scheduleLeaveHomeReminderLevels: [UVLevel] = []
     private(set) var accountabilityPokeNotifications: [(friendName: String, message: String, route: AppRoute)] = []
@@ -32,6 +34,8 @@ final class MockNotificationManager: NotificationScheduling {
     @discardableResult
     func scheduleReminders(using state: AppState) async -> NotificationSchedulingReport {
         scheduleRemindersCount += 1
+        scheduledUVReadingSources.append(state.uvReading?.source)
+        scheduledUVPlaces.append(state.settings.selectedUVPlace)
         return scheduleRemindersResult
     }
 
@@ -2407,9 +2411,9 @@ final class SunclubTests: XCTestCase {
           "$schema": "https://sunclub.peyton.app/schemas/weatherkit-config.v1.json",
           "version": 1,
           "weatherkit_enabled": true,
-          "min_fetch_interval_seconds": 10800,
-          "max_daily_fetches_per_device": 4,
-          "max_monthly_fetches_per_device": 90,
+          "min_fetch_interval_seconds": 28800,
+          "max_daily_fetches_per_device": 2,
+          "max_monthly_fetches_per_device": 60,
           "reason": ""
         }
         """
@@ -2420,9 +2424,9 @@ final class SunclubTests: XCTestCase {
         )
 
         XCTAssertTrue(policy.weatherKitEnabled)
-        XCTAssertEqual(policy.minFetchIntervalSeconds, 10_800)
-        XCTAssertEqual(policy.maxDailyFetchesPerDevice, 4)
-        XCTAssertEqual(policy.maxMonthlyFetchesPerDevice, 90)
+        XCTAssertEqual(policy.minFetchIntervalSeconds, 28_800)
+        XCTAssertEqual(policy.maxDailyFetchesPerDevice, 2)
+        XCTAssertEqual(policy.maxMonthlyFetchesPerDevice, 60)
         XCTAssertEqual(policy.reason, "")
         XCTAssertEqual(SunclubWeatherKitBudgetPolicy.builtInDefault, policy)
     }
@@ -2454,9 +2458,9 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(snapshot.currentUVIndex, 9)
         XCTAssertEqual(snapshot.peakUVIndex, 10)
         XCTAssertEqual(snapshot.peakUVHour, peakHour.date)
-        XCTAssertEqual(snapshot.uvValidUntil, now.addingTimeInterval(2 * 60 * 60))
-        XCTAssertNil(snapshot.currentUVIndex(at: now.addingTimeInterval(2 * 60 * 60 + 1)))
-        XCTAssertNil(snapshot.peakUVIndex(at: now.addingTimeInterval(2 * 60 * 60 + 1)))
+        XCTAssertEqual(snapshot.uvValidUntil, now.addingTimeInterval(8 * 60 * 60))
+        XCTAssertNil(snapshot.currentUVIndex(at: now.addingTimeInterval(8 * 60 * 60 + 1)))
+        XCTAssertNil(snapshot.peakUVIndex(at: now.addingTimeInterval(8 * 60 * 60 + 1)))
     }
 
     @MainActor
@@ -2513,6 +2517,91 @@ final class SunclubTests: XCTestCase {
         XCTAssertNotNil(payload)
         XCTAssertEqual(payload?.currentUVIndex, 9)
         XCTAssertEqual(payload?.peakUVIndex, 10)
+    }
+
+    @MainActor
+    func testLiveActivityPayloadAcceptsFreshCachedAppleWeather() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let peakHour = SunclubUVHourForecast(
+            date: now.addingTimeInterval(3_600),
+            index: 10,
+            sourceLabel: UVReadingSource.cachedWeatherKit.hourlySourceLabel
+        )
+        let forecast = SunclubUVForecast(
+            generatedAt: now,
+            sourceLabel: UVReadingSource.cachedWeatherKit.forecastLabel,
+            hours: [peakHour],
+            peakHour: peakHour,
+            recommendation: "Very high UV today."
+        )
+
+        let payload = SunclubLiveActivityCoordinator.compactSurfaceUVPayload(
+            reading: UVReading(index: 9, timestamp: now, source: .cachedWeatherKit),
+            forecast: forecast,
+            now: now
+        )
+
+        XCTAssertNotNil(payload)
+        XCTAssertEqual(payload?.currentUVIndex, 9)
+        XCTAssertEqual(payload?.peakUVIndex, 10)
+    }
+
+    @MainActor
+    func testUVForecastDataQualityPresentationClearlyDistinguishesSources() {
+        let live = UVForecastDetailView.dataQualityPresentation(for: .weatherKit)
+        let cached = UVForecastDetailView.dataQualityPresentation(for: .cachedWeatherKit)
+        let estimated = UVForecastDetailView.dataQualityPresentation(for: .localEstimate)
+
+        XCTAssertEqual(live.title, "Verified Apple Weather UV")
+        XCTAssertEqual(cached.title, "Cached Apple Weather")
+        XCTAssertEqual(estimated.title, "Local UV estimate")
+        XCTAssertNotEqual(live.symbol, estimated.symbol)
+        XCTAssertTrue(UVReadingSource.cachedWeatherKit.shouldDisplayAttribution)
+        XCTAssertFalse(UVReadingSource.localEstimate.shouldDisplayAttribution)
+    }
+
+    @MainActor
+    func testCachedUVLocationPresentationUsesNearWithoutChangingExactSources() {
+        let savedPlace = SunclubUVLocationSource.selectedPlace(displayName: "Pasadena")
+
+        XCTAssertEqual(savedPlace.displayName(for: .cachedWeatherKit), "Near Pasadena")
+        XCTAssertEqual(
+            SunclubUVLocationSource.liveLocation.displayName(for: .cachedWeatherKit),
+            "Near Current Location"
+        )
+        XCTAssertEqual(savedPlace.displayName(for: .weatherKit), "Pasadena")
+        XCTAssertEqual(savedPlace.displayName(for: .localEstimate), "Pasadena")
+    }
+
+    @MainActor
+    func testTimelineCachedAppleWeatherSourceDetailIncludesAge() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let generatedAt = now.addingTimeInterval(-9 * 60 * 60)
+
+        XCTAssertEqual(
+            TimelineLogSection.sourceDetail(
+                sourceLabel: UVReadingSource.cachedWeatherKit.hourlySourceLabel,
+                generatedAt: now.addingTimeInterval(-30 * 60),
+                now: now
+            ),
+            "Cached Apple Weather · less than 1 hour old"
+        )
+        XCTAssertEqual(
+            TimelineLogSection.sourceDetail(
+                sourceLabel: UVReadingSource.cachedWeatherKit.hourlySourceLabel,
+                generatedAt: generatedAt,
+                now: now
+            ),
+            "Cached Apple Weather · 9 hours old"
+        )
+        XCTAssertEqual(
+            TimelineLogSection.sourceDetail(
+                sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel,
+                generatedAt: generatedAt,
+                now: now
+            ),
+            "Apple Weather"
+        )
     }
 
     @MainActor
@@ -3828,7 +3917,8 @@ final class SunclubTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: true, allowPermissionPrompt: false)
 
-        XCTAssertNil(service.currentReading)
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+        XCTAssertEqual(service.status.freshness, .estimated)
         XCTAssertEqual(service.liveUVAccessState, .needsPermission)
     }
 
@@ -3853,13 +3943,14 @@ final class SunclubTests: XCTestCase {
 
         await service.fetchUVIndex(prefersLiveData: true)
 
-        XCTAssertNil(service.currentReading)
+        XCTAssertEqual(service.currentReading?.source, .localEstimate)
+        XCTAssertEqual(service.status.freshness, .estimated)
         XCTAssertEqual(service.liveUVAccessState, .unavailable)
         XCTAssertNotNil(service.errorMessage)
     }
 
     @MainActor
-    func testUVBriefingServiceReturnsUnavailableWithoutVerifiedForecast() async throws {
+    func testUVBriefingServiceReturnsLocalEstimateWithoutVerifiedForecast() async throws {
         let calendar = Calendar(identifier: .gregorian)
         let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let locationService = UITestLiveUVLocationService(
@@ -3877,9 +3968,9 @@ final class SunclubTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
-        XCTAssertTrue(forecast.hours.isEmpty)
-        XCTAssertFalse(forecast.isAvailable)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.localEstimate.forecastLabel)
+        XCTAssertFalse(forecast.hours.isEmpty)
+        XCTAssertTrue(forecast.isAvailable)
     }
 
     @MainActor
@@ -3905,8 +3996,8 @@ final class SunclubTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.unavailableSourceLabel)
-        XCTAssertTrue(forecast.hours.isEmpty)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.localEstimate.forecastLabel)
+        XCTAssertFalse(forecast.hours.isEmpty)
     }
 
     @MainActor
@@ -3925,7 +4016,13 @@ final class SunclubTests: XCTestCase {
                 cache: SunclubUVForecastCache(
                     appGroupID: "group.test.\(UUID().uuidString)",
                     key: "test-\(UUID().uuidString)"
-                )
+                ),
+                budget: SunclubWeatherKitBudget(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    policyKey: "test-policy-\(UUID().uuidString)",
+                    counterKey: "test-counter-\(UUID().uuidString)"
+                ),
+                networkPathProvider: { nil }
             ),
             uvBriefingService: SunclubUVBriefingService(
                 locationService: locationService,
@@ -3942,6 +4039,82 @@ final class SunclubTests: XCTestCase {
         XCTAssertEqual(state.uvForecast?.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
         XCTAssertEqual(state.weatherAttribution?.serviceName, UVReadingSource.weatherKit.forecastLabel)
         XCTAssertEqual(state.liveUVStatusPresentation.title, "UV available")
+    }
+
+    @MainActor
+    func testChangingUVSourceReschedulesRemindersAfterRefresh() async throws {
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let notificationManager = MockNotificationManager()
+        let locationService = UITestLiveUVLocationService(
+            authorizationStatus: .authorizedWhenInUse,
+            location: CLLocation(latitude: 34.116, longitude: -118.150)
+        )
+        let weatherProvider = UITestLiveUVWeatherProvider(currentIndex: 8, peakIndex: 11)
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            uvIndexService: UVIndexService(
+                locationService: locationService,
+                weatherProvider: weatherProvider,
+                cache: SunclubUVForecastCache(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    key: "test-\(UUID().uuidString)"
+                ),
+                budget: SunclubWeatherKitBudget(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    policyKey: "test-policy-\(UUID().uuidString)",
+                    counterKey: "test-counter-\(UUID().uuidString)"
+                ),
+                networkPathProvider: { nil }
+            ),
+            clock: { referenceDate }
+        )
+
+        state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
+        try await waitForReminderSchedules(1, on: notificationManager)
+
+        XCTAssertEqual(notificationManager.scheduledUVReadingSources, [.weatherKit])
+
+        state.updateLiveUVPreference(enabled: false, allowPermissionPrompt: false)
+        try await waitForReminderSchedules(2, on: notificationManager)
+
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 2)
+        XCTAssertEqual(notificationManager.scheduledUVReadingSources.last, .localEstimate)
+    }
+
+    @MainActor
+    func testChangingSelectedUVPlaceReschedulesRemindersForNewPlace() async throws {
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let notificationManager = MockNotificationManager()
+        let weatherProvider = UITestLiveUVWeatherProvider(currentIndex: 7, peakIndex: 10)
+        let state = try makeAppState(
+            notificationManager: notificationManager,
+            uvIndexService: UVIndexService(
+                weatherProvider: weatherProvider,
+                cache: SunclubUVForecastCache(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    key: "test-\(UUID().uuidString)"
+                ),
+                budget: SunclubWeatherKitBudget(
+                    appGroupID: "group.test.\(UUID().uuidString)",
+                    policyKey: "test-policy-\(UUID().uuidString)",
+                    counterKey: "test-counter-\(UUID().uuidString)"
+                ),
+                networkPathProvider: { nil }
+            ),
+            clock: { referenceDate }
+        )
+        let place = SunclubSelectedUVPlace(
+            displayName: "Pasadena",
+            latitude: 34.1478,
+            longitude: -118.1445
+        )
+
+        state.updateSelectedUVPlace(place)
+        try await waitForReminderSchedules(1, on: notificationManager)
+
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
+        XCTAssertEqual(notificationManager.scheduledUVReadingSources, [.weatherKit])
+        XCTAssertEqual(notificationManager.scheduledUVPlaces, [place])
     }
 
     @MainActor
@@ -4302,7 +4475,7 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(forecast.hours.map(\.date), [morning, afternoon])
         XCTAssertEqual(forecast.peakHour?.index, 9)
-        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.cachedWeatherKit.forecastLabel)
     }
 
     @MainActor
@@ -4327,8 +4500,77 @@ final class SunclubTests: XCTestCase {
 
         XCTAssertEqual(forecast.hours.count, 1)
         XCTAssertEqual(forecast.peakHour?.index, 8)
-        XCTAssertEqual(forecast.peakHour?.sourceLabel, UVReadingSource.weatherKit.hourlySourceLabel)
-        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.weatherKit.forecastLabel)
+        XCTAssertEqual(forecast.peakHour?.sourceLabel, UVReadingSource.cachedWeatherKit.hourlySourceLabel)
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.cachedWeatherKit.forecastLabel)
+    }
+
+    @MainActor
+    func testTimelineUVForecastLabelsLastKnownWeatherAsCached() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate.addingTimeInterval(-9 * 60 * 60),
+                    daily: [SunclubUVDayForecast(day: tomorrow, maxIndex: 8)]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        let forecast = try XCTUnwrap(state.timelineUVForecast(for: tomorrow))
+
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.cachedWeatherKit.forecastLabel)
+        XCTAssertEqual(forecast.peakHour?.sourceLabel, UVReadingSource.cachedWeatherKit.hourlySourceLabel)
+    }
+
+    @MainActor
+    func testTimelineLabelsNineHourOldSameTimestampWeatherAsCached() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let bundleDate = referenceDate.addingTimeInterval(-9 * 60 * 60)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let bundle = makeUVForecastBundle(
+            generatedAt: bundleDate,
+            daily: [SunclubUVDayForecast(day: tomorrow, maxIndex: 8)]
+        )
+        let service = makeUVIndexService(bundle: bundle)
+        let state = try makeAppState(
+            uvIndexService: service,
+            clock: { referenceDate }
+        )
+        state.setUVReadingForTesting(
+            UVReading(index: 8, timestamp: bundleDate, source: .weatherKit)
+        )
+
+        let forecast = try XCTUnwrap(state.timelineUVForecast(for: tomorrow))
+
+        XCTAssertEqual(forecast.sourceLabel, UVReadingSource.cachedWeatherKit.forecastLabel)
+        XCTAssertEqual(forecast.peakHour?.sourceLabel, UVReadingSource.cachedWeatherKit.hourlySourceLabel)
+    }
+
+    @MainActor
+    func testTimelineUVForecastRejectsExpiredCachedBundle() throws {
+        let calendar = Calendar.current
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let today = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let state = try makeAppState(
+            uvIndexService: makeUVIndexService(
+                bundle: makeUVForecastBundle(
+                    generatedAt: referenceDate.addingTimeInterval(-25 * 60 * 60),
+                    daily: [SunclubUVDayForecast(day: tomorrow, maxIndex: 8)]
+                )
+            ),
+            clock: { referenceDate }
+        )
+
+        XCTAssertNil(state.timelineUVForecast(for: tomorrow))
+        XCTAssertNil(state.timelineForecastUVLevel(for: tomorrow))
+        XCTAssertFalse(state.timelineShowsFutureDays)
     }
 
     @MainActor
@@ -4473,7 +4715,27 @@ final class SunclubTests: XCTestCase {
             XCTFail("Expected rate-limit deny within min fetch interval")
         }
 
-        XCTAssertEqual(budget.check(now: start.addingTimeInterval(61)), .allow)
+        XCTAssertEqual(budget.check(now: start.addingTimeInterval(8 * 60 * 60 + 1)), .allow)
+    }
+
+    @MainActor
+    func testWeatherKitBudgetClampsRemotePolicyToTheBuiltInSafetyCeiling() throws {
+        let budget = SunclubWeatherKitBudget(
+            appGroupID: "group.test.\(UUID().uuidString)",
+            policyKey: "policy-\(UUID().uuidString)",
+            counterKey: "counter-\(UUID().uuidString)"
+        )
+        budget.storePolicy(SunclubWeatherKitBudgetPolicy(
+            weatherKitEnabled: true,
+            minFetchIntervalSeconds: 1,
+            maxDailyFetchesPerDevice: 100,
+            maxMonthlyFetchesPerDevice: 1_000,
+            reason: ""
+        ))
+
+        XCTAssertEqual(budget.currentPolicy.minFetchIntervalSeconds, 8 * 60 * 60)
+        XCTAssertEqual(budget.currentPolicy.maxDailyFetchesPerDevice, 2)
+        XCTAssertEqual(budget.currentPolicy.maxMonthlyFetchesPerDevice, 60)
     }
 
     @MainActor
@@ -4524,7 +4786,7 @@ final class SunclubTests: XCTestCase {
         budget.recordFetch(at: anchor)
         budget.recordFetch(at: anchor.addingTimeInterval(120))
 
-        if case .deny(let reason) = budget.check(now: anchor.addingTimeInterval(600)) {
+        if case .deny(let reason) = budget.check(now: anchor.addingTimeInterval(9 * 60 * 60)) {
             XCTAssertTrue(reason.contains("Daily"))
         } else {
             XCTFail("Expected deny when daily cap reached")
@@ -4705,6 +4967,24 @@ final class SunclubTests: XCTestCase {
         }
 
         XCTFail("Timed out waiting for Live UV forecast", file: file, line: line)
+    }
+
+    @MainActor
+    private func waitForReminderSchedules(
+        _ expectedCount: Int,
+        on notificationManager: MockNotificationManager,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        for _ in 0..<20 {
+            if notificationManager.scheduleRemindersCount >= expectedCount {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(25))
+            await waitForMainActorTasks()
+        }
+
+        XCTFail("Timed out waiting for reminder reschedule", file: file, line: line)
     }
 
     private func makeAccountabilityInviteEnvelope(

@@ -61,9 +61,9 @@ These steps still require real App Store Connect data and cannot be faked safely
 - This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
 - Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
 - To navigate to WeatherKit functionality: complete onboarding, open Settings, expand Travel & Health, find UV & Health, enable Live UV with the Use Apple Weather for Live UV switch, grant location permission if prompted, then return to Timeline/Home.
-- WeatherKit requests are foreground/user-initiated from the main app, cached, rate-limited, and covered by the remote config at `https://sunclub.peyton.app/config/weatherkit.json`.
-- Apple Weather values show Apple Weather attribution and a visible legal/data-source link wherever they appear.
-- The fallback when location, network, remote config, or Apple Weather is unavailable is an explicit UV unavailable state rather than a numeric local estimate.
+- WeatherKit requests occur only while the main app is active. They are cache- and rate-limit-gated, may start automatically on launch or foreground activation or after a user refresh or settings action, and are covered by the remote config at `https://sunclub.peyton.app/config/weatherkit.json`.
+- Apple Weather forecasts are cached for up to eight hours; last-known Apple Weather values may appear for up to 24 hours with their age clearly shown. Apple Weather attribution and a visible legal/data-source link apply only to those Apple Weather values.
+- The fallback when no Apple Weather value is available is a clearly labeled on-device estimate based on available latitude, season, and time, or a generic season-and-time estimate without location.
 - The primary check-in flow is manual logging from Home.
 - Weekly Summary and reminder settings remain part of the submission flow.
 
@@ -85,7 +85,7 @@ To navigate to the WeatherKit functionality:
 6. Grant location permission if prompted.
 7. Return to Timeline/Home.
 
-When Live UV is enabled, Apple Weather UV data is shown with Apple Weather attribution and a visible Data Sources/legal attribution link. Shared surfaces show only verified cached values that are still fresh; otherwise they show UV unavailable.
+When Live UV is enabled, Apple Weather UV data is shown with Apple Weather attribution and a visible Data Sources/legal attribution link. Apple Weather forecasts are cached for up to eight hours, and last-known Apple Weather values can appear for up to 24 hours with their age clearly shown. Attribution applies only to Apple Weather values, including cached or last-known values.
 
-WeatherKit requests are foreground/user-initiated, cached, and rate-limited. The fallback when location, network, remote config, or Apple Weather is unavailable is an explicit UV unavailable state rather than a numeric estimate.
+WeatherKit requests occur only while the main app is active and are cache- and rate-limit-gated; they may start automatically on launch or foreground activation or after a user refresh or settings action. The fallback when no Apple Weather value is available is a clearly labeled on-device estimate based on available latitude, season, and time, or a generic season-and-time estimate without location.
 ```

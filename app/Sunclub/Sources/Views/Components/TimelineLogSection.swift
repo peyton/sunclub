@@ -9,6 +9,7 @@ struct TimelineLogSection: View {
     let currentStreak: Int
     let longestStreak: Int
     let accessibilityIdentifierSuffix: String?
+    let now: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -63,10 +64,7 @@ struct TimelineLogSection: View {
     }
 
     static func attributionSourceLabel(forDisplayedSourceLabels sourceLabels: [String]) -> String? {
-        sourceLabels.contains { sourceLabel in
-            sourceLabel == UVReadingSource.weatherKit.forecastLabel
-                || sourceLabel == UVReadingSource.weatherKit.hourlySourceLabel
-        } ? UVReadingSource.weatherKit.forecastLabel : nil
+        sourceLabels.first(where: UVReadingSource.shouldDisplayAttribution(for:))
     }
 
     @ViewBuilder
@@ -119,7 +117,8 @@ struct TimelineLogSection: View {
 
     private func forecastBlock(for dayPart: DayPart) -> TimelineUVForecastBlock? {
         let hours = forecastHours(for: dayPart)
-        guard let peakHour = hours.max(by: { $0.index < $1.index }) else {
+        guard let peakHour = hours.max(by: { $0.index < $1.index }),
+              let generatedAt = uvForecast?.generatedAt else {
             return nil
         }
         return TimelineUVForecastBlock(
@@ -127,8 +126,26 @@ struct TimelineLogSection: View {
             timeRange: timeRange(for: dayPart),
             uvIndex: peakHour.index,
             level: peakHour.level,
-            sourceLabel: peakHour.sourceLabel
+            sourceLabel: peakHour.sourceLabel,
+            sourceDetail: Self.sourceDetail(
+                sourceLabel: peakHour.sourceLabel,
+                generatedAt: generatedAt,
+                now: now
+            )
         )
+    }
+
+    static func sourceDetail(sourceLabel: String, generatedAt: Date, now: Date) -> String {
+        guard sourceLabel == UVReadingSource.cachedWeatherKit.hourlySourceLabel else {
+            return sourceLabel
+        }
+        let elapsedSeconds = max(0, now.timeIntervalSince(generatedAt))
+        guard elapsedSeconds >= 3_600 else {
+            return "\(sourceLabel) · less than 1 hour old"
+        }
+        let elapsedHours = Int(elapsedSeconds / 3_600)
+        let unit = elapsedHours == 1 ? "hour" : "hours"
+        return "\(sourceLabel) · \(elapsedHours) \(unit) old"
     }
 
     private func forecastHours(for dayPart: DayPart) -> [SunclubUVHourForecast] {
@@ -238,6 +255,10 @@ struct TimelineLogSection: View {
             Text(block.level.displayName)
                 .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
+
+            Text(block.sourceDetail)
+                .font(AppTextStyle.caption.font)
+                .foregroundStyle(AppPalette.softInk)
         }
     }
 
@@ -248,7 +269,7 @@ struct TimelineLogSection: View {
         var parts = [
             block.timeRange,
             "UV \(block.uvIndex), \(block.level.displayName)",
-            block.sourceLabel
+            block.sourceDetail
         ]
         if let status {
             parts.append(status.statusText)
@@ -324,6 +345,7 @@ private struct TimelineUVForecastBlock: Identifiable {
     let uvIndex: Int
     let level: UVLevel
     let sourceLabel: String
+    let sourceDetail: String
 
     var id: DayPart { dayPart }
 }

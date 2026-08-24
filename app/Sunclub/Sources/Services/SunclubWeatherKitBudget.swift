@@ -9,11 +9,22 @@ struct SunclubWeatherKitBudgetPolicy: Codable, Equatable, Sendable {
 
     static let builtInDefault = SunclubWeatherKitBudgetPolicy(
         weatherKitEnabled: true,
-        minFetchIntervalSeconds: 3 * 60 * 60,
-        maxDailyFetchesPerDevice: 4,
-        maxMonthlyFetchesPerDevice: 90,
+        minFetchIntervalSeconds: 8 * 60 * 60,
+        maxDailyFetchesPerDevice: 2,
+        maxMonthlyFetchesPerDevice: 60,
         reason: ""
     )
+
+    func constrainedToBuiltInSafetyCeiling() -> SunclubWeatherKitBudgetPolicy {
+        let ceiling = Self.builtInDefault
+        return SunclubWeatherKitBudgetPolicy(
+            weatherKitEnabled: weatherKitEnabled && ceiling.weatherKitEnabled,
+            minFetchIntervalSeconds: max(minFetchIntervalSeconds, ceiling.minFetchIntervalSeconds),
+            maxDailyFetchesPerDevice: min(maxDailyFetchesPerDevice, ceiling.maxDailyFetchesPerDevice),
+            maxMonthlyFetchesPerDevice: min(maxMonthlyFetchesPerDevice, ceiling.maxMonthlyFetchesPerDevice),
+            reason: reason
+        )
+    }
 
     private enum CodingKeys: String, CodingKey {
         case weatherKitEnabled = "weatherkit_enabled"
@@ -54,23 +65,23 @@ final class SunclubWeatherKitBudget: @unchecked Sendable {
     var currentPolicy: SunclubWeatherKitBudgetPolicy {
         lock.lock()
         defer { lock.unlock() }
-        return loadPolicy() ?? .builtInDefault
+        return (loadPolicy() ?? .builtInDefault).constrainedToBuiltInSafetyCeiling()
     }
 
     func storePolicy(_ policy: SunclubWeatherKitBudgetPolicy) {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = try? JSONEncoder().encode(policy) else { return }
+        guard let data = try? JSONEncoder().encode(policy.constrainedToBuiltInSafetyCeiling()) else { return }
         defaults.set(data, forKey: policyKey)
     }
 
     /// Call BEFORE a WeatherKit fetch. Returns `.allow` with the caller
-    /// expected to immediately record the fetch via `recordFetch(at:)`
-    /// on success, or `.deny` with a user-surfaceable reason.
+    /// expected to immediately record the attempt via `recordFetch(at:)`
+    /// before calling WeatherKit, or `.deny` with a user-surfaceable reason.
     func check(now: Date = Date()) -> SunclubWeatherKitBudgetDecision {
         lock.lock()
         defer { lock.unlock() }
-        let policy = loadPolicy() ?? .builtInDefault
+        let policy = (loadPolicy() ?? .builtInDefault).constrainedToBuiltInSafetyCeiling()
         let counter = loadCounter()
 
         guard policy.weatherKitEnabled else {

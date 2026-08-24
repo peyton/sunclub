@@ -7,6 +7,7 @@ from pathlib import Path
 
 from scripts.appstore.release_doctor import (
     BUNDLE_SUFFIXES,
+    REQUIRED_CAPABILITIES,
     DoctorContext,
     expected_profile_entitlements,
 )
@@ -114,6 +115,11 @@ def test_release_doctor_covers_all_production_bundle_ids() -> None:
         "watch app": ".watch",
         "watch widget extension": ".watch.widgets",
     }
+
+
+def test_release_doctor_requires_weatherkit_for_the_main_app_id() -> None:
+    assert REQUIRED_CAPABILITIES["WEATHERKIT"] == "WeatherKit capability"
+    assert REQUIRED_CAPABILITIES["WEATHER_KIT"] == "WeatherKit App Service"
 
 
 def test_release_doctor_uses_target_entitlement_templates() -> None:
@@ -1018,6 +1024,39 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     assert '-apiKey "$ASC_KEY_ID"' in script
     assert '-apiIssuer "$ASC_ISSUER_ID"' in script
     assert "AuthKey_${ASC_KEY_ID}.p8" in script
+
+
+def test_release_scripts_set_production_defaults_before_shared_environment() -> None:
+    for relative_path in (
+        "scripts/appstore/archive-and-upload.sh",
+        "scripts/appstore/submit-review.sh",
+    ):
+        script = (REPO_ROOT / relative_path).read_text()
+        shared_environment = script.index(
+            'source "$ROOT_DIR/scripts/tooling/common.sh"'
+        )
+
+        assert script.index(': "${SUNCLUB_FLAVOR:=prod}"') < shared_environment
+        assert (
+            script.index(': "${SUNCLUB_APS_ENVIRONMENT:=production}"')
+            < shared_environment
+        )
+
+
+def test_foreground_reminders_wait_for_uv_refresh() -> None:
+    source = (SOURCES_DIR / "SunclubApp.swift").read_text()
+    foreground_refresh = source.split("private func refreshAppStateForForeground()", 1)[
+        1
+    ].split("private func refreshReminderScheduleIfNeeded", 1)[0]
+    reminder_refresh = source.split("private func refreshReminderScheduleIfNeeded", 1)[
+        1
+    ].split("private func handleIncomingURL", 1)[0]
+
+    assert (
+        "let uvRefreshTask = appState.refreshUVForecastIfNeeded()" in foreground_refresh
+    )
+    assert "refreshReminderScheduleIfNeeded(after: uvRefreshTask)" in foreground_refresh
+    assert "await uvRefreshTask.value" in reminder_refresh
 
 
 def test_archive_script_writes_diagnostics_for_every_nested_bundle() -> None:

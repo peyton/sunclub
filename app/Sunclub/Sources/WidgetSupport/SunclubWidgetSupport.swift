@@ -299,7 +299,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
 }
 
 enum SunclubWidgetSnapshotBuilder {
-    private static let verifiedUVMaxAge: TimeInterval = 2 * 60 * 60
+    private static let verifiedUVMaxAge = SunclubUVDataFreshness.verifiedMaxAge
 
     static func make(
         settings: Settings,
@@ -367,7 +367,7 @@ enum SunclubWidgetSnapshotBuilder {
     ) -> UVReading? {
         _ = calendar
         guard let reading,
-              reading.source == .weatherKit,
+              reading.source.shouldDisplayAttribution,
               reading.isFresh(at: now, maxAge: verifiedUVMaxAge) else {
             return nil
         }
@@ -384,7 +384,7 @@ enum SunclubWidgetSnapshotBuilder {
             return nil
         }
         let age = now.timeIntervalSince(forecast.generatedAt)
-        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel,
+        guard UVReadingSource.shouldDisplayAttribution(for: forecast.sourceLabel),
               age >= 0,
               age <= verifiedUVMaxAge else {
             return nil

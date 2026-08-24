@@ -13,12 +13,12 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
+: "${SUNCLUB_FLAVOR:=prod}"
+: "${SUNCLUB_APS_ENVIRONMENT:=production}"
 # shellcheck source=/dev/null
 source "$ROOT_DIR/scripts/tooling/common.sh"
 source_appstore_review_env
 
-: "${SUNCLUB_FLAVOR:=prod}"
-: "${SUNCLUB_APS_ENVIRONMENT:=production}"
 setup_local_tooling_env
 
 MUTATE_APP_STORE=false

@@ -144,8 +144,12 @@
           <p>
             Live UV is optional and off by default. Use current location or
             choose a city for forecasts from Apple Weather through WeatherKit.
-            Values expire after two hours; after that Sunclub shows UV
-            unavailable. Manual logging continues to work.
+            Apple Weather forecasts are cached for up to eight hours, and the
+            last known Apple Weather value can appear for up to 24 hours with
+            its age shown. If no Apple Weather value is available, Sunclub shows
+            a clearly labeled on-device estimate based on available latitude,
+            season, and time, or generic season and time without location.
+            Manual logging continues to work.
             <a href="/docs/uv-index/">Learn how UV Index works.</a>
           </p>
         </article>

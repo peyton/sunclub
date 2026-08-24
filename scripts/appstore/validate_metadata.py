@@ -93,7 +93,7 @@ FORBIDDEN_STALE_COPY = (
 WEATHERKIT_DISCLOSURE_ERROR = "review.notes must explicitly disclose WeatherKit functionality status (clear yes/no statement)."
 WEATHERKIT_POSITIVE_DETAIL_ERROR = (
     "review.notes positive WeatherKit disclosure must mention off by default, "
-    "foreground/user-initiated use, caching or rate limits, fallback behavior, "
+    "active-app automatic refresh behavior, caching or rate limits, fallback behavior, "
     "Apple Weather attribution, and a legal/data-source link."
 )
 WEATHERKIT_NEGATIVE_DISCLOSURES = (
@@ -111,13 +111,13 @@ WEATHERKIT_POSITIVE_DISCLOSURES = (
 )
 WEATHERKIT_POSITIVE_REQUIREMENTS = {
     "off by default": ("off by default",),
-    "foreground": ("foreground",),
-    "user-initiated": ("user-initiated",),
+    "main app active": ("while the main app is active",),
+    "automatic refresh": ("automatically",),
     "settings navigation": ("settings",),
     "live uv navigation": ("enable live uv", "live uv"),
     "home or timeline navigation": ("home", "timeline"),
     "cached": ("cached",),
-    "rate-limited": ("rate-limited", "rate limited"),
+    "rate-limited": ("rate-limit-gated", "rate-limited", "rate limited"),
     "fallback": ("fallback", "fall back"),
     "apple weather": ("apple weather",),
     "attribution": ("attribution",),

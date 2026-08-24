@@ -453,7 +453,12 @@ struct SunclubUVForecast: Equatable, Sendable {
     }
 
     var isAvailable: Bool {
-        sourceLabel == UVReadingSource.weatherKit.forecastLabel && !hours.isEmpty && peakHour != nil
+        let availableSourceLabels = [
+            UVReadingSource.weatherKit.forecastLabel,
+            UVReadingSource.cachedWeatherKit.forecastLabel,
+            UVReadingSource.localEstimate.forecastLabel
+        ]
+        return availableSourceLabels.contains(sourceLabel) && !hours.isEmpty && peakHour != nil
     }
 
     static func unavailable(generatedAt: Date) -> SunclubUVForecast {

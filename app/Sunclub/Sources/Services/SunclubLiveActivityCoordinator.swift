@@ -172,7 +172,7 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
         calendar: Calendar
     ) -> UVReading? {
         _ = calendar
-        guard reading.source == .weatherKit,
+        guard reading.source.shouldDisplayAttribution,
               reading.isFresh(at: now, maxAge: UVIndexService.verifiedDataMaxAge) else {
             return nil
         }
@@ -186,7 +186,7 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
     ) -> SunclubUVHourForecast? {
         _ = calendar
         let age = now.timeIntervalSince(forecast.generatedAt)
-        guard forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel,
+        guard UVReadingSource.shouldDisplayAttribution(for: forecast.sourceLabel),
               age >= 0,
               age <= UVIndexService.verifiedDataMaxAge else {
             return nil

@@ -103,7 +103,7 @@ struct TimelineHighlightsSection: View {
             WeatherKitAttributionFooter(
                 attribution: appState.weatherAttribution,
                 sourceLabel: forecast.sourceLabel,
-                showAttributionLink: forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel
+                showAttributionLink: UVReadingSource.shouldDisplayAttribution(for: forecast.sourceLabel)
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)

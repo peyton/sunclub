@@ -837,6 +837,13 @@ final class AppState {
         }
     }
 
+    private func scheduleReminders(after uvRefreshTask: Task<Void, Never>) {
+        Task {
+            await uvRefreshTask.value
+            await notificationManager.scheduleReminders(using: self)
+        }
+    }
+
     private func refreshStreakRiskReminder() {
         Task {
             await notificationManager.refreshStreakRiskReminder(using: self)
@@ -928,7 +935,7 @@ final class AppState {
     }
 
     var timelineForecastUVLevels: [Date: UVLevel] {
-        guard let bundle = uvIndexService.lastBundle else {
+        guard let bundle = usableTimelineForecastBundle else {
             return [:]
         }
 
@@ -974,17 +981,24 @@ final class AppState {
         }
 
         guard canSelectTimelineDay(dayStart),
-              let bundle = uvIndexService.lastBundle else {
+              let bundle = usableTimelineForecastBundle else {
             return nil
         }
+        let readingSource = timelineReadingSource(for: bundle)
 
         let dayHours = bundle.hourly.filter { hour in
             calendar.isDate(hour.date, inSameDayAs: dayStart)
+        }.map { hour in
+            SunclubUVHourForecast(
+                date: hour.date,
+                index: hour.index,
+                sourceLabel: readingSource.hourlySourceLabel
+            )
         }
         if !dayHours.isEmpty {
             return makeTimelineUVForecast(
                 generatedAt: bundle.generatedAt,
-                sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+                sourceLabel: readingSource.forecastLabel,
                 hours: dayHours
             )
         }
@@ -998,12 +1012,12 @@ final class AppState {
         let peakDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: dayStart) ?? dayStart
         return makeTimelineUVForecast(
             generatedAt: bundle.generatedAt,
-            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
+            sourceLabel: readingSource.forecastLabel,
             hours: [
                 SunclubUVHourForecast(
                     date: peakDate,
                     index: daily.maxIndex,
-                    sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
+                    sourceLabel: readingSource.hourlySourceLabel
                 )
             ]
         )
@@ -1974,23 +1988,49 @@ final class AppState {
     }
 
     var liveUVStatusPresentation: LiveUVStatusPresentation {
-        if uvStatus.availability == .available,
-           uvStatus.freshness == .fresh,
-           let source = uvStatus.source,
-           let updatedAt = uvStatus.updatedAt {
-            return LiveUVStatusPresentation(
-                title: "UV available",
-                detail: "Apple Weather · \(source.displayName) · Updated \(updatedAt.formatted(date: .omitted, time: .shortened)).",
-                actionTitle: "Refresh",
-                actionKind: .refresh
-            )
+        if uvStatus.availability == .available, let updatedAt = uvStatus.updatedAt {
+            let sourceLabel = uvReading?.source.statusLabel
+                ?? uvForecast?.sourceLabel
+                ?? UVReadingSource.localEstimate.statusLabel
+            let locationLabel = uvStatus.source?.displayName(for: uvReading?.source)
+            let updatedLabel = updatedAt.formatted(date: .omitted, time: .shortened)
+            let canRefresh = settings.usesLiveUV || settings.selectedUVPlace != nil
+
+            switch uvStatus.freshness {
+            case .fresh:
+                let locationDetail = locationLabel.map { " · \($0)" } ?? ""
+                return LiveUVStatusPresentation(
+                    title: "UV available",
+                    detail: "\(sourceLabel)\(locationDetail) · Updated \(updatedLabel).",
+                    actionTitle: canRefresh ? "Refresh" : nil,
+                    actionKind: canRefresh ? .refresh : nil
+                )
+            case .stale:
+                let locationDetail = locationLabel.map { " for \($0)" } ?? ""
+                return LiveUVStatusPresentation(
+                    title: "Cached UV available",
+                    detail: "\(sourceLabel)\(locationDetail) · Last updated \(updatedLabel). Sunclub will refresh when the request budget allows.",
+                    actionTitle: canRefresh ? "Refresh" : nil,
+                    actionKind: canRefresh ? .refresh : nil
+                )
+            case .estimated:
+                let basis = locationLabel.map { " for \($0)" } ?? " from season and time of day"
+                return LiveUVStatusPresentation(
+                    title: "Estimated UV available",
+                    detail: "\(sourceLabel)\(basis) · Updated \(updatedLabel). Apple Weather will replace it when available.",
+                    actionTitle: canRefresh ? "Refresh" : nil,
+                    actionKind: canRefresh ? .refresh : nil
+                )
+            case .unavailable:
+                break
+            }
         }
 
         switch uvIndexService.liveUVAccessState {
         case .live, .unavailable:
             return LiveUVStatusPresentation(
                 title: "UV unavailable",
-                detail: "Sunclub does not have a verified Apple Weather value from the last two hours.",
+                detail: "Sunclub could not resolve a cached value or local estimate.",
                 actionTitle: "Retry",
                 actionKind: .refresh
             )
@@ -2371,17 +2411,15 @@ final class AppState {
         return result
     }
 
-    func refreshUVForecastIfNeeded(allowPermissionPrompt: Bool = false) {
+    @discardableResult
+    func refreshUVForecastIfNeeded(allowPermissionPrompt: Bool = false) -> Task<Void, Never> {
         uvRefreshGeneration += 1
         let generation = uvRefreshGeneration
         let prefersLiveData = settings.usesLiveUV
         let referenceDate = currentDate()
-        Task {
+        return Task {
             let resolvedReading: UVReading?
             if prefersLiveData {
-                while uvIndexService.isLoading {
-                    try? await Task.sleep(for: .milliseconds(25))
-                }
                 await uvIndexService.fetchUVIndex(
                     prefersLiveData: prefersLiveData,
                     selectedPlace: settings.selectedUVPlace,
@@ -2403,6 +2441,8 @@ final class AppState {
             let resolvedForecast = await uvBriefingService.forecast(
                 prefersLiveData: prefersLiveData,
                 liveBundle: uvIndexService.lastBundle,
+                readingSource: resolvedReading?.source,
+                fallbackLatitude: uvIndexService.fallbackLatitude,
                 allowPermissionPrompt: allowPermissionPrompt,
                 referenceDate: referenceDate,
                 calendar: calendar
@@ -3258,10 +3298,15 @@ final class AppState {
             ) { snapshot in
                 snapshot.usesLiveUV = enabled
             }
-            finishDurableChange(batch, reschedulesReminders: false)
+            finishDurableChange(
+                batch,
+                reschedulesReminders: false,
+                refreshesUVForecast: false
+            )
             logActionErrorMessage = nil
             refreshWeatherKitKillSwitchIfNeeded()
-            refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
+            let uvRefreshTask = refreshUVForecastIfNeeded(allowPermissionPrompt: allowPermissionPrompt)
+            scheduleReminders(after: uvRefreshTask)
             return true
         } catch {
             _ = historyMutationFailure(error)
@@ -3290,9 +3335,14 @@ final class AppState {
                     snapshot.usesLiveUV = false
                 }
             }
-            finishDurableChange(batch, reschedulesReminders: false)
+            finishDurableChange(
+                batch,
+                reschedulesReminders: false,
+                refreshesUVForecast: false
+            )
             logActionErrorMessage = nil
-            refreshUVForecastIfNeeded()
+            let uvRefreshTask = refreshUVForecastIfNeeded()
+            scheduleReminders(after: uvRefreshTask)
             return true
         } catch {
             _ = historyMutationFailure(error)
@@ -3899,11 +3949,28 @@ final class AppState {
     }
 
     private var timelineForecastDates: [Date] {
-        guard let bundle = uvIndexService.lastBundle else {
+        guard let bundle = usableTimelineForecastBundle else {
             return []
         }
 
         return bundle.daily.map(\.day) + bundle.hourly.map(\.date)
+    }
+
+    private var usableTimelineForecastBundle: SunclubUVForecastBundle? {
+        guard let bundle = uvIndexService.lastBundle,
+              bundle.isFresh(now: referenceDate, ttl: UVIndexService.lastKnownDataMaxAge) else {
+            return nil
+        }
+        return bundle
+    }
+
+    private func timelineReadingSource(for bundle: SunclubUVForecastBundle) -> UVReadingSource {
+        guard bundle.isFresh(now: referenceDate, ttl: UVIndexService.verifiedDataMaxAge),
+              uvReading?.source == .weatherKit,
+              uvReading?.timestamp == bundle.generatedAt else {
+            return .cachedWeatherKit
+        }
+        return .weatherKit
     }
 
     private func makeTimelineUVForecast(
@@ -4056,14 +4123,17 @@ final class AppState {
 
     private func finishDurableChange(
         _ batch: SunclubChangeBatch?,
-        reschedulesReminders: Bool
+        reschedulesReminders: Bool,
+        refreshesUVForecast: Bool = true
     ) {
         guard let batch else {
             return
         }
         refresh()
         syncAchievementCelebration()
-        refreshUVForecastIfNeeded()
+        if refreshesUVForecast {
+            refreshUVForecastIfNeeded()
+        }
         publishAccountabilityProfileIfNeeded()
         Task {
             await liveActivityCoordinator.sync(using: self)

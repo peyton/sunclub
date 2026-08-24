@@ -32,6 +32,8 @@ REQUIRED_CAPABILITIES = {
     "ICLOUD": "iCloud (CloudKit)",
     "PUSH_NOTIFICATIONS": "Push Notifications",
     "HEALTHKIT": "HealthKit",
+    "WEATHERKIT": "WeatherKit capability",
+    "WEATHER_KIT": "WeatherKit App Service",
     "APP_GROUPS": "App Groups",
 }
 
