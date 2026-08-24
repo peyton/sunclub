@@ -441,6 +441,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
             let forecast = uvBriefingService.notificationForecast(
                 referenceDate: day,
+                readingSource: state.uvReading?.source,
                 now: referenceNow,
                 calendar: scheduleCalendar
             )
@@ -486,6 +487,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
             let forecast = uvBriefingService.notificationForecast(
                 referenceDate: day,
+                readingSource: state.uvReading?.source,
                 now: referenceNow,
                 calendar: scheduleCalendar
             )

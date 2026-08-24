@@ -171,9 +171,9 @@ WEATHERKIT_CONFIG_EXPECTED_VALUES = {
     "$schema": WEATHERKIT_SCHEMA_URL,
     "version": 1,
     "weatherkit_enabled": True,
-    "min_fetch_interval_seconds": 10800,
-    "max_daily_fetches_per_device": 4,
-    "max_monthly_fetches_per_device": 90,
+    "min_fetch_interval_seconds": 28800,
+    "max_daily_fetches_per_device": 2,
+    "max_monthly_fetches_per_device": 60,
     "reason": "",
 }
 

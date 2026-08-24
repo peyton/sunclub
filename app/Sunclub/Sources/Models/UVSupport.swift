@@ -84,25 +84,115 @@ enum UVLevel: Equatable, Sendable {
 }
 
 enum UVReadingSource: Equatable, Sendable {
+    case cachedWeatherKit
+    case localEstimate
     case weatherKit
 
+    static let cachedWeatherKitSourceLabel = "Cached Apple Weather"
+    static let localEstimateSourceLabel = "Local estimate"
+    static let localEstimateHourlySourceLabel = "Estimated"
     static let weatherKitSourceLabel = "Apple Weather"
     static let unavailableSourceLabel = "UV unavailable"
 
     var statusLabel: String {
-        Self.weatherKitSourceLabel
+        switch self {
+        case .cachedWeatherKit:
+            return Self.cachedWeatherKitSourceLabel
+        case .localEstimate:
+            return Self.localEstimateSourceLabel
+        case .weatherKit:
+            return Self.weatherKitSourceLabel
+        }
     }
 
     var forecastLabel: String {
-        Self.weatherKitSourceLabel
+        statusLabel
     }
 
     var hourlySourceLabel: String {
-        Self.weatherKitSourceLabel
+        switch self {
+        case .cachedWeatherKit:
+            return Self.cachedWeatherKitSourceLabel
+        case .localEstimate:
+            return Self.localEstimateHourlySourceLabel
+        case .weatherKit:
+            return Self.weatherKitSourceLabel
+        }
     }
 
     var shouldDisplayAttribution: Bool {
-        true
+        self != .localEstimate
+    }
+
+    var isAppleWeather: Bool {
+        switch self {
+        case .cachedWeatherKit, .weatherKit:
+            return true
+        case .localEstimate:
+            return false
+        }
+    }
+
+    nonisolated static func shouldDisplayAttribution(for sourceLabel: String) -> Bool {
+        sourceLabel == weatherKitSourceLabel || sourceLabel == cachedWeatherKitSourceLabel
+    }
+}
+
+enum SunclubUVDataFreshness {
+    nonisolated static let verifiedMaxAge: TimeInterval = 8 * 60 * 60
+    nonisolated static let lastKnownMaxAge: TimeInterval = 24 * 60 * 60
+}
+
+enum SunclubUVEstimator {
+    nonisolated static func estimatedIndex(
+        at date: Date,
+        calendar: Calendar = .current,
+        latitude: Double? = nil
+    ) -> Int {
+        let hour = Double(calendar.component(.hour, from: date))
+            + Double(calendar.component(.minute, from: date)) / 60
+        let daylightShape = max(0, cos((hour - 12) * .pi / 12))
+
+        guard let latitude else {
+            return min(6, max(0, Int((6 * pow(daylightShape, 1.35)).rounded())))
+        }
+
+        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: date) ?? 172
+        let declinationDegrees = 23.44 * sin(2 * .pi * (Double(dayOfYear) - 81) / 365)
+        let latitudeRadians = latitude * .pi / 180
+        let declinationRadians = declinationDegrees * .pi / 180
+        let hourAngleRadians = 15 * (hour - 12) * .pi / 180
+        let solarElevationSine = sin(latitudeRadians) * sin(declinationRadians)
+            + cos(latitudeRadians) * cos(declinationRadians) * cos(hourAngleRadians)
+        guard solarElevationSine > 0 else {
+            return 0
+        }
+
+        let estimate = 12 * pow(min(1, solarElevationSine), 1.2)
+        return min(12, max(0, Int(estimate.rounded())))
+    }
+
+    nonisolated static func hourlyForecast(
+        for date: Date,
+        calendar: Calendar = .current,
+        latitude: Double?
+    ) -> [SunclubUVHourForecast] {
+        let dayStart = calendar.startOfDay(for: date)
+        return (6...18).compactMap { hour in
+            guard let hourDate = calendar.date(
+                bySettingHour: hour,
+                minute: 0,
+                second: 0,
+                of: dayStart
+            ) else {
+                return nil
+            }
+            return SunclubUVHourForecast(
+                date: hourDate,
+                index: estimatedIndex(at: hourDate, calendar: calendar, latitude: latitude),
+                sourceLabel: UVReadingSource.localEstimate.hourlySourceLabel
+            )
+        }
     }
 }
 
@@ -123,9 +213,17 @@ enum SunclubUVLocationSource: Equatable, Sendable {
             return displayName
         }
     }
+
+    func displayName(for readingSource: UVReadingSource?) -> String {
+        guard readingSource == .cachedWeatherKit else {
+            return displayName
+        }
+        return "Near \(displayName)"
+    }
 }
 
 enum SunclubUVFreshness: Equatable, Sendable {
+    case estimated
     case fresh
     case stale
     case unavailable
@@ -151,6 +249,19 @@ struct SunclubUVProtectionWindow: Equatable, Sendable {
 }
 
 extension SunclubUVForecastBundle {
+    func index(
+        at date: Date,
+        calendar: Calendar = .current
+    ) -> Int? {
+        let sameDayHours = hourly.filter { calendar.isDate($0.date, inSameDayAs: date) }
+        if let closest = sameDayHours.min(by: {
+            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+        }) {
+            return closest.index
+        }
+        return calendar.isDate(generatedAt, inSameDayAs: date) ? currentIndex : nil
+    }
+
     func protectionWindow(
         for day: Date,
         calendar: Calendar = .current
@@ -201,7 +312,7 @@ struct UVReading: Equatable, Sendable {
 
     func isFresh(
         at date: Date,
-        maxAge: TimeInterval = 2 * 60 * 60
+        maxAge: TimeInterval = SunclubUVDataFreshness.verifiedMaxAge
     ) -> Bool {
         let age = date.timeIntervalSince(timestamp)
         return age >= 0 && age <= maxAge

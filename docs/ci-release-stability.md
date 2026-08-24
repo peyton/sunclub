@@ -126,10 +126,23 @@ GitHub run cross-check:
   enumerate the archive itself, create any missing App Store profiles through
   App Store Connect, install them locally for export, and preserve
   `.build/release-diagnostics/provisioning-profiles.json` for audit.
+- Release entrypoints must set their production flavor and APS defaults before
+  sourcing `scripts/tooling/common.sh`; the shared environment intentionally
+  defaults normal local builds to the development flavor.
 - Keep release-doctor coverage aligned with every production bundle ID emitted
   by `Project.swift`: main app, iOS widget, single-target watch app, and watch
   widget. A release can archive successfully and still fail profile preparation
   when a nested watch bundle ID was never registered.
+- WeatherKit must be enabled as an Apple Developer App Service for both
+  `app.peyton.sunclub` and `app.peyton.sunclub.dev`; a checked-in
+  `com.apple.developer.weatherkit` entitlement alone does not grant runtime
+  access. After enabling it, regenerate profiles and verify the entitlement in
+  the installed development profile and final exported IPA.
+- Keep provisioning reconciliation mapping
+  `com.apple.developer.weatherkit` to both the App Store Connect `WEATHERKIT`
+  capability and `WEATHER_KIT` App Service, and keep release doctor requiring
+  both on the main App ID. Skip and replace any otherwise-active profile that
+  lacks the WeatherKit entitlement.
 - The App Store Connect API can create Bundle IDs and enable the App Groups
   capability, but the specific App Group assignment may still need the Apple
   Developer portal Configure/Assign step before the generated App Store profile

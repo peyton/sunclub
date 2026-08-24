@@ -839,7 +839,7 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.liveUVToggle")
 
-                Text("Choose Current Location or save a city. If Apple Weather data is more than two hours old, Sunclub shows UV unavailable instead of an estimate.")
+                Text("Choose Current Location or save a city for Apple Weather. Sunclub reuses forecasts for up to eight hours, then shows cached or locally estimated UV when a refresh is unavailable.")
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -878,7 +878,7 @@ struct SettingsView: View {
                 )
                 .accessibilityIdentifier("settings.liveUV.status")
 
-                Text("When Apple Weather UV appears in Sunclub, the main app shows Apple Weather attribution and a Data Sources link.")
+                Text("Apple Weather and cached Apple Weather include attribution and a Data Sources link. Local estimates are labeled separately.")
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)

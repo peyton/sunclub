@@ -479,7 +479,7 @@ struct TimelineHomeView: View {
 
             if presentation.logSummary.category == .today,
                let forecast = presentation.uvForecast,
-               forecast.sourceLabel == UVReadingSource.weatherKit.forecastLabel {
+               UVReadingSource.shouldDisplayAttribution(for: forecast.sourceLabel) {
                 WeatherKitAttributionFooter(
                     attribution: presentation.weatherAttribution,
                     sourceLabel: forecast.sourceLabel,
@@ -504,7 +504,8 @@ struct TimelineHomeView: View {
                     accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
                         for: presentation,
                         isSelectedPage: isSelectedPage
-                    )
+                    ),
+                    now: presentation.today
                 )
             }
         }
@@ -1010,14 +1011,11 @@ struct TimelineHomeView: View {
 
     private func homeUVReading(for presentation: TimelineHomePresentation) -> HomeUVReading? {
         guard Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today),
-              presentation.uvStatus.availability == .available,
-              presentation.uvStatus.freshness == .fresh else {
+              presentation.uvStatus.availability == .available else {
             return nil
         }
 
-        if let uvReading = presentation.uvReading,
-           uvReading.source == .weatherKit,
-           uvReading.isFresh(at: presentation.today) {
+        if let uvReading = presentation.uvReading {
             return HomeUVReading(
                 index: uvReading.index,
                 level: uvReading.level,
@@ -1040,7 +1038,11 @@ struct TimelineHomeView: View {
     }
 
     private func uvSourceLabel(for presentation: TimelineHomePresentation) -> String {
-        let source = presentation.uvStatus.source?.displayName ?? UVReadingSource.weatherKit.statusLabel
+        let readingSource = presentation.uvReading?.source.statusLabel
+            ?? presentation.uvForecast?.sourceLabel
+            ?? UVReadingSource.localEstimate.statusLabel
+        let location = presentation.uvStatus.source?.displayName(for: presentation.uvReading?.source)
+        let source = location.map { "\(readingSource) · \($0)" } ?? readingSource
         guard let updatedAt = presentation.uvStatus.updatedAt else {
             return source
         }
@@ -1062,12 +1064,12 @@ struct TimelineHomeView: View {
             let updateDetail = presentation.uvStatus.updatedAt.map {
                 " Last updated \($0.formatted(date: .omitted, time: .shortened))."
             } ?? ""
-            return "The last verified reading for \(source) is more than two hours old.\(updateDetail) Refresh to try again."
+            return "The cached reading for \(source) is more than 24 hours old.\(updateDetail) Sunclub will use a local estimate while it refreshes."
         }
         if let source = presentation.uvStatus.source?.displayName {
-            return "No fresh Apple Weather UV reading is available for \(source). Refresh to try again."
+            return "No Apple Weather or local UV value is available for \(source). Refresh to try again."
         }
-        return "Choose a city or enable Current Location for a verified Apple Weather reading."
+        return "Sunclub could not calculate a local UV estimate."
     }
 
     private func timelineSelector(

@@ -377,6 +377,13 @@ def required_capabilities_from_entitlements(
         capabilities.append({"capabilityType": "PUSH_NOTIFICATIONS"})
     if required_entitlements.get("com.apple.developer.healthkit") is True:
         capabilities.append({"capabilityType": "HEALTHKIT"})
+    if required_entitlements.get("com.apple.developer.weatherkit") is True:
+        capabilities.extend(
+            [
+                {"capabilityType": "WEATHERKIT"},
+                {"capabilityType": "WEATHER_KIT"},
+            ]
+        )
     if required_entitlements.get("com.apple.developer.icloud-container-identifiers"):
         capabilities.append(
             {

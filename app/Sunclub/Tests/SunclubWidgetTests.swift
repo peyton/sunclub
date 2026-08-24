@@ -364,10 +364,10 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(refreshDate, try fixedDate(calendar: calendar, hour: 11, minute: 30))
     }
 
-    func testSnapshotUVExpiresAfterTwoHoursAndRequestsARefresh() throws {
+    func testSnapshotUVExpiresAfterEightHoursAndRequestsARefresh() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 11)
-        let validUntil = now.addingTimeInterval(2 * 60 * 60)
+        let validUntil = now.addingTimeInterval(8 * 60 * 60)
         let snapshot = makeWidgetSnapshot(
             dayOffsets: [0],
             longestStreak: 1,

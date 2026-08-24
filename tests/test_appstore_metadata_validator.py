@@ -257,6 +257,18 @@ def test_validator_requires_complete_weatherkit_positive_review_notes() -> None:
     assert warnings == []
 
 
+def test_validator_rejects_outdated_user_initiated_weatherkit_disclosure() -> None:
+    manifest = current_manifest()
+    manifest["review"]["notes"] = manifest["review"]["notes"].replace(
+        "WeatherKit requests occur only while the main app is active; they are cache- and rate-limit-gated and may start automatically on launch or foreground activation, or after a user refresh or settings action.",
+        "WeatherKit requests are foreground/user-initiated, cached, and rate-limited.",
+    )
+
+    errors, _ = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert validator.WEATHERKIT_POSITIVE_DETAIL_ERROR in errors
+
+
 def test_validator_rejects_submission_automation_shape_errors() -> None:
     manifest = current_manifest()
     manifest["privacy"]["app_store_connect_completed"] = "yes"

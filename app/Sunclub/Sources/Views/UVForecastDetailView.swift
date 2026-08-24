@@ -25,13 +25,22 @@ struct UVForecastDetailView: View {
                         recommendation: currentUV.recommendation
                     )
 
+                    let quality = Self.dataQualityPresentation(for: currentUV.source)
                     SunStatusCard(
-                        title: "Verified UV",
-                        detail: verificationDetail,
-                        tint: AppPalette.pool,
-                        symbol: "checkmark.seal.fill"
+                        title: quality.title,
+                        detail: dataQualityDetail,
+                        tint: currentUV.source == .localEstimate ? AppPalette.sun : AppPalette.pool,
+                        symbol: quality.symbol
                     )
-                    .accessibilityIdentifier("uvForecast.verified")
+                    .accessibilityIdentifier("uvForecast.dataQuality")
+
+                    if currentUV.source.shouldDisplayAttribution {
+                        WeatherKitAttributionFooter(
+                            attribution: appState.weatherAttribution,
+                            sourceLabel: currentUV.sourceLabel,
+                            showAttributionLink: true
+                        )
+                    }
                 } else {
                     SunStatusCard(
                         title: "UV data unavailable",
@@ -156,18 +165,16 @@ struct UVForecastDetailView: View {
     }
 
     private var currentUV: UVForecastPresentationReading? {
-        guard appState.uvStatus.availability == .available,
-              appState.uvStatus.freshness == .fresh else {
+        guard appState.uvStatus.availability == .available else {
             return nil
         }
 
         if let reading = appState.uvReading,
-           reading.source == .weatherKit,
-           reading.isFresh(at: appState.referenceDate),
            Calendar.current.isDate(reading.timestamp, inSameDayAs: selectedDay) {
             return UVForecastPresentationReading(
                 index: reading.index,
                 level: reading.level,
+                source: reading.source,
                 sourceLabel: reading.source.statusLabel,
                 recommendation: reading.level.shortAdvice
             )
@@ -178,6 +185,7 @@ struct UVForecastDetailView: View {
             return UVForecastPresentationReading(
                 index: peakHour.index,
                 level: peakHour.level,
+                source: forecastReadingSource,
                 sourceLabel: appState.uvForecast?.sourceLabel ?? peakHour.sourceLabel,
                 recommendation: appState.uvForecast?.recommendation ?? peakHour.level.shortAdvice
             )
@@ -186,17 +194,57 @@ struct UVForecastDetailView: View {
         return nil
     }
 
-    private var locationTitle: String {
-        appState.uvStatus.source?.displayName ?? "UV location not set"
+    private var forecastReadingSource: UVReadingSource {
+        switch appState.uvForecast?.sourceLabel {
+        case UVReadingSource.cachedWeatherKit.forecastLabel:
+            return .cachedWeatherKit
+        case UVReadingSource.localEstimate.forecastLabel:
+            return .localEstimate
+        default:
+            return .weatherKit
+        }
     }
 
-    private var verificationDetail: String {
-        let source = appState.uvStatus.source?.displayName ?? "your UV location"
+    private var locationTitle: String {
+        appState.uvStatus.source?.displayName(for: activeReadingSource) ?? "Approximate UV"
+    }
+
+    private var dataQualityDetail: String {
+        let dataSource = appState.uvReading?.source.statusLabel
+            ?? appState.uvForecast?.sourceLabel
+            ?? UVReadingSource.localEstimate.statusLabel
+        let source = appState.uvStatus.source?.displayName(for: activeReadingSource) ?? "season and time of day"
         let updated = appState.uvStatus.updatedAt?.formatted(date: .omitted, time: .shortened) ?? "recently"
         if let window = appState.uvProtectionWindow {
-            return "Apple Weather · \(source) · Updated \(updated). Protection recommended \(window.start.formatted(date: .omitted, time: .shortened))–\(window.end.formatted(date: .omitted, time: .shortened))."
+            return "\(dataSource) · \(source) · Updated \(updated). Protection recommended \(window.start.formatted(date: .omitted, time: .shortened))–\(window.end.formatted(date: .omitted, time: .shortened))."
         }
-        return "Apple Weather · \(source) · Updated \(updated)."
+        return "\(dataSource) · \(source) · Updated \(updated)."
+    }
+
+    private var activeReadingSource: UVReadingSource {
+        appState.uvReading?.source ?? forecastReadingSource
+    }
+
+    static func dataQualityPresentation(
+        for source: UVReadingSource
+    ) -> UVForecastDataQualityPresentation {
+        switch source {
+        case .weatherKit:
+            return UVForecastDataQualityPresentation(
+                title: "Verified Apple Weather UV",
+                symbol: "checkmark.seal.fill"
+            )
+        case .cachedWeatherKit:
+            return UVForecastDataQualityPresentation(
+                title: "Cached Apple Weather",
+                symbol: "clock.arrow.circlepath"
+            )
+        case .localEstimate:
+            return UVForecastDataQualityPresentation(
+                title: "Local UV estimate",
+                symbol: "sun.haze.fill"
+            )
+        }
     }
 
     private var hourlyForecastCard: some View {
@@ -288,8 +336,14 @@ struct UVForecastDetailView: View {
 private struct UVForecastPresentationReading {
     let index: Int
     let level: UVLevel
+    let source: UVReadingSource
     let sourceLabel: String
     let recommendation: String
+}
+
+struct UVForecastDataQualityPresentation: Equatable {
+    let title: String
+    let symbol: String
 }
 
 private struct UVForecastHeroCard: View {
@@ -329,7 +383,7 @@ private struct UVForecastHeroCard: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("UV Index \(index), \(level.displayName). \(recommendation)")
+        .accessibilityLabel("UV Index \(index), \(level.displayName). \(sourceLabel). \(recommendation)")
         .accessibilityIdentifier("uvForecast.hero")
     }
 }

@@ -179,6 +179,9 @@ def test_weatherkit_config_uses_canonical_schema_and_safe_caps() -> None:
 
     assert config_path.exists()
     assert schema_path.exists()
+    assert WEATHERKIT_CONFIG_EXPECTED_VALUES["min_fetch_interval_seconds"] == 28_800
+    assert WEATHERKIT_CONFIG_EXPECTED_VALUES["max_daily_fetches_per_device"] == 2
+    assert WEATHERKIT_CONFIG_EXPECTED_VALUES["max_monthly_fetches_per_device"] == 60
     assert validate_site(REPO_ROOT / "web") == []
 
 

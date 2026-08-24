@@ -164,11 +164,11 @@ struct EnableLocationView: View {
                 .accessibilityHint("Opens an Apple Maps city search without asking for location access.")
                 .accessibilityIdentifier("onboarding.skipLocation")
 
-                Button("Continue without UV") {
+                Button("Continue without location") {
                     continueToReminders(usesLiveUV: false)
                 }
                 .buttonStyle(SunTextButtonStyle())
-                .accessibilityHint("Continues setup without location or UV data. Sunclub will show UV unavailable.")
+                .accessibilityHint("Continues setup without location. Sunclub will show a clearly labeled season-and-time UV estimate.")
                 .accessibilityIdentifier("onboarding.skipUV")
             }
         }

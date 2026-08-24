@@ -25,17 +25,17 @@
     },
     "min_fetch_interval_seconds": {
       "type": "integer",
-      "minimum": 10800
+      "minimum": 28800
     },
     "max_daily_fetches_per_device": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 4
+      "maximum": 2
     },
     "max_monthly_fetches_per_device": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 90
+      "maximum": 60
     },
     "reason": {
       "type": "string",

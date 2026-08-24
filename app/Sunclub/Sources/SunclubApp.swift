@@ -670,19 +670,20 @@ struct SunclubApp: App {
         appState.refreshNotificationHealth()
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshWeatherKitKillSwitchIfNeeded()
-        appState.refreshUVForecastIfNeeded()
+        let uvRefreshTask = appState.refreshUVForecastIfNeeded()
         appState.refreshAccountabilityForForeground()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
             openExternalRoute(route)
         }
-        refreshReminderScheduleIfNeeded()
+        refreshReminderScheduleIfNeeded(after: uvRefreshTask)
     }
 
-    private func refreshReminderScheduleIfNeeded() {
+    private func refreshReminderScheduleIfNeeded(after uvRefreshTask: Task<Void, Never>) {
         guard !isRunningTests, appState.settings.hasCompletedOnboarding else { return }
 
         Task {
             _ = await NotificationManager.shared.configure()
+            await uvRefreshTask.value
             await NotificationManager.shared.scheduleReminders(using: appState)
         }
     }

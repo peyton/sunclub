@@ -20,6 +20,7 @@ from scripts.appstore.provisioning_profiles import (
     find_reusable_certificate_ids,
     missing_profile_entitlements,
     profile_certificate_ids,
+    required_capabilities_from_entitlements,
 )
 
 
@@ -90,6 +91,80 @@ class FakeProfilesClient:
 
     def patch(self, path: str, body: Mapping[str, Any]) -> dict[str, Any]:
         raise AssertionError(f"Unexpected PATCH: {path} {body}")
+
+
+def test_weatherkit_entitlement_requires_capability_and_app_service() -> None:
+    capabilities = required_capabilities_from_entitlements(
+        {"com.apple.developer.weatherkit": True}
+    )
+
+    assert capabilities == [
+        {"capabilityType": "WEATHERKIT"},
+        {"capabilityType": "WEATHER_KIT"},
+    ]
+
+
+def test_weatherkit_capability_reconciliation_posts_weatherkit_payload() -> None:
+    client = FakeProfilesClient()
+    requests: list[tuple[str, Mapping[str, Any]]] = []
+
+    def get_collection(
+        path: str,
+        query: Mapping[str, str | int | bool | Sequence[str]] | None = None,
+    ) -> list[dict[str, Any]]:
+        assert path == "/bundleIds/bundle-weatherkit/bundleIdCapabilities"
+        assert query is None
+        return []
+
+    def post(path: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        requests.append((path, body))
+        return {
+            "data": {
+                "type": "bundleIdCapabilities",
+                "id": "cap-weatherkit",
+                "attributes": body["data"]["attributes"],  # type: ignore[index]
+            }
+        }
+
+    client.get_collection = get_collection  # type: ignore[method-assign]
+    client.post = post  # type: ignore[method-assign]
+
+    provisioning_profiles.ensure_bundle_id_capabilities(
+        client,
+        {"id": "bundle-weatherkit"},
+        {"com.apple.developer.weatherkit": True},
+    )
+
+    assert requests == [
+        (
+            "/bundleIdCapabilities",
+            {
+                "data": {
+                    "type": "bundleIdCapabilities",
+                    "attributes": {"capabilityType": "WEATHERKIT"},
+                    "relationships": {
+                        "bundleId": {
+                            "data": {"type": "bundleIds", "id": "bundle-weatherkit"}
+                        }
+                    },
+                }
+            },
+        ),
+        (
+            "/bundleIdCapabilities",
+            {
+                "data": {
+                    "type": "bundleIdCapabilities",
+                    "attributes": {"capabilityType": "WEATHER_KIT"},
+                    "relationships": {
+                        "bundleId": {
+                            "data": {"type": "bundleIds", "id": "bundle-weatherkit"}
+                        }
+                    },
+                }
+            },
+        ),
+    ]
 
 
 def test_collect_archived_bundles_reads_single_target_watch_app(

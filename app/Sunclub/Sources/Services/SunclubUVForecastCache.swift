@@ -8,8 +8,8 @@ struct SunclubUVForecastCachePolicy: Sendable {
     let locationRadiusMeters: CLLocationDistance
 
     static let `default` = SunclubUVForecastCachePolicy(
-        maxAge: 60 * 60 * 2,
-        locationRadiusMeters: 5_000
+        maxAge: SunclubUVDataFreshness.verifiedMaxAge,
+        locationRadiusMeters: 25_000
     )
 }
 
@@ -30,11 +30,19 @@ final class SunclubUVForecastCache: @unchecked Sendable {
     }
 
     func freshBundle(for location: CLLocation, now: Date = Date()) -> SunclubUVForecastBundle? {
+        bundle(for: location, now: now, maximumAge: policy.maxAge)
+    }
+
+    func bundle(
+        for location: CLLocation,
+        now: Date = Date(),
+        maximumAge: TimeInterval
+    ) -> SunclubUVForecastBundle? {
         guard let bundle = loadBundle() else {
             return nil
         }
 
-        guard bundle.isFresh(now: now, ttl: policy.maxAge) else {
+        guard bundle.isFresh(now: now, ttl: maximumAge) else {
             return nil
         }
 
