@@ -393,6 +393,31 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
+    func testLiquidGlassTabBarKeepsLogTodayInTrailingTabRow() throws {
+        let app = launchHome()
+        let timelineTab = app.buttons["timeline.footer.today"]
+        let settingsTab = app.buttons["timeline.footer.settings"]
+        let logToday = app.buttons["home.logManually"]
+
+        XCTAssertTrue(timelineTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(logToday.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            logToday.frame.midY,
+            timelineTab.frame.midY,
+            accuracy: 8,
+            "Expected Log Today and the navigation tabs to share one bottom row."
+        )
+        XCTAssertGreaterThan(
+            logToday.frame.minX - settingsTab.frame.maxX,
+            8,
+            "Expected visible separation between the navigation group and Log Today."
+        )
+        XCTAssertGreaterThanOrEqual(logToday.frame.height, 44)
+        XCTAssertTrue(logToday.isHittable)
+    }
+
+    @MainActor
     func testDarkModeHomeAndSettingsRemainUsable() throws {
         let app = launchHome(additionalArguments: [
             "UITEST_FORCE_DARK_MODE",
@@ -418,11 +443,7 @@ final class SunclubUITests: XCTestCase {
 
         let contextualAction = app.buttons["home.logManually"]
         XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(
-            contextualAction.frame.width,
-            app.frame.width / 2,
-            "Expected the expanded native accessory to reserve a full-width action surface."
-        )
+        XCTAssertGreaterThanOrEqual(contextualAction.frame.width, 44)
         XCTAssertGreaterThanOrEqual(contextualAction.frame.height, 44)
         XCTAssertTrue(contextualAction.isHittable)
         XCTAssertFalse(contextualAction.label.isEmpty)
@@ -1162,13 +1183,25 @@ final class SunclubUITests: XCTestCase {
         XCTAssertTrue(waitForVerifiedUVForecast(in: app, timeout: 15))
         let tomorrowIdentifier = "timeline.day.\(dayIdentifier(offset: 1))"
         let tomorrowRow = app.descendants(matching: .any)[tomorrowIdentifier]
+        let timelineScroll = app.scrollViews["timeline.scroll"]
+        XCTAssertTrue(timelineScroll.waitForExistence(timeout: 5))
         XCTAssertTrue(
-            scrollToHittableElement(
+            scrollToHittableElementByPosition(
+                timelineHeadline(in: app),
+                in: app,
+                attempts: 160,
+                scrollSurface: timelineScroll,
+                directionWhenMissing: .scrollDown,
+                distance: 0.6
+            ),
+            "Expected the timeline to return to its top before browsing future days."
+        )
+        XCTAssertTrue(
+            scrollToHittableElementByPosition(
                 tomorrowRow,
                 in: app,
-                attempts: 20,
-                scrollSurface: app.scrollViews.firstMatch,
-                scrollDownFirst: true
+                attempts: 60,
+                scrollSurface: timelineScroll
             ),
             "Expected tomorrow's forecast row to remain operable."
         )
@@ -1929,9 +1962,45 @@ final class SunclubUITests: XCTestCase {
     }
 
     @MainActor
-    private func nudgeScrollSurface(_ surface: XCUIElement, direction: ScrollDirection) {
-        let startY: CGFloat = direction == .scrollDown ? 0.35 : 0.65
-        let endY: CGFloat = direction == .scrollDown ? 0.65 : 0.35
+    private func scrollToHittableElementByPosition(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int,
+        scrollSurface: XCUIElement,
+        directionWhenMissing: ScrollDirection = .scrollUp,
+        distance: CGFloat = 0.12
+    ) -> Bool {
+        if element.waitForExistence(timeout: 2), element.isHittable {
+            return true
+        }
+
+        for _ in 0..<attempts {
+            let direction: ScrollDirection
+            if element.exists, element.frame.maxY <= app.frame.minY {
+                direction = .scrollDown
+            } else if element.exists {
+                direction = .scrollUp
+            } else {
+                direction = directionWhenMissing
+            }
+            nudgeScrollSurface(scrollSurface, direction: direction, distance: distance)
+            if element.waitForExistence(timeout: 0.5), element.isHittable {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    @MainActor
+    private func nudgeScrollSurface(
+        _ surface: XCUIElement,
+        direction: ScrollDirection,
+        distance: CGFloat = 0.3
+    ) {
+        let halfDistance = distance / 2
+        let startY: CGFloat = direction == .scrollDown ? 0.5 - halfDistance : 0.5 + halfDistance
+        let endY: CGFloat = direction == .scrollDown ? 0.5 + halfDistance : 0.5 - halfDistance
         let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
         let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
         start.press(forDuration: 0.05, thenDragTo: end)

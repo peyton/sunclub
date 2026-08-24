@@ -351,6 +351,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
     let footerMaxWidth: CGFloat?
     let footerFrameAlignment: Alignment
     let showsFooter: Bool
+    let scrollAccessibilityIdentifier: String?
 
     init(
         contentAlignment: Alignment = .topLeading,
@@ -359,6 +360,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         footerMaxWidth: CGFloat? = nil,
         footerFrameAlignment: Alignment = .center,
         showsFooter: Bool = true,
+        scrollAccessibilityIdentifier: String? = nil,
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
@@ -368,6 +370,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         self.footerMaxWidth = footerMaxWidth
         self.footerFrameAlignment = footerFrameAlignment
         self.showsFooter = showsFooter
+        self.scrollAccessibilityIdentifier = scrollAccessibilityIdentifier
         self.content = content()
         self.footer = footer()
     }
@@ -401,8 +404,9 @@ struct SunLightScreen<Content: View, Footer: View>: View {
         }
     }
 
+    @ViewBuilder
     private func scrollingContent(proxy: GeometryProxy) -> some View {
-        ScrollView(showsIndicators: false) {
+        let scrollView = ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
                 content
             }
@@ -423,6 +427,12 @@ struct SunLightScreen<Content: View, Footer: View>: View {
                 topStatusBarFadeProgress = newProgress
             }
         )
+
+        if let scrollAccessibilityIdentifier {
+            scrollView.accessibilityIdentifier(scrollAccessibilityIdentifier)
+        } else {
+            scrollView
+        }
     }
 
     private func legacyLayout(proxy: GeometryProxy) -> some View {
@@ -473,6 +483,7 @@ extension SunLightScreen where Footer == EmptyView {
         contentAlignment: Alignment = .topLeading,
         contentMaxWidth: CGFloat? = nil,
         contentFrameAlignment: Alignment = .leading,
+        scrollAccessibilityIdentifier: String? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.init(
@@ -480,6 +491,7 @@ extension SunLightScreen where Footer == EmptyView {
             contentMaxWidth: contentMaxWidth,
             contentFrameAlignment: contentFrameAlignment,
             showsFooter: false,
+            scrollAccessibilityIdentifier: scrollAccessibilityIdentifier,
             content: content
         ) { EmptyView() }
     }
