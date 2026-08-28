@@ -8,7 +8,7 @@ tuist = { version = "4.205.0", os = ["macos"] }
 hk = "1.56.1"
 actionlint = "1.7.12"
 python = "3.14.7"
-uv = "0.12.5"
+uv = "0.12.6"
 node = "26.8.0"
 "npm:prettier" = "3.9.6"
 "npm:wrangler" = "4.125.0"
