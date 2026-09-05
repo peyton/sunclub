@@ -98,7 +98,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         ])
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].waitForExistence(timeout: 5))
         XCTAssertLessThan(averageScreenshotLuminance(), 0.70)
 
         XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))

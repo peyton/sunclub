@@ -186,7 +186,8 @@ class SunclubUITestCase: XCTestCase {
     func performBackSwipe(in app: XCUIApplication) {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
         let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: end)
+        // Hold at the destination before release so this models a completed back drag.
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0.15)
     }
 
     @MainActor

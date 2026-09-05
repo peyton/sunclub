@@ -635,15 +635,21 @@ final class SunclubHistoryService {
 
         let restorePointRevisions = try revisions(forBatchID: session.restorePointBatchID)
         let restorePointSettings = try settingsRevision(forBatchID: session.restorePointBatchID)
+        var removedDays = Set<Date>()
 
-        return try commitRecoveryChange {
+        return try commitRecoveryChange(validate: {
+            for day in removedDays where try self.record(for: day) != nil {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+        }, {
             let batch = try createBatch(
                 kind: .restore,
                 scope: .timeline,
                 scopeIdentifier: "timeline",
-                summary: "Restored saved values from before the import, preserving other current days.",
+                summary: "Undid the import.",
                 isLocalOnly: true
             )
+            removedDays = try insertImportUndoDeletions(session, restorePointRevisions: restorePointRevisions, into: batch)
             if let restorePointSettings {
                 let currentSettings = try settings().projectionSnapshot
                 context.insert(
@@ -661,7 +667,60 @@ final class SunclubHistoryService {
                 )
             }
             return batch
+        })
+    }
+
+    private func insertImportUndoDeletions(
+        _ session: SunclubImportSession,
+        restorePointRevisions: [DailyRecordRevision],
+        into batch: SunclubChangeBatch
+    ) throws -> Set<Date> {
+        let originalDays = Set(restorePointRevisions.map { calendar.startOfDay(for: $0.startOfDay) })
+        let importedBatchIDs = Set(session.importedBatchIDs)
+        let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
+        // Automatic legacy-store recovery must remain non-destructive.
+        guard batches.contains(where: {
+            $0.kind == .importLocal && $0.importSessionID == session.id && importedBatchIDs.contains($0.id)
+        }) else { return [] }
+        let revisionsByDay = Dictionary(grouping: Self.sortedRecordRevisions(
+            try context.fetch(FetchDescriptor<DailyRecordRevision>())
+        )) { calendar.startOfDay(for: $0.startOfDay) }
+        var removedDays = Set<Date>()
+
+        for record in try records() {
+            let day = calendar.startOfDay(for: record.startOfDay)
+            guard !originalDays.contains(day),
+                  let latest = revisionsByDay[day]?.last,
+                  importOwnsRevision(latest, session: session, batches: batches),
+                  latest.snapshot?.makeModel().projectionSnapshot == record.projectionSnapshot else { continue }
+
+            let deletion = DailyRecordRevision(
+                deletedDay: day, batch: batch, changedFields: Self.allRecordFields.union([.isDeleted])
+            )
+            // This explicit removal must not auto-merge a foreign-author imported value back in.
+            deletion.batchKindRawValue = SunclubChangeKind.deleteRecord.rawValue
+            context.insert(deletion)
+            removedDays.insert(day)
         }
+        return removedDays
+    }
+
+    private func importOwnsRevision(
+        _ revision: DailyRecordRevision,
+        session: SunclubImportSession,
+        batches: [SunclubChangeBatch]
+    ) -> Bool {
+        let importedIDs = Set(session.importedBatchIDs)
+        var candidateID = revision.batchID
+        var visited = Set<UUID>()
+        while visited.insert(candidateID).inserted {
+            let matches = batches.filter { $0.id == candidateID }
+            guard matches.count == 1, let batch = matches.first else { return false }
+            if importedIDs.contains(batch.id), batch.importSessionID == session.id { return true }
+            guard batch.kind == .conflictAutoMerge, let originalID = batch.inverseOfBatchID else { return false }
+            candidateID = originalID
+        }
+        return false
     }
 
     @discardableResult
@@ -778,6 +837,7 @@ final class SunclubHistoryService {
 
     private func commitRecoveryChange<Value>(
         rebuildsProjections: Bool = true,
+        validate: () throws -> Void = {},
         _ operation: () throws -> Value
     ) throws -> Value {
         var value: Value?
@@ -787,6 +847,7 @@ final class SunclubHistoryService {
                 if rebuildsProjections {
                     try rebuildProjections(savingChanges: false)
                 }
+                try validate()
                 try mutationGuard()
             }
         } catch {
@@ -1735,6 +1796,7 @@ enum HistoryServiceError: LocalizedError {
     case batchAlreadyUndone
     case batchCannotRedo
     case importSessionNotFound
+    case importUndoIncomplete
     case logicalOrderExhausted
 
     var errorDescription: String? {
@@ -1749,6 +1811,8 @@ enum HistoryServiceError: LocalizedError {
             return "That change can't be redone right now."
         case .importSessionNotFound:
             return "Sunclub couldn't find that import anymore."
+        case .importUndoIncomplete:
+            return "This backup has inconsistent history dates. Undo wasn't applied; your history is unchanged. Try another backup."
         case .logicalOrderExhausted:
             return "Sunclub couldn't assign the next history order."
         }
