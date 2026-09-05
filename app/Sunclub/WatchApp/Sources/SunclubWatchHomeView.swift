@@ -25,11 +25,11 @@ struct SunclubWatchHomeView: View {
     }
 
     private var loggedStatusText: String {
-        guard let lastVerifiedAt = snapshot.lastVerifiedAt else {
+        guard let lastVerifiedAt = snapshot.lastReappliedAt ?? snapshot.lastVerifiedAt else {
             return "Logged"
         }
 
-        return "Logged \(lastVerifiedAt.formatted(date: .omitted, time: .shortened))"
+        return "Applied \(lastVerifiedAt.formatted(date: .omitted, time: .shortened))"
     }
 
     private var loggedDetailText: String {
@@ -41,7 +41,8 @@ struct SunclubWatchHomeView: View {
     }
 
     private var primaryAction: HomeDailyPlanAction {
-        snapshot.homeDailyPlanAction()
+        guard snapshot.isOnboardingComplete else { return .openSettings }
+        return snapshot.hasLoggedToday() ? .logReapply : .logToday
     }
 
     private var primaryActionTitle: String {
@@ -49,7 +50,7 @@ struct SunclubWatchHomeView: View {
         case .logToday:
             return "Log sunscreen"
         case .logReapply:
-            return "Reapply now"
+            return "Log reapplication"
         case .viewProgress:
             return "Refresh progress"
         default:
@@ -87,18 +88,20 @@ struct SunclubWatchHomeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-            header
+        TimelineView(.periodic(from: .now, by: 60)) { _ in
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                header
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                    uvCard
-                    statusCard
-                    reapplyCard
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        statusCard
+                        reapplyCard
+                        uvCard
+                    }
                 }
-            }
 
-            logButton
+                logButton
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 10)
@@ -191,17 +194,9 @@ struct SunclubWatchHomeView: View {
                 let now = Date()
                 if let currentUVIndex = snapshot.currentUVIndex(at: now) {
                     let level = UVLevel.from(index: currentUVIndex)
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        AppText("\(currentUVIndex)", style: .largeTitle, color: watchTint(for: level))
-                        VStack(alignment: .leading, spacing: 2) {
-                            AppText("UV", style: .captionMedium, color: watchTextPrimary)
-                            AppText(
-                                level.displayName,
-                                style: .caption,
-                                color: watchTextSecondary
-                            )
-                        }
-                    }
+                    Text("UV \(currentUVIndex) · \(level.displayName)")
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(watchTextSecondary)
                     if let peakUVIndex = snapshot.peakUVIndex(at: now),
                        let peakUVHour = snapshot.peakUVHour {
                         AppText(
@@ -226,13 +221,14 @@ struct SunclubWatchHomeView: View {
 
                 if let deadline = snapshot.reapplyDeadline() {
                     let isDue = deadline <= Date()
-                    AppText(
-                        isDue
-                            ? "Reapply due"
-                            : "Reapply in \(durationLabel(until: deadline, now: Date()))",
-                        style: .captionMedium,
-                        color: isDue ? AppColor.warning : watchTextSecondary
-                    )
+                    if isDue {
+                        AppText("Reapply due", style: .bodyMedium, color: watchTextPrimary)
+                    } else {
+                        Text(timerInterval: Date()...max(Date(), deadline), countsDown: true)
+                            .font(AppFont.rounded(size: 24, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(watchTextPrimary)
+                    }
                 } else {
                     AppText(
                         snapshot.hasLoggedToday() ? "No timer" : "Log to time reapply",
@@ -241,21 +237,6 @@ struct SunclubWatchHomeView: View {
                     )
                 }
             }
-        }
-    }
-
-    private func watchTint(for level: UVLevel) -> Color {
-        switch level {
-        case .low:
-            return AppColor.success
-        case .moderate, .high:
-            return AppColor.sun
-        case .veryHigh:
-            return AppColor.warning
-        case .extreme:
-            return AppColor.Watch.extreme
-        case .unknown:
-            return watchTextSecondary
         }
     }
 
@@ -284,18 +265,4 @@ struct SunclubWatchHomeView: View {
         }
     }
 
-    private func durationLabel(until deadline: Date, now: Date) -> String {
-        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(now) / 60)))
-        let hours = minutesUntilDeadline / 60
-        let minutes = minutesUntilDeadline % 60
-
-        switch (hours, minutes) {
-        case (0, let minutes):
-            return "\(minutes)m"
-        case (let hours, 0):
-            return "\(hours)h"
-        default:
-            return "\(hours)h \(minutes)m"
-        }
-    }
 }

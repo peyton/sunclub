@@ -16,25 +16,27 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             return
         }
 
-        guard let record = state.record(for: state.currentDateValue),
-              let uvPayload = Self.compactSurfaceUVPayload(
-                reading: state.uvReading,
-                forecast: state.uvForecast,
-                now: state.currentDateValue
-              ) else {
-            await endAll()
-            return
-        }
-
-        guard uvPayload.level == .high || uvPayload.level == .veryHigh || uvPayload.level == .extreme else {
-            await endAll()
-            return
-        }
-
         let now = state.currentDateValue
+        guard let record = state.record(for: now) else {
+            await endAll()
+            return
+        }
+        let uvPayload = Self.compactSurfaceUVPayload(
+            reading: state.uvReading,
+            forecast: state.uvForecast,
+            now: now
+        ) ?? SunclubLiveActivityUVPayload(
+            currentUVIndex: 0,
+            peakUVIndex: 0,
+            level: .unknown,
+            validUntil: .distantPast
+        )
+
         let reapplyPlan = state.reapplyReminderPlan
         let reapplyStartDate = record.lastReappliedAt ?? record.verifiedAt
         guard state.settings.reapplyReminderEnabled,
+              reapplyStartDate <= now,
+              Calendar.current.isDate(reapplyStartDate, inSameDayAs: now),
               let reapplyDeadline = ReminderPlanner.reapplyFireDate(
                 from: reapplyStartDate,
                 intervalMinutes: reapplyPlan.intervalMinutes
@@ -51,8 +53,14 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             now: now
         )
 
+        await publish(contentState, now: now)
+    }
+
+    private func publish(_ contentState: SunclubLiveActivityAttributes.ContentState, now: Date) async {
+        guard let reapplyDeadline = contentState.reapplyDeadline else { return }
         let attributes = SunclubLiveActivityAttributes(headline: "Reapply timer")
-        let content = ActivityContent(state: contentState, staleDate: uvPayload.validUntil)
+        let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? reapplyDeadline
+        let content = ActivityContent(state: contentState, staleDate: min(reapplyDeadline, nextDay))
 
         if let existing = Activity<SunclubLiveActivityAttributes>.activities.first {
             await existing.update(content)
@@ -78,8 +86,8 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
     func snoozeAll(until deadline: Date, now: Date = Date()) async {
         for activity in Activity<SunclubLiveActivityAttributes>.activities {
             let state = Self.snoozedContentState(activity.content.state, until: deadline, now: now)
-            let timerStaleDate = Calendar.current.date(byAdding: .hour, value: 1, to: deadline)
-            let staleDate = [state.uvValidUntil, timerStaleDate].compactMap { $0 }.min()
+            let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? deadline
+            let staleDate = min(deadline, nextDay)
             let content = ActivityContent(
                 state: state,
                 staleDate: staleDate
@@ -146,7 +154,7 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             currentUVIndex: uvPayload.currentUVIndex,
             peakUVIndex: uvPayload.peakUVIndex,
             countdownLabel: Self.reapplyCountdownLabel(deadline: reapplyDeadline, now: now),
-            lastAppliedLabel: record.verifiedAt.formatted(date: .omitted, time: .shortened),
+            lastAppliedLabel: (record.lastReappliedAt ?? record.verifiedAt).formatted(date: .omitted, time: .shortened),
             lastLogDetail: Self.lastLogDetail(for: record),
             reapplyStartDate: reapplyStartDate,
             reapplyDeadline: reapplyDeadline,

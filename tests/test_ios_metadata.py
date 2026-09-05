@@ -233,7 +233,7 @@ def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
         for item in info["UIApplicationShortcutItems"]
         if item["UIApplicationShortcutItemType"] == "app.peyton.sunclub.log-today"
     )
-    assert quick_action["UIApplicationShortcutItemTitle"] == "Log Today"
+    assert quick_action["UIApplicationShortcutItemTitle"] == "Log sunscreen"
     assert quick_action["UIApplicationShortcutItemIconSymbolName"] == "sun.max.fill"
 
 
@@ -307,30 +307,63 @@ def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
     assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
 
 
-def test_today_widget_is_single_non_opening_log_button() -> None:
+def test_widget_keeps_shipped_families_and_separates_logging_from_navigation() -> None:
     source = WIDGETS_SWIFT.read_text()
-    today_widget = source.split("struct SunclubLogTodayWidget: Widget {", 1)[1].split(
-        "struct SunclubStreakWidget: Widget {", 1
-    )[0]
-    today_view = source.split("private struct SunclubLogTodayWidgetView: View {", 1)[
-        1
-    ].split("private struct SunclubStreakWidgetView: View {", 1)[0]
+    expected_families = {
+        "SunclubLogTodayWidget": {
+            "systemSmall",
+            "systemMedium",
+            "systemLarge",
+            "systemExtraLarge",
+            "accessoryCircular",
+            "accessoryRectangular",
+        },
+        "SunclubStreakWidget": {
+            "systemSmall",
+            "systemMedium",
+            "accessoryCircular",
+            "accessoryRectangular",
+        },
+        "SunclubStatsWidget": {
+            "systemMedium",
+            "systemLarge",
+            "accessoryInline",
+            "accessoryRectangular",
+        },
+        "SunclubCalendarWidget": {
+            "systemMedium",
+            "systemLarge",
+            "accessoryInline",
+            "accessoryRectangular",
+        },
+        "SunclubAccountabilityWidget": {
+            "systemSmall",
+            "systemMedium",
+            "systemLarge",
+            "systemExtraLarge",
+            "accessoryInline",
+            "accessoryCircular",
+            "accessoryRectangular",
+        },
+    }
+    for kind, expected in expected_families.items():
+        widget_source = source.split(f"struct {kind}: Widget {{", 1)[1]
+        family_list = widget_source.split(".supportedFamilies([", 1)[1].split("])", 1)[
+            0
+        ]
+        assert set(re.findall(r"\.(\w+)", family_list)) == expected
 
-    assert ".accessoryInline" not in today_widget
-    assert "Button(intent: LogTodayWidgetIntent())" in today_view
-    assert "SunclubLogSunscreenButtonSurface(presentation: presentation)" in today_view
-    assert "Link(destination:" not in today_view
-    assert "LogReapplyWidgetIntent" not in today_view
-    assert ".none:" in today_view
-    assert (
-        "Log Sunscreen"
-        in (
-            SOURCES_DIR / "WidgetSupport" / "SunclubLogTodayWidgetPresentation.swift"
-        ).read_text()
-    )
-    assert "case (.accessoryInline, _)" not in today_view
-    assert "case (.accessoryCircular, _)" not in today_view
-    assert "case (.accessoryRectangular, _)" not in today_view
+    assert "Button(intent: LogSunscreenWidgetIntent())" in source
+    assert "Link(destination: SunclubWidgetRoute.today.url)" in source
+    assert ".widgetURL(SunclubWidgetRoute.today.url)" in source
+    for kind in (
+        "SunclubLogTodayWidget",
+        "SunclubStreakWidget",
+        "SunclubStatsWidget",
+        "SunclubCalendarWidget",
+        "SunclubAccountabilityWidget",
+    ):
+        assert f'widgetKind("{kind}")' in source
 
 
 def test_widget_extension_avoids_large_bitmap_backgrounds() -> None:

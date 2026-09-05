@@ -31,7 +31,7 @@
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Export Sunclub History`: returns a PDF `IntentFile`.
 - `Create Logged Days Card`: returns a shareable image `IntentFile`.
-- Widget and Control Center buttons use non-discoverable widget intents for Log Today so they can complete in place without opening Sunclub or inheriting user Shortcut toggles. User-run Shortcuts still expose Log Reapply separately.
+- Widget and Control Center buttons use a non-discoverable adaptive logging intent. The first action logs sunscreen; later actions log a reapplication in place, including when reapply reminders are off or no reminder is due. These app-owned actions do not open Sunclub or inherit user Shortcut toggles. User-run Shortcuts still expose Log Reapply separately.
 - Notification actions use the same runtime: `Reapplied now` performs a durable reapply write, while `Snooze 30 min` schedules one bounded local reminder.
 
 ## App Shortcuts
@@ -78,6 +78,8 @@ The foreground reapply check-in remains available after today's first log even w
 Compatibility routes are normalized before display: `achievements` opens weekly insights inside History, `friends` opens Settings, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
 
 Legacy app destinations `settingsSunscreenReminders`, `settingsReapplyReminder` and `settingsNotifications` remain accepted and show the consolidated Reminders page. These AppRoute names are not additional public URL route values. Compatibility sharing data and pending invites are retained; onboarding imports pending invites before finishing at Today.
+
+Widget status links open Today. The legacy `updateToday` widget route still opens the existing editor for callers that already use it.
 
 URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
 
@@ -135,7 +137,7 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Unit: malformed automation links fail before creating requests or mutating app state.
 - Unit: callback success and error payloads encode correctly.
 - Unit: settings toggles block URL and Shortcut writes while preserving open-only routing rules.
-- Unit: widget invocation logs in place even when URL and Shortcut writes are disabled.
+- Unit: widget invocation adaptively logs the first sunscreen application and later reapplications in place, even when URL and Shortcut writes are disabled or reapply reminders are off or not due.
 - Unit: automation logging uses revision history and refreshes widget snapshots.
 - Unit: old growth settings payloads decode with default automation preferences.
 - Unit: file-producing intents return expected file metadata.

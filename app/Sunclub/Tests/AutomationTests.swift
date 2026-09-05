@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import UniformTypeIdentifiers
+import UserNotifications
 import XCTest
 @testable import Sunclub
 
@@ -622,6 +623,148 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(repeated.didChange, false)
         XCTAssertEqual(harness.notificationManager.scheduleRemindersCount, schedules)
         XCTAssertEqual(harness.state.changeBatches.count, batches)
+    }
+
+    func testAdaptiveLoggingUsesCurrentHistoryWithRemindersOffAndIgnoresDuplicateTaps() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let history = SunclubHistoryService(context: context)
+        try history.bootstrapIfNeeded()
+        try history.applySettingsChange(kind: .reminderSettings, summary: "Setup", changedFields: [.hasCompletedOnboarding]) {
+            $0.hasCompletedOnboarding = true
+        }
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let store = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        let growth = SunclubGrowthFeatureStore(userDefaults: defaults)
+        func log(_ date: Date, explicitReapply: Bool = false) throws -> SunclubAutomationResult {
+            try SunclubAutomationRuntime.performAdaptiveLog(
+                context: context, growthStore: growth, widgetStore: store, now: date,
+                requiresExistingRecord: explicitReapply
+            )
+        }
+        XCTAssertNil(SunclubLoggingReminderBridge.request(snapshot: store.load(), now: now))
+        XCTAssertFalse(try history.settings().reapplyReminderEnabled)
+        XCTAssertEqual(try log(now).action, "log-today")
+        let firstSnapshot = store.load()
+        let batchCount = try context.fetchCount(FetchDescriptor<SunclubChangeBatch>())
+        XCTAssertEqual(try log(now.addingTimeInterval(1)).didChange, false)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<SunclubChangeBatch>()), batchCount)
+        XCTAssertEqual(store.load(), firstSnapshot)
+        // Even a stale unlogged snapshot must not overwrite the actual first application.
+        store.save(.empty)
+        XCTAssertEqual(try log(now.addingTimeInterval(120)).action, "reapply")
+        XCTAssertEqual(try history.record(for: now)?.reapplyCount, 1)
+        XCTAssertEqual(try history.record(for: now)?.verifiedAt, now)
+        let reappliedSnapshot = store.load()
+        XCTAssertEqual(try log(now.addingTimeInterval(121), explicitReapply: true).didChange, false)
+        XCTAssertEqual(store.load(), reappliedSnapshot)
+        try history.applySettingsChange(
+            kind: .reminderSettings, summary: "Enable reminders", changedFields: [.reapplyReminderEnabled]
+        ) { $0.reapplyReminderEnabled = true }
+        // Reapplication remains available well before the default two-hour reminder.
+        XCTAssertEqual(try log(now.addingTimeInterval(240)).didChange, true)
+        XCTAssertEqual(try history.record(for: now)?.reapplyCount, 2)
+        let reminder = try XCTUnwrap(SunclubLoggingReminderBridge.request(
+            snapshot: store.load(), now: now.addingTimeInterval(250)
+        ))
+        XCTAssertTrue(reminder.identifier.hasPrefix("sunscreen.reapply."))
+        XCTAssertEqual(reminder.content.userInfo["targetRoute"] as? String, "reapply")
+        let trigger = try XCTUnwrap(reminder.trigger as? UNTimeIntervalNotificationTrigger)
+        XCTAssertEqual(trigger.timeInterval, 119 * 60 + 50, accuracy: 1)
+        let tomorrow = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: now))
+        XCTAssertNil(SunclubLoggingReminderBridge.request(snapshot: store.load(), now: tomorrow))
+        XCTAssertThrowsError(try log(tomorrow, explicitReapply: true)) {
+            XCTAssertEqual($0 as? SunclubAutomationError, .recordRequired)
+        }
+        XCTAssertEqual(try log(tomorrow).action, "log-today")
+        XCTAssertEqual(try history.record(for: tomorrow)?.reapplyCount, 0)
+    }
+
+    func testAdaptiveLoggingRequiresSetupAndFailedWritesLeaveSnapshotUntouched() throws {
+        enum Failure: Error { case injected }
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let history = SunclubHistoryService(context: context)
+        try history.bootstrapIfNeeded()
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let store = SunclubWidgetSnapshotStore(userDefaults: defaults)
+        let growth = SunclubGrowthFeatureStore(userDefaults: defaults)
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        XCTAssertThrowsError(try SunclubAutomationRuntime.performAdaptiveLog(
+            context: context, growthStore: growth, widgetStore: store, now: now
+        )) { XCTAssertEqual($0 as? SunclubAutomationError, .onboardingRequired) }
+        try history.applySettingsChange(kind: .reminderSettings, summary: "Setup", changedFields: [.hasCompletedOnboarding]) {
+            $0.hasCompletedOnboarding = true
+        }
+        let snapshot = store.load()
+        let batches = try context.fetchCount(FetchDescriptor<SunclubChangeBatch>())
+        let failingHistory = SunclubHistoryService(context: context) { throw Failure.injected }
+        XCTAssertThrowsError(try SunclubAutomationRuntime.performAdaptiveLog(
+            context: context, growthStore: growth, widgetStore: store, now: now, historyService: failingHistory
+        ))
+        XCTAssertNil(try history.record(for: now))
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<SunclubChangeBatch>()), batches)
+        XCTAssertEqual(store.load(), snapshot)
+    }
+
+    func testReminderEffectSkipsSupersededSnapshotAfterFetchingPendingRequests() async throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let snapshot = makeReminderSnapshot(now: now)
+        var current = snapshot
+        var removed: [String] = []
+        var additions = 0
+        await SunclubLoggingReminderBridge.sync(
+            snapshot: snapshot, now: now, loadSnapshot: { current },
+            pendingRequests: {
+                current = .empty
+                return []
+            },
+            removeRequests: { removed.append(contentsOf: $0) },
+            addRequest: { _ in additions += 1 }
+        )
+        XCTAssertTrue(removed.isEmpty)
+        XCTAssertEqual(additions, 0)
+    }
+
+    func testReminderEffectRemovesOnlyItsOwnRequestWhenSupersededDuringAdd() async throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let snapshot = makeReminderSnapshot(now: now)
+        let newerSnapshot = makeReminderSnapshot(now: now.addingTimeInterval(120))
+        let newerRequest = try XCTUnwrap(SunclubLoggingReminderBridge.request(
+            snapshot: newerSnapshot, now: now.addingTimeInterval(120)
+        ))
+        var current = snapshot
+        var pending: [String: UNNotificationRequest] = [:]
+        var addedID: String?
+        await SunclubLoggingReminderBridge.sync(
+            snapshot: snapshot, now: now, loadSnapshot: { current },
+            pendingRequests: { [] },
+            removeRequests: { ids in ids.forEach { pending.removeValue(forKey: $0) } },
+            addRequest: { request in
+                addedID = request.identifier
+                pending[request.identifier] = request
+                // Model a newer logging action completing while the add is suspended.
+                current = newerSnapshot
+                pending[newerRequest.identifier] = newerRequest
+            }
+        )
+        XCTAssertNotEqual(addedID, newerRequest.identifier)
+        XCTAssertEqual(Set(pending.keys), [newerRequest.identifier])
+    }
+
+    private func makeReminderSnapshot(now: Date) -> SunclubWidgetSnapshot {
+        SunclubWidgetSnapshot(
+            isOnboardingComplete: true,
+            lastLoggedDay: Calendar.current.startOfDay(for: now),
+            lastVerifiedAt: now,
+            lastReappliedAt: nil,
+            recordedDays: [Calendar.current.startOfDay(for: now)],
+            currentStreak: 1, longestStreak: 1, weeklyAppliedCount: 1,
+            monthlyAppliedCount: 1, monthlyDayCount: 1,
+            mostUsedSPF: nil, currentUVIndex: nil, peakUVIndex: nil, peakUVHour: nil,
+            reapplyReminderEnabled: true, reapplyIntervalMinutes: 120
+        )
     }
 
     private func makeHarness(

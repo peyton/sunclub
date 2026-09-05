@@ -244,7 +244,7 @@ final class NotificationManagerTests: XCTestCase {
         let titles = center.configuredCategories.flatMap { category in
             category.actions.map(\.title)
         }
-        XCTAssertTrue(titles.contains("Reapplied now"))
+        XCTAssertTrue(titles.contains("Log reapplication"))
         XCTAssertTrue(titles.contains("Snooze 30 min"))
     }
 

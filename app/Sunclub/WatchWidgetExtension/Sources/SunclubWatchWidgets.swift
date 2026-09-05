@@ -20,9 +20,7 @@ private struct SunclubWatchProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<SunclubWatchEntry>) -> Void) {
         let snapshot = store.load()
         let now = Date()
-        let refreshDate = snapshot.reapplyDeadline(now: now).flatMap { deadline in
-            deadline > now ? deadline : nil
-        } ?? Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now
+        let refreshDate = snapshot.nextTimelineRefreshDate(after: now)
         let entry = SunclubWatchEntry(date: now, snapshot: snapshot)
         completion(Timeline(entries: [entry], policy: .after(refreshDate)))
     }
@@ -37,107 +35,69 @@ private struct SunclubWatchStatusComplicationView: View {
         entry.snapshot
     }
 
-    private var hasLoggedToday: Bool {
-        snapshot.hasLoggedToday(now: entry.date)
+    private var status: SunclubApplicationStatus {
+        snapshot.applicationStatus(now: entry.date)
     }
 
     private var statusURL: URL {
-        let action = hasLoggedToday ? "open" : "log"
+        let action = status.isSetupComplete && (!status.hasLoggedToday || status.isReapplyDue) ? "log" : "open"
         return URL(string: "\(SunclubRuntimeConfiguration.urlScheme)://watch/\(action)")!
-    }
-
-    private var statusText: String {
-        hasLoggedToday ? "Logged" : "Log sunscreen"
-    }
-
-    private var secondaryText: String {
-        if let reapplyText {
-            return reapplyText
-        }
-        if let uvText {
-            return uvText
-        }
-        return hasLoggedToday ? "Logged today" : "Not logged"
-    }
-
-    private var uvText: String? {
-        guard let currentUVIndex = snapshot.currentUVIndex else {
-            return nil
-        }
-
-        return "UV \(currentUVIndex) \(UVLevel.from(index: currentUVIndex).displayName)"
-    }
-
-    private var reapplyText: String? {
-        guard let deadline = snapshot.reapplyDeadline(now: entry.date) else {
-            return nil
-        }
-        if deadline <= entry.date {
-            return "Reapply due"
-        }
-
-        return "Reapply in \(durationLabel(until: deadline))"
     }
 
     var body: some View {
         Group {
             switch family {
             case .accessoryCircular:
-                accessoryCircular
+                VStack(spacing: 2) {
+                    Image(systemName: status.symbol)
+                        .accessibilityHidden(true)
+                    statusValue
+                        .font(AppFont.rounded(size: 10, weight: .semibold))
+                }
             case .accessoryInline:
-                accessoryInline
+                if status.isReapplyDue {
+                    Text("Reapply due")
+                } else if let lastAppliedAt = status.lastAppliedAt {
+                    Text("Applied \(lastAppliedAt, style: .time)")
+                } else {
+                    Text(status.actionTitle)
+                }
             default:
-                accessoryRectangular
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(status.title)
+                        .font(AppFont.rounded(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    statusValue
+                        .font(AppFont.rounded(size: 17, weight: .semibold))
+                    if status.reapplyDeadline != nil, let lastAppliedAt = status.lastAppliedAt {
+                        Text("Applied \(lastAppliedAt, style: .time)")
+                            .font(AppFont.rounded(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .widgetURL(statusURL)
+        .containerBackground(for: .widget) { Color.clear }
     }
 
-    private var accessoryRectangular: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(statusText)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(secondaryText)
-                .font(.headline)
-            if reapplyText != nil, let uvText {
-                Text(uvText)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var accessoryCircular: some View {
-        ZStack {
-            Circle()
-                .fill(hasLoggedToday ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
-
-            VStack(spacing: 1) {
-                Image(systemName: hasLoggedToday ? "checkmark.circle.fill" : "sun.max.fill")
-                    .font(.caption.weight(.semibold))
-                Text(snapshot.currentUVIndex.map { "UV\($0)" } ?? (hasLoggedToday ? "OK" : "Log"))
-                    .font(.caption2.weight(.bold))
-            }
-        }
-    }
-
-    private var accessoryInline: some View {
-        Text("\(statusText) • \(secondaryText)")
-    }
-
-    private func durationLabel(until deadline: Date) -> String {
-        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(entry.date) / 60)))
-        let hours = minutesUntilDeadline / 60
-        let minutes = minutesUntilDeadline % 60
-
-        switch (hours, minutes) {
-        case (0, let minutes):
-            return "\(minutes)m"
-        case (let hours, 0):
-            return "\(hours)h"
-        default:
-            return "\(hours)h \(minutes)m"
+    @ViewBuilder
+    private var statusValue: some View {
+        if !status.isSetupComplete {
+            Text("Open")
+        } else if status.isReapplyDue {
+            Text("Due")
+        } else if let deadline = status.reapplyDeadline {
+            Text(timerInterval: entry.date...max(entry.date, deadline), countsDown: true)
+                .monospacedDigit()
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+        } else if let lastAppliedAt = status.lastAppliedAt {
+            Text(lastAppliedAt, style: .time)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+        } else {
+            Text("Log")
         }
     }
 }
