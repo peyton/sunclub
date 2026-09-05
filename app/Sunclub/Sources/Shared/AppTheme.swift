@@ -33,32 +33,20 @@ enum AppPalette {
 
     static let cream = AppColor.background
     static let pearl = Color(red: 1.000, green: 0.990, blue: 0.965)
-    static let warmGlow = adaptive(
-        light: uiColor(red: 1.000, green: 0.905, blue: 0.620),
-        dark: uiColor(red: 0.430, green: 0.286, blue: 0.126)
-    )
-    static let sun = adaptive(
-        light: uiColor(red: 0.970, green: 0.670, blue: 0.000),
-        dark: uiColor(red: 1.000, green: 0.705, blue: 0.145)
-    )
+    static let warmGlow = AppColor.sunSoft
+    static let sun = AppColor.sun
     static let nativeChromeTint = adaptive(
         light: uiColor(red: 0.025, green: 0.108, blue: 0.205),
         dark: uiColor(red: 1.000, green: 0.705, blue: 0.145),
         increasedContrastLight: .black,
         increasedContrastDark: .white
     )
-    static let coral = adaptive(
-        light: uiColor(red: 0.870, green: 0.290, blue: 0.220),
-        dark: uiColor(red: 1.000, green: 0.450, blue: 0.340)
-    )
+    static let coral = AppColor.warning
     static let aloe = adaptive(
         light: uiColor(red: 0.320, green: 0.620, blue: 0.410),
         dark: uiColor(red: 0.485, green: 0.830, blue: 0.620)
     )
-    static let pool = adaptive(
-        light: uiColor(red: 0.080, green: 0.455, blue: 0.980),
-        dark: uiColor(red: 0.385, green: 0.745, blue: 0.940)
-    )
+    static let pool = AppColor.accent
     static let uvExtreme = adaptive(
         light: uiColor(red: 0.780, green: 0.255, blue: 0.560),
         dark: uiColor(red: 0.960, green: 0.430, blue: 0.720)
@@ -66,26 +54,14 @@ enum AppPalette {
     static let nightAmber = Color(red: 0.315, green: 0.164, blue: 0.068)
     static let darkCanvas = Color(red: 0.114, green: 0.098, blue: 0.086)
     static let darkSurface = Color(red: 0.171, green: 0.150, blue: 0.129)
-    static let ink = adaptive(
-        light: uiColor(red: 0.025, green: 0.108, blue: 0.205),
-        dark: uiColor(red: 0.964, green: 0.925, blue: 0.855)
-    )
-    static let softInk = adaptive(
-        light: uiColor(red: 0.310, green: 0.360, blue: 0.440),
-        dark: uiColor(red: 0.745, green: 0.690, blue: 0.620)
-    )
-    static let success = adaptive(
-        light: uiColor(red: 0.275, green: 0.760, blue: 0.340),
-        dark: uiColor(red: 0.360, green: 0.875, blue: 0.540)
-    )
+    static let ink = AppColor.Text.primary
+    static let softInk = AppColor.Text.secondary
+    static let success = AppColor.success
     static let warning = adaptive(
         light: uiColor(red: 0.760, green: 0.240, blue: 0.180),
         dark: uiColor(red: 1.000, green: 0.380, blue: 0.300)
     )
-    static let muted = adaptive(
-        light: uiColor(red: 0.825, green: 0.850, blue: 0.875),
-        dark: uiColor(red: 0.430, green: 0.395, blue: 0.360)
-    )
+    static let muted = AppColor.muted
     static let streakAccent = adaptive(
         light: uiColor(red: 0.970, green: 0.670, blue: 0.000),
         dark: uiColor(red: 1.000, green: 0.590, blue: 0.110)
@@ -98,14 +74,8 @@ enum AppPalette {
         light: uiColor(red: 1.000, green: 1.000, blue: 1.000),
         dark: uiColor(red: 0.205, green: 0.178, blue: 0.150)
     )
-    static let elevatedCardFill = adaptive(
-        light: uiColor(red: 1.000, green: 1.000, blue: 1.000),
-        dark: uiColor(red: 0.252, green: 0.220, blue: 0.184)
-    )
-    static let controlFill = adaptive(
-        light: uiColor(red: 0.965, green: 0.976, blue: 1.000),
-        dark: uiColor(red: 0.294, green: 0.252, blue: 0.207)
-    )
+    static let elevatedCardFill = AppColor.surfaceElevated
+    static let controlFill = AppColor.control
     static let editorFill = adaptive(
         light: uiColor(red: 1, green: 1, blue: 1),
         dark: uiColor(red: 0.139, green: 0.122, blue: 0.104)
@@ -580,20 +550,6 @@ extension SunDarkScreen where Footer == EmptyView {
     }
 }
 
-struct SunScreen<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        SunLightScreen {
-            content
-        }
-    }
-}
-
 private struct SunTopStatusBarFade: View {
     let progress: Double
     let background: Color
@@ -1011,20 +967,6 @@ struct SunEmptyStateView: View {
         .padding(20)
         .sunGlassCard(cornerRadius: AppRadius.card)
         .accessibilityElement(children: .combine)
-    }
-}
-
-struct SunStepHeader: View {
-    let step: Int
-    let total: Int
-    var tint: Color = AppPalette.softInk
-
-    var body: some View {
-        Text("Step \(step) of \(total)")
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(tint)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .accessibilityIdentifier("step.header")
     }
 }
 
@@ -1623,75 +1565,6 @@ struct SunForecastStrip: View {
 
     private var displayedHours: [SunclubUVHourForecast] {
         Array(hours.prefix(maxCount))
-    }
-}
-
-struct SunBottomNavigationItem: Identifiable {
-    let id: String
-    let title: String
-    let systemImage: String
-    let accessibilityIdentifier: String
-    let action: () -> Void
-}
-
-struct SunBottomNavigationBar: View {
-    let leadingItems: [SunBottomNavigationItem]
-    let trailingItems: [SunBottomNavigationItem]
-    let primaryTitle: String
-    let primaryIdentifier: String
-    let onPrimaryTap: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            ForEach(leadingItems) { item in
-                navButton(item)
-            }
-
-            Button(action: onPrimaryTap) {
-                Image(systemName: "plus")
-                    .font(AppFont.rounded(size: 22, weight: .bold))
-                    .foregroundStyle(AppColor.onColor)
-                    .frame(width: 52, height: 52)
-                    .background(Circle().fill(AppColor.accent))
-                    .appShadow(AppShadow.floating)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(primaryTitle)
-            .accessibilityIdentifier(primaryIdentifier)
-
-            ForEach(trailingItems) { item in
-                navButton(item)
-            }
-        }
-        .padding(7)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(AppPalette.elevatedCardFill.opacity(0.96))
-                .appShadow(AppShadow.soft)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private func navButton(_ item: SunBottomNavigationItem) -> some View {
-        Button(action: item.action) {
-            VStack(spacing: 4) {
-                Image(systemName: item.systemImage)
-                    .font(AppFont.rounded(size: 18, weight: .semibold))
-                    .accessibilityHidden(true)
-                Text(item.title)
-                    .font(AppFont.rounded(size: 10, weight: .semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(AppPalette.softInk)
-            .frame(maxWidth: .infinity, minHeight: 44)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(item.title)
-        .accessibilityIdentifier(item.accessibilityIdentifier)
     }
 }
 

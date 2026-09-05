@@ -49,95 +49,30 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - Optional SPF and notes metadata now feed a lightweight recap inside `Weekly Summary` and day detail in `History`.
 - The projected app state still works fully offline, but revision history now syncs through the user's private iCloud database by default.
 - Local backup export/import still works without an account migration step. Import changes only the local device until the user explicitly publishes the imported batches to iCloud.
-- The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
+- The container factory selects and recovers the local store location; widgets read a compact mirrored snapshot from app-group `UserDefaults`.
 - The automation runtime backs Apple Shortcuts, Control Center actions, widgets, custom URL scheme actions, and x-callback-url callers. The public contract lives in `../docs/app-automation.md`.
-- Sunclub still has no app-owned accounts or analytics SDKs. The only sync path is the user's private iCloud database.
+- Sunclub still has no app-owned accounts or analytics SDKs. Public Activity sharing transport remains disabled in production while that feature is outside the visible app.
 
-## Project Structure
+## Development
 
-- `Sunclub/Shared`
-  - app routing, previews, root navigation, and app-wide UI shell/theme
-- `Sunclub/Views`
-  - onboarding, home, manual logging, summary, and settings flow
-- `Sunclub/Services`
-  - notifications, persistence helpers, analytics, and supporting services
-- `Sunclub/Models`
-  - `Settings`, `DailyRecord`, and `VerificationMethod`
-- `SunclubTests`
-  - analytics, reminder persistence, normalization, and model tests
-- `SunclubUITests`
-  - flow tests that use `UITEST_MODE` and deterministic routes
-- `../tests`
-  - repo-level Python validation coverage for App Store metadata and submission tooling
+From the repository root:
 
-## Build and Run
+```sh
+just bootstrap
+just run
+```
 
-1. From the repo root, run `just bootstrap` to install tools, sync Python, and prime Tuist's local Xcode cache service.
-2. Run `just generate`.
-3. Run `just run` to build the `SunclubDev` debug app, install it on the dedicated run simulator, and launch it.
-4. If you prefer Xcode, open `app/Sunclub.xcworkspace` after generating the project.
-5. Build and run the `SunclubDev` scheme for local development or the `Sunclub` scheme for release work.
+`just run` builds SunclubDev in Debug, installs it on the run simulator and
+launches it. `just build` builds without launching. Both automatically regenerate
+when project inputs change. For Xcode editing, use `just generate` and open
+`app/Sunclub.xcworkspace`.
 
-## Release Modes
+See the [architecture map and feature recipe](../docs/architecture.md),
+[commands](../docs/commands.md), and mandatory
+[data, accessibility and automation gates](../docs/release-gates.md).
 
-- `SunclubDev` is the default local flavor and installs side by side with TestFlight.
-- `Sunclub` is the production/TestFlight flavor used by `just appstore-archive`.
-- `just release-tag 1.2.3` creates and pushes the `v1.2.3` tag that triggers the TestFlight GitHub Actions workflow.
-
-## Just Targets
-
-- `just bootstrap`
-- `just icons`
-- `just generate`
-- `just build`
-- `just run`
-- `just web-serve`
-- `just web-check`
-- `just web-fmt`
-- `just web-build`
-- `just cloudkit-save-token`
-- `just cloudkit-export-schema`
-- `just cloudkit-validate-schema`
-- `just cloudkit-import-schema`
-- `just cloudkit-reset-dev`
-- `just clean-build`
-- `just clean-generated`
-- `just clean`
-- `just lint`
-- `just fmt`
-- `just test-unit`
-- `just test-ui`
-- `just test-python`
-- `just test`
-- `just ci-lint`
-- `just ci-python`
-- `just ci-build`
-- `just appstore-validate`
-- `just appstore-screenshots`
-- `just appstore-archive`
-- `just release-tag 1.2.3`
-- `just ci`
-
-`just clean-build` removes build artifacts and the generated workspace, `just clean-generated` also removes repo-local caches and environments such as `.venv`, `.mise`, `.cache`, `.config`, `.state`, and `__pycache__`, and `just clean` runs the full cleanup chain.
-
-## Notes
-
-- Daily reminders route directly to manual logging.
-- The widget `Log Today` action routes into the same success flow used by manual logging.
-- Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
-- Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
-- The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
-- The widget suite now covers all iPhone Home Screen and Lock Screen families supported by the app:
-  - `Log Today`: `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge`, `accessoryCircular`, `accessoryRectangular`
-  - `Streak`: `systemSmall`, `systemMedium`, `accessoryCircular`, `accessoryRectangular`
-  - `Stats`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
-  - `Calendar`: `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryRectangular`
-- Widgets and controls route through shared widget routes for summary, history, and manual-update surfaces.
-- Automation routes use `sunclub://automation/...` and `sunclub://x-callback-url/...`; destructive and review-heavy flows open Sunclub instead of writing in the background.
-- The widget `Log Today` action routes into the same success flow used by manual logging.
-- Settings and history edits now write revision batches so changes stay undoable and streaks are recomputed from the projected day timeline.
-- Backup imports stay local-first. Use `Recovery & Changes` if you need to undo an import or publish it to iCloud afterward.
-- The live SwiftData store stays in the app sandbox; widgets read a compact mirrored snapshot from an app-group `UserDefaults` store.
-- The CloudKit helper scripts use repo-local defaults from `scripts/tooling/sunclub.env` and write exported schemas to `.state/cloudkit/` unless `CLOUDKIT_SCHEMA_FILE` overrides the path.
-- UITests use `UITEST_MODE` and route launch arguments such as `UITEST_ROUTE=manualLog` so the flow can be exercised end to end in automation and screenshot capture.
-- Normal build commands ensure the workspace is current before building through `tuist xcodebuild`, so repeated no-op builds skip unnecessary project regeneration.
+SunclubDev installs beside the production Sunclub/TestFlight app. Production
+archive/export uses `just appstore-archive`; signing and upload require successful
+full CI on the exact SHA. Release and App Review details are in
+[TestFlight](../docs/testflight-release.md) and
+[App Store submission](../docs/app-store-submission.md).

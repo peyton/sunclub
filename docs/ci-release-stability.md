@@ -1,5 +1,24 @@
 # CI And Release Stability
 
+## Current execution contract
+
+- `.github/actions/setup/action.yml` installs locked tools, restores download/lint
+  caches and optionally selects the single pinned Xcode and authenticates Tuist.
+  It configures the Xcode cache once per macOS job.
+- Lint and Python run independently of iOS work. iOS PR changes require unit
+  tests, the 13 UI smoke scenarios, and both Release device flavors.
+- Only recognized web/documentation-only PR changes may skip iOS. Unknown paths,
+  empty comparisons and failed detection default to iOS validation.
+- Every master push and manual dispatch runs full UI coverage. Run
+  `gh workflow run ci.yml --ref BRANCH` for a release/refactor candidate.
+- The final `CI` gate uses `always()` and checks every expected result; failed,
+  cancelled and unexpected skipped jobs cannot pass it. Branch rules migrate
+  from five direct job contexts to `CI` only after verifying the new gate.
+- Production signing/upload requires successful full CI on the exact source SHA;
+  PR smoke results are insufficient. Preserve final entitlement/watch validation.
+- Superseded PR runs cancel. Xcode steps remain bounded, with failure artifacts
+  and release diagnostics retained.
+
 ## History Check
 
 Checked on 2026-04-14 with `gh run list` and `git log` across:
@@ -53,8 +72,8 @@ GitHub run cross-check:
 
 ## Rules
 
-- Do not cut a TestFlight tag until the latest `master` CI run for the exact
-  `HEAD` commit succeeds.
+- Do not cut a TestFlight tag until full CI for the exact `HEAD` commit
+  succeeds (master push or manual candidate validation).
 - Keep every GitHub Actions Xcode build or test step bounded with
   `timeout-minutes`. This includes TestFlight archive/upload, App Review
   screenshot capture, App Review archive/upload, and final review submission
@@ -66,9 +85,8 @@ GitHub run cross-check:
   change. CI exposes the macOS build matrix directly as
   `Build iOS (Development)` and `Build iOS (Production)`; do not re-add a
   separate aggregate `Build iOS` job unless required-check naming deliberately
-  changes. The CI path filter may skip iOS test and build jobs only when every
-  changed path is known web-surface work; ambiguous diffs default to running
-  iOS.
+  changes. The CI classifier may skip iOS test and build jobs only when every
+  changed path is recognized web/documentation work; ambiguous diffs run iOS.
 - Run Xcode builds and archives through Tuist. Repo scripts should invoke
   `tuist xcodebuild` via `run_tuist_xcodebuild`, and GitHub macOS test/release
   jobs should run `scripts/tooling/prepare_ci_workspace.sh` before heavy Xcode
@@ -80,14 +98,14 @@ GitHub run cross-check:
   from `app/`, so relative `.build` paths otherwise land under `app/.build`
   while diagnostics and workflow artifacts look under the repo root.
 - Restore repo-local GitHub Actions caches before lint, Python, and Xcode work.
-  Cache `.cache/uv`, `.cache/npm`, `.cache/hk`, `.cache/swiftlint`, and `.venv`;
-  do not cache `.DerivedData` or `.build` because Tuist's Xcode cache owns
+  Cache `.cache/uv`, `.cache/npm`, `.cache/hk`, and `.cache/swiftlint`;
+  do not cache `.venv`, `.DerivedData` or `.build` because Tuist's Xcode cache owns
   compilation artifacts.
 - `tuist share` is opt-in for local builds. GitHub keeps pull-request builds
   local-only and enables sharing only where the workflow explicitly sets
   `SUNCLUB_TUIST_SHARE=1`.
 - Pin CI and release jobs to the same supported stable Xcode version through
-  each workflow's `SUNCLUB_XCODE_VERSION` env value instead of relying on
+  the setup action's `SUNCLUB_XCODE_VERSION` env value instead of relying on
   `latest`, which can move before Tuist, simulators, or App Store validation
   behavior is verified for Sunclub.
 - When a workflow pins an Xcode version that `macos-latest` does not carry,
@@ -190,5 +208,4 @@ GitHub run cross-check:
   including the single-target watch app, iOS widget, and watch widget bundles.
 - Run `just release-preflight` before cutting a TestFlight tag when a local
   macOS/Xcode environment is available. It combines strict metadata validation,
-  Python release guard tests, release-safety unit tests, and the release build
-  shard.
+  Python release guard tests, full unit/UI tests, and both release device builds.

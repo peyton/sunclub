@@ -3,7 +3,9 @@ import XCTest
 
 final class AccessibilityScorecardTests: XCTestCase {
     func testAgentsRequiresPerfectAccessibilityScorecardForAppChanges() throws {
-        let content = try String(contentsOf: repoRoot.appendingPathComponent("AGENTS.md"), encoding: .utf8)
+        let entrypoint = try String(contentsOf: repoRoot.appendingPathComponent("AGENTS.md"), encoding: .utf8)
+        XCTAssertTrue(entrypoint.contains("docs/release-gates.md"))
+        let content = try String(contentsOf: repoRoot.appendingPathComponent("docs/release-gates.md"), encoding: .utf8)
         let requiredPhrases = [
             "Accessibility Scorecard Rules",
             "VoiceOver",
@@ -20,7 +22,7 @@ final class AccessibilityScorecardTests: XCTestCase {
         ]
 
         for phrase in requiredPhrases {
-            XCTAssertTrue(content.contains(phrase), "AGENTS.md must mention \(phrase).")
+            XCTAssertTrue(content.contains(phrase), "The linked release gates must mention \(phrase).")
         }
     }
 

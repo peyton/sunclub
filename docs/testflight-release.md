@@ -15,7 +15,8 @@
   - CloudKit container: `iCloud.app.peyton.sunclub`
   - URL scheme: `sunclub`
 
-`just build`, `just run`, and the iOS test commands use `SunclubDev` so local builds can install alongside TestFlight.
+`just build` and `just run` use `SunclubDev` so local builds can install alongside TestFlight.
+The iOS test commands use the production `Sunclub` test scheme by default.
 `just appstore-archive` and the release workflow use `Sunclub`.
 
 ## Versioning
@@ -38,7 +39,8 @@ Resolved values:
   - build number: `YYYYMMDD.GITHUB_RUN_NUMBER.GITHUB_RUN_ATTEMPT`
 - Local dev:
   - marketing version: latest reachable `vX.Y.Z`, fallback `1.0.0`
-  - build number: `YYYYMMDD.HHMMSS.0`
+  - ordinary build/test number: stable `1`, unless explicitly overridden
+  - local archive number: `YYYYMMDD.HHMMSS.0`
 
 Normal build commands ensure the Tuist workspace is current before `tuist xcodebuild` so the resolved version always reaches the generated project without regenerating on every no-op build.
 
@@ -60,6 +62,11 @@ just release-testflight 1.2.3
 `just release-testflight 1.2.3` is the same tag-cutting path with a TestFlight-specific name.
 The tag workflow archives with `--allow-draft-metadata` so TestFlight uploads are not blocked on final App Store support/privacy URLs or the App Review contact.
 Keep `just appstore-archive` strict for final submission-ready archives.
+Signing/export requires a clean source tree and successful full CI for its exact
+HEAD. Request candidate validation with `gh workflow run ci.yml --ref BRANCH`;
+PR smoke evidence does not qualify. For local unsigned preparation only, use
+`bash scripts/appstore/archive-and-upload.sh --unsigned-archive --skip-export`.
+That path neither signs nor exports.
 Use `just appstore-submit-draft` to prepare App Store Connect metadata, screenshots, review details, and review submission items without final submission.
 Use `SUNCLUB_CONFIRM_APP_REVIEW_SUBMIT=1 just appstore-submit-review` only after strict metadata, App Privacy, screenshots, and App Review contact details are ready.
 The production tag workflow archives unsigned on GitHub, ad-hoc signs the archived app with the resolved production entitlements, then exports and uploads the IPA with App Store Connect API key auth. The runner does not import an Apple signing certificate private key, and signed automatic archives can resolve to iOS Development signing and fail at Apple's certificate limit. The workflow writes final signed-app entitlement diagnostics into `.build/release-diagnostics` and validates those diagnostics before upload, so a TestFlight IPA that is missing CloudKit, push, or app-group entitlements is blocked before testers receive it. The app still keeps runtime CloudKit entitlement guards as a last-resort launch-crash guard. Development flavors keep development signing so local installs and tests continue to use dev profiles.
@@ -79,7 +86,8 @@ Before merging to `master` and before cutting a TestFlight tag, verify timeline 
 All release and screenshot tasks in this workflow run through `mise --locked exec`,
 so a stale/missing lock entry fails the workflow before archive or upload.
 
-It:
+After the shared setup action, it first requires successful full CI on the
+exact source SHA before materializing signing credentials. It then:
 
 1. resolves release versions
 2. validates App Store metadata
@@ -154,5 +162,5 @@ Required secrets:
 ## Simulator Notes
 
 - Local simulator builds are unsigned by default.
-- Swift compile caching is enabled by default. The GitHub macOS jobs prepare Tuist's cache service before Xcode-heavy steps and rely on step timeouts plus job-log inspection for stall protection.
+- Local compilation cache defaults off. After `just cache-setup`, opt in with `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=0`. GitHub macOS jobs default to caching enabled after authenticated setup; `=1` remains the recovery override.
 - Unsigned simulator runs fall back to the no-op Cloud sync coordinator when the app-group container is unavailable, which keeps local launch logs clean without changing signed release behavior.

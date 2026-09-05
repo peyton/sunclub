@@ -127,12 +127,6 @@ final class DesignSystemAdoptionTests: XCTestCase {
     }
 
     func testKnownGlassGroupsKeepSingleMaterialBoundary() throws {
-        let achievements = try source("app/Sunclub/Sources/Views/AchievementsView.swift")
-        XCTAssertFalse(
-            achievements.contains(".sunGlassSecondaryButton()"),
-            "Share actions inside achievement glass cards must remain flat within the card."
-        )
-
         let history = try source("app/Sunclub/Sources/Views/HistoryView.swift")
         for marker in [
             "tint: label.contains(\"open\") ? AppPalette.sun : AppPalette.success,\n            usesGlass: false",
@@ -173,9 +167,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
         let expectedStandaloneHelperCounts: [String: (primary: Int, secondary: Int, icon: Int)] = [
             "app/Sunclub/Sources/Views/RecoveryView.swift": (0, 0, 0),
             "app/Sunclub/Sources/Views/AutomationView.swift": (0, 0, 0),
-            "app/Sunclub/Sources/Views/SettingsView.swift": (1, 0, 0),
-            "app/Sunclub/Sources/Views/FriendsView.swift": (2, 1, 0),
-            "app/Sunclub/Sources/Views/ProductScannerView.swift": (1, 4, 0)
+            "app/Sunclub/Sources/Views/SettingsView.swift": (1, 0, 0)
         ]
 
         for (path, expected) in expectedStandaloneHelperCounts {
@@ -202,13 +194,11 @@ final class DesignSystemAdoptionTests: XCTestCase {
         let migratedPaths = [
             "app/Sunclub/Sources/Shared/SunDayStrip.swift",
             "app/Sunclub/Sources/Views/AutomationView.swift",
-            "app/Sunclub/Sources/Views/FriendsView.swift",
             "app/Sunclub/Sources/Views/HistoryView.swift",
             "app/Sunclub/Sources/Views/ManualLogView.swift",
             "app/Sunclub/Sources/Views/PrivacyView.swift",
             "app/Sunclub/Sources/Views/RecoveryView.swift",
             "app/Sunclub/Sources/Views/SettingsView.swift",
-            "app/Sunclub/Sources/Views/SkinHealthReportView.swift",
             "app/Sunclub/Sources/Views/SupportView.swift",
             "app/Sunclub/Sources/Views/Components/TimelineLogSection.swift"
         ]
@@ -231,7 +221,6 @@ final class DesignSystemAdoptionTests: XCTestCase {
         let interactiveCardPaths = [
             "app/Sunclub/Sources/Shared/SunDayStrip.swift",
             "app/Sunclub/Sources/Views/AutomationView.swift",
-            "app/Sunclub/Sources/Views/FriendsView.swift",
             "app/Sunclub/Sources/Views/PrivacyView.swift",
             "app/Sunclub/Sources/Views/SettingsView.swift",
             "app/Sunclub/Sources/Views/SupportView.swift",
@@ -268,8 +257,6 @@ final class DesignSystemAdoptionTests: XCTestCase {
             history.contains(".sunGlassIconButton(legacyStyle: HistoryMonthNavigationButtonStyle(isEnabled: isEnabled))")
         )
 
-        let scanner = try source("app/Sunclub/Sources/Views/ProductScannerView.swift")
-        XCTAssertTrue(scanner.contains("SunGlassEffectContainer(spacing: 12)"))
         XCTAssertTrue(theme.contains(".sunGlassSurface(cornerRadius: AppRadius.pill)"))
     }
 
@@ -398,10 +385,6 @@ final class DesignSystemAdoptionTests: XCTestCase {
             "app/Sunclub/Sources/Shared/SunDayStrip.swift": [
                 "DayCapsule"
             ],
-            "app/Sunclub/Sources/Views/Components/TimelineFooterBar.swift": [
-                "SunBottomNavigationBar",
-                "SunBottomNavigationItem"
-            ],
             "app/Sunclub/Sources/Views/ManualLogView.swift": [
                 "AppCard",
                 "PrimaryButton"
@@ -431,7 +414,26 @@ final class DesignSystemAdoptionTests: XCTestCase {
     }
 
     private func source(_ path: String) throws -> String {
-        try String(contentsOf: try repoRoot.appendingPathComponent(path), encoding: .utf8)
+        let sections: [String: [String]] = [
+            "TimelineHomeView.swift": [
+                "Components/TimelinePresentation.swift",
+                "Components/TimelineScrubGesture.swift",
+                "Components/TimelineTodayStatusCard.swift"
+            ],
+            "HistoryView.swift": ["HistoryRecordEditorView.swift"],
+            "SettingsView.swift": [
+                "SettingsNavigation.swift", "SettingsReminders.swift",
+                "SettingsHealthWeather.swift", "SettingsData.swift"
+            ]
+        ]
+        let root = try repoRoot
+        let url = root.appendingPathComponent(path)
+        let related = (sections[url.lastPathComponent] ?? []).map {
+            url.deletingLastPathComponent().appendingPathComponent($0)
+        }
+        return try ([url] + related).map {
+            try String(contentsOf: $0, encoding: .utf8)
+        }.joined(separator: "\n")
     }
 
     private var repoRoot: URL {

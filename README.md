@@ -12,80 +12,26 @@ marketplace publication, or modified or derivative works. Commercial use is not
 licensed. No trademark rights are granted. See [NOTICE](NOTICE) for the
 ownership notice.
 
-Repository layout:
+The iOS app lives in [app/](app); the static site lives in [web/](web).
 
-- App: [app/README.md](app/README.md)
-- Docs: [docs/](docs/)
-- App automation: [docs/app-automation.md](docs/app-automation.md)
-- TestFlight flow: [docs/testflight-release.md](docs/testflight-release.md)
+```sh
+just bootstrap
+just run
+```
 
-The iOS app lives in [app/](app). Product and design notes live in [docs/](docs).
-Tooling is pinned in [mise.toml](mise.toml). All GitHub Actions workflows that
-run repo tools use `mise --locked exec`, so CI enforces `mise.lock` consistency.
+Local builds use SunclubDev and generate the workspace as needed. Bootstrap
+installs locked tools and Python dependencies; local Tuist caching is optional
+with `just cache-setup`.
 
-Common setup from the repo root:
+- [Agent entrypoint](AGENTS.md)
+- [Architecture and feature recipe](docs/architecture.md)
+- [Command reference](docs/commands.md)
+- [App overview](app/README.md)
+- [App automation](docs/app-automation.md)
+- [Release gates](docs/release-gates.md)
+- [TestFlight](docs/testflight-release.md) and [App Review](docs/app-store-submission.md)
+- [Website deployment](docs/web-release.md) and [CloudKit setup](docs/cloudkit-setup.md)
 
-- `just bootstrap`
-- `just icons`
-- `just generate`
-- `just build`
-- `just run`
-- `just web-serve`
-- `just web-check`
-- `just web-fmt`
-- `just web-build`
-- `just web-package VERSION=test`
-- `just web-release-tag 1.2.3`
-- `just cloudflare-status`
-- `just cloudflare-pages-setup`
-- `just cloudflare-pages-status`
-- `just cloudflare-email-setup`
-- `just cloudflare-email-status`
-- `just cloudflare-check`
-- `just cloudkit-save-token`
-- `just cloudkit-doctor`
-- `just cloudkit-ensure-container`
-- `just cloudkit-export-schema`
-- `just cloudkit-validate-schema`
-- `just cloudkit-import-schema`
-- `just cloudkit-reset-dev`
-- `just clean-build`
-- `just clean-generated`
-- `just clean`
-- `just lint`
-- `just fmt`
-- `just test`
-- `just test-unit`
-- `just test-ui`
-- `just test-python`
-- `just ci-lint`
-- `just ci-python`
-- `just ci-build`
-- `just appstore-env`
-- `just appstore-validate`
-- `just appstore-validate-strict`
-- `just appstore-review-package`
-- `just appstore-screenshots`
-- `just appstore-archive`
-- `just appstore-submit-dry-run`
-- `just appstore-submit-draft`
-- `just appstore-submit-review`
-- `just appstore-send-review`
-- `just release-tag 1.2.3`
-- `just ci`
-
-`just bootstrap` installs repo-local tooling with `mise install --locked`, syncs the Python environment into `.venv/`, prepares repo-local caches under `.cache/`, and primes Tuist's local Xcode cache service from `app/` on local machines. Regenerate `mise.lock` intentionally with `mise lock` when changing pinned tools.
-
-Sunclub stays local-first, but the app now ships with default-on iCloud sync for revision history plus local backup export/import. Local imports stay recoverable on-device and do not change iCloud until the user explicitly publishes the imported batches from `Recovery & Changes`.
-
-Automation is a first-class release surface. Shortcuts, Control Center, widgets, custom URL actions, and x-callback-url routes are documented in [docs/app-automation.md](docs/app-automation.md), and users can manage automation writes from Settings -> Automation.
-
-The static public web presence lives in [web/](web). Local preview uses `just web-serve`; `just web-build` copies the checked site into `.build/web/`; `just web-package VERSION=test` writes a release tarball and checksum under `.build/releases/`.
-
-Cloudflare Pages and Email Routing setup is tracked in [infra/cloudflare/](infra/cloudflare/) and documented in [docs/cloudflare-deployment-execplan.md](docs/cloudflare-deployment-execplan.md). Web deployment and rollback are documented in [docs/web-release.md](docs/web-release.md). Local status commands are safe without credentials; setup commands require `CLOUDFLARE_API_TOKEN`, and email setup also requires `SUNCLUB_FORWARD_TO`. GitHub web deployment requires GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-
-CloudKit setup is documented in [docs/cloudkit-setup.md](docs/cloudkit-setup.md). `just cloudkit-doctor` validates that the saved token is a management token for the configured team, checks whether a signed build actually carries the expected CloudKit entitlements, and retries `cktool` schema access. `just cloudkit-ensure-container` runs the same validation and opens the relevant Apple setup pages if the container or App ID configuration is still missing.
-
-Release automation and the dev/prod flavor split are documented in [docs/testflight-release.md](docs/testflight-release.md). In short: local `just build` / `just run` use the `SunclubDev` flavor, `just appstore-archive` uses the production `Sunclub` flavor, and pushing a `vX.Y.Z` tag through `just release-tag` triggers the TestFlight workflow. App Review submission is documented in [docs/app-store-submission.md](docs/app-store-submission.md), uses `just appstore-env` for local sensitive values, and is guarded by strict metadata plus a redacted checkpoint phrase. Web releases are separate: pushing `web/vX.Y.Z` through `just web-release-tag` creates a web GitHub Release and does not trigger the iOS release workflow.
-
-`just clean-build` removes repo-local build artifacts and the generated workspace, `just clean-generated` additionally removes repo-local caches and environments such as `.venv`, `.mise`, `.cache`, `.config`, `.state`, and `__pycache__`, and `just clean` runs the full cleanup chain.
+Sunclub stores history locally, supports private iCloud revision sync and local
+backup export/import. Imported history stays local until explicitly published
+from Recovery & Changes. Automation permissions are visible in Settings.

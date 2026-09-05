@@ -239,7 +239,9 @@ def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
 
 def test_support_email_uses_mail_subdomain() -> None:
     links = (SOURCES_DIR / "Shared" / "SunclubWebLinks.swift").read_text()
-    settings = (SOURCES_DIR / "Views" / "SettingsView.swift").read_text()
+    settings = "\n".join(
+        path.read_text() for path in (SOURCES_DIR / "Views").glob("Settings*.swift")
+    )
 
     assert (
         'static let supportEmail = URL(string: "mailto:support@mail.sunclub.peyton.app")!'

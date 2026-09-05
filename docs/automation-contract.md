@@ -1,39 +1,18 @@
-# Automation Contract
+# Repository automation contract
 
-## Public Commands
-
-Run all human and CI automation from the repo root with `just`.
-
-- Setup: `just bootstrap`
-- App: `just icons`, `just generate`, `just build`, `just run`
-- Web: `just web-serve`, `just web-check`, `just web-fmt`, `just web-build`, `just web-package`, `just web-release-tag`, `just cloudflare-pages-deploy`
-- Verification: `just lint`, `just fmt`, `just test-python`, `just test-unit`, `just test-ui`, `just test`
-- CI shards: `just ci-lint`, `just ci-python`, `just ci-build`, `just ci`
-- Release-adjacent: `just appstore-validate`, `just appstore-screenshots`, `just appstore-archive`, `just appstore-submit-dry-run`, `just appstore-submit-draft`, `just appstore-submit-review`, `just release-tag`, `just web-release-tag`
-
-## Ownership
-
-- Root `just` recipes are the canonical interface.
-- Shared wrappers live in `scripts/tooling/`.
-- GitHub Actions calls only the root CI shard and web recipes, and uses
-  `mise --locked exec` so runs fail fast when `mise.lock` is missing or stale.
-- Xcode Cloud scripts stay in `app/ci_scripts/`, but only as provider glue that delegates back to `scripts/tooling/`.
-
-## Environment
-
-- `bin/mise` localizes tool installs and config into `.mise/`.
-- Shared wrappers export repo-local cache/state directories under `.cache/`, `.config/`, and `.state/`.
-- `just bootstrap` installs tools and runs `uv sync --group dev --group eval`.
-
-## Linting
-
-- Cross-platform lint runs through `hk` for markdown, pkl, shellcheck, shfmt, Prettier, and Ruff.
-- JSON and YAML stay in the Prettier contract, including `*.xcassets/**/Contents.json`.
-- SwiftLint runs separately on macOS with an explicit repo-local cache path.
-- Asset JSON stays in the Prettier contract; do not exclude `*.xcassets/**/Contents.json`.
-
-## Troubleshooting
-
-- If Python tooling is missing, re-run `just bootstrap`.
-- If Xcode project files drift, re-run `just generate`.
-- If CI cache or tool state looks stale, remove `.cache/`, `.state/`, `.venv/`, and `.mise/`, then run `just bootstrap` again.
+- Public command interface: [commands](commands.md), implemented by root `justfile`.
+- Application automation: [App Intents, URL and callback contracts](app-automation.md).
+- Ownership and feature changes: [architecture](architecture.md).
+- Supported execution: local macOS and GitHub Actions.
+- Environment setup is separate from Xcode preparation. Bootstrap, lint and Python
+  tests never start Tuist services or resolve release metadata.
+- `mise.lock` and `uv.lock` are enforced. Shared wrappers keep caches and state in
+  the repository; do not modify machine-global tooling configuration.
+- The setup composite action configures authenticated Tuist caching once per
+  macOS job. Local cache installation is explicit with `just cache-setup`.
+- Build/test/screenshot/archive entrypoints use the shared generation and Xcode
+  invocation primitives. Ordinary builds generate automatically when needed.
+- hk owns lint/formatting: Markdown, Pkl, shellcheck, shfmt, Prettier and Ruff;
+  SwiftLint runs on macOS. Asset JSON stays in formatting coverage.
+- Diagnostics and generated outputs go under `.build/` and `.DerivedData/`.
+  These directories are not CI caches.
