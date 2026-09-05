@@ -826,7 +826,8 @@ final class SunclubUITests: SunclubUITestCase {
         assertHomeLoggedState(app)
         let reminder = app.buttons["home.reapplyReminder"]
         XCTAssertTrue(scrollToHittableElement(reminder, in: app))
-        XCTAssertTrue(reminder.label.contains("Reapply at"))
+        XCTAssertTrue(reminder.label.contains("Reapply around"), reminder.label)
+        XCTAssertTrue(reminder.label.contains("Based on your last application"), reminder.label)
         reminder.tap()
         XCTAssertTrue(app.buttons["reapply.log"].waitForExistence(timeout: 5))
     }
