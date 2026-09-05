@@ -196,7 +196,8 @@ final class SunclubUITests: SunclubUITestCase {
         app.launchArguments += ["UITEST_MODE", "UITEST_COMPLETE_ONBOARDING", "UITEST_ROUTE=settings"]
         app.launch()
 
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Settings"].exists)
         XCTAssertTrue(app.buttons["timeline.footer.today"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertFalse(app.buttons["home.streakCard"].exists)
@@ -215,7 +216,8 @@ final class SunclubUITests: SunclubUITestCase {
 
         app.buttons["screen.back"].tap()
 
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Settings"].exists)
         XCTAssertTrue(app.buttons["timeline.footer.today"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)

@@ -377,9 +377,9 @@ class SunclubUITestCase: XCTestCase {
         let day = calendar.date(byAdding: .day, value: offset, to: today) ?? today
         let dateText: String
         if calendar.isDate(day, equalTo: today, toGranularity: .year) {
-            dateText = day.formatted(.dateTime.month(.wide).day())
+            dateText = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
         } else {
-            dateText = day.formatted(.dateTime.month(.wide).day().year())
+            dateText = day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
         }
 
         switch offset {
