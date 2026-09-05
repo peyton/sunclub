@@ -125,7 +125,7 @@ private struct SunclubLiveActivityTimerValue: View {
                     .font(isCompact ? .caption2.weight(.semibold) : .title2.weight(.semibold))
             } else if let deadline = state.reapplyDeadline {
                 Text(timerInterval: now...max(now, deadline), countsDown: true)
-                    .font(.system(size: timerSize, weight: .semibold, design: .rounded))
+                    .font(AppFont.heroMetric(size: isCompact ? 11 : timerSize))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(isCompact ? 0.7 : 1)

@@ -188,13 +188,18 @@ private struct SunclubLogTodayWidgetView: View {
                         SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: false)
                     }
                     Button(intent: LogSunscreenWidgetIntent()) {
-                        if family == .systemSmall {
-                            Text(status.hasLoggedToday && status.isSetupComplete ? "Log again" : status.actionTitle)
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                        } else {
-                            Label(status.actionTitle, systemImage: status.symbol)
-                                .frame(maxWidth: .infinity, minHeight: 44)
+                        ViewThatFits(in: .horizontal) {
+                            if family == .systemSmall {
+                                Text(status.hasLoggedToday && status.isSetupComplete ? "Log again" : status.actionTitle)
+                                    .fixedSize()
+                            } else {
+                                Label(status.actionTitle, systemImage: status.symbol)
+                                    .fixedSize()
+                            }
+                            Text(!status.isSetupComplete ? "Open" : (status.hasLoggedToday ? "Again" : "Log"))
+                                .fixedSize()
                         }
+                        .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(AppColor.primaryAction)
