@@ -735,15 +735,17 @@ final class SunclubHistoryService {
             return result
         }
         let revisions = Self.sortedSettingsRevisions(try context.fetch(FetchDescriptor<SettingsRevision>()))
-        guard let importIndex = revisions.lastIndex(where: { $0.batchID == importBatch.id }) else {
-            throw HistoryServiceError.importUndoIncomplete
-        }
+        guard let importIndex = revisions.lastIndex(where: { $0.batchID == importBatch.id }) else { throw HistoryServiceError.importUndoIncomplete }
         var result = restorePoint.snapshot
         var previous = revisions[importIndex].snapshot
+        let revisionsByBatch = Dictionary(grouping: revisions, by: \.batchID)
+        var checkpoints: [UUID: ImportUndoSettingsCheckpoint] = [:]
         for revision in revisions.dropFirst(importIndex + 1) {
             defer { previous = revision.snapshot }
             let matches = batches.filter { $0.id == revision.batchID }
-            guard matches.count == 1, let owner = matches.first else { throw HistoryServiceError.importUndoIncomplete }
+            guard matches.count == 1, let owner = matches.first,
+                  revisionsByBatch[revision.batchID]?.count == 1 else { throw HistoryServiceError.importUndoIncomplete }
+            checkpoints[revision.batchID] = ImportUndoSettingsCheckpoint(raw: previous, restored: result)
             if importedIDs.contains(owner.id), owner.importSessionID == session.id { continue }
             if owner.kind == .conflictAutoMerge || owner.kind == .importRestorePoint { continue }
             if isImportCompensation(owner, session: session, batches: batches) { continue }
@@ -758,6 +760,14 @@ final class SunclubHistoryService {
             ) {
                 throw HistoryServiceError.importUndoAmbiguous
             }
+            if owner.kind == .undo || owner.kind == .redo {
+                // Ordinary recovery restores the whole snapshot before its target, including
+                // intervening edits. Restore that same checkpoint with import values removed.
+                result = try settingsInverseCheckpoint(
+                    revision, targetID: owner.inverseOfBatchID, revisionsByBatch: revisionsByBatch, checkpoints: checkpoints
+                )
+                continue
+            }
             result = try SettingsImportUndo.replay(
                 before: previous, after: revision.snapshot, onto: result, fields: revision.changedFields,
                 explicitFieldWrites: isRemoteChoice
@@ -766,6 +776,24 @@ final class SunclubHistoryService {
         // Undo Import must not send someone who completed setup back through onboarding.
         result.hasCompletedOnboarding = try result.hasCompletedOnboarding || settings().hasCompletedOnboarding
         return result
+    }
+
+    private struct ImportUndoSettingsCheckpoint {
+        let raw: SettingsProjectionSnapshot
+        let restored: SettingsProjectionSnapshot
+    }
+
+    private func settingsInverseCheckpoint(
+        _ revision: SettingsRevision, targetID: UUID?,
+        revisionsByBatch: [UUID: [SettingsRevision]], checkpoints: [UUID: ImportUndoSettingsCheckpoint]
+    ) throws -> SettingsProjectionSnapshot {
+        guard let targetID, let target = revisionsByBatch[targetID]?.first,
+              Self.isOrderedBefore(target, revision),
+              let checkpoint = checkpoints[targetID], checkpoint.raw == revision.snapshot,
+              revision.changedFields == Self.allSettingsFields else {
+            throw HistoryServiceError.importUndoIncomplete
+        }
+        return checkpoint.restored
     }
 
     private func insertImportUndoDeletions(
@@ -788,8 +816,8 @@ final class SunclubHistoryService {
         for record in try records() {
             let day = calendar.startOfDay(for: record.startOfDay)
             guard !originalDays.contains(day),
-                  let latest = revisionsByDay[day]?.last,
-                  importOwnsRevision(latest, session: session, batches: batches),
+                  let dayRevisions = revisionsByDay[day], let latest = dayRevisions.last,
+                  importOwnsRevision(latest, session: session, batches: batches, dayRevisions: dayRevisions),
                   latest.snapshot?.makeModel().projectionSnapshot == record.projectionSnapshot else { continue }
 
             let deletion = DailyRecordRevision(
@@ -806,7 +834,8 @@ final class SunclubHistoryService {
     private func importOwnsRevision(
         _ revision: DailyRecordRevision,
         session: SunclubImportSession,
-        batches: [SunclubChangeBatch]
+        batches: [SunclubChangeBatch],
+        dayRevisions: [DailyRecordRevision]
     ) -> Bool {
         let importedIDs = Set(session.importedBatchIDs)
         var candidateID = revision.batchID
@@ -816,6 +845,21 @@ final class SunclubHistoryService {
             guard matches.count == 1, let batch = matches.first else { return false }
             if importedIDs.contains(batch.id), batch.importSessionID == session.id { return true }
             if batch.kind == .redo, isImportCompensation(batch, session: session, batches: batches) { return true }
+            if batch.kind == .undo || batch.kind == .redo {
+                let inverses = dayRevisions.filter { $0.batchID == candidateID }
+                let targets = dayRevisions.filter { $0.batchID == batch.inverseOfBatchID }
+                guard inverses.count == 1, let inverse = inverses.first,
+                      targets.count == 1, let target = targets.first,
+                      Self.isOrderedBefore(target, inverse),
+                      let previous = dayRevisions.last(where: { Self.isOrderedBefore($0, target) }),
+                      previous.snapshot?.makeModel().projectionSnapshot == inverse.snapshot?.makeModel().projectionSnapshot else {
+                    return false
+                }
+                // Follow the revision actually restored, not an equal-looking imported value.
+                // An independently recreated log remains user-owned after its edit is undone.
+                candidateID = previous.batchID
+                continue
+            }
             guard batch.kind == .conflictAutoMerge, let originalID = batch.inverseOfBatchID else { return false }
             candidateID = originalID
         }

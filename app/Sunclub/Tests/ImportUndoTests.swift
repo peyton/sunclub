@@ -40,6 +40,47 @@ final class ImportUndoTests: XCTestCase {
         XCTAssertEqual(try target.record(for: day)?.notes, "My later edit")
     }
 
+    func testUndoRemovesImportedDayAfterLaterEditIsUndone() throws {
+        let target = try makeHistory()
+        let sessionID = try importBackup(into: target)
+        let edit = try XCTUnwrap(write("My later edit", on: day, in: target))
+        _ = try target.undo(batchID: edit.id)
+        XCTAssertEqual(try target.record(for: day)?.notes, "Imported")
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertNil(try target.record(for: day))
+        try target.refreshProjectedState()
+        XCTAssertNil(try target.record(for: day))
+    }
+
+    func testUndoPreservesARedonePostImportEdit() throws {
+        let target = try makeHistory()
+        let sessionID = try importBackup(into: target)
+        let edit = try XCTUnwrap(write("My later edit", on: day, in: target))
+        _ = try target.undo(batchID: edit.id)
+        _ = try target.redo(batchID: edit.id)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "My later edit")
+    }
+
+    func testUndoPreservesIdenticalReplacementAfterItsLaterEditIsUndone() throws {
+        let target = try makeHistory()
+        let sessionID = try importBackup(into: target)
+        _ = try target.applyDayChange(
+            for: day, kind: .deleteRecord, summary: "Delete", changedFields: [.isDeleted]
+        ) { _ in nil }
+        try write("Imported", on: day, in: target)
+        let edit = try XCTUnwrap(write("Changed replacement", on: day, in: target))
+        _ = try target.undo(batchID: edit.id)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "Imported")
+    }
+
     func testUndoPreservesUnrelatedDaysLoggedAfterImport() throws {
         let target = try makeHistory()
         let sessionID = try importBackup(into: target)
@@ -125,8 +166,9 @@ final class ImportUndoTests: XCTestCase {
         return try backups.importBackupDocument(decoded, into: target.fetchContext()).importSessionID
     }
 
-    private func write(_ notes: String, on date: Date, in history: SunclubHistoryService) throws {
-        _ = try history.applyDayChange(
+    @discardableResult
+    private func write(_ notes: String, on date: Date, in history: SunclubHistoryService) throws -> SunclubChangeBatch? {
+        try history.applyDayChange(
             for: date, kind: .historyEdit, summary: "Edit log", changedFields: [.verifiedAt, .notes]
         ) { _ in
             DailyRecordProjectionSnapshot(

@@ -34,6 +34,117 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertNil(try target.settings().sunscreenProfile)
     }
 
+    func testUndoImportDoesNotReplayARevertedSettingsEdit() throws {
+        let target = try makeHistory()
+        let before = try target.settings().projectionSnapshot
+        let session = try importSettings(into: target)
+        let edit = try XCTUnwrap(target.applySettingsChange(
+            kind: .reminderSettings, summary: "Later edit", changedFields: [.reminderHour]
+        ) { $0.reminderHour = 6 })
+        _ = try target.undo(batchID: edit.id)
+        XCTAssertEqual(try target.settings().reminderHour, 10)
+
+        _ = try target.restoreImportSession(session)
+
+        XCTAssertEqual(try target.settings().projectionSnapshot, before)
+    }
+
+    func testUndoImportPreservesARedoneSettingsEdit() throws {
+        let target = try makeHistory()
+        let session = try importSettings(into: target)
+        let edit = try XCTUnwrap(target.applySettingsChange(
+            kind: .reminderSettings, summary: "Later edit", changedFields: [.reminderHour]
+        ) { $0.reminderHour = 6 })
+        _ = try target.undo(batchID: edit.id)
+        _ = try target.redo(batchID: edit.id)
+
+        _ = try target.restoreImportSession(session)
+
+        XCTAssertEqual(try target.settings().reminderHour, 6)
+        XCTAssertFalse(try target.settings().usesLiveUV)
+        XCTAssertNil(try target.settings().sunscreenProfile)
+    }
+
+    func testUndoImportPreservesSettingsEditsMadeAfterAnUndo() throws {
+        let target = try makeHistory()
+        let session = try importSettings(into: target)
+        let edit = try XCTUnwrap(target.applySettingsChange(
+            kind: .reminderSettings, summary: "Later edit", changedFields: [.reminderHour]
+        ) { $0.reminderHour = 6 })
+        _ = try target.undo(batchID: edit.id)
+        _ = try target.applySettingsChange(
+            kind: .reminderSettings, summary: "After undo", changedFields: [.weeklyHour]
+        ) { $0.weeklyHour = 22 }
+
+        _ = try target.restoreImportSession(session)
+
+        XCTAssertEqual(try target.settings().reminderHour, 8)
+        XCTAssertEqual(try target.settings().weeklyHour, 22)
+        XCTAssertFalse(try target.settings().usesLiveUV)
+    }
+
+    func testUndoImportPreservesWholeSnapshotUndoAndRedoSemantics() throws {
+        for scenario in [(redo: false, hour: 8, weekly: 18), (redo: true, hour: 6, weekly: 22)] {
+            let target = try makeHistory()
+            let session = try importSettings(into: target)
+            let edit = try XCTUnwrap(target.applySettingsChange(
+                kind: .reminderSettings, summary: "First edit", changedFields: [.reminderHour]
+            ) { $0.reminderHour = 6 })
+            _ = try target.applySettingsChange(
+                kind: .reminderSettings, summary: "Intervening edit", changedFields: [.weeklyHour]
+            ) { $0.weeklyHour = 22 }
+            _ = try target.undo(batchID: edit.id)
+            XCTAssertEqual(try target.settings().weeklyHour, 18)
+            if scenario.redo { _ = try target.redo(batchID: edit.id) }
+
+            _ = try target.restoreImportSession(session)
+
+            XCTAssertEqual(try target.settings().reminderHour, scenario.hour)
+            XCTAssertEqual(try target.settings().weeklyHour, scenario.weekly)
+            XCTAssertFalse(try target.settings().usesLiveUV)
+        }
+    }
+
+    func testUndoImportRejectsMissingSettingsInverseTargetAtomically() throws {
+        let target = try makeHistory()
+        let session = try importSettings(into: target)
+        let edit = try XCTUnwrap(target.applySettingsChange(
+            kind: .reminderSettings, summary: "Later edit", changedFields: [.reminderHour]
+        ) { $0.reminderHour = 6 })
+        let inverse = try target.undo(batchID: edit.id)
+        inverse.inverseOfBatchID = UUID()
+        try target.fetchContext().save()
+        let before = try target.settings().projectionSnapshot
+        let beforeIDs = Set(try target.changeBatches().map(\.id))
+
+        XCTAssertThrowsError(try target.restoreImportSession(session))
+
+        XCTAssertEqual(try target.settings().projectionSnapshot, before)
+        XCTAssertEqual(Set(try target.changeBatches().map(\.id)), beforeIDs)
+    }
+
+    func testUndoImportDoesNotAdoptPreferencesFromAnUndoneEdit() throws {
+        let target = try makeHistory()
+        let before = try target.settings().projectionSnapshot
+        let session = try SunclubBackupService().importBackupDocument(
+            envelopeBackup(), into: target.fetchContext()
+        ).importSessionID
+        let imported = try XCTUnwrap(target.settings().restorablePreferences)
+        let renamed = SunclubRestorablePreferences(
+            preferredName: "My name", uvBriefing: imported.uvBriefing, friends: imported.friends,
+            accountability: imported.accountability, automation: imported.automation
+        )
+        let edit = try XCTUnwrap(target.applySettingsChange(
+            kind: .preferenceSettings, summary: "Later name", changedFields: [.restorablePreferences]
+        ) { $0.restorablePreferences = renamed })
+        _ = try target.undo(batchID: edit.id)
+        XCTAssertEqual(try target.settings().restorablePreferences?.preferredName, "Imported name")
+
+        _ = try target.restoreImportSession(session)
+
+        XCTAssertEqual(try target.settings().projectionSnapshot, before)
+    }
+
     func testUndoKeepsLaterClearedSettingAndRepeatedUndoKeepsNewEdits() throws {
         let target = try makeHistory()
         let session = try importSettings(into: target)
@@ -86,6 +197,55 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertTrue(target.growthSettings.accountability.inviteTokens.isEmpty)
         XCTAssertEqual(target.growthSettings.accountability.localProfileID, original.accountability.localProfileID)
         XCTAssertEqual(store.load(), target.growthSettings)
+    }
+
+    func testAppUndoImportDoesNotRecaptureAnUndoneNameChange() throws {
+        let (target, store) = try makeApp()
+        let original = store.load()
+        let session = try target.importBackupDocument(envelopeBackup()).importSessionID
+        let beforeIDs = Set(target.changeBatches.map(\.id))
+        target.updatePreferredDisplayName("My name")
+        let edit = try XCTUnwrap(target.changeBatches.first {
+            $0.kind == .preferenceSettings && !beforeIDs.contains($0.id)
+        })
+
+        _ = try target.undoChange(edit.id).get()
+
+        XCTAssertEqual(target.growthSettings.preferredName, "Imported name")
+        XCTAssertEqual(store.load().preferredName, "Imported name")
+        let redone = try target.redoChange(edit.id).get()
+        XCTAssertEqual(target.growthSettings.preferredName, "My name")
+        XCTAssertEqual(store.load().preferredName, "My name")
+        _ = try target.undoChange(redone.id).get()
+        XCTAssertEqual(target.growthSettings.preferredName, "Imported name")
+        XCTAssertEqual(store.load().preferredName, "Imported name")
+        _ = try target.restoreImportedChanges(for: session).get()
+        target.refresh()
+        XCTAssertEqual(target.growthSettings.preferredName, original.preferredName)
+        XCTAssertEqual(target.growthSettings.automation, original.automation)
+        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
+        XCTAssertEqual(target.growthSettings.scannedSPFLevels, original.scannedSPFLevels)
+        XCTAssertEqual(target.growthSettings.successPhraseState, original.successPhraseState)
+        XCTAssertEqual(store.load(), target.growthSettings)
+    }
+
+    func testAppReminderUndoPreservesUnrecordedLocalPreferences() throws {
+        for importsBackup in [false, true] {
+            let (target, store) = try makeApp()
+            if importsBackup { _ = try target.importBackupDocument(envelopeBackup()) }
+            let beforeIDs = Set(target.changeBatches.map(\.id))
+            target.updateDailyReminder(hour: 6, minute: 0)
+            let edit = try XCTUnwrap(target.changeBatches.first {
+                $0.kind == .reminderSettings && !beforeIDs.contains($0.id)
+            })
+            var local = store.load()
+            local.preferredName = "On this device"
+            store.save(local)
+
+            _ = try target.undoChange(edit.id).get()
+
+            XCTAssertEqual(store.load(), local)
+        }
     }
 
     func testUndoPreservesDirectStoreEditWithoutImportedSiblingPreferences() throws {

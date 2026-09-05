@@ -691,10 +691,17 @@ final class AppState: SunclubReminderState {
         _ operation: () throws -> SunclubChangeBatch
     ) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
         do {
+            let previousPreferences = try historyService.settings().restorablePreferences
             let batch = try operation()
-            if batch.importSessionID != nil, batch.scope == .timeline || batch.scope == .settings {
-                // Apply the durable result before refresh, reminder work, or relationship publishing.
-                applyRestoredPreferences(try historyService.settings().restorablePreferences, to: growthFeatureStore.load())
+            if batch.scope == .timeline || batch.scope == .settings {
+                let preferences = try historyService.settings().restorablePreferences
+                let restoresKnownPreferences = batch.scope == .settings && previousPreferences != nil
+                    && preferences != nil && preferences != previousPreferences
+                if batch.importSessionID != nil || restoresKnownPreferences {
+                    // Apply known recovery snapshots before refresh can merge the undone value back.
+                    // Ordinary nil/pre-ledger recovery cannot establish ownership of local preferences.
+                    applyRestoredPreferences(preferences, to: growthFeatureStore.load())
+                }
             }
             finishDurableChange(batch, reschedulesReminders: true)
             logActionErrorMessage = nil
