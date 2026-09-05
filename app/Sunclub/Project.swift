@@ -94,6 +94,52 @@ func targetSettings(for flavor: SunclubFlavor, supportedPlatforms: String? = nil
     return .settings(base: base)
 }
 
+let sharedPresentationSources: [SourceFileGlob] = [
+    "Sources/Services/CalendarAnalytics.swift",
+    "Sources/Services/SunscreenUsageInsights.swift",
+    "Sources/Shared/AppDesignSystem.swift",
+    "Sources/Shared/AppRoute.swift",
+    "Sources/Shared/DayPart.swift",
+    "Sources/Shared/SunclubRuntimeConfiguration.swift"
+]
+
+let watchModelSources: [SourceFileGlob] = [
+    "Sources/Models/AccountabilityModels.swift",
+    "Sources/Models/DailyRecord.swift",
+    "Sources/Models/GrowthFeatures.swift",
+    "Sources/Models/SunclubRestorablePreferences.swift",
+    "Sources/Models/Settings.swift",
+    "Sources/Models/UVSupport.swift",
+    "Sources/Models/VerificationMethod.swift",
+    "Sources/WidgetSupport/SunclubWidgetSupport.swift"
+]
+
+let automationSources: [SourceFileGlob] = [
+    "Sources/Intents/**",
+    "Sources/Models/**",
+    "Sources/Services/CloudSyncWireModels.swift",
+    "Sources/Services/ReminderPlanner.swift",
+    "Sources/Services/SunclubAccountabilityCodec.swift",
+    "Sources/Services/SunclubAutomationRuntime.swift",
+    "Sources/Services/SunclubBackupDocument.swift",
+    "Sources/Services/SunclubBackupService.swift",
+    "Sources/Services/SunclubGrowthAnalytics.swift",
+    "Sources/Services/SunclubGrowthFeatureStore.swift",
+    "Sources/Services/SunclubHistoricalUVStore.swift",
+    "Sources/Services/SunclubHistoryService.swift",
+    "Sources/Services/ManualLogSuggestions.swift",
+    "Sources/Services/SunclubQuickLogAction.swift",
+    "Sources/Services/SunclubShareArtifactService.swift",
+    "Sources/Services/SunclubUVForecastCache.swift",
+    "Sources/Services/SunclubWeatherKitBudget.swift",
+    "Sources/Shared/AppTheme.swift",
+    "Sources/Shared/RuntimeEnvironment.swift",
+    "Sources/Shared/SunManualLogInput.swift",
+    "Sources/Shared/SunclubDeepLink.swift",
+    "Sources/WidgetSupport/**",
+    "Sources/Services/SunclubMutationService.swift"
+]
+
 func appTarget(for flavor: SunclubFlavor) -> Target {
     .target(
         name: flavor.appTargetName,
@@ -136,37 +182,7 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
                 "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
             ]
         ]),
-        sources: [
-            "WidgetExtension/Sources/**",
-            "Sources/Intents/**",
-            "Sources/Models/**",
-            "Sources/Services/CalendarAnalytics.swift",
-            "Sources/Services/CloudSyncWireModels.swift",
-            "Sources/Services/ReminderPlanner.swift",
-            "Sources/Services/SunclubAccountabilityCodec.swift",
-            "Sources/Services/SunclubAutomationRuntime.swift",
-            "Sources/Services/SunclubBackupDocument.swift",
-            "Sources/Services/SunclubBackupService.swift",
-            "Sources/Services/SunclubGrowthAnalytics.swift",
-            "Sources/Services/SunclubGrowthFeatureStore.swift",
-            "Sources/Services/SunclubHistoricalUVStore.swift",
-            "Sources/Services/SunclubHistoryService.swift",
-            "Sources/Services/ManualLogSuggestions.swift",
-            "Sources/Services/SunclubQuickLogAction.swift",
-            "Sources/Services/SunclubShareArtifactService.swift",
-            "Sources/Services/SunclubUVForecastCache.swift",
-            "Sources/Services/SunclubWeatherKitBudget.swift",
-            "Sources/Services/SunscreenUsageInsights.swift",
-            "Sources/Shared/AppDesignSystem.swift",
-            "Sources/Shared/AppRoute.swift",
-            "Sources/Shared/DayPart.swift",
-            "Sources/Shared/AppTheme.swift",
-            "Sources/Shared/RuntimeEnvironment.swift",
-            "Sources/Shared/SunManualLogInput.swift",
-            "Sources/Shared/SunclubDeepLink.swift",
-            "Sources/Shared/SunclubRuntimeConfiguration.swift",
-            "Sources/WidgetSupport/**"
-        ],
+        sources: .sourceFilesList(globs: ["WidgetExtension/Sources/**"] + sharedPresentationSources + automationSources),
         resources: [
             "Resources/Assets.xcassets"
         ],
@@ -193,24 +209,7 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
             "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)")
         ]),
-        sources: [
-            "WatchApp/Sources/**",
-            "Sources/Models/AccountabilityModels.swift",
-            "Sources/Models/DailyRecord.swift",
-            "Sources/Models/GrowthFeatures.swift",
-            "Sources/Models/SunclubRestorablePreferences.swift",
-            "Sources/Models/Settings.swift",
-            "Sources/Models/UVSupport.swift",
-            "Sources/Models/VerificationMethod.swift",
-            "Sources/Services/CalendarAnalytics.swift",
-            "Sources/Services/SunclubWatchSyncCoordinator.swift",
-            "Sources/Services/SunscreenUsageInsights.swift",
-            "Sources/Shared/AppDesignSystem.swift",
-            "Sources/Shared/AppRoute.swift",
-            "Sources/Shared/DayPart.swift",
-            "Sources/Shared/SunclubRuntimeConfiguration.swift",
-            "Sources/WidgetSupport/SunclubWidgetSupport.swift"
-        ],
+        sources: .sourceFilesList(globs: ["WatchApp/Sources/**", "Sources/Services/SunclubWatchSyncCoordinator.swift"] + sharedPresentationSources + watchModelSources),
         resources: [
             "WatchApp/Resources/**"
         ],
@@ -241,23 +240,7 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
                 "NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")
             ])
         ]),
-        sources: [
-            "WatchWidgetExtension/Sources/**",
-            "Sources/Models/AccountabilityModels.swift",
-            "Sources/Models/DailyRecord.swift",
-            "Sources/Models/GrowthFeatures.swift",
-            "Sources/Models/SunclubRestorablePreferences.swift",
-            "Sources/Models/Settings.swift",
-            "Sources/Models/UVSupport.swift",
-            "Sources/Models/VerificationMethod.swift",
-            "Sources/Services/CalendarAnalytics.swift",
-            "Sources/Services/SunscreenUsageInsights.swift",
-            "Sources/Shared/AppDesignSystem.swift",
-            "Sources/Shared/AppRoute.swift",
-            "Sources/Shared/DayPart.swift",
-            "Sources/Shared/SunclubRuntimeConfiguration.swift",
-            "Sources/WidgetSupport/SunclubWidgetSupport.swift"
-        ],
+        sources: .sourceFilesList(globs: ["WatchWidgetExtension/Sources/**"] + sharedPresentationSources + watchModelSources),
         entitlements: "SunclubWatchWidgets.entitlements",
         settings: targetSettings(for: flavor, supportedPlatforms: "watchos watchsimulator")
     )

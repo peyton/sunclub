@@ -125,9 +125,9 @@ enum NotificationRequestBudget {
 protocol NotificationScheduling: AnyObject {
     func requestAuthorizationIfNeeded() async -> Bool
     @discardableResult
-    func scheduleReminders(using state: AppState) async -> NotificationSchedulingReport
+    func scheduleReminders(using state: any SunclubReminderState) async -> NotificationSchedulingReport
     @discardableResult
-    func refreshStreakRiskReminder(using state: AppState) async -> NotificationOperationResult
+    func refreshStreakRiskReminder(using state: any SunclubReminderState) async -> NotificationOperationResult
     @discardableResult
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async -> NotificationOperationResult
     @discardableResult
@@ -138,9 +138,9 @@ protocol NotificationScheduling: AnyObject {
         message: String,
         route: AppRoute
     ) async -> NotificationOperationResult
-    func cancelDailyReminder(for day: Date, using state: AppState) async
+    func cancelDailyReminder(for day: Date, using state: any SunclubReminderState) async
     func cancelReapplyReminders() async
-    func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot
+    func notificationHealthSnapshot(using state: any SunclubReminderState) async -> NotificationHealthSnapshot
 }
 
 @MainActor
@@ -254,7 +254,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     @discardableResult
-    func scheduleReminders(using state: AppState) async -> NotificationSchedulingReport {
+    func scheduleReminders(using state: any SunclubReminderState) async -> NotificationSchedulingReport {
         registerBackgroundTaskIfNeeded()
         let preservedImmediateRequests = await replaceOwnedRequestsPreservingImmediate()
         let plannedRequests = makePlannedRequests(using: state)
@@ -301,7 +301,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return preservedRequests
     }
 
-    private func makePlannedRequests(using state: AppState) -> [NotificationPlannedRequest] {
+    private func makePlannedRequests(using state: any SunclubReminderState) -> [NotificationPlannedRequest] {
         var requests = makeDailyReminderRequests(using: state).map {
             NotificationPlannedRequest(category: .daily, request: $0)
         }
@@ -386,7 +386,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         )
     }
 
-    func makeDailyReminderRequests(using state: AppState) -> [UNNotificationRequest] {
+    func makeDailyReminderRequests(using state: any SunclubReminderState) -> [UNNotificationRequest] {
         let reminderSettings = state.settings.smartReminderSettings
         let timeZone = reminderSettings.notificationTimeZone()
         var scheduleCalendar = calendar
@@ -421,7 +421,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
     }
 
-    private func makeUVBriefingRequests(using state: AppState) -> [UNNotificationRequest] {
+    private func makeUVBriefingRequests(using state: any SunclubReminderState) -> [UNNotificationRequest] {
         guard state.growthSettings.uvBriefing.dailyBriefingEnabled,
               state.settings.usesLiveUV || state.settings.selectedUVPlace != nil else {
             return []
@@ -467,7 +467,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
     }
 
-    private func makeExtremeUVRequests(using state: AppState) -> [UNNotificationRequest] {
+    private func makeExtremeUVRequests(using state: any SunclubReminderState) -> [UNNotificationRequest] {
         guard state.growthSettings.uvBriefing.extremeAlertEnabled,
               state.settings.usesLiveUV || state.settings.selectedUVPlace != nil else {
             return []
@@ -565,7 +565,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return await addImmediateRequest(request, category: .accountabilityPoke)
     }
 
-    func cancelDailyReminder(for day: Date, using state: AppState) async {
+    func cancelDailyReminder(for day: Date, using state: any SunclubReminderState) async {
         var scheduleCalendar = calendar
         scheduleCalendar.timeZone = state.settings.smartReminderSettings.notificationTimeZone()
         center.removePendingNotificationRequests(withIdentifiers: [
@@ -574,7 +574,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     @discardableResult
-    func refreshStreakRiskReminder(using state: AppState) async -> NotificationOperationResult {
+    func refreshStreakRiskReminder(using state: any SunclubReminderState) async -> NotificationOperationResult {
         await clearPendingRequests(prefix: NotificationConstants.streakRiskPrefix)
 
         guard let streakRiskRequest = makeStreakRiskRequest(using: state) else {
@@ -584,7 +584,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return await addImmediateRequest(streakRiskRequest, category: .streakRisk)
     }
 
-    private func makeWeeklyFallbackRequest(using state: AppState) -> UNNotificationRequest? {
+    private func makeWeeklyFallbackRequest(using state: any SunclubReminderState) -> UNNotificationRequest? {
         var components = DateComponents()
         components.weekday = state.settings.weeklyWeekday
         components.hour = state.settings.weeklyHour
@@ -729,7 +729,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
     }
 
-    func notificationHealthSnapshot(using state: AppState) async -> NotificationHealthSnapshot {
+    func notificationHealthSnapshot(using state: any SunclubReminderState) async -> NotificationHealthSnapshot {
         let pendingRequests = await center.pendingNotificationRequests()
 
         return NotificationHealthSnapshot(
@@ -768,7 +768,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return result
     }
 
-    func diagnostics(using state: AppState) async -> String {
+    func diagnostics(using state: any SunclubReminderState) async -> String {
         let snapshot = await notificationHealthSnapshot(using: state)
         var lines = [
             "Sunclub notification diagnostics",
@@ -798,7 +798,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return lines.joined(separator: "\n")
     }
 
-    private func makeStreakRiskRequest(using state: AppState) -> UNNotificationRequest? {
+    private func makeStreakRiskRequest(using state: any SunclubReminderState) -> UNNotificationRequest? {
         guard let plan = ReminderPlanner.streakRiskPlan(
             records: state.recordedDays,
             now: now(),
@@ -876,7 +876,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
     }
 
-    private func expectedCategoryCounts(using state: AppState) -> [NotificationRequestCategory: Int] {
+    private func expectedCategoryCounts(using state: any SunclubReminderState) -> [NotificationRequestCategory: Int] {
         var counts: [NotificationRequestCategory: Int] = [
             .daily: 7,
             .weekly: 1

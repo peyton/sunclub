@@ -582,6 +582,48 @@ final class AutomationTests: XCTestCase {
         XCTAssertNil(savedSettings.accountability.connections.first?.lastPokeSentAt)
     }
 
+    func testAppAndAutomationEditsPreserveTheSameHistoryFields() throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let app = try makeHarness(clock: { now }).state
+        let automation = try makeHarness(clock: { now }).state
+        for state in [app, automation] {
+            XCTAssertTrue(state.completeOnboarding().succeeded)
+            XCTAssertTrue(state.recordApplication(
+                for: .manual, part: .afternoon, on: now, source: .manualLog,
+                verifiedAt: now, verificationDuration: 12, spfLevel: 50, notes: "Original"
+            ).succeeded)
+            XCTAssertTrue(state.recordReapplication(performedAt: now).succeeded)
+        }
+        XCTAssertTrue(app.saveManualRecord(for: now, verifiedAt: now, spfLevel: nil, notes: "  ").succeeded)
+        _ = try automation.performAutomationAction(
+            .saveLog(day: now, time: ReminderTime(hour: 13, minute: 0), dayPart: nil, spfLevel: nil, notes: "  "),
+            invocation: .shortcut
+        )
+        let appRecord = try XCTUnwrap(app.record(for: now))
+        let automationRecord = try XCTUnwrap(automation.record(for: now))
+        XCTAssertEqual(appRecord.projectionSnapshot, automationRecord.projectionSnapshot)
+        XCTAssertEqual(appRecord.verificationDuration, 12)
+        XCTAssertEqual(appRecord.reapplyCount, 1)
+        XCTAssertNil(appRecord.notes)
+        XCTAssertNil(appRecord.spfLevel)
+    }
+
+    func testRepeatedAutomationReminderSettingDoesNotReschedule() async throws {
+        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
+        let harness = try makeHarness(clock: { now })
+        XCTAssertTrue(harness.state.completeOnboarding().succeeded)
+        let action = SunclubAutomationAction.setReapply(enabled: true, intervalMinutes: 150)
+        _ = try harness.state.performAutomationAction(action, invocation: .shortcut)
+        for _ in 0..<5 { await Task.yield() }
+        let schedules = harness.notificationManager.scheduleRemindersCount
+        let batches = harness.state.changeBatches.count
+        let repeated = try harness.state.performAutomationAction(action, invocation: .shortcut)
+        for _ in 0..<5 { await Task.yield() }
+        XCTAssertEqual(repeated.didChange, false)
+        XCTAssertEqual(harness.notificationManager.scheduleRemindersCount, schedules)
+        XCTAssertEqual(harness.state.changeBatches.count, batches)
+    }
+
     private func makeHarness(
         growthStore: SunclubGrowthFeatureStoring? = nil,
         clock: @escaping () -> Date = Date.init

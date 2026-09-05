@@ -288,12 +288,23 @@ def test_widget_extension_inherits_app_version_metadata() -> None:
     assert '"CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)"' in source
 
 
+def expanded_source_groups(source: str, target: str) -> str:
+    for name, body in re.findall(
+        r"let (\w+): \[SourceFileGlob\] = \[(.*?)^\]", source, re.MULTILINE | re.DOTALL
+    ):
+        if re.search(rf"\b{name}\b", target):
+            target += "\n" + body
+    return target
+
+
 def test_widget_extension_compiles_manual_log_input_dependencies() -> None:
     source = PROJECT_SWIFT.read_text()
     widget_target = source.split(
         "func widgetTarget(for flavor: SunclubFlavor) -> Target {", 1
     )[1].split("func watchAppTarget(for flavor: SunclubFlavor) -> Target {", 1)[0]
 
+    widget_target = expanded_source_groups(source, widget_target)
+    assert '"Sources/Services/SunclubMutationService.swift"' in widget_target
     assert '"Sources/Services/SunclubAutomationRuntime.swift"' in widget_target
     assert '"Sources/Services/ManualLogSuggestions.swift"' in widget_target
     assert '"Sources/Shared/SunManualLogInput.swift"' in widget_target
@@ -351,6 +362,7 @@ def test_watch_targets_compile_shared_snapshot_model_dependencies() -> None:
     )[1].split("let project = Project(", 1)[0]
 
     for target_source in (watch_app_target, watch_widget_target):
+        target_source = expanded_source_groups(source, target_source)
         assert '"Sources/Models/AccountabilityModels.swift"' in target_source
         assert '"Sources/Models/VerificationMethod.swift"' in target_source
         assert '"Sources/WidgetSupport/SunclubWidgetSupport.swift"' in target_source
@@ -1019,7 +1031,9 @@ def test_privacy_manifest_declares_no_collected_data() -> None:
 
 
 def test_public_cloudkit_database_usage_is_guarded_by_transport_flag() -> None:
-    app_state = (SOURCES_DIR / "Services" / "AppState.swift").read_text()
+    app_state = "\n".join(
+        path.read_text() for path in (SOURCES_DIR / "Services").rglob("*.swift")
+    )
     runtime_config = (
         SOURCES_DIR / "Shared" / "SunclubRuntimeConfiguration.swift"
     ).read_text()

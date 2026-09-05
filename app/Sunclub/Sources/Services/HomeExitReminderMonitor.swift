@@ -31,8 +31,8 @@ enum LeaveHomeAuthorizationState: Equatable {
 protocol HomeExitReminderMonitoring: AnyObject {
     var authorizationState: LeaveHomeAuthorizationState { get }
 
-    func setStateProvider(_ provider: @escaping () -> AppState?)
-    func refreshMonitoring(using state: AppState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState
+    func setStateProvider(_ provider: @escaping () -> (any SunclubReminderState)?)
+    func refreshMonitoring(using state: any SunclubReminderState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState
     func saveHomeFromCurrentLocation() async throws -> HomeLocation
     func hasTriggeredReminder(on date: Date) -> Bool
 }
@@ -41,9 +41,9 @@ protocol HomeExitReminderMonitoring: AnyObject {
 final class NoopHomeExitReminderMonitor: HomeExitReminderMonitoring {
     var authorizationState: LeaveHomeAuthorizationState = .notDetermined
 
-    func setStateProvider(_ provider: @escaping () -> AppState?) {}
+    func setStateProvider(_ provider: @escaping () -> (any SunclubReminderState)?) {}
 
-    func refreshMonitoring(using state: AppState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState {
+    func refreshMonitoring(using state: any SunclubReminderState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState {
         authorizationState
     }
 
@@ -65,7 +65,7 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
     private let notificationManager: NotificationScheduling
     private let stateStore: HomeExitReminderStateStoring
     private let calendar: Calendar
-    private var stateProvider: (() -> AppState?)?
+    private var stateProvider: (() -> (any SunclubReminderState)?)?
 
     init(
         locationService: SharedLocationManaging? = nil,
@@ -88,11 +88,11 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
         LeaveHomeAuthorizationState(status: locationService.authorizationStatus)
     }
 
-    func setStateProvider(_ provider: @escaping () -> AppState?) {
+    func setStateProvider(_ provider: @escaping () -> (any SunclubReminderState)?) {
         stateProvider = provider
     }
 
-    func refreshMonitoring(using state: AppState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState {
+    func refreshMonitoring(using state: any SunclubReminderState, allowPermissionPrompt: Bool) async -> LeaveHomeAuthorizationState {
         let leaveHomeSettings = state.settings.smartReminderSettings.leaveHomeReminder
 
         guard leaveHomeSettings.isEnabled,
@@ -186,7 +186,7 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
         }
     }
 
-    private func handlePotentialExit(using state: AppState, now: Date) async {
+    private func handlePotentialExit(using state: any SunclubReminderState, now: Date) async {
         let leaveHomeSettings = state.settings.smartReminderSettings.leaveHomeReminder
         guard leaveHomeSettings.isEnabled,
               leaveHomeSettings.homeLocation != nil,
@@ -217,7 +217,7 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
         stateStore.markFired(on: now, calendar: calendar)
     }
 
-    private func effectiveUVLevel(for state: AppState, now: Date) -> UVLevel {
+    private func effectiveUVLevel(for state: any SunclubReminderState, now: Date) -> UVLevel {
         if let reading = state.uvReading,
            reading.source == .weatherKit,
            reading.isFresh(at: now) {
