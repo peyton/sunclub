@@ -665,12 +665,20 @@ final class AppState: SunclubReminderState {
         if let sessionID = try? historyService.importSessionForUndo(batchID: batchID) {
             return restoreImportedChanges(for: sessionID)
         }
-        return recoveryMutation { try recoveryCoordinator.undo(batchID) }
+        return recoveryMutation {
+            try recoveryCoordinator.undo(
+                batchID, currentPreferences: SunclubRestorablePreferences(growthSettings: growthFeatureStore.load())
+            )
+        }
     }
 
     @discardableResult
     func redoChange(_ batchID: UUID) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
-        recoveryMutation { try recoveryCoordinator.redo(batchID) }
+        recoveryMutation {
+            try recoveryCoordinator.redo(
+                batchID, currentPreferences: SunclubRestorablePreferences(growthSettings: growthFeatureStore.load())
+            )
+        }
     }
 
     @discardableResult

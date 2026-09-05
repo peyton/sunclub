@@ -52,8 +52,12 @@ final class SunclubRecoveryCoordinator {
     func restoreImport(_ id: UUID, currentPreferences: SunclubRestorablePreferences) throws -> SunclubChangeBatch {
         try history.restoreImportSession(id, currentPreferences: currentPreferences)
     }
-    func undo(_ id: UUID) throws -> SunclubChangeBatch { try history.undo(batchID: id) }
-    func redo(_ id: UUID) throws -> SunclubChangeBatch { try history.redo(batchID: id) }
+    func undo(_ id: UUID, currentPreferences: SunclubRestorablePreferences? = nil) throws -> SunclubChangeBatch {
+        try history.undo(batchID: id, currentPreferences: currentPreferences)
+    }
+    func redo(_ id: UUID, currentPreferences: SunclubRestorablePreferences? = nil) throws -> SunclubChangeBatch {
+        try history.redo(batchID: id, currentPreferences: currentPreferences)
+    }
     func undoIfCurrent(_ id: UUID) throws -> SunclubChangeBatch { try history.undoChangeIfCurrent(batchID: id) }
     func canUndoIfCurrent(_ id: UUID) throws -> Bool { try history.canUndoChangeIfCurrent(batchID: id) }
     func undoConflict(_ id: UUID) throws -> SunclubChangeBatch { try history.undoConflict(id) }

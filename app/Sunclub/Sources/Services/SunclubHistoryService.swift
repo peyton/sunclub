@@ -660,17 +660,17 @@ final class SunclubHistoryService {
         let restorePointRevisions = try revisions(forBatchID: session.restorePointBatchID)
         let restorePointSettings = try settingsRevision(forBatchID: session.restorePointBatchID)
         var removedDays = Set<Date>()
+        var restoredRecords: [DailyRecordProjectionSnapshot] = []
         var restoredSettings: SettingsProjectionSnapshot?
 
         return try commitRecoveryChange(validate: {
-            for day in removedDays where try self.record(for: day) != nil {
-                throw HistoryServiceError.importUndoIncomplete
-            }
-            if let restoredSettings, try self.settings().projectionSnapshot != restoredSettings {
-                throw HistoryServiceError.importUndoIncomplete
-            }
+            try self.validateImportUndo(removedDays: removedDays, restoredRecords: restoredRecords, restoredSettings: restoredSettings)
         }, {
             try captureCurrentPreferencesForImportUndo(currentPreferences)
+            let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
+            let revisionsByDay = Dictionary(grouping: Self.sortedRecordRevisions(
+                try context.fetch(FetchDescriptor<DailyRecordRevision>())
+            )) { calendar.startOfDay(for: $0.startOfDay) }
             let batch = try createBatch(
                 kind: .restore,
                 scope: .timeline,
@@ -680,26 +680,22 @@ final class SunclubHistoryService {
                 inverseOfBatchID: session.restorePointBatchID,
                 importSessionID: session.id
             )
-            removedDays = try insertImportUndoDeletions(session, restorePointRevisions: restorePointRevisions, into: batch)
+            removedDays = try insertImportUndoDeletions(
+                session, restorePointRevisions: restorePointRevisions,
+                batches: batches, revisionsByDay: revisionsByDay, into: batch
+            )
             if let restorePointSettings {
                 let snapshot = try settingsRestoringImport(
                     session, restorePoint: restorePointSettings, currentPreferences: currentPreferences
                 )
                 restoredSettings = snapshot
-                context.insert(
-                    SettingsRevision(
-                        batch: batch,
-                        snapshot: snapshot,
-                        changedFields: Self.allSettingsFields
-                    )
-                )
+                context.insert(SettingsRevision(batch: batch, snapshot: snapshot, changedFields: Self.allSettingsFields))
             }
 
-            for snapshot in restorePointRevisions.compactMap(\.snapshot) {
-                context.insert(
-                    DailyRecordRevision(batch: batch, snapshot: snapshot, changedFields: Self.allRecordFields)
-                )
-            }
+            restoredRecords = try insertImportUndoRestorations(
+                session, restorePointRevisions: restorePointRevisions,
+                batches: batches, revisionsByDay: revisionsByDay, into: batch
+            )
             if let importID = session.importedBatchIDs.last,
                let imported = try fetchBatchForSync(id: importID), imported.kind == .importLocal {
                 imported.undoneByBatchID = batch.id
@@ -708,7 +704,22 @@ final class SunclubHistoryService {
         })
     }
 
-    private func captureCurrentPreferencesForImportUndo(_ currentPreferences: SunclubRestorablePreferences?) throws {
+    private func validateImportUndo(
+        removedDays: Set<Date>, restoredRecords: [DailyRecordProjectionSnapshot], restoredSettings: SettingsProjectionSnapshot?
+    ) throws {
+        for day in removedDays where try record(for: day) != nil { throw HistoryServiceError.importUndoIncomplete }
+        for snapshot in restoredRecords where try record(for: snapshot.startOfDay)?.projectionSnapshot != snapshot {
+            throw HistoryServiceError.importUndoIncomplete
+        }
+        if let restoredSettings, try settings().projectionSnapshot != restoredSettings {
+            throw HistoryServiceError.importUndoIncomplete
+        }
+    }
+
+    @discardableResult
+    private func captureCurrentPreferencesForImportUndo(
+        _ currentPreferences: SunclubRestorablePreferences?
+    ) throws -> SunclubChangeBatch? {
         if let currentPreferences, try settings().restorablePreferences != currentPreferences {
             var snapshot = try settings().projectionSnapshot
             snapshot.restorablePreferences = currentPreferences
@@ -717,7 +728,9 @@ final class SunclubHistoryService {
                 summary: "Saved current preferences.", isLocalOnly: true
             )
             context.insert(SettingsRevision(batch: captured, snapshot: snapshot, changedFields: [.restorablePreferences]))
+            return captured
         }
+        return nil
     }
 
     private func settingsRestoringImport(
@@ -749,27 +762,22 @@ final class SunclubHistoryService {
             if importedIDs.contains(owner.id), owner.importSessionID == session.id { continue }
             if owner.kind == .conflictAutoMerge || owner.kind == .importRestorePoint { continue }
             if isImportCompensation(owner, session: session, batches: batches) { continue }
-            if revision.snapshot.restorablePreferences != previous.restorablePreferences,
-               importBatch.inverseOfBatchID != session.restorePointBatchID {
-                throw HistoryServiceError.importPreferencesUnavailable
-            }
-            let isRemoteChoice = revision.authorDeviceID != importBatch.authorDeviceID
-            if isRemoteChoice && (
-                revision.changedFields.contains(.restorablePreferences) && revision.snapshot.restorablePreferences != result.restorablePreferences
-                || revision.changedFields.contains(.smartReminderSettingsData) && revision.snapshot.smartReminderSettingsData != result.smartReminderSettingsData
-            ) {
-                throw HistoryServiceError.importUndoAmbiguous
-            }
+            let isRemoteChoice = try validateImportSettingsReplay(
+                revision, previous: previous, restored: result, importBatch: importBatch, restorePointID: session.restorePointBatchID
+            )
             if owner.kind == .undo || owner.kind == .redo {
                 // Ordinary recovery restores the whole snapshot before its target, including
                 // intervening edits. Restore that same checkpoint with import values removed.
                 result = try settingsInverseCheckpoint(
-                    revision, targetID: owner.inverseOfBatchID, revisionsByBatch: revisionsByBatch, checkpoints: checkpoints
+                    revision, owner: owner, session: session, revisionsByBatch: revisionsByBatch, checkpoints: checkpoints
                 )
                 continue
             }
+            let captured = try capturedPreferenceDelta(for: owner, session: session, revisions: revisions, batches: batches)
+            if captured != nil, isRemoteChoice { throw HistoryServiceError.importUndoAmbiguous }
             result = try SettingsImportUndo.replay(
-                before: previous, after: revision.snapshot, onto: result, fields: revision.changedFields,
+                before: captured?.before ?? previous, after: captured?.after ?? revision.snapshot,
+                onto: result, fields: revision.changedFields,
                 explicitFieldWrites: isRemoteChoice
             )
         }
@@ -778,39 +786,127 @@ final class SunclubHistoryService {
         return result
     }
 
+    private func validateImportSettingsReplay(
+        _ revision: SettingsRevision, previous: SettingsProjectionSnapshot, restored: SettingsProjectionSnapshot,
+        importBatch: SunclubChangeBatch, restorePointID: UUID
+    ) throws -> Bool {
+        if revision.snapshot.restorablePreferences != previous.restorablePreferences,
+           importBatch.inverseOfBatchID != restorePointID {
+            throw HistoryServiceError.importPreferencesUnavailable
+        }
+        let isRemoteChoice = revision.authorDeviceID != importBatch.authorDeviceID
+        if isRemoteChoice && (
+            revision.changedFields.contains(.restorablePreferences) && revision.snapshot.restorablePreferences != restored.restorablePreferences
+            || revision.changedFields.contains(.smartReminderSettingsData) && revision.snapshot.smartReminderSettingsData != restored.smartReminderSettingsData
+        ) {
+            throw HistoryServiceError.importUndoAmbiguous
+        }
+        return isRemoteChoice
+    }
+
     private struct ImportUndoSettingsCheckpoint {
         let raw: SettingsProjectionSnapshot
         let restored: SettingsProjectionSnapshot
     }
 
     private func settingsInverseCheckpoint(
-        _ revision: SettingsRevision, targetID: UUID?,
+        _ revision: SettingsRevision, owner: SunclubChangeBatch, session: SunclubImportSession,
         revisionsByBatch: [UUID: [SettingsRevision]], checkpoints: [UUID: ImportUndoSettingsCheckpoint]
     ) throws -> SettingsProjectionSnapshot {
-        guard let targetID, let target = revisionsByBatch[targetID]?.first,
+        guard let targetID = owner.inverseOfBatchID, revisionsByBatch[targetID]?.count == 1,
+              let target = revisionsByBatch[targetID]?.first,
               Self.isOrderedBefore(target, revision),
-              let checkpoint = checkpoints[targetID], checkpoint.raw == revision.snapshot,
               revision.changedFields == Self.allSettingsFields else {
             throw HistoryServiceError.importUndoIncomplete
         }
-        return checkpoint.restored
+        if let checkpoint = checkpoints[targetID] {
+            guard checkpoint.raw == revision.snapshot else { throw HistoryServiceError.importUndoIncomplete }
+            return checkpoint.restored
+        }
+        if let origin = try importedSettingsOrigin(for: owner),
+           origin.importSessionID == session.id, session.importedBatchIDs.contains(origin.id) {
+            let points = try context.fetch(FetchDescriptor<SunclubChangeBatch>()).filter { $0.id == session.restorePointBatchID }
+            guard points.count == 1, let point = points.first,
+                  point.kind == .importRestorePoint, point.scope == .timeline, point.isLocalOnly,
+                  point.importSessionID == nil, revisionsByBatch[point.id]?.count == 1,
+                  let saved = revisionsByBatch[point.id]?.first, saved.batchKind == .importRestorePoint,
+                  saved.authorDeviceID == point.authorDeviceID, saved.changedFields == Self.allSettingsFields,
+                  Self.isOrderedBefore(saved, revision) else { throw HistoryServiceError.importUndoIncomplete }
+            // Roll back compensated post-import edits; the pre-inverse checkpoint still serves Redo.
+            return saved.snapshot
+        }
+        throw HistoryServiceError.importUndoIncomplete
+    }
+
+    private func capturedPreferenceDelta(
+        for owner: SunclubChangeBatch, session: SunclubImportSession,
+        revisions: [SettingsRevision], batches: [SunclubChangeBatch]
+    ) throws -> (before: SettingsProjectionSnapshot, after: SettingsProjectionSnapshot)? {
+        guard owner.kind == .preferenceSettings, let captureID = owner.inverseOfBatchID else { return nil }
+        guard let index = revisions.firstIndex(where: { $0.batchID == owner.id }), index >= 3,
+              revisions.filter({ $0.batchID == owner.id }).count == 1 else { throw HistoryServiceError.importUndoIncomplete }
+        let capture = revisions[index - 2]
+        let inverse = revisions[index - 1]
+        let replay = revisions[index]
+        guard capture.batchID == captureID, revisions.filter({ $0.batchID == captureID }).count == 1,
+              revisions.filter({ $0.batchID == inverse.batchID }).count == 1,
+              let historical = Self.settingsRevisionsForProjection(Array(revisions.prefix(index - 2))).last,
+              revisions.filter({ $0.batchID == historical.batchID }).count == 1,
+              batches.filter({ $0.id == historical.batchID }).count == 1,
+              Self.isOrderedBefore(historical, capture), Self.isOrderedBefore(capture, inverse),
+              Self.isOrderedBefore(inverse, replay) else { throw HistoryServiceError.importUndoIncomplete }
+        let capturedBy = try localPreferenceBatch(for: capture, batches: batches)
+        let replayedBy = try localPreferenceBatch(for: replay, batches: batches)
+        let inverseOwners = batches.filter { $0.id == inverse.batchID }
+        guard capturedBy.inverseOfBatchID == nil, inverseOwners.count == 1, let invertedBy = inverseOwners.first,
+              invertedBy.kind == .undo || invertedBy.kind == .redo, inverse.batchKind == invertedBy.kind,
+              !session.importedBatchIDs.contains(invertedBy.id), inverse.changedFields == Self.allSettingsFields,
+              inverse.authorDeviceID == invertedBy.authorDeviceID, inverse.createdAt == invertedBy.createdAt,
+              inverse.logicalOrder == invertedBy.logicalOrder,
+              capturedBy.authorDeviceID == invertedBy.authorDeviceID, replayedBy.authorDeviceID == invertedBy.authorDeviceID,
+              let origin = try importedSettingsOrigin(for: invertedBy), origin.importSessionID == session.id,
+              session.importedBatchIDs.contains(origin.id) else { throw HistoryServiceError.importUndoIncomplete }
+        var expectedCapture = historical.snapshot
+        expectedCapture.restorablePreferences = capture.snapshot.restorablePreferences
+        guard capture.snapshot.restorablePreferences != nil,
+              historical.snapshot.restorablePreferences != capture.snapshot.restorablePreferences,
+              expectedCapture == capture.snapshot else { throw HistoryServiceError.importUndoIncomplete }
+        let expectedReplay = try SettingsImportUndo.replay(
+            before: historical.snapshot, after: capture.snapshot, onto: inverse.snapshot, fields: [.restorablePreferences]
+        )
+        guard expectedReplay == replay.snapshot else { throw HistoryServiceError.importUndoIncomplete }
+        // Reuse the original delta, not inverse -> replay: an independent choice can equal the raw inverse.
+        return (historical.snapshot, capture.snapshot)
+    }
+
+    private func localPreferenceBatch(
+        for revision: SettingsRevision, batches: [SunclubChangeBatch]
+    ) throws -> SunclubChangeBatch {
+        let matches = batches.filter { $0.id == revision.batchID }
+        guard matches.count == 1, let batch = matches.first,
+              batch.kind == .preferenceSettings, revision.batchKind == .preferenceSettings,
+              batch.scope == .settings, batch.scopeIdentifier == "settings", batch.importSessionID == nil,
+              batch.isLocalOnly, !batch.isPublishedToCloud, batch.cloudPublishedAt == nil,
+              batch.authorDeviceID == revision.authorDeviceID, batch.createdAt == revision.createdAt,
+              batch.logicalOrder == revision.logicalOrder, revision.changedFields == [.restorablePreferences] else {
+            throw HistoryServiceError.importUndoIncomplete
+        }
+        return batch
     }
 
     private func insertImportUndoDeletions(
         _ session: SunclubImportSession,
         restorePointRevisions: [DailyRecordRevision],
+        batches: [SunclubChangeBatch],
+        revisionsByDay: [Date: [DailyRecordRevision]],
         into batch: SunclubChangeBatch
     ) throws -> Set<Date> {
         let originalDays = Set(restorePointRevisions.map { calendar.startOfDay(for: $0.startOfDay) })
         let importedBatchIDs = Set(session.importedBatchIDs)
-        let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
         // Automatic legacy-store recovery must remain non-destructive.
         guard batches.contains(where: {
             $0.kind == .importLocal && $0.importSessionID == session.id && importedBatchIDs.contains($0.id)
         }) else { return [] }
-        let revisionsByDay = Dictionary(grouping: Self.sortedRecordRevisions(
-            try context.fetch(FetchDescriptor<DailyRecordRevision>())
-        )) { calendar.startOfDay(for: $0.startOfDay) }
         var removedDays = Set<Date>()
 
         for record in try records() {
@@ -831,6 +927,26 @@ final class SunclubHistoryService {
         return removedDays
     }
 
+    private func insertImportUndoRestorations(
+        _ session: SunclubImportSession,
+        restorePointRevisions: [DailyRecordRevision],
+        batches: [SunclubChangeBatch],
+        revisionsByDay: [Date: [DailyRecordRevision]],
+        into batch: SunclubChangeBatch
+    ) throws -> [DailyRecordProjectionSnapshot] {
+        var restored: [DailyRecordProjectionSnapshot] = []
+        for snapshot in restorePointRevisions.compactMap(\.snapshot) {
+            let day = calendar.startOfDay(for: snapshot.startOfDay)
+            // Include import-owned tombstones, but leave later independent edits and deletions intact.
+            guard let dayRevisions = revisionsByDay[day], let latest = dayRevisions.last,
+                  importOwnsRevision(latest, session: session, batches: batches, dayRevisions: dayRevisions) else { continue }
+            let canonical = snapshot.makeModel().projectionSnapshot
+            context.insert(DailyRecordRevision(batch: batch, snapshot: canonical, changedFields: Self.allRecordFields))
+            restored.append(canonical)
+        }
+        return restored
+    }
+
     private func importOwnsRevision(
         _ revision: DailyRecordRevision,
         session: SunclubImportSession,
@@ -845,6 +961,11 @@ final class SunclubHistoryService {
             guard matches.count == 1, let batch = matches.first else { return false }
             if importedIDs.contains(batch.id), batch.importSessionID == session.id { return true }
             if batch.kind == .redo, isImportCompensation(batch, session: session, batches: batches) { return true }
+            if batch.kind == .restore || batch.kind == .importRestorePoint {
+                guard let predecessor = restoredPredecessorBatchID(batch, batches: batches, dayRevisions: dayRevisions) else { return false }
+                candidateID = predecessor
+                continue
+            }
             if batch.kind == .undo || batch.kind == .redo {
                 let inverses = dayRevisions.filter { $0.batchID == candidateID }
                 let targets = dayRevisions.filter { $0.batchID == batch.inverseOfBatchID }
@@ -864,6 +985,30 @@ final class SunclubHistoryService {
             candidateID = originalID
         }
         return false
+    }
+
+    private func restoredPredecessorBatchID(
+        _ batch: SunclubChangeBatch, batches: [SunclubChangeBatch], dayRevisions: [DailyRecordRevision]
+    ) -> UUID? {
+        let captureID: UUID
+        if batch.kind == .importRestorePoint {
+            captureID = batch.id
+        } else {
+            guard let sessionID = batch.importSessionID, let restoredSession = try? importSession(id: sessionID),
+                  batch.inverseOfBatchID == restoredSession.restorePointBatchID else { return nil }
+            captureID = restoredSession.restorePointBatchID
+        }
+        let points = batches.filter { $0.id == captureID && $0.kind == .importRestorePoint }
+        let captured = dayRevisions.filter { $0.batchID == captureID }
+        let restored = dayRevisions.filter { $0.batchID == batch.id }
+        guard points.count == 1, captured.count == 1, let capture = captured.first,
+              restored.count == 1, let restoration = restored.first,
+              capture.id == restoration.id || Self.isOrderedBefore(capture, restoration),
+              let previous = dayRevisions.last(where: { Self.isOrderedBefore($0, capture) }),
+              previous.snapshot?.makeModel().projectionSnapshot == capture.snapshot?.makeModel().projectionSnapshot,
+              capture.snapshot?.makeModel().projectionSnapshot == restoration.snapshot?.makeModel().projectionSnapshot else { return nil }
+        // Passive checkpoints and nested restores retain their captured predecessor's ownership.
+        return previous.batchID
     }
 
     private func isImportCompensation(
@@ -904,11 +1049,76 @@ final class SunclubHistoryService {
     }
 
     @discardableResult
-    func undo(batchID: UUID, kind: SunclubChangeKind = .undo) throws -> SunclubChangeBatch {
+    func undo(
+        batchID: UUID, kind: SunclubChangeKind = .undo, currentPreferences: SunclubRestorablePreferences? = nil
+    ) throws -> SunclubChangeBatch {
         if kind == .undo, let sessionID = try importSessionForUndo(batchID: batchID) {
-            return try restoreImportSession(sessionID)
+            return try restoreImportSession(sessionID, currentPreferences: currentPreferences)
         }
-        return try commitRecoveryChange { try createInverse(batchID: batchID, kind: kind) }
+        var restoredSettings: SettingsProjectionSnapshot?
+        return try commitRecoveryChange(validate: {
+            if let restoredSettings, try self.settings().projectionSnapshot != restoredSettings {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+        }, {
+            let target = try fetchBatch(id: batchID)
+            guard let currentPreferences, try importedSettingsOrigin(for: target) != nil else {
+                return try createInverse(batchID: batchID, kind: kind)
+            }
+            let before = try settings().projectionSnapshot
+            var current = before
+            current.restorablePreferences = currentPreferences
+            // Capture before the inverse so Redo retains the outside-app choice in its own predecessor.
+            let capture = try captureCurrentPreferencesForImportUndo(currentPreferences)
+            let inverse = try createInverse(batchID: batchID, kind: kind)
+            guard let raw = try settingsRevision(forBatchID: inverse.id)?.snapshot else {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+            let restored = try SettingsImportUndo.replay(
+                before: before, after: current, onto: raw, fields: [.restorablePreferences]
+            )
+            if let capture {
+                let replay = try createBatch(
+                    kind: .preferenceSettings, scope: .settings, scopeIdentifier: "settings",
+                    summary: "Kept newer preferences.", isLocalOnly: true, inverseOfBatchID: capture.id
+                )
+                // Preserve both the raw inverse and the independent delta's provenance, even for equal values.
+                context.insert(SettingsRevision(batch: replay, snapshot: restored, changedFields: [.restorablePreferences]))
+            }
+            restoredSettings = restored
+            return inverse
+        })
+    }
+
+    private func importedSettingsOrigin(for batch: SunclubChangeBatch) throws -> SunclubChangeBatch? {
+        guard batch.scope == .settings, let sessionID = batch.importSessionID else { return nil }
+        guard let session = try importSession(id: sessionID) else { throw HistoryServiceError.importUndoIncomplete }
+        let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>())
+        let revisionsByBatch = Dictionary(grouping: try context.fetch(FetchDescriptor<SettingsRevision>()), by: \.batchID)
+        let importedIDs = Set(session.importedBatchIDs)
+        var candidate = batch
+        var visited = Set<UUID>()
+        while visited.insert(candidate.id).inserted {
+            guard candidate.scope == .settings, candidate.importSessionID == session.id,
+                  batches.filter({ $0.id == candidate.id }).count == 1,
+                  let revisions = revisionsByBatch[candidate.id], revisions.count == 1, let revision = revisions.first else {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+            if importedIDs.contains(candidate.id) { return candidate }
+            guard candidate.kind == .undo || candidate.kind == .redo, let targetID = candidate.inverseOfBatchID else {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+            let targets = batches.filter { $0.id == targetID }
+            guard targets.count == 1, let target = targets.first,
+                  let targetRevisions = revisionsByBatch[targetID], targetRevisions.count == 1,
+                  let targetRevision = targetRevisions.first, Self.isOrderedBefore(targetRevision, revision),
+                  revision.changedFields == Self.allSettingsFields,
+                  revision.snapshot == (try previousSettingsSnapshot(before: targetRevision)) else {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+            candidate = target
+        }
+        throw HistoryServiceError.importUndoIncomplete
     }
 
     func importSessionForUndo(batchID: UUID) throws -> UUID? {
@@ -1030,7 +1240,7 @@ final class SunclubHistoryService {
     }
 
     @discardableResult
-    func redo(batchID: UUID) throws -> SunclubChangeBatch {
+    func redo(batchID: UUID, currentPreferences: SunclubRestorablePreferences? = nil) throws -> SunclubChangeBatch {
         let batch = try fetchBatch(id: batchID)
         guard let undoneByBatchID = batch.undoneByBatchID else {
             throw HistoryServiceError.batchCannotRedo
@@ -1042,7 +1252,7 @@ final class SunclubHistoryService {
                 return redo
             }
         }
-        return try undo(batchID: undoneByBatchID, kind: .redo)
+        return try undo(batchID: undoneByBatchID, kind: .redo, currentPreferences: currentPreferences)
     }
 
     func resolveConflict(_ conflictID: UUID) throws {
@@ -1412,6 +1622,7 @@ final class SunclubHistoryService {
         let latest = revisions[revisions.count - 1]
         let previous = revisions[revisions.count - 2]
         guard latest.batchKind != .deleteRecord,
+              latest.batchKind != .restore,
               latest.batchKind != .conflictAutoMerge,
               previous.batchKind != .conflictAutoMerge,
               latest.authorDeviceID != previous.authorDeviceID,

@@ -88,6 +88,30 @@ final class ImportUndoRepresentationTests: XCTestCase {
         XCTAssertEqual(Set(try target.changeBatches().map(\.id)), beforeIDs)
     }
 
+    func testUndoRejectsInconsistentOrderingForAnExistingDayAtomically() throws {
+        let target = try makeHistory()
+        _ = try target.applyDayChange(
+            for: day, kind: .manualLog, summary: "Original", changedFields: [.verifiedAt, .notes]
+        ) { _ in
+            var original = self.record().projectionSnapshot
+            original.notes = "Before import"
+            return original
+        }
+        let summary = try SunclubBackupService().importBackupDocument(
+            rawBackup(.futureUnorderedRevision), into: target.fetchContext()
+        )
+        let beforeIDs = Set(try target.changeBatches().map(\.id))
+
+        XCTAssertThrowsError(try target.restoreImportSession(summary.importSessionID)) { error in
+            guard case HistoryServiceError.importUndoIncomplete = error else {
+                return XCTFail("Expected an incomplete-Undo error, received \(error)")
+            }
+        }
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "Projected value")
+        XCTAssertEqual(Set(try target.changeBatches().map(\.id)), beforeIDs)
+    }
+
     // Automatic recovery of a user's older store is not a user-selected backup import to roll back.
     func testUndoLegacyRecoveryPreservesRecoveredOriginalHistory() throws {
         let source = try makeHistory()

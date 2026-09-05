@@ -34,10 +34,192 @@ final class ImportUndoTests: XCTestCase {
         let target = try makeHistory()
         let sessionID = try importBackup(into: target)
         try write("My later edit", on: day, in: target)
+        let later = try XCTUnwrap(target.record(for: day)?.projectionSnapshot)
 
         _ = try target.restoreImportSession(sessionID)
 
         XCTAssertEqual(try target.record(for: day)?.notes, "My later edit")
+        XCTAssertEqual(try target.record(for: day)?.projectionSnapshot, later)
+    }
+
+    // Undo Import must not overwrite an independent revision just because this date existed before import.
+    func testUndoPreservesLaterEditToAnExistingDay() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let sessionID = try importBackup(into: target)
+        try write("My later edit", on: day, in: target)
+        let later = try XCTUnwrap(target.record(for: day)?.projectionSnapshot)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.projectionSnapshot, later)
+        try target.refreshProjectedState()
+        XCTAssertEqual(try target.record(for: day)?.projectionSnapshot, later)
+    }
+
+    func testUndoPreservesLaterDeletionOfAnExistingDay() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let sessionID = try importBackup(into: target)
+        _ = try target.applyDayChange(
+            for: day, kind: .deleteRecord, summary: "Delete", changedFields: [.isDeleted]
+        ) { _ in nil }
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertNil(try target.record(for: day))
+        try target.refreshProjectedState()
+        XCTAssertNil(try target.record(for: day))
+    }
+
+    func testUndoRestoresAnExistingDayWhenItsLaterEditWasUndone() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let sessionID = try importBackup(into: target)
+        let edit = try XCTUnwrap(write("My later edit", on: day, in: target))
+        _ = try target.undo(batchID: edit.id)
+        XCTAssertEqual(try target.record(for: day)?.notes, "Imported")
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "Before import")
+    }
+
+    func testUndoPreservesARedoneEditToAnExistingDay() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let sessionID = try importBackup(into: target)
+        let edit = try XCTUnwrap(write("My later edit", on: day, in: target))
+        _ = try target.undo(batchID: edit.id)
+        _ = try target.redo(batchID: edit.id)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "My later edit")
+    }
+
+    func testRepeatedUndoPreservesEditsToARestoredExistingDay() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let sessionID = try importBackup(into: target)
+        _ = try target.restoreImportSession(sessionID)
+        XCTAssertEqual(try target.record(for: day)?.notes, "Before import")
+        try write("Edited after Undo", on: day, in: target)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "Edited after Undo")
+    }
+
+    func testUndoPreservesIdenticalReplacementOfAnExistingDay() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let sessionID = try importBackup(into: target)
+        _ = try target.applyDayChange(
+            for: day, kind: .deleteRecord, summary: "Delete", changedFields: [.isDeleted]
+        ) { _ in nil }
+        try write("Imported", on: day, in: target)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "Imported")
+    }
+
+    func testUndoPreservesReplacementOfADayRemovedByImport() throws {
+        let target = try makeHistory()
+        let originalDay = day.addingTimeInterval(-86_400)
+        try write("Before import", on: originalDay, in: target)
+        let sessionID = try importBackup(into: target)
+        XCTAssertNil(try target.record(for: originalDay))
+        try write("Replacement", on: originalDay, in: target)
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: originalDay)?.notes, "Replacement")
+        XCTAssertNil(try target.record(for: day))
+    }
+
+    func testUndoRestoresCompleteExistingDayAfterDeviceAuthorChanges() throws {
+        let target = try makeHistory()
+        try write("Before import", on: day, in: target)
+        let original = try XCTUnwrap(target.record(for: day)?.projectionSnapshot)
+        let source = try makeHistory()
+        try write("Imported", on: day, in: source)
+        _ = try source.applyDayChange(
+            for: day, kind: .historyEdit, summary: "Reapplications",
+            changedFields: [.reapplyCount, .lastReappliedAt]
+        ) { snapshot in
+            var edited = snapshot
+            edited?.reapplyCount = 3
+            edited?.lastReappliedAt = self.day.addingTimeInterval(12 * 3_600)
+            return edited
+        }
+        let backups = SunclubBackupService()
+        let document = try backups.exportDocument(from: source.fetchContext())
+        let sessionID = try backups.importBackupDocument(
+            SunclubBackupDocument(data: document.serializedData()), into: target.fetchContext()
+        ).importSessionID
+        XCTAssertEqual(try target.record(for: day)?.reapplyCount, 3)
+        let preference = try target.syncPreference()
+        preference.deviceID = "replacement-device"
+        try target.fetchContext().save()
+
+        _ = try target.restoreImportSession(sessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.projectionSnapshot, original)
+        try target.refreshProjectedState()
+        XCTAssertEqual(try target.record(for: day)?.projectionSnapshot, original)
+    }
+
+    func testLegacyRecoveryUndoPreservesLaterEditsToExistingDays() throws {
+        let target = try makeHistory()
+        try write("Before recovery", on: day, in: target)
+        let recoveredDay = day.addingTimeInterval(-86_400)
+        let source = try makeHistory()
+        try write("Recovered", on: recoveredDay, in: source)
+        let session = try XCTUnwrap(target.recoverLegacyDomainData(
+            from: source.fetchContext(), sourceDescription: "Legacy store"
+        ))
+        try write("My later edit", on: day, in: target)
+
+        _ = try target.restoreImportSession(session.importSessionID)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "My later edit")
+        XCTAssertEqual(try target.record(for: recoveredDay)?.notes, "Recovered")
+    }
+
+    func testUndoFollowsOriginalDayOwnershipAfterANestedImportIsUndone() throws {
+        for hadOriginal in [false, true] {
+            let target = try makeHistory()
+            if hadOriginal { try write("Original", on: day, in: target) }
+            let first = try importBackup(into: target, notes: "Import A")
+            let second = try importBackup(into: target, notes: "Import B")
+            XCTAssertEqual(try target.record(for: day)?.notes, "Import B")
+            _ = try target.restoreImportSession(second)
+            XCTAssertEqual(try target.record(for: day)?.notes, "Import A")
+
+            _ = try target.restoreImportSession(first)
+
+            XCTAssertEqual(try target.record(for: day)?.notes, hadOriginal ? "Original" : nil)
+            try target.refreshProjectedState()
+            XCTAssertEqual(try target.record(for: day)?.notes, hadOriginal ? "Original" : nil)
+        }
+    }
+
+    func testUndoPreservesIndependentReplacementRestoredByANestedImportUndo() throws {
+        let target = try makeHistory()
+        try write("Original", on: day, in: target)
+        let first = try importBackup(into: target, notes: "Import A")
+        _ = try target.applyDayChange(
+            for: day, kind: .deleteRecord, summary: "Delete", changedFields: [.isDeleted]
+        ) { _ in nil }
+        try write("Import A", on: day, in: target)
+        let second = try importBackup(into: target, notes: "Import B")
+        _ = try target.restoreImportSession(second)
+
+        _ = try target.restoreImportSession(first)
+
+        XCTAssertEqual(try target.record(for: day)?.notes, "Import A")
     }
 
     func testUndoRemovesImportedDayAfterLaterEditIsUndone() throws {
@@ -157,9 +339,9 @@ final class ImportUndoTests: XCTestCase {
         return history
     }
 
-    private func importBackup(into target: SunclubHistoryService) throws -> UUID {
+    private func importBackup(into target: SunclubHistoryService, notes: String = "Imported") throws -> UUID {
         let source = try makeHistory()
-        try write("Imported", on: day, in: source)
+        try write(notes, on: day, in: source)
         let backups = SunclubBackupService()
         let document = try backups.exportDocument(from: source.fetchContext())
         let decoded = try SunclubBackupDocument(data: document.serializedData())

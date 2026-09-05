@@ -288,6 +288,183 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertTrue(target.records.isEmpty)
     }
 
+    func testImportedPreferenceUndoAndRedoAcrossNilPreserveStoreOnlyPreferences() throws {
+        let history = try makeHistory()
+        let (target, store) = try makeApp(context: history.fetchContext())
+        let source = try makeHistory()
+        var imported = store.load()
+        imported.preferredName = "Backup name"
+        let edit = try XCTUnwrap(source.applySettingsChange(
+            kind: .preferenceSettings, summary: "Backup name", changedFields: [.restorablePreferences]
+        ) { $0.restorablePreferences = SunclubRestorablePreferences(growthSettings: imported) })
+        let document = try SunclubBackupService().exportDocument(from: source.fetchContext())
+        let session = try target.importBackupDocument(
+            SunclubBackupDocument(data: document.serializedData())
+        ).importSessionID
+        let cloned = try XCTUnwrap(target.changeBatches.first {
+            $0.id == edit.id && $0.importSessionID == session
+        })
+        let beforeUndo = target.settings.projectionSnapshot
+        XCTAssertEqual(beforeUndo.restorablePreferences?.preferredName, "Backup name")
+        var later = store.load()
+        later.automation.shortcutWritesEnabled = false
+        later.preferredName = "On this device"
+        store.save(later)
+
+        let inverse = try target.undoChange(cloned.id).get()
+
+        XCTAssertEqual(inverse.kind, .undo)
+        XCTAssertEqual(target.settings.restorablePreferences?.preferredName, "On this device")
+        XCTAssertEqual(target.settings.restorablePreferences?.automation.shortcutWritesEnabled, false)
+        XCTAssertEqual(store.load(), later)
+        target.refresh()
+        XCTAssertEqual(store.load(), later)
+        var latest = later
+        latest.automation.urlWriteActionsEnabled = false
+        latest.preferredName = "Updated on this device"
+        store.save(latest)
+
+        _ = try target.redoChange(cloned.id).get()
+
+        XCTAssertEqual(target.settings.restorablePreferences?.preferredName, "Updated on this device")
+        XCTAssertEqual(target.settings.restorablePreferences?.automation.shortcutWritesEnabled, false)
+        XCTAssertEqual(target.settings.restorablePreferences?.automation.urlWriteActionsEnabled, false)
+        XCTAssertEqual(store.load(), latest)
+        let (reopened, _) = try makeApp(context: history.fetchContext(), store: store)
+        XCTAssertEqual(reopened.growthSettings, latest)
+        XCTAssertEqual(store.load(), latest)
+    }
+
+    func testImportedPreferenceUndoWithUnchangedEnvelopePreservesStoreOnlyPreferences() throws {
+        let history = try makeHistory()
+        let (target, store) = try makeApp(context: history.fetchContext())
+        let source = try makeHistory()
+        var imported = store.load()
+        imported.automation.shortcutWritesEnabled = false
+        var editedBatchID: UUID?
+        // Established source history keeps this edit's predecessor after the destination's restore point.
+        for name in ["First name", "Earlier name", "Before edit", "Edited name", "Before edit"] {
+            imported.preferredName = name
+            let edit = try XCTUnwrap(source.applySettingsChange(
+                kind: .preferenceSettings, summary: name, changedFields: [.restorablePreferences]
+            ) { $0.restorablePreferences = SunclubRestorablePreferences(growthSettings: imported) })
+            if name == "Edited name" { editedBatchID = edit.id }
+        }
+        let document = try SunclubBackupService().exportDocument(from: source.fetchContext())
+        let session = try target.importBackupDocument(
+            SunclubBackupDocument(data: document.serializedData())
+        ).importSessionID
+        let editID = try XCTUnwrap(editedBatchID)
+        let cloned = try XCTUnwrap(target.changeBatches.first {
+            $0.id == editID && $0.importSessionID == session
+        })
+        let beforeUndo = target.settings.projectionSnapshot
+        XCTAssertEqual(beforeUndo.restorablePreferences?.preferredName, "Before edit")
+        XCTAssertEqual(beforeUndo.restorablePreferences?.automation.shortcutWritesEnabled, false)
+        var later = store.load()
+        later.automation.shortcutWritesEnabled = true
+        later.preferredName = "On this device"
+        store.save(later)
+
+        let inverse = try target.undoChange(cloned.id).get()
+
+        XCTAssertEqual(inverse.kind, .undo)
+        XCTAssertEqual(inverse.inverseOfBatchID, cloned.id)
+        XCTAssertEqual(target.settings.restorablePreferences?.preferredName, "On this device")
+        XCTAssertEqual(target.settings.restorablePreferences?.automation.shortcutWritesEnabled, true)
+        XCTAssertEqual(store.load(), later)
+        target.refresh()
+        XCTAssertEqual(store.load(), later)
+        let (reopened, _) = try makeApp(context: history.fetchContext(), store: store)
+        XCTAssertEqual(reopened.growthSettings, later)
+        XCTAssertEqual(store.load(), later)
+    }
+
+    func testImportedPreferenceUndoPreservesStoreOnlyChangesWhenKnownEnvelopeChanges() throws {
+        for scenario in [
+            (recordedShortcut: true, localShortcut: false, previousShortcut: true),
+            (recordedShortcut: true, localShortcut: false, previousShortcut: false),
+            (recordedShortcut: false, localShortcut: true, previousShortcut: false),
+            (recordedShortcut: false, localShortcut: true, previousShortcut: true)
+        ] {
+            let history = try makeHistory()
+            let (target, store) = try makeApp(context: history.fetchContext())
+            let (session, cloned) = try importPreferenceNameChange(
+                into: target, store: store, recordedShortcut: scenario.recordedShortcut, previousShortcut: scenario.previousShortcut
+            )
+            let beforeUndo = try XCTUnwrap(target.settings.restorablePreferences)
+            XCTAssertEqual(beforeUndo.preferredName, "B")
+            XCTAssertEqual(beforeUndo.automation.shortcutWritesEnabled, scenario.recordedShortcut)
+            target.updateDailyReminder(hour: 6, minute: 0)
+            XCTAssertEqual(target.settings.reminderHour, 6)
+            var local = store.load()
+            local.automation.shortcutWritesEnabled = scenario.localShortcut
+            store.save(local)
+            var expected = local
+            expected.preferredName = "A"
+
+            _ = try target.undoChange(cloned.id).get()
+
+            let restored = try XCTUnwrap(target.settings.restorablePreferences)
+            XCTAssertEqual(target.settings.reminderHour, 8)
+            XCTAssertEqual(restored.preferredName, "A")
+            XCTAssertEqual(restored.automation.shortcutWritesEnabled, scenario.localShortcut)
+            XCTAssertEqual(target.growthSettings.preferredName, "A")
+            XCTAssertEqual(target.growthSettings.automation.shortcutWritesEnabled, scenario.localShortcut)
+            XCTAssertEqual(store.load(), expected)
+            target.refresh()
+            XCTAssertEqual(store.load(), expected)
+            let (reopened, _) = try makeApp(context: history.fetchContext(), store: store)
+            XCTAssertEqual(reopened.growthSettings, expected)
+            XCTAssertEqual(store.load(), expected)
+
+            _ = try reopened.restoreImportedChanges(for: session).get()
+
+            XCTAssertEqual(reopened.settings.reminderHour, 8)
+            XCTAssertEqual(reopened.growthSettings.preferredName, "")
+            XCTAssertEqual(reopened.growthSettings.automation.shortcutWritesEnabled, scenario.localShortcut)
+            XCTAssertEqual(store.load(), reopened.growthSettings)
+        }
+    }
+
+    func testImportedPreferenceUndoFailureRollsBackCaptureAndRetryPreservesRedo() throws {
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        var rejectsRecovery = false
+        let history = SunclubHistoryService(context: ModelContext(container), mutationGuard: {
+            if rejectsRecovery { throw CocoaError(.fileWriteUnknown) }
+        })
+        try history.bootstrapIfNeeded()
+        let (target, store) = try makeApp(context: history.fetchContext(), history: history)
+        let source = try makeHistory()
+        var imported = store.load()
+        imported.preferredName = "Backup name"
+        let edit = try XCTUnwrap(source.applySettingsChange(
+            kind: .preferenceSettings, summary: "Backup name", changedFields: [.restorablePreferences]
+        ) { $0.restorablePreferences = SunclubRestorablePreferences(growthSettings: imported) })
+        let document = try SunclubBackupService().exportDocument(from: source.fetchContext())
+        _ = try target.importBackupDocument(SunclubBackupDocument(data: document.serializedData()))
+        var later = store.load()
+        later.automation.shortcutWritesEnabled = false
+        later.preferredName = "On this device"
+        store.save(later)
+        let beforeIDs = Set(try history.changeBatches().map(\.id))
+        let beforeSnapshot = target.settings.projectionSnapshot
+        rejectsRecovery = true
+
+        XCTAssertThrowsError(try target.undoChange(edit.id).get())
+
+        XCTAssertEqual(Set(try history.changeBatches().map(\.id)), beforeIDs)
+        XCTAssertEqual(target.settings.projectionSnapshot, beforeSnapshot)
+        XCTAssertEqual(store.load(), later)
+        XCTAssertNil(try history.fetchBatchForSync(id: edit.id)?.undoneByBatchID)
+        rejectsRecovery = false
+
+        _ = try target.undoChange(edit.id).get()
+        XCTAssertEqual(store.load(), later)
+        _ = try target.redoChange(edit.id).get()
+        XCTAssertEqual(store.load(), later)
+    }
+
     func testUndoPreservesDirectStoreEditWithoutImportedSiblingPreferences() throws {
         let (target, store) = try makeApp()
         let session = try target.importBackupDocument(envelopeBackup()).importSessionID
@@ -631,6 +808,28 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertEqual(store.load().preferredName, "After")
     }
 
+    private func importPreferenceNameChange(
+        into target: AppState, store: ImportUndoSettingsStore, recordedShortcut: Bool, previousShortcut: Bool
+    ) throws -> (UUID, SunclubChangeBatch) {
+        let source = try makeHistory()
+        var imported = store.load()
+        var editedBatchID: UUID?
+        // Put the known A -> B pair after the destination's pre-import settings revisions.
+        for name in ["First name", "Earlier name", "A", "B"] {
+            imported.preferredName = name
+            imported.automation.shortcutWritesEnabled = name == "A" ? previousShortcut : recordedShortcut
+            let edit = try XCTUnwrap(source.applySettingsChange(
+                kind: .preferenceSettings, summary: name, changedFields: [.restorablePreferences]
+            ) { $0.restorablePreferences = SunclubRestorablePreferences(growthSettings: imported) })
+            editedBatchID = edit.id
+        }
+        let document = try SunclubBackupService().exportDocument(from: source.fetchContext())
+        let session = try target.importBackupDocument(SunclubBackupDocument(data: document.serializedData())).importSessionID
+        let editID = try XCTUnwrap(editedBatchID)
+        let cloned = try XCTUnwrap(target.changeBatches.first { $0.id == editID && $0.importSessionID == session })
+        return (session, cloned)
+    }
+
     private func importSettings(into target: SunclubHistoryService) throws -> UUID {
         let source = try makeHistory()
         _ = try source.applySettingsChange(
@@ -666,13 +865,14 @@ final class ImportUndoSettingsTests: XCTestCase {
     }
 
     private func makeApp(
-        context suppliedContext: ModelContext? = nil, store suppliedStore: ImportUndoSettingsStore? = nil
+        context suppliedContext: ModelContext? = nil, store suppliedStore: ImportUndoSettingsStore? = nil,
+        history suppliedHistory: SunclubHistoryService? = nil
     ) throws -> (AppState, ImportUndoSettingsStore) {
         let container = try SunclubModelContainerFactory.makeInMemoryContainer()
         let store = suppliedStore ?? ImportUndoSettingsStore()
         let app = AppState(
             context: suppliedContext ?? ModelContext(container), notificationManager: MockNotificationManager(),
-            uvIndexService: UVIndexService(), growthFeatureStore: store,
+            uvIndexService: UVIndexService(), historyService: suppliedHistory, growthFeatureStore: store,
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false, isPreviewing: true, hasAppGroupContainer: false,
                 isPublicAccountabilityTransportEnabled: false
