@@ -40,6 +40,9 @@ just release-tag 1.2.3
 
 See [docs/testflight-release.md](testflight-release.md) for the full flavor and versioning flow.
 Use the default strict archive path when you are preparing the actual App Store submission package.
+Production signing/export also requires a clean source tree and successful full
+CI for the exact SHA. Run `gh workflow run ci.yml --ref BRANCH` before preparing
+a candidate; ordinary PR smoke checks do not qualify.
 
 ## Required Manual Work
 

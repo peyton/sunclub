@@ -295,6 +295,8 @@ struct SunclubAutomationResult: Equatable {
     var fileTypeIdentifier: String?
     var lastAppliedAt: String?
     var minutesSinceLastApplication: Int?
+    // Nil preserves existing follow-through for actions outside durable history mutations.
+    var didChange: Bool?
 
     var callbackQueryItems: [URLQueryItem] {
         var items = [
@@ -390,6 +392,7 @@ enum SunclubAutomationRuntime {
     @MainActor
     private struct RuntimeContext {
         let historyService: SunclubHistoryService
+        let mutations: SunclubMutationService
         let modelContext: ModelContext
         let growthStore: SunclubGrowthFeatureStoring
         let widgetStore: SunclubWidgetSnapshotStore
@@ -401,7 +404,9 @@ enum SunclubAutomationRuntime {
             widgetStore: SunclubWidgetSnapshotStore,
             now: Date
         ) {
-            self.historyService = SunclubHistoryService(context: modelContext, calendar: SunclubAutomationRuntime.calendar)
+            let history = SunclubHistoryService(context: modelContext, calendar: SunclubAutomationRuntime.calendar)
+            self.historyService = history
+            self.mutations = SunclubMutationService(history: history)
             self.modelContext = modelContext
             self.growthStore = growthStore
             self.widgetStore = widgetStore
@@ -417,17 +422,7 @@ enum SunclubAutomationRuntime {
         var notes: String?
     }
 
-    private struct RecordMutation {
-        var day: Date
-        var verifiedAt: Date
-        var method: VerificationMethod
-        var spfLevel: Int?
-        var notes: String?
-        var replaceOptionalFields: Bool
-        var preserveExistingDuration: Bool
-        var kind: SunclubChangeKind
-        var summary: String
-    }
+    private typealias RecordMutation = SunclubMutationService.RecordRequest
 
     static func performStandalone(
         _ action: SunclubAutomationAction,
@@ -663,7 +658,7 @@ enum SunclubAutomationRuntime {
             )
             : .empty
         let resolvedNotes = notes == nil ? defaultInput.oneTapNotes : normalizedNotes(notes)
-        try upsertRecord(
+        let mutation = try upsertRecord(
             RecordMutation(
                 day: day,
                 verifiedAt: runtimeContext.now,
@@ -678,6 +673,7 @@ enum SunclubAutomationRuntime {
             runtimeContext: runtimeContext
         )
         return try finishChangedTimeline(
+            batch: mutation.batch,
             action: "log-today",
             message: isUpdate ? "Updated today's sunscreen log." : "Logged sunscreen for today.",
             recordDate: day,
@@ -707,7 +703,7 @@ enum SunclubAutomationRuntime {
             now: runtimeContext.now
         )
         let kind: SunclubChangeKind = existingTimestamp == nil ? .historyBackfill : .historyEdit
-        try upsertRecord(
+        let mutation = try upsertRecord(
             RecordMutation(
                 day: dayStart,
                 verifiedAt: verifiedAt,
@@ -722,6 +718,7 @@ enum SunclubAutomationRuntime {
             runtimeContext: runtimeContext
         )
         return try finishChangedTimeline(
+            batch: mutation.batch,
             action: "save-log",
             message: kind == .historyBackfill ? "Backfilled sunscreen log." : "Updated sunscreen log.",
             recordDate: dayStart,
@@ -741,21 +738,11 @@ enum SunclubAutomationRuntime {
             throw SunclubAutomationError.recordRequired
         }
 
-        _ = try runtimeContext.historyService.applyDayChange(
-            for: day,
-            kind: .reapply,
-            summary: "Logged a reapply check-in from automation.",
-            changedFields: [.reapplyCount, .lastReappliedAt]
-        ) { existingSnapshot in
-            guard var snapshot = existingSnapshot else {
-                return nil
-            }
-            snapshot.reapplyCount += 1
-            snapshot.lastReappliedAt = runtimeContext.now
-            return snapshot
-        }
-        try runtimeContext.modelContext.save()
+        let batch = try runtimeContext.mutations.reapply(
+            on: day, at: runtimeContext.now, summary: "Logged a reapply check-in from automation."
+        )
         return try finishChangedTimeline(
+            batch: batch,
             action: "reapply",
             message: "Logged a reapply check-in.",
             recordDate: day,
@@ -780,13 +767,12 @@ enum SunclubAutomationRuntime {
         case .weekend:
             reminderSettings.weekendTime = time
         }
-        try applyReminderSettings(
+        let batch = try runtimeContext.mutations.updateReminder(
             reminderSettings,
-            summary: "Updated reminder time from automation.",
-            historyService: runtimeContext.historyService
+            summary: "Updated reminder time from automation."
         )
-        try runtimeContext.modelContext.save()
         return try finishChangedTimeline(
+            batch: batch,
             action: "set-reminder",
             message: "Updated \(kind.rawValue) reminder to \(formatted(time)).",
             historyService: runtimeContext.historyService,
@@ -804,16 +790,11 @@ enum SunclubAutomationRuntime {
     ) throws -> SunclubAutomationResult {
         let settings = try runtimeContext.historyService.settings()
         let interval = max(30, min(480, intervalMinutes ?? settings.reapplyIntervalMinutes))
-        _ = try runtimeContext.historyService.applySettingsChange(
-            kind: .reapplySettings,
-            summary: "Updated reapply reminder from automation.",
-            changedFields: [.reapplyReminderEnabled, .reapplyIntervalMinutes]
-        ) { snapshot in
-            snapshot.reapplyReminderEnabled = enabled
-            snapshot.reapplyIntervalMinutes = interval
-        }
-        try runtimeContext.modelContext.save()
+        let batch = try runtimeContext.mutations.updateReapply(
+            enabled: enabled, intervalMinutes: interval, summary: "Updated reapply reminder from automation."
+        )
         return try finishChangedTimeline(
+            batch: batch,
             action: "set-reapply",
             message: enabled ? "Reapply reminder is on." : "Reapply reminder is off.",
             historyService: runtimeContext.historyService,
@@ -841,10 +822,13 @@ enum SunclubAutomationRuntime {
             } else {
                 reminderSettings.streakRiskEnabled = enabled
             }
-            try applyReminderSettings(
-                reminderSettings,
-                summary: "Updated \(toggle.title) from automation.",
-                historyService: runtimeContext.historyService
+            let batch = try runtimeContext.mutations.updateReminder(
+                reminderSettings, summary: "Updated \(toggle.title) from automation."
+            )
+            return try finishChangedTimeline(
+                batch: batch, action: "set-toggle", message: "\(toggle.title) is \(enabled ? "on" : "off").",
+                historyService: runtimeContext.historyService, growthSettings: growthSettings,
+                widgetStore: runtimeContext.widgetStore, now: runtimeContext.now
             )
         case .dailyUVBriefing:
             growthSettings.uvBriefing.dailyBriefingEnabled = enabled
@@ -1055,45 +1039,36 @@ enum SunclubAutomationRuntime {
         )
     }
 
-    private static func upsertRecord(_ mutation: RecordMutation, runtimeContext: RuntimeContext) throws {
-        _ = try runtimeContext.historyService.applyDayChange(
-            for: mutation.day,
-            kind: mutation.kind,
-            summary: mutation.summary,
-            changedFields: [.verifiedAt, .methodRawValue, .verificationDuration, .spfLevel, .notes]
-        ) { existingSnapshot in
-            if var snapshot = existingSnapshot {
-                snapshot.verifiedAt = mutation.verifiedAt
-                snapshot.methodRawValue = mutation.method.rawValue
-                if !mutation.preserveExistingDuration {
-                    snapshot.verificationDuration = nil
-                }
-                if mutation.replaceOptionalFields {
-                    snapshot.spfLevel = mutation.spfLevel
-                    snapshot.notes = mutation.notes
-                } else {
-                    if let spfLevel = mutation.spfLevel {
-                        snapshot.spfLevel = spfLevel
-                    }
-                    if let notes = mutation.notes {
-                        snapshot.notes = notes
-                    }
-                }
-                return snapshot
-            }
+    private static func upsertRecord(
+        _ mutation: RecordMutation, runtimeContext: RuntimeContext
+    ) throws -> SunclubMutationService.RecordResult {
+        try runtimeContext.mutations.upsert(mutation)
+    }
 
-            return DailyRecordProjectionSnapshot(
-                startOfDay: calendar.startOfDay(for: mutation.day),
-                verifiedAt: mutation.verifiedAt,
-                methodRawValue: mutation.method.rawValue,
-                verificationDuration: nil,
-                spfLevel: mutation.spfLevel,
-                notes: mutation.notes,
-                reapplyCount: 0,
-                lastReappliedAt: nil
+    private static func finishChangedTimeline(
+        batch: SunclubChangeBatch?,
+        action: String,
+        message: String,
+        recordDate: Date? = nil,
+        historyService: SunclubHistoryService,
+        growthSettings: SunclubGrowthSettings,
+        widgetStore: SunclubWidgetSnapshotStore,
+        now: Date
+    ) throws -> SunclubAutomationResult {
+        var result = try statusResult(action: action, historyService: historyService, now: now)
+        result.didChange = false
+        result.lastAppliedAt = nil
+        result.minutesSinceLastApplication = nil
+        result.message = message
+        result.recordDate = recordDate.map(dateString)
+        try SunclubMutationService(history: historyService).followThrough(batch) { _ in
+            result = try finishChangedTimeline(
+                action: action, message: message, recordDate: recordDate,
+                historyService: historyService, growthSettings: growthSettings,
+                widgetStore: widgetStore, now: now
             )
         }
-        try runtimeContext.modelContext.save()
+        return result
     }
 
     private static func finishChangedTimeline(
@@ -1125,7 +1100,8 @@ enum SunclubAutomationRuntime {
             longestStreak: settings.longestStreak,
             todayLogged: Set(recordedDays).contains(calendar.startOfDay(for: now)),
             weeklyApplied: weekly.appliedCount,
-            recordDate: recordDate.map(dateString)
+            recordDate: recordDate.map(dateString),
+            didChange: true
         )
     }
 
@@ -1238,27 +1214,6 @@ enum SunclubAutomationRuntime {
             return
         }
         WidgetCenter.shared.reloadAllTimelines()
-    }
-
-    private static func applyReminderSettings(
-        _ reminderSettings: SmartReminderSettings,
-        summary: String,
-        historyService: SunclubHistoryService
-    ) throws {
-        let normalized = reminderSettings.normalized(
-            fallbackHour: reminderSettings.weekdayTime.hour,
-            fallbackMinute: reminderSettings.weekdayTime.minute
-        )
-        let encoded = try? JSONEncoder().encode(normalized)
-        _ = try historyService.applySettingsChange(
-            kind: .reminderSettings,
-            summary: summary,
-            changedFields: [.reminderHour, .reminderMinute, .smartReminderSettingsData]
-        ) { snapshot in
-            snapshot.reminderHour = normalized.weekdayTime.hour
-            snapshot.reminderMinute = normalized.weekdayTime.minute
-            snapshot.smartReminderSettingsData = encoded
-        }
     }
 
     private static func verifiedAt(

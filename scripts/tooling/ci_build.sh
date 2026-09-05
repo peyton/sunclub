@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# shellcheck source=/dev/null
-source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
-
-setup_local_tooling_env
-prepare_ci_workspace github-actions
-
-export SUNCLUB_SKIP_LOCAL_TUIST_CACHE="${SUNCLUB_SKIP_LOCAL_TUIST_CACHE:-1}"
-"$TOOLING_DIR/build.sh"
+case "${1:-${SUNCLUB_FLAVOR:-dev}}" in
+dev) export SUNCLUB_FLAVOR=dev SUNCLUB_APS_ENVIRONMENT=development ;;
+prod) export SUNCLUB_FLAVOR=prod SUNCLUB_APS_ENVIRONMENT=production ;;
+*)
+  printf 'Usage: ci_build.sh [dev|prod]\n' >&2
+  exit 2
+  ;;
+esac
+# The requested flavor wins over a previously prepared shell environment.
+unset APP_SCHEME APP_IDENTIFIER RUN_APP_PATH
+exec bash "$(dirname -- "$0")/build.sh" --configuration Release --destination 'generic/platform=iOS'

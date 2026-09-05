@@ -9,4 +9,4 @@ rules:
       - release-testflight.yml:62
   superfluous-actions:
     ignore:
-      - release-web.yml:51
+      - release-web.yml:41

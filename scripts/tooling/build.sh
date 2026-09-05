@@ -4,10 +4,10 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
-setup_local_tooling_env
+prepare_xcode_env
 
-configuration="Release"
-destination="generic/platform=iOS"
+configuration="Debug"
+destination="generic/platform=iOS Simulator"
 derived_data_path=""
 result_bundle_path=""
 build_root=""
@@ -18,14 +18,6 @@ run_generate=1
 build_xcodebuild_args=()
 if [ -n "${BUILD_XCODEBUILD_ARGS:-}" ]; then
   read -r -a build_xcodebuild_args <<<"$BUILD_XCODEBUILD_ARGS"
-fi
-
-if [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-0}" = "1" ]; then
-  build_xcodebuild_args+=(
-    COMPILATION_CACHE_ENABLE_CACHING=NO
-    COMPILATION_CACHE_ENABLE_PLUGIN=NO
-    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
-  )
 fi
 
 if [ "${SUNCLUB_TUIST_SHARE:-0}" = "1" ]; then

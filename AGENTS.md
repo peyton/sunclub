@@ -1,231 +1,62 @@
 # Sunclub
 
-iOS sunscreen tracking app with AI validation.
+iOS sunscreen tracking app. Keep existing features, public automation routes,
+platform targets, persisted identities, signing identifiers and recovery behavior.
 
-## Build & Run
+## Start here
 
-```text
+```sh
 just bootstrap
-just icons
-just generate
 just build
 just run
 ```
 
-Schemes: **SunclubDev** for local build/run, **Sunclub** for release/App Store. Destination: iPhone simulator (iOS 18+). No manual SPM or CocoaPods steps needed.
-`just bootstrap` installs pinned repo-local tools with `mise install --locked`, syncs `.venv/`, prepares repo-local caches, and primes Tuist's local Xcode cache service from `app/`. Update `mise.lock` intentionally with `mise lock` when changing pinned tools.
+Build/run use **SunclubDev**, Debug, iPhone simulator. Release uses **Sunclub**.
+Generation is automatic. Bootstrap installs locked tools and Python dependencies;
+optional local Tuist caching is `just cache-setup`.
 
-## Test Commands
+- [Architecture and feature recipe](docs/architecture.md)
+- [Commands](docs/commands.md)
+- [Release gates](docs/release-gates.md) — mandatory data, accessibility and automation rules
+- [CI and release stability](docs/ci-release-stability.md)
+- [Historical troubleshooting](docs/development-troubleshooting.md)
+- [Public automation contract](docs/app-automation.md)
+- Design: `DESIGN.md`, `AppDesignSystem.swift`; product: `app/SPEC.md`
 
-| Surface           | Command                  |
-| ----------------- | ------------------------ |
-| Unit tests        | `just test-unit`         |
-| UI tests          | `just test-ui`           |
-| All tests         | `just test`              |
-| CI validation     | `just ci`                |
-| Lint              | `just lint`              |
-| Format            | `just fmt`               |
-| CI lint shard     | `just ci-lint`           |
-| CI Python shard   | `just ci-python`         |
-| CI build shard    | `just ci-build`          |
-| Release preflight | `just release-preflight` |
-| Visual assets     | `just visual-assets`     |
-| Python tests      | `just test-python`       |
+## Working rules
 
-## Release & App Store Commands
+- Swift 6 strict concurrency; 4-space indentation. Reuse existing protocols;
+  inject external services and the clock through `SunclubAppDependencies`.
+- `AppState` owns observable state and coordination. Shared writes belong in
+  `SunclubMutationService` and revision-history services. Effects follow a
+  successful changed receipt; automation authorization stays at its entrypoint.
+- No new dependencies or framework/package layers merely for organization.
+- Never change persisted fields without a new immutable versioned schema and
+  prior-store migration tests. Every container uses `SunclubModelContainerFactory`.
+- Preserve local and CloudKit history. Empty startup state must never replace
+  meaningful history; reinstall restore fetches before publishing.
+- Preserve the accessibility scorecard: named controls, Dynamic Type, sufficient
+  contrast, non-color cues and Reduce Motion through `SunMotion`. UI tests keep
+  `UITEST_MODE` and deterministic `UITEST_FORCE_*` arguments.
+- New user features need App Intent and URL/foreground routes, Settings controls,
+  automation documentation and tests. Keep legacy redirects and permission gates.
+- Styling uses `AppDesignSystem.swift` and `AppTheme.swift`. Do not change visual
+  direction as an incidental refactor. Generated artwork belongs to its generator.
+- Specs, plans and tool documentation go in `docs/`, kept terse. No ticket IDs in
+  document filenames or headers.
+- One PR per task. Commits use `feat:`, `fix:` or `chore:` (`PER-XX:` for ticketed
+  work). PR descriptions include verification.
 
-| Surface            | Command                         |
-| ------------------ | ------------------------------- |
-| App Review env     | `just appstore-env`             |
-| Draft metadata     | `just appstore-validate`        |
-| Strict metadata    | `just appstore-validate-strict` |
-| Review package     | `just appstore-review-package`  |
-| Screenshots        | `just appstore-screenshots`     |
-| Archive            | `just appstore-archive`         |
-| App Review dry run | `just appstore-submit-dry-run`  |
-| App Review draft   | `just appstore-submit-draft`    |
-| App Review submit  | `just appstore-submit-review`   |
-| App Review alias   | `just appstore-send-review`     |
-| Release doctor     | `just release-doctor`           |
-| Release tag        | `just release-tag 1.2.3`        |
-| TestFlight alias   | `just release-testflight 1.2.3` |
+## Verify
 
-## Web & Cloudflare Commands
-
-| Surface           | Command                               |
-| ----------------- | ------------------------------------- |
-| Local web preview | `just web-serve`                      |
-| Web validation    | `just web-check`                      |
-| Web format        | `just web-fmt`                        |
-| Web build         | `just web-build`                      |
-| Web build/package | `just web-package VERSION=test`       |
-| Web release tag   | `just web-release-tag 1.2.3`          |
-| Cloudflare status | `just cloudflare-status`              |
-| Pages status      | `just cloudflare-pages-status`        |
-| Pages setup       | `just cloudflare-pages-setup`         |
-| Pages DNS setup   | `just cloudflare-pages-dns`           |
-| Cloudflare deploy | `just cloudflare-pages-deploy master` |
-| Email status      | `just cloudflare-email-status`        |
-| Email setup       | `just cloudflare-email-setup`         |
-| Cloudflare check  | `just cloudflare-check`               |
-
-## CloudKit Commands
-
-| Surface          | Command                          |
-| ---------------- | -------------------------------- |
-| Save token       | `just cloudkit-save-token`       |
-| Doctor           | `just cloudkit-doctor`           |
-| Ensure container | `just cloudkit-ensure-container` |
-| Export schema    | `just cloudkit-export-schema`    |
-| Validate schema  | `just cloudkit-validate-schema`  |
-| Import schema    | `just cloudkit-import-schema`    |
-| Reset dev        | `just cloudkit-reset-dev`        |
-
-## Maintenance Commands
-
-| Surface                 | Command                |
-| ----------------------- | ---------------------- |
-| Build cleanup           | `just clean-build`     |
-| Generated/cache cleanup | `just clean-generated` |
-| Full cleanup            | `just clean`           |
-
-## Verification Rules
-
-- For changes touching GitHub Actions, CI scripts, workflow files, or PR merge behavior, run the closest local CI-equivalent command before calling the fix ready.
-- Prefer `just ci-lint`, `just ci`, or the specific underlying repo script that matches the failing GitHub job.
-- Do not report a CI fix as ready unless the relevant GitHub workflow is expected to pass from the current branch state.
-
-## Data Preservation Release Gate
-
-Every app update must preserve user data stored locally and in CloudKit. Treat data preservation as a release gate for any change that touches signing, entitlements, app groups, store paths, SwiftData schema, revision history, backup import, or CloudKit sync.
-
-- Test app-group entitlement and store-location transitions whenever signing, entitlements, app-group IDs, container IDs, store URLs, SwiftData container setup, or release export behavior changes. At minimum, cover the update path from no app-group entitlement using the Application Support `default.store` to a later build with the app-group entitlement using the shared app-group `default.store`.
-- Never assume a provisioning profile proves runtime capabilities. For TestFlight or CloudKit-affecting releases, inspect the final exported IPA entitlements from the release artifact with `codesign -d --entitlements :- Payload/Sunclub.app` or the checked release diagnostics before trusting CloudKit, push, or app-group behavior.
-- Route every SwiftData `ModelContainer` creation path through `SunclubModelContainerFactory` so migrations, store-location recovery, and CloudKit `.none` configuration stay consistent. This app uses manual `CKSyncEngine`; do not enable SwiftData CloudKit mirroring accidentally.
-- Empty/default local bootstrap state must never overwrite meaningful local or CloudKit history. Mark synthetic empty migration seeds local-only, do not queue them for CloudKit, and ignore synthetic default `migrationSeed` or default `conflictAutoMerge` settings revisions whenever meaningful settings history exists.
-- Fresh reinstall restore is a launch gate, not a normal sync. For effectively empty production stores, fetch CloudKit before saving the custom zone or sending local batches; restore success should rebuild projections before routing, no remote history should fall through to onboarding, and startup failure should expose retry/continue instead of silently accepting an empty store.
-- Persisted model or history changes must include migration or projection tests that open prior shipped stores and prove non-empty users keep publishable history while empty stores remain local-only.
-- Recovery and import paths must be idempotent and non-destructive: never delete current days during recovery, never overwrite current settings with less complete defaults, and always prefer `hasCompletedOnboarding: true` over `false`.
-
-## Accessibility Scorecard Rules
-
-Every future change under `app/` must preserve a perfect App Store Accessibility Nutrition Label scorecard for the app's common tasks. Treat the scorecard as a release gate, not a nice-to-have.
-
-- Supported criteria must remain true for VoiceOver, Voice Control, Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, and Reduced Motion.
-- Captions and Audio Descriptions are currently not applicable because the app has no time-based audio or video content. If media playback is added, captions and audio descriptions become required before shipping.
-- All interactive controls need visible, specific accessible names. Icon-only controls need explicit labels and, when useful, hints. Use stable accessibility identifiers for UI-testable flows.
-- VoiceOver users must be able to perceive and operate every common task. Decorative images and symbols should be `accessibilityHidden(true)`; meaningful custom visuals need labels and values.
-- Voice Control names should match visible text where practical. Do not hide primary actions behind unlabeled gestures.
-- Text must support Dynamic Type through accessibility sizes without clipping essential content, overlapping controls, or blocking primary actions. Do not use `minimumScaleFactor` or fixed `lineLimit` for essential app copy.
-- Do not encode status, selection, risk, or progress with color alone. Pair color with text, symbols, selection traits, labels, or values.
-- Text, icons, controls, focusable states, and semantic colors must keep sufficient contrast in light mode, dark mode, and increased-contrast contexts. Use `AppPalette` tokens such as `onAccent` instead of low-contrast foregrounds on accent fills.
-- Motion must honor Reduce Motion. Use `SunMotion` for SwiftUI animations, and suppress or replace decorative looping effects when `accessibilityReduceMotion` is true.
-- UI or behavior changes in `app/` should add or update unit/UI/integration tests for any affected scorecard criterion. Prefer the existing `UITEST_FORCE_*` launch arguments for deterministic accessibility coverage.
-
-## Always-Automatable Rules
-
-Every future user-facing feature must preserve Sunclub's always-automatable posture. Before a feature is considered ready, document and test its automation surface.
-
-- Add an App Intent for the feature, or document why it is destructive, permission-only, camera-based, file-picker-based, or review-heavy enough to open foreground UI instead.
-- Add a custom URL/x-callback route for non-destructive reads and writes, or document the foreground route users and callers should open.
-- Add Settings visibility for any automation knob, privacy toggle, or sensitive callback behavior.
-- Route outside-app writes through the shared automation runtime and revision-history services; do not add ad hoc direct-write shortcuts.
-- Update `docs/app-automation.md`, app product docs, website copy under `web/`, and tests whenever an automation surface changes.
-- Keep Universal Links deferred unless the release plan explicitly includes Associated Domains signing and `apple-app-site-association` verification.
-
-## Project Layout
-
-```text
-app/          iOS Apps, Swift source, iOS tests, UI tests
-scripts/      All project-level scripts.
-tests/        Other tests and test runners
-docs/         One place for all documentation on the app, scripts, and tests.
-web/          Static public site and automation docs.
-infra/        Cloudflare Pages and Email Routing config.
-```
-
-## Architecture Conventions
-
-- **Models** → `app/Sunclub/Sources/Models/` — SwiftData `@Model` types
-- **Persistence Versioning** → `app/Sunclub/Sources/Models/SunclubSchema.swift` — all SwiftData `VersionedSchema`, migration stages, and `ModelContainer` factory wiring live here
-- **Services** → `app/Sunclub/Sources/Services/` — coordinators, matchers, managers
-- **Views** → `app/Sunclub/Sources/Views/` — one file per screen
-- **Design System** → `DESIGN.md` and `app/Sunclub/Sources/Shared/AppDesignSystem.swift` — source of truth for tokens/components; `AppTheme.swift` keeps product-page wrappers and compatibility helpers
-- **Home** → `app/Sunclub/Sources/Views/TimelineHomeView.swift`; `HomeView.swift` is intentionally removed
-- Singletons: `VisionFeaturePrintService.shared`, `NotificationManager.shared`
-- Observable state: `AppState` is the single source of truth, injected via `@Environment`
-
-### SwiftData Migration Rules
-
-- Treat every persisted SwiftData field change as a schema version bump. Add a new `VersionedSchema` entry in `app/Sunclub/Sources/Models/SunclubSchema.swift` and keep older schema definitions immutable.
-- When freezing an older schema, annotate it with the shipped commit or release it matches so migration tests have a concrete source of truth.
-- Route every `ModelContainer` creation path through `SunclubModelContainerFactory`; do not create ad-hoc containers that skip the migration plan.
-- Keep data fixes that must happen once per upgrade inside the migration stage, not scattered across unrelated runtime code.
-
-## Documentation Rules
-
-- **All specs, design docs, and investigation notes go in `docs/`** as Markdown files.
-- All documentation about tools goes in `docs/` as Markdown files.
-- Persisted-data changes should add or update a migration note/ExecPlan in `docs/` when the migration behavior or rollout assumptions are non-trivial.
-- Keep docs terse — spec fields, not prose
-- DO NOT reference Linear ticket IDs (e.g. `PER-44`) in doc filenames or headers
-- Existing specs: `SPEC.md` (benchmark), `app/SPEC.md` (product), `docs/subscription-screen-spec.md`
-
-## Commit & PR Conventions
-
-- Prefix: `PER-XX:` for ticketed work, `feat:`/`fix:`/`chore:` for unlinked
-- One PR per task — never combine unrelated changes
-- PR body should include verification steps
-
-## Code Style
-
-- Swift 6, strict concurrency (`@MainActor`, `nonisolated`, `Sendable`)
-- 4-space indent
-- Custom errors: enum conforming to `LocalizedError`
-- UI tests use `UITEST_MODE` launch arg to bypass camera/notifications
-- Linting/formatting managed by [hk](https://hk.jdx.dev/) — see `hk.pkl`
-- Python: `ruff` for linting and formatting
-- Shell: `shellcheck` + `shfmt`
-- Markdown/JSON/YAML: `prettier`
-- Swift: `swiftlint` (macOS only)
-
-## Things to Avoid
-
-- Don't add external dependencies — the app is intentionally self-contained
-- Don't change persisted SwiftData models without bumping the schema version and adding/updating a migration test that opens the previous shipped store
-- Don't bypass `UITEST_MODE` in UI tests — they must work without real camera/notifications
-- Don't put documentation anywhere other than `docs/`
-
-## Recent Learnings
-
-- TestFlight artifact entitlements must be inspected from the final exported IPA, not inferred from the provisioning profile or the checked-in `.entitlements` file. v1.0.24 exported from an unsigned archive with a provisioning profile that contained CloudKit, APS, HealthKit, WeatherKit, and app-group capabilities, but the signed app kept only base entitlements and crashed on `CKContainer(identifier:)`. Keep CloudKit runtime entitlement guards in place, preserve `.build/release-diagnostics` in `release-testflight.yml`, and inspect `Sunclub.entitlements.plist` from the downloaded workflow artifact before trusting a TestFlight build. The release workflow should ad-hoc sign unsigned archives with resolved release entitlements and then fail before upload if the exported IPA is missing required CloudKit, push, or app-group entitlements.
-- Before CloudKit-affecting releases, run `just cloudkit-doctor`, then `just cloudkit-export-schema` and `just cloudkit-validate-schema` when the schema file is absent or stale. These commands prove CloudKit team/container/schema access, but they do not prove the final IPA was signed with CloudKit entitlements; final IPA `codesign -d --entitlements :- Payload/Sunclub.app` remains the release source of truth.
-- Keep the `release-testflight.yml` launch-safety unit-test step bounded with a `timeout-minutes` value. A stuck pre-archive release gate produces no IPA artifact to inspect and blocks the next corrected TestFlight build.
-- Swift compile caching is enabled by default for CI and release workflows. Any macOS GitHub Actions job running `just test-unit`, `just test-ui`, `just ci-build`, or release archive/test commands must prepare Tuist with `scripts/tooling/prepare_ci_workspace.sh`, run builds through `tuist xcodebuild`, and keep `timeout-minutes` on the Xcode step. If GitHub has no live logs for an in-progress iOS step, inspect job metadata with `gh run view <run-id> --json jobs` and cancel superseded stuck runs after pushing the fix.
-- Generated watch app, watch extension, watch container, and watch widget `Info.plist` values must explicitly mirror the companion app with `CFBundleShortVersionString=$(MARKETING_VERSION)` and `CFBundleVersion=$(SUNCLUB_BUILD_NUMBER)`. Do not rely on Tuist defaults here; WatchKit `ValidateEmbeddedBinary` fails release and CI builds when an embedded watch app reports `1.0` while the companion app reports `1.0.0`.
-- App Store Connect rejects embedded watch apps when the watch app bundle carries iOS-only Info.plist keys, lacks compiled watch icon assets, or is signed with the WatchKit stub identifier `com.apple.WK`. Keep the watch app plist minimal, keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset` in the target resources, and keep release IPA validation checking the watch app code-signing identifier, `CFBundleIconName`, compiled `Assets.car`, and plist key denylist before upload.
-- Hidden SwiftUI navigation bars need both the visible `screen.back` button and the app-owned left-edge drag fallback in `RootView`. Do not rely only on UIKit `interactivePopGestureRecognizer`; CI simulator runs on Xcode 26 failed `testSettingsEdgeSwipeReturnsHome` and `testRecoveryUndoRestoresTodayAndStreak` even though button back navigation still worked. Settings subsections should push `AppRoute` detail routes onto the root path instead of swapping Settings content in place; verify with settings route/unit/UI coverage.
-- Keep the historical CI and release stability notes in `docs/ci-release-stability.md` current whenever touching `.github/workflows/ci.yml`, `.github/workflows/release-testflight.yml`, release tooling, or watch target generation.
-- Normal CI runs the iOS build matrix as `Build iOS (Development)` and `Build iOS (Production)` when iOS-affecting files change. The CI path filter may skip iOS tests/builds only when every changed path is known web-surface work; ambiguous diffs default to running iOS. Do not re-add a separate aggregate `Build iOS` job unless required-check naming deliberately changes.
-- Generated non-logo art assets are owned by `scripts/generate-visual-assets.swift` and regenerated with `just visual-assets`. The generator must keep app icons, watch icons, `icon.svg`, and `web/assets/app-icon.svg` untouched, and generated non-logo imagesets should include valid `1x`, `2x`, and `3x` PNGs plus `Contents.json` scale entries.
-- Coverage diagram artwork is imported from the high-resolution PNG source at `scripts/art/sources/CoverageFaceDiagram.png` by `uv run python -m scripts.art.import_design_asset`, which is part of `just visual-assets`. Do not hand-edit the generated `CoverageFaceDiagram.imageset` outputs or reintroduce the old SVG source; tests require real 300x400, 600x800, and 900x1200 PNG outputs with transparent corners.
-- Bootstrap must remain lockfile-enforced and repo-local: `scripts/tooling/bootstrap.sh` runs `mise install --locked`, and the shared mise wrapper uses repo-local config/trust paths instead of `mise trust`. Renovate tool-version PRs may be either `mise.toml`-only or include `mise.lock`; when the lockfile is included, inspect and stage it with the version bump, then verify that branch with `MISE_CONFIG_DIR="$PWD/.config/mise" MISE_TRUSTED_CONFIG_PATHS="$PWD" MISE_YES=1 mise install --locked --dry-run`. If Renovate comments that `mise.lock` artifacts failed because `mise.toml` was not trusted, treat the PR as `mise.toml`-only and handle the lock refresh after CI is green. Do not add version-specific AGENTS notes for each tool-only bump. After one or several `mise.toml`-only PRs land, start from current `origin/master`, run `mise lock` from a clean follow-up branch so every pending tool bump is captured in one lockfile, and run the same locked dry-run before relying on locked bootstrap or release workflows. When the lockfile is known stale, avoid plain `mise exec` for doc-only checks because it can rewrite `mise.lock`. Do not accept incidental lockfile drift in unrelated worktrees.
-- For docs-only validation while `mise.lock` is stale, avoid commands that rewrite the lockfile. Use no-deps invocations such as `MISE_LOCKED=1 mise exec --no-deps -- prettier --check AGENTS.md`; for rumdl, run the currently locked version from `mise.lock` until the dedicated lock refresh lands, for example `locked_rumdl=$(awk -F'"' '/^\[\[tools.rumdl\]\]/{found=1} found && /^version =/{print $2; exit}' mise.lock)` then `MISE_LOCKED=1 mise exec --no-deps "rumdl@$locked_rumdl" -- rumdl check AGENTS.md`. Verify status and restore any incidental `mise.lock` edits before staging.
-- `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1` is the local recovery switch for Xcode 26 Swift compile-cache trouble in `just build`, `just test-unit`, and `just test-ui`; the scripts still use `tuist xcodebuild` and append the required `COMPILATION_CACHE_ENABLE_*=NO` build settings. Use `BUILD_XCODEBUILD_ARGS` or `TEST_XCODEBUILD_ARGS` only for deliberate extra xcodebuild overrides.
-- App Review submission runs through `just appstore-submit-dry-run` before `just appstore-submit-draft`, `just appstore-submit-review`, or `just appstore-send-review`. Draft submission prepares App Store Connect metadata, screenshots, review details, and review submission items without setting `submitted: true`. Final submission requires strict metadata, screenshots, `.build/appstore-review-checkpoint/summary.md` review, a valid TestFlight build upload, and the checkpoint confirmation gate; never submit a draft review submission that already contains a different app version.
-- When rerunning `.github/workflows/submit-app-review.yml` after fixing submission tooling, use the optional `source_ref` input to run the fixed code while preserving the requested release tag for version resolution. App Store metadata and accessibility declarations can be locked outside draft state; `scripts/appstore/submit_review.py` intentionally skips unchanged app-info fields, retries without locked localization fields, and treats non-draft accessibility declaration updates as no-ops.
-- App Store screenshots are generated from real simulator captures with `just appstore-screenshots`: the Python harness builds the production app into `.DerivedData/screenshots`, saves raw route captures under `.build/appstore-screenshots/raw`, then `scripts/appstore/compose_screenshots.swift` renders the framed 1320x2868 PNGs from the headline/caption inventory in `scripts/appstore/metadata.json`. Do not hand-edit generated screenshot output; update the manifest/routes and regenerate so `submit_review.py` size and blank-image validation can catch bad uploads.
-- Screen styling must route through `AppDesignSystem.swift` and the product-page wrappers in `AppTheme.swift`; `DesignSystemAdoptionTests` guard against direct system fonts, raw SwiftUI colors/RGB values, numeric corner radii, and ad hoc shadows in screen code.
-- Top-level screen headers should stay large, leading-aligned, and shared-wrapper driven. `SunLightScreen` and `SunDarkScreen` own the top status-bar scroll fade through `SunTopStatusBarFade` and `onScrollGeometryChange`; do not reintroduce centered navigation-style titles or per-screen fade implementations.
-- The product-page reference added first-class UV forecast, privacy, and support destinations. New screen routes should be wired through `AppRoute`, `RootView`, App Intent route mapping, URL/x-callback automation parsing, `docs/app-automation.md`, website automation docs, and route/UI tests together.
-- One-tap sunscreen logging defaults are centralized in `SunManualLogDefaultResolver`; widget/deep-link, watch, Shortcut/App Intent, Control Center, standalone quick action, and Manual Log flows should reuse it instead of adding surface-specific fallback logic. Only structured covered-area metadata should become automatic one-tap notes; do not copy prior free-form notes, and keep `ManualLogSuggestions.swift` included in widget target metadata checks.
-- Widget and Control Center in-place logging uses non-discoverable widget intents (`LogTodayWidgetIntent`, `LogReapplyWidgetIntent`) with `SunclubAutomationInvocation.widget`; keep user-run Shortcuts on `LogSunscreenIntent` and keep visible widget behavior asserted by `SunclubLogTodayWidgetPresentation.tapAction`. Widget snapshots may choose log/reapply/open state, but default SPF/area resolution must read current storage at execution time. Open/reapply Today states should wrap the whole rendered widget surface in `SunclubLogWholeSurfaceButton`; nested action pills must render as passive labels under that wrapper, and setup/logged states should stay whole-surface app links.
-- Home Screen widgets can fail WidgetKit archiving as gray loading skeletons when the render tree references oversized bitmap textures or motifs; the observed iOS 26 failure was `WidgetArchiver.ArchivingError.imageTooLarge(size: (2400.0, 2400.0))`. Keep `Log Today` Home Screen artwork vector/procedural, keep oversized bitmap textures and motifs out of the widget render tree, preserve the metadata guards in `tests/test_ios_metadata.py`, and verify widget render changes with `just test-python`, `just lint`, `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 just ci-build`, plus Simulator widget gallery/Home Screen checks when practical.
-- Today widgets should not advertise `accessoryInline`: iOS 18 interactive-widget logging is supported through Home Screen families plus accessory circular and rectangular, while Stats and History may still use inline accessory families for read-only status.
-- Widget visual polish should stay compact and state-first: keep Today, Stats, and History copy to one status chip, one primary value, one compact detail line, and one visible action where applicable. Prefer short labels like `Log today`, month names, and `4/7` over explanatory phrases, and update `SunclubWidgetTests` plus `tests/test_ios_metadata.py` whenever widget copy or tap behavior changes.
-- Live Activity reapply UI should keep timing state in shared widget support so `SunclubLiveActivityCoordinator` and `SunclubLiveActivityWidget` agree on start/deadline dates, countdown fallback, UV pill copy, and progress. Update `SunclubWidgetTests` for state-shape changes and visually inspect Lock Screen plus compact/minimal/expanded Dynamic Island surfaces after reapply changes.
-- When continuing the one-tap logging quality pass, keep `docs/one-tap-logging-quality-ledger.md` evidence-backed and update `tests/test_quality_ledger.py` with any changed ledger contract; run `just test-python` for the ledger and iOS metadata checks before relying on the docs.
-- Activity sharing direct pokes depend on the production-only public CloudKit accountability transport. When changing that feature, keep `SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED`, `PrivacyInfo.xcprivacy`, `scripts/appstore/metadata.json`, App Review package generation, public privacy copy, widget metadata tests, and `docs/accountability-friends-execplan.md` in sync; validate with `just appstore-review-package`, `just appstore-validate`, `just web-check`, `just test-python`, `just generate`, and compile-cache-off unit/build checks.
-- When touching iCloud reinstall restore or CloudKit startup ordering, keep `docs/icloud-reinstall-restore-execplan.md` current and verify with the targeted restore tests plus `SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE=1 TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit`, `just ci-lint`, `just test-python`, `just cloudkit-doctor`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema`.
-- Cloudflare Pages deploy and rollback workflows both pin `cloudflare/wrangler-action`; keep `.github/workflows/deploy-web-cloudflare.yml` and `.github/workflows/rollback-web-cloudflare.yml` in sync when updating the action, run the closest web/Cloudflare validation such as `just web-check` or `just cloudflare-check`, and check `gh pr view <pr> --json statusCheckRollup,files` because workflow-only action PRs do not trigger the path-filtered Deploy Web workflow and generic CI is not deploy proof.
-- Mobile web CSS changes should be checked at narrow phone widths, not just desktop: run `just web-check`, the targeted static/deployment pytest files, `just web-build`, and browser audits around 320 px, 390 px, and 430 px for overflow, broken images, console issues, and visible tap-target size.
+- App: `just test-unit`, `just test-ui-smoke`; full candidate: `just ci`.
+- Scripts/metadata: `just test-python`. Style: `just ci-lint`.
+- CI/workflow edits require the closest local CI-equivalent check and passing
+  expected GitHub jobs. Never infer readiness from skipped checks.
+- Refactor/release candidates need full CI on the exact SHA. Only known web/docs
+  PRs skip iOS; unknown changes run it. Preserve the required `CI` gate.
+- Signing, store, import and sync changes must satisfy all
+  [data release gates](docs/release-gates.md). Before trusting an upload, inspect
+  final IPA entitlements and embedded watch diagnostics, not just profiles.
+- App Review submission requires a dry run and review checkpoint before final
+  submission. See [App Store submission](docs/app-store-submission.md).

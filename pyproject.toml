@@ -14,3 +14,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# The classifier and aggregate gate run on runner Python before tool setup.
+[tool.ruff.per-file-target-version]
+"scripts/tooling/ci_policy.py" = "py39"

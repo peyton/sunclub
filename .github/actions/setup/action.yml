@@ -1,0 +1,47 @@
+---
+name: Sunclub setup
+description: Locked repository tooling with optional Xcode and Tuist preparation
+inputs:
+  xcode:
+    description: Prepare Xcode and the authenticated Tuist cache
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Configure repository environment
+      shell: bash
+      run:
+        | # zizmor: ignore[github-env] fixed variable allowlist with newline rejection
+        source scripts/tooling/common.sh
+        setup_local_tooling_env
+        for name in MISE_CONFIG_DIR MISE_TRUSTED_CONFIG_PATHS MISE_YES MISE_LOCKED UV_FROZEN UV_CACHE_DIR UV_PROJECT_ENVIRONMENT HK_CACHE_DIR HK_STATE_DIR npm_config_cache; do
+          value="${!name}"
+          [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || exit 1
+          printf '%s=%s\n' "$name" "$value" >> "$GITHUB_ENV"
+        done
+    - name: Install locked tools
+      uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
+      with:
+        install_args: --locked
+        cache: true
+    - name: Restore repository caches
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: |
+          .cache/uv
+          .cache/npm
+          .cache/hk
+          .cache/swiftlint
+        key: ${{ runner.os }}-${{ runner.arch }}-sunclub-${{ hashFiles('mise.lock', 'uv.lock', 'hk.pkl') }}
+    - name: Select Xcode
+      if: inputs.xcode == 'true'
+      shell: bash
+      env:
+        SUNCLUB_XCODE_VERSION: "26.4"
+      run: |
+        sudo xcode-select -s "/Applications/Xcode_${SUNCLUB_XCODE_VERSION}.app/Contents/Developer"
+        xcodebuild -version
+    - name: Prepare Tuist cache
+      if: inputs.xcode == 'true'
+      shell: bash
+      run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh

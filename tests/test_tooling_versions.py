@@ -68,6 +68,39 @@ def test_resolve_build_number_uses_local_timestamp_shape_without_ci() -> None:
     assert resolve_build_number({}, now=now) == "20260402.195501.0"
 
 
+def test_development_versions_stay_stable_across_days(tmp_path) -> None:
+    first = resolve_versions(
+        {}, tmp_path, now=datetime(2026, 4, 2, tzinfo=UTC), development=True
+    )
+    second = resolve_versions(
+        {}, tmp_path, now=datetime(2026, 4, 3, tzinfo=UTC), development=True
+    )
+    assert first.build_number == second.build_number
+
+
+@pytest.mark.parametrize(
+    "environment,expected",
+    [
+        ({"SUNCLUB_BUILD_NUMBER": "20260402.99.1"}, "20260402.99.1"),
+        ({"SUNCLUB_RELEASE_TAG": "v1.2.3"}, "20260402.195501.0"),
+        (
+            {"SUNCLUB_RELEASE_TAG": "v1.2.3", "GITHUB_RUN_NUMBER": "42"},
+            "20260402.42.1",
+        ),
+    ],
+)
+def test_development_resolution_preserves_release_versions(
+    tmp_path, environment, expected
+) -> None:
+    resolved = resolve_versions(
+        environment,
+        tmp_path,
+        now=datetime(2026, 4, 2, 19, 55, 1, tzinfo=UTC),
+        development=True,
+    )
+    assert resolved.build_number == expected
+
+
 def test_latest_reachable_release_tag_returns_none_for_missing_repo(tmp_path) -> None:
     assert latest_reachable_release_tag(repo_root=tmp_path) is None
 

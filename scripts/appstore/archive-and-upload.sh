@@ -15,7 +15,7 @@ ROOT_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 source "$ROOT_DIR/scripts/tooling/common.sh"
 source_appstore_review_env
 
-setup_local_tooling_env
+prepare_xcode_env release
 
 resolve_repo_path() {
   case "$1" in
@@ -487,6 +487,12 @@ if [ "$UPLOAD_TESTFLIGHT" = true ] && [ "$SKIP_EXPORT" = true ]; then
   fail "--upload-testflight requires IPA export"
 fi
 
+# Only an unsigned archive with no export can proceed without release proof.
+# Check before archive signing, ad-hoc export preparation or profile creation.
+if [ "$UNSIGNED_ARCHIVE" = false ] || [ "$SKIP_EXPORT" = false ]; then
+  run_repo_python_module scripts.tooling.ci_policy require-release
+fi
+
 step "Validating App Store metadata"
 metadata_args=("scripts/appstore/metadata.json")
 if [ "$ALLOW_DRAFT_METADATA" = true ]; then
@@ -497,7 +503,7 @@ ok "Submission manifest is valid"
 
 if [ "$SKIP_GENERATE" = false ]; then
   step "Generating the Tuist workspace"
-  generate_workspace
+  ensure_workspace_generated
   ok "Workspace generated"
 else
   ok "Skipping workspace generation"
@@ -536,7 +542,7 @@ fi
 
 [ -d "$APP_BUNDLE_PATH" ] || fail "Archive is missing $APP_BUNDLE_PATH"
 
-if [ "$UNSIGNED_ARCHIVE" = true ]; then
+if [ "$UNSIGNED_ARCHIVE" = true ] && [ "$SKIP_EXPORT" = false ]; then
   step "Ad-hoc signing archived app with requested release entitlements"
   adhoc_sign_archived_app_with_release_entitlements
   ok "Archived app carries requested entitlements for export"

@@ -4,12 +4,17 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
-setup_local_tooling_env
+prepare_xcode_env
 
 suite=""
+test_filter=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
+  --filter)
+    test_filter="$2"
+    shift 2
+    ;;
   --suite)
     suite="$2"
     shift 2
@@ -25,15 +30,21 @@ case "$suite" in
 unit)
   only_testing="SunclubTests"
   ;;
+ui-smoke)
+  only_testing="SunclubUITests/SunclubSmokeUITests"
+  ;;
 ui)
-  only_testing="SunclubUITests/SunclubUITests"
+  only_testing="SunclubUITests"
   ;;
 *)
-  printf 'Missing or invalid --suite. Use unit or ui.\n' >&2
+  printf 'Missing or invalid --suite. Use unit, ui-smoke or ui.\n' >&2
   exit 2
   ;;
 esac
 
+if [ -n "$test_filter" ]; then
+  only_testing="$only_testing/$test_filter"
+fi
 ensure_workspace_generated
 
 result_bundle_path="$REPO_ROOT/.build/test-$suite.xcresult"
@@ -41,14 +52,6 @@ xcodebuild_log_path="$REPO_ROOT/.build/test-$suite.xcodebuild.log"
 test_xcodebuild_args=()
 if [ -n "${TEST_XCODEBUILD_ARGS:-}" ]; then
   read -r -a test_xcodebuild_args <<<"$TEST_XCODEBUILD_ARGS"
-fi
-
-if [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-0}" = "1" ]; then
-  test_xcodebuild_args+=(
-    COMPILATION_CACHE_ENABLE_CACHING=NO
-    COMPILATION_CACHE_ENABLE_PLUGIN=NO
-    COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO
-  )
 fi
 
 test_scheme="${TEST_APP_SCHEME:-$RELEASE_APP_SCHEME}"

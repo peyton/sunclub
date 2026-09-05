@@ -52,7 +52,12 @@ resolve_version_metadata() {
   fi
 
   local exports
-  if ! exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell)"; then
+  if [ "${1:-development}" = "release" ]; then
+    set --
+  else
+    set -- --development
+  fi
+  if ! exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell "$@")"; then
     printf 'Error: version resolution failed\n' >&2
     return 1
   fi
@@ -68,23 +73,34 @@ export_tuist_manifest_env() {
   export TUIST_TEAM_ID="${TEAM_ID:-}"
 }
 
-should_setup_local_tuist_cache() {
-  [ "${SUNCLUB_SKIP_LOCAL_TUIST_CACHE:-0}" != "1" ] &&
-    [ -z "${CI:-}" ] &&
-    [ "${GITHUB_ACTIONS:-}" != "true" ] &&
-    [ "${ACT:-}" != "true" ]
+# Local cache service installation is an explicit, optional operation.
+setup_local_tuist_cache() {
+  setup_local_tooling_env
+  run_in_app run_mise_exec tuist setup cache
 }
 
-setup_local_tuist_cache() {
-  if ! should_setup_local_tuist_cache; then
+prepare_xcode_env() {
+  if [ "${sunclub_xcode_env_ready:-0}" = "1" ]; then
     return 0
   fi
-
-  run_in_app run_mise_exec tuist setup cache
+  setup_local_tooling_env
+  apply_flavor_defaults
+  resolve_version_metadata "${1:-development}"
+  export_tuist_manifest_env
+  export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
+  sunclub_xcode_env_ready=1
 }
 
 run_tuist_xcodebuild() {
   local log_file exit_code
+  # GitHub setup starts the cache service. Local commands must work without it.
+  local default_cache_disabled=1
+  if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    default_cache_disabled=0
+  fi
+  if [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-$default_cache_disabled}" = "1" ]; then
+    set -- COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO "$@"
+  fi
 
   log_file="$(mktemp "${TMPDIR:-/tmp}/sunclub-tuist-xcodebuild.XXXXXX")"
 
@@ -146,10 +162,8 @@ setup_local_tooling_env() {
   export HK_STATE_DIR="$REPO_ROOT/.state/hk"
   export npm_config_cache="$REPO_ROOT/.cache/npm"
 
-  apply_flavor_defaults
-  resolve_version_metadata
-  export_tuist_manifest_env
-  setup_local_tuist_cache
+  export MISE_LOCKED=1
+  export UV_FROZEN=true
 }
 
 run_mise() {
@@ -164,7 +178,7 @@ run_mise_exec() {
 }
 
 run_repo_python_module() {
-  run_mise_exec uv run python -m "$@"
+  (cd "$REPO_ROOT" && run_mise_exec uv run python -m "$@")
 }
 
 run_in_app() {
@@ -174,77 +188,39 @@ run_in_app() {
   )
 }
 
+generation_fingerprint() {
+  run_repo_python_module scripts.tooling.workspace_fingerprint
+}
+
 generate_workspace() {
+  prepare_xcode_env
+  local fingerprint
+  fingerprint="${1:-$(generation_fingerprint)}"
   if [ -f "$REPO_ROOT/app/Tuist/Package.resolved" ]; then
     run_in_app run_mise_exec tuist install --force-resolved-versions
   fi
   run_in_app run_mise_exec tuist generate --no-open
-}
-
-workspace_is_generated() {
-  [ -d "$REPO_ROOT/$APP_WORKSPACE" ]
-}
-
-workspace_has_scheme() {
-  xcodebuild -list -workspace "$REPO_ROOT/$APP_WORKSPACE" 2>/dev/null |
-    grep -Eq "^[[:space:]]+$APP_SCHEME$"
-}
-
-workspace_needs_regeneration() {
-  local generation_marker="$REPO_ROOT/$APP_WORKSPACE/.tuist-generated"
-  local manifest
-
-  if [ ! -f "$generation_marker" ]; then
-    return 0
-  fi
-
-  for manifest in \
-    "$REPO_ROOT/app/Tuist.swift" \
-    "$REPO_ROOT/app/Workspace.swift" \
-    "$REPO_ROOT/app/Tuist/Package.swift" \
-    "$REPO_ROOT/app/Sunclub/Project.swift"; do
-    if [ -e "$manifest" ] && [ "$manifest" -nt "$generation_marker" ]; then
-      return 0
-    fi
-  done
-
-  return 1
+  printf '%s\n' "$fingerprint" >"$REPO_ROOT/$APP_WORKSPACE/.sunclub-fingerprint"
 }
 
 ensure_workspace_generated() {
-  if workspace_is_generated && workspace_has_scheme && ! workspace_needs_regeneration; then
+  prepare_xcode_env
+  local fingerprint marker
+  fingerprint="$(generation_fingerprint)"
+  marker="$REPO_ROOT/$APP_WORKSPACE/.sunclub-fingerprint"
+  if [ -f "$marker" ] && [ "$(cat "$marker")" = "$fingerprint" ] &&
+    [ -f "$REPO_ROOT/app/Sunclub/Sunclub.xcodeproj/xcshareddata/xcschemes/$APP_SCHEME.xcscheme" ]; then
     return 0
   fi
-
-  generate_workspace
+  generate_workspace "$fingerprint"
 }
 
 prepare_ci_workspace() {
-  local mode="${1:-github-actions}"
-
-  case "$mode" in
-  github-actions)
-    if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
-      printf 'Skipping GitHub Actions Tuist setup outside GitHub Actions.\n'
-      return 0
-    fi
-
-    if [ "${ACT:-}" = "true" ]; then
-      printf 'Skipping GitHub Actions Tuist setup under act.\n'
-      return 0
-    fi
-
+  setup_local_tooling_env
+  if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     run_in_app run_mise_exec tuist auth login
-    run_in_app run_mise_exec tuist setup cache
-    ;;
-  xcode-cloud)
-    run_in_app run_mise_exec tuist setup cache
-    ;;
-  *)
-    printf 'Unknown CI workspace mode: %s\n' "$mode" >&2
-    return 2
-    ;;
-  esac
+  fi
+  setup_local_tuist_cache
 }
 
 resolve_simulator_udid() {

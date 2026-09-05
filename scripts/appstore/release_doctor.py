@@ -645,7 +645,7 @@ def check_xcode(ctx: DoctorContext) -> None:
 
 
 def _read_ci_xcode_version() -> str | None:
-    workflow = REPO_ROOT / ".github" / "workflows" / "release-testflight.yml"
+    workflow = REPO_ROOT / ".github" / "actions" / "setup" / "action.yml"
     if not workflow.is_file():
         return None
     for line in workflow.read_text(encoding="utf-8").splitlines():

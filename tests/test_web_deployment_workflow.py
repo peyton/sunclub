@@ -24,7 +24,16 @@ def workflow_text(path: Path) -> str:
 
 
 def uses_references(workflow: str) -> list[str]:
-    return re.findall(r"uses:\s*([^\s#]+)", workflow)
+    references = re.findall(r"uses:\s*([^\s#]+)", workflow)
+    external = []
+    for reference in references:
+        if reference.startswith("./"):
+            action = REPO_ROOT / reference / "action.yml"
+            assert action.is_file()
+            external.extend(uses_references(action.read_text()))
+        else:
+            external.append(reference)
+    return external
 
 
 def test_web_deploy_workflow_runs_only_for_web_directory_changes() -> None:
