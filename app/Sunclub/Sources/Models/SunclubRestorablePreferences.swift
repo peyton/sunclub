@@ -62,7 +62,13 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
         restored.preferredName = preferredName
         restored.uvBriefing = uvBriefing
         restored.friends = friends
-        restored.accountability = accountability
+        restored.accountability = accountability.restorableProjection
+        // Subscription IDs and publication state belong to this device's current profile.
+        if accountability.localProfileID == current.accountability.localProfileID {
+            restored.accountability.lastPublishedAt = current.accountability.lastPublishedAt
+            restored.accountability.subscriptionsInstalledAt = current.accountability.subscriptionsInstalledAt
+            restored.accountability.subscriptionInstallVersion = current.accountability.subscriptionInstallVersion
+        }
         restored.automation = automation
         return restored
     }

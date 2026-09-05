@@ -8,11 +8,11 @@ Xcode 26.6.0, iPhone 17 Pro simulator on iOS 26.5; compile cache disabled. UI te
 
 | Check                             | Result                                              |
 | --------------------------------- | --------------------------------------------------- |
-| Full unit suite                   | 547 passed, 0 failures after final cleanup (September 5) |
+| Full unit suite                   | 549 passed, 0 failures after recovery follow-up (September 5) |
 | Python suite                      | 279 passed, 0 failures (September 5)                |
 | Website build and validation      | Passed                                              |
 | CI lint                           | Passed; 0 errors, 54 SwiftLint warnings             |
-| Full UI suite before review follow-up | 79 passed, 0 failures (September 5)              |
+| Full UI suite after navigation follow-up | 79 passed, 0 failures on `b6055df` (September 5); before final metadata-only fix |
 | Clean follow-up navigation suite   | 4/4 passed: Insights Back, cancelled/completed swipe with selected date, Forecast and Recovery |
 | Controlled slower-drag repetitions | Insights 10/10 passed (September 5)                  |
 | iOS 18.6 compatibility UI suite   | Original 14/14; final Back/swipe/cancelled-gesture follow-up 2/2 |
@@ -78,7 +78,9 @@ Today logs the current local day with a single action and guarded Undo/Edit. His
 
 ## Evidence and limitations
 
-- The settings review follow-up adds 19 serialized-backup regressions: default/nil restoration, later scalar and nested edits, active-store/relaunch consistency, local identity, legacy recovery, old import attribution, independent remote choices, renewed relationships, generic Undo, Undo/Redo/Undo, and local-only publication. Each reported failure was reproduced before its fix. All 547 unit tests passed after final cleanup ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/c8cb99ac-2868-413d-932d-2d78ef00ea02)). Ambiguous old or remote nested changes fail atomically rather than discard edits or retain imported credentials silently. The obsolete backup-summary preference field is removed; backup tests assert the active and persisted result directly.
+- The settings review follow-up adds 21 recovery regressions: default/nil restoration, later scalar and nested edits, active-store/relaunch consistency, local identity, legacy recovery, old import attribution, independent remote choices, renewed relationships, generic Undo, Undo/Redo/Undo, local-only publication, and device-local sync metadata. Each reported failure was reproduced before its fix. All 549 unit tests passed ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/778426f0-146b-4e45-9d2a-f4336389f9ba)). Ambiguous old or remote nested changes fail atomically rather than discard edits or retain imported credentials silently. The obsolete backup-summary preference field is removed; backup tests assert the active and persisted result directly.
+- The final metadata review reproduced seven failed assertions across two tests. Recovery now preserves device-local publication/subscription markers only for the same profile. Restoring a different profile clears both imported and unrelated current-device markers because subscription IDs and query predicates are profile-specific. Backup/history projections still exclude these fields; schemas and serialized formats are unchanged.
+- The full local UI suite passed 79/79 after removing all navigation probes ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/542db559-c557-487e-8386-d6ebe717accc)). This run used `b6055df`, before the metadata-only follow-up; the final candidate's full CI remains required.
 - CI result uploads now include hidden files within the existing `.build/test-unit*` and `.build/test-ui*` paths. Previous failed runs uploaded no artifacts because `.build` was excluded. Upload scope, retention and pinned action are unchanged; Python and workflow lint checks pass.
 - The Python launch-retry fixture now isolates `killall`, alongside its existing fake Xcode commands. It had called the host's real simulator service and interrupted a concurrent UI run with signal TERM. That failed bundle is retained. Compatibility checks use the exact iOS 18 simulator ID: the normal helper selects the current SDK runtime even when an older device shares the requested name.
 - PR security review identified Undo Import retaining imported-only dates. Seven serialized-backup regressions cover removal, original-history restoration, later edits, identical replacement revisions, unrelated later logs, repeated Undo, failed-save retry, and foreign-author history. The initial run failed eight assertions before the fix. Removal appends local-only, revision-guarded tombstones without deleting history. Existing publication and pre-import snapshot restoration semantics are unchanged; Undo is not a retraction of CloudKit history.

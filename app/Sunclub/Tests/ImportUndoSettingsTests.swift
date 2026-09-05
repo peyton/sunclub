@@ -140,6 +140,59 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertEqual(reopened.growthSettings.healthKit, original.healthKit)
     }
 
+    func testImportUndoAndRedoPreserveCurrentProfileSyncMetadata() throws {
+        let store = ImportUndoSettingsStore()
+        var original = store.load()
+        original.accountability.displayName = "Local"
+        original.accountability.lastPublishedAt = Date(timeIntervalSince1970: 1_780_000_100)
+        original.accountability.subscriptionsInstalledAt = Date(timeIntervalSince1970: 1_780_000_200)
+        original.accountability.subscriptionInstallVersion = 2
+        store.save(original)
+        let (target, _) = try makeApp(store: store)
+        let session = try target.importBackupDocument(envelopeBackup()).importSessionID
+        let batch = try XCTUnwrap(target.changeBatches.first { $0.kind == .importLocal })
+
+        _ = try target.restoreImportedChanges(for: session).get()
+
+        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
+        XCTAssertEqual(store.load().accountability, original.accountability)
+        let projection = try XCTUnwrap(target.settings.restorablePreferences).accountability
+        XCTAssertNil(projection.lastPublishedAt)
+        XCTAssertNil(projection.subscriptionsInstalledAt)
+        XCTAssertEqual(projection.subscriptionInstallVersion, 0)
+
+        _ = try target.redoChange(batch.id).get()
+
+        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
+        XCTAssertEqual(store.load().accountability, original.accountability)
+    }
+
+    func testRestoringAnotherProfileDoesNotReuseEitherProfilesDeviceMetadata() {
+        let current = SunclubGrowthSettings(accountability: SunclubAccountabilitySettings(
+            lastPublishedAt: Date(timeIntervalSince1970: 1_780_000_100),
+            subscriptionsInstalledAt: Date(timeIntervalSince1970: 1_780_000_200),
+            subscriptionInstallVersion: 2
+        ))
+        let imported = SunclubAccountabilitySettings(
+            displayName: "Another profile",
+            lastPublishedAt: Date(timeIntervalSince1970: 1_780_000_300),
+            subscriptionsInstalledAt: Date(timeIntervalSince1970: 1_780_000_400),
+            subscriptionInstallVersion: 2
+        )
+        let preferences = SunclubRestorablePreferences(
+            preferredName: "", uvBriefing: SunclubUVBriefingPreferences(), friends: [],
+            accountability: imported, automation: SunclubAutomationPreferences()
+        )
+
+        let restored = preferences.replacingRestorableFields(in: current)
+
+        XCTAssertEqual(restored.accountability.localProfileID, imported.localProfileID)
+        XCTAssertEqual(restored.accountability.displayName, "Another profile")
+        XCTAssertNil(restored.accountability.lastPublishedAt)
+        XCTAssertNil(restored.accountability.subscriptionsInstalledAt)
+        XCTAssertEqual(restored.accountability.subscriptionInstallVersion, 0)
+    }
+
     // Older envelope-only imports lack an ownership marker; do not pretend a selective inverse is known.
     func testUnattributedOlderEnvelopeFailsWithoutChangingSettings() throws {
         let target = try makeHistory()
