@@ -2,7 +2,7 @@
 
 Sunscreen status and logging lead every quick entry point. Widget status opens
 Today; history opens History and totals open Insights. The small widget uses
-“Log again” with the accessible name “Log reapplication.” All existing widget
+“Log again” (or “Again” at larger text sizes) with the accessible name “Log reapplication.” All existing widget
 kinds, supported families, fixed public intent semantics and legacy routes remain.
 
 ## Audit and verification
@@ -23,13 +23,18 @@ app's snapshot; signed-build interaction checks use the shared app group.
 
 ![Widget and Live Activity after an in-place reapplication](images/widget-surfaces/timers.png)
 
+![Watch timer and logging action](images/widget-surfaces/watch.png)
+
 Automated coverage checks current-day state, early reapplication, reminders off,
 rapid taps, failed persistence, superseded reminder work, midnight, sunset and
 all shipped widget families. Live Activity timers no longer depend on high UV.
 
 The visual checks cover the installed small widget, its Today route, synchronized
 widget/Live Activity timer updates, and selected gallery previews: small/medium/large Sunscreen, small Logged Days,
-medium Stats and medium History. App-owned logging intents execute
+medium Stats and medium History. The small widget also fits the largest accessibility
+text setting with dark mode and increased contrast. A paired watchOS 26.5
+simulator verifies the timer and logging action on the Watch home screen.
+App-owned logging intents execute
 in the app process so ActivityKit can update existing activities.
 Physical Watch/offline delivery, OS refresh latency, and every widget family at
 all accessibility sizes still require device acceptance testing. A simulator
