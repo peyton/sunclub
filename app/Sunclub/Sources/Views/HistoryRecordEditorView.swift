@@ -9,110 +9,105 @@ struct HistoryRecordEditorView: View {
     let existingRecord: DailyRecord?
     let route: AppRoute?
     let targetContext: AppLogContext?
+    let prefill: ManualLogPrefill?
+    let accessibilityPrefix: String
 
     @State private var selectedSPF: Int?
     @State private var selectedAreas: Set<String>
     @State private var notes: String
     @State private var selectedTimestamp: Date
     @State private var hasLoadedInitialState = false
+    @State private var hasSaved = false
 
     init(
         day: Date,
         existingRecord: DailyRecord?,
         route: AppRoute? = nil,
-        targetContext: AppLogContext? = nil
+        targetContext: AppLogContext? = nil,
+        prefill: ManualLogPrefill? = nil,
+        accessibilityPrefix: String = "historyEditor"
     ) {
-        self.day = day
+        self.day = targetContext?.date ?? day
         self.existingRecord = existingRecord
         self.route = route
         self.targetContext = targetContext
+        self.prefill = prefill
+        self.accessibilityPrefix = accessibilityPrefix
         _selectedSPF = State(initialValue: existingRecord?.spfLevel)
-        let existingAreas = SunManualLogInput.coveredAreas(in: existingRecord?.notes)
-        _selectedAreas = State(initialValue: existingAreas.isEmpty ? SunManualLogInput.defaultCoveredAreas : existingAreas)
+        _selectedAreas = State(initialValue: SunManualLogInput.coveredAreas(in: existingRecord?.notes))
         _notes = State(initialValue: SunManualLogInput.notesRemovingCoveredAreas(existingRecord?.notes))
-        _selectedTimestamp = State(initialValue: existingRecord?.verifiedAt ?? day)
+        _selectedTimestamp = State(initialValue: existingRecord?.verifiedAt ?? targetContext?.date ?? day)
     }
 
     var body: some View {
+        if route == nil {
+            NavigationStack {
+                editor
+            }
+        } else {
+            editor
+        }
+    }
+
+    private var editor: some View {
         SunLightScreen(
             contentMaxWidth: SunLayout.ContentWidth.form,
             contentFrameAlignment: .center,
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
-            VStack(alignment: .leading, spacing: 22) {
-                SunLightHeader(title: editorTitle, showsBack: true, onBack: {
-                    closeEditor()
-                })
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                if #unavailable(iOS 26.0) {
+                    cancelButton
+                }
 
-                SunScreenTitleBlock(
-                    eyebrow: day.formatted(.dateTime.weekday(.wide).month(.wide).day()),
-                    title: existingRecord == nil ? "No sunscreen logged" : "Completed",
-                    detail: editorMessage,
-                    symbolName: existingRecord == nil ? "calendar.badge.plus" : "checkmark.circle.fill",
-                    tint: existingRecord == nil ? AppPalette.sun : AppPalette.success
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                    AppText(existingRecord == nil ? "Log sunscreen" : "Edit log", style: .largeTitle)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("\(accessibilityPrefix).title")
+                    AppText(
+                        day.formatted(.dateTime.weekday(.wide).month(.wide).day()),
+                        style: .caption,
+                        color: AppColor.Text.secondary
+                    )
+                    .accessibilityIdentifier("\(accessibilityPrefix).timestamp")
+                }
+
+                DatePicker(
+                    (existingRecord?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
+                    selection: $selectedTimestamp,
+                    in: allowedTimestampRange,
+                    displayedComponents: .hourAndMinute
                 )
-                .accessibilityIdentifier("historyEditor.title")
+                .datePickerStyle(.compact)
+                .font(AppTextStyle.body.font)
+                .tint(AppColor.accent)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("\(accessibilityPrefix).timePicker")
 
-                SunclubCard(cornerRadius: AppRadius.card, padding: AppSpacing.sm) {
-                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                        AppText("Application time", style: .bodyMedium)
-                        DatePicker(
-                            "Application time",
-                            selection: $selectedTimestamp,
-                            in: allowedTimestampRange,
-                            displayedComponents: .hourAndMinute
+                SunManualLogFields(
+                    selectedSPF: $selectedSPF,
+                    notes: $notes,
+                    selectedAreas: $selectedAreas,
+                    accessibilityPrefix: accessibilityPrefix,
+                    suggestions: appState.manualLogSuggestionState(for: day),
+                    showsOptionalDisclosure: false
+                )
+
+                if let errorMessage = inputValidationMessage ?? appState.logActionErrorMessage {
+                    AppText(errorMessage, style: .caption, color: AppPalette.warning)
+                        .accessibilityLabel("Couldn’t save. \(errorMessage)")
+                        .accessibilityIdentifier(
+                            accessibilityPrefix == "manualLog" ? "manualLog.validation" : "historyEditor.error"
                         )
-                        .datePickerStyle(.compact)
-                        .accessibilityIdentifier("historyEditor.timePicker")
-
-                        AppText(
-                            "Saved for \(selectedTimestamp.formatted(.dateTime.weekday(.wide).month(.wide).day().hour().minute())).",
-                            style: .caption,
-                            color: AppColor.Text.secondary
-                        )
-                    }
-                }
-
-                SunclubCard(cornerRadius: 20, padding: 16) {
-                    SunManualLogFields(
-                        selectedSPF: $selectedSPF,
-                        notes: $notes,
-                        selectedAreas: $selectedAreas,
-                        accessibilityPrefix: "historyEditor",
-                        suggestions: appState.manualLogSuggestionState(for: day),
-                        showsOptionalDisclosure: false
-                    )
-                }
-
-                if let errorMessage = appState.logActionErrorMessage {
-                    SunInfoRow(
-                        title: "Couldn’t save",
-                        detail: errorMessage,
-                        systemImage: "exclamationmark.triangle.fill",
-                        tint: AppColor.warning
-                    )
-                    .padding(AppSpacing.sm)
-                    .sunGlassCard(cornerRadius: AppRadius.card)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Save error. \(errorMessage)")
-                    .accessibilityIdentifier("historyEditor.error")
                 }
             }
         } footer: {
-            Button(primaryActionTitle) {
-                let result = appState.saveManualRecord(
-                    for: targetContext?.date ?? day,
-                    dayPart: targetContext?.dayPart,
-                    verifiedAt: selectedTimestamp,
-                    spfLevel: selectedSPF,
-                    notes: SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas)
+            Button("Save", action: saveLog)
+                .sunGlassPrimaryButton()
+                .disabled(inputValidationMessage != nil || hasSaved)
+                .accessibilityIdentifier(
+                    accessibilityPrefix == "manualLog" ? "manualLog.logToday" : "historyEditor.save"
                 )
-                if case .success = result {
-                    closeEditor()
-                }
-            }
-            .sunGlassPrimaryButton()
-            .accessibilityIdentifier("historyEditor.save")
         }
         .onAppear {
             appState.clearLogActionError()
@@ -122,47 +117,82 @@ struct HistoryRecordEditorView: View {
             appState.clearLogActionError()
         }
         .sunNavigationBarCompatibility()
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .cancellationAction) {
+                    cancelButton
+                }
+            }
+        }
         .interactivePopGestureEnabled()
     }
 
-    private var editorTitle: String {
-        existingRecord == nil ? "Backfill Day" : "Edit Entry"
+    private var cancelButton: some View {
+        Button("Cancel", action: closeEditor)
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("screen.back")
     }
 
-    private var editorMessage: String {
-        if existingRecord == nil {
-            return "Add a log for this day so your history stays complete."
+    private var inputValidationMessage: String? {
+        if !appState.canLog(on: day) {
+            return "Choose today or an earlier date in History."
         }
-
-        return "Update the time, SPF, covered areas, or note for this day."
+        if !allowedTimestampRange.contains(selectedTimestamp) {
+            return "Choose a time on this day that is not in the future."
+        }
+        let serializedCount = SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas).count
+        let overage = serializedCount - SunManualLogInput.noteCharacterLimit
+        if overage > 0 {
+            return "Shorten notes by \(overage) \(overage == 1 ? "character" : "characters") or remove coverage."
+        }
+        return nil
     }
 
-    private var primaryActionTitle: String {
-        if appState.logActionErrorMessage != nil {
-            return "Try Again"
+    private func saveLog() {
+        guard !hasSaved, inputValidationMessage == nil,
+              let serializedNotes = SunManualLogInput.validatedNotesWithCoveredAreas(notes, areas: selectedAreas) else {
+            return
         }
-        return existingRecord == nil ? "Save Backfill" : "Save Changes"
+        let result = appState.saveManualRecord(
+            for: day,
+            dayPart: targetContext?.dayPart,
+            verifiedAt: selectedTimestamp,
+            spfLevel: selectedSPF,
+            notes: serializedNotes
+        )
+        guard case let .success(receipt) = result else { return }
+        hasSaved = true
+        if receipt.didChange,
+           Calendar.current.isDate(day, inSameDayAs: appState.referenceDate),
+           appState.settings.reapplyReminderEnabled {
+            appState.scheduleReapplyReminder()
+        }
+        closeEditor()
     }
 
     private func syncInitialStateIfNeeded() {
-        guard !hasLoadedInitialState else {
-            return
-        }
-
+        guard !hasLoadedInitialState else { return }
         hasLoadedInitialState = true
+        guard existingRecord == nil else { return }
 
-        guard existingRecord == nil else {
-            return
+        if let prefill {
+            selectedSPF = prefill.spfLevel
+            selectedAreas = SunManualLogInput.coveredAreas(in: prefill.notes)
+            notes = SunManualLogInput.notesRemovingCoveredAreas(prefill.notes)
+        } else {
+            let defaults = appState.oneTapLogInput(for: day)
+            selectedSPF = defaults.spfLevel
+            selectedAreas = defaults.coveredAreas
         }
-
-        let suggestions = appState.manualLogSuggestionState(for: day)
-        selectedSPF = suggestions.defaultSPF
         selectedTimestamp = defaultTimestamp
     }
 
     private var allowedTimestampRange: ClosedRange<Date> {
         let calendar = Calendar.current
-        let start = calendar.startOfDay(for: targetContext?.date ?? day)
+        let start = calendar.startOfDay(for: day)
         let nextDay = calendar.date(byAdding: .day, value: 1, to: start) ?? start
         let endOfDay = nextDay.addingTimeInterval(-1)
         let upperBound = max(start, min(endOfDay, appState.referenceDate))
@@ -171,21 +201,22 @@ struct HistoryRecordEditorView: View {
 
     private var defaultTimestamp: Date {
         let calendar = Calendar.current
-        let targetDay = calendar.startOfDay(for: targetContext?.date ?? day)
+        let targetDay = calendar.startOfDay(for: day)
         if calendar.isDate(targetDay, inSameDayAs: appState.referenceDate) {
             return appState.referenceDate
         }
-
-        let hour = switch targetContext?.dayPart ?? .morning {
-        case .morning: 9
-        case .afternoon: 13
-        case .evening: 18
-        case .night: 21
-        }
-        return calendar.date(bySettingHour: hour, minute: 0, second: 0, of: targetDay) ?? targetDay
+        return calendar.date(
+            bySettingHour: (targetContext?.dayPart ?? .morning).defaultHour,
+            minute: 0,
+            second: 0,
+            of: targetDay
+        ) ?? targetDay
     }
 
     private func closeEditor() {
+        if accessibilityPrefix == "manualLog" {
+            appState.clearManualLogPrefill()
+        }
         if route != nil {
             router.goBack()
         } else {

@@ -56,6 +56,23 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
         return merged
     }
 
+    /// Explicit recovery replaces only restorable fields; device permissions and usage stay local.
+    func replacingRestorableFields(in current: SunclubGrowthSettings) -> SunclubGrowthSettings {
+        var restored = current
+        restored.preferredName = preferredName
+        restored.uvBriefing = uvBriefing
+        restored.friends = friends
+        restored.accountability = accountability.restorableProjection
+        // Subscription IDs and publication state belong to this device's current profile.
+        if accountability.localProfileID == current.accountability.localProfileID {
+            restored.accountability.lastPublishedAt = current.accountability.lastPublishedAt
+            restored.accountability.subscriptionsInstalledAt = current.accountability.subscriptionsInstalledAt
+            restored.accountability.subscriptionInstallVersion = current.accountability.subscriptionInstallVersion
+        }
+        restored.automation = automation
+        return restored
+    }
+
     var hasMeaningfulContent: Bool {
         !preferredName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || uvBriefing != SunclubUVBriefingPreferences()

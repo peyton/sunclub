@@ -278,10 +278,9 @@ final class BackupTests: XCTestCase {
             notificationManager: MockNotificationManager(),
             growthFeatureStore: targetStore
         )
-        let summary = try target.importBackupDocument(document)
+        try target.importBackupDocument(document)
         await Task.yield()
 
-        XCTAssertEqual(summary.restoredPreferences, document.payload.restorablePreferences)
         XCTAssertEqual(target.growthSettings.preferredName, "Peyton")
         XCTAssertEqual(target.growthSettings.uvBriefing, sourceGrowthSettings.uvBriefing)
         XCTAssertEqual(target.growthSettings.automation, sourceGrowthSettings.automation)
@@ -315,11 +314,12 @@ final class BackupTests: XCTestCase {
             growthFeatureStore: targetStore
         )
 
-        let summary = try target.importBackupDocument(legacyDocument)
+        try target.importBackupDocument(legacyDocument)
         await Task.yield()
 
-        XCTAssertNil(summary.restoredPreferences)
         XCTAssertEqual(target.growthSettings.automation, current.automation)
+        XCTAssertEqual(targetStore.load().automation, current.automation)
+        XCTAssertEqual(target.settings.restorablePreferences?.automation, current.automation)
     }
 
     func testDefaultImportedPreferencesDoNotReplaceRicherCurrentChoices() {

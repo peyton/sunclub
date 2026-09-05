@@ -2,23 +2,23 @@ import SwiftUI
 import UIKit
 
 extension SettingsView {
+    var healthKitEnabled: Bool {
+        appState.growthSettings.healthKit.isEnabled
+    }
+
     var healthKitSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("HealthKit")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
             VStack(alignment: .leading, spacing: 14) {
-                Toggle(isOn: $healthKitEnabled) {
+                Toggle(isOn: Binding(
+                    get: { appState.growthSettings.healthKit.isEnabled },
+                    set: { appState.updateHealthKitEnabled($0) }
+                )) {
                     Text("Sync sunscreen logs to Apple Health")
                         .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
                 .tint(AppPalette.sun)
                 .accessibilityIdentifier("settings.healthKitToggle")
-                .onChange(of: healthKitEnabled) { _, newValue in
-                    appState.updateHealthKitEnabled(newValue)
-                }
 
                 let detail = appState.healthKitAvailable
                     ? "Sunclub writes UV exposure samples when you log. Imported Health UV samples in the last year: \(appState.growthSettings.healthKit.importedSampleCount)."
@@ -48,29 +48,21 @@ extension SettingsView {
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
-                ReminderToggleCard(
-                    title: "Morning UV briefing",
-                    detail: dailyUVBriefingEnabled
-                        ? "Send a morning note with peak UV and protection advice."
-                        : "Only the standard sunscreen reminders stay on.",
-                    isOn: $dailyUVBriefingEnabled,
-                    accessibilityIdentifier: "settings.uvBriefingToggle"
-                )
-                .onChange(of: dailyUVBriefingEnabled) { _, newValue in
-                    appState.updateUVBriefingPreferences(dailyBriefingEnabled: newValue)
-                }
+                Toggle("Morning UV briefing", isOn: $dailyUVBriefingEnabled)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .tint(AppPalette.sun)
+                    .accessibilityIdentifier("settings.uvBriefingToggle")
+                    .onChange(of: dailyUVBriefingEnabled) { _, newValue in
+                        appState.updateUVBriefingPreferences(dailyBriefingEnabled: newValue)
+                    }
 
-                ReminderToggleCard(
-                    title: "Extreme UV alert",
-                    detail: extremeUVAlertsEnabled
-                        ? "Sunclub sends an extra heads-up on extreme UV days."
-                        : "No extra UV alert is sent even on extreme days.",
-                    isOn: $extremeUVAlertsEnabled,
-                    accessibilityIdentifier: "settings.extremeUVToggle"
-                )
-                .onChange(of: extremeUVAlertsEnabled) { _, newValue in
-                    appState.updateUVBriefingPreferences(extremeAlertEnabled: newValue)
-                }
+                Toggle("Extreme UV alert", isOn: $extremeUVAlertsEnabled)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .tint(AppPalette.sun)
+                    .accessibilityIdentifier("settings.extremeUVToggle")
+                    .onChange(of: extremeUVAlertsEnabled) { _, newValue in
+                        appState.updateUVBriefingPreferences(extremeAlertEnabled: newValue)
+                    }
             }
             .padding(18)
             .sunGlassCard(
@@ -92,7 +84,7 @@ extension SettingsView {
 
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $liveUVEnabled) {
-                    Text("Use Apple Weather for Live UV")
+                    Text("Use current location")
                         .font(AppTextStyle.bodyMedium.font)
                         .foregroundStyle(AppPalette.ink)
                 }
@@ -107,11 +99,6 @@ extension SettingsView {
                     }
                 }
                 .accessibilityIdentifier("settings.liveUVToggle")
-
-                Text("Choose Current Location or save a city for Apple Weather. Sunclub reuses forecasts for up to eight hours, then shows cached or locally estimated UV when a refresh is unavailable.")
-                    .font(AppTextStyle.caption.font)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 Button(appState.settings.selectedUVPlace == nil ? "Choose a City" : "Change UV City") {
                     isChoosingUVCity = true
@@ -133,7 +120,7 @@ extension SettingsView {
                             }
                         }
                         .font(AppTextStyle.captionMedium.font)
-                        .foregroundStyle(AppColor.warning)
+                        .foregroundStyle(AppPalette.warning)
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("settings.liveUV.removeCity")
                     }
@@ -146,11 +133,6 @@ extension SettingsView {
                     symbol: "sun.max.circle.fill"
                 )
                 .accessibilityIdentifier("settings.liveUV.status")
-
-                Text("Apple Weather and cached Apple Weather include attribution and a Data Sources link. Local estimates are labeled separately.")
-                    .font(AppTextStyle.caption.font)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 if let actionTitle = presentation.actionTitle,
                    let actionKind = presentation.actionKind {
@@ -168,18 +150,6 @@ extension SettingsView {
                 legacyStroke: AppPalette.hairlineStroke,
                 legacyShadow: nil
             )
-        }
-    }
-
-    var uvAndHealthSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("UV & Weather")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            liveUVSection
-            uvBriefingSection
-            healthKitSection
         }
     }
 

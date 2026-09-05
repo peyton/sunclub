@@ -20,13 +20,6 @@ struct PrivacyView: View {
                     router.goBack()
                 })
 
-                SunScreenTitleBlock(
-                    title: "Privacy controls",
-                    detail: "Export, review, or remove sunscreen history without changing the app's private-by-default posture.",
-                    symbolName: "lock.fill",
-                    tint: AppPalette.aloe
-                )
-
                 privacyRows
 
                 Button {
@@ -123,7 +116,7 @@ struct PrivacyView: View {
 
             SunInfoRow(
                 title: "Export or delete anytime",
-                detail: "Use the controls below to export history or remove sunscreen logs after confirmation.",
+                detail: "Export a backup or remove sunscreen logs after confirmation.",
                 systemImage: "square.and.arrow.up",
                 tint: AppPalette.aloe
             )
@@ -136,7 +129,7 @@ struct PrivacyView: View {
             )
 
             privacyActionRow(
-                title: "Export Sunclub history",
+                title: "Export backup",
                 detail: "Create a private backup with logs, settings, and connection data. Store it securely.",
                 systemImage: "square.and.arrow.up.fill",
                 accessibilityIdentifier: "privacy.exportHistory",

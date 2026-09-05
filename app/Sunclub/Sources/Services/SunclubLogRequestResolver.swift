@@ -35,7 +35,8 @@ struct SunclubLogRequestResolver {
     }
 
     func manualRecord(
-        day: Date, dayPart: DayPart?, timestamp: Date?, existingTimestamp: Date?, spfLevel: Int?, notes: String?
+        day: Date, dayPart: DayPart?, timestamp: Date?, existingTimestamp: Date?, spfLevel: Int?, notes: String?,
+        existingMethod: VerificationMethod? = nil
     ) throws -> SunclubMutationService.RecordRequest {
         let target = try validatedDay(day)
         let resolvedTimestamp = timestamp ?? existingTimestamp
@@ -46,7 +47,7 @@ struct SunclubLogRequestResolver {
             ? "Backfilled \(target.formatted(.dateTime.month().day()))."
             : "Edited \(target.formatted(.dateTime.month().day()))."
         return .init(
-            day: target, verifiedAt: resolvedTimestamp, method: .manual,
+            day: target, verifiedAt: resolvedTimestamp, method: existingMethod ?? .manual,
             spfLevel: spfLevel, notes: notes, replaceOptionalFields: true, preserveExistingDuration: true,
             kind: kind, summary: summary
         )

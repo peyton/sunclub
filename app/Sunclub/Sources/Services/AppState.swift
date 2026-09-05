@@ -61,6 +61,7 @@ final class AppState: SunclubReminderState {
     private let calendar = Calendar.current
     private var isNormalizingSelectedDay = false
     private var lastAppliedRestorablePreferences: SunclubRestorablePreferences?
+    private var healthKitAuthorizationRequestID: UUID?
 
     var referenceDate: Date {
         currentDate()
@@ -621,31 +622,129 @@ final class AppState: SunclubReminderState {
         recoveryCoordinator.initialRestoreState = .continuedLocally
     }
 
-    func publishImportedChanges(for sessionID: UUID) {
+    @discardableResult
+    func publishImportedChanges(
+        for sessionID: UUID
+    ) -> Task<Result<CloudPublishResult, SunclubHistoryMutationError>, Never> {
         Task {
-            try? await recoveryCoordinator.publishImport(sessionID)
-            refresh()
+            do {
+                let result = try await recoveryCoordinator.publishImport(sessionID)
+                refresh()
+                logActionErrorMessage = nil
+                return .success(result)
+            } catch {
+                refresh()
+                let failure = error as? SunclubHistoryMutationError ?? .recoveryFailure(error.localizedDescription)
+                _ = historyMutationFailure(failure)
+                return .failure(failure)
+            }
         }
     }
 
-    func restoreImportedChanges(for sessionID: UUID) {
-        let batch = try? recoveryCoordinator.restoreImport(sessionID)
-        finishDurableChange(batch, reschedulesReminders: true)
+    @discardableResult
+    func restoreImportedChanges(for sessionID: UUID) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
+        recoveryMutation {
+            let current = growthFeatureStore.load()
+            return try recoveryCoordinator.restoreImport(
+                sessionID, currentPreferences: SunclubRestorablePreferences(growthSettings: current)
+            )
+        }
     }
 
-    func undoChange(_ batchID: UUID) {
-        let batch = try? recoveryCoordinator.undo(batchID)
-        finishDurableChange(batch, reschedulesReminders: true)
+    private func applyRestoredPreferences(_ preferences: SunclubRestorablePreferences?, to current: SunclubGrowthSettings) {
+        let restored = preferences ?? SunclubRestorablePreferences(growthSettings: SunclubGrowthSettings(
+            accountability: SunclubAccountabilitySettings(localProfileID: current.accountability.localProfileID)
+        ))
+        growthSettings = restored.replacingRestorableFields(in: current)
+        growthFeatureStore.save(growthSettings)
+        lastAppliedRestorablePreferences = preferences
     }
 
-    func redoChange(_ batchID: UUID) {
-        let batch = try? recoveryCoordinator.redo(batchID)
-        finishDurableChange(batch, reschedulesReminders: true)
+    @discardableResult
+    func undoChange(_ batchID: UUID) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
+        if let sessionID = try? historyService.importSessionForUndo(batchID: batchID) {
+            return restoreImportedChanges(for: sessionID)
+        }
+        return recoveryMutation {
+            try recoveryCoordinator.undo(
+                batchID, currentPreferences: SunclubRestorablePreferences(growthSettings: growthFeatureStore.load())
+            )
+        }
     }
 
-    func resolveConflict(_ conflictID: UUID) {
-        try? recoveryCoordinator.resolveConflict(conflictID)
-        refresh()
+    @discardableResult
+    func redoChange(_ batchID: UUID) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
+        recoveryMutation {
+            try recoveryCoordinator.redo(
+                batchID, currentPreferences: SunclubRestorablePreferences(growthSettings: growthFeatureStore.load())
+            )
+        }
+    }
+
+    @discardableResult
+    func undoChangeIfCurrent(batchID: UUID) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
+        recoveryMutation { try recoveryCoordinator.undoIfCurrent(batchID) }
+    }
+
+    func canUndoChangeIfCurrent(batchID: UUID) -> Bool {
+        (try? recoveryCoordinator.canUndoIfCurrent(batchID)) == true
+    }
+
+    @discardableResult
+    func undoConflict(_ conflictID: UUID) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
+        recoveryMutation { try recoveryCoordinator.undoConflict(conflictID) }
+    }
+
+    private func recoveryMutation(
+        _ operation: () throws -> SunclubChangeBatch
+    ) -> Result<SunclubChangeBatch, SunclubHistoryMutationError> {
+        do {
+            let previousPreferences = try historyService.settings().restorablePreferences
+            let batch = try operation()
+            if batch.scope == .timeline || batch.scope == .settings,
+               try historyService.settingsRevision(forBatchID: batch.id) != nil {
+                let preferences = try historyService.settings().restorablePreferences
+                let restoresKnownPreferences = batch.scope == .settings && previousPreferences != nil
+                    && preferences != nil && preferences != previousPreferences
+                if batch.importSessionID != nil || restoresKnownPreferences {
+                    // Apply known recovery snapshots before refresh can merge the undone value back.
+                    // Import provenance alone does not make a history-only batch own preferences.
+                    // Ordinary nil/pre-ledger recovery cannot establish ownership of local preferences.
+                    applyRestoredPreferences(preferences, to: growthFeatureStore.load())
+                }
+            }
+            finishDurableChange(batch, reschedulesReminders: true)
+            logActionErrorMessage = nil
+            return .success(batch)
+        } catch {
+            let failure: SunclubHistoryMutationError
+            if let mutationError = error as? SunclubHistoryMutationError {
+                failure = mutationError
+            } else if let historyError = error as? HistoryServiceError {
+                switch historyError {
+                case .staleChange: failure = .staleChange
+                default: failure = .recoveryFailure(historyError.localizedDescription)
+                }
+            } else {
+                failure = .persistenceFailure
+            }
+            _ = historyMutationFailure(failure)
+            return .failure(failure)
+        }
+    }
+
+    @discardableResult
+    func resolveConflict(_ conflictID: UUID) -> Result<Void, SunclubHistoryMutationError> {
+        do {
+            try recoveryCoordinator.resolveConflict(conflictID)
+            refresh()
+            logActionErrorMessage = nil
+            return .success(())
+        } catch {
+            let failure = error as? SunclubHistoryMutationError ?? .persistenceFailure
+            _ = historyMutationFailure(failure)
+            return .failure(failure)
+        }
     }
 
     func conflict(for day: Date) -> SunclubConflictItem? {
@@ -930,6 +1029,7 @@ final class AppState: SunclubReminderState {
 
     func updateHealthKitEnabled(_ enabled: Bool) {
         if !enabled {
+            healthKitAuthorizationRequestID = nil
             guard growthSettings.healthKit.isEnabled else {
                 return
             }
@@ -938,14 +1038,23 @@ final class AppState: SunclubReminderState {
             return
         }
 
+        let requestID = UUID()
+        healthKitAuthorizationRequestID = requestID
         Task {
             let granted = await healthKitService.requestAuthorizationIfNeeded()
-            growthSettings.healthKit.isEnabled = granted
+            guard healthKitAuthorizationRequestID == requestID else { return }
+            let sampleCount: Int
             if granted {
-                growthSettings.healthKit.importedSampleCount = await healthKitService.recentUVSampleCount(
+                sampleCount = await healthKitService.recentUVSampleCount(
                     since: calendar.date(byAdding: .year, value: -1, to: currentDate()) ?? currentDate()
                 )
+            } else {
+                sampleCount = 0
             }
+            guard healthKitAuthorizationRequestID == requestID else { return }
+            healthKitAuthorizationRequestID = nil
+            growthSettings.healthKit.isEnabled = granted
+            growthSettings.healthKit.importedSampleCount = sampleCount
             persistGrowthSettings()
         }
     }
@@ -1445,9 +1554,11 @@ final class AppState: SunclubReminderState {
         notes: String?
     ) -> SunclubHistoryMutationResult {
         do {
+            let existingRecord = record(for: day)
             let request = try SunclubLogRequestResolver(calendar: calendar, now: currentDate()).manualRecord(
                 day: day, dayPart: targetDayPart, timestamp: targetVerifiedAt,
-                existingTimestamp: record(for: day)?.verifiedAt, spfLevel: spfLevel, notes: notes
+                existingTimestamp: existingRecord?.verifiedAt, spfLevel: spfLevel, notes: notes,
+                existingMethod: existingRecord?.method
             )
             let receipt = try upsertRecord(request)
             lastLogContext = AppLogContext(date: request.day, dayPart: dayPart(for: request.verifiedAt), source: .history)
@@ -1823,16 +1934,18 @@ final class AppState: SunclubReminderState {
 
     @discardableResult
     func importBackupDocument(_ document: SunclubBackupDocument) throws -> SunclubBackupImportSummary {
-        let summary = try recoveryCoordinator.importDocument(document)
-        restorePreferencesIfPresent(summary.restoredPreferences)
+        let summary = try recoveryCoordinator.importDocument(
+            document, currentPreferences: SunclubRestorablePreferences(growthSettings: growthFeatureStore.load())
+        )
         finalizeImportedBackup(importedBatchCount: summary.importedBatchCount)
         return summary
     }
 
     @discardableResult
     func importBackup(from url: URL) throws -> SunclubBackupImportSummary {
-        let summary = try recoveryCoordinator.importDocument(from: url)
-        restorePreferencesIfPresent(summary.restoredPreferences)
+        let summary = try recoveryCoordinator.importDocument(
+            from: url, currentPreferences: SunclubRestorablePreferences(growthSettings: growthFeatureStore.load())
+        )
         finalizeImportedBackup(importedBatchCount: summary.importedBatchCount)
         return summary
     }
@@ -2313,14 +2426,6 @@ final class AppState: SunclubReminderState {
         refreshUVForecastIfNeeded()
         _ = importedBatchCount
         reloadWidgetTimelines()
-    }
-
-    private func restorePreferencesIfPresent(_ preferences: SunclubRestorablePreferences?) {
-        guard let preferences else {
-            return
-        }
-        growthSettings = preferences.merging(into: growthSettings)
-        persistGrowthSettings()
     }
 
     private func syncWidgetSnapshot() {

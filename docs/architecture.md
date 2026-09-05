@@ -8,7 +8,9 @@
 | Production/test dependencies and clock                      | `Services/SunclubAppDependencies.swift`                    |
 | Durable log, edit, backfill, reapply and reminder mutations | `Services/SunclubMutationService.swift`                    |
 | Foreground log validation and timestamp policy              | `Services/SunclubLogRequestResolver.swift`                 |
+| Current-day one-tap logging and defaults                    | `Services/SunTodayLogAction.swift`                         |
 | Revisions, projections and rollback                         | `Services/SunclubHistoryService.swift` and history helpers |
+| Selective settings replay for Undo Import                   | `Services/SettingsImportUndo.swift`                       |
 | UV refresh and stale-response rejection                     | `Services/SunclubUVCoordinator.swift`                      |
 | Reminder health, permission and scheduling                  | `Services/SunclubReminderCoordinator.swift`                |
 | Restore, recovery, import and export coordination           | `Services/SunclubRecoveryCoordinator.swift`                |
@@ -36,17 +38,21 @@ CloudKit uses manual CKSyncEngine; do not enable SwiftData mirroring.
 
 ## Screens and tests
 
-- Home: `TimelineHomeView`; status, scrub gesture and display values in
-  `Views/Components/Timeline*`. Legacy route aliases still resolve through RootView.
+- Today: `TimelineHomeView` reads and logs the current local day; display values
+  live in `Views/Components/TodayQuietGlass*`. Date selection belongs to History.
+- Tabs: three independent navigation stacks in `RootView`; `AppRouter` owns
+  payload identity, legacy redirects and transient onboarding completion state.
 - Settings: one transient state owner in `SettingsView`; navigation, reminders,
   health/weather and data sections in adjacent `Settings*.swift` files.
-- History: list/calendar in `HistoryView`; editor in `HistoryRecordEditorView`.
+- History: list/calendar in `HistoryView`; the fixed-date `HistoryRecordEditorView`
+  is also the shared foreground editor behind `ManualLogView`.
+- Insights: read-only seven-day summary and streak in `WeeklyReportView`.
 - Unit tests: behavior-named classes with common `SunclubTestCase` fixtures.
   Mutation tests assert persistence, receipts, no-ops, failures and effects;
   source checks cover architectural contracts across related files.
-- UI: `SunclubSmokeUITests` contains the 13 PR scenarios. `SunclubUITests` contains
-  the remaining scenarios. Both inherit `SunclubUITestCase`; full runs select the
-  target so neither class can be omitted accidentally.
+- UI: `SunclubSmokeUITests` contains the 13 PR scenarios. The main and focused
+  regression classes inherit `SunclubUITestCase`; full runs select the target so
+  no class can be omitted accidentally.
 
 ## Add or change a feature
 

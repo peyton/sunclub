@@ -14,7 +14,7 @@
 - `urlOpenActionsEnabled`: blocks URL routes that open app screens when off.
 - `urlWriteActionsEnabled`: blocks URL and x-callback writes when off.
 - `callbackResultDetailsEnabled`: removes action-specific callback fields when off.
-- Location: Settings -> Connect Shortcuts.
+- Location: Settings -> Shortcuts. This page contains the four permission controls and one link to the catalog.
 - Website: `/docs/automation/`.
 
 ## App Intents
@@ -24,12 +24,13 @@
 - `Log Reapply`: increments today's reapply count.
 - `Get Sunclub Status`: returns today logged state, weekly logged count, reapply status, and message.
 - `Time Since Last Sunscreen`: returns minutes since the last log or reapply.
-- `Open Sunclub`: opens a supported app route.
+- `Open Sunclub`: opens a supported app route, including Sunscreen and Apple Health settings.
 - `Set Sunclub Reminder`: updates weekday or weekend reminder time.
 - `Set Sunclub Reapply Reminder`: turns reapply reminders on or off and can update the interval.
-- `Set Sunclub Toggle`: updates travel timezone, daily UV briefing, extreme UV alert, iCloud sync, or Apple Health availability settings.
+- `Set Sunclub Toggle`: updates travel timezone, daily UV briefing, extreme UV alert, iCloud sync, or the Apple Health preference. Health authorization is managed in foreground Settings.
 - `Export Sunclub Backup`: returns an `IntentFile`.
 - `Export Sunclub History`: returns a PDF `IntentFile`.
+- `Create Logged Days Card`: returns a shareable image `IntentFile`.
 - Widget and Control Center buttons use non-discoverable widget intents for Log Today so they can complete in place without opening Sunclub or inheriting user Shortcut toggles. User-run Shortcuts still expose Log Reapply separately.
 - Notification actions use the same runtime: `Reapplied now` performs a durable reapply write, while `Snooze 30 min` schedules one bounded local reminder.
 
@@ -37,7 +38,9 @@
 
 - Discoverable shortcuts include Log Sunscreen, Log Reapply, Get Sunclub Status, Time Since Last Sunscreen, Open Shortcuts, Export Backup, and Export Sunclub History.
 - File-producing App Intents return files through Shortcuts and are shown separately from URL examples in the in-app Shortcuts catalog.
-- The in-app catalog includes only deterministic P0 examples.
+- Catalog action names come from the shipped App Intent titles. App Shortcut tile labels may be shorter, such as `Open Shortcuts` for `Open Sunclub`.
+- Advanced direct URL and callback examples start collapsed. Write examples offer Copy only; Test is available only for read/open examples. Public writes remain available to authorized callers.
+- The catalog links back to the four permission controls. It does not install Shortcuts or provide an Ask Before Running setting; execution confirmation belongs to the Shortcuts app.
 
 ## URL Scheme
 
@@ -57,13 +60,24 @@
 - `set-reminder?kind=weekday|weekend&time=HH:mm`
 - `set-reapply?enabled=true&interval=120`
 - `set-toggle?name=travelTimeZone|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
-- `open?route=home|log|reapply|summary|history|settings|automation|uv-forecast|privacy|support|recovery`
+- `open?route=home|log|reapply|summary|history|settings|settings-sunscreen|settings-health|automation|uv-forecast|privacy|support|recovery`
 
-The app has Today, History, and Settings tabs. The existing `weeklySummary` route opens a detail screen inside History; Back returns to History. No Shortcut, URL, callback permission, or durable-write behavior changes with this navigation update.
+The app has Today, History, and Settings tabs. Today acts on the current local day; date browsing and editing live in History. The existing `summary` URL and `weeklySummary` app route open read-only seven-day Insights inside History; Back returns to History.
+
+Foreground Settings destinations:
+
+| Public route         | Open Sunclub choice | App destination              |
+| -------------------- | ------------------- | ---------------------------- |
+| `settings-sunscreen` | Sunscreen           | `AppRoute.settingsSunscreen` |
+| `settings-health`    | Apple Health        | `AppRoute.settingsHealth`    |
+
+Examples: `sunclub://automation/open?route=settings-sunscreen` and `sunclub://x-callback-url/open?route=settings-health&x-success=shortcuts://callback`. Both schemes and hosts accept both destinations. Opening these screens does not save a sunscreen profile or request Health authorization. Profile editing and permission setup remain foreground interactions. URL opens require `urlOpenActionsEnabled`; disabling URL or Shortcut writes does not block them. Existing callback result-detail preferences still apply.
 
 The foreground reapply check-in remains available after today's first log even with reminders off. Recording and notification preferences are independent; snooze appears only when reapply reminders are enabled. Existing Log Reapply intents and URL actions continue through the shared mutation runtime.
 
 Compatibility routes are normalized before display: `achievements` opens weekly insights inside History, `friends` opens Settings, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
+
+Legacy app destinations `settingsSunscreenReminders`, `settingsReapplyReminder` and `settingsNotifications` remain accepted and show the consolidated Reminders page. These AppRoute names are not additional public URL route values. Compatibility sharing data and pending invites are retained; onboarding imports pending invites before finishing at Today.
 
 URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
 
@@ -108,11 +122,12 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Logging, save-log, and reapply write through `SunclubHistoryService`.
 - Outside-app writes must refresh projected state and widget snapshots.
 - Duplicate same-day logs update the existing day rather than adding another visible day.
-- Timeline/manual logging uses an explicit `{date, dayPart, source}` context and does not silently fall back to wall-clock `Date()`.
+- Foreground log editors use a fixed `{date, dayPart, source}` context; users select dates in History. Today stays anchored to the current local day through midnight and foreground transitions.
 - Day parts are morning 5 AM-12 PM, afternoon 12-6 PM, evening 6-9 PM, and night 9 PM-5 AM.
 - Optional SPF and notes behavior must match the manual log flows, including SPF clamping and the 280-character note limit.
 - New one-tap logs prefer the most recent recorded SPF, then the saved sunscreen profile SPF. Structured covered areas come only from prior logs; free-form notes are never copied automatically.
 - A successful response is returned only after the revision-history transaction commits. Failed writes leave existing data and follow-up reminders unchanged.
+- No-op saves do not emit success effects or reschedule reminders. Ephemeral Undo validates its receipt against the current day before applying; an intervening edit or replacement must remain intact.
 
 ## Testing Requirements
 
@@ -124,7 +139,8 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Unit: automation logging uses revision history and refreshes widget snapshots.
 - Unit: old growth settings payloads decode with default automation preferences.
 - Unit: file-producing intents return expected file metadata.
-- UI: Settings exposes Shortcuts controls, copy buttons, and test buttons.
+- Unit: new Settings routes parse, preserve their destination through App Intent conversion and URL encoding, respect URL-open permissions, and do not mutate profile/Health data when opened.
+- UI: Settings exposes four Shortcuts permissions and one catalog link; advanced examples start collapsed, write examples are copy-only, and read/open examples retain Test.
 - UI: `sunclub-dev://x-callback-url/open?route=automation` opens Shortcuts.
 - UI: URL write disable blocks mutation and routes to foreground UI.
 - UI: Shortcuts remains usable under Dynamic Type, dark mode, increased contrast, Reduce Motion, and Differentiate Without Color.

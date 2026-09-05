@@ -2,23 +2,6 @@ import SwiftUI
 import UIKit
 
 extension SettingsView {
-    var notificationOverviewCard: some View {
-        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 12) {
-                SunProductIcon(systemName: "bell.fill", tint: AppPalette.pool, size: 42)
-
-                Text("Reminder timing")
-                    .font(AppFont.rounded(size: 22, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text("Adjust daily reminders, reapply timing, and notification access in one place.")
-                    .font(AppFont.rounded(size: 14))
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
     var smarterReminderSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Daily Reminders")
@@ -29,10 +12,6 @@ extension SettingsView {
                 .font(AppFont.rounded(size: 28, weight: .bold))
                 .foregroundStyle(AppPalette.ink)
                 .accessibilityIdentifier("settings.reminderSummary")
-
-            Text(reminderDescription)
-                .font(AppFont.rounded(size: 15))
-                .foregroundStyle(AppPalette.softInk)
 
             if let preview = appState.nextDailyReminderPreview {
                 Text(preview.summary)
@@ -64,38 +43,38 @@ extension SettingsView {
             }
 
             VStack(spacing: 12) {
-                reminderCard(for: .weekday, detail: "Used Monday through Friday")
-                reminderCard(for: .weekend, detail: "Used Saturday and Sunday")
+                reminderCard(for: .weekday)
+                reminderCard(for: .weekend)
             }
 
-            ReminderToggleCard(
-                title: "Follow local time when traveling",
-                detail: followsTravelTimeZone
-                    ? "Reminders follow the time zone you're currently in."
-                    : "Reminders stay on \(anchoredTimeZoneLabel).",
-                isOn: $followsTravelTimeZone,
-                accessibilityIdentifier: "settings.travelToggle"
-            )
-            .onChange(of: followsTravelTimeZone) { _, newValue in
-                appState.updateTravelTimeZoneHandling(followsTravelTimeZone: newValue)
+            AppCard(showsShadow: false) {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                    Toggle("Follow local time when traveling", isOn: $followsTravelTimeZone)
+                        .font(AppTextStyle.bodyMedium.font)
+                        .tint(AppPalette.sun)
+                        .accessibilityIdentifier("settings.travelToggle")
+                        .onChange(of: followsTravelTimeZone) { _, newValue in
+                            appState.updateTravelTimeZoneHandling(followsTravelTimeZone: newValue)
+                        }
+                    if !followsTravelTimeZone {
+                        AppText(anchoredTimeZoneLabel, style: .caption, color: AppColor.Text.secondary)
+                    }
+                }
             }
 
-            ReminderToggleCard(
-                title: "Evening log reminder",
-                detail: streakRiskEnabled
-                    ? "If today is still open in the evening, Sunclub can remind you to add a sunscreen log."
-                    : "Sunclub will not send an evening note for missing daily logs.",
-                isOn: $streakRiskEnabled,
-                accessibilityIdentifier: "settings.eveningLogReminderToggle"
-            )
-            .onChange(of: streakRiskEnabled) { _, newValue in
-                appState.updateStreakRiskReminder(enabled: newValue)
+            AppCard(showsShadow: false) {
+                Toggle("Evening log reminder", isOn: $streakRiskEnabled)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .tint(AppPalette.sun)
+                    .accessibilityIdentifier("settings.eveningLogReminderToggle")
+                    .onChange(of: streakRiskEnabled) { _, newValue in
+                        appState.updateStreakRiskReminder(enabled: newValue)
+                    }
             }
-
         }
     }
 
-    func reminderCard(for kind: ReminderScheduleKind, detail: String) -> some View {
+    func reminderCard(for kind: ReminderScheduleKind) -> some View {
         Button {
             pickerTime = appState.reminderDate(for: kind)
             selectedReminderPicker = kind
@@ -105,10 +84,6 @@ extension SettingsView {
                     Text(kind.title)
                         .font(AppFont.rounded(size: 16, weight: .semibold))
                         .foregroundStyle(AppPalette.ink)
-
-                    Text(detail)
-                        .font(AppFont.rounded(size: 13))
-                        .foregroundStyle(AppPalette.softInk)
                 }
 
                 Spacer(minLength: 12)
@@ -150,10 +125,6 @@ extension SettingsView {
                 appState.updateLeaveHomeReminderEnabled(enabled: newValue)
             }
             .accessibilityIdentifier("settings.leaveHomeToggle")
-
-            Text("Use your first trip out as the day's reminder.")
-                .font(AppFont.rounded(size: 14))
-                .foregroundStyle(AppPalette.softInk)
 
             if leaveHomeReminderEnabled || appState.settings.smartReminderSettings.leaveHomeReminder.homeLocation != nil {
                 SunStatusCard(
@@ -198,10 +169,6 @@ extension SettingsView {
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
 
-            Text("Optional. Use this only if you want Sunclub to remind you when you first head out.")
-                .font(AppFont.rounded(size: 14))
-                .foregroundStyle(AppPalette.softInk)
-
             leaveHomeReminderCard
         }
     }
@@ -238,10 +205,6 @@ extension SettingsView {
                         .accessibilityIdentifier("settings.reapplyInterval")
                     }
                 }
-
-                Text("Interval reminders are timing aids, not medical advice. Sunclub stops scheduling them after the estimated sunset cutoff.")
-                    .font(AppFont.rounded(size: 14))
-                    .foregroundStyle(AppPalette.softInk)
             }
             .padding(18)
             .sunGlassCard(
@@ -356,16 +319,6 @@ extension SettingsView {
         }
 
         return "Weekdays \(weekday), weekends \(weekend)"
-    }
-
-    var reminderDescription: String {
-        let travelLine = followsTravelTimeZone
-            ? "Follows local time while you travel."
-            : "Stays on \(anchoredTimeZoneLabel) while you travel."
-        let eveningLine = streakRiskEnabled
-            ? " Evening log reminder on."
-            : " Evening log reminder off."
-        return travelLine + eveningLine
     }
 
     var anchoredTimeZoneLabel: String {

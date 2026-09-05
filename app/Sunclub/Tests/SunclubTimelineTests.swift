@@ -31,36 +31,6 @@ final class SunclubTimelineTests: SunclubTestCase {
         XCTAssertNil(state.record(for: afterMidnight))
     }
 
-    @MainActor
-    func testTimelineCachedAppleWeatherSourceDetailIncludesAge() {
-        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
-        let generatedAt = now.addingTimeInterval(-9 * 60 * 60)
-
-        XCTAssertEqual(
-            TimelineLogSection.sourceDetail(
-                sourceLabel: UVReadingSource.cachedWeatherKit.hourlySourceLabel,
-                generatedAt: now.addingTimeInterval(-30 * 60),
-                now: now
-            ),
-            "Cached Apple Weather · less than 1 hour old"
-        )
-        XCTAssertEqual(
-            TimelineLogSection.sourceDetail(
-                sourceLabel: UVReadingSource.cachedWeatherKit.hourlySourceLabel,
-                generatedAt: generatedAt,
-                now: now
-            ),
-            "Cached Apple Weather · 9 hours old"
-        )
-        XCTAssertEqual(
-            TimelineLogSection.sourceDetail(
-                sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel,
-                generatedAt: generatedAt,
-                now: now
-            ),
-            "Apple Weather"
-        )
-    }
 
     @MainActor
     func testSelectedDayDefaultsToStartOfToday() throws {
@@ -257,86 +227,9 @@ final class SunclubTimelineTests: SunclubTestCase {
         XCTAssertEqual(state.logActionErrorMessage, "Cannot log future date.")
     }
 
-    func testTimelineScrubCalculatorClampsSelectionAtVisibleBounds() throws {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date(timeIntervalSinceReferenceDate: 800_000_000))
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
-        let calculator = TimelineScrubCalculator(
-            visibleDays: [yesterday, today, tomorrow],
-            calendar: calendar,
-            dayStride: 68
-        )
 
-        XCTAssertEqual(
-            calculator.selectedDay(startDay: today, translation: 680),
-            yesterday
-        )
-        XCTAssertEqual(
-            calculator.selectedDay(startDay: today, translation: -680),
-            tomorrow
-        )
-    }
 
-    func testTimelineScrubRubberBandDoesNotSelectBeyondForecastRange() throws {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date(timeIntervalSinceReferenceDate: 800_000_000))
-        let forecastDay = calendar.date(byAdding: .day, value: 6, to: today) ?? today
-        let calculator = TimelineScrubCalculator(
-            visibleDays: [today, forecastDay],
-            calendar: calendar,
-            dayStride: 68
-        )
 
-        let offset = calculator.scrubOffset(startIndex: 1, translation: -680)
-
-        XCTAssertEqual(
-            calculator.selectedDay(startDay: forecastDay, translation: -680),
-            forecastDay
-        )
-        XCTAssertLessThan(abs(offset), 680)
-    }
-
-    func testTimelineScrubClassifierLocksVerticalWobbleAwayFromSelection() throws {
-        let classifier = TimelineScrubGestureClassifier()
-
-        XCTAssertNil(classifier.axis(current: nil, translation: CGSize(width: 12, height: 10)))
-        XCTAssertEqual(classifier.axis(current: nil, translation: CGSize(width: 20, height: 36)), .vertical)
-        XCTAssertEqual(classifier.axis(current: .vertical, translation: CGSize(width: 80, height: 38)), .vertical)
-        XCTAssertNil(classifier.axis(current: nil, translation: CGSize(width: 28, height: 24)))
-        XCTAssertEqual(classifier.axis(current: nil, translation: CGSize(width: 42, height: 24)), .horizontal)
-    }
-
-    @MainActor
-    func testFutureLoggingRejectedAfterTimelineScrubSelectsForecastDay() throws {
-        let calendar = Calendar.current
-        let referenceDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
-        let today = calendar.startOfDay(for: referenceDate)
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
-        let state = try makeAppState(
-            uvIndexService: makeUVIndexService(
-                bundle: makeUVForecastBundle(
-                    generatedAt: referenceDate,
-                    daily: [SunclubUVDayForecast(day: tomorrow, maxIndex: 7)]
-                )
-            ),
-            clock: { referenceDate }
-        )
-        let calculator = TimelineScrubCalculator(
-            visibleDays: state.timelineVisibleDays,
-            calendar: calendar,
-            dayStride: 68
-        )
-        let scrubbedDay = try XCTUnwrap(
-            calculator.selectedDay(startDay: today, translation: -68)
-        )
-
-        state.selectTimelineDay(scrubbedDay)
-
-        XCTAssertEqual(state.selectedDay, tomorrow)
-        XCTAssertFalse(state.canLog(on: state.selectedDay))
-        XCTAssertNil(state.validatedLogDate(state.selectedDay))
-    }
 
     @MainActor
     func testTimelineForecastLevelLookupUsesRealForecastData() throws {
@@ -541,86 +434,7 @@ final class SunclubTimelineTests: SunclubTestCase {
         XCTAssertTrue(summary.partStatuses.contains { $0.dayPart == .night && $0.isCompleted })
     }
 
-    @MainActor
-    func testTimelineLogSectionAttributionUsesDisplayedForecastSources() {
-        XCTAssertEqual(
-            TimelineLogSection.attributionSourceLabel(
-                forDisplayedSourceLabels: [
-                    UVReadingSource.weatherKit.hourlySourceLabel,
-                    "Legacy estimate"
-                ]
-            ),
-            UVReadingSource.weatherKit.forecastLabel
-        )
 
-        XCTAssertNil(
-            TimelineLogSection.attributionSourceLabel(
-                forDisplayedSourceLabels: [
-                    "Legacy estimate",
-                    "Legacy local estimate"
-                ]
-            )
-        )
-    }
-
-    @MainActor
-    func testTimelineLogSectionRejectsUnverifiedHourlyFallbacks() throws {
-        let calendar = Calendar(identifier: .gregorian)
-        let day = try XCTUnwrap(
-            calendar.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13))
-        )
-        let verifiedHour = SunclubUVHourForecast(
-            date: day,
-            index: 7,
-            sourceLabel: UVReadingSource.weatherKit.hourlySourceLabel
-        )
-        let verifiedForecast = SunclubUVForecast(
-            generatedAt: day,
-            sourceLabel: UVReadingSource.weatherKit.forecastLabel,
-            hours: [verifiedHour],
-            peakHour: verifiedHour,
-            recommendation: "Protection recommended."
-        )
-        let unverifiedForecast = SunclubUVForecast(
-            generatedAt: day,
-            sourceLabel: "Legacy local estimate",
-            hours: [
-                SunclubUVHourForecast(
-                    date: day,
-                    index: 7,
-                    sourceLabel: "Legacy estimate"
-                )
-            ],
-            peakHour: verifiedHour,
-            recommendation: ""
-        )
-
-        XCTAssertEqual(
-            TimelineLogSection.verifiedForecastHours(
-                in: verifiedForecast,
-                for: day,
-                dayPart: .afternoon,
-                calendar: calendar
-            ),
-            [verifiedHour]
-        )
-        XCTAssertTrue(
-            TimelineLogSection.verifiedForecastHours(
-                in: unverifiedForecast,
-                for: day,
-                dayPart: .afternoon,
-                calendar: calendar
-            ).isEmpty
-        )
-        XCTAssertTrue(
-            TimelineLogSection.verifiedForecastHours(
-                in: nil,
-                for: day,
-                dayPart: .afternoon,
-                calendar: calendar
-            ).isEmpty
-        )
-    }
 
     @MainActor
     func testAdvanceSelectedDayIfStaleClampsFarFuture() throws {

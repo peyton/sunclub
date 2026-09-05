@@ -68,9 +68,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
 
     func testTappableGlassCardsOptIntoInteractiveSurface() throws {
         let tappableCardRoutes: [String: String] = [
-            "app/Sunclub/Sources/Views/AutomationView.swift":
-                ".sunGlassCard(cornerRadius: AppRadius.card, interactive: true)",
-            "app/Sunclub/Sources/Views/TimelineHomeView.swift":
+            "app/Sunclub/Sources/Views/SupportView.swift":
                 ".sunGlassCard(cornerRadius: AppRadius.card, interactive: true)"
         ]
 
@@ -128,15 +126,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
 
     func testKnownGlassGroupsKeepSingleMaterialBoundary() throws {
         let timeline = try source("app/Sunclub/Sources/Views/TimelineHomeView.swift")
-        for marker in [
-            "tint: AppPalette.streakAccent,\n            usesGlass: false",
-            "tint: AppPalette.sun,\n            usesGlass: false"
-        ] {
-            XCTAssertTrue(
-                timeline.contains(marker),
-                "The two status StatCards inside AppCard must remain flat on iOS 26."
-            )
-        }
+        XCTAssertFalse(timeline.contains("StatCard("), "Today should not nest metric cards inside a status card.")
 
         let verification = try source("app/Sunclub/Sources/Views/VerificationSuccessView.swift")
         XCTAssertEqual(
@@ -153,7 +143,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
 
         let expectedStandaloneHelperCounts: [String: (primary: Int, secondary: Int, icon: Int)] = [
             "app/Sunclub/Sources/Views/RecoveryView.swift": (0, 0, 0),
-            "app/Sunclub/Sources/Views/AutomationView.swift": (0, 0, 0),
+            "app/Sunclub/Sources/Views/AutomationView.swift": (0, 1, 0),
             "app/Sunclub/Sources/Views/SettingsView.swift": (1, 0, 0)
         ]
 
@@ -182,12 +172,10 @@ final class DesignSystemAdoptionTests: XCTestCase {
             "app/Sunclub/Sources/Shared/SunDayStrip.swift",
             "app/Sunclub/Sources/Views/AutomationView.swift",
             "app/Sunclub/Sources/Views/HistoryView.swift",
-            "app/Sunclub/Sources/Views/ManualLogView.swift",
             "app/Sunclub/Sources/Views/PrivacyView.swift",
             "app/Sunclub/Sources/Views/RecoveryView.swift",
             "app/Sunclub/Sources/Views/SettingsView.swift",
-            "app/Sunclub/Sources/Views/SupportView.swift",
-            "app/Sunclub/Sources/Views/Components/TimelineLogSection.swift"
+            "app/Sunclub/Sources/Views/SupportView.swift"
         ]
 
         for path in migratedPaths {
@@ -210,11 +198,9 @@ final class DesignSystemAdoptionTests: XCTestCase {
 
         let interactiveCardPaths = [
             "app/Sunclub/Sources/Shared/SunDayStrip.swift",
-            "app/Sunclub/Sources/Views/AutomationView.swift",
             "app/Sunclub/Sources/Views/PrivacyView.swift",
             "app/Sunclub/Sources/Views/SettingsView.swift",
-            "app/Sunclub/Sources/Views/SupportView.swift",
-            "app/Sunclub/Sources/Views/TimelineHomeView.swift"
+            "app/Sunclub/Sources/Views/SupportView.swift"
         ]
         for path in interactiveCardPaths {
             XCTAssertTrue(
@@ -299,22 +285,12 @@ final class DesignSystemAdoptionTests: XCTestCase {
         )
     }
 
-    func testWeeklySummaryMetricPillsAvoidDarkModeCardFill() throws {
+    func testInsightsUsesAnUnboxedReadOnlySummary() throws {
         let content = try source("app/Sunclub/Sources/Views/WeeklyReportView.swift")
-        guard let start = content.range(of: "private struct WeeklyMetricPill: View {"),
-              let end = content.range(of: "#Preview", range: start.upperBound..<content.endIndex) else {
-            return XCTFail("WeeklyReportView.swift should keep WeeklyMetricPill as a distinct view.")
-        }
-
-        let metricPill = content[start.lowerBound..<end.lowerBound]
-        XCTAssertTrue(
-            metricPill.contains("@Environment(\\.colorScheme)"),
-            "Weekly metric pills should inspect the color scheme before drawing card backgrounds."
-        )
-        XCTAssertTrue(
-            metricPill.contains("if colorScheme == .light"),
-            "Weekly metric pills should avoid the light gray card fill on the dark Insights surface."
-        )
+        XCTAssertFalse(content.contains(".sunGlassCard("))
+        XCTAssertFalse(content.contains("HistoryRecordEditorView"))
+        XCTAssertTrue(content.contains("Last 7 days"))
+        XCTAssertTrue(content.contains("dynamicTypeSize.isAccessibilitySize"))
     }
 
     func testScreenCodeRoutesVisualStylingThroughDesignSystem() throws {
@@ -347,21 +323,20 @@ final class DesignSystemAdoptionTests: XCTestCase {
     func testCoreSurfacesUseSharedComponents() throws {
         let expectations: [String: [String]] = [
             "app/Sunclub/Sources/Views/TimelineHomeView.swift": [
-                "AppCard",
                 "AppText",
-                "StatusBadge",
-                "StatCard"
+                "TodayQuietGlassGauge",
+                "TodayQuietGlassLogButton"
             ],
             "app/Sunclub/Sources/Shared/SunDayStrip.swift": [
                 "DayCapsule"
             ],
             "app/Sunclub/Sources/Views/ManualLogView.swift": [
-                "AppCard",
-                "PrimaryButton"
+                "HistoryRecordEditorView"
             ],
             "app/Sunclub/Sources/Views/WeeklyReportView.swift": [
-                "SecondaryPillButton",
-                ".sunGlassCard("
+                "SunLightScreen",
+                "AppText",
+                "SunIcon.check"
             ],
             "app/Sunclub/Sources/Views/HistoryView.swift": [
                 "SunInfoRow",
@@ -385,11 +360,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
 
     private func source(_ path: String) throws -> String {
         let sections: [String: [String]] = [
-            "TimelineHomeView.swift": [
-                "Components/TimelinePresentation.swift",
-                "Components/TimelineScrubGesture.swift",
-                "Components/TimelineTodayStatusCard.swift"
-            ],
+            "TimelineHomeView.swift": ["Components/TodayQuietGlassComponents.swift"],
             "HistoryView.swift": ["HistoryRecordEditorView.swift"],
             "SettingsView.swift": [
                 "SettingsNavigation.swift", "SettingsReminders.swift",

@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// A gauge tap opens detail; dragging across it must remain a scroll, not activate the button.
+struct TodayQuietGlassTapButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isEnabled { configuration.trigger() }
+            }
+    }
+}
+
 struct TodayQuietGlassGauge: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .largeTitle) private var metricSize: CGFloat = 72
@@ -15,7 +28,7 @@ struct TodayQuietGlassGauge: View {
                 gaugeCopy
                     .padding(AppSpacing.xl)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: AppSpacing.xl * 8)
+                    .frame(minHeight: AppSpacing.xl * 6)
                     .background {
                         GeometryReader { geometry in
                             let diameter = min(geometry.size.width, geometry.size.height)
@@ -24,7 +37,7 @@ struct TodayQuietGlassGauge: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
-                    .frame(maxWidth: AppSpacing.xl * 10)
+                    .frame(maxWidth: AppSpacing.xl * 8)
             }
         }
         .frame(maxWidth: .infinity)
@@ -39,9 +52,8 @@ struct TodayQuietGlassGauge: View {
                 .frame(width: AppSpacing.xl, height: AppSpacing.xl)
                 .accessibilityHidden(true)
 
-            AppText(presentation.title, style: .caption, color: AppColor.Text.secondary, alignment: .center)
-
             if let index = presentation.index {
+                AppText(presentation.title, style: .caption, color: AppColor.Text.secondary, alignment: .center)
                 Text(index.formatted())
                     .font(AppFont.heroMetric(size: metricSize))
                     .monospacedDigit()
@@ -52,7 +64,7 @@ struct TodayQuietGlassGauge: View {
                 AppText(presentation.level.displayName, style: .title, color: presentation.level.designTextTint, alignment: .center)
                     .accessibilityIdentifier("home.uvIndexLevel")
             } else {
-                AppText("No current reading", style: .sectionHeader, alignment: .center)
+                AppText("UV unavailable", style: .sectionHeader, alignment: .center)
                     .accessibilityIdentifier("home.uvUnavailable")
             }
         }
@@ -83,8 +95,10 @@ struct TodayQuietGlassLogSummary: View {
             AppText(presentation.title, style: .title, alignment: .center)
                 .accessibilityIdentifier(presentation.statusIdentifier)
 
-            AppText(presentation.detail, style: .body, color: AppColor.Text.secondary, alignment: .center)
-                .accessibilityIdentifier("timeline.statusDetail")
+            if !presentation.detail.isEmpty {
+                AppText(presentation.detail, style: .body, color: AppColor.Text.secondary, alignment: .center)
+                    .accessibilityIdentifier("timeline.statusDetail")
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AppSpacing.xxs)

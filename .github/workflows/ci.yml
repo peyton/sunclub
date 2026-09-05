@@ -84,6 +84,7 @@ jobs:
         with:
           name: ios-unit-test-result
           path: .build/test-unit*
+          include-hidden-files: true
           retention-days: 3
 
   test-ios-ui:
@@ -120,6 +121,7 @@ jobs:
         with:
           name: ios-ui-test-result
           path: .build/test-ui*
+          include-hidden-files: true
           retention-days: 3
 
   build-ios:

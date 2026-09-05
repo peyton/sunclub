@@ -37,8 +37,18 @@ final class InteractivePopGestureViewController: UIViewController {
         enableInteractivePopGestureIfNeeded()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        enableInteractivePopGestureIfNeeded()
+    }
+
     func enableInteractivePopGestureIfNeeded() {
         guard let navigationController else { return }
+
+        if #available(iOS 26.0, *) {
+            // Keep UIKit's native back action, accessibility, and transition delegate.
+            return
+        }
 
         let recognizer = navigationController.interactivePopGestureRecognizer
         recognizer?.isEnabled = navigationController.viewControllers.count > 1

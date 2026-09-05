@@ -30,6 +30,8 @@ enum SunclubHistoryMutationError: Error, Equatable, Sendable, LocalizedError {
     case futureDate
     case futureTime
     case missingRecord
+    case staleChange
+    case recoveryFailure(String)
     case persistenceFailure
 
     var errorDescription: String? {
@@ -40,6 +42,10 @@ enum SunclubHistoryMutationError: Error, Equatable, Sendable, LocalizedError {
             return "Choose a time that is not in the future."
         case .missingRecord:
             return "Log sunscreen for this day before recording a reapplication."
+        case .staleChange:
+            return HistoryServiceError.staleChange.localizedDescription
+        case let .recoveryFailure(message):
+            return message
         case .persistenceFailure:
             return "Sunclub couldn't save that change. Your edits are still here—please try again."
         }

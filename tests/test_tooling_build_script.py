@@ -781,6 +781,9 @@ def test_test_ios_script_retries_signal_kill_launch_failure(
     bin_dir.mkdir()
     attempt_log = tmp_path / "xcodebuild-attempts.log"
 
+    # The retry path must not terminate the host's real simulator service.
+    _write_executable(bin_dir / "killall", "#!/bin/sh\nexit 0\n")
+
     _write_executable(
         bin_dir / "xcodebuild",
         """#!/bin/sh

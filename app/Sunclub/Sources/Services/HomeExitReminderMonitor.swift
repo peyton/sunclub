@@ -65,18 +65,21 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
     private let notificationManager: NotificationScheduling
     private let stateStore: HomeExitReminderStateStoring
     private let calendar: Calendar
+    private let currentDate: () -> Date
     private var stateProvider: (() -> (any SunclubReminderState)?)?
 
     init(
         locationService: SharedLocationManaging? = nil,
         notificationManager: NotificationScheduling? = nil,
         stateStore: HomeExitReminderStateStoring? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        clock: @escaping () -> Date = Date.init
     ) {
         self.locationService = locationService ?? SharedLocationManager.shared
         self.notificationManager = notificationManager ?? NotificationManager.shared
         self.stateStore = stateStore ?? HomeExitReminderStateStore()
         self.calendar = calendar
+        currentDate = clock
         self.locationService.eventHandler = { [weak self] event in
             Task { @MainActor in
                 await self?.handle(event)
@@ -169,9 +172,9 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
             guard region.identifier == Self.regionIdentifier else { return }
             switch regionState {
             case .inside:
-                stateStore.markObservedInside(on: Date(), calendar: calendar)
+                stateStore.markObservedInside(on: currentDate(), calendar: calendar)
             case .outside:
-                await handlePotentialExit(using: state, now: Date())
+                await handlePotentialExit(using: state, now: currentDate())
             case .unknown:
                 break
             @unknown default:
@@ -179,10 +182,10 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
             }
         case let .didEnterRegion(region):
             guard region.identifier == Self.regionIdentifier else { return }
-            stateStore.markObservedInside(on: Date(), calendar: calendar)
+            stateStore.markObservedInside(on: currentDate(), calendar: calendar)
         case let .didExitRegion(region):
             guard region.identifier == Self.regionIdentifier else { return }
-            await handlePotentialExit(using: state, now: Date())
+            await handlePotentialExit(using: state, now: currentDate())
         }
     }
 

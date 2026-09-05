@@ -5,6 +5,17 @@ import XCTest
 
 @MainActor
 final class QuietGlassNavigationTests: XCTestCase {
+    func testRepeatedExternalManualLogOpenGetsFreshPresentationIdentity() {
+        let router = AppRouter()
+        router.open(.manualLog)
+        let first = router.payload
+
+        router.open(.manualLog)
+
+        XCTAssertNotEqual(router.payload, first, "A new external open must resolve a fresh date instead of reusing yesterday's editor.")
+        XCTAssertEqual(router.path, [.manualLog])
+    }
+
     func testWeeklySummaryExternalRoutesReturnToHistory() {
         for route in [AppRoute.weeklySummary, .achievements, .yearInReview] {
             let router = AppRouter()
@@ -34,6 +45,8 @@ final class QuietGlassNavigationTests: XCTestCase {
         XCTAssertEqual(router.path, [.weeklySummary])
         router.selectTab(.today)
         XCTAssertEqual(router.path, [.manualLog])
+        XCTAssertEqual(router.payload.targetDate, date, "Switching tabs must not erase an editor's date context.")
+        XCTAssertEqual(router.payload.targetDayPart, .morning)
         router.goHome()
         XCTAssertTrue(router.path.isEmpty)
         XCTAssertTrue(router.historyPath.isEmpty)

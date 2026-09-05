@@ -1,306 +1,144 @@
 # Sunclub App Spec
 
-## Product Summary
-
-Sunclub is a local-first iOS app for maintaining a daily sunscreen habit, with optional local backup import/export, default-on iCloud sync for undoable history, and first-class automation through Apple Shortcuts, widgets, controls, custom URL scheme actions, and x-callback-url callers.
-
-The product loop is:
-
-1. Open the app, tap the widget, run a Shortcut, open a URL action, or tap the reminder.
-2. Log the day manually.
-3. Reinforce the streak.
-
-## Goals
-
-- Help users build a daily sunscreen routine with as little friction as possible.
-- Make daily logging fast and repeatable with a simple manual flow.
-- Make supported non-destructive app actions automatable from Apple system surfaces and URL callers.
-- Make daily progress visible through streaks and weekly reporting.
-- Keep the app useful without requiring an account gate or a server-owned profile.
-- Keep the product focused on one action: logging sunscreen for today.
-- Preserve streaks and user trust when history changes, imports, or merges happen.
-
-## Non-Goals
-
-- Social features, sharing, or community participation.
-- Mandatory account creation, collaborative editing, or server-owned history.
-- Product education, ingredient analysis, or sunscreen recommendations.
-- Multi-user or household support.
-- In-app subscriptions, paywalls, or premium-only product tiers for v1.
-- Bottle identity, barcode capture, or per-product model training.
-
-## Core Product Principles
-
-- One primary action per visit: the app should always guide the user toward the next obvious step.
-- Low ceremony: the daily check-in should be fast enough to feel routine, not like work.
-- Private by default: projected state works fully offline and iCloud sync uses the user's private database.
-- Habit-first: progress, reminders, and summaries should reinforce consistency more than novelty.
-- Deterministic logging: recording today should be a direct, low-friction action.
-- Recoverable changes: user-visible history changes should remain reviewable and undoable.
-- Always automatable: every user-facing feature should have an App Intent, URL/x-callback route, foreground route, or documented reason for exclusion.
-
-## Primary User Journey
-
-### 1. First-Time Setup
-
-The first-time experience should move the user from zero setup to a ready-to-use habit flow with minimal setup.
-
-Expected sequence:
-
-1. Welcome screen introduces Sunclub, explains the three core habit benefits, and offers a single `Get Started` action.
-2. Notification prompt asks the user to enable reminders.
-3. User lands on Home once onboarding is complete.
-
-Important expectations:
-
-- Notification permission should be requested during onboarding, but denial must not block access to the app.
-- Onboarding should never force the user through a training flow.
-
-### 2. Daily Check-In
-
-The main recurring flow starts from Home.
-
-Expected sequence:
-
-1. User opens the app or taps `Log Today` from a widget.
-2. Home highlights the current streak and offers a prominent `Log Manually` action.
-3. Manual logging records the day as complete.
-4. Success screen confirms completion and shows the updated streak.
-5. User returns to Home.
-
-Important expectations:
-
-- Verification should feel mostly automatic once sunscreen is clearly in view.
-- A completed day should only count once, even if the user verifies multiple times that day.
-- The app should require two consecutive `YES` responses before logging success.
-- The success state should clearly reinforce progress without adding extra decisions.
-
-### 3. Ongoing Review
-
-The user should be able to understand recent performance without digging through history.
-
-Expected sequence:
-
-1. User taps the streak card on Home.
-2. App opens the weekly summary.
-3. User sees the number of applied days in the last seven days, any missed days, and a lightweight recap of their logged SPF and recent notes when that data exists.
-
-The weekly summary should reinforce momentum, not punish failure.
-
-### 4. Maintenance and Recovery
-
-Users need a lightweight way to update reminders, protect local history, or review recent progress without leaving the core manual flow.
-
-Expected sequence:
-
-1. User opens Settings from Home.
-2. User can adjust weekday and weekend reminder times.
-3. User can choose whether reminders follow local time while traveling.
-4. User can toggle streak-risk nudges and reapply reminders.
-5. User can export a local backup file before reinstalling or switching devices.
-6. User can import that backup later to restore reminder settings and sunscreen history on-device.
-7. User can review recent changes, undo or redo them, and explicitly choose whether an imported local backup should be published to iCloud.
-
-## Screen Responsibilities
-
-### Welcome
-
-- Introduce the product clearly.
-- Establish that Sunclub is about daily sunscreen consistency.
-- Show the core value props: streaks, smart reminders, and one-tap logging.
-- Offer one primary action: start onboarding.
-
-### Enable Notifications
-
-- Ask for notification permission at the right moment in onboarding.
-- Explain the value simply: daily reminders to stay on track.
-- Complete onboarding whether permission is granted or denied.
-
-### Home
-
-- Use Today as the focused home screen with a central UV gauge and truthful sunscreen-log status.
-- Keep real UV source, freshness, unavailable states, and the detailed hourly forecast accessible.
-- Show the selected day as relative date copy, such as `Today, April 22` or `Tomorrow, April 23`.
-- Retain horizontal day browsing below today's primary content; past and future detail stays date-specific.
-- Provide a single primary call to action: `Log sunscreen` before the first log, then `Log reapplication`.
-- Keep editing on the saved-status row. Reapplication tracking works independently of optional reminders.
-- Show reminder/recovery actions when needed; estimated reapply targets do not claim a notification is pending.
-- Use three native tabs: Today, History, and Settings. Weekly insights lives inside History.
-
-### Verification Success
-
-- Confirm the day was recorded successfully.
-- Show the updated streak in a positive, lightweight way.
-- Provide one action back to Home.
-
-### Weekly Summary
-
-- Show how many of the last seven days were completed.
-- Surface missed days in a readable way.
-- Surface lightweight SPF and recent note insights when the user has logged that metadata.
-- Make progress easy to scan at a glance.
-
-### History
-
-- Start with a compact week strip and the selected day's grouped sunscreen records.
-- Keep the month-by-month calendar and monthly review available through an explicit calendar control.
-- Offer weekly insights without adding another navigation tab.
-- Let the user inspect one selected day at a time.
-- Allow correcting an existing manual entry or backfilling a missed past day.
-- Keep future days read-only.
-
-### Settings
-
-- Let the user update weekday and weekend reminder times.
-- Let the user decide whether reminders stay anchored or follow the current local timezone while traveling.
-- Let the user opt into a streak-risk nudge before the day closes.
-- Let the user tune reapply reminders without leaving the app.
-- Let the user pause or resume iCloud sync without deleting local or cloud history.
-- Let the user export and import a local backup file without forcing an account migration flow.
-- Let the user open `Recovery & Changes` to review imports, conflicts, and undoable history.
-- Let the user discover Automation and manage Shortcut writes, URL open actions, URL write actions, and callback detail fields.
-
-### Automation
-
-- Show the supported Apple Shortcuts actions.
-- Show direct URL and x-callback-url examples.
-- Let users copy and test example links.
-- Warn that URL actions can be called by other apps.
-- Keep destructive, permission-only, camera, file-picker, and review-heavy actions as foreground UI routes.
-
-### Recovery & Changes
-
-- Show the most recent change batches in readable order.
-- Let the user undo and redo supported history changes without mutating earlier revisions in place.
-- Show imported local backups as recoverable sessions with explicit `Publish to iCloud` and `Restore Pre-Import State` actions.
-- Surface auto-merged conflicts so the visible result stays usable while the merge remains reviewable.
-
-## Feature Requirements
-
-### Onboarding
-
-- The onboarding flow should be linear and easy to understand.
-- Users should always know which step they are on.
-- The flow should end in a ready-to-use home screen, not a dead end.
-- Onboarding completion should be persisted so returning users go straight to Home.
-
-### Daily Verification
-
-- The app should record a successful check-in for the current calendar day.
-- Re-logging on the same day should update the existing day entry, not create duplicates.
-
-### Streaks and Progress
-
-- Home should display the current streak as a primary motivational element.
-- Streaks should reflect consecutive completed days.
-- Weekly summary should cover the rolling last seven days, including today.
-- Weekly summary may show lightweight SPF and note recaps from saved check-ins.
-- Progress UI should stay simple and legible rather than analytical.
-
-### Notifications
-
-- The app should support separate weekday and weekend reminder times.
-- The app should support reminders that can either stay anchored or follow the current local timezone.
-- Reminder copy should rotate so messaging does not feel overly repetitive.
-- Daily notifications should provide a quick path back into the app.
-- A `Log Today` notification action should route directly to manual logging.
-- Users may optionally save Home and let Sunclub use the first home exit of the local day as a smarter reminder trigger.
-- Leave-home reminders should stay optional and should fall back to the scheduled daily reminder if the user never leaves home before the normal reminder time.
-- If the user has an active streak and the relevant day is still open, the app should be able to send a same-day streak-risk nudge before the day ends.
-- Weekly reminders should open the weekly summary view.
-- Weekly reporting should still have a fallback notification path even if richer background behavior is unavailable.
-- Reapply reminder timing and copy should get stronger on elevated UV days without changing the user's saved base interval.
-- Reapply reminders should not fire after sunset.
-
-### Widgets
-
-- Widgets should stay glanceable and low-text across all supported families.
-- The Home Screen suite should include `Log Today`, `Streak`, `Stats`, and `Calendar` layouts.
-- The Lock Screen suite should cover `accessoryInline`, `accessoryCircular`, and `accessoryRectangular` layouts with content appropriate to the family.
-- `Log Today` should log in place from the whole widget surface when the current day is still open.
-- If the current day is already logged, the primary widget should surface completion and streak state, then route into the existing app flow for viewing or updating.
-- Widget state should come from a lightweight shared snapshot mirror rather than direct widget access to the live SwiftData store.
-- Widgets should refresh at the next local midnight so daily state and streak continuity roll over correctly without requiring an app launch.
-
-### Automation and Deep Links
-
-- Apple Shortcuts should expose supported non-destructive writes, status reads, foreground opens, friend invite import, Message-first friend nudges, and file exports.
-- Custom URL actions should support `sunclub://automation/...` and `sunclub://x-callback-url/...`.
-- x-callback success payloads should include action, status, message, and action-specific fields while callback details are enabled.
-- x-callback errors should include action, error code, and error message while callback details are enabled.
-- Callback details can be disabled in Settings.
-- URL writes can be disabled in Settings without breaking foreground route discovery.
-- Shortcut writes can be disabled in Settings without blocking open-only intents.
-- Existing `sunclub://widget/...` and `sunclub://accountability/...` links must keep working.
-- Universal Links are deferred for this version; do not add Associated Domains or `apple-app-site-association`.
-
-### Settings and Controls
-
-- Users should be able to change reminder timing and reminder behavior without repeating onboarding.
-- Users should be able to turn leave-home reminders on or off, save or reset Home, and understand when background location access is required.
-- Manual logging should always remain available as the primary check-in flow.
-- iCloud sync should default to on for supported devices, but the user must be able to pause it locally.
-- Control Center should expose quick actions for `Log Today`, `Summary`, and `History`.
-- Automation settings should be visible from Settings and from Home Explore.
-
-### History Recovery
-
-- History should allow editing an existing past or current manual entry without creating duplicates.
-- History should allow backfilling a missed past day with a manual entry.
-- History edits should be scoped to the selected day and should not unlock future-day logging.
-- Imported local backups must not automatically delete or roll back iCloud history.
-- Conflict resolution should preserve streak continuity whenever a merged day has at least one non-deleted logged revision.
-
-## Key Behavioral Expectations
-
-### Permissions
-
-- Notification-denied users should still be able to use the full app.
-- Permission failures should surface as understandable states, not broken flows.
-- Location-denied users should still keep the normal weekday and weekend reminder schedule.
-
-### Data and Persistence
-
-- Settings and daily completion history should persist locally on device.
-- The app should remain functional offline.
-- There should be no required account or server dependency for core usage.
-- Backup export and import should stay local-first: one local backup file should be enough to restore history after a reinstall or on a replacement device.
-- Local backup import should not automatically publish deletions or rollback events to iCloud.
-- Current visible `DailyRecord` and `Settings` values should be rebuilt from revision history so every user-visible change remains undoable.
-- Streak values should be derived from the projected timeline after merge resolution instead of trusting stale persisted counters.
-- Importing a backup from an older supported database schema should migrate it to the current schema before the restored data becomes live.
-
-### Routing from Notifications
-
-- A daily reminder should bring the user into the manual logging flow.
-- A `Log Today` notification action should route directly to manual logging.
-- Weekly reminders should open the weekly summary view.
-
-### Routing from Automation
-
-- Open actions should route to the requested supported screen.
-- UI-only actions should return `status=opened` for x-callback callers.
-- Failed write actions should open the nearest useful foreground route.
-- Background writes should use revision history and refresh widget snapshots.
-
-## Out of Scope for This Version
-
-- Multiple tracked products or bottles.
-- Barcode identity or custom bottle training.
-- Household or family plans.
-- Deep analytics beyond streak, weekly summary, and lightweight SPF/note recap.
-- Collaborative or shared-family history editing.
-- Shared or server-owned sync conflict arbitration beyond the user's private iCloud history.
-- Product catalog, purchase flow, or refill logistics inside the app.
-- Coaching content beyond short reminder and summary copy.
-- Universal Links for automation.
-- Direct background execution for delete, backup import, recovery undo/redo, conflict resolution, camera scanning, file picking, or permission-only setup.
-
-## Success Criteria
-
-- A new user can complete onboarding in one short session.
-- A returning user can complete a daily check-in quickly from Home.
-- Users can understand their recent adherence from the weekly summary without explanation.
-- Reminder settings are easy enough to use without support.
-- The app remains valuable even for users who decline notifications.
-- Automation users can discover, copy, test, and disable Shortcut and URL write surfaces without external documentation.
+## Product
+
+Sunclub is a local-first iOS sunscreen tracker with Apple Watch, widgets, Control Center actions, Shortcuts, optional reminders and Apple Health integration. Default-on private iCloud sync, backup import/export and revision history preserve the user's data.
+
+The main loop is: open Today, log sunscreen or a reapplication, and return to the day. History owns date browsing and editing. Settings owns preferences.
+
+## Principles and scope
+
+- One primary action per screen, using existing native navigation, Liquid Glass controls, design tokens and bundled SVG icons.
+- Logging works offline without an account, notification permission or location permission.
+- Status reports recorded facts and UV provenance; a sunscreen log does not certify protection.
+- Optional fields remain optional. Do not invent missing SPF, coverage or notes.
+- Preserve existing platform targets, public automation routes, permission gates, persisted identities, signing identifiers and recovery behavior.
+- No camera validation, bottle training, social onboarding, household sharing, subscription or purchase flow is required.
+- Compatibility sharing identities, invites, connections and history remain stored and restorable. Removing their old navigation does not authorize deleting data or breaking older callers.
+
+## Setup
+
+1. Welcome offers Get Started.
+2. Optional reminders offer Enable reminders and Not now.
+3. Successful setup ends at Today, including after importing pending legacy invites.
+
+Persist onboarding completion before scheduling notifications. Save failures keep setup open with accurate retry actions. Notification scheduling failure must say setup was saved and offer Retry reminders or Continue to Today. Continuing must not claim partially scheduled reminders were disabled.
+
+Location and city selection are deferred to Settings or contextual UV setup. Notification denial does not block logging.
+
+The initial iCloud restore gate remains before onboarding for an effectively empty production store. Fetch before publishing default state, rebuild projections on success, and expose retry/continue on restore failure. A returning user's meaningful history and completed onboarding must not be replaced by empty defaults.
+
+## Today
+
+- Show the current local date, compact UV context, truthful log status and one primary action: Log sunscreen, then Log reapplication after the first log.
+- Anchor reads and writes to the current local day across midnight and foreground transitions.
+- Show actual UV source and freshness, cached/local estimates and unavailable states. Keep the hourly forecast accessible.
+- A successful changed receipt provides concise confirmation with Undo and optional Edit; duplicate submissions are guarded.
+- Safe receipt Undo refuses to overwrite newer edits or replacement records. Failures remain visible and actionable.
+- Keep optional editing available without making it a prerequisite for a quick log.
+- Hide inactive reminder details and missing metadata. Reapply logging remains available when reminder notifications are off.
+- Date scrubbers, past/future day detail and horizontal date gestures belong outside Today.
+- Keep Today, History and Settings as native tabs with their own navigation context.
+
+## History and log editing
+
+- History starts with week selection and grouped records for the selected day. Keep the full calendar and read-only Insights reachable.
+- Pick the date in History, then open one fixed-date editor for a new or existing log. Future dates remain read-only.
+- The shared editor contains time, optional SPF, optional coverage, optional notes, Save and Cancel. Label the first application time accurately when reapplications exist.
+- Explicit edits can clear SPF and notes. Clearing is different from an additive application with omitted metadata.
+- Coverage metadata and prose share the existing 280-character serialized note limit. Preserve complete valid coverage and existing draft text; show an actionable validation error instead of silently truncating.
+- Only complete valid Areas metadata is interpreted as coverage. Ordinary prose beginning with Areas remains prose.
+- Historical logs with no coverage keep it unspecified. Explicit suggestion reuse updates SPF, prose and coverage together; suggestions display prose only.
+- New one-tap logs prefer recent recorded SPF, then saved sunscreen profile SPF. Reuse only valid structured coverage from prior logs; never copy free-form notes automatically.
+- Successful no-op saves may dismiss without extra success effects or reminder rescheduling.
+- Reapplication rows are informational, with one explicit Edit log action.
+- Delete requires the existing confirmation. Receipt Undo must not replace a newly created record for that day.
+
+## Insights
+
+- Open from History and return to History with native Back or the supported gesture.
+- Show read-only activity for the last seven days including today, plus streak.
+- Keep the view unboxed and easy to scan, with an accessible list alternative.
+- Do not require a 30-day score, typical application time, UV-rate analysis, advice, SPF/note recaps, day-editor interactions or a floating History button.
+- Preserve the public summary and achievement compatibility destinations by routing them here.
+
+## Settings
+
+The top level contains eight destinations:
+
+| Destination     | Responsibility                                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sunscreen       | Save, edit or remove the existing sunscreen profile: name, SPF and water-resistance label. Reuse the current profile persistence API.                         |
+| Reminders       | Daily weekday/weekend times, travel timezone, evening reminder, reapply interval and leave-home controls together. Diagnostic tools stay behind Troubleshoot. |
+| UV & Weather    | Use current location, saved city selection/removal, UV status and fallback behavior, daily briefing and extreme alerts.                                       |
+| Apple Health    | Optional Health integration; display the persisted authorization outcome and reconcile delayed authorization with the user's current choice.                  |
+| iCloud & Backup | Sync preference/status, Export backup, Import backup, pending imports and Recovery & Changes.                                                                 |
+| Shortcuts       | Four automation permissions and one catalog link.                                                                                                             |
+| Privacy         | Data practices, backup export and confirmed history deletion.                                                                                                 |
+| Support         | Help, documentation and one email/feedback contact action.                                                                                                    |
+
+Use short status descriptions only when useful. Save failures keep drafts and existing data available for retry. Legacy reminder destinations resolve to the single Reminders page; the legacy health/weather destination continues to show UV & Weather.
+
+## Reminders, UV and Health
+
+- Daily reminders support separate weekday and weekend times, anchored or travel-local timezone handling, and an optional evening reminder for an unlogged day.
+- Leave-home reminders stay optional, support saving/resetting Home and explain required background location access. Preserve the scheduled daily fallback.
+- Reapplication tracking is independent of notification preferences. Last logged uses the latest application timestamp. Snooze appears only when reminders are enabled.
+- Reapply intervals use the saved preference and existing estimated-sunset scheduling rules; UI must not equate an estimate with a confirmed pending notification.
+- Keep daily UV briefing, extreme alerts, source/freshness labels, saved-city weather, cached forecasts and local estimates.
+- Location-denied users retain logging and normal scheduled reminders.
+- Health remains optional and retains existing sample behavior. Foreground authorization and the saved preference determine the visible control state.
+- Daily notification routes open logging; weekly routes open Insights. Keep existing notification actions and bounded snooze behavior.
+
+## Automation
+
+The public contract is [App Automation](../docs/app-automation.md).
+
+- Preserve supported App Intent writes, status reads, foreground opens, file exports, widget and Control Center actions.
+- Support production `sunclub` and development `sunclub-dev` schemes, direct automation URLs and x-callback-url requests.
+- Open Sunclub offers Sunscreen and Apple Health settings. Public route values are `settings-sunscreen` and `settings-health`; opening them does not save a profile or request permission.
+- Keep four independent controls: Shortcut writes, URL opens, URL writes and callback result details.
+- URL write denial does not block permitted foreground opens. URL-open denial still blocks new settings destinations. User Shortcut write controls do not disable app-owned widget actions.
+- The catalog uses shipped intent names, not invented action names or installation controls. Advanced URL/callback examples start collapsed; writes are copy-only, while read/open examples may offer Test.
+- Execution confirmation belongs to Apple Shortcuts. Sunclub does not expose a static Ask Before Running pseudo-setting.
+- Outside-app writes use the shared automation and revision-history services, and report success only after persistence succeeds. Failure does not publish success effects.
+- Keep old widget/accountability hosts and compatibility route values. Legacy friends opens Settings, health-report opens History, product-scanner opens logging, and achievements opens Insights.
+- Destructive, review-heavy, file-picker and permission setup flows open foreground UI. Legacy camera routes do not restore a camera-validation requirement.
+- Universal Links remain deferred; do not add Associated Domains or an apple-app-site-association file.
+
+## Widgets, Watch and controls
+
+- Preserve all shipped targets, families, routes and signing identifiers.
+- Keep Home Screen and Lock Screen widgets glanceable. Log Today completes in place when the day is open; logged state routes into the existing review/update flow.
+- Mirror lightweight snapshots instead of opening the live SwiftData store from a widget.
+- Refresh at local midnight; stale previous-day reapply timers must not appear on Today widgets or Watch.
+- Keep Control Center logging, Summary and History actions and Apple Watch behavior.
+
+## Data, backup and recovery
+
+- Daily records and settings remain local-first projections of immutable revision history. SwiftData containers use SunclubModelContainerFactory.
+- Keep private CloudKit history, default-on sync where supported, local pause/resume, offline usage and backup import/export.
+- Empty startup state must never replace meaningful local or remote history. Completed onboarding wins over incomplete defaults during recovery.
+- Backup import restores the phone first. Publishing imported changes to iCloud is an explicit action; import must not automatically publish deletions or rollbacks.
+- Recovery & Changes shows imports, conflicts and supported undo/redo operations without changing older revisions in place.
+- Publish, restore, undo and redo expose success/failure. Failed actions remain retryable; failed undo must not mark a conflict resolved.
+- Undo Import restores pre-import preferences, including empty/default values, while preserving identifiable later edits and device-only preferences. If older or remote history cannot distinguish the changes safely, leave everything unchanged and explain the failure. Undo stays local, including after explicitly publishing the import.
+- Ephemeral receipt Undo checks that the affected revision/projection is still current. Explicit historical recovery remains available separately.
+- No-op changes do not schedule extra effects. Preserve streak continuity through projection and conflict handling.
+- Preserve old supported stores, schema migrations, private settings envelopes and compatibility identities. Persisted-field changes require a new immutable versioned schema and prior-store migration coverage.
+
+## Accessibility and verification
+
+Preserve VoiceOver, Voice Control, Dynamic Type through accessibility sizes, Dark Interface, Differentiate Without Color, contrast and Reduce Motion. Use named controls, non-color status cues, at least 44-point interaction targets and SunMotion. UI tests keep UITEST_MODE and deterministic UITEST_FORCE_* overrides.
+
+Use behavioral regressions for writes, clears, routing, failure handling, permission gates and stale Undo. Verify native Back and gestures, not only screenshots. Keep test and production navigation behavior aligned.
+
+Release candidates require the repository's data, accessibility and automation gates, plus full CI on the exact candidate SHA. Signing, store and sync changes retain their additional release evidence requirements.
+
+## Success criteria
+
+- A new user can reach Today after optional reminders without location or camera setup.
+- A returning user can log or reapply in one primary action, then optionally edit or safely undo.
+- History supports date selection and corrections without stale-field overwrites; Insights explains the last seven days without extra editing controls.
+- Settings makes Sunscreen, reminders, UV, Health, backup, automation, privacy and help easy to find.
+- Existing automation callers, private data, backups and recovery remain usable.

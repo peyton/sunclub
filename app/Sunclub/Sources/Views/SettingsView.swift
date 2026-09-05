@@ -15,7 +15,6 @@ struct SettingsView: View {
     @State var streakRiskEnabled = true
     @State var leaveHomeReminderEnabled = false
     @State var liveUVEnabled = false
-    @State var healthKitEnabled = false
     @State var dailyUVBriefingEnabled = true
     @State var extremeUVAlertsEnabled = false
     @State var iCloudSyncEnabled = true
@@ -24,6 +23,7 @@ struct SettingsView: View {
     @State var isImportingBackup = false
     @State var backupStatus: BackupFeedback?
     @State var backupAlert: BackupAlert?
+    @State var importActions = SettingsImportActionState()
     @State var automationFeedback = ""
     @State var notificationToolFeedback = ""
     @State var isChoosingUVCity = false
@@ -139,7 +139,6 @@ struct SettingsView: View {
         liveUVEnabled = appState.settings.usesLiveUV
         reapplyEnabled = appState.settings.reapplyReminderEnabled
         reapplyInterval = appState.settings.reapplyIntervalMinutes
-        healthKitEnabled = appState.growthSettings.healthKit.isEnabled
         dailyUVBriefingEnabled = appState.growthSettings.uvBriefing.dailyBriefingEnabled
         extremeUVAlertsEnabled = appState.growthSettings.uvBriefing.extremeAlertEnabled
         iCloudSyncEnabled = appState.syncPreference?.isICloudSyncEnabled ?? true
@@ -177,71 +176,33 @@ struct SettingsView: View {
 }
 
 enum SettingsDetail: Hashable {
+    case sunscreen
     case sunscreenReminders
     case reapplyReminder
     case notifications
     case healthWeather
+    case health
     case data
     case shortcuts
     case help
 
     var title: String {
         switch self {
-        case .sunscreenReminders:
-            return "Sunscreen & Reminders"
-        case .reapplyReminder:
-            return "Reapply Reminder"
-        case .notifications:
-            return "Notifications"
+        case .sunscreen:
+            return "Sunscreen"
+        case .sunscreenReminders, .reapplyReminder, .notifications:
+            return "Reminders"
         case .healthWeather:
             return "UV & Weather"
+        case .health:
+            return "Apple Health"
         case .data:
-            return "iCloud & Data"
+            return "iCloud & Backup"
         case .shortcuts:
             return "Shortcuts"
         case .help:
-            return "Help & Legal"
+            return "Support"
         }
-    }
-}
-
-enum SettingsSection: String, Hashable {
-    case reminders
-    case progress
-    case data
-    case automation
-    case advanced
-    case help
-}
-
-struct ReminderToggleCard: View {
-    let title: String
-    let detail: String
-    @Binding var isOn: Bool
-    let accessibilityIdentifier: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $isOn) {
-                Text(title)
-                    .font(AppFont.rounded(size: 16, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-            }
-            .tint(AppPalette.sun)
-            .accessibilityIdentifier(accessibilityIdentifier)
-
-            Text(detail)
-                .font(AppFont.rounded(size: 14))
-                .foregroundStyle(AppPalette.softInk)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(18)
-        .sunGlassCard(
-            cornerRadius: AppRadius.card,
-            fillOpacity: 0.82,
-            legacyStroke: AppPalette.hairlineStroke,
-            legacyShadow: nil
-        )
     }
 }
 

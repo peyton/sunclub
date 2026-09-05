@@ -9,8 +9,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
 
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.skipUV"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.skipUV"].tap()
+        XCTAssertFalse(app.buttons["onboarding.skipUV"].exists)
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -44,13 +43,13 @@ final class SunclubSmokeUITests: SunclubUITestCase {
 
         XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
         app.buttons["settings.section.reminders"].tap()
-        XCTAssertTrue(app.staticTexts["Sunscreen & Reminders"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Reminders"].waitForExistence(timeout: 5))
 
         dragFromLeftEdge(in: app)
 
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.section.reminders"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["screen.back"].exists)
+        XCTAssertFalse(navigationBackButton(in: app).exists)
     }
 
     @MainActor
@@ -99,7 +98,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         ])
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
+        XCTAssertTrue(app.buttons["timeline.footer.settings"].waitForExistence(timeout: 5))
         XCTAssertLessThan(averageScreenshotLuminance(), 0.70)
 
         XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
@@ -136,13 +135,14 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
 
         openWeeklyInsights(in: app)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["weekly.viewFullHistory"], in: app, attempts: 10))
-        app.buttons["screen.back"].tap()
+        XCTAssertTrue(scrollToElement(insightsStreak(in: app), in: app, attempts: 10))
+        XCTAssertFalse(app.buttons["weekly.viewFullHistory"].exists)
+        navigationBackButton(in: app).tap()
         XCTAssertTrue(app.buttons["home.historyCard"].isSelected)
 
         assertSettingsTabOpens(in: app)
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
-        expandSettingsSection("progress", in: app)
+        expandSettingsSection("reminders", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
         XCTAssertTrue(scrollToHittableElement(reapplyToggle, in: app, attempts: 10), "Expected the reapply toggle to be reachable in accessibility mode.")
         if stringValue(of: reapplyToggle) != "1" {
@@ -150,13 +150,15 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         }
         XCTAssertTrue(scrollToHittableElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10), "Expected enabled reapply settings to show reachable interval controls.")
 
-        XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
-        app.buttons["screen.back"].tap()
+        XCTAssertTrue(navigationBackButton(in: app).waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
+        navigationBackButton(in: app).tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
         XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]),
             "Expected Today tab home action after leaving Settings."
         )
         tapHittableElement(logAction, in: app)
+        assertHomeLoggedState(app)
+        openTodayEditor(in: app)
         let saveLog = app.buttons["manualLog.logToday"]
         XCTAssertTrue(scrollToHittableElement(saveLog, in: app, attempts: 10), "Expected manual log action to remain reachable in accessibility mode.")
         XCTAssertGreaterThanOrEqual(saveLog.frame.height, 44)
@@ -178,6 +180,8 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         let app = launchHome()
 
         tapHittableElement(app.buttons["home.logManually"], in: app)
+        assertHomeLoggedState(app)
+        openTodayEditor(in: app)
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
         tapHittableElement(app.buttons["manualLog.logToday"], in: app)
 
@@ -229,10 +233,9 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         assertHomeLoggedState(app)
 
         openWeeklyInsights(in: app)
-        let currentStreak = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Current run 2 days.")
-        ).firstMatch
+        let currentStreak = insightsStreak(in: app)
         XCTAssertTrue(scrollToElement(currentStreak, in: app, attempts: 10), "Expected the restored streak in weekly insights after undo.")
+        XCTAssertEqual(currentStreak.label, "2-day streak")
     }
 
     @MainActor
@@ -260,7 +263,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["success.title"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Sunscreen Logged"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Sunscreen Logged"].exists)
         XCTAssertFalse(app.buttons["timeline.footer.today"].exists)
         XCTAssertFalse(app.buttons["home.logManually"].exists)
         XCTAssertTrue(app.buttons["success.done"].exists)
@@ -269,8 +272,8 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         app.buttons["success.addDetails"].tap()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        if app.buttons["screen.back"].waitForExistence(timeout: 2) {
-            app.buttons["screen.back"].tap()
+        if navigationBackButton(in: app).waitForExistence(timeout: 2) {
+            navigationBackButton(in: app).tap()
         }
         if app.buttons["success.done"].waitForExistence(timeout: 2) {
             app.buttons["success.done"].tap()
@@ -290,7 +293,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         app.launch()
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        app.buttons["screen.back"].tap()
+        navigationBackButton(in: app).tap()
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
         let todayStatus = app.staticTexts["home.todayStatus"]

@@ -90,8 +90,8 @@
             <img
               src="/assets/features/shortcuts.webp"
               width="560"
-              height="840"
-              alt="Sunclub Shortcuts screen with Log Sunscreen, Reapply Reminder, and Ask Before Running actions."
+              height="1218"
+              alt="Sunclub Shortcuts catalog preview."
               decoding="async"
               loading="eager"
             />
@@ -101,43 +101,48 @@
         <h2 class="doc-section-title">What you can automate</h2>
         <section class="doc-card-grid" aria-label="Shortcut ideas">
           <article>
-            <h2>Log sunscreen</h2>
+            <h2>Log Sunscreen</h2>
             <p>
-              Create a Shortcut that records sunscreen with your recent SPF and
-              covered areas, or your saved sunscreen profile when there is no
-              prior SPF. You can keep it manual or let iOS ask before it runs.
+              Log sunscreen with optional SPF and notes. New quick logs use your
+              recent SPF and covered areas, or saved sunscreen SPF when needed.
+              Free-form notes are never copied automatically.
             </p>
           </article>
           <article>
-            <h2>Get current UV status</h2>
+            <h2>Log Reapply</h2>
             <p>
-              Ask Sunclub whether you logged today, how long it has been, and
-              whether it is time to reapply.
+              Record another application after today's first log, even when
+              reminder notifications are off.
             </p>
           </article>
           <article>
-            <h2>Get reapplication status</h2>
+            <h2>Get Sunclub Status</h2>
             <p>
-              Use a Shortcut or Sunclub's app screens to check whether your
-              current log is still fresh.
+              Read today's logged state, UV context, weekly logged count and
+              reapplication status.
             </p>
           </article>
           <article>
-            <h2>Create a reminder</h2>
-            <p>
-              Combine Sunclub with time, location, Focus, or calendar triggers
-              in the Shortcuts app when you want a reminder that matches your
-              day.
-            </p>
+            <h2>Time Since Last Sunscreen</h2>
+            <p>Check the elapsed time since the latest log or reapplication.</p>
           </article>
           <article>
-            <h2>Review history summary</h2>
+            <h2>Set Sunclub Reminder</h2>
+            <p>Change weekday or weekend reminder times.</p>
+          </article>
+          <article>
+            <h2>Open Sunclub</h2>
             <p>
-              Pull a quick summary of recent logs and use it in a personal
-              routine without opening a new account or web service.
+              Open Today, History, Insights or Settings, including the Sunscreen
+              and Apple Health detail pages.
             </p>
           </article>
         </section>
+        <p>
+          The catalog also includes Save Sunscreen Log, Set Sunclub Reapply
+          Reminder and Set Sunclub Toggle. File actions are Export Sunclub
+          Backup, Export Sunclub History and Create Logged Days Card.
+        </p>
 
         <section class="doc-steps" aria-label="Create a basic shortcut">
           <article class="doc-step">
@@ -160,8 +165,8 @@
               <span class="doc-step-number">2</span>
               <h2>Choose the action</h2>
               <p>
-                Start with Log Sunscreen for a simple daily habit, or choose a
-                status action when you only want to check your current state.
+                Start with Log Sunscreen for logging, or Get Sunclub Status when
+                you only want to read your current state.
               </p>
             </div>
           </article>
@@ -171,20 +176,69 @@
               <span class="doc-step-number">3</span>
               <h2>Decide how it runs</h2>
               <p>
-                For automatic routines, keep Ask Before Running on until you are
-                comfortable with the result. You can change this any time in
-                Shortcuts.
+                Choose how the automation runs in Apple Shortcuts. Sunclub's
+                catalog describes actions; it does not install a shortcut or
+                provide an execution-confirmation setting.
               </p>
             </div>
           </article>
         </section>
+
+        <h2 class="doc-section-title">Permissions and examples</h2>
+        <p>
+          In Sunclub, open Settings, then Shortcuts. Four controls let you
+          choose what outside actions may do:
+        </p>
+        <ul>
+          <li>
+            <strong>Allow Shortcut writes</strong>: save changes from user-run
+            Shortcuts.
+          </li>
+          <li>
+            <strong>Open Sunclub from links</strong>: open app screens from
+            URLs.
+          </li>
+          <li>
+            <strong>Save changes from links</strong>: allow URL and callback
+            writes.
+          </li>
+          <li>
+            <strong>Share result details</strong>: return action details to the
+            caller.
+          </li>
+        </ul>
+        <p>
+          Open Shortcuts Catalog from that page to browse actions. Advanced
+          examples start collapsed. Write examples offer Copy only; Test is
+          available for read and open examples. Authorized Shortcuts and public
+          URL actions can still save changes.
+        </p>
+        <details>
+          <summary>Open a Settings detail from a Shortcut</summary>
+          <p>
+            Choose Open Sunclub, then Sunscreen or Apple Health. Link callers
+            use the route values <code>settings-sunscreen</code> and
+            <code>settings-health</code> with the open-screen examples in the
+            in-app catalog.
+          </p>
+          <p>
+            Opening these screens does not save a profile or request Health
+            access. Links need opening permission, even when write permissions
+            are off.
+          </p>
+          <p>
+            Existing summary and achievements routes open Insights. Legacy
+            friends, health-report and product-scanner routes continue to open
+            Settings, History and logging respectively.
+          </p>
+        </details>
 
         <aside class="doc-tip">
           <strong>Privacy note</strong>
           <p>
             Shortcut actions run on your device using the settings you choose in
             Sunclub. A log is reported as successful only after it is saved. You
-            can turn automation writes off in Sunclub Settings.
+            can manage the four permissions in Settings, then Shortcuts.
           </p>
         </aside>
 

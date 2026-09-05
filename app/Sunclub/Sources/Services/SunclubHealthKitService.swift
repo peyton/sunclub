@@ -39,12 +39,10 @@ final class SunclubHealthKitService: SunclubHealthKitServing {
             return false
         }
 
-        do {
-            try await store.requestAuthorization(toShare: [uvType], read: [uvType])
-            return true
-        } catch {
-            return false
-        }
+        return await Self.requestWriteAuthorization(
+            request: { try await self.store.requestAuthorization(toShare: [uvType], read: [uvType]) },
+            status: { self.store.authorizationStatus(for: uvType) }
+        )
         #else
         return false
         #endif
@@ -105,6 +103,18 @@ final class SunclubHealthKitService: SunclubHealthKitServing {
     }
 
     #if canImport(HealthKit)
+    static func requestWriteAuthorization(
+        request: () async throws -> Void,
+        status: () -> HKAuthorizationStatus
+    ) async -> Bool {
+        do {
+            try await request()
+            return status() == .sharingAuthorized
+        } catch {
+            return false
+        }
+    }
+
     private func metadata(externalID: UUID?, spfLevel: Int?) -> [String: Any] {
         var metadata: [String: Any] = [
             "com.sunclub.sample_kind": "sunscreen-log"

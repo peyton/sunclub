@@ -12,16 +12,11 @@ class SunclubUITestCase: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let timelineHeadline = timelineHeadline(in: app)
-        let hasTimelinePrompt = timelineHeadline.waitForExistence(timeout: 5)
-            && timelineHeadline.label.hasPrefix("Today,")
-        XCTAssertTrue(
-            hasTimelinePrompt && scrollToHittableElement(app.buttons["home.logManually"], in: app, attempts: 10),
-            "Expected Today to show its ready-to-log status and a reachable primary action.",
-            file: file,
-            line: line
-        )
-        XCTAssertEqual(app.staticTexts["timeline.todayStatus"].label, "No sunscreen logged today", file: file, line: line)
+        XCTAssertTrue(waitForLabelPrefix("Today,", on: timelineHeadline(in: app)), file: file, line: line)
+        let logAction = app.buttons["home.logManually"]
+        XCTAssertTrue(scrollToHittableElement(logAction, in: app, attempts: 10), file: file, line: line)
+        XCTAssertEqual(logAction.label, "Log sunscreen", file: file, line: line)
+        XCTAssertTrue(waitForLabel("Not logged", on: app.staticTexts["timeline.todayStatus"]), file: file, line: line)
     }
 
     @MainActor
@@ -30,25 +25,16 @@ class SunclubUITestCase: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let timelineStatus = app.staticTexts["home.todayStatus"]
-        let loggedCard = app.buttons["home.sunscreenLogCard"]
-        let hasLoggedAction = scrollToHittableElementByPosition(
-            loggedCard,
-            in: app,
-            attempts: 20,
-            scrollSurface: app.scrollViews["timeline.scroll"],
-            directionWhenMissing: .scrollDown,
-            distance: 0.3
-        )
-        let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 10)
-            && timelineStatus.label == "Sunscreen logged"
-            && hasLoggedAction
         XCTAssertTrue(
-            hasTimelineLoggedState,
-            "Expected timeline logged state.",
-            file: file,
-            line: line
+            waitForLabelPrefix("Logged at ", on: app.staticTexts["home.todayStatus"], timeout: 10),
+            "Expected the saved application's time on Today.",
+            file: file, line: line
         )
+        XCTAssertTrue(
+            scrollToHittableElement(app.buttons["home.sunscreenLogCard"], in: app, attempts: 10),
+            "Expected Edit log to remain reachable.", file: file, line: line
+        )
+        XCTAssertEqual(app.buttons["home.logManually"].label, "Log reapplication", file: file, line: line)
     }
 
     func timelineHeadline(in app: XCUIApplication) -> XCUIElement {
@@ -189,8 +175,6 @@ class SunclubUITestCase: XCTestCase {
     @MainActor
     func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {
         app.buttons["welcome.getStarted"].tap()
-        XCTAssertTrue(app.buttons["onboarding.skipUV"].waitForExistence(timeout: 5))
-        app.buttons["onboarding.skipUV"].tap()
         XCTAssertTrue(app.buttons["onboarding.skipNotifications"].waitForExistence(timeout: 5))
         app.buttons["onboarding.skipNotifications"].tap()
 
@@ -201,8 +185,10 @@ class SunclubUITestCase: XCTestCase {
     @MainActor
     func performBackSwipe(in app: XCUIApplication) {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: end)
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5))
+        // Use the full available travel: native prediction can cancel shorter drags.
+        // Keep cancellation coverage separate from this completed-swipe action.
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
     }
 
     @MainActor
@@ -235,7 +221,7 @@ class SunclubUITestCase: XCTestCase {
 
     @MainActor
     func manualLogSPFRow(in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)["manualLog.spfRow"]
+        app.staticTexts["manualLog.spfState"]
     }
 
     @MainActor
@@ -258,16 +244,53 @@ class SunclubUITestCase: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        XCTAssertTrue(
-            app.staticTexts["Insights"].waitForExistence(timeout: 5),
-            "Expected weekly insights pushed from History.",
-            file: file,
-            line: line
-        )
-        XCTAssertTrue(app.buttons["screen.back"].exists, file: file, line: line)
+        XCTAssertTrue(app.staticTexts["Insights"].waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(insightsSummary(in: app).waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(navigationBackButton(in: app).exists, file: file, line: line)
         XCTAssertFalse(app.buttons["timeline.footer.today"].exists, file: file, line: line)
         XCTAssertFalse(app.buttons["home.historyCard"].exists, file: file, line: line)
         XCTAssertFalse(app.buttons["timeline.footer.settings"].exists, file: file, line: line)
+    }
+
+    @MainActor
+    func navigationBackButton(in app: XCUIApplication) -> XCUIElement {
+        let compatibility = app.buttons["screen.back"]
+        if compatibility.exists { return compatibility }
+        let namedBack = app.navigationBars.buttons["Back"]
+        if namedBack.exists { return namedBack }
+        return app.navigationBars.buttons["BackButton"]
+    }
+
+    func insightsSummary(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(
+            NSPredicate(format: "label MATCHES %@", "[0-7] days? logged in the last 7 days")
+        ).firstMatch
+    }
+
+    func insightsStreak(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(
+            NSPredicate(format: "label MATCHES %@", "[0-9]+-day streak")
+        ).firstMatch
+    }
+
+    @MainActor
+    func openTodayEditor(in app: XCUIApplication) {
+        tapHittableElement(app.buttons["home.sunscreenLogCard"], in: app, description: "Edit today's log")
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.datePickers["manualLog.timePicker"].exists)
+        XCTAssertFalse(app.datePickers["manualLog.datePicker"].exists)
+    }
+
+    @MainActor
+    func selectHistoryDay(offset: Int, in app: XCUIApplication) {
+        XCTAssertTrue(selectNativeTab(app.buttons["home.historyCard"]))
+        expandHistoryCalendar(in: app)
+        let target = Calendar.current.date(byAdding: .day, value: offset, to: Date())!
+        if !Calendar.current.isDate(target, equalTo: Date(), toGranularity: .month) {
+            tapHittableElement(app.buttons["history.previousMonth"], in: app)
+        }
+        tapHittableElement(app.buttons["history.day.\(dayIdentifier(offset: offset))"], in: app)
+        XCTAssertTrue(app.buttons["history.day.\(dayIdentifier(offset: offset))"].isSelected)
     }
 
     @MainActor
@@ -504,20 +527,25 @@ class SunclubUITestCase: XCTestCase {
 
     @MainActor
     func assertSettingsNotificationControls(in app: XCUIApplication) {
-        let notificationsRow = app.buttons["settings.reference.notifications"]
-        XCTAssertTrue(scrollToElement(notificationsRow, in: app))
-        notificationsRow.tap()
-        XCTAssertTrue(app.staticTexts["Notifications"].waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.notificationHealth.action"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.notificationHealth.sendTest"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.notificationHealth.copyDiagnostics"], in: app))
+        expandSettingsSection("reminders", in: app)
+        XCTAssertFalse(app.buttons["settings.notificationHealth.sendTest"].exists)
+        let troubleshoot = app.buttons["settings.reminders.troubleshoot"]
+        XCTAssertTrue(scrollToHittableElement(troubleshoot, in: app, attempts: 10))
+        XCTAssertGreaterThanOrEqual(troubleshoot.frame.height, 44)
+        tapHittableElement(troubleshoot, in: app)
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.notificationHealth.action"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.notificationHealth.sendTest"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.notificationHealth.copyDiagnostics"], in: app))
         returnToSettingsHome(in: app)
     }
 
     @MainActor
     func assertSettingsProgressControls(in app: XCUIApplication) {
-        expandSettingsSection("progress", in: app)
-        XCTAssertTrue(app.switches["settings.reapplyToggle"].exists)
+        expandSettingsSection("reminders", in: app)
+        XCTAssertTrue(scrollToHittableElement(app.switches["settings.reapplyToggle"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.switches["settings.leaveHomeToggle"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.leaveHome.action"], in: app))
+        XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
         returnToSettingsHome(in: app)
     }
 
@@ -545,37 +573,50 @@ class SunclubUITestCase: XCTestCase {
     @MainActor
     func assertSettingsAutomationControls(in app: XCUIApplication) {
         expandSettingsSection("automation", in: app)
-        XCTAssertTrue(scrollToElement(automationSwitch("Allow Shortcut writes", in: app), in: app))
-        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL open actions", in: app), in: app))
-        XCTAssertTrue(scrollToElement(automationSwitch("Allow URL write actions", in: app), in: app))
-        XCTAssertTrue(scrollToElement(automationSwitch("Include callback result details", in: app), in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["automation.example.logToday.copy"], in: app))
-        XCTAssertTrue(app.buttons["automation.example.logToday.test"].exists)
-        XCTAssertTrue(scrollToElement(app.buttons["settings.automation.openCatalog"], in: app))
+        for label in ["Allow Shortcut writes", "Allow URL open actions", "Allow URL write actions", "Include callback result details"] {
+            XCTAssertTrue(scrollToHittableElement(automationSwitch(label, in: app), in: app))
+        }
+        XCTAssertFalse(app.buttons["automation.example.logToday.test"].exists)
+        tapHittableElement(app.buttons["settings.automation.openCatalog"], in: app)
+        XCTAssertTrue(app.staticTexts["Shortcuts & Automation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["automation.shortcuts"].exists)
+        tapHittableElement(app.descendants(matching: .any)["automation.advanced"], in: app)
+        XCTAssertTrue(scrollToHittableElement(app.buttons["automation.example.logToday.copy"], in: app))
+        XCTAssertFalse(app.buttons["automation.example.logToday.test"].exists)
+        tapHittableElement(navigationBackButton(in: app), in: app)
+        XCTAssertTrue(app.buttons["settings.automation.openCatalog"].waitForExistence(timeout: 5))
         returnToSettingsHome(in: app)
     }
 
     @MainActor
     func assertSettingsAdvancedControls(in app: XCUIApplication) {
         expandSettingsSection("advanced", in: app)
-        XCTAssertTrue(scrollToElement(app.switches["settings.leaveHomeToggle"], in: app))
-        XCTAssertTrue(scrollToElement(app.buttons["settings.leaveHome.action"], in: app))
-        XCTAssertEqual(app.buttons["settings.leaveHome.action"].label, "Use Current Location as Home")
-        XCTAssertTrue(app.switches["settings.uvBriefingToggle"].exists)
-        XCTAssertTrue(app.switches["settings.extremeUVToggle"].exists)
-        XCTAssertTrue(scrollToElement(app.switches["settings.healthKitToggle"], in: app))
-        XCTAssertTrue(scrollToElement(app.switches["settings.liveUVToggle"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.switches["settings.liveUVToggle"], in: app))
+        XCTAssertEqual(app.switches["settings.liveUVToggle"].label, "Use current location")
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.liveUV.chooseCity"], in: app))
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["settings.liveUV.status"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.switches["settings.uvBriefingToggle"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.switches["settings.extremeUVToggle"], in: app))
+        returnToSettingsHome(in: app)
+        expandSettingsSection("health", in: app)
+        XCTAssertTrue(scrollToHittableElement(app.switches["settings.healthKitToggle"], in: app))
         returnToSettingsHome(in: app)
     }
 
     @MainActor
     func assertSettingsHelpControls(in app: XCUIApplication) {
-        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.section.help"], in: app))
-        expandSettingsSection("help", in: app)
-        XCTAssertTrue(scrollToElement(app.buttons["settings.support"], in: app))
-        XCTAssertTrue(app.buttons["settings.privacyPolicy"].exists)
-        XCTAssertTrue(app.buttons["settings.emailSupport"].exists)
+        tapHittableElement(app.buttons["settings.support.quick"], in: app)
+        XCTAssertTrue(app.staticTexts["Support"].waitForExistence(timeout: 5))
+        for identifier in ["support.email", "support.helpCenter", "support.docs"] {
+            let action = app.buttons[identifier]
+            XCTAssertTrue(scrollToHittableElement(action, in: app))
+            XCTAssertFalse(action.label.isEmpty)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+        }
+        returnToSettingsHome(in: app)
+        tapHittableElement(app.buttons["settings.privacy.quick"], in: app)
+        XCTAssertTrue(app.staticTexts["Privacy"].waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["privacy.exportHistory"], in: app))
         returnToSettingsHome(in: app)
     }
 
@@ -709,7 +750,7 @@ class SunclubUITestCase: XCTestCase {
 
     @MainActor
     func returnToSettingsHome(in app: XCUIApplication) {
-        let backButton = app.buttons["screen.back"]
+        let backButton = navigationBackButton(in: app)
         XCTAssertTrue(backButton.waitForExistence(timeout: 5))
         backButton.tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
@@ -718,11 +759,13 @@ class SunclubUITestCase: XCTestCase {
     func settingsSectionTitle(for section: String) -> String {
         switch section {
         case "reminders":
-            return "Sunscreen & Reminders"
-        case "progress":
-            return "Reapply Reminder"
+            return "Reminders"
+        case "sunscreen":
+            return "Sunscreen"
+        case "health":
+            return "Apple Health"
         case "data":
-            return "iCloud & Data"
+            return "iCloud & Backup"
         case "automation":
             return "Shortcuts"
         case "advanced":
