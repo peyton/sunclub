@@ -789,7 +789,7 @@ final class SunclubUITests: SunclubUITestCase {
     }
 
     @MainActor
-    func testLogTodayQuickActionOpensManualLogAndReturnsHome() throws {
+    func testLogTodayQuickActionOpensTodayWithoutLogging() throws {
         let app = XCUIApplication()
         app.launchArguments += [
             "UITEST_MODE",
@@ -798,15 +798,16 @@ final class SunclubUITests: SunclubUITestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(
-            app.buttons["manualLog.logToday"].waitForExistence(timeout: 10),
-            "Expected the home-screen quick action to open manual logging."
-        )
-        let backButton = navigationBackButton(in: app)
-        XCTAssertTrue(backButton.waitForExistence(timeout: 5))
-        backButton.tap()
-
         assertTodayRootVisible(in: app)
+        let logButton = app.buttons["home.logManually"]
+        XCTAssertTrue(logButton.waitForExistence(timeout: 10))
+        XCTAssertEqual(logButton.label, "Log sunscreen")
+        XCTAssertFalse(app.buttons["manualLog.logToday"].exists)
+        XCTAssertFalse(app.buttons["home.undoLog"].exists)
+
+        tapHittableElement(logButton, in: app)
+        assertHomeLoggedState(app)
+        XCTAssertTrue(app.buttons["home.undoLog"].exists)
     }
 
     @MainActor
