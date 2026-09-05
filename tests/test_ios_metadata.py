@@ -583,11 +583,11 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     release_safety_step = re.search(
         r"- name: Run release launch safety tests\n"
         r"(?P<body>(?:        .*\n)+?)"
-        r"\n      - name: Archive and upload to TestFlight",
+        r"\n      - name: Archive and export production app",
         workflow,
     )
     archive_upload_step = re.search(
-        r"- name: Archive and upload to TestFlight\n"
+        r"- name: Archive and export production app\n"
         r"(?P<body>(?:        .*\n)+?)"
         r"\n      - name: Add Internal testers group",
         workflow,
@@ -626,8 +626,8 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
         not in archive_upload_body
     )
     assert (
-        "bash scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight"
-        in workflow
+        'bash scripts/appstore/archive-and-upload.sh "${archive_args[@]}"'
+        in archive_upload_body
     )
     assert "--unsigned-archive" in workflow
     assert internal_group_step is not None

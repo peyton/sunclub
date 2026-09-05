@@ -81,7 +81,20 @@ Before merging to `master` and before cutting a TestFlight tag, verify timeline 
 
 ## GitHub Automation
 
-`.github/workflows/release-testflight.yml` runs on pushed tags matching `v*.*.*`.
+`.github/workflows/release-testflight.yml` uploads on pushed tags matching
+`v*.*.*`. Manual dispatch performs signed export validation only, including when
+the selected ref is a tag; it never uploads or updates tester groups.
+
+After full CI passes for the candidate's exact SHA, request validation with:
+
+```bash
+gh workflow run release-testflight.yml --ref BRANCH
+```
+
+This uses the existing GitHub `testflight` environment and App Store Connect
+secrets on the runner. It prepares signing profiles, archives, signs, exports and
+validates the production IPA without delivering a build to testers. A new commit
+requires its own successful full CI before this workflow can use credentials.
 
 All release and screenshot tasks in this workflow run through `mise --locked exec`,
 so a stale/missing lock entry fails the workflow before archive or upload.
@@ -97,9 +110,20 @@ exact source SHA before materializing signing credentials. It then:
 5. ad-hoc signs the unsigned archive with resolved release entitlements before export
 6. exports the production IPA
 7. writes and validates signed-app entitlement diagnostics before upload
-8. uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
-9. waits for App Store Connect processing, marks encryption compliance, and adds the processed build to the `Internal` TestFlight tester group
+8. for pushed tags only, uploads the IPA to TestFlight with `altool` and App Store Connect API key auth
+9. for pushed tags only, waits for App Store Connect processing, marks encryption compliance, and adds the processed build to the `Internal` TestFlight tester group
 10. publishes the `.xcarchive`, exported IPA, and `.build/release-diagnostics` as workflow artifacts for 90 days, even when the job fails after artifacts are produced
+
+Manual artifacts use `sunclub-export-RUN_ID`, so branch names containing `/` work.
+Pushed tags keep `sunclub-testflight-vX.Y.Z`. Inspect a manual export with:
+
+```bash
+gh run download RUN_ID --name sunclub-export-RUN_ID --dir /tmp/sunclub-export
+plutil -p /tmp/sunclub-export/release-diagnostics/Sunclub.entitlements.plist
+```
+
+Also inspect nested watch/widget diagnostics and the exported IPA itself before
+recording signed validation as complete.
 
 Before trusting a TestFlight upload, download the workflow artifact and inspect the exported IPA entitlements:
 

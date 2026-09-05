@@ -9,13 +9,18 @@
   tests, the 13 UI smoke scenarios, and both Release device flavors.
 - Only recognized web/documentation-only PR changes may skip iOS. Unknown paths,
   empty comparisons and failed detection default to iOS validation.
-- Every master push and manual dispatch runs full UI coverage. Run
+- In `ci.yml`, every master push and manual dispatch runs full UI coverage. Run
   `gh workflow run ci.yml --ref BRANCH` for a release/refactor candidate.
 - The final `CI` gate uses `always()` and checks every expected result; failed,
   cancelled and unexpected skipped jobs cannot pass it. Branch rules migrate
   from five direct job contexts to `CI` only after verifying the new gate.
 - Production signing/upload requires successful full CI on the exact source SHA;
   PR smoke results are insufficient. Preserve final entitlement/watch validation.
+- For signed validation after that full CI passes, run
+  `gh workflow run release-testflight.yml --ref BRANCH`. Manual dispatch archives,
+  signs, exports and validates only; it never uploads to TestFlight or changes
+  tester groups. Its `sunclub-export-RUN_ID` artifact retains the archive, IPA and
+  final signing/watch diagnostics. Tag pushes retain the existing upload flow.
 - Superseded PR runs cancel. Xcode steps remain bounded, with failure artifacts
   and release diagnostics retained.
 
@@ -78,7 +83,7 @@ GitHub run cross-check:
   `timeout-minutes`. This includes TestFlight archive/upload, App Review
   screenshot capture, App Review archive/upload, and final review submission
   steps.
-- Swift compile caching is enabled by default. Keep `timeout-minutes` on every
+- Swift compile caching is enabled by default in GitHub Actions. Keep `timeout-minutes` on every
   macOS GitHub Actions job that runs `just test-unit`, `just test-ui`,
   `just ci-build`, screenshot capture, or release archive/test commands.
 - Normal CI must keep building both app flavors when iOS-affecting files

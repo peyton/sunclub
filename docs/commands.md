@@ -65,6 +65,18 @@ alone does not satisfy this gate.
 | Release tag        | `just release-tag 1.2.3`        |
 | TestFlight alias   | `just release-testflight 1.2.3` |
 
+After full CI passes for the candidate SHA, request signed export validation:
+
+```sh
+gh workflow run release-testflight.yml --ref BRANCH
+```
+
+Manual runs use the GitHub `testflight` environment to archive, sign, export and
+validate the IPA. They do not upload to TestFlight or change tester groups.
+Download `sunclub-export-RUN_ID` from that run for the archive, IPA and final
+signing/watch diagnostics. Pushed release tags retain upload and tester behavior.
+See [TestFlight release](testflight-release.md) for artifact inspection.
+
 ## Web & Cloudflare Commands
 
 | Surface           | Command                               |
