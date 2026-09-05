@@ -234,6 +234,7 @@ def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
         if item["UIApplicationShortcutItemType"] == "app.peyton.sunclub.log-today"
     )
     assert quick_action["UIApplicationShortcutItemTitle"] == "Log sunscreen"
+    assert quick_action["UIApplicationShortcutItemSubtitle"] == "Open Today"
     assert quick_action["UIApplicationShortcutItemIconSymbolName"] == "sun.max.fill"
 
 

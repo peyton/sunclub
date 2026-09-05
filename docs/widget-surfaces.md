@@ -1,6 +1,6 @@
 # Widget surfaces
 
-Sunscreen status and logging lead every quick entry point. Widget status opens
+Sunscreen status and logging lead the primary logging entry points. Widget status opens
 Today; history opens History and totals open Insights. The small widget uses
 “Log again” (or “Again” at larger text sizes) with the accessible name “Log reapplication.” All existing widget
 kinds, supported families, fixed public intent semantics and legacy routes remain.
