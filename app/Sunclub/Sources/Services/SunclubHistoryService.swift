@@ -752,7 +752,9 @@ final class SunclubHistoryService {
         var result = restorePoint.snapshot
         var previous = revisions[importIndex].snapshot
         let revisionsByBatch = Dictionary(grouping: revisions, by: \.batchID)
-        var checkpoints: [UUID: ImportUndoSettingsCheckpoint] = [:]
+        var checkpoints = try preImportSettingsCheckpoints(
+            Array(revisions.prefix(importIndex)), session: session, batches: batches
+        )
         for revision in revisions.dropFirst(importIndex + 1) {
             defer { previous = revision.snapshot }
             let matches = batches.filter { $0.id == revision.batchID }
@@ -807,6 +809,32 @@ final class SunclubHistoryService {
     private struct ImportUndoSettingsCheckpoint {
         let raw: SettingsProjectionSnapshot
         let restored: SettingsProjectionSnapshot
+    }
+
+    private func preImportSettingsCheckpoints(
+        _ revisions: [SettingsRevision], session: SunclubImportSession, batches: [SunclubChangeBatch]
+    ) throws -> [UUID: ImportUndoSettingsCheckpoint] {
+        let importedIDs = Set(session.importedBatchIDs)
+        var raw = Settings().projectionSnapshot
+        var restored = raw
+        var checkpoints: [UUID: ImportUndoSettingsCheckpoint] = [:]
+        for revision in revisions {
+            defer { raw = revision.snapshot }
+            let owners = batches.filter { $0.id == revision.batchID }
+            guard owners.count == 1, let owner = owners.first,
+                  revisions.filter({ $0.batchID == revision.batchID }).count == 1 else {
+                throw HistoryServiceError.importUndoIncomplete
+            }
+            if importedIDs.contains(owner.id) {
+                guard owner.importSessionID == session.id else { throw HistoryServiceError.importUndoIncomplete }
+                continue
+            }
+            // An imported revision may sort before an older local target. Validate against
+            // its actual raw predecessor, but restore the predecessor without this import.
+            checkpoints[revision.batchID] = ImportUndoSettingsCheckpoint(raw: raw, restored: restored)
+            restored = revision.snapshot
+        }
+        return checkpoints
     }
 
     private func settingsInverseCheckpoint(
