@@ -1,28 +1,6 @@
 import SwiftUI
 import UIKit
 
-extension SunAppTabBarAction {
-    init(presentation: HomeDailyPlanPresentation) {
-        let shortTitle: String
-        switch presentation.action {
-        case .logToday: shortTitle = "Log"
-        case .backfillYesterday: shortTitle = "Backfill"
-        case .logReapply: shortTitle = "Reapply"
-        case .addDetails: shortTitle = "Details"
-        case .viewProgress: shortTitle = "Progress"
-        case .reviewRecovery: shortTitle = "Review"
-        case .repairReminders: shortTitle = "Repair"
-        case .openSettings: shortTitle = "Settings"
-        }
-        self.init(
-            shortTitle: shortTitle,
-            title: presentation.actionTitle,
-            systemImage: presentation.symbolName,
-            accessibilityHint: presentation.detail
-        )
-    }
-}
-
 struct RootView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
@@ -45,7 +23,7 @@ struct RootView: View {
             }
         }
         .interactivePopGestureEnabled()
-        .tint(AppPalette.sun)
+        .tint(AppPalette.nativeChromeTint)
     }
 
     private var onboardingRoot: some View {
@@ -57,91 +35,26 @@ struct RootView: View {
         }
     }
 
-    @ViewBuilder
     private var tabbedRoot: some View {
-        if #available(iOS 26.0, *) {
-            nativeTabbedRoot
-        } else {
-            legacyTabbedRoot
-        }
-    }
-
-    private var legacyTabbedRoot: some View {
-        VStack(spacing: 0) {
-            NavigationStack(path: pathBinding(for: router.selectedTab)) {
-                tabRoot(for: router.selectedTab)
-                    .navigationDestination(for: AppRoute.self) { route in
-                        destination(for: route)
-                    }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if router.path(for: router.selectedTab).isEmpty {
-                SunAppTabBar(
-                    selectedTab: router.selectedTab,
-                    onSelectTab: { tab in
-                        router.open(tab.rootRoute)
-                    },
-                    centerAction: contextualTabAction,
-                    onAdd: performHomeDailyPlanAction
-                )
-            }
-        }
-    }
-
-    @available(iOS 26.0, *)
-    private var nativeTabbedRoot: some View {
-        nativeTabView
-            .toolbar(router.showsRootTabChrome ? .visible : .hidden, for: .tabBar)
-            .tint(AppPalette.nativeChromeTint)
-    }
-
-    @ViewBuilder
-    @available(iOS 26.0, *)
-    private var nativeTabView: some View {
-        #if SUNCLUB_HAS_PROMINENT_TAB_ROLE
-        if #available(iOS 27.0, *) {
-            nativeTabView(actionRole: .prominent)
-        } else {
-            nativeTabView(actionRole: .search)
-        }
-        #else
-        nativeTabView(actionRole: .search)
-        #endif
-    }
-
-    @available(iOS 26.0, *)
-    private func nativeTabView(actionRole: TabRole) -> some View {
         TabView(selection: selectedTabBinding) {
             nativeTab(.today)
             nativeTab(.history)
-            nativeTab(.insights)
             nativeTab(.settings)
-            nativeActionTab(role: actionRole)
         }
-        .background {
-            SunNativeTabAccessibilityIdentifierInstaller(actionTitle: contextualTabAction.title)
-        }
-        .tabBarMinimizeBehavior(.never)
+        .background { SunNativeTabAccessibilityIdentifierInstaller() }
+        .toolbar(router.showsRootTabChrome ? .visible : .hidden, for: .tabBar)
+        .tint(AppPalette.nativeChromeTint)
     }
 
-    private var selectedTabBinding: Binding<SunNativeTabSelection> {
+    private var selectedTabBinding: Binding<AppTab> {
         Binding(
-            get: { .content(router.selectedTab) },
-            set: { selection in
-                switch selection {
-                case let .content(tab):
-                    router.selectTab(tab)
-                case .action:
-                    performHomeDailyPlanAction()
-                }
-            }
+            get: { router.selectedTab },
+            set: { router.selectTab($0) }
         )
     }
 
-    @available(iOS 26.0, *)
-    private func nativeTab(_ tab: AppTab) -> some TabContent<SunNativeTabSelection> {
-        Tab(value: .content(tab)) {
+    private func nativeTab(_ tab: AppTab) -> some TabContent<AppTab> {
+        Tab(value: tab) {
             NavigationStack(path: pathBinding(for: tab)) {
                 tabRoot(for: tab)
                     .navigationTitle(tab.title)
@@ -153,30 +66,13 @@ struct RootView: View {
             }
             .toolbar(router.path(for: tab).isEmpty ? .visible : .hidden, for: .tabBar)
         } label: {
-            Label(tab.title, systemImage: tab.systemImage)
-        }
-        .accessibilityIdentifier(tab.accessibilityIdentifier)
-    }
-
-    @available(iOS 26.0, *)
-    private func nativeActionTab(role: TabRole) -> some TabContent<SunNativeTabSelection> {
-        Tab(value: .action, role: role) {
-            EmptyView()
-        } label: {
             Label {
-                Text(contextualTabAction.title)
+                Text(tab.title)
             } icon: {
-                Image(
-                    uiImage: UIImage(systemName: contextualTabAction.systemImage)?.withTintColor(
-                        UIColor(AppColor.accent),
-                        renderingMode: .alwaysOriginal
-                    ) ?? UIImage()
-                )
+                SunIcon(tab: tab).image
             }
         }
-        .accessibilityLabel(contextualTabAction.title)
-        .accessibilityHint(contextualTabAction.accessibilityHint)
-        .accessibilityIdentifier("home.logManually")
+        .accessibilityIdentifier(tab.accessibilityIdentifier)
     }
 
     private func pathBinding(for tab: AppTab) -> Binding<[AppRoute]> {
@@ -197,8 +93,6 @@ struct RootView: View {
             TimelineHomeView()
         case .history:
             HistoryView(showsBackButton: false)
-        case .insights:
-            WeeklyReportView(showsBackButton: false)
         case .settings:
             SettingsView(showsBackButton: false)
         }
@@ -306,69 +200,19 @@ struct RootView: View {
         )
     }
 
-    private func performHomeDailyPlanAction() {
-        switch appState.homeDailyPlanPresentation.action {
-        case .logToday, .addDetails:
-            appState.clearManualLogPrefill()
-            let today = appState.startOfLocalDay(appState.referenceDate)
-            let context = appState.currentLogContext(for: today, source: .manualLog)
-            appState.prepareManualLogRouteContext(
-                targetDate: context.date,
-                targetDayPart: context.dayPart,
-                source: context.source
-            )
-            router.push(.manualLog, targetDate: context.date, targetDayPart: context.dayPart)
-        case .backfillYesterday:
-            router.open(.backfillYesterday)
-        case .logReapply:
-            router.open(.reapplyCheckIn)
-        case .viewProgress:
-            router.open(.weeklySummary)
-        case .reviewRecovery:
-            router.open(.recovery)
-        case .repairReminders:
-            appState.repairReminderSchedule()
-        case .openSettings:
-            router.open(.settingsNotifications)
-        }
-    }
-
-    private var contextualTabAction: SunAppTabBarAction {
-        SunAppTabBarAction(presentation: appState.homeDailyPlanPresentation)
-    }
 }
 
-private enum SunNativeTabSelection: Hashable {
-    case content(AppTab)
-    case action
-}
-
-@available(iOS 26.0, *)
+// Native tab item IDs are installed by title because UIKit owns the accessible tab controls.
 private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRepresentable {
-    let actionTitle: String
-
     func makeUIViewController(context: Context) -> InstallerViewController {
-        InstallerViewController(actionTitle: actionTitle)
+        InstallerViewController()
     }
 
     func updateUIViewController(_ uiViewController: InstallerViewController, context: Context) {
-        uiViewController.actionTitle = actionTitle
         uiViewController.installIdentifiers()
     }
 
     final class InstallerViewController: UIViewController {
-        var actionTitle: String
-
-        init(actionTitle: String) {
-            self.actionTitle = actionTitle
-            super.init(nibName: nil, bundle: nil)
-        }
-
-        @available(*, unavailable)
-        required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
-
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
             installIdentifiers()
@@ -380,58 +224,24 @@ private struct SunNativeTabAccessibilityIdentifierInstaller: UIViewControllerRep
         }
 
         func installIdentifiers() {
-            guard let window = view.window else {
-                return
-            }
-
-            let contentIdentifiers = Dictionary(
+            guard let window = view.window else { return }
+            let identifiers = Dictionary(
                 uniqueKeysWithValues: AppTab.allCases.map { ($0.title, $0.accessibilityIdentifier) }
             )
-            var actionCandidates: [UITabBarItem] = []
+            installIdentifiers(in: window, identifiers: identifiers)
+        }
 
-            for tabBar in findTabBars(in: window) {
+        private func installIdentifiers(in view: UIView, identifiers: [String: String]) {
+            if let tabBar = view as? UITabBar {
                 for item in tabBar.items ?? [] {
-                    if let title = item.title,
-                       let identifier = contentIdentifiers[title] {
+                    if let title = item.title, let identifier = identifiers[title] {
                         item.accessibilityIdentifier = identifier
-                    } else {
-                        actionCandidates.append(item)
                     }
                 }
             }
-
-            if let actionItem = actionCandidates.first {
-                actionItem.accessibilityIdentifier = "home.logManually"
-            } else {
-                installActionIdentifier(in: window)
-            }
-        }
-
-        private func findTabBars(in view: UIView) -> [UITabBar] {
-            var tabBars: [UITabBar] = []
-            if let tabBar = view as? UITabBar {
-                tabBars.append(tabBar)
-            }
-
             for subview in view.subviews {
-                tabBars.append(contentsOf: findTabBars(in: subview))
+                installIdentifiers(in: subview, identifiers: identifiers)
             }
-            return tabBars
-        }
-
-        private func installActionIdentifier(in window: UIWindow) {
-            let candidates = accessibilityViews(in: window).filter { candidate in
-                candidate.accessibilityLabel == actionTitle
-                    && candidate.accessibilityTraits.contains(.button)
-                    && candidate.convert(candidate.bounds, to: window).midY > window.bounds.height * 0.7
-            }
-            candidates.min { lhs, rhs in
-                lhs.bounds.width * lhs.bounds.height < rhs.bounds.width * rhs.bounds.height
-            }?.accessibilityIdentifier = "home.logManually"
-        }
-
-        private func accessibilityViews(in view: UIView) -> [UIView] {
-            [view] + view.subviews.flatMap(accessibilityViews(in:))
         }
     }
 }

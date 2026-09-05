@@ -28,7 +28,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         )
         XCTAssertTrue(
             scrollToHittableElement(uvCard, in: app, attempts: 10),
-            "Expected the compact UV card to remain reachable below the contextual Home card."
+            "Expected the UV gauge to remain reachable on Today."
         )
         uvCard.tap()
 
@@ -115,26 +115,30 @@ final class SunclubSmokeUITests: SunclubUITestCase {
             "UITEST_SEED_ACCOUNTABILITY_FRIEND"
         ])
 
-        let contextualAction = app.buttons["home.logManually"]
-        XCTAssertTrue(contextualAction.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(contextualAction.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(contextualAction.frame.height, 44)
-        XCTAssertTrue(contextualAction.isHittable)
-        XCTAssertFalse(contextualAction.label.isEmpty)
-        let dailyPlanAction = app.buttons["home.dailyPlan.action"]
+        let logAction = app.buttons["home.logManually"]
         XCTAssertTrue(
-            scrollToHittableElement(dailyPlanAction, in: app, attempts: 6),
-            "Expected the in-card next action to remain reachable above the accessibility tab bar."
+            scrollToHittableElement(logAction, in: app, attempts: 10),
+            "Expected Today's primary log action to remain reachable with accessibility text."
         )
+        attachScorecardScreenshot(app, checkpoint: "Larger Text primary action")
+        XCTAssertEqual(app.buttons.matching(identifier: "home.logManually").count, 1)
+        XCTAssertGreaterThanOrEqual(logAction.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(logAction.frame.height, 44)
+        XCTAssertFalse(logAction.label.isEmpty)
+        let todayTab = app.buttons["timeline.footer.today"]
         XCTAssertFalse(
-            dailyPlanAction.frame.intersects(contextualAction.frame),
-            "Expected the contextual tab action to reserve layout space instead of overlapping the in-card action."
+            logAction.frame.intersects(todayTab.frame),
+            "Expected the in-content log action to remain clear of the native tabs."
         )
         XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
-        XCTAssertTrue(app.buttons["home.streakCard"].exists)
+        XCTAssertFalse(app.buttons["home.streakCard"].exists)
         XCTAssertTrue(app.buttons["home.historyCard"].exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app, attempts: 10), "Expected Settings footer to remain reachable with accessibility settings enabled.")
+
+        openWeeklyInsights(in: app)
+        XCTAssertTrue(scrollToHittableElement(app.buttons["weekly.viewFullHistory"], in: app, attempts: 10))
+        app.buttons["screen.back"].tap()
+        XCTAssertTrue(app.buttons["home.historyCard"].isSelected)
 
         assertSettingsTabOpens(in: app)
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
@@ -144,31 +148,38 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         if stringValue(of: reapplyToggle) != "1" {
             reapplyToggle.tap()
         }
-        XCTAssertTrue(scrollToElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10), "Expected enabled reapply settings to show interval controls.")
+        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10), "Expected enabled reapply settings to show reachable interval controls.")
 
         XCTAssertTrue(app.buttons["screen.back"].waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
         app.buttons["screen.back"].tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
-        let logAction = app.buttons["home.logManually"]
         XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]),
             "Expected Today tab home action after leaving Settings."
         )
-        XCTAssertTrue(logAction.waitForExistence(timeout: 5))
+        tapHittableElement(logAction, in: app)
+        let saveLog = app.buttons["manualLog.logToday"]
+        XCTAssertTrue(scrollToHittableElement(saveLog, in: app, attempts: 10), "Expected manual log action to remain reachable in accessibility mode.")
+        XCTAssertGreaterThanOrEqual(saveLog.frame.height, 44)
+        saveLog.tap()
+        assertHomeLoggedState(app)
+        attachScorecardScreenshot(app, checkpoint: "Larger Text logged summary")
+    }
 
-        let actionFrame = logAction.frame
-        app.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: actionFrame.midX, dy: actionFrame.midY))
-            .tap()
-        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5), "Expected manual log action to remain reachable in accessibility mode.")
+    @MainActor
+    private func attachScorecardScreenshot(_ app: XCUIApplication, checkpoint: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Accessibility scorecard - \(checkpoint)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
     func testManualLogFlowReturnsHomeLogged() throws {
         let app = launchHome()
 
-        app.buttons["home.logManually"].tap()
+        tapHittableElement(app.buttons["home.logManually"], in: app)
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        app.buttons["manualLog.logToday"].tap()
+        tapHittableElement(app.buttons["manualLog.logToday"], in: app)
 
         assertHomeLoggedState(app)
     }
@@ -217,8 +228,11 @@ final class SunclubSmokeUITests: SunclubUITestCase {
 
         assertHomeLoggedState(app)
 
-        let streakCard = app.buttons["home.streakCard"]
-        XCTAssertTrue(streakCard.waitForExistence(timeout: 5), "Expected streak affordance after undo.")
+        openWeeklyInsights(in: app)
+        let currentStreak = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Current run 2 days.")
+        ).firstMatch
+        XCTAssertTrue(scrollToElement(currentStreak, in: app, attempts: 10), "Expected the restored streak in weekly insights after undo.")
     }
 
     @MainActor

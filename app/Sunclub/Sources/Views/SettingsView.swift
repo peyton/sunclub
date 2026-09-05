@@ -39,13 +39,18 @@ struct SettingsView: View {
 
     var body: some View {
         SunLightScreen(
-            contentMaxWidth: SunLayout.ContentWidth.wideReadable,
+            contentMaxWidth: SunLayout.ContentWidth.form,
             contentFrameAlignment: .center
         ) {
-            VStack(alignment: .leading, spacing: 30) {
-                SunLightHeader(title: settingsTitle, showsBack: showsSettingsBackButton, onBack: {
-                    handleSettingsBack()
-                })
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                SunLightHeader(
+                    title: settingsTitle,
+                    showsBack: showsSettingsBackButton,
+                    usesNativeNavigation: detail != nil,
+                    onBack: {
+                        handleSettingsBack()
+                    }
+                )
 
                 if let detail {
                     settingsDetailContent(for: detail)
@@ -110,6 +115,7 @@ struct SettingsView: View {
             appState.refreshHealthKitStatus()
         }
         .sunNavigationBarCompatibility()
+        .toolbar(detail == nil ? .hidden : .visible, for: .navigationBar)
         .interactivePopGestureEnabled()
     }
 
@@ -198,7 +204,6 @@ enum SettingsDetail: Hashable {
         }
     }
 }
-
 
 enum SettingsSection: String, Hashable {
     case reminders

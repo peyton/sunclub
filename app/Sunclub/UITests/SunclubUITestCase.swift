@@ -6,6 +6,7 @@ class SunclubUITestCase: XCTestCase {
         continueAfterFailure = false
     }
 
+    @MainActor
     func assertHomeReadyForLogState(
         _ app: XCUIApplication,
         file: StaticString = #filePath,
@@ -15,13 +16,15 @@ class SunclubUITestCase: XCTestCase {
         let hasTimelinePrompt = timelineHeadline.waitForExistence(timeout: 5)
             && timelineHeadline.label.hasPrefix("Today,")
         XCTAssertTrue(
-            hasTimelinePrompt && app.buttons["home.logManually"].exists,
-            "Expected timeline ready-to-log state.",
+            hasTimelinePrompt && scrollToHittableElement(app.buttons["home.logManually"], in: app, attempts: 10),
+            "Expected Today to show its ready-to-log status and a reachable primary action.",
             file: file,
             line: line
         )
+        XCTAssertEqual(app.staticTexts["timeline.todayStatus"].label, "No sunscreen logged today", file: file, line: line)
     }
 
+    @MainActor
     func assertHomeLoggedState(
         _ app: XCUIApplication,
         file: StaticString = #filePath,
@@ -29,11 +32,16 @@ class SunclubUITestCase: XCTestCase {
     ) {
         let timelineStatus = app.staticTexts["home.todayStatus"]
         let loggedCard = app.buttons["home.sunscreenLogCard"]
-        let legacyLoggedAction = app.buttons["home.loggedPrimaryAction"]
-        let hasLoggedAction = loggedCard.waitForExistence(timeout: 10)
-            || legacyLoggedAction.exists
+        let hasLoggedAction = scrollToHittableElementByPosition(
+            loggedCard,
+            in: app,
+            attempts: 20,
+            scrollSurface: app.scrollViews["timeline.scroll"],
+            directionWhenMissing: .scrollDown,
+            distance: 0.3
+        )
         let hasTimelineLoggedState = timelineStatus.waitForExistence(timeout: 10)
-            && timelineStatus.label == "Sunscreen Logged"
+            && timelineStatus.label == "Sunscreen logged"
             && hasLoggedAction
         XCTAssertTrue(
             hasTimelineLoggedState,
@@ -217,10 +225,10 @@ class SunclubUITestCase: XCTestCase {
         timeout: TimeInterval = 10
     ) -> Bool {
         let card = app.buttons["home.uvIndexCard"]
-        guard card.waitForExistence(timeout: 5) else {
+        guard scrollToHittableElement(card, in: app, attempts: 10) else {
             return false
         }
-        let predicate = NSPredicate(format: "label BEGINSWITH %@", "UV Index ")
+        let predicate = NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "UV index ", "Apple Weather")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: card)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
@@ -252,10 +260,62 @@ class SunclubUITestCase: XCTestCase {
     ) {
         XCTAssertTrue(
             app.staticTexts["Insights"].waitForExistence(timeout: 5),
-            "Expected the Insights tab root.",
+            "Expected weekly insights pushed from History.",
             file: file,
             line: line
         )
+        XCTAssertTrue(app.buttons["screen.back"].exists, file: file, line: line)
+        XCTAssertFalse(app.buttons["timeline.footer.today"].exists, file: file, line: line)
+        XCTAssertFalse(app.buttons["home.historyCard"].exists, file: file, line: line)
+        XCTAssertFalse(app.buttons["timeline.footer.settings"].exists, file: file, line: line)
+    }
+
+    @MainActor
+    func openWeeklyInsights(in app: XCUIApplication) {
+        XCTAssertTrue(selectNativeTab(app.buttons["home.historyCard"]))
+        let historyScroll = app.scrollViews["history.scroll"]
+        XCTAssertTrue(historyScroll.waitForExistence(timeout: 5), "Expected the selected History tab's content.")
+        XCTAssertTrue(app.buttons["history.calendarToggle"].exists)
+        tapHittableElement(
+            app.buttons["home.streakCard"],
+            in: app,
+            description: "History's Weekly insights button (home.streakCard)",
+            scrollSurface: historyScroll
+        )
+        assertInsightsVisible(in: app)
+    }
+
+    @MainActor
+    func expandHistoryCalendar(in app: XCUIApplication) {
+        let toggle = app.buttons["history.calendarToggle"]
+        XCTAssertTrue(scrollToHittableElement(toggle, in: app, attempts: 10))
+        if stringValue(of: toggle) != "Expanded" {
+            toggle.tap()
+        }
+        XCTAssertTrue(waitForValueContaining("Expanded", on: toggle))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["history.previousMonth"], in: app, attempts: 10))
+        XCTAssertTrue(app.otherElements["history.calendarGrid"].exists)
+    }
+
+    @MainActor
+    func tapHittableElement(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int = 10,
+        description: String = "Requested control",
+        scrollSurface: XCUIElement? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard scrollToHittableElement(element, in: app, attempts: attempts, scrollSurface: scrollSurface) else {
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "Unreachable control - \(description)"
+            hierarchy.lifetime = .keepAlways
+            add(hierarchy)
+            XCTFail("\(description) was not reachable before tapping.", file: file, line: line)
+            return
+        }
+        element.tap()
     }
 
     @MainActor
@@ -351,7 +411,7 @@ class SunclubUITestCase: XCTestCase {
 
         let strip = app.descendants(matching: .any)["timeline.dayStrip"]
         XCTAssertTrue(
-            scrollToElement(strip, in: app, attempts: 10),
+            scrollToHittableElement(strip, in: app, attempts: 20, scrollSurface: app.scrollViews["timeline.scroll"]),
             "Expected timeline day strip to remain reachable."
         )
         if chip.waitForExistence(timeout: 2), chip.isHittable {
@@ -658,13 +718,13 @@ class SunclubUITestCase: XCTestCase {
     func settingsSectionTitle(for section: String) -> String {
         switch section {
         case "reminders":
-            return "Reminders"
+            return "Sunscreen & Reminders"
         case "progress":
             return "Reapply Reminder"
         case "data":
-            return "Data & Export"
+            return "iCloud & Data"
         case "automation":
-            return "Connect Shortcuts"
+            return "Shortcuts"
         case "advanced":
             return "UV & Weather"
         case "help":
@@ -686,13 +746,13 @@ class SunclubUITestCase: XCTestCase {
             return true
         }
 
-        let surface = scrollSurface ?? app
+        let surface = scrollSurface ?? app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? app
         let firstScroll: () -> Void = scrollDownFirst
-            ? { self.nudgeScrollSurface(surface, direction: .scrollDown) }
-            : surface.swipeUp
+            ? { self.nudgeScrollSurface(surface, direction: .scrollDown, distance: 0.6) }
+            : { self.nudgeScrollSurface(surface, direction: .scrollUp, distance: 0.6) }
         let secondScroll: () -> Void = scrollDownFirst
-            ? { self.nudgeScrollSurface(surface, direction: .scrollUp) }
-            : surface.swipeDown
+            ? { self.nudgeScrollSurface(surface, direction: .scrollUp, distance: 0.6) }
+            : { self.nudgeScrollSurface(surface, direction: .scrollDown, distance: 0.6) }
         for _ in 0..<attempts {
             firstScroll()
             if element.waitForExistence(timeout: 1), element.isHittable {
@@ -725,7 +785,12 @@ class SunclubUITestCase: XCTestCase {
 
         for _ in 0..<attempts {
             let direction: ScrollDirection
-            if element.exists, element.frame.maxY <= app.frame.minY {
+            let navigationBar = app.navigationBars.firstMatch
+            let visibleTop = max(
+                scrollSurface.frame.minY,
+                navigationBar.exists ? navigationBar.frame.maxY : app.frame.minY
+            )
+            if element.exists, element.frame.minY < visibleTop {
                 direction = .scrollDown
             } else if element.exists {
                 direction = .scrollUp

@@ -59,7 +59,11 @@
 - `set-toggle?name=travelTimeZone|dailyUVBriefing|extremeUVAlert|iCloudSync|healthKit&enabled=true`
 - `open?route=home|log|reapply|summary|history|settings|automation|uv-forecast|privacy|support|recovery`
 
-Compatibility routes are normalized before display: `achievements` opens Insights, `friends` opens Settings, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
+The app has Today, History, and Settings tabs. The existing `weeklySummary` route opens a detail screen inside History; Back returns to History. No Shortcut, URL, callback permission, or durable-write behavior changes with this navigation update.
+
+The foreground reapply check-in remains available after today's first log even with reminders off. Recording and notification preferences are independent; snooze appears only when reapply reminders are enabled. Existing Log Reapply intents and URL actions continue through the shared mutation runtime.
+
+Compatibility routes are normalized before display: `achievements` opens weekly insights inside History, `friends` opens Settings, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
 
 URL validation is strict for typed fields. Malformed dates, times, day parts, non-numeric SPF values, invalid routes, invalid reminder kinds, invalid toggles, invalid booleans, and invalid UUIDs fail parsing before any write runs. Valid SPF values are normalized to `1...100`. Notes are trimmed and capped at 280 characters.
 

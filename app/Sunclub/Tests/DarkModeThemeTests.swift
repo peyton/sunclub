@@ -44,6 +44,22 @@ final class DarkModeThemeTests: XCTestCase {
         assertContrast(AppColor.primaryActionForeground, against: AppColor.primaryAction, style: .dark, minimum: 4.5)
     }
 
+    func testNativeGlassWhiteLabelsRemainReadableAcrossAppearances() {
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            assertContrast(Color.white, against: AppColor.primaryAction, style: style, minimum: 4.5)
+        }
+    }
+
+    func testUVGaugeTextMaintainsContrastAtEverySeverity() {
+        let levels: [UVLevel] = [.low, .moderate, .high, .veryHigh, .extreme, .unknown]
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            for level in levels {
+                assertContrast(level.designTextTint, against: AppColor.background, style: style, minimum: 4.5)
+            }
+            assertContrast(AppColor.Text.secondary, against: AppColor.background, style: style, minimum: 4.5)
+        }
+    }
+
     func testAccentForegroundMaintainsContrastAcrossAppearances() {
         let accentFills = [
             AppPalette.sun,

@@ -64,11 +64,15 @@ struct ReapplyCheckInView: View {
                 tint: AppPalette.sun
             )
 
-            if let record = appState.record(for: appState.referenceDate) {
+            if appState.settings.reapplyReminderEnabled,
+               let record = appState.record(for: appState.referenceDate) {
                 ReapplyTimelineCard(
                     record: record,
                     plan: appState.reapplyReminderPlan
                 )
+            } else {
+                AppText("Reapply reminders are off", style: .caption, color: AppColor.Text.secondary)
+                    .accessibilityIdentifier("reapply.remindersOff")
             }
 
             if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
@@ -142,6 +146,18 @@ struct ReapplyCheckInView: View {
         .sunGlassPrimaryButton()
         .accessibilityIdentifier("reapply.log")
 
+        if appState.settings.reapplyReminderEnabled {
+            snoozeButton
+        }
+
+        Button("Dismiss") {
+            router.goHome()
+        }
+        .buttonStyle(SunTextButtonStyle())
+        .accessibilityIdentifier("reapply.skip")
+    }
+
+    private var snoozeButton: some View {
         Button(isSnoozing ? "Scheduling…" : "Snooze 15 min") {
             guard !isSnoozing else {
                 return
@@ -163,11 +179,6 @@ struct ReapplyCheckInView: View {
         .accessibilityHint("Schedules another reapply reminder in 15 minutes.")
         .accessibilityIdentifier("reapply.snooze")
 
-        Button("Dismiss") {
-            router.goHome()
-        }
-        .buttonStyle(SunTextButtonStyle())
-        .accessibilityIdentifier("reapply.skip")
     }
 
     private var reapplyDetail: String {

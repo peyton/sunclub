@@ -762,8 +762,8 @@ final class SunclubWidgetTests: XCTestCase {
         let handled = SunclubDeepLinkHandler.handle(.widgetRoute(.summary), appState: state, router: router)
 
         XCTAssertTrue(handled)
-        XCTAssertEqual(router.selectedTab, .insights)
-        XCTAssertTrue(router.path.isEmpty)
+        XCTAssertEqual(router.selectedTab, .history)
+        XCTAssertEqual(router.path, [.weeklySummary])
     }
 
     func testWidgetHistoryRouteOpensHistory() throws {

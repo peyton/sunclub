@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct TimelineHomeView: View {
     @Environment(AppState.self) private var appState
@@ -25,13 +24,16 @@ struct TimelineHomeView: View {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 timelineHeader(for: presentation)
 
-                if presentation.logSummary.category == .today {
-                    dailyPlanCard(for: presentation)
+                if presentation.logSummary.category != .today {
+                    timelineSelector(for: presentation, selectedDay: selectedTimelineDayBinding)
                 }
 
-                timelineSelector(for: presentation, selectedDay: selectedTimelineDayBinding)
-
                 timelineContent(for: presentation)
+
+                if presentation.logSummary.category == .today {
+                    timelineSelector(for: presentation, selectedDay: selectedTimelineDayBinding)
+                        .padding(.top, AppSpacing.lg)
+                }
             }
             .contentShape(Rectangle())
         }
@@ -53,6 +55,7 @@ struct TimelineHomeView: View {
         }
         .sensoryFeedback(.selection, trigger: feedbackTrigger)
         .sunNavigationBarCompatibility()
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private var selectedTimelineDayBinding: Binding<Date> {
@@ -65,10 +68,7 @@ struct TimelineHomeView: View {
     }
 
     private func timelineContent(for presentation: TimelineHomePresentation) -> some View {
-        timelineContentPage(
-            for: presentation,
-            isSelectedPage: true
-        )
+        selectedDayContent(for: presentation)
         .overlay {
             if RuntimeEnvironment.isUITesting {
                 Color.clear
@@ -129,41 +129,21 @@ struct TimelineHomeView: View {
         }
     }
 
-    private func timelineContentPage(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
+    private func selectedDayContent(for presentation: TimelineHomePresentation) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             if presentation.logSummary.category == .future {
-                TimelineTodayStatusCard(
-                    presentation: presentation,
-                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
-                    )
-                )
-
-                futureDayActions(for: presentation, isSelectedPage: isSelectedPage)
+                TimelineTodayStatusCard(presentation: presentation, accessibilityIdentifierSuffix: nil)
+                futureDayActions()
             } else {
-                todayProductStack(for: presentation, isSelectedPage: isSelectedPage)
+                todayProductStack(for: presentation)
             }
 
-            if presentation.logSummary.category == .today,
-               let forecast = presentation.uvForecast,
-               UVReadingSource.shouldDisplayAttribution(for: forecast.sourceLabel) {
-                WeatherKitAttributionFooter(
-                    attribution: presentation.weatherAttribution,
-                    sourceLabel: forecast.sourceLabel,
-                    showAttributionLink: true
-                )
-                .padding(.horizontal, AppSpacing.sm)
+            if presentation.logSummary.category == .today {
+                dailyPlanCardIfNeeded(for: presentation)
             }
 
-            refreshErrorBanner(for: presentation, isSelectedPage: isSelectedPage)
-
-            if presentation.logSummary.category != .today {
-                attentionBanners(for: presentation, isSelectedPage: isSelectedPage)
-            }
+            refreshErrorBanner()
+            attentionBanners(for: presentation)
 
             if presentation.logSummary.category == .future {
                 TimelineLogSection(
@@ -172,23 +152,16 @@ struct TimelineHomeView: View {
                     weatherAttribution: presentation.weatherAttribution,
                     currentStreak: presentation.currentStreak,
                     longestStreak: presentation.longestStreak,
-                    accessibilityIdentifierSuffix: accessibilityIdentifierSuffix(
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
-                    ),
+                    accessibilityIdentifierSuffix: nil,
                     now: presentation.today
                 )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 1)
     }
 
     @ViewBuilder
-    private func refreshErrorBanner(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
+    private func refreshErrorBanner() -> some View {
         if let refreshError = appState.lastRefreshError,
            appState.logActionErrorMessage == nil {
             timelineAttentionBanner(
@@ -198,11 +171,7 @@ struct TimelineHomeView: View {
                     symbol: "arrow.clockwise.circle.fill",
                     tint: AppColor.warning,
                     actionTitle: "Try Again",
-                    identifier: pageIdentifier(
-                        "timeline.refreshError.retry",
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
-                    )
+                    identifier: "timeline.refreshError.retry"
                 )
             ) {
                 appState.refresh()
@@ -292,35 +261,7 @@ struct TimelineHomeView: View {
         }
     }
 
-    private func accessibilityIdentifierSuffix(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> String? {
-        guard !isSelectedPage else {
-            return nil
-        }
-        let dayID = Int(Calendar.current.startOfDay(for: presentation.selectedDay).timeIntervalSinceReferenceDate)
-        return "offscreen.\(dayID)"
-    }
-
-    private func pageIdentifier(
-        _ identifier: String,
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> String {
-        guard let suffix = accessibilityIdentifierSuffix(
-            for: presentation,
-            isSelectedPage: isSelectedPage
-        ) else {
-            return identifier
-        }
-        return "\(identifier).\(suffix)"
-    }
-
-    private func futureDayActions(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
+    private func futureDayActions() -> some View {
         Button {
             feedbackTrigger += 1
             jumpToToday()
@@ -336,43 +277,198 @@ struct TimelineHomeView: View {
             .sunGlassCard(cornerRadius: AppRadius.card, interactive: true)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(
-            pageIdentifier("timeline.backToToday", for: presentation, isSelectedPage: isSelectedPage)
-        )
+        .accessibilityIdentifier("timeline.backToToday")
     }
 
     private func timelineHeader(for presentation: TimelineHomePresentation) -> some View {
         let isToday = Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today)
 
-        return HStack(alignment: .top, spacing: 14) {
+        return HStack(alignment: .top, spacing: AppSpacing.sm) {
             headlineLabel(for: presentation, isToday: isToday)
 
-            Spacer(minLength: 8)
-
-            Image(systemName: "sun.max.fill")
-                .font(AppFont.rounded(size: 24, weight: .semibold))
-                .foregroundStyle(AppPalette.sun)
-                .frame(width: 46, height: 46)
-                .background(AppPalette.warmGlow.opacity(0.48), in: Circle())
-                .overlay {
-                    Circle()
-                        .stroke(AppPalette.sun.opacity(0.30), lineWidth: 1)
-                }
+            SunIcon.sun.image
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(AppColor.sun)
+                .frame(width: AppSpacing.lg, height: AppSpacing.lg)
+                .padding(AppSpacing.xs)
+                .sunGlassCard(cornerRadius: AppSpacing.xl)
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func todayProductStack(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sunscreenLogSummaryButton(for: presentation, isSelectedPage: isSelectedPage)
+    private func todayProductStack(for presentation: TimelineHomePresentation) -> some View {
+        let log = TodayQuietGlassLogPresentation(
+            record: presentation.logSummary.record,
+            category: presentation.logSummary.category,
+            now: presentation.today,
+            remindersEnabled: appState.settings.reapplyReminderEnabled,
+            reapplyPlan: appState.reapplyReminderPlan
+        )
+        let uvPresentation = TodayQuietGlassUVPresentation(
+            reading: presentation.uvReading,
+            forecast: presentation.uvForecast,
+            status: presentation.uvStatus,
+            protectionWindow: presentation.uvProtectionWindow,
+            selectedDay: presentation.selectedDay,
+            now: presentation.today
+        )
 
-            bodyScrubSurface(for: presentation, onTap: openUVForecast) {
-                uvContextCard(for: presentation, isSelectedPage: isSelectedPage)
+        return todayProductContent(for: presentation, log: log, uvPresentation: uvPresentation)
+    }
+
+    private func primaryLogTitle(for presentation: TimelineHomePresentation) -> String {
+        guard presentation.logSummary.record != nil else { return "Log sunscreen" }
+        return presentation.logSummary.category == .today ? "Log reapplication" : "Edit sunscreen log"
+    }
+
+    private func todayProductContent(
+        for presentation: TimelineHomePresentation,
+        log: TodayQuietGlassLogPresentation,
+        uvPresentation: TodayQuietGlassUVPresentation
+    ) -> some View {
+        VStack(spacing: AppSpacing.sm) {
+            if presentation.logSummary.category == .today {
+                bodyScrubSurface(for: presentation, onTap: openUVForecast) {
+                    uvContextButton(uvPresentation, showsGauge: true)
+                }
+                .padding(.top, AppSpacing.xs)
             }
+
+            Button {
+                openSelectedDayLog(for: presentation)
+            } label: {
+                TodayQuietGlassLogSummary(presentation: log)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.sunscreenLogCard")
+            .accessibilityHint("Opens the sunscreen log to edit SPF, areas, and notes.")
+
+            if let reminderText = log.reminderText {
+                Divider()
+                    .overlay(AppColor.stroke)
+                    .accessibilityHidden(true)
+                reminderRow(text: reminderText, detail: log.reminderDetail, canLogReapply: log.canLogReapply)
+            }
+
+            TodayQuietGlassLogButton(
+                title: primaryLogTitle(for: presentation)
+            ) {
+                if presentation.logSummary.category == .today, presentation.logSummary.record != nil {
+                    router.push(.reapplyCheckIn)
+                } else {
+                    openSelectedDayLog(for: presentation)
+                }
+            }
+
+            if let lastLogDetail = log.lastLogDetail {
+                AppText(lastLogDetail, style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                    .accessibilityIdentifier("home.lastLogged")
+            }
+
+            if presentation.logSummary.category == .today {
+                uvSupportingDetail(uvPresentation, presentation: presentation)
+            } else {
+                bodyScrubSurface(for: presentation, onTap: openUVForecast) {
+                    uvContextButton(uvPresentation, showsGauge: false)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func openSelectedDayLog(for presentation: TimelineHomePresentation) {
+        feedbackTrigger += 1
+        openManualLog(context: presentation.logSummary.loggingContext)
+    }
+
+    @ViewBuilder
+    private func reminderRow(text: String, detail: String?, canLogReapply: Bool) -> some View {
+        if canLogReapply {
+            Button {
+                dispatchDailyPlanAction(.logReapply)
+            } label: {
+                TodayQuietGlassReminder(text: text, detail: detail, showsChevron: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.reapplyReminder")
+            .accessibilityHint("Opens reapply check-in to log another application or snooze the reminder.")
+        } else {
+            TodayQuietGlassReminder(text: text, detail: detail)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("home.reapplyReminder")
+        }
+    }
+
+    private func uvContextButton(_ uvPresentation: TodayQuietGlassUVPresentation, showsGauge: Bool) -> some View {
+        Button(action: openUVForecast) {
+            if showsGauge {
+                TodayQuietGlassGauge(presentation: uvPresentation)
+            } else {
+                HStack(spacing: AppSpacing.xs) {
+                    SunIcon.sun.image
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(AppColor.sun)
+                        .frame(width: AppSpacing.lg, height: AppSpacing.lg)
+                        .accessibilityHidden(true)
+                    AppText(uvPresentation.detail, style: .caption, color: AppColor.Text.secondary)
+                    SunIcon.chevronRight.image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: AppSpacing.sm, height: AppSpacing.sm)
+                        .accessibilityHidden(true)
+                }
+                .padding(.vertical, AppSpacing.sm)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(uvPresentation.accessibilityLabel)
+        .accessibilityHint("Opens the hourly UV forecast.")
+        .accessibilityIdentifier("home.uvIndexCard")
+    }
+
+    private func uvSupportingDetail(
+        _ uvPresentation: TodayQuietGlassUVPresentation,
+        presentation: TimelineHomePresentation
+    ) -> some View {
+        VStack(spacing: AppSpacing.xxs) {
+            if let sourceLabel = uvPresentation.sourceLabel {
+                AppText(sourceLabel, style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                    .accessibilityIdentifier("home.uvSource")
+            }
+            AppText(uvPresentation.detail, style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                .accessibilityIdentifier("home.uvAdvice")
+
+            if let sourceLabel = displayedAttributionSource(for: presentation, uvPresentation: uvPresentation) {
+                WeatherKitAttributionFooter(
+                    attribution: presentation.weatherAttribution,
+                    sourceLabel: sourceLabel,
+                    showAttributionLink: true
+                )
+            }
+        }
+        .padding(.top, AppSpacing.xs)
+    }
+
+    private func displayedAttributionSource(
+        for presentation: TimelineHomePresentation,
+        uvPresentation: TodayQuietGlassUVPresentation
+    ) -> String? {
+        guard uvPresentation.index != nil else { return nil }
+        if let reading = presentation.uvReading, reading.index >= 0 {
+            return reading.source.shouldDisplayAttribution ? reading.source.statusLabel : nil
+        }
+        return presentation.uvForecast.map(\.sourceLabel)
+            .flatMap { UVReadingSource.shouldDisplayAttribution(for: $0) ? $0 : nil }
+    }
+
+    @ViewBuilder
+    private func dailyPlanCardIfNeeded(for presentation: TimelineHomePresentation) -> some View {
+        if TodayQuietGlassLogPresentation.showsDailyPlan(presentation.homeDailyPlanPresentation.action) {
+            dailyPlanCard(for: presentation)
         }
     }
 
@@ -381,11 +477,12 @@ struct TimelineHomeView: View {
         return AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 HStack(alignment: .top, spacing: AppSpacing.xs) {
-                    Image(systemName: plan.symbolName)
-                        .font(AppTextStyle.sectionHeader.font)
+                    dailyPlanIcon(plan.action).image
+                        .resizable()
+                        .scaledToFit()
                         .foregroundStyle(dailyPlanTint(plan.tone))
-                        .frame(width: 40, height: 40)
-                        .background(dailyPlanTint(plan.tone).opacity(0.14), in: Circle())
+                        .frame(width: AppSpacing.lg, height: AppSpacing.lg)
+                        .padding(AppSpacing.xxs)
                         .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: AppSpacing.xxs) {
@@ -396,9 +493,8 @@ struct TimelineHomeView: View {
                     }
                 }
 
-                PrimaryButton(
+                SecondaryPillButton(
                     plan.actionTitle,
-                    systemImage: plan.symbolName,
                     identifier: "home.dailyPlan.action",
                     usesGlass: false
                 ) {
@@ -414,6 +510,17 @@ struct TimelineHomeView: View {
         .accessibilityLabel("Today’s next step")
         .accessibilityValue(plan.accessibilityValue)
         .accessibilityIdentifier("home.dailyPlan")
+    }
+
+    private func dailyPlanIcon(_ action: HomeDailyPlanAction) -> SunIcon {
+        switch action {
+        case .backfillYesterday: return .calendar
+        case .reviewRecovery: return .shield
+        case .repairReminders, .logReapply: return .clock
+        case .openSettings: return .settings
+        case .logToday, .addDetails: return .plus
+        case .viewProgress: return .chart
+        }
     }
 
     private func dailyPlanTint(_ tone: HomeDailyPlanTone) -> Color {
@@ -452,295 +559,9 @@ struct TimelineHomeView: View {
         }
     }
 
-    private func uvContextCard(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        return Button {
-            openUVForecast()
-        } label: {
-            uvContextCardLabel(for: presentation)
-            .overlay(alignment: .trailing) {
-                Image(systemName: "chevron.right")
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-                    .padding(.trailing, 14)
-                    .accessibilityHidden(true)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens the hourly UV forecast.")
-        .accessibilityIdentifier(
-            pageIdentifier("home.uvIndexCard", for: presentation, isSelectedPage: isSelectedPage)
-        )
-    }
-
     private func openUVForecast() {
         feedbackTrigger += 1
         router.push(.uvForecast)
-    }
-
-    @ViewBuilder
-    private func uvContextCardLabel(for presentation: TimelineHomePresentation) -> some View {
-        if let reading = homeUVReading(for: presentation) {
-            SunUVIndexCard(
-                index: reading.index,
-                level: reading.level,
-                sourceLabel: reading.sourceLabel,
-                recommendation: reading.recommendation
-            )
-        } else {
-            AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-                HStack(alignment: .top, spacing: AppSpacing.xs) {
-                    Image(systemName: "sun.haze.fill")
-                        .font(AppTextStyle.title.font)
-                        .foregroundStyle(AppPalette.muted)
-                        .frame(width: 44, height: 44)
-                        .background(AppPalette.muted.opacity(0.12), in: Circle())
-                        .accessibilityHidden(true)
-
-                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                        AppText("UV unavailable", style: .sectionHeader)
-                        AppText(
-                            unavailableUVDetail(for: presentation),
-                            style: .caption,
-                            color: AppColor.Text.secondary
-                        )
-                    }
-
-                    Spacer(minLength: AppSpacing.sm)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("UV unavailable. \(unavailableUVDetail(for: presentation))")
-        }
-    }
-
-    private func sunscreenLogSummaryButton(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        Button {
-            feedbackTrigger += 1
-            openManualLog(
-                context: AppLogContext(
-                    date: presentation.selectedDay,
-                    dayPart: presentation.logSummary.dayPart,
-                    source: .timeline
-                )
-            )
-        } label: {
-            sunscreenLogSummaryLabel(for: presentation, isSelectedPage: isSelectedPage)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(
-            pageIdentifier("home.sunscreenLogCard", for: presentation, isSelectedPage: isSelectedPage)
-        )
-        .accessibilityHint("Opens the sunscreen log.")
-    }
-
-    private func sunscreenLogSummaryLabel(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: presentation.logSummary.record == nil ? "plus.circle.fill" : "checkmark.circle.fill")
-                .font(AppFont.rounded(size: 32, weight: .semibold))
-                .foregroundStyle(presentation.logSummary.record == nil ? AppPalette.pool : AppPalette.success)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                sunscreenLogStatusText(for: presentation, isSelectedPage: isSelectedPage)
-                sunscreenLogDetailText(for: presentation, isSelectedPage: isSelectedPage)
-            }
-
-            Spacer(minLength: 0)
-
-            Image(systemName: "chevron.right")
-                .font(AppFont.rounded(size: 13, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-                .accessibilityHidden(true)
-        }
-        .padding(13)
-        .sunGlassCard(
-            cornerRadius: AppRadius.card,
-            fillOpacity: 1,
-            interactive: true,
-            legacyFill: AppPalette.elevatedCardFill
-        )
-    }
-
-    private func sunscreenLogStatusText(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        Text(sunscreenLogStatusTitle(for: presentation))
-            .font(AppTextStyle.bodyMedium.font)
-            .foregroundStyle(AppPalette.ink)
-            .accessibilityIdentifier(
-                pageIdentifier(
-                    sunscreenLogStatusIdentifier(for: presentation),
-                    for: presentation,
-                    isSelectedPage: isSelectedPage
-                )
-            )
-    }
-
-    private func sunscreenLogStatusTitle(for presentation: TimelineHomePresentation) -> String {
-        if presentation.logSummary.record != nil {
-            return "Sunscreen Logged"
-        }
-
-        switch presentation.logSummary.category {
-        case .today:
-            return "No sunscreen logged today"
-        case .past:
-            return "No sunscreen logged"
-        case .future:
-            return "Forecast only"
-        }
-    }
-
-    private func sunscreenLogStatusIdentifier(for presentation: TimelineHomePresentation) -> String {
-        guard presentation.logSummary.category == .today else {
-            return "timeline.dayStatus"
-        }
-        return presentation.logSummary.record == nil ? "timeline.todayStatus" : "home.todayStatus"
-    }
-
-    private func sunscreenLogDetailText(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        Text(logSummaryDetail(for: presentation))
-            .font(AppTextStyle.caption.font)
-            .foregroundStyle(AppPalette.softInk)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityIdentifier(
-                pageIdentifier("timeline.statusDetail", for: presentation, isSelectedPage: isSelectedPage)
-            )
-    }
-
-    private func logSummaryDetail(for presentation: TimelineHomePresentation) -> String {
-        guard let record = presentation.logSummary.record else {
-            return "Add a log to start your reminder."
-        }
-
-        let time = record.verifiedAt.formatted(date: .omitted, time: .shortened)
-        let spf = record.spfLevel.map { "SPF \($0)" } ?? "SPF optional"
-        let areas = coveredAreaSummary(for: record)
-        return [
-            "Logged \(time)",
-            "\(spf)  •  \(areas)",
-            reapplySummary(for: record)
-        ].joined(separator: "\n")
-    }
-
-    private func coveredAreaSummary(for record: DailyRecord) -> String {
-        let areas = SunManualLogInput.coveredAreas(in: record.notes)
-        guard !areas.isEmpty else {
-            return "Areas not set"
-        }
-        return SunManualLogInput.coveredAreas.filter { areas.contains($0) }.joined(separator: " & ")
-    }
-
-    private func reapplySummary(for record: DailyRecord) -> String {
-        guard appState.settings.reapplyReminderEnabled else {
-            return "No reapply needed"
-        }
-
-        let base = record.lastReappliedAt ?? record.verifiedAt
-        guard let deadline = Calendar.current.date(
-            byAdding: .minute,
-            value: appState.settings.reapplyIntervalMinutes,
-            to: base
-        ) else {
-            return "No reapply needed"
-        }
-
-        if deadline <= appState.referenceDate {
-            return "Reapply due"
-        }
-
-        let minutes = max(1, Int(deadline.timeIntervalSince(appState.referenceDate) / 60))
-        if minutes >= 60 {
-            let hours = minutes / 60
-            let remainingMinutes = minutes % 60
-            return remainingMinutes == 0
-                ? "Reapply in \(hours)h"
-                : "Reapply in \(hours)h \(remainingMinutes)m"
-        }
-        return "Reapply in \(minutes)m"
-    }
-
-    private struct HomeUVReading {
-        let index: Int
-        let level: UVLevel
-        let sourceLabel: String
-        let recommendation: String
-    }
-
-    private func homeUVReading(for presentation: TimelineHomePresentation) -> HomeUVReading? {
-        guard Calendar.current.isDate(presentation.selectedDay, inSameDayAs: presentation.today),
-              presentation.uvStatus.availability == .available else {
-            return nil
-        }
-
-        if let uvReading = presentation.uvReading {
-            return HomeUVReading(
-                index: uvReading.index,
-                level: uvReading.level,
-                sourceLabel: uvSourceLabel(for: presentation),
-                recommendation: uvRecommendation(for: presentation, level: uvReading.level)
-            )
-        }
-
-        if presentation.uvForecast?.isAvailable == true,
-           let peakHour = presentation.uvForecast?.peakHour {
-            return HomeUVReading(
-                index: peakHour.index,
-                level: peakHour.level,
-                sourceLabel: uvSourceLabel(for: presentation),
-                recommendation: uvRecommendation(for: presentation, level: peakHour.level)
-            )
-        }
-
-        return nil
-    }
-
-    private func uvSourceLabel(for presentation: TimelineHomePresentation) -> String {
-        let readingSource = presentation.uvReading?.source.statusLabel
-            ?? presentation.uvForecast?.sourceLabel
-            ?? UVReadingSource.localEstimate.statusLabel
-        let location = presentation.uvStatus.source?.displayName(for: presentation.uvReading?.source)
-        let source = location.map { "\(readingSource) · \($0)" } ?? readingSource
-        guard let updatedAt = presentation.uvStatus.updatedAt else {
-            return source
-        }
-        return "\(source) · Updated \(updatedAt.formatted(date: .omitted, time: .shortened))"
-    }
-
-    private func uvRecommendation(for presentation: TimelineHomePresentation, level: UVLevel) -> String {
-        guard let protectionWindow = presentation.uvProtectionWindow else {
-            return level.shortAdvice
-        }
-        let start = protectionWindow.start.formatted(date: .omitted, time: .shortened)
-        let end = protectionWindow.end.formatted(date: .omitted, time: .shortened)
-        return "Protection recommended \(start)–\(end). \(level.shortAdvice)"
-    }
-
-    private func unavailableUVDetail(for presentation: TimelineHomePresentation) -> String {
-        if presentation.uvStatus.freshness == .stale,
-           let source = presentation.uvStatus.source?.displayName {
-            let updateDetail = presentation.uvStatus.updatedAt.map {
-                " Last updated \($0.formatted(date: .omitted, time: .shortened))."
-            } ?? ""
-            return "The cached reading for \(source) is more than 24 hours old.\(updateDetail) Sunclub will use a local estimate while it refreshes."
-        }
-        if let source = presentation.uvStatus.source?.displayName {
-            return "No Apple Weather or local UV value is available for \(source). Refresh to try again."
-        }
-        return "Sunclub could not calculate a local UV estimate."
     }
 
     private func timelineSelector(
@@ -769,7 +590,7 @@ struct TimelineHomeView: View {
 
     @ViewBuilder
     private func headlineLabel(for presentation: TimelineHomePresentation, isToday: Bool) -> some View {
-        let text = VStack(alignment: .leading, spacing: 3) {
+        let text = VStack(alignment: .leading, spacing: AppSpacing.xxs) {
             Text(relativeHeadlineTitle(for: presentation.selectedDay))
                 .font(AppTypography.screenTitle)
                 .foregroundStyle(AppPalette.ink)
@@ -808,11 +629,11 @@ struct TimelineHomeView: View {
     }
 
     @ViewBuilder
-    private func attentionBanners(
-        for presentation: TimelineHomePresentation,
-        isSelectedPage: Bool
-    ) -> some View {
-        if let notificationHealth = appState.notificationHealthPresentation {
+    private func attentionBanners(for presentation: TimelineHomePresentation) -> some View {
+        let planAction = presentation.logSummary.category == .today
+            ? presentation.homeDailyPlanPresentation.action : nil
+        if let notificationHealth = appState.notificationHealthPresentation,
+           planAction != .repairReminders, planAction != .openSettings {
             timelineAttentionBanner(
                 TimelineAttentionContent(
                     title: notificationHealth.title,
@@ -820,11 +641,7 @@ struct TimelineHomeView: View {
                     symbol: "bell.badge.fill",
                     tint: AppColor.warning.opacity(0.75),
                     actionTitle: notificationHealth.actionTitle,
-                    identifier: pageIdentifier(
-                        "timeline.notificationHealthAction",
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
-                    )
+                    identifier: "timeline.notificationHealthAction"
                 )
             ) {
                 switch notificationHealth.state {
@@ -838,7 +655,7 @@ struct TimelineHomeView: View {
             }
         }
 
-        if appState.pendingImportedBatchCount > 0 || !appState.conflicts.isEmpty {
+        if appState.pendingImportedBatchCount > 0 || !appState.conflicts.isEmpty, planAction != .reviewRecovery {
             timelineAttentionBanner(
                 TimelineAttentionContent(
                     title: appState.syncRecoveryTitle,
@@ -848,11 +665,7 @@ struct TimelineHomeView: View {
                         : "icloud.and.arrow.up",
                     tint: !appState.conflicts.isEmpty ? AppColor.warning.opacity(0.75) : AppPalette.sun,
                     actionTitle: "Review",
-                    identifier: pageIdentifier(
-                        "timeline.syncRecoveryCard",
-                        for: presentation,
-                        isSelectedPage: isSelectedPage
-                    )
+                    identifier: "timeline.syncRecoveryCard"
                 )
             ) {
                 router.open(.recovery)
@@ -949,9 +762,9 @@ struct TimelineHomeView: View {
     private func formattedHeadlineDate(_ day: Date, relativeTo referenceDay: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDate(day, equalTo: referenceDay, toGranularity: .year) {
-            return day.formatted(.dateTime.month(.wide).day())
+            return day.formatted(.dateTime.weekday(.wide).month(.wide).day())
         }
-        return day.formatted(.dateTime.month(.wide).day().year())
+        return day.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
     }
 
     private func openManualLog(context: AppLogContext) {

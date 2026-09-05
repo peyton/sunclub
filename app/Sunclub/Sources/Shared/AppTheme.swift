@@ -36,8 +36,8 @@ enum AppPalette {
     static let warmGlow = AppColor.sunSoft
     static let sun = AppColor.sun
     static let nativeChromeTint = adaptive(
-        light: uiColor(red: 0.025, green: 0.108, blue: 0.205),
-        dark: uiColor(red: 1.000, green: 0.705, blue: 0.145),
+        light: uiColor(red: 0.055, green: 0.365, blue: 0.780),
+        dark: uiColor(red: 0.385, green: 0.745, blue: 0.940),
         increasedContrastLight: .black,
         increasedContrastDark: .white
     )
@@ -52,8 +52,8 @@ enum AppPalette {
         dark: uiColor(red: 0.960, green: 0.430, blue: 0.720)
     )
     static let nightAmber = Color(red: 0.315, green: 0.164, blue: 0.068)
-    static let darkCanvas = Color(red: 0.114, green: 0.098, blue: 0.086)
-    static let darkSurface = Color(red: 0.171, green: 0.150, blue: 0.129)
+    static let darkCanvas = Color(red: 0.055, green: 0.075, blue: 0.106)
+    static let darkSurface = Color(red: 0.090, green: 0.114, blue: 0.153)
     static let ink = AppColor.Text.primary
     static let softInk = AppColor.Text.secondary
     static let success = AppColor.success
@@ -72,13 +72,13 @@ enum AppPalette {
     )
     static let cardFill = adaptive(
         light: uiColor(red: 1.000, green: 1.000, blue: 1.000),
-        dark: uiColor(red: 0.205, green: 0.178, blue: 0.150)
+        dark: uiColor(red: 0.118, green: 0.145, blue: 0.188)
     )
     static let elevatedCardFill = AppColor.surfaceElevated
     static let controlFill = AppColor.control
     static let editorFill = adaptive(
         light: uiColor(red: 1, green: 1, blue: 1),
-        dark: uiColor(red: 0.139, green: 0.122, blue: 0.104)
+        dark: uiColor(red: 0.075, green: 0.098, blue: 0.133)
     )
     static let cardStroke = adaptive(
         light: uiColor(red: 0.025, green: 0.108, blue: 0.205, alpha: 0.095),
@@ -90,9 +90,28 @@ enum AppPalette {
     )
     static let onAccent = AppColor.onAccent
     static let white = Color.white
+
+    static func readableUVTint(for level: UVLevel) -> Color {
+        let light: UIColor
+        switch level {
+        case .low: light = uiColor(red: 0.196, green: 0.447, blue: 0.259)
+        case .moderate, .high: light = uiColor(red: 0.510, green: 0.310, blue: 0.000)
+        case .veryHigh: light = uiColor(red: 0.760, green: 0.240, blue: 0.180)
+        case .extreme: light = uiColor(red: 0.630, green: 0.130, blue: 0.400)
+        case .unknown: return AppColor.Text.secondary
+        }
+        return adaptive(
+            light: light,
+            dark: UIColor(level.designTint),
+            increasedContrastLight: .black,
+            increasedContrastDark: .white
+        )
+    }
 }
 
 extension UVLevel {
+    var designTextTint: Color { AppPalette.readableUVTint(for: self) }
+
     var designTint: Color {
         switch self {
         case .low:
@@ -255,58 +274,14 @@ struct SunclubAssetImage: View {
 }
 
 struct SunBackdrop: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        Group {
-            if colorScheme == .dark {
-                SunDarkBackdrop()
-            } else {
-                ZStack {
-                    LinearGradient(
-                        colors: [AppPalette.cream, AppPalette.pearl, Color.white],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-
-                    SunclubVisualAsset.backgroundSunGrainLight.image
-                        .resizable()
-                        .scaledToFill()
-                        .opacity(0.52)
-                        .blendMode(.multiply)
-
-                    SunclubVisualAsset.backgroundUVBands.image
-                        .resizable()
-                        .scaledToFill()
-                        .opacity(0.18)
-                        .blur(radius: 18)
-                        .offset(y: 300)
-                        .blendMode(.softLight)
-                }
-            }
-        }
-        .ignoresSafeArea()
+        AppColor.background.ignoresSafeArea()
     }
 }
 
 struct SunDarkBackdrop: View {
     var body: some View {
-        ZStack {
-            AppPalette.darkCanvas
-
-            SunclubVisualAsset.backgroundSunGrainDark.image
-                .resizable()
-                .scaledToFill()
-                .opacity(0.88)
-
-            SunclubVisualAsset.motifSunRing.image
-                .resizable()
-                .scaledToFit()
-                .frame(width: 340, height: 340)
-                .opacity(0.18)
-                .offset(x: 120, y: 280)
-        }
-        .ignoresSafeArea()
+        AppPalette.darkCanvas.ignoresSafeArea()
     }
 }
 
@@ -975,6 +950,7 @@ struct SunLightHeader: View {
 
     let title: String
     let showsBack: Bool
+    let usesNativeNavigation: Bool
     let trailingSystemImage: String?
     let trailingAccessibilityLabel: String?
     let trailingAccessibilityHint: String?
@@ -985,6 +961,7 @@ struct SunLightHeader: View {
     init(
         title: String,
         showsBack: Bool = false,
+        usesNativeNavigation: Bool = true,
         onBack: (() -> Void)? = nil,
         trailingSystemImage: String? = nil,
         trailingAccessibilityLabel: String? = nil,
@@ -994,6 +971,7 @@ struct SunLightHeader: View {
     ) {
         self.title = title
         self.showsBack = showsBack
+        self.usesNativeNavigation = usesNativeNavigation
         self.onBack = onBack
         self.trailingSystemImage = trailingSystemImage
         self.trailingAccessibilityLabel = trailingAccessibilityLabel
@@ -1004,7 +982,7 @@ struct SunLightHeader: View {
 
     @ViewBuilder
     var body: some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), usesNativeNavigation {
             nativeHeader
         } else {
             legacyHeader
@@ -1063,6 +1041,7 @@ struct SunLightHeader: View {
             Text(title)
                 .font(AppTypography.screenTitle)
                 .foregroundStyle(AppPalette.ink)
+                .accessibilityAddTraits(.isHeader)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, showsBack ? 3 : 0)
@@ -1565,217 +1544,6 @@ struct SunForecastStrip: View {
 
     private var displayedHours: [SunclubUVHourForecast] {
         Array(hours.prefix(maxCount))
-    }
-}
-
-struct SunAppTabBarAction: Equatable {
-    let shortTitle: String
-    let title: String
-    let systemImage: String
-    let accessibilityHint: String
-
-    init(
-        shortTitle: String,
-        title: String,
-        systemImage: String,
-        accessibilityHint: String
-    ) {
-        self.shortTitle = shortTitle
-        self.title = title
-        self.systemImage = systemImage
-        self.accessibilityHint = accessibilityHint
-    }
-
-    static let logSunscreen = SunAppTabBarAction(
-        shortTitle: "Log",
-        title: "Log Sunscreen",
-        systemImage: "plus",
-        accessibilityHint: "Opens the sunscreen log."
-    )
-
-}
-
-struct SunAppTabBar: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    let selectedTab: AppTab
-    let onSelectTab: (AppTab) -> Void
-    let centerAction: SunAppTabBarAction
-    let onAdd: () -> Void
-
-    init(
-        selectedTab: AppTab,
-        onSelectTab: @escaping (AppTab) -> Void,
-        centerAction: SunAppTabBarAction = .logSunscreen,
-        onAdd: @escaping () -> Void
-    ) {
-        self.selectedTab = selectedTab
-        self.onSelectTab = onSelectTab
-        self.centerAction = centerAction
-        self.onAdd = onAdd
-    }
-
-    var body: some View {
-        VStack(spacing: AppSpacing.xxs) {
-            if dynamicTypeSize.isAccessibilitySize {
-                LazyVGrid(columns: accessibilityTabColumns, spacing: AppSpacing.xxs) {
-                    tabButton(.today)
-                    accessibilityCenterActionButton
-                    tabButton(.history)
-                    tabButton(.insights)
-                    Color.clear
-                        .frame(minHeight: 44)
-                        .accessibilityHidden(true)
-                    tabButton(.settings)
-                }
-            } else {
-                HStack(alignment: .center, spacing: AppSpacing.xxs) {
-                    tabButton(.today)
-                    tabButton(.history)
-                    centerActionButton(isExpanded: false)
-                    tabButton(.insights)
-                    tabButton(.settings)
-                }
-            }
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(7)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(AppPalette.elevatedCardFill.opacity(0.97))
-                .appShadow(AppShadow.soft)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .stroke(AppPalette.cardStroke, lineWidth: 1)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 6)
-        .padding(.bottom, 12)
-        .frame(maxWidth: .infinity)
-        .background {
-            LinearGradient(
-                colors: [
-                    AppPalette.cardFill.opacity(0),
-                    AppPalette.cardFill.opacity(0.94),
-                    AppPalette.cardFill.opacity(0.99)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea(edges: .bottom)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("app.tabBar")
-    }
-
-    private var accessibilityTabColumns: [GridItem] {
-        [
-            GridItem(.flexible(), spacing: AppSpacing.xxs),
-            GridItem(.flexible(), spacing: AppSpacing.xxs),
-            GridItem(.flexible(), spacing: AppSpacing.xxs)
-        ]
-    }
-
-    private var accessibilityCenterActionButton: some View {
-        Button(action: onAdd) {
-            VStack(spacing: 4) {
-                Image(systemName: centerAction.systemImage)
-                    .font(AppFont.rounded(size: 18, weight: .semibold))
-                    .accessibilityHidden(true)
-
-                Text(centerAction.shortTitle)
-                    .font(AppTextStyle.caption.font)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(AppColor.onColor)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
-                    .fill(AppColor.accent)
-            )
-            .appShadow(AppShadow.floating)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(centerAction.title)
-        .accessibilityHint(centerAction.accessibilityHint)
-        .accessibilityIdentifier("home.logManually")
-    }
-
-    private func centerActionButton(isExpanded: Bool) -> some View {
-        Button(action: onAdd) {
-            HStack(spacing: AppSpacing.xxs) {
-                Image(systemName: centerAction.systemImage)
-                    .font(AppTextStyle.sectionHeader.font)
-                    .accessibilityHidden(true)
-
-                if isExpanded {
-                    Text(centerAction.title)
-                        .font(AppTextStyle.bodyMedium.font)
-                } else {
-                    Text(centerAction.shortTitle)
-                        .font(AppTextStyle.captionMedium.font)
-                }
-            }
-            .fixedSize(horizontal: !isExpanded, vertical: false)
-            .foregroundStyle(AppColor.onColor)
-            .frame(
-                minWidth: isExpanded ? nil : 72,
-                maxWidth: isExpanded ? .infinity : nil,
-                minHeight: 52
-            )
-            .padding(.horizontal, isExpanded ? AppSpacing.sm : AppSpacing.xs)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
-                    .fill(AppColor.accent)
-            )
-            .appShadow(AppShadow.floating)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .layoutPriority(1)
-        .accessibilityLabel(centerAction.title)
-        .accessibilityHint(centerAction.accessibilityHint)
-        .accessibilityIdentifier("home.logManually")
-    }
-
-    private func tabButton(_ tab: AppTab) -> some View {
-        let isSelected = selectedTab == tab
-
-        return Button {
-            onSelectTab(tab)
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: tab.systemImage)
-                    .font(AppFont.rounded(size: 18, weight: .semibold))
-                    .accessibilityHidden(true)
-
-                Text(tab.title)
-                    .font(
-                        dynamicTypeSize.isAccessibilitySize
-                            ? AppTextStyle.caption.font
-                            : AppTextStyle.captionMedium.font
-                    )
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(isSelected ? AppColor.accent : AppPalette.softInk)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .fill(AppColor.accentSoft.opacity(0.45))
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tab.title)
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier(tab.accessibilityIdentifier)
     }
 }
 

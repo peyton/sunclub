@@ -67,7 +67,7 @@ struct ManualLogView: View {
             contentFrameAlignment: .center,
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 manualLogNavigationHeader
 
                 if let validationMessage {
@@ -80,24 +80,15 @@ struct ManualLogView: View {
                     .accessibilityIdentifier("manualLog.validation")
                 }
 
-                titleBlock
-
-                AppCard(padding: 16) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        referenceFormRows
-
-                        SunManualLogFields(
-                            selectedSPF: $selectedSPF,
-                            notes: $notes,
-                            selectedAreas: $selectedAreas,
-                            accessibilityPrefix: "manualLog",
-                            suggestions: appState.manualLogSuggestionState(for: targetDate),
-                            showsOptionalDisclosure: false,
-                            showsSPFSelector: false,
-                            detailsInitiallyExpanded: true
-                        )
-                    }
+                AppCard(padding: 0, showsShadow: false) {
+                    referenceFormRows
                 }
+
+                ManualLogDetailsFields(
+                    notes: $notes,
+                    selectedAreas: $selectedAreas,
+                    suggestions: appState.manualLogSuggestionState(for: targetDate)
+                )
 
                 Spacer(minLength: 0)
             }
@@ -111,6 +102,14 @@ struct ManualLogView: View {
         }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
         .sensoryFeedback(.impact(weight: .light), trigger: navigationFeedbackTrigger)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Save Log", action: saveLog)
+                    .disabled(isSaveDisabled)
+                    .accessibilityIdentifier("manualLog.saveTop")
+            }
+        }
         .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
     }
@@ -126,10 +125,8 @@ struct ManualLogView: View {
 
     @available(iOS 26.0, *)
     private var nativeManualLogNavigationHeader: some View {
-        Color.clear
-            .frame(height: 0)
-            .accessibilityHidden(true)
-            .navigationTitle("Log Sunscreen")
+        titleBlock
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
             .toolbar {
@@ -137,51 +134,28 @@ struct ManualLogView: View {
                     Button("Cancel", action: closeLog)
                         .accessibilityIdentifier("screen.back")
                 }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save", action: saveLog)
-                        .disabled(isSaveDisabled)
-                        .accessibilityIdentifier("manualLog.saveTop")
-                }
             }
     }
 
     private var legacyManualLogNavigationHeader: some View {
-        HStack(alignment: .center) {
-            Button("Cancel") {
-                closeLog()
-            }
-            .font(AppTextStyle.captionMedium.font)
-            .foregroundStyle(AppPalette.sun)
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("screen.back")
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Button("Cancel", action: closeLog)
+                .font(AppTextStyle.bodyMedium.font)
+                .foregroundStyle(AppColor.accent)
+                .frame(minHeight: 44)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("screen.back")
 
-            Spacer(minLength: 0)
-
-            Spacer(minLength: 0)
-
-            Button("Save") {
-                saveLog()
-            }
-            .font(AppTextStyle.captionMedium.font)
-            .foregroundStyle(isSaveDisabled ? AppPalette.softInk : AppPalette.ink)
-            .buttonStyle(.plain)
-            .disabled(isSaveDisabled)
-            .accessibilityIdentifier("manualLog.saveTop")
+            titleBlock
         }
-        .frame(minHeight: 44)
     }
 
     private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Log Sunscreen")
-                .font(AppTypography.screenTitle)
-                .foregroundStyle(AppPalette.ink)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+            AppText("Log Sunscreen", style: .largeTitle)
+                .accessibilityAddTraits(.isHeader)
 
-            Text(whenValue)
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.softInk)
+            AppText(whenValue, style: .caption, color: AppColor.Text.secondary)
                 .accessibilityIdentifier("manualLog.timestamp")
         }
     }
@@ -207,8 +181,7 @@ struct ManualLogView: View {
                 whenEditor
             }
 
-            Divider()
-                .overlay(AppPalette.hairlineStroke)
+            formDivider
 
             Menu {
                 ForEach(commonSPFLevels, id: \.self) { level in
@@ -235,8 +208,7 @@ struct ManualLogView: View {
             .accessibilityValue(selectedSPF.map { "SPF \($0) selected" } ?? "Choose")
             .accessibilityIdentifier("manualLog.spfRow")
 
-            Divider()
-                .overlay(AppPalette.hairlineStroke)
+            formDivider
 
             Button {
                 withAnimation(SunMotion.easeInOut(duration: 0.18, reduceMotion: reduceMotion)) {
@@ -259,12 +231,13 @@ struct ManualLogView: View {
                 productEditor
             }
         }
-        .sunGlassCard(
-            cornerRadius: AppRadius.medium,
-            fillOpacity: 0.72,
-            legacyStroke: AppPalette.hairlineStroke,
-            legacyShadow: nil
-        )
+    }
+
+    private var formDivider: some View {
+        Divider()
+            .overlay(AppColor.stroke)
+            .padding(.horizontal, AppSpacing.sm)
+            .accessibilityHidden(true)
     }
 
     private var commonSPFLevels: [Int] {
@@ -300,7 +273,7 @@ struct ManualLogView: View {
     }
 
     private var whenEditor: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
             DatePicker(
                 "Date",
                 selection: $targetDate,
@@ -308,8 +281,8 @@ struct ManualLogView: View {
                 displayedComponents: .date
             )
             .datePickerStyle(.compact)
-            .font(AppTextStyle.captionMedium.font)
-            .tint(AppPalette.sun)
+            .font(AppTextStyle.body.font)
+            .tint(AppColor.accent)
             .accessibilityIdentifier("manualLog.datePicker")
 
             DatePicker(
@@ -318,17 +291,15 @@ struct ManualLogView: View {
                 displayedComponents: .hourAndMinute
             )
             .datePickerStyle(.compact)
-            .font(AppTextStyle.captionMedium.font)
-            .tint(AppPalette.sun)
+            .font(AppTextStyle.body.font)
+            .tint(AppColor.accent)
             .accessibilityIdentifier("manualLog.timePicker")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .background(AppPalette.controlFill.opacity(0.34))
+        .padding(AppSpacing.sm)
     }
 
     private var productEditor: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
             if let productValidationMessage {
                 Text(productValidationMessage)
                     .font(AppTextStyle.caption.font)
@@ -338,7 +309,9 @@ struct ManualLogView: View {
             }
 
             TextField("Product name", text: $productName)
+                .font(AppTextStyle.body.font)
                 .textInputAutocapitalization(.words)
+                .accessibilityLabel("Product name")
                 .accessibilityIdentifier("manualLog.productName")
 
             Picker("Product SPF", selection: $productSPF) {
@@ -349,19 +322,13 @@ struct ManualLogView: View {
             .pickerStyle(.menu)
             .accessibilityIdentifier("manualLog.productSPF")
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Water-resistance label")
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(AppPalette.ink)
-
-                Picker("Water-resistance label", selection: $productWaterResistance) {
-                    ForEach(SunclubSunscreenWaterResistance.allCases, id: \.self) { resistance in
-                        Text(waterResistanceTitle(resistance)).tag(resistance)
-                    }
+            Picker("Water-resistance label", selection: $productWaterResistance) {
+                ForEach(SunclubSunscreenWaterResistance.allCases, id: \.self) { resistance in
+                    Text(waterResistanceTitle(resistance)).tag(resistance)
                 }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("manualLog.productWaterResistance")
             }
+            .pickerStyle(.menu)
+            .accessibilityIdentifier("manualLog.productWaterResistance")
 
             Text("Use the product label as the source of truth. Reapply after swimming, sweating, or toweling off.")
                 .font(AppTextStyle.caption.font)
@@ -369,14 +336,14 @@ struct ManualLogView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
+                HStack(spacing: AppSpacing.xs) {
                     productSaveButton
                     if appState.settings.sunscreenProfile != nil {
                         productRemoveButton
                     }
                 }
 
-                VStack(spacing: 10) {
+                VStack(spacing: AppSpacing.xs) {
                     productSaveButton
                     if appState.settings.sunscreenProfile != nil {
                         productRemoveButton
@@ -384,33 +351,41 @@ struct ManualLogView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .background(AppPalette.controlFill.opacity(0.34))
+        .font(AppTextStyle.body.font)
+        .tint(AppColor.accent)
+        .padding(AppSpacing.sm)
     }
 
     private func referenceFormRowContent(title: String, value: String, showsChevron: Bool) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.ink)
+        HStack(spacing: AppSpacing.xs) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: AppSpacing.sm) {
+                    AppText(title, style: .bodyMedium)
+                        .fixedSize()
+                    Spacer(minLength: AppSpacing.xxs)
+                    AppText(value, style: .body, color: AppColor.Text.secondary, alignment: .trailing)
+                        .fixedSize()
+                }
 
-            Spacer(minLength: 8)
-
-            Text(value)
-                .font(AppTextStyle.caption.font)
-                .foregroundStyle(AppPalette.softInk)
-                .multilineTextAlignment(.trailing)
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                    AppText(title, style: .bodyMedium)
+                    AppText(value, style: .body, color: AppColor.Text.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if showsChevron {
-                Image(systemName: "chevron.right")
-                    .font(AppFont.rounded(size: 11, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk.opacity(0.7))
+                SunIcon.chevronRight.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(AppColor.Text.secondary)
                     .accessibilityHidden(true)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(AppSpacing.sm)
+        .frame(minHeight: 56)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
@@ -580,6 +555,161 @@ struct ManualLogView: View {
         }
         .buttonStyle(SunSecondaryButtonStyle())
         .accessibilityIdentifier("manualLog.removeProductProfile")
+    }
+}
+
+private struct ManualLogDetailsFields: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @Binding var notes: String
+    @Binding var selectedAreas: Set<String>
+    let suggestions: ManualLogSuggestionState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                AppText("Areas Covered", style: .bodyMedium)
+                    .accessibilityAddTraits(.isHeader)
+
+                LazyVGrid(columns: areaColumns, spacing: AppSpacing.xxs) {
+                    ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
+                        areaButton(area)
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("manualLog.areas")
+            }
+
+            notesField
+        }
+    }
+
+    private var areaColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: AppSpacing.xxs),
+            count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        )
+    }
+
+    private func areaButton(_ area: String) -> some View {
+        let isSelected = selectedAreas.contains(area)
+
+        return Button {
+            if isSelected {
+                selectedAreas.remove(area)
+            } else {
+                selectedAreas.insert(area)
+            }
+        } label: {
+            HStack(spacing: AppSpacing.xxs) {
+                AppText(area, style: .body)
+                Spacer(minLength: 0)
+                SunIcon.check.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(AppColor.accent)
+                    .opacity(isSelected ? 1 : 0)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, AppSpacing.xs)
+            .padding(.vertical, AppSpacing.xs)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background {
+                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                    .fill(isSelected ? AppColor.control : AppColor.surface)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                    .stroke(isSelected ? AppColor.accent : AppColor.stroke, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(area)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("manualLog.area.\(area)")
+    }
+
+    private var notesField: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: AppSpacing.xs) {
+                AppText("Notes (optional)", style: .bodyMedium)
+
+                Spacer(minLength: 0)
+
+                if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button("Clear Note") {
+                        notes = ""
+                    }
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppColor.accent)
+                    .frame(minHeight: 44)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("manualLog.clearNote")
+                }
+            }
+
+            if !suggestions.noteSnippets.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppSpacing.xxs) {
+                        ForEach(Array(suggestions.noteSnippets.enumerated()), id: \.offset) { index, snippet in
+                            Button {
+                                notes = SunManualLogInput.clampedNotes(snippet)
+                            } label: {
+                                AppText(snippet, style: .caption)
+                                    .padding(.horizontal, AppSpacing.xs)
+                                    .padding(.vertical, AppSpacing.xxs)
+                                    .frame(minHeight: 44)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                                            .fill(AppColor.surface)
+                                    }
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                                            .stroke(AppColor.stroke, lineWidth: 1)
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("manualLog.noteSnippet.\(index)")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("manualLog.noteSnippets")
+            }
+
+            TextField("Add notes about your sunscreen", text: $notes, axis: .vertical)
+                .font(AppTextStyle.body.font)
+                .foregroundStyle(AppColor.Text.primary)
+                .textInputAutocapitalization(.sentences)
+                .submitLabel(.done)
+                .padding(AppSpacing.sm)
+                .background {
+                    RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                        .fill(AppColor.surface)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
+                        .stroke(AppColor.stroke, lineWidth: 1)
+                }
+                .accessibilityLabel("Notes")
+                .accessibilityIdentifier("manualLog.notesField")
+                .onChange(of: notes) { _, newValue in
+                    let clampedNotes = SunManualLogInput.clampedNotes(newValue)
+                    if clampedNotes != newValue {
+                        notes = clampedNotes
+                    }
+                }
+
+            AppText(noteCountText, style: .caption, color: AppColor.Text.secondary)
+                .accessibilityIdentifier("manualLog.noteCount")
+        }
+    }
+
+    private var noteCountText: String {
+        let remaining = SunManualLogInput.remainingNoteCharacters(for: notes)
+        return remaining == 1 ? "1 character left" : "\(remaining) characters left"
     }
 }
 
