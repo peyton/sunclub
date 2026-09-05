@@ -509,146 +509,59 @@ def test_tests_plist_uses_resolved_version_placeholders() -> None:
 
 def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     workflow = CI_WORKFLOW.read_text()
-
-    assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
-    assert "xcode-version: latest" not in workflow
-    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
     assert workflow.count("runs-on: macos-26") == 3
-    assert workflow.count("Select Xcode 26.4") == 3
-    assert (
-        workflow.count(
-            'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
-        )
-        == 3
-    )
-    assert (
-        "_".join(  # noqa: FLY002
-            ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")
-        )
-        not in workflow
-    )
-    assert workflow.count("timeout-minutes: 45") == 3
-    assert "test-ios-unit:" in workflow
+    assert workflow.count('xcode: "true"') == 3
     assert "name: iOS Unit Tests" in workflow
-    assert workflow.count("Prepare Tuist cache") == 3
-    assert (
-        workflow.count(
-            "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
-        )
-        == 3
-    )
-    assert workflow.count("Resolve build metadata") == 2
-    assert "SUNCLUB_FLAVOR: prod" in workflow
-    assert "TEST_APP_SCHEME: Sunclub" in workflow
-    assert "run: mise --locked exec -- just test-unit" in workflow
-    assert "test-ios-ui:" in workflow
     assert "name: iOS UI Tests" in workflow
-    assert "run: mise --locked exec -- just test-ui" in workflow
-    assert "test-ios:\n    name: iOS Tests\n    runs-on: ubuntu-latest" in workflow
-    assert "needs: [changes, test-ios-unit, test-ios-ui]" in workflow
-    assert "if: ${{ always() && needs.changes.outputs.run_ios == 'true' }}" in workflow
-    assert 'unit_result="${{ needs.test-ios-unit.result }}"' in workflow
-    assert 'ui_result="${{ needs.test-ios-ui.result }}"' in workflow
-    assert "build-ios:" in workflow
     assert "name: Build iOS (${{ matrix.name }})" in workflow
-    assert "fail-fast: false" in workflow
-    assert "flavor: dev" in workflow
-    assert "aps_environment: development" in workflow
-    assert "flavor: prod" in workflow
-    assert "aps_environment: production" in workflow
-    assert 'echo "SUNCLUB_FLAVOR=${{ matrix.flavor }}"' in workflow
-    assert 'echo "SUNCLUB_APS_ENVIRONMENT=${{ matrix.aps_environment }}"' in workflow
-    assert 'elif [ "${{ matrix.flavor }}" != "prod" ]; then' in workflow
-    assert workflow.count("name: Build iOS") == 1
-    assert "\n  build:\n    name: Build iOS\n    runs-on: ubuntu-latest" not in workflow
-    assert "needs: build-ios" not in workflow
-    assert 'build_result="${{ needs.build-ios.result }}"' not in workflow
+    assert "flavor: dev" in workflow and "flavor: prod" in workflow
+    assert "TEST_APP_SCHEME: Sunclub" in workflow
+    assert "just test-unit" in workflow and 'just ci-build "$BUILD_FLAVOR"' in workflow
+    assert "timeout-minutes: 45" in workflow
+    assert "SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE" not in workflow
 
 
 def test_ci_workflow_skips_ios_jobs_only_for_known_web_surface_changes() -> None:
     workflow = CI_WORKFLOW.read_text()
-
-    assert (
-        "changes:\n    name: Detect iOS Changes\n    runs-on: ubuntu-latest" in workflow
-    )
-    assert "run_ios: ${{ steps.path-filter.outputs.run_ios }}" in workflow
-    assert "fetch-depth: 0" in workflow
+    assert "python3 -m scripts.tooling.ci_policy changes" in workflow
     assert "github.event.pull_request.base.sha" in workflow
     assert "github.event.pull_request.head.sha" in workflow
-    assert "github.event.before" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "if: always()" in workflow
     assert (
-        'default_to_ios "Push base commit is unavailable; running iOS jobs."'
+        "needs: [changes, lint, test-python, test-ios-unit, test-ios-ui, build-ios]"
         in workflow
     )
-    assert (
-        'default_to_ios "Could not resolve changed-file commits; running iOS jobs."'
-        in workflow
-    )
-    assert 'default_to_ios "No changed files found; running iOS jobs."' in workflow
-    assert (
-        "web/*|scripts/web/*|scripts/cloudflare/*|infra/cloudflare/*|"
-        "tests/test_web_*.py|tests/test_cloudflare_config.py"
-    ) in workflow
-    assert (
-        "docs/web-*.md|docs/marketing-website-polish-execplan.md|"
-        "docs/cloudflare-deployment-execplan.md"
-    ) in workflow
-    assert (
-        ".github/workflows/deploy-web-cloudflare.yml|"
-        ".github/workflows/release-web.yml|"
-        ".github/workflows/rollback-web-cloudflare.yml"
-    ) in workflow
-    assert "Only web-surface paths changed; skipping iOS jobs." in workflow
-    assert workflow.count("needs: [lint, changes]") == 3
-    assert workflow.count("if: ${{ needs.changes.outputs.run_ios == 'true' }}") == 3
-    assert "needs: [changes, test-ios-unit, test-ios-ui]" in workflow
-    assert "if: ${{ always() && needs.changes.outputs.run_ios == 'true' }}" in workflow
+    assert "NEEDS_JSON: ${{ toJSON(needs) }}" in workflow
+    assert "python3 -m scripts.tooling.ci_policy gate" in workflow
+    assert "just test-ui-smoke" in workflow and "just test-ui" in workflow
+    assert "if: github.event_name == 'pull_request'" in workflow
+    assert "if: github.event_name != 'pull_request'" in workflow
+    assert "needs: lint" not in workflow
 
 
 def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> None:
-    workflow = CI_WORKFLOW.read_text()
-    cache_dir_setup = (
-        "mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk"
-    )
-
-    assert workflow.count("Configure repo caches") == 5
-    assert workflow.count("Restore repo caches") == 5
-    assert (
-        workflow.count(
-            "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5"
-        )
-        == 5
-    )
-    assert workflow.count("UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv") == 5
-    assert workflow.count("UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv") == 5
-    assert workflow.count("HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk") == 5
-    assert workflow.count("HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk") == 5
-    assert workflow.count("npm_config_cache=$GITHUB_WORKSPACE/.cache/npm") == 5
-    assert workflow.count(cache_dir_setup) == 5
-    assert workflow.count("            .cache/uv\n") == 5
-    assert workflow.count("            .cache/npm\n") == 5
-    assert workflow.count("            .cache/hk\n") == 5
-    assert workflow.count("            .cache/swiftlint\n") == 5
-    assert workflow.count("            .venv\n") == 5
-    assert "key: ${{ runner.os }}-sunclub-repo-${{ hashFiles(" in workflow
-    assert "restore-keys:" in workflow
-    assert ".DerivedData" not in workflow
-    assert "\n            .build\n" not in workflow
+    setup = (REPO_ROOT / ".github/actions/setup/action.yml").read_text()
+    assert "install_args: --locked" in setup
+    assert "setup_local_tooling_env" in setup
+    assert "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae" in setup
+    for directory in [".cache/uv", ".cache/npm", ".cache/hk", ".cache/swiftlint"]:
+        assert directory in setup
+    assert ".DerivedData" not in setup and ".venv" not in setup
+    assert "${{ runner.os }}-${{ runner.arch }}" in setup
 
 
 def test_ios_workflows_share_single_xcode_version_pin() -> None:
+    setup = (REPO_ROOT / ".github/actions/setup/action.yml").read_text()
+    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in setup
+    assert "sudo xcode-select -s" in setup
+    assert "scripts/tooling/prepare_ci_workspace.sh" in setup
     for workflow_path in IOS_XCODE_WORKFLOWS:
         workflow = workflow_path.read_text()
-
-        assert "setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90" not in workflow
-        assert "xcode-version: latest" not in workflow
-        assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
+        assert "uses: ./.github/actions/setup" in workflow
+        assert 'xcode: "true"' in workflow
+        assert "SUNCLUB_XCODE_VERSION:" not in workflow
         assert "runs-on: macos-26" in workflow
-        assert "Select Xcode 26.4" in workflow
-        assert (
-            'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
-            in workflow
-        )
 
 
 def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
@@ -673,18 +586,11 @@ def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:
     )
 
     assert '- "v*.*.*"' in workflow
-    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
-    assert "Select Xcode 26.4" in workflow
-    assert (
-        'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
-        in workflow
-    )
+    assert "uses: ./.github/actions/setup" in workflow
+    assert 'xcode: "true"' in workflow
+    assert "scripts.tooling.ci_policy require-release" in workflow
+    assert "actions: read" in workflow
     assert "environment: testflight" in workflow
-    assert "Prepare Tuist cache" in workflow
-    assert (
-        "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
-        in workflow
-    )
     assert 'echo "SUNCLUB_APS_ENVIRONMENT=production"' in workflow
     assert release_safety_step is not None
     release_safety_body = release_safety_step.group("body")
@@ -747,18 +653,11 @@ def test_submit_app_review_workflow_bounds_xcode_heavy_steps() -> None:
         workflow,
     )
 
-    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in workflow
-    assert "Select Xcode 26.4" in workflow
-    assert (
-        'sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"'
-        in workflow
-    )
+    assert "uses: ./.github/actions/setup" in workflow
+    assert 'xcode: "true"' in workflow
+    assert "scripts.tooling.ci_policy require-release" in workflow
+    assert "actions: read" in workflow
     assert "environment: app-store-review" in workflow
-    assert "Prepare Tuist cache" in workflow
-    assert (
-        "run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh"
-        in workflow
-    )
     assert (
         "_".join(  # noqa: FLY002
             ("SUNCLUB", "DISABLE", "SWIFT", "COMPILE", "CACHE")

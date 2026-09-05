@@ -29,10 +29,8 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
   id-token: write
-
-env:
-  SUNCLUB_XCODE_VERSION: "26.4"
 
 jobs:
   submit:
@@ -50,21 +48,19 @@ jobs:
       SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS: "NOT_MEDICAL_DEVICE"
       SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED: "1"
     steps:
-      - name: Select Xcode 26.4
-        shell: bash
-        run: |
-          sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"
-          xcodebuild -version
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.source_ref || inputs.release_tag }}
-      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
+      - uses: ./.github/actions/setup
+        timeout-minutes: 10
         with:
-          cache: false
-          cache_save: false
-      # Tool resolution is lockfile-enforced so CI fails fast when cached metadata is missing.
+          xcode: "true"
+      - name: Require full CI for release source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: mise --locked exec -- uv run python -m scripts.tooling.ci_policy require-release
 
       - name: Materialize App Store Connect key
         shell: bash
@@ -95,10 +91,6 @@ jobs:
       - name: Validate App Store metadata
         run: mise --locked exec -- uv run python -m scripts.appstore.validate_metadata scripts/appstore/metadata.json
 
-      - name: Prepare Tuist cache
-        timeout-minutes: 10
-        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
-
       - name: Capture App Store screenshots
         timeout-minutes: 45
         run: mise --locked exec -- just appstore-screenshots
@@ -109,6 +101,7 @@ jobs:
       - name: Archive and upload to TestFlight
         timeout-minutes: 90
         env:
+          GH_TOKEN: ${{ github.token }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_FILE: ${{ env.ASC_KEY_FILE }}

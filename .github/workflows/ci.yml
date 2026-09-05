@@ -6,18 +6,33 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
-env:
-  SUNCLUB_XCODE_VERSION: "26.4"
-
 jobs:
+  changes:
+    name: Detect iOS Changes
+    runs-on: ubuntu-latest
+    outputs:
+      run_ios: ${{ steps.classify.outputs.run_ios }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Classify changed paths
+        id: classify
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 -m scripts.tooling.ci_policy changes
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -25,462 +40,128 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Repair git checkout for act
-        if: ${{ env.ACT }}
-        run: bash scripts/tooling/repair_act_git_checkout.sh
-      - name: Configure repo caches
-        shell: bash
-        run: |
-          mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk
-          {
-            echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv"
-            echo "UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv"
-            echo "HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk"
-            echo "HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk"
-            echo "npm_config_cache=$GITHUB_WORKSPACE/.cache/npm"
-          } >> "$GITHUB_ENV"
-
-      - name: Install tools for act
-        if: ${{ env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: false
-          cache_save: false
-      # Lockfile is required for all tool resolution to prevent CI drift.
-      - name: Install tools
-        if: ${{ !env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: true
-      - name: Restore repo caches
-        if: ${{ !env.ACT }}
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            .cache/uv
-            .cache/npm
-            .cache/hk
-            .cache/swiftlint
-            .venv
-          key: ${{ runner.os }}-sunclub-repo-${{ hashFiles('mise.lock', 'uv.lock', 'pyproject.toml', 'hk.pkl') }}
-          restore-keys: |
-            ${{ runner.os }}-sunclub-repo-
-
-      - name: Run lint shard
-        run: mise --locked exec -- just ci-lint
+      - uses: ./.github/actions/setup
+        timeout-minutes: 10
+      - run: mise --locked exec -- just ci-lint
 
   test-python:
     name: Python Tests
     runs-on: ubuntu-latest
-    needs: lint
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Repair git checkout for act
-        if: ${{ env.ACT }}
-        run: bash scripts/tooling/repair_act_git_checkout.sh
-      - name: Configure repo caches
-        shell: bash
-        run: |
-          mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk
-          {
-            echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv"
-            echo "UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv"
-            echo "HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk"
-            echo "HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk"
-            echo "npm_config_cache=$GITHUB_WORKSPACE/.cache/npm"
-          } >> "$GITHUB_ENV"
-      - name: Install tools for act
-        if: ${{ env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: false
-          cache_save: false
-      # Lockfile is required for all tool resolution to prevent CI drift.
-      - name: Install tools
-        if: ${{ !env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: true
-      - name: Restore repo caches
-        if: ${{ !env.ACT }}
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            .cache/uv
-            .cache/npm
-            .cache/hk
-            .cache/swiftlint
-            .venv
-          key: ${{ runner.os }}-sunclub-repo-${{ hashFiles('mise.lock', 'uv.lock', 'pyproject.toml', 'hk.pkl') }}
-          restore-keys: |
-            ${{ runner.os }}-sunclub-repo-
-
-      - name: Run Python shard
-        run: mise --locked exec -- just ci-python
-
-  changes:
-    name: Detect iOS Changes
-    runs-on: ubuntu-latest
-    outputs:
-      run_ios: ${{ steps.path-filter.outputs.run_ios }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Detect iOS-affecting changes
-        id: path-filter
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          default_to_ios() {
-            printf '%s\n' "$1"
-            echo "run_ios=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          }
-
-          commit_exists() {
-            git rev-parse --verify --quiet "$1^{commit}" >/dev/null
-          }
-
-          web_only_path() {
-            case "$1" in
-              web/*|scripts/web/*|scripts/cloudflare/*|infra/cloudflare/*|tests/test_web_*.py|tests/test_cloudflare_config.py)
-                return 0
-                ;;
-              docs/web-*.md|docs/marketing-website-polish-execplan.md|docs/cloudflare-deployment-execplan.md)
-                return 0
-                ;;
-              .github/workflows/deploy-web-cloudflare.yml|.github/workflows/release-web.yml|.github/workflows/rollback-web-cloudflare.yml)
-                return 0
-                ;;
-              *)
-                return 1
-                ;;
-            esac
-          }
-
-          event_name="${GITHUB_EVENT_NAME}"
-          base_ref=""
-          head_ref="${GITHUB_SHA}"
-          diff_mode="range"
-
-          if [ "$event_name" = "pull_request" ]; then
-            base_ref="${{ github.event.pull_request.base.sha }}"
-            head_ref="${{ github.event.pull_request.head.sha }}"
-            diff_mode="merge-base"
-          elif [ "$event_name" = "push" ]; then
-            base_ref="${{ github.event.before }}"
-            if [ -z "$base_ref" ] || [ "$base_ref" = "0000000000000000000000000000000000000000" ]; then
-              default_to_ios "Push base commit is unavailable; running iOS jobs."
-            fi
-          else
-            default_to_ios "Unsupported event '$event_name'; running iOS jobs."
-          fi
-
-          if ! commit_exists "$base_ref" || ! commit_exists "$head_ref"; then
-            if [ "$event_name" = "pull_request" ] && commit_exists "HEAD^1" && commit_exists "HEAD^2"; then
-              base_ref="HEAD^1"
-              head_ref="HEAD^2"
-              diff_mode="range"
-            else
-              default_to_ios "Could not resolve changed-file commits; running iOS jobs."
-            fi
-          fi
-
-          if [ "$diff_mode" = "merge-base" ]; then
-            if ! git diff --name-only "$base_ref...$head_ref" > changed-files.txt; then
-              default_to_ios "Could not diff pull request changes; running iOS jobs."
-            fi
-          elif ! git diff --name-only "$base_ref" "$head_ref" > changed-files.txt; then
-            default_to_ios "Could not diff push changes; running iOS jobs."
-          fi
-
-          if [ ! -s changed-files.txt ]; then
-            default_to_ios "No changed files found; running iOS jobs."
-          fi
-
-          printf 'Changed files:\n'
-          sed 's/^/  /' changed-files.txt
-
-          run_ios=false
-          ios_path=""
-          while IFS= read -r changed_path; do
-            if [ -z "$changed_path" ]; then
-              continue
-            fi
-            if ! web_only_path "$changed_path"; then
-              run_ios=true
-              ios_path="$changed_path"
-              break
-            fi
-          done < changed-files.txt
-
-          if [ "$run_ios" = "true" ]; then
-            printf 'iOS-affecting path detected: %s\n' "$ios_path"
-          else
-            printf 'Only web-surface paths changed; skipping iOS jobs.\n'
-          fi
-
-          echo "run_ios=$run_ios" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/setup
+        timeout-minutes: 10
+      - run: mise --locked exec -- just ci-python
 
   test-ios-unit:
     name: iOS Unit Tests
     runs-on: macos-26
-    needs: [lint, changes]
-    if: ${{ needs.changes.outputs.run_ios == 'true' }}
-    env:
-      SUNCLUB_FLAVOR: prod
-      TEST_APP_SCHEME: Sunclub
+    needs: changes
+    if: needs.changes.outputs.run_ios == 'true'
     permissions:
       contents: read
       id-token: write
+    env:
+      SUNCLUB_FLAVOR: prod
+      SUNCLUB_APS_ENVIRONMENT: production
+      TEST_APP_SCHEME: Sunclub
     steps:
-      - name: Select Xcode 26.4
-        if: ${{ !env.ACT }}
-        shell: bash
-        run: |
-          sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"
-          xcodebuild -version
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Repair git checkout for act
-        if: ${{ env.ACT }}
-        run: bash scripts/tooling/repair_act_git_checkout.sh
-      - name: Configure repo caches
-        shell: bash
-        run: |
-          mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk
-          {
-            echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv"
-            echo "UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv"
-            echo "HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk"
-            echo "HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk"
-            echo "npm_config_cache=$GITHUB_WORKSPACE/.cache/npm"
-          } >> "$GITHUB_ENV"
-      - name: Install tools for act
-        if: ${{ env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: false
-          cache_save: false
-      # Lockfile is required for all tool resolution to prevent CI drift.
-      - name: Install tools
-        if: ${{ !env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: true
-      - name: Restore repo caches
-        if: ${{ !env.ACT }}
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            .cache/uv
-            .cache/npm
-            .cache/hk
-            .cache/swiftlint
-            .venv
-          key: ${{ runner.os }}-sunclub-repo-${{ hashFiles('mise.lock', 'uv.lock', 'pyproject.toml', 'hk.pkl') }}
-          restore-keys: |
-            ${{ runner.os }}-sunclub-repo-
-      - name: Resolve build metadata
-        shell: bash
-        run: mise --locked exec -- uv run python -m scripts.tooling.resolve_versions --format github-env >> "$GITHUB_ENV"
-      - name: Prepare Tuist cache
+      - uses: ./.github/actions/setup
         timeout-minutes: 10
-        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
+        with:
+          xcode: "true"
       - name: Run unit tests
         timeout-minutes: 45
         run: mise --locked exec -- just test-unit
+      - name: Upload failed Unit test result
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ios-unit-test-result
+          path: .build/test-unit*
+          retention-days: 3
 
   test-ios-ui:
     name: iOS UI Tests
     runs-on: macos-26
-    needs: [lint, changes]
-    if: ${{ needs.changes.outputs.run_ios == 'true' }}
-    env:
-      SUNCLUB_FLAVOR: prod
-      TEST_APP_SCHEME: Sunclub
+    needs: changes
+    if: needs.changes.outputs.run_ios == 'true'
     permissions:
       contents: read
       id-token: write
+    env:
+      SUNCLUB_FLAVOR: prod
+      SUNCLUB_APS_ENVIRONMENT: production
+      TEST_APP_SCHEME: Sunclub
     steps:
-      - name: Select Xcode 26.4
-        if: ${{ !env.ACT }}
-        shell: bash
-        run: |
-          sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"
-          xcodebuild -version
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Repair git checkout for act
-        if: ${{ env.ACT }}
-        run: bash scripts/tooling/repair_act_git_checkout.sh
-      - name: Configure repo caches
-        shell: bash
-        run: |
-          mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk
-          {
-            echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv"
-            echo "UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv"
-            echo "HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk"
-            echo "HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk"
-            echo "npm_config_cache=$GITHUB_WORKSPACE/.cache/npm"
-          } >> "$GITHUB_ENV"
-      - name: Install tools for act
-        if: ${{ env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: false
-          cache_save: false
-      # Lockfile is required for all tool resolution to prevent CI drift.
-      - name: Install tools
-        if: ${{ !env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: true
-      - name: Restore repo caches
-        if: ${{ !env.ACT }}
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            .cache/uv
-            .cache/npm
-            .cache/hk
-            .cache/swiftlint
-            .venv
-          key: ${{ runner.os }}-sunclub-repo-${{ hashFiles('mise.lock', 'uv.lock', 'pyproject.toml', 'hk.pkl') }}
-          restore-keys: |
-            ${{ runner.os }}-sunclub-repo-
-      - name: Resolve build metadata
-        shell: bash
-        run: mise --locked exec -- uv run python -m scripts.tooling.resolve_versions --format github-env >> "$GITHUB_ENV"
-      - name: Prepare Tuist cache
+      - uses: ./.github/actions/setup
         timeout-minutes: 10
-        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
-      - name: Run UI tests
+        with:
+          xcode: "true"
+      - name: Run UI smoke tests
+        if: github.event_name == 'pull_request'
+        timeout-minutes: 45
+        run: mise --locked exec -- just test-ui-smoke
+      - name: Run full UI tests
+        if: github.event_name != 'pull_request'
         timeout-minutes: 45
         run: mise --locked exec -- just test-ui
       - name: Upload failed UI test result
-        if: ${{ failure() && !env.ACT }}
+        if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ios-ui-test-result
-          path: .build/test-ui.xcresult
-          if-no-files-found: error
+          path: .build/test-ui*
           retention-days: 3
-
-  test-ios:
-    name: iOS Tests
-    runs-on: ubuntu-latest
-    needs: [changes, test-ios-unit, test-ios-ui]
-    if: ${{ always() && needs.changes.outputs.run_ios == 'true' }}
-    steps:
-      - name: Validate iOS test shards
-        shell: bash
-        run: |
-          unit_result="${{ needs.test-ios-unit.result }}"
-          ui_result="${{ needs.test-ios-ui.result }}"
-
-          printf 'iOS Unit Tests: %s\n' "$unit_result"
-          printf 'iOS UI Tests: %s\n' "$ui_result"
-
-          if [ "$unit_result" != "success" ] || [ "$ui_result" != "success" ]; then
-            exit 1
-          fi
 
   build-ios:
     name: Build iOS (${{ matrix.name }})
     runs-on: macos-26
-    needs: [lint, changes]
-    if: ${{ needs.changes.outputs.run_ios == 'true' }}
+    needs: changes
+    if: needs.changes.outputs.run_ios == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: Development
             flavor: dev
-            aps_environment: development
           - name: Production
             flavor: prod
-            aps_environment: production
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Select Xcode 26.4
-        if: ${{ !env.ACT }}
-        shell: bash
-        run: |
-          sudo xcode-select -s "/Applications/Xcode_${{ env.SUNCLUB_XCODE_VERSION }}.app/Contents/Developer"
-          xcodebuild -version
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Repair git checkout for act
-        if: ${{ env.ACT }}
-        run: bash scripts/tooling/repair_act_git_checkout.sh
-      - name: Configure repo caches
-        shell: bash
-        run: |
-          mkdir -p .cache/uv .cache/npm .cache/hk .cache/swiftlint .state/hk
-          {
-            echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.cache/uv"
-            echo "UV_PROJECT_ENVIRONMENT=$GITHUB_WORKSPACE/.venv"
-            echo "HK_CACHE_DIR=$GITHUB_WORKSPACE/.cache/hk"
-            echo "HK_STATE_DIR=$GITHUB_WORKSPACE/.state/hk"
-            echo "npm_config_cache=$GITHUB_WORKSPACE/.cache/npm"
-          } >> "$GITHUB_ENV"
-      - name: Install tools for act
-        if: ${{ env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: false
-          cache_save: false
-      - name: Install tools
-        if: ${{ !env.ACT }}
-        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4
-        with:
-          cache: true
-      - name: Restore repo caches
-        if: ${{ !env.ACT }}
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            .cache/uv
-            .cache/npm
-            .cache/hk
-            .cache/swiftlint
-            .venv
-          key: ${{ runner.os }}-sunclub-repo-${{ hashFiles('mise.lock', 'uv.lock', 'pyproject.toml', 'hk.pkl') }}
-          restore-keys: |
-            ${{ runner.os }}-sunclub-repo-
-      - name: Set CI build metadata
-        shell: bash
-        run: |
-          {
-            mise --locked exec -- uv run python -m scripts.tooling.resolve_versions --format github-env
-            echo "SUNCLUB_FLAVOR=${{ matrix.flavor }}"
-            echo "SUNCLUB_APS_ENVIRONMENT=${{ matrix.aps_environment }}"
-          } >> "$GITHUB_ENV"
-
-          if [ "${ACT:-}" = "true" ]; then
-            echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"
-          elif [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"
-          elif [ "${{ matrix.flavor }}" != "prod" ]; then
-            echo "SUNCLUB_TUIST_SHARE=0" >> "$GITHUB_ENV"
-          else
-            echo "SUNCLUB_TUIST_SHARE=1" >> "$GITHUB_ENV"
-          fi
-      - name: Prepare Tuist cache
+      - uses: ./.github/actions/setup
         timeout-minutes: 10
-        run: mise --locked exec -- bash scripts/tooling/prepare_ci_workspace.sh
-      - name: Run iOS build shard
+        with:
+          xcode: "true"
+      - name: Build device app and extensions
         timeout-minutes: 45
-        run: mise --locked exec -- just ci-build
+        env:
+          BUILD_FLAVOR: ${{ matrix.flavor }}
+        run: mise --locked exec -- just ci-build "$BUILD_FLAVOR"
+
+  gate:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [changes, lint, test-python, test-ios-unit, test-ios-ui, build-ios]
+    if: always()
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Validate required results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 -m scripts.tooling.ci_policy gate
