@@ -22,13 +22,17 @@ struct WelcomeView: View {
         } footer: {
             Button("Get Started") {
                 startFeedbackTrigger += 1
-                router.open(.enableLocation)
+                Self.beginOnboarding(router: router)
             }
             .sunGlassPrimaryButton()
             .accessibilityIdentifier("welcome.getStarted")
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: startFeedbackTrigger)
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    static func beginOnboarding(router: AppRouter) {
+        router.open(.enableNotifications)
     }
 
     @ViewBuilder
@@ -66,17 +70,17 @@ struct WelcomeView: View {
     private var welcomeValueProps: some View {
         VStack(alignment: .leading, spacing: 26) {
             welcomeValuePropRow(
-                symbol: "hand.tap.fill",
+                symbol: .check,
                 title: "Log sunscreen in seconds",
                 detail: "Record SPF, timing, covered areas, and notes."
             )
             welcomeValuePropRow(
-                symbol: "sun.max.fill",
+                symbol: .sun,
                 title: "See local UV context",
                 detail: "Check current risk, hourly forecast, and peak sun time."
             )
             welcomeValuePropRow(
-                symbol: "timer",
+                symbol: .bell,
                 title: "Get reapply reminders",
                 detail: "Use reminders, widgets, Apple Watch, and Shortcuts."
             )
@@ -84,19 +88,22 @@ struct WelcomeView: View {
         .frame(maxWidth: 360, alignment: .leading)
     }
 
-    private func welcomeValuePropRow(symbol: String, title: String, detail: String) -> some View {
-        WelcomeValuePropRow(title: title, detail: detail, systemImage: symbol)
+    private func welcomeValuePropRow(symbol: SunIcon, title: String, detail: String) -> some View {
+        WelcomeValuePropRow(title: title, detail: detail, icon: symbol)
     }
 }
 
 private struct WelcomeValuePropRow: View {
     let title: String
     let detail: String
-    let systemImage: String
+    let icon: SunIcon
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            SunProductIcon(systemName: systemImage, tint: AppPalette.pool, size: 40)
+            icon.image.resizable().scaledToFit()
+                .frame(width: 32, height: 32)
+                .foregroundStyle(AppColor.accent)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
@@ -130,7 +137,10 @@ struct EnableLocationView: View {
             footerMaxWidth: SunLayout.ContentWidth.wizard
         ) {
             VStack(spacing: 18) {
-                SunProductIcon(systemName: "location.fill", tint: AppPalette.sun, size: 76)
+                SunIcon.sun.image.resizable().scaledToFit()
+                    .frame(width: 60, height: 60)
+                    .foregroundStyle(AppColor.sun)
+                    .accessibilityHidden(true)
                     .padding(.top, 24)
 
                 VStack(spacing: 14) {
@@ -140,7 +150,7 @@ struct EnableLocationView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("Sunclub can show local UV and hourly forecast context. Manual logging starts with Face and Neck selected, and reminder timing follows the interval you choose.")
+                    Text("See local UV and hourly forecasts. You can also choose a city or continue with a local estimate.")
                         .font(AppTextStyle.body.font)
                         .foregroundStyle(AppPalette.softInk)
                         .multilineTextAlignment(.center)
@@ -207,6 +217,7 @@ struct EnableNotificationsView: View {
     @State private var isCompleting = false
     @State private var completionFeedbackTrigger = 0
     @State private var completionError: String?
+    @State private var notificationManager = OnboardingNotificationManagerFactory.make()
 
     var body: some View {
         SunLightScreen(
@@ -237,7 +248,9 @@ struct EnableNotificationsView: View {
 
                     if let completionError {
                         SunStatusCard(
-                            title: "Setup was not completed",
+                            title: appState.settings.hasCompletedOnboarding
+                                ? "Reminders were not scheduled"
+                                : "Setup was not saved",
                             detail: completionError,
                             tint: AppColor.warning.opacity(0.8),
                             symbol: "exclamationmark.triangle.fill"
@@ -261,19 +274,21 @@ struct EnableNotificationsView: View {
                                 .accessibilityHidden(true)
                         }
 
-                        Text(isCompleting ? "Setting up" : "Enable reminders")
+                        Text(isCompleting ? "Setting up" : enableRemindersTitle)
                     }
                 }
                 .sunGlassPrimaryButton()
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.enableNotifications")
 
-                Button("Not now") {
+                Button(continueTitle) {
                     completeOnboarding(requestsNotifications: false)
                 }
                 .sunGlassSecondaryButton()
                 .disabled(isCompleting)
-                .accessibilityHint("Finishes setup without turning on reminder notifications.")
+                .accessibilityHint(appState.settings.hasCompletedOnboarding
+                    ? "Opens Today. You can review reminders in Settings."
+                    : "Finishes setup without requesting notification access.")
                 .accessibilityIdentifier("onboarding.skipNotifications")
             }
         }
@@ -294,8 +309,8 @@ struct EnableNotificationsView: View {
                 )
                 .frame(width: 104, height: 104)
 
-            Image(systemName: "bell.badge.fill")
-                .font(AppFont.rounded(size: 36, weight: .semibold))
+            SunIcon.bell.image.resizable().scaledToFit()
+                .frame(width: 36, height: 36)
                 .foregroundStyle(AppPalette.sun)
         }
         .accessibilityHidden(true)
@@ -305,6 +320,16 @@ struct EnableNotificationsView: View {
         "Sunclub can remind you when it is time to log sunscreen or reapply. You can change this anytime in Settings."
     }
 
+    private var enableRemindersTitle: String {
+        guard completionError != nil else { return "Enable reminders" }
+        return appState.settings.hasCompletedOnboarding ? "Retry reminders" : "Retry with reminders"
+    }
+
+    private var continueTitle: String {
+        guard completionError != nil else { return "Not now" }
+        return appState.settings.hasCompletedOnboarding ? "Continue to Today" : "Retry without reminders"
+    }
+
     private func completeOnboarding(requestsNotifications: Bool) {
         guard !isCompleting else {
             return
@@ -312,37 +337,42 @@ struct EnableNotificationsView: View {
 
         isCompleting = true
         completionError = nil
+        let completionID = router.beginOnboardingCompletion(
+            hasCompletedOnboarding: appState.settings.hasCompletedOnboarding
+        )
 
         Task { @MainActor in
+            defer { isCompleting = false }
+            guard router.isCurrentOnboardingCompletion(completionID) else { return }
             let completionResult = appState.completeOnboarding()
             guard completionResult.succeeded else {
                 completionError = appState.logActionErrorMessage
                     ?? "Sunclub could not save your setup. Your choices are still here—please try again."
-                isCompleting = false
                 return
             }
 
-            if requestsNotifications, !appState.isUITesting {
-                let granted = await NotificationManager.shared.configure()
+            if requestsNotifications {
+                let granted = await notificationManager.configure()
+                guard router.isCurrentOnboardingCompletion(completionID) else { return }
                 if granted {
-                    let report = await NotificationManager.shared.scheduleReminders(using: appState)
+                    let report = await notificationManager.scheduleReminders(using: appState)
+                    guard router.isCurrentOnboardingCompletion(completionID) else { return }
                     if !report.isSuccessful {
-                        completionError = "Setup was saved, but some reminders could not be scheduled. Try again or continue without reminders."
-                        isCompleting = false
+                        completionError = "Setup was saved, but some reminders could not be scheduled. You can retry or continue to Today."
                         return
                     }
                 }
             }
 
             completionFeedbackTrigger += 1
-            isCompleting = false
 
-            if appState.importPendingAccountabilityInvitesIfNeeded() {
-                router.open(.friends)
-            } else {
-                router.goHome()
-            }
+            Self.finishOnboarding(appState: appState, router: router)
         }
+    }
+
+    static func finishOnboarding(appState: AppState, router: AppRouter) {
+        appState.importPendingAccountabilityInvitesIfNeeded()
+        router.goHome()
     }
 }
 

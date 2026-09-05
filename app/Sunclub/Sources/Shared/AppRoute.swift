@@ -10,6 +10,8 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case reapplyCheckIn
     case weeklySummary
     case settings
+    case settingsSunscreen
+    case settingsHealth
     case settingsSunscreenReminders
     case settingsReapplyReminder
     case settingsNotifications
@@ -47,6 +49,10 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
             return .history
         case .productScanner:
             return .manualLog
+        case .settingsReapplyReminder, .settingsNotifications:
+            return .settingsSunscreenReminders
+        case .settingsHelp:
+            return .support
         default:
             return self
         }
@@ -72,6 +78,8 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
         case .weeklySummary, .achievements, .skinHealthReport, .yearInReview:
             return .history
         case .settings,
+             .settingsSunscreen,
+             .settingsHealth,
              .settingsSunscreenReminders,
              .settingsReapplyReminder,
              .settingsNotifications,
@@ -133,7 +141,8 @@ enum AppTab: String, CaseIterable, Hashable, Identifiable {
     }
 }
 
-struct AppRoutePayload: Equatable {
+struct AppRoutePayload: Hashable {
+    let presentationID = UUID()
     var targetDate: Date?
     var targetDayPart: DayPart?
 
@@ -142,11 +151,37 @@ struct AppRoutePayload: Equatable {
 
 @Observable
 final class AppRouter {
-    var selectedTab: AppTab = .today
+    var selectedTab: AppTab = .today {
+        didSet {
+            if selectedTab != oldValue { releaseOnboardingPresentation() }
+        }
+    }
     var todayPath: [AppRoute] = []
     var historyPath: [AppRoute] = []
     var settingsPath: [AppRoute] = []
-    var payload: AppRoutePayload = .empty
+    private var tabPayloads: [AppTab: AppRoutePayload] = [:]
+    private(set) var retainsOnboarding = false
+    private var onboardingCompletionID: UUID?
+
+    func beginOnboardingCompletion(hasCompletedOnboarding: Bool) -> UUID {
+        let id = UUID()
+        onboardingCompletionID = id
+        if !hasCompletedOnboarding { retainsOnboarding = true }
+        return id
+    }
+
+    func isCurrentOnboardingCompletion(_ id: UUID) -> Bool {
+        onboardingCompletionID == id
+    }
+
+    var payload: AppRoutePayload {
+        get { payload(for: selectedTab) }
+        set { tabPayloads[selectedTab] = newValue }
+    }
+
+    func payload(for tab: AppTab) -> AppRoutePayload {
+        tabPayloads[tab] ?? .empty
+    }
 
     var path: [AppRoute] {
         get {
@@ -177,6 +212,10 @@ final class AppRouter {
     }
 
     func setPath(_ path: [AppRoute], for tab: AppTab) {
+        if tab == selectedTab, path != self.path(for: tab) {
+            releaseOnboardingPresentation()
+        }
+        if path.isEmpty { tabPayloads[tab] = nil }
         switch tab {
         case .today:
             todayPath = path
@@ -188,7 +227,6 @@ final class AppRouter {
     }
 
     func selectTab(_ tab: AppTab) {
-        payload = .empty
         selectedTab = tab
     }
 
@@ -197,8 +235,8 @@ final class AppRouter {
         targetDate: Date? = nil,
         targetDayPart: DayPart? = nil
     ) {
+        releaseOnboardingPresentation()
         let route = route.productionRoute
-        payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         if route == .welcome {
             selectedTab = .today
             clearAllPaths()
@@ -210,6 +248,7 @@ final class AppRouter {
             selectedTab = tab
             setPath([route], for: tab)
         }
+        payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
     }
 
     func push(
@@ -218,7 +257,6 @@ final class AppRouter {
         targetDayPart: DayPart? = nil
     ) {
         let route = route.productionRoute
-        payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         if route == .welcome {
             selectedTab = .today
             clearAllPaths()
@@ -229,6 +267,9 @@ final class AppRouter {
             var currentPath = path(for: selectedTab)
             currentPath.append(route)
             setPath(currentPath, for: selectedTab)
+        }
+        if targetDate != nil || targetDayPart != nil || route == .manualLog {
+            payload = AppRoutePayload(targetDate: targetDate, targetDayPart: targetDayPart)
         }
     }
 
@@ -272,8 +313,15 @@ final class AppRouter {
     }
 
     private func clearAllPaths() {
+        tabPayloads = [:]
         todayPath = []
         historyPath = []
         settingsPath = []
+        releaseOnboardingPresentation()
+    }
+
+    private func releaseOnboardingPresentation() {
+        retainsOnboarding = false
+        onboardingCompletionID = nil
     }
 }

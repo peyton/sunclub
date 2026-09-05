@@ -1,5 +1,66 @@
 import SwiftUI
 import UIKit
+import Observation
+
+@MainActor
+@Observable
+final class SettingsImportActionState {
+    enum Action: Equatable {
+        case publish(UUID)
+        case restore(UUID)
+
+        var progressTitle: String {
+            switch self {
+            case .publish: return "Sending to iCloud"
+            case .restore: return "Undoing import"
+            }
+        }
+
+        var failureTitle: String {
+            switch self {
+            case .publish: return "Couldn't send to iCloud"
+            case .restore: return "Couldn't undo import"
+            }
+        }
+    }
+
+    struct Failure {
+        let action: Action
+        let error: SunclubHistoryMutationError
+    }
+
+    private(set) var activeAction: Action?
+    var failure: Failure?
+
+    @discardableResult
+    func perform(_ action: Action, in appState: AppState) -> Task<Void, Never>? {
+        guard activeAction == nil else { return nil }
+        failure = nil
+        activeAction = action
+        switch action {
+        case let .publish(id):
+            let publishTask = appState.publishImportedChanges(for: id)
+            return Task {
+                receive(await publishTask.value, for: action)
+            }
+        case let .restore(id):
+            receive(appState.restoreImportedChanges(for: id), for: action)
+            return nil
+        }
+    }
+
+    private func receive<Value>(
+        _ result: Result<Value, SunclubHistoryMutationError>, for action: Action
+    ) {
+        activeAction = nil
+        switch result {
+        case .success:
+            failure = nil
+        case let .failure(error):
+            failure = Failure(action: action, error: error)
+        }
+    }
+}
 
 extension SettingsView {
     var backupSection: some View {
@@ -113,6 +174,7 @@ extension SettingsView {
                 .buttonStyle(SunSecondaryButtonStyle())
                 .accessibilityIdentifier("settings.recovery")
             }
+            .disabled(importActions.activeAction != nil)
             .padding(18)
             .sunGlassCard(
                 cornerRadius: AppRadius.card,
@@ -121,25 +183,45 @@ extension SettingsView {
                 legacyShadow: nil
             )
         }
+        .alert(
+            importActions.failure?.action.failureTitle ?? "Change not completed",
+            isPresented: Binding(
+                get: { importActions.failure != nil },
+                set: { if !$0 { importActions.failure = nil } }
+            ),
+            presenting: importActions.failure
+        ) { failure in
+            Button("Retry") {
+                importActions.perform(failure.action, in: appState)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { failure in
+            Text(failure.error.localizedDescription)
+        }
     }
 
     @ViewBuilder
     func pendingImportActions(for session: SunclubImportSession) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(SunclubCopy.Sync.savedOnlyOnThisPhone(appState.cloudSyncStatusPresentation.pendingImportedBatchCount))
+            Text("Some imported changes are still waiting to sync.")
                 .font(AppFont.rounded(size: 14, weight: .medium))
                 .foregroundStyle(AppPalette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings.icloud.pendingImports")
 
-            Button("Send to iCloud") {
-                appState.publishImportedChanges(for: session.id)
+            if let activeAction = importActions.activeAction {
+                ProgressView(activeAction.progressTitle)
+                    .accessibilityIdentifier("settings.icloud.importProgress")
+            }
+
+            Button(session.publishRequestedAt == nil ? "Send to iCloud" : "Retry Sending to iCloud") {
+                importActions.perform(.publish(session.id), in: appState)
             }
             .buttonStyle(SunPrimaryButtonStyle())
             .accessibilityIdentifier("settings.icloud.publishImported")
 
             Button("Undo Import") {
-                appState.restoreImportedChanges(for: session.id)
+                importActions.perform(.restore(session.id), in: appState)
             }
             .buttonStyle(SunSecondaryButtonStyle())
             .accessibilityIdentifier("settings.icloud.restoreImported")

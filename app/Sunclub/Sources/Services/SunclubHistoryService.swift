@@ -7,7 +7,7 @@ struct SunclubImportResult: Equatable {
     let restorePointBatchID: UUID
 }
 
-struct CloudPublishResult: Equatable {
+struct CloudPublishResult: Equatable, Sendable {
     let importSessionID: UUID
     let publishedBatchCount: Int
 }
@@ -629,60 +629,44 @@ final class SunclubHistoryService {
 
     @discardableResult
     func restoreImportSession(_ sessionID: UUID) throws -> SunclubChangeBatch {
-        guard let session = try importSessions(limit: 50).first(where: { $0.id == sessionID }) else {
+        guard let session = try importSession(id: sessionID) else {
             throw HistoryServiceError.importSessionNotFound
         }
 
         let restorePointRevisions = try revisions(forBatchID: session.restorePointBatchID)
         let restorePointSettings = try settingsRevision(forBatchID: session.restorePointBatchID)
 
-        let batch = try createBatch(
-            kind: .restore,
-            scope: .timeline,
-            scopeIdentifier: "timeline",
-            summary: "Restored the local state from before the import.",
-            isLocalOnly: true
-        )
-
-        if let restorePointSettings {
-            context.insert(
-                SettingsRevision(
-                    batch: batch,
-                    snapshot: restorePointSettings.snapshot,
-                    changedFields: Self.allSettingsFields
-                )
+        return try commitRecoveryChange {
+            let batch = try createBatch(
+                kind: .restore,
+                scope: .timeline,
+                scopeIdentifier: "timeline",
+                summary: "Restored saved values from before the import, preserving other current days.",
+                isLocalOnly: true
             )
-        }
-
-        let snapshotsByDay = Dictionary(uniqueKeysWithValues: restorePointRevisions.compactMap { revision in
-            revision.snapshot.map { (calendar.startOfDay(for: revision.startOfDay), $0) }
-        })
-        let currentRecords = try records()
-        for record in currentRecords {
-            let day = calendar.startOfDay(for: record.startOfDay)
-            if snapshotsByDay[day] == nil {
-                context.insert(DailyRecordRevision(deletedDay: day, batch: batch))
+            if let restorePointSettings {
+                let currentSettings = try settings().projectionSnapshot
+                context.insert(
+                    SettingsRevision(
+                        batch: batch,
+                        snapshot: Self.mergeRecoveredSettings(current: restorePointSettings.snapshot, imported: currentSettings),
+                        changedFields: Self.allSettingsFields
+                    )
+                )
             }
-        }
 
-        for snapshot in snapshotsByDay.values {
-            context.insert(
-                DailyRecordRevision(
-                    batch: batch,
-                    snapshot: snapshot,
-                    changedFields: Self.allRecordFields
+            for snapshot in restorePointRevisions.compactMap(\.snapshot) {
+                context.insert(
+                    DailyRecordRevision(batch: batch, snapshot: snapshot, changedFields: Self.allRecordFields)
                 )
-            )
+            }
+            return batch
         }
-
-        try context.save()
-        try rebuildProjections()
-        return batch
     }
 
     @discardableResult
     func publishImportedChanges(for sessionID: UUID) throws -> CloudPublishResult {
-        guard let session = try importSessions(limit: 50).first(where: { $0.id == sessionID }) else {
+        guard let session = try importSession(id: sessionID) else {
             throw HistoryServiceError.importSessionNotFound
         }
 
@@ -690,21 +674,65 @@ final class SunclubHistoryService {
             batch.importSessionID == sessionID
         }
         let batches = try context.fetch(FetchDescriptor(predicate: predicate))
-        for batch in batches {
-            batch.isLocalOnly = false
-            batch.isPublishedToCloud = false
+        return try commitRecoveryChange(rebuildsProjections: false) {
+            for batch in batches {
+                batch.isLocalOnly = false
+                batch.isPublishedToCloud = false
+            }
+            session.publishRequestedAt = Date()
+            return CloudPublishResult(importSessionID: sessionID, publishedBatchCount: batches.count)
         }
-        session.publishRequestedAt = Date()
-        try context.save()
-
-        return CloudPublishResult(
-            importSessionID: sessionID,
-            publishedBatchCount: batches.count
-        )
     }
 
     @discardableResult
     func undo(batchID: UUID, kind: SunclubChangeKind = .undo) throws -> SunclubChangeBatch {
+        try commitRecoveryChange { try createInverse(batchID: batchID, kind: kind) }
+    }
+
+    func canUndoChangeIfCurrent(batchID: UUID) throws -> Bool {
+        guard let batch = try fetchBatchForSync(id: batchID),
+              batch.scope == .day, batch.undoneByBatchID == nil,
+              try settingsRevision(forBatchID: batchID) == nil else { return false }
+        let targets = try revisions(forBatchID: batchID)
+        guard !targets.isEmpty else { return false }
+        let allRevisions = Self.sortedRecordRevisions(try context.fetch(FetchDescriptor<DailyRecordRevision>()))
+        let projectedRecords = try records()
+        for target in targets {
+            let day = calendar.startOfDay(for: target.startOfDay)
+            guard allRevisions.last(where: { calendar.startOfDay(for: $0.startOfDay) == day })?.id == target.id else {
+                return false
+            }
+            let projected = projectedRecords.filter { calendar.startOfDay(for: $0.startOfDay) == day }
+            if let snapshot = target.snapshot {
+                guard projected.count == 1, projected.first?.projectionSnapshot == snapshot else { return false }
+            } else if !projected.isEmpty {
+                return false
+            }
+        }
+        return true
+    }
+
+    @discardableResult
+    func undoChangeIfCurrent(batchID: UUID) throws -> SunclubChangeBatch {
+        // Check before entering the write/rollback path so a stale receipt cannot rebuild
+        // a divergent projection. Check and write remain synchronous on the context's actor.
+        guard try canUndoChangeIfCurrent(batchID: batchID) else { throw HistoryServiceError.staleChange }
+        return try undo(batchID: batchID)
+    }
+
+    @discardableResult
+    func undoConflict(_ conflictID: UUID) throws -> SunclubChangeBatch {
+        let predicate = #Predicate<SunclubConflictItem> { $0.id == conflictID }
+        guard let conflict = try context.fetch(FetchDescriptor(predicate: predicate)).first,
+              conflict.resolvedAt == nil else { throw HistoryServiceError.staleChange }
+        return try commitRecoveryChange {
+            let inverse = try createInverse(batchID: conflict.mergedBatchID, kind: .undo)
+            conflict.resolvedAt = Date()
+            return inverse
+        }
+    }
+
+    private func createInverse(batchID: UUID, kind: SunclubChangeKind) throws -> SunclubChangeBatch {
         let batch = try fetchBatch(id: batchID)
         guard batch.undoneByBatchID == nil else {
             throw HistoryServiceError.batchAlreadyUndone
@@ -745,9 +773,28 @@ final class SunclubHistoryService {
         }
 
         batch.undoneByBatchID = inverseBatch.id
-        try context.save()
-        try rebuildProjections()
         return inverseBatch
+    }
+
+    private func commitRecoveryChange<Value>(
+        rebuildsProjections: Bool = true,
+        _ operation: () throws -> Value
+    ) throws -> Value {
+        var value: Value?
+        do {
+            try context.transaction {
+                value = try operation()
+                if rebuildsProjections {
+                    try rebuildProjections(savingChanges: false)
+                }
+                try mutationGuard()
+            }
+        } catch {
+            rollbackAndRestoreProjections()
+            throw error
+        }
+        guard let value else { throw HistoryServiceError.batchNotFound }
+        return value
     }
 
     @discardableResult
@@ -764,8 +811,9 @@ final class SunclubHistoryService {
         guard let conflict = try context.fetch(FetchDescriptor(predicate: predicate)).first else {
             return
         }
-        conflict.resolvedAt = Date()
-        try context.save()
+        try commitRecoveryChange(rebuildsProjections: false) {
+            conflict.resolvedAt = Date()
+        }
     }
 
     func fetchBatchForSync(id: UUID) throws -> SunclubChangeBatch? {
@@ -1682,6 +1730,7 @@ final class SunclubHistoryService {
 }
 
 enum HistoryServiceError: LocalizedError {
+    case staleChange
     case batchNotFound
     case batchAlreadyUndone
     case batchCannotRedo
@@ -1690,6 +1739,8 @@ enum HistoryServiceError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .staleChange:
+            return "This day has changed since that action. Review its current history before undoing."
         case .batchNotFound:
             return "Sunclub couldn't find that change anymore."
         case .batchAlreadyUndone:

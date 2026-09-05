@@ -4,12 +4,32 @@ struct UVForecastDetailView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
-    private var selectedDay: Date {
-        appState.selectedDay
+    private var forecastDay: Date {
+        Self.referenceDay(in: appState)
+    }
+
+    @MainActor
+    static func referenceDay(in state: AppState) -> Date {
+        Calendar.current.startOfDay(for: state.referenceDate)
     }
 
     var body: some View {
+        TimelineView(.periodic(from: forecastDay, by: 60)) { _ in
+            forecastContent
+                .onChange(of: forecastDay) { _, _ in refreshForecast() }
+        }
+        .onAppear(perform: refreshForecast)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshForecast() }
+        }
+        .sunNavigationBarCompatibility()
+        .interactivePopGestureEnabled()
+        .accessibilityIdentifier("uvForecast.detail")
+    }
+
+    private var forecastContent: some View {
         SunLightScreen(
             contentMaxWidth: SunLayout.ContentWidth.form,
             contentFrameAlignment: .center
@@ -60,108 +80,55 @@ struct UVForecastDetailView: View {
                 Spacer(minLength: 0)
             }
         }
-        .sunNavigationBarCompatibility()
-        .interactivePopGestureEnabled()
-        .accessibilityIdentifier("uvForecast.detail")
     }
 
-    @ViewBuilder
     private var forecastHeader: some View {
-        if #available(iOS 26.0, *) {
-            nativeForecastHeader
-        } else {
-            legacyForecastHeader
-        }
-    }
-
-    @available(iOS 26.0, *)
-    private var nativeForecastHeader: some View {
-        Color.clear
-            .frame(height: 0)
-            .accessibilityHidden(true)
-            .navigationTitle("UV Forecast")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        router.goBack()
-                    } label: {
-                        Label("Back", systemImage: "chevron.left")
-                    }
-                    .accessibilityLabel("Back")
-                    .accessibilityIdentifier("screen.back")
-                }
-
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 2) {
-                        Text(locationTitle)
-                            .font(AppTextStyle.captionMedium.font)
-                        Text(selectedDay.formatted(.dateTime.month(.wide).day().year()))
-                            .font(AppTextStyle.caption.font)
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        openURL(SunclubWebLinks.docs)
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                    .accessibilityLabel("UV index documentation")
-                    .accessibilityIdentifier("uvForecast.docs")
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(alignment: .top, spacing: AppSpacing.xs) {
+                SunLightHeader(title: "UV Forecast", showsBack: true, onBack: { router.goBack() })
+                if #unavailable(iOS 26.0) {
+                    documentationButton
                 }
             }
-    }
 
-    private var legacyForecastHeader: some View {
-        HStack {
-            Button {
-                router.goBack()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(AppTextStyle.sectionHeader.font)
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                Text(locationTitle)
+                    .font(AppTextStyle.captionMedium.font)
                     .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-            .accessibilityIdentifier("screen.back")
-
-            Spacer(minLength: 0)
-
-            VStack(spacing: 2) {
-                HStack(spacing: 5) {
-                    Text(locationTitle)
-                    Image(systemName: "location.fill")
-                        .font(AppTextStyle.captionMedium.font)
-                        .accessibilityHidden(true)
-                }
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.ink)
-
-                Text(selectedDay.formatted(.dateTime.month(.wide).day().year()))
+                Text(forecastDay.formatted(.dateTime.month(.wide).day().year()))
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
             }
             .accessibilityElement(children: .combine)
-
-            Spacer(minLength: 0)
-
-            Button {
-                openURL(SunclubWebLinks.docs)
-            } label: {
-                Image(systemName: "info.circle")
-                    .font(AppTextStyle.sectionHeader.font)
-                    .foregroundStyle(AppPalette.ink)
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("UV index documentation")
-            .accessibilityIdentifier("uvForecast.docs")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .toolbar {
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    documentationButton
+                }
+            }
+        }
+    }
+
+    private var documentationButton: some View {
+        Button {
+            openURL(SunclubWebLinks.docs)
+        } label: {
+            SunIcon.book.image.resizable().scaledToFit()
+                .frame(width: 22, height: 22)
+                .foregroundStyle(AppPalette.ink)
+                .accessibilityHidden(true)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("UV index documentation")
+        .accessibilityIdentifier("uvForecast.docs")
+    }
+
+    private func refreshForecast() {
+        appState.refreshUVForecastIfNeeded()
     }
 
     private var currentUV: UVForecastPresentationReading? {
@@ -170,7 +137,7 @@ struct UVForecastDetailView: View {
         }
 
         if let reading = appState.uvReading,
-           Calendar.current.isDate(reading.timestamp, inSameDayAs: selectedDay) {
+           Calendar.current.isDate(reading.timestamp, inSameDayAs: forecastDay) {
             return UVForecastPresentationReading(
                 index: reading.index,
                 level: reading.level,
@@ -316,7 +283,7 @@ struct UVForecastDetailView: View {
 
     private var forecastHours: [SunclubUVHourForecast] {
         let calendar = Calendar.current
-        let day = calendar.startOfDay(for: selectedDay)
+        let day = forecastDay
         let liveHours = appState.uvForecast?.hours.filter {
             calendar.isDate($0.date, inSameDayAs: day)
         } ?? []

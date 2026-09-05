@@ -5,64 +5,32 @@ struct TodayQuietGlassLogPresentation {
     let title: String
     let detail: String
     let statusIdentifier: String
-    let lastLogDetail: String?
     let reminderText: String?
-    let reminderDetail: String?
-    let canLogReapply: Bool
 
     init(
         record: DailyRecord?,
-        category: TimelineDayLogSummary.Category,
         now: Date,
         remindersEnabled: Bool,
         reapplyPlan: ReapplyReminderPlan,
         calendar: Calendar = .current
     ) {
-        title = record != nil ? "Sunscreen logged" : (
-            category == .today ? "No sunscreen logged today" : "No sunscreen logged"
-        )
-        statusIdentifier = category == .today
-            ? (record == nil ? "timeline.todayStatus" : "home.todayStatus")
-            : "timeline.dayStatus"
-        canLogReapply = category == .today && record != nil && remindersEnabled
+        title = record.map { record in
+            let latest = max(record.verifiedAt, record.lastReappliedAt ?? record.verifiedAt)
+            return "Logged at \(latest.formatted(date: .omitted, time: .shortened))"
+        } ?? "Not logged"
+        statusIdentifier = record == nil ? "timeline.todayStatus" : "home.todayStatus"
 
         if let record {
-            let spf = record.spfLevel.map { "SPF \($0)" } ?? "SPF not set"
+            let spf = record.spfLevel.map { "SPF \($0)" }
             let savedAreas = SunManualLogInput.coveredAreas(in: record.notes)
             let areas = SunManualLogInput.coveredAreas.filter { savedAreas.contains($0) }
-            detail = "\(spf) · \(areas.isEmpty ? "Areas not set" : areas.joined(separator: " & "))"
-            if let reappliedAt = record.lastReappliedAt, reappliedAt > record.verifiedAt {
-                lastLogDetail = "Last reapplied at \(reappliedAt.formatted(date: .omitted, time: .shortened))"
-            } else {
-                lastLogDetail = "Last logged at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))"
-            }
+            detail = [spf, areas.isEmpty ? nil : areas.joined(separator: " & ")]
+                .compactMap { $0 }.joined(separator: " · ")
         } else {
-            detail = category == .today
-                ? "Log an application to keep track of your day."
-                : "Add a log if you wore sunscreen this day."
-            lastLogDetail = nil
+            detail = ""
         }
 
-        if category != .today {
-            reminderText = nil
-            reminderDetail = nil
-        } else if !remindersEnabled {
-            reminderText = "Reapply reminders are off"
-            reminderDetail = nil
-        } else {
-            let reminder = Self.reminder(record: record, now: now, plan: reapplyPlan, calendar: calendar)
-            reminderText = reminder.text
-            reminderDetail = reminder.detail
-        }
-    }
-
-    static func showsDailyPlan(_ action: HomeDailyPlanAction) -> Bool {
-        switch action {
-        case .backfillYesterday, .reviewRecovery, .repairReminders, .openSettings:
-            return true
-        case .logToday, .logReapply, .addDetails, .viewProgress:
-            return false
-        }
+        reminderText = remindersEnabled ? Self.reminder(record: record, now: now, plan: reapplyPlan, calendar: calendar) : nil
     }
 
     private static func reminder(
@@ -70,22 +38,22 @@ struct TodayQuietGlassLogPresentation {
         now: Date,
         plan: ReapplyReminderPlan,
         calendar: Calendar
-    ) -> (text: String, detail: String?) {
+    ) -> String? {
         guard let record else {
-            return ("Your reminder starts with a log", nil)
+            return nil
         }
         let base = max(record.lastReappliedAt ?? record.verifiedAt, record.verifiedAt)
         guard calendar.isDate(base, inSameDayAs: now) else {
-            return ("Log today to start a reminder", nil)
+            return nil
         }
         guard now < ReminderPlanner.estimatedSunset(for: now, calendar: calendar),
               let deadline = ReminderPlanner.reapplyFireDate(from: base, intervalMinutes: plan.intervalMinutes, calendar: calendar) else {
-            return ("Check your sunscreen", "Check your product label if you are still outdoors.")
+            return nil
         }
         let text = deadline <= now
-            ? "Time to check your sunscreen"
+            ? "Reapply reminder"
             : "Reapply around \(deadline.formatted(date: .omitted, time: .shortened))"
-        return (text, "Based on your last application")
+        return text
     }
 }
 

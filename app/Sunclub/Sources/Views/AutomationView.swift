@@ -2,7 +2,6 @@ import SwiftUI
 import UIKit
 
 struct AutomationView: View {
-    @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
 
@@ -18,27 +17,24 @@ struct AutomationView: View {
                     router.goBack()
                 })
 
-                AutomationReferenceSummaryCard(
-                    onLogSunscreen: openManualLog,
-                    onReapplyReminder: {
-                        router.push(.reapplyCheckIn)
-                    }
-                )
-
-                AutomationHeroCard()
-
                 Button {
                     openURL(SunclubWebLinks.automationDocs)
                 } label: {
-                    SunInfoRow(
-                        title: "Shortcuts Guide",
-                        detail: "Read setup examples, URL routes, and privacy controls.",
-                        systemImage: "sparkles.rectangle.stack.fill",
-                        tint: AppPalette.pool,
-                        showsChevron: true
-                    )
-                    .padding(18)
-                    .sunGlassCard(cornerRadius: AppRadius.card, interactive: true)
+                    HStack(spacing: AppSpacing.xs) {
+                        SunIcon.book.image.resizable().scaledToFit()
+                            .frame(width: 24, height: 24)
+                            .accessibilityHidden(true)
+                        AppText("Shortcuts Guide", style: .bodyMedium)
+                        Spacer(minLength: AppSpacing.xxs)
+                        SunIcon.chevronRight.image.resizable().scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .accessibilityHidden(true)
+                    }
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .padding(.vertical, AppSpacing.xs)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("automation.docs")
@@ -54,129 +50,6 @@ struct AutomationView: View {
         }
         .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
-    }
-
-    private func openManualLog() {
-        let now = appState.referenceDate
-        let dayPart = appState.dayPart(for: now)
-        appState.prepareManualLogRouteContext(
-            targetDate: now,
-            targetDayPart: dayPart,
-            source: .manualLog
-        )
-        router.push(.manualLog, targetDate: now, targetDayPart: dayPart)
-    }
-}
-
-private struct AutomationReferenceSummaryCard: View {
-    let onLogSunscreen: () -> Void
-    let onReapplyReminder: () -> Void
-
-    var body: some View {
-        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Shortcuts")
-                        .font(AppTextStyle.title.font)
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text("Automate logging, get reminders, and stay consistent.")
-                        .font(AppTextStyle.caption.font)
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                automationRow(
-                    title: "Log Sunscreen",
-                    detail: "Add a log quickly from Home Screen or Apple Watch.",
-                    symbolName: "wand.and.stars",
-                    tint: AppPalette.pool,
-                    action: onLogSunscreen,
-                    accessibilityIdentifier: "automation.reference.logSunscreen"
-                )
-
-                automationRow(
-                    title: "Reapply Reminder",
-                    detail: "Get reminders based on your exposure and schedule.",
-                    symbolName: "alarm.fill",
-                    tint: AppPalette.coral,
-                    action: onReapplyReminder,
-                    accessibilityIdentifier: "automation.reference.reapplyReminder"
-                )
-
-                HStack(alignment: .center, spacing: 12) {
-                    SunProductIcon(systemName: "hand.raised.fill", tint: AppPalette.sun, size: 36)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Ask Before Running")
-                            .font(AppTextStyle.bodyMedium.font)
-                            .foregroundStyle(AppPalette.ink)
-
-                        Text("Ask before saving logs or changing reminder settings.")
-                            .font(AppTextStyle.caption.font)
-                            .foregroundStyle(AppPalette.softInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(14)
-                .sunGlassCard(
-                    cornerRadius: AppRadius.medium,
-                    fillOpacity: 0.84,
-                    legacyStroke: AppPalette.hairlineStroke,
-                    legacyShadow: nil
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("automation.reference.askBeforeRunning")
-            }
-        }
-        .accessibilityIdentifier("automation.referenceSummary")
-    }
-
-    private func automationRow(
-        title: String,
-        detail: String,
-        symbolName: String,
-        tint: Color,
-        action: @escaping () -> Void,
-        accessibilityIdentifier: String
-    ) -> some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: 12) {
-                SunProductIcon(systemName: symbolName, tint: tint, size: 36)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(AppTextStyle.bodyMedium.font)
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text(detail)
-                        .font(AppTextStyle.caption.font)
-                        .foregroundStyle(AppPalette.softInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "plus")
-                    .font(AppFont.rounded(size: 17, weight: .bold))
-                    .foregroundStyle(AppPalette.pool)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(AppPalette.pool.opacity(0.12)))
-                    .accessibilityHidden(true)
-            }
-            .padding(14)
-            .sunGlassCard(
-                cornerRadius: AppRadius.medium,
-                fillOpacity: 0.84,
-                interactive: true,
-                legacyStroke: AppPalette.hairlineStroke,
-                legacyShadow: nil
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
 }
@@ -197,16 +70,31 @@ struct AutomationSettingsPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if style == .settings {
-                Text("Shortcuts")
-                    .font(AppFont.rounded(size: 14, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-            }
+                preferenceSection
+            } else {
+                shortcutSection
+                shortcutOnlySection
 
-            preferenceSection
-            shortcutSection
-            shortcutOnlySection
-            urlSection
-            callbackSection
+                DisclosureGroup("Advanced link examples") {
+                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                        urlSection
+                        callbackSection
+                    }
+                    .padding(.top, AppSpacing.sm)
+                }
+                .font(AppTextStyle.bodyMedium.font)
+                .accessibilityIdentifier("automation.advanced")
+
+                Button("Automation permissions") {
+                    if router.path.dropLast().last == .settingsShortcuts {
+                        router.goBack()
+                    } else {
+                        router.push(.settingsShortcuts)
+                    }
+                }
+                .sunGlassSecondaryButton()
+                .accessibilityIdentifier("automation.openPermissions")
+            }
 
             if !feedbackMessage.isEmpty {
                 Text(feedbackMessage)
@@ -218,7 +106,11 @@ struct AutomationSettingsPanel: View {
 
             if style == .settings {
                 Button("Open Shortcuts Catalog") {
-                    router.open(.automation)
+                    if router.path.dropLast().last == .automation {
+                        router.goBack()
+                    } else {
+                        router.push(.automation)
+                    }
                 }
                 .buttonStyle(SunSecondaryButtonStyle())
                 .accessibilityIdentifier("settings.automation.openCatalog")
@@ -423,23 +315,23 @@ struct AutomationSettingsPanel: View {
 
     private var shortcutRows: [AutomationActionRow.Model] {
         [
-            AutomationActionRow.Model(title: "Log Sunscreen", detail: "Save today's log with optional SPF and notes."),
-            AutomationActionRow.Model(title: "Reapply Reminder", detail: "Add a reapply check-in or review the next reminder."),
-            AutomationActionRow.Model(title: "Get Current UV Status", detail: "Check current UV index and severity."),
-            AutomationActionRow.Model(title: "Get Reapplication Status", detail: "Check the last log and next reapply time."),
-            AutomationActionRow.Model(title: "Review History Summary", detail: "Get recent logged-day counts and last log details."),
-            AutomationActionRow.Model(title: "Time Since Last Sunscreen", detail: "Check how long it has been since the last log or reapply."),
-            AutomationActionRow.Model(title: "Save Sunscreen Log", detail: "Backfill or update a chosen date and time."),
-            AutomationActionRow.Model(title: "Set Sunclub Reminder", detail: "Change weekday or weekend reminder time."),
-            AutomationActionRow.Model(title: "Set Sunclub Reapply Reminder", detail: "Turn reapply reminders on or change the interval."),
-            AutomationActionRow.Model(title: "Set Sunclub Toggle", detail: "Update travel, UV, iCloud, or alert preferences.")
+            AutomationActionRow.Model(title: String(localized: LogSunscreenIntent.title), detail: "Save today's log with optional SPF and notes."),
+            AutomationActionRow.Model(title: String(localized: LogReapplyIntent.title), detail: "Log a reapplication."),
+            AutomationActionRow.Model(title: String(localized: GetSunclubStatusIntent.title), detail: "Read log, UV, and reapplication status."),
+            AutomationActionRow.Model(title: String(localized: GetTimeSinceLastSunscreenIntent.title), detail: "Check time since the last log or reapplication."),
+            AutomationActionRow.Model(title: String(localized: SaveSunscreenLogIntent.title), detail: "Save a log for a chosen date and time."),
+            AutomationActionRow.Model(title: String(localized: OpenSunclubRouteIntent.title), detail: "Open a Sunclub screen."),
+            AutomationActionRow.Model(title: String(localized: SetSunclubReminderIntent.title), detail: "Change weekday or weekend reminder time."),
+            AutomationActionRow.Model(title: String(localized: SetSunclubReapplyIntent.title), detail: "Turn reapply reminders on or change the interval."),
+            AutomationActionRow.Model(title: String(localized: SetSunclubToggleIntent.title), detail: "Update travel, UV, iCloud, or alert preferences.")
         ]
     }
 
     private var shortcutOnlyRows: [AutomationActionRow.Model] {
         [
-            AutomationActionRow.Model(title: "Export Sunclub Backup", detail: "Create a JSON backup file.", symbolName: "externaldrive.fill"),
-            AutomationActionRow.Model(title: "Export Sunclub History", detail: "Create a factual PDF history export.", symbolName: "doc.richtext.fill")
+            AutomationActionRow.Model(title: String(localized: ExportSunclubBackupIntent.title), detail: "Create a JSON backup file.", icon: .cloud),
+            AutomationActionRow.Model(title: String(localized: CreateSkinHealthReportIntent.title), detail: "Create a PDF history export.", icon: .book),
+            AutomationActionRow.Model(title: String(localized: CreateStreakCardIntent.title), detail: "Create a shareable logged-days card.", icon: .calendar)
         ]
     }
 
@@ -543,66 +435,52 @@ struct AutomationSettingsPanel: View {
 
 }
 
-private struct AutomationHeroCard: View {
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            SunProductIcon(systemName: "square.stack.3d.up.fill", tint: AppPalette.pool, size: 44)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Shortcuts & Automation")
-                    .font(AppFont.rounded(size: 22, weight: .bold))
-                    .foregroundStyle(AppPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text("Set up one-tap logging, reminders, and status checks while sensitive writes stay optional.")
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(20)
-        .sunGlassCard(cornerRadius: AppRadius.card)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("automation.hero")
-    }
-}
-
 private struct AutomationActionRow: View {
     struct Model: Identifiable {
         let title: String
         let detail: String
-        let symbolName: String
+        let icon: SunIcon
 
         var id: String { title }
 
-        init(title: String, detail: String, symbolName: String = "checkmark.circle.fill") {
+        init(title: String, detail: String, icon: SunIcon = .sparkles) {
             self.title = title
             self.detail = detail
-            self.symbolName = symbolName
+            self.icon = icon
         }
     }
 
     let row: Model
 
     var body: some View {
-        SunInfoRow(
-            title: row.title,
-            detail: row.detail,
-            systemImage: row.symbolName,
-            tint: AppPalette.success
-        )
+        HStack(alignment: .top, spacing: AppSpacing.xs) {
+            row.icon.image.resizable().scaledToFit()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(AppColor.Text.secondary)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                AppText(row.title, style: .bodyMedium)
+                AppText(row.detail, style: .caption, color: AppColor.Text.secondary)
+            }
+        }
         .accessibilityElement(children: .combine)
     }
 }
 
-private struct AutomationExample: Identifiable {
+struct AutomationExample: Identifiable {
     let id: String
     let title: String
     let detail: String
     let urlString: String
     let canTest: Bool
+
+    var testURL: URL? {
+        guard canTest,
+              let url = URL(string: urlString),
+              case let .automation(request) = SunclubDeepLink(url: url),
+              !request.action.isWriteAction else { return nil }
+        return url
+    }
 
     init(
         id: String,
@@ -659,12 +537,8 @@ private struct AutomationExampleCard: View {
                 .accessibilityLabel("Copy \(example.title) URL")
                 .accessibilityIdentifier("automation.example.\(example.id).copy")
 
-                if example.canTest {
+                if let url = example.testURL {
                     Button("Test") {
-                        guard let url = URL(string: example.urlString) else {
-                            feedbackMessage = "That example URL is invalid."
-                            return
-                        }
                         feedbackMessage = "Opened \(example.title)."
                         openURL(url)
                     }
@@ -672,7 +546,7 @@ private struct AutomationExampleCard: View {
                     .accessibilityLabel("Test \(example.title) URL")
                     .accessibilityIdentifier("automation.example.\(example.id).test")
                 } else {
-                    Text("Paste your own value before testing.")
+                    Text("Copy this example into your own Shortcut to use it.")
                         .font(AppFont.rounded(size: 13, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
                         .fixedSize(horizontal: false, vertical: true)

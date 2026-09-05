@@ -14,7 +14,7 @@ struct ReapplyCheckInView: View {
             footerMaxWidth: SunLayout.ContentWidth.form
         ) {
             VStack(alignment: .leading, spacing: 26) {
-                SunLightHeader(title: "Reapply Check-In", showsBack: true, onBack: {
+                SunLightHeader(title: "Reapply", showsBack: true, onBack: {
                     router.goBack()
                 })
 
@@ -38,8 +38,8 @@ struct ReapplyCheckInView: View {
                     .accessibilityIdentifier("reapply.snoozeError")
                 }
 
-                if let presentation = appState.reapplyCheckInPresentation {
-                    reapplyContent(presentation: presentation)
+                if appState.reapplyCheckInPresentation != nil {
+                    reapplyContent
                 } else {
                     fallbackContent
                 }
@@ -54,32 +54,16 @@ struct ReapplyCheckInView: View {
         .sensoryFeedback(.success, trigger: successFeedbackTrigger)
     }
 
-    private func reapplyContent(presentation: ReapplyCheckInPresentation) -> some View {
+    private var reapplyContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            SunScreenTitleBlock(
-                eyebrow: "Reapply",
-                title: "Reapply sunscreen",
-                detail: reapplyDetail,
-                symbolName: "timer",
-                tint: AppPalette.sun
-            )
-
-            if appState.settings.reapplyReminderEnabled,
-               let record = appState.record(for: appState.referenceDate) {
-                ReapplyTimelineCard(
-                    record: record,
-                    plan: appState.reapplyReminderPlan
-                )
-            } else {
-                AppText("Reapply reminders are off", style: .caption, color: AppColor.Text.secondary)
-                    .accessibilityIdentifier("reapply.remindersOff")
-            }
+            AppText(reapplyDetail, style: .body, color: AppColor.Text.secondary)
 
             if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
                 HStack(spacing: 8) {
-                    Image(systemName: "drop.fill")
-                        .font(AppFont.rounded(size: 14, weight: .medium))
+                    SunIcon.check.image.resizable().scaledToFit()
+                        .frame(width: 20, height: 20)
                         .foregroundStyle(AppPalette.sun)
+                        .accessibilityHidden(true)
 
                     Text("\(record.reapplyCount) reapply \(record.reapplyCount == 1 ? "log" : "logs") today")
                         .font(AppFont.rounded(size: 14, weight: .medium))
@@ -96,26 +80,19 @@ struct ReapplyCheckInView: View {
     }
 
     private var fallbackContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SunScreenTitleBlock(
-                title: "No daily log yet",
-                detail: "Reapply works after you've logged sunscreen for today. Log today first, then come back if you reapply.",
-                symbolName: "sun.max.fill",
-                tint: AppPalette.sun
-            )
-        }
+        AppText("Not logged", style: .body, color: AppColor.Text.secondary)
     }
 
     @ViewBuilder
     private var footerAction: some View {
-        if let presentation = appState.reapplyCheckInPresentation {
+        if appState.reapplyCheckInPresentation != nil {
             ViewThatFits(in: .horizontal) {
                 VStack(spacing: 10) {
-                    reapplyButtons(presentation: presentation)
+                    reapplyButtons
                 }
             }
         } else {
-            Button("Log Today") {
+            Button("Log sunscreen") {
                 let now = appState.referenceDate
                 appState.prepareManualLogRouteContext(
                     targetDate: now,
@@ -134,7 +111,7 @@ struct ReapplyCheckInView: View {
     }
 
     @ViewBuilder
-    private func reapplyButtons(presentation: ReapplyCheckInPresentation) -> some View {
+    private var reapplyButtons: some View {
         Button("Log reapplication") {
             snoozeErrorMessage = nil
             let result = appState.recordReapplication()
@@ -183,125 +160,16 @@ struct ReapplyCheckInView: View {
 
     private var reapplyDetail: String {
         guard let record = appState.record(for: appState.referenceDate) else {
-            return "Log sunscreen first, then use reapply reminders when you add more."
+            return "Not logged"
         }
 
-        let time = record.verifiedAt.formatted(date: .omitted, time: .shortened)
+        let time = Self.lastLoggedAt(for: record).formatted(date: .omitted, time: .shortened)
         let spf = record.spfLevel.map { " · SPF \($0)" } ?? ""
         return "Last logged \(time)\(spf)."
     }
-}
 
-private struct ReapplyTimelineCard: View {
-    let record: DailyRecord
-    let plan: ReapplyReminderPlan
-
-    var body: some View {
-        SunclubCard(cornerRadius: 20, padding: 18) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Today's timeline")
-                    .font(AppFont.rounded(size: 17, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    ReapplyTimelineStep(
-                        title: "First log",
-                        detail: "Logged at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))",
-                        symbolName: "checkmark",
-                        tint: AppPalette.success
-                    )
-
-                    ReapplyTimelineConnector()
-
-                    ReapplyTimelineStep(
-                        title: "Reapply now",
-                        detail: "Log the reapplication after you put more sunscreen on.",
-                        symbolName: "timer",
-                        tint: AppPalette.sun,
-                        isCurrent: true
-                    )
-
-                    ReapplyTimelineConnector()
-
-                    ReapplyTimelineStep(
-                        title: nextStepTitle,
-                        detail: nextStepDetail,
-                        symbolName: plan.shouldScheduleNotification ? "bell.fill" : "moon.stars.fill",
-                        tint: plan.shouldScheduleNotification ? AppPalette.sun : AppPalette.softInk
-                    )
-                }
-
-                Text("Reapply check-ins update the same day instead of creating a second sunscreen log.")
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("reapply.timeline")
-    }
-
-    private var nextStepTitle: String {
-        plan.shouldScheduleNotification ? "Next reminder" : "After sunset"
-    }
-
-    private var nextStepDetail: String {
-        if let fireDate = plan.fireDate {
-            return "Sunclub can remind you again around \(fireDate.formatted(date: .omitted, time: .shortened))."
-        }
-
-        return "Sunclub will stay quiet for the rest of today."
-    }
-}
-
-private struct ReapplyTimelineStep: View {
-    let title: String
-    let detail: String
-    let symbolName: String
-    let tint: Color
-    var isCurrent = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(tint.opacity(isCurrent ? 0.18 : 0.12))
-                    .frame(width: 34, height: 34)
-
-                Circle()
-                    .stroke(tint.opacity(isCurrent ? 0.85 : 0.30), lineWidth: isCurrent ? 2 : 1)
-                    .frame(width: 34, height: 34)
-
-                Image(systemName: symbolName)
-                    .font(AppFont.rounded(size: 13, weight: .bold))
-                    .foregroundStyle(tint)
-                    .accessibilityHidden(true)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(AppFont.rounded(size: 15, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-
-                Text(detail)
-                    .font(AppFont.rounded(size: 13))
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.top, 1)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title). \(detail)")
-    }
-}
-
-private struct ReapplyTimelineConnector: View {
-    var body: some View {
-        Rectangle()
-            .fill(AppPalette.hairlineStroke)
-            .frame(width: 2, height: 22)
-            .padding(.leading, 16)
-            .accessibilityHidden(true)
+    static func lastLoggedAt(for record: DailyRecord) -> Date {
+        max(record.verifiedAt, record.lastReappliedAt ?? record.verifiedAt)
     }
 }
 

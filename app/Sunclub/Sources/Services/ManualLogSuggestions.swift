@@ -3,17 +3,23 @@ import Foundation
 struct ManualLogReuseSuggestion: Equatable {
     let spfLevel: Int?
     let note: String?
+    let coveredAreas: Set<String>
+
+    init(spfLevel: Int?, note: String?) {
+        self.spfLevel = spfLevel
+        let prose = SunManualLogInput.notesRemovingCoveredAreas(note)
+        self.note = prose.isEmpty ? nil : prose
+        coveredAreas = SunManualLogInput.coveredAreas(in: note)
+    }
+
+    func apply(toSPF spf: inout Int?, notes: inout String, areas: inout Set<String>) {
+        spf = spfLevel
+        notes = note ?? ""
+        areas = coveredAreas
+    }
 
     var chipTitle: String {
-        if spfLevel != nil, note != nil {
-            return "Same as last time"
-        }
-
-        if let spfLevel {
-            return "Reuse SPF \(spfLevel)"
-        }
-
-        return "Reuse last note"
+        "Reuse last log"
     }
 
     var detail: String {
@@ -31,7 +37,7 @@ struct ManualLogReuseSuggestion: Equatable {
     }
 
     var hasContent: Bool {
-        spfLevel != nil || note != nil
+        spfLevel != nil || note != nil || !coveredAreas.isEmpty
     }
 }
 
@@ -113,8 +119,8 @@ enum ManualLogSuggestionEngine {
         var seenNotes = Set<String>()
 
         for record in sortedRecords {
-            guard let note = record.trimmedNotes,
-                  let noteKey = SunManualLogInput.noteDedupeKey(note),
+            let note = SunManualLogInput.notesRemovingCoveredAreas(record.notes)
+            guard let noteKey = SunManualLogInput.noteDedupeKey(note),
                   !excludedNotes.contains(noteKey),
                   seenNotes.insert(noteKey).inserted else {
                 continue

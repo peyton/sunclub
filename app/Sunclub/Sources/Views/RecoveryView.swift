@@ -3,6 +3,9 @@ import SwiftUI
 struct RecoveryView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
+    @State private var actionError: String?
+    @State private var retryAction: RecoveryAction?
+    @State private var publishingSessionID: UUID?
 
     var body: some View {
         SunLightScreen {
@@ -34,6 +37,17 @@ struct RecoveryView: View {
         }
         .sunNavigationBarCompatibility()
         .interactivePopGestureEnabled()
+        .alert("Change not completed", isPresented: Binding(
+            get: { actionError != nil },
+            set: { if !$0 { actionError = nil } }
+        )) {
+            Button("Try Again") {
+                if let retryAction { perform(retryAction) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(actionError ?? "")
+        }
     }
 
     private var overviewSection: some View {
@@ -80,14 +94,19 @@ struct RecoveryView: View {
                     .accessibilityIdentifier("recovery.importDetail")
 
                 if session.publishedAt == nil {
-                    Button("Send to iCloud") {
-                        appState.publishImportedChanges(for: session.id)
+                    if publishingSessionID == session.id {
+                        ProgressView("Sending to iCloud")
+                            .accessibilityIdentifier("recovery.import.publishing")
+                    }
+
+                    Button(session.publishRequestedAt == nil ? "Send to iCloud" : "Retry Sending to iCloud") {
+                        perform(.publish(session.id))
                     }
                     .buttonStyle(SunPrimaryButtonStyle())
                     .accessibilityIdentifier("recovery.import.publish")
 
                     Button("Undo Import") {
-                        appState.restoreImportedChanges(for: session.id)
+                        perform(.restore(session.id))
                     }
                     .buttonStyle(SunSecondaryButtonStyle())
                     .accessibilityIdentifier("recovery.import.restore")
@@ -100,6 +119,7 @@ struct RecoveryView: View {
                 legacyStroke: AppPalette.hairlineStroke,
                 legacyShadow: nil
             )
+            .disabled(publishingSessionID != nil)
         }
     }
 
@@ -132,14 +152,13 @@ struct RecoveryView: View {
                         }
 
                         Button("Undo Auto-Merge") {
-                            appState.undoChange(conflict.mergedBatchID)
-                            appState.resolveConflict(conflict.id)
+                            perform(.undoConflict(conflict.id))
                         }
                         .buttonStyle(SunPrimaryButtonStyle())
                         .accessibilityIdentifier("recovery.conflict.undo")
 
                         Button("Mark Reviewed") {
-                            appState.resolveConflict(conflict.id)
+                            perform(.resolveConflict(conflict.id))
                         }
                         .buttonStyle(SunSecondaryButtonStyle())
                         .accessibilityIdentifier("recovery.conflict.resolve")
@@ -154,6 +173,7 @@ struct RecoveryView: View {
                     )
                 }
             }
+            .disabled(publishingSessionID != nil)
         }
     }
 
@@ -192,13 +212,13 @@ struct RecoveryView: View {
 
                         if batch.undoneByBatchID == nil, batch.kind.supportsUndo {
                             Button("Undo") {
-                                appState.undoChange(batch.id)
+                                perform(.undo(batch.id))
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
                             .accessibilityIdentifier("recovery.batch.\(index).undo")
                         } else if batch.undoneByBatchID != nil {
                             Button("Redo") {
-                                appState.redoChange(batch.id)
+                                perform(.redo(batch.id))
                             }
                             .buttonStyle(SunSecondaryButtonStyle())
                             .accessibilityIdentifier("recovery.batch.\(index).redo")
@@ -214,6 +234,7 @@ struct RecoveryView: View {
                     )
                 }
             }
+            .disabled(publishingSessionID != nil)
         }
     }
 
@@ -235,7 +256,7 @@ struct RecoveryView: View {
         var lines: [String] = [appState.cloudSyncStatusPresentation.detail]
 
         if appState.pendingImportedBatchCount > 0 {
-            lines.append(SunclubCopy.Sync.savedOnlyOnThisPhone(appState.pendingImportedBatchCount))
+            lines.append("Some imported changes are still waiting to sync.")
         }
 
         if !appState.conflicts.isEmpty {
@@ -270,8 +291,12 @@ struct RecoveryView: View {
             return "Published to iCloud on \(publishedAt.formatted(date: .abbreviated, time: .shortened))"
         }
 
+        if publishingSessionID == session.id {
+            return "Sending to iCloud"
+        }
+
         if session.publishRequestedAt != nil {
-            return "Publishing to iCloud"
+            return appState.syncPreference?.status == .error ? "Sending needs attention" : "Waiting for iCloud"
         }
 
         return "Saved on this phone"
@@ -282,7 +307,52 @@ struct RecoveryView: View {
             return "This backup is now part of your synced history and can still be reviewed here."
         }
 
-        return "This backup changed only this phone. iCloud stays unchanged until you send it."
+        if session.publishRequestedAt != nil || publishingSessionID == session.id {
+            return "This import is waiting for iCloud to confirm its changes. Some changes may already be synced."
+        }
+
+        return "This backup is saved on this phone. Sending adds its changes to your iCloud history."
+    }
+
+    private enum RecoveryAction {
+        case publish(UUID)
+        case restore(UUID)
+        case undo(UUID)
+        case redo(UUID)
+        case undoConflict(UUID)
+        case resolveConflict(UUID)
+    }
+
+    private func perform(_ action: RecoveryAction) {
+        guard publishingSessionID == nil else { return }
+        actionError = nil
+        switch action {
+        case let .publish(id):
+            publishingSessionID = id
+            Task {
+                let result = await appState.publishImportedChanges(for: id).value
+                publishingSessionID = nil
+                receive(result, retrying: action)
+            }
+        case let .restore(id): receive(appState.restoreImportedChanges(for: id), retrying: action)
+        case let .undo(id): receive(appState.undoChange(id), retrying: action)
+        case let .redo(id): receive(appState.redoChange(id), retrying: action)
+        case let .undoConflict(id): receive(appState.undoConflict(id), retrying: action)
+        case let .resolveConflict(id): receive(appState.resolveConflict(id), retrying: action)
+        }
+    }
+
+    private func receive<Value>(
+        _ result: Result<Value, SunclubHistoryMutationError>, retrying action: RecoveryAction
+    ) {
+        switch result {
+        case .success:
+            actionError = nil
+            retryAction = nil
+        case let .failure(error):
+            retryAction = action
+            actionError = error.localizedDescription
+        }
     }
 
     private func batchSymbol(for batch: SunclubChangeBatch) -> String {

@@ -1,14 +1,24 @@
 import SwiftUI
-import UIKit
 
 extension SettingsView {
     var settingsHome: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
             settingsHomeGroup(title: "Daily Use") {
                 settingsHomeRow(
-                    title: "Sunscreen & Reminders",
-                    detail: "Daily reminder times and sunscreen preferences.",
+                    title: "Sunscreen",
+                    detail: appState.settings.sunscreenProfile.map { "\($0.name) · SPF \($0.spf)" },
                     icon: .sun,
+                    accessibilityIdentifier: "settings.section.sunscreen"
+                ) {
+                    router.push(.settingsSunscreen)
+                }
+
+                settingsRowDivider
+
+                settingsHomeRow(
+                    title: "Reminders",
+                    detail: reminderHeadline,
+                    icon: .bell,
                     accessibilityIdentifier: "settings.section.reminders"
                 ) {
                     router.push(.settingsSunscreenReminders)
@@ -17,41 +27,29 @@ extension SettingsView {
                 settingsRowDivider
 
                 settingsHomeRow(
-                    title: "Reapply Reminder",
-                    detail: sectionDetail(for: .progress),
-                    icon: .clock,
-                    accessibilityIdentifier: "settings.section.progress"
-                ) {
-                    router.push(.settingsReapplyReminder)
-                }
-
-                settingsRowDivider
-
-                settingsHomeRow(
-                    title: "Notifications",
-                    detail: reminderHeadline,
-                    icon: .bell,
-                    accessibilityIdentifier: "settings.reference.notifications"
-                ) {
-                    router.push(.settingsNotifications)
-                }
-            }
-
-            settingsHomeGroup(title: "Data & Integrations") {
-                settingsHomeRow(
                     title: "UV & Weather",
-                    detail: sectionDetail(for: .advanced),
                     icon: .sun,
                     accessibilityIdentifier: "settings.section.advanced"
                 ) {
                     router.push(.settingsHealthWeather)
                 }
+            }
+
+            settingsHomeGroup(title: "Connections") {
+                settingsHomeRow(
+                    title: "Apple Health",
+                    detail: healthKitEnabled ? "Sync on" : "Sync off",
+                    icon: .shield,
+                    accessibilityIdentifier: "settings.section.health"
+                ) {
+                    router.push(.settingsHealth)
+                }
 
                 settingsRowDivider
 
                 settingsHomeRow(
-                    title: "iCloud & Data",
-                    detail: sectionDetail(for: .data),
+                    title: "iCloud & Backup",
+                    detail: appState.cloudSyncStatusPresentation.title,
                     icon: .cloud,
                     accessibilityIdentifier: "settings.section.data"
                 ) {
@@ -62,7 +60,6 @@ extension SettingsView {
 
                 settingsHomeRow(
                     title: "Shortcuts",
-                    detail: sectionDetail(for: .automation),
                     icon: .sparkles,
                     accessibilityIdentifier: "settings.section.automation"
                 ) {
@@ -73,7 +70,6 @@ extension SettingsView {
             settingsHomeGroup(title: "Privacy & Support") {
                 settingsHomeRow(
                     title: "Privacy",
-                    detail: "How your data is handled.",
                     icon: .shield,
                     accessibilityIdentifier: "settings.privacy.quick"
                 ) {
@@ -84,33 +80,10 @@ extension SettingsView {
 
                 settingsHomeRow(
                     title: "Support",
-                    detail: "Get help or send feedback.",
                     icon: .lifeBuoy,
                     accessibilityIdentifier: "settings.support.quick"
                 ) {
                     router.push(.support)
-                }
-
-                settingsRowDivider
-
-                settingsHomeRow(
-                    title: "Help & Legal",
-                    detail: "Support links and privacy policy.",
-                    icon: .circleHelp,
-                    accessibilityIdentifier: "settings.section.help"
-                ) {
-                    router.push(.settingsHelp)
-                }
-
-                settingsRowDivider
-
-                settingsHomeRow(
-                    title: "Documentation",
-                    detail: "Setup, widgets, and Shortcuts.",
-                    icon: .book,
-                    accessibilityIdentifier: "settings.docs.quick"
-                ) {
-                    openURL(SunclubWebLinks.docs)
                 }
             }
         }
@@ -141,17 +114,37 @@ extension SettingsView {
 
     func settingsHomeRow(
         title: String,
-        detail: String,
+        detail: String? = nil,
         icon: SunIcon,
         accessibilityIdentifier: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            settingsReferenceRowContent(
-                title: title,
-                detail: detail,
-                icon: icon
-            )
+            HStack(alignment: .center, spacing: AppSpacing.xs) {
+                icon.image.resizable().scaledToFit()
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                    AppText(title, style: .bodyMedium)
+                    if let detail, !detail.isEmpty {
+                        AppText(detail, style: .caption, color: AppColor.Text.secondary)
+                    }
+                }
+
+                Spacer(minLength: AppSpacing.xxs)
+
+                SunIcon.chevronRight.image
+                    .resizable().scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(AppSpacing.sm)
+            .frame(minHeight: 60)
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .combine)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -160,176 +153,45 @@ extension SettingsView {
     @ViewBuilder
     func settingsDetailContent(for detail: SettingsDetail) -> some View {
         switch detail {
-        case .sunscreenReminders:
-            VStack(alignment: .leading, spacing: 22) {
+        case .sunscreen:
+            SettingsSunscreenView()
+        case .sunscreenReminders, .reapplyReminder, .notifications:
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 smarterReminderSection
                 reapplySection
+                leaveHomeReminderSection
                 reminderCoachingSection
-            }
-        case .reapplyReminder:
-            reapplySection
-        case .notifications:
-            VStack(alignment: .leading, spacing: 22) {
-                notificationOverviewCard
-                notificationHealthSection
-                smarterReminderSection
+
+                DisclosureGroup {
+                    notificationHealthSection
+                        .padding(.top, AppSpacing.sm)
+                } label: {
+                    Text("Troubleshoot")
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("settings.reminders.troubleshoot")
+                }
+                .font(AppTextStyle.bodyMedium.font)
             }
         case .healthWeather:
-            VStack(alignment: .leading, spacing: 22) {
-                leaveHomeReminderSection
-                uvAndHealthSection
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                liveUVSection
+                uvBriefingSection
             }
+        case .health:
+            healthKitSection
         case .data:
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 iCloudSection
                 backupSection
             }
         case .shortcuts:
-            VStack(alignment: .leading, spacing: 22) {
-                AutomationSettingsPanel(
-                    style: .settings,
-                    feedbackMessage: $automationFeedback,
-                    openURL: openURL
-                )
-            }
-        case .help:
-            helpAndLegalSection
-        }
-    }
-
-    var helpAndLegalSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Support")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            VStack(alignment: .leading, spacing: 12) {
-                webLinkButton(
-                    title: "Documentation",
-                    detail: "Setup, shortcuts, widgets, and data notes.",
-                    icon: .book,
-                    url: SunclubWebLinks.docs,
-                    accessibilityIdentifier: "settings.docs"
-                )
-
-                webLinkButton(
-                    title: "Help Center",
-                    detail: "Open Sunclub support in your browser.",
-                    icon: .circleHelp,
-                    url: SunclubWebLinks.support,
-                    accessibilityIdentifier: "settings.support"
-                )
-
-                webLinkButton(
-                    title: "Privacy Policy",
-                    detail: "Read how Sunclub handles app data and optional Apple features.",
-                    icon: .shield,
-                    url: SunclubWebLinks.privacy,
-                    accessibilityIdentifier: "settings.privacyPolicy"
-                )
-
-                webLinkButton(
-                    title: "Email Support",
-                    detail: "Send an email to support@mail.sunclub.peyton.app.",
-                    icon: .mail,
-                    url: SunclubWebLinks.supportEmail,
-                    accessibilityIdentifier: "settings.emailSupport"
-                )
-            }
-
-            Text("Sunclub is a habit tracker, not medical advice.")
-                .font(AppFont.rounded(size: 13))
-                .foregroundStyle(AppPalette.softInk)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    func sectionDetail(for section: SettingsSection) -> String {
-        switch section {
-        case .reminders:
-            return reminderHeadline
-        case .progress:
-            return reapplyEnabled
-                ? "Reapply reminder every \(formattedAccessibleInterval(reapplyInterval))."
-                : "Reapply reminders are off."
-        case .data:
-            return appState.cloudSyncStatusPresentation.title
-        case .automation:
-            let writes = appState.automationPreferences.shortcutWritesEnabled ? "writes on" : "writes off"
-            let links = appState.automationPreferences.urlOpenActionsEnabled ? "links on" : "links off"
-            return "Shortcuts \(writes), URL \(links)."
-        case .advanced:
-            let liveUV = liveUVEnabled ? "Live UV on" : "Live UV off"
-            let health = healthKitEnabled ? "Health sync on" : "Health sync off"
-            return "\(liveUV). \(health)."
-        case .help:
-            return "Support, privacy, and contact links."
-        }
-    }
-
-    func webLinkButton(
-        title: String,
-        detail: String,
-        icon: SunIcon,
-        url: URL,
-        accessibilityIdentifier: String
-    ) -> some View {
-        Button {
-            openURL(url)
-        } label: {
-            settingsReferenceRowContent(
-                title: title,
-                detail: detail,
-                icon: icon
+            AutomationSettingsPanel(
+                style: .settings,
+                feedbackMessage: $automationFeedback,
+                openURL: openURL
             )
-            .sunGlassCard(
-                cornerRadius: AppRadius.card,
-                fillOpacity: 0.82,
-                interactive: true,
-                legacyStroke: AppPalette.hairlineStroke,
-                legacyShadow: nil
-            )
+        case .help:
+            SupportContent()
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityIdentifier)
-    }
-
-    private func settingsReferenceRowContent(
-        title: String,
-        detail: String,
-        icon: SunIcon
-    ) -> some View {
-        HStack(alignment: .center, spacing: AppSpacing.xs) {
-            icon.image.resizable().scaledToFit()
-                .foregroundStyle(AppColor.Text.secondary)
-                .frame(width: 24, height: 24)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                AppText(title, style: .bodyMedium)
-                AppText(detail, style: .caption, color: AppColor.Text.secondary)
-            }
-
-            Spacer(minLength: AppSpacing.xxs)
-
-            SunIcon.chevronRight.image
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-                .foregroundStyle(AppColor.Text.secondary)
-                .accessibilityHidden(true)
-        }
-        .padding(AppSpacing.sm)
-        .frame(minHeight: 60)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-
-    var profileDetail: String {
-        let name = appState.preferredDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if name.isEmpty {
-            return "Name, sharing identity, and friend nudges."
-        }
-        return "\(name), sharing identity, and friend nudges."
     }
 }

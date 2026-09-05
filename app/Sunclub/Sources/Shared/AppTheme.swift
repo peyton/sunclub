@@ -991,23 +991,16 @@ struct SunLightHeader: View {
 
     @available(iOS 26.0, *)
     private var nativeHeader: some View {
-        Color.clear
-            .frame(height: 0)
-            .accessibilityHidden(true)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(showsBack ? .inline : .large)
-            .navigationBarBackButtonHidden(showsBack)
+        Text(title)
+            .font(AppTypography.screenTitle)
+            .foregroundStyle(AppPalette.ink)
+            .accessibilityAddTraits(.isHeader)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(false)
             .toolbar {
-                if showsBack {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button(action: { onBack?() }) {
-                            Label("Back", systemImage: "chevron.left")
-                        }
-                        .accessibilityLabel("Back")
-                        .accessibilityIdentifier("screen.back")
-                    }
-                }
-
                 if let trailingSystemImage {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: { onTrailingTap?() }) {

@@ -3,7 +3,6 @@ import Foundation
 enum SunManualLogInput {
     static let noteCharacterLimit = 280
     static let coveredAreas = ["Face", "Neck", "Ears", "Body"]
-    static let defaultCoveredAreas: Set<String> = ["Face", "Neck"]
 
     private static let coveredAreasPrefix = "Areas:"
 
@@ -18,38 +17,25 @@ enum SunManualLogInput {
         return String(trimmed.prefix(noteCharacterLimit))
     }
 
-    static func clampedNotes(_ notes: String) -> String {
-        String(notes.prefix(noteCharacterLimit))
-    }
-
     static func notesWithCoveredAreas(_ notes: String, areas: Set<String>) -> String {
-        let cleanedNotes = notesRemovingCoveredAreas(notes)
+        // Editors pass prose separately from coverage. Never parse or truncate the draft again.
+        let cleanedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         let orderedAreas = coveredAreas.filter { areas.contains($0) }
         guard !orderedAreas.isEmpty else {
-            return clampedNotes(cleanedNotes)
+            return cleanedNotes
         }
 
         let areaLine = "\(coveredAreasPrefix) \(orderedAreas.joined(separator: ", "))"
-        let combined = cleanedNotes.isEmpty ? areaLine : "\(cleanedNotes)\n\(areaLine)"
-        return clampedNotes(combined)
+        return cleanedNotes.isEmpty ? areaLine : "\(cleanedNotes)\n\(areaLine)"
     }
 
     static func coveredAreas(in notes: String?) -> Set<String> {
-        guard let notes else {
-            return []
-        }
+        trailingMetadata(in: notes)?.areas ?? []
+    }
 
-        let lines = notes.components(separatedBy: .newlines)
-        guard let areaLine = lines.last(where: { $0.hasPrefix(coveredAreasPrefix) }) else {
-            return []
-        }
-
-        let rawAreas = areaLine
-            .dropFirst(coveredAreasPrefix.count)
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-        return Set(rawAreas.filter { coveredAreas.contains($0) })
+    static func validatedNotesWithCoveredAreas(_ notes: String, areas: Set<String>) -> String? {
+        let serialized = notesWithCoveredAreas(notes, areas: areas)
+        return serialized.count <= noteCharacterLimit ? serialized : nil
     }
 
     static func notesRemovingCoveredAreas(_ notes: String?) -> String {
@@ -57,14 +43,23 @@ enum SunManualLogInput {
             return ""
         }
 
-        let lines = notes
-            .components(separatedBy: .newlines)
-            .filter { !$0.hasPrefix(coveredAreasPrefix) }
-        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trailingMetadata(in: trimmed)?.prose ?? trimmed
     }
 
-    static func remainingNoteCharacters(for notes: String) -> Int {
-        max(0, noteCharacterLimit - notes.count)
+    private static func trailingMetadata(in notes: String?) -> (prose: String, areas: Set<String>)? {
+        guard let notes else { return nil }
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lineStart = trimmed.lastIndex(where: { $0.isNewline }).map { trimmed.index(after: $0) }
+            ?? trimmed.startIndex
+        let line = trimmed[lineStart...]
+        guard line.hasPrefix(coveredAreasPrefix) else { return nil }
+        let names = line.dropFirst(coveredAreasPrefix.count)
+            .split(separator: ",", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        guard !names.isEmpty, names.allSatisfy({ coveredAreas.contains($0) }) else { return nil }
+        let prose = String(trimmed[..<lineStart]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return (prose, Set(names))
     }
 
     static func noteDedupeKey(_ note: String?) -> String? {

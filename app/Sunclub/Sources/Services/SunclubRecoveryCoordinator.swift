@@ -39,10 +39,22 @@ final class SunclubRecoveryCoordinator {
         await start()
     }
 
-    func publishImport(_ id: UUID) async throws { _ = try await cloud.publishImportedSession(id) }
-    func restoreImport(_ id: UUID) throws -> SunclubChangeBatch? { try history.restoreImportSession(id) }
-    func undo(_ id: UUID) throws -> SunclubChangeBatch? { try history.undo(batchID: id) }
-    func redo(_ id: UUID) throws -> SunclubChangeBatch? { try history.redo(batchID: id) }
+    func publishImport(_ id: UUID) async throws -> CloudPublishResult {
+        let result = try await cloud.publishImportedSession(id)
+        let preference = try history.syncPreference()
+        if try history.importSession(id: id)?.publishedAt == nil, preference.status == .error {
+            throw SunclubHistoryMutationError.recoveryFailure(
+                preference.lastSyncErrorDescription ?? "iCloud couldn't finish sending these changes. Please try again."
+            )
+        }
+        return result
+    }
+    func restoreImport(_ id: UUID) throws -> SunclubChangeBatch { try history.restoreImportSession(id) }
+    func undo(_ id: UUID) throws -> SunclubChangeBatch { try history.undo(batchID: id) }
+    func redo(_ id: UUID) throws -> SunclubChangeBatch { try history.redo(batchID: id) }
+    func undoIfCurrent(_ id: UUID) throws -> SunclubChangeBatch { try history.undoChangeIfCurrent(batchID: id) }
+    func canUndoIfCurrent(_ id: UUID) throws -> Bool { try history.canUndoChangeIfCurrent(batchID: id) }
+    func undoConflict(_ id: UUID) throws -> SunclubChangeBatch { try history.undoConflict(id) }
     func resolveConflict(_ id: UUID) throws { try history.resolveConflict(id) }
 
     func exportDocument(preferences: SunclubRestorablePreferences) throws -> SunclubBackupDocument {

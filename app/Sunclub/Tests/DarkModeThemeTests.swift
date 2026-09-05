@@ -4,6 +4,18 @@ import XCTest
 @testable import Sunclub
 
 final class DarkModeThemeTests: XCTestCase {
+    @MainActor
+    func testTodayErrorTextMeetsNormalTextContrastInEveryAppearance() {
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            for contrast in [UIAccessibilityContrast.normal, .high] {
+                assertContrast(
+                    TimelineHomeView.errorTextColor, against: AppColor.background,
+                    style: style, accessibilityContrast: contrast, minimum: 4.5
+                )
+            }
+        }
+    }
+
     func testCorePaletteHasAccessibleDarkModeContrast() {
         assertContrast(AppPalette.ink, against: AppPalette.cardFill, style: .dark, minimum: 4.5)
         assertContrast(AppPalette.softInk, against: AppPalette.cardFill, style: .dark, minimum: 3.0)

@@ -9,37 +9,33 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let record = makeRecord(at: now, spf: 50, notes: "Areas: Neck, Face")
         let presentation = logPresentation(record: record, now: now)
 
-        XCTAssertEqual(presentation.title, "Sunscreen logged")
+        XCTAssertEqual(presentation.title, "Logged at \(now.formatted(date: .omitted, time: .shortened))")
         XCTAssertEqual(presentation.detail, "SPF 50 · Face & Neck")
         XCTAssertEqual(presentation.statusIdentifier, "home.todayStatus")
-        XCTAssertEqual(presentation.lastLogDetail, "Last logged at \(now.formatted(date: .omitted, time: .shortened))")
         XCTAssertFalse(presentation.title.lowercased().contains("protected"))
     }
 
     func testUnloggedStateDoesNotInventDefaultsOrReminderDeadline() throws {
         let presentation = logPresentation(record: nil, now: try date(hour: 10))
 
-        XCTAssertEqual(presentation.title, "No sunscreen logged today")
+        XCTAssertEqual(presentation.title, "Not logged")
         XCTAssertEqual(presentation.statusIdentifier, "timeline.todayStatus")
-        XCTAssertEqual(presentation.reminderText, "Your reminder starts with a log")
+        XCTAssertNil(presentation.reminderText)
         XCTAssertFalse(presentation.detail.contains("SPF 50"))
-        XCTAssertFalse(presentation.canLogReapply)
-        XCTAssertNil(presentation.lastLogDetail)
     }
 
     func testMissingDetailsAreNotFilledFromDefaults() throws {
         let now = try date(hour: 10)
         let presentation = logPresentation(record: makeRecord(at: now), now: now)
 
-        XCTAssertEqual(presentation.detail, "SPF not set · Areas not set")
+        XCTAssertTrue(presentation.detail.isEmpty, "Missing optional metadata should not fill Today with placeholders.")
     }
 
     func testDisabledRemindersDoNotClaimNoReapplyIsNeeded() throws {
         let now = try date(hour: 10)
         let presentation = logPresentation(record: makeRecord(at: now), now: now, enabled: false)
 
-        XCTAssertEqual(presentation.reminderText, "Reapply reminders are off")
-        XCTAssertFalse(presentation.canLogReapply)
+        XCTAssertNil(presentation.reminderText, "An inactive preference is not an action needed on Today.")
     }
 
     func testReminderStartsFromLatestReapplyAndUsesConfiguredInterval() throws {
@@ -54,31 +50,25 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let deadline = try date(hour: 12, minute: 30)
 
         XCTAssertEqual(presentation.reminderText, "Reapply around \(deadline.formatted(date: .omitted, time: .shortened))")
-        XCTAssertEqual(presentation.reminderDetail, "Based on your last application")
-        XCTAssertEqual(presentation.lastLogDetail, "Last reapplied at \(reappliedAt.formatted(date: .omitted, time: .shortened))")
-        XCTAssertTrue(presentation.canLogReapply)
     }
 
     func testReminderBecomesDueWithoutChangingLoggedStatus() throws {
         let presentation = logPresentation(record: makeRecord(at: try date(hour: 9)), now: try date(hour: 12))
 
-        XCTAssertEqual(presentation.title, "Sunscreen logged")
-        XCTAssertEqual(presentation.reminderText, "Time to check your sunscreen")
-        XCTAssertTrue(presentation.canLogReapply)
+        XCTAssertTrue(presentation.title.hasPrefix("Logged at "))
+        XCTAssertEqual(presentation.reminderText, "Reapply reminder")
     }
 
     func testAfterEstimatedCutoffCopyDoesNotClaimSunsetOrDenyPendingSnooze() throws {
         let now = try date(hour: 23)
         let snoozedPlan = ReapplyReminderPlan(snoozeMinutes: 15, now: now)
         let presentation = TodayQuietGlassLogPresentation(
-            record: makeRecord(at: now), category: .today, now: now,
+            record: makeRecord(at: now), now: now,
             remindersEnabled: true, reapplyPlan: snoozedPlan
         )
 
         XCTAssertTrue(snoozedPlan.shouldScheduleNotification)
-        XCTAssertEqual(presentation.reminderText, "Check your sunscreen")
-        XCTAssertEqual(presentation.reminderDetail, "Check your product label if you are still outdoors.")
-        XCTAssertTrue(presentation.canLogReapply)
+        XCTAssertNil(presentation.reminderText)
     }
 
     func testIntervalCrossingSunsetDoesNotClaimSunsetHasAlreadyPassed() throws {
@@ -86,35 +76,10 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let now = sunset.addingTimeInterval(-30 * 60)
         let presentation = logPresentation(record: makeRecord(at: now), now: now, interval: 120)
 
-        XCTAssertEqual(presentation.reminderText, "Check your sunscreen")
-        XCTAssertEqual(presentation.reminderDetail, "Check your product label if you are still outdoors.")
-        XCTAssertTrue(presentation.canLogReapply)
-    }
-
-    func testPastDayRetainsMetadataWithoutTodaysReminder() throws {
-        let yesterday = try date(hour: 10, day: 3)
-        let presentation = TodayQuietGlassLogPresentation(
-            record: makeRecord(at: yesterday, spf: 30),
-            category: .past,
-            now: try date(hour: 10),
-            remindersEnabled: true,
-            reapplyPlan: ReapplyReminderPlan(baseIntervalMinutes: 120, uvReading: nil, now: try date(hour: 10))
-        )
-
-        XCTAssertEqual(presentation.statusIdentifier, "timeline.dayStatus")
-        XCTAssertTrue(presentation.detail.contains("SPF 30"))
         XCTAssertNil(presentation.reminderText)
-        XCTAssertFalse(presentation.canLogReapply)
     }
 
-    func testRoutinePlansAreQuietButRepairAndRecoveryRemainActionable() {
-        for action: HomeDailyPlanAction in [.logToday, .logReapply, .addDetails, .viewProgress] {
-            XCTAssertFalse(TodayQuietGlassLogPresentation.showsDailyPlan(action), action.rawValue)
-        }
-        for action: HomeDailyPlanAction in [.backfillYesterday, .reviewRecovery, .repairReminders, .openSettings] {
-            XCTAssertTrue(TodayQuietGlassLogPresentation.showsDailyPlan(action), action.rawValue)
-        }
-    }
+
 
     func testCurrentUVTakesPriorityOverForecastPeakAndKeepsSource() throws {
         let now = try date(hour: 10)
@@ -219,7 +184,7 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
 
     private func logPresentation(record: DailyRecord?, now: Date, enabled: Bool = true, interval: Int = 120) -> TodayQuietGlassLogPresentation {
         TodayQuietGlassLogPresentation(
-            record: record, category: .today, now: now, remindersEnabled: enabled,
+            record: record, now: now, remindersEnabled: enabled,
             reapplyPlan: ReapplyReminderPlan(baseIntervalMinutes: interval, uvReading: UVReading(index: 7, timestamp: now), now: now)
         )
     }

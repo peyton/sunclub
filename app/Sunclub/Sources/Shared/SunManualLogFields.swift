@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SunManualLogFields: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @Binding var selectedSPF: Int?
     @Binding var notes: String
@@ -18,7 +19,7 @@ struct SunManualLogFields: View {
     init(
         selectedSPF: Binding<Int?>,
         notes: Binding<String>,
-        selectedAreas: Binding<Set<String>> = Binding<Set<String>>.constant([]),
+        selectedAreas: Binding<Set<String>> = .constant([]),
         accessibilityPrefix: String,
         suggestions: ManualLogSuggestionState = .empty,
         showsOptionalDisclosure: Bool = true,
@@ -37,56 +38,30 @@ struct SunManualLogFields: View {
 
     var body: some View {
         if showsOptionalDisclosure {
-            optionalDetailsDisclosure
+            DisclosureGroup("Details", isExpanded: $isShowingDetails) {
+                detailsFields.padding(.top, AppSpacing.xs)
+            }
+            .font(AppTextStyle.bodyMedium.font)
+            .tint(AppColor.accent)
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
         } else {
             detailsFields
         }
     }
 
-    private var optionalDetailsDisclosure: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Button {
-                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
-                    isShowingDetails.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Add details")
-                            .font(AppFont.rounded(size: 17, weight: .semibold))
-                            .foregroundStyle(AppPalette.ink)
-
-                        Text(detailsSummary)
-                            .font(AppFont.rounded(size: 14))
-                            .foregroundStyle(AppPalette.softInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Image(systemName: isShowingDetails ? "chevron.up" : "chevron.down")
-                        .font(AppFont.rounded(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.softInk)
-                }
-                .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous)
-                        .fill(AppPalette.cardFill.opacity(0.72))
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(isShowingDetails ? "Expanded" : "Collapsed")
-            .accessibilityHint(isShowingDetails ? "Hides optional SPF and note fields." : "Shows optional SPF and note fields.")
-            .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
-
-            if isShowingDetails {
-                detailsFields
-            }
-        }
-    }
-
     private var detailsFields: some View {
-        VStack(alignment: .leading, spacing: 26) {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+            if let suggestion = suggestions.sameAsLastTime {
+                Button {
+                    suggestion.apply(toSPF: &selectedSPF, notes: &notes, areas: &selectedAreas)
+                } label: {
+                    AppText(suggestion.chipTitle, style: .captionMedium, color: AppColor.accent)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("\(accessibilityPrefix).sameAsLastTime")
+            }
             if showsSPFSelector {
                 spfSelector
             }
@@ -95,224 +70,101 @@ struct SunManualLogFields: View {
         }
     }
 
-    private var detailsSummary: String {
-        var parts: [String] = []
-
-        if let selectedSPF {
-            parts.append("SPF \(selectedSPF)")
-        } else {
-            parts.append("No SPF selected")
-        }
-
-        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedNotes.isEmpty {
-            parts.append("Note added")
-        }
-
-        return "\(parts.joined(separator: " · ")). Optional."
-    }
-
     private var spfSelector: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("SPF (optional)")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            HStack(spacing: 10) {
-                Text(selectedSPF.map { "SPF \($0) selected" } ?? "No SPF selected")
-                    .font(AppFont.rounded(size: 13, weight: .medium))
-                    .foregroundStyle(AppPalette.softInk)
-                    .accessibilityIdentifier("\(accessibilityPrefix).spfState")
-
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(spacing: AppSpacing.xs) {
+                AppText("SPF (optional)", style: .bodyMedium)
+                Spacer(minLength: 0)
                 if selectedSPF != nil {
-                    Button("Clear SPF") {
-                        selectedSPF = nil
-                    }
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("\(accessibilityPrefix).clearSPF")
+                    Button("Clear SPF") { selectedSPF = nil }
+                        .font(AppTextStyle.captionMedium.font)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("\(accessibilityPrefix).clearSPF")
                 }
             }
 
-            if let sameAsLastTime = suggestions.sameAsLastTime {
-                Button {
-                    if let spfLevel = sameAsLastTime.spfLevel {
-                        selectedSPF = spfLevel
-                    }
-                    if let note = sameAsLastTime.note {
-                        notes = SunManualLogInput.clampedNotes(note)
-                    }
-                } label: {
-                    Text(sameAsLastTime.chipTitle)
-                        .font(AppFont.rounded(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(AppPalette.warmGlow.opacity(0.5))
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("\(accessibilityPrefix).sameAsLastTime")
-            }
+            AppText(
+                selectedSPF.map { "SPF \($0) selected" } ?? "No SPF selected",
+                style: .caption,
+                color: AppColor.Text.secondary
+            )
+            .accessibilityIdentifier("\(accessibilityPrefix).spfState")
+
+            spfOptions(commonSPFLevels, name: "spf")
 
             if let defaultSPF = suggestions.defaultSPF,
-               shouldShowDefaultSPF(defaultSPF) {
-                Button {
-                    withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
-                        selectedSPF = defaultSPF
-                    }
-                } label: {
-                    Label("Usual SPF \(defaultSPF)", systemImage: "clock.arrow.circlepath")
-                        .font(AppFont.rounded(size: 13, weight: .semibold))
-                        .foregroundStyle(AppPalette.ink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(AppPalette.cardFill.opacity(0.72))
-                        )
-                        .overlay {
-                            Capsule()
-                                .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Use usual SPF \(defaultSPF)")
-                .accessibilityIdentifier("\(accessibilityPrefix).defaultSPF")
+               selectedSPF != defaultSPF,
+               !commonSPFLevels.contains(defaultSPF) {
+                Button("Usual SPF \(defaultSPF)") { selectedSPF = defaultSPF }
+                    .font(AppTextStyle.captionMedium.font)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("\(accessibilityPrefix).defaultSPF")
             }
-
-            spfOptionSection(
-                title: "Presets",
-                levels: commonSPFLevels,
-                accessibilityName: "spf",
-                showsSPFPrefix: false
-            )
 
             if !suggestions.scannedSPFLevels.isEmpty {
-                spfOptionSection(
-                    title: "From scans",
-                    levels: suggestions.scannedSPFLevels,
-                    accessibilityName: "scannedSPF",
-                    showsSPFPrefix: true
-                )
+                AppText("From scans", style: .caption, color: AppColor.Text.secondary)
+                spfOptions(suggestions.scannedSPFLevels, name: "scannedSPF")
             }
         }
+        .tint(AppColor.accent)
     }
 
-    private func shouldShowDefaultSPF(_ level: Int) -> Bool {
-        selectedSPF != level && suggestions.sameAsLastTime?.spfLevel != level
-    }
-
-    private func spfOptionSection(
-        title: String,
-        levels: [Int],
-        accessibilityName: String,
-        showsSPFPrefix: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(AppFont.rounded(size: 12, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk.opacity(0.85))
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(levels, id: \.self) { level in
-                        spfButton(
-                            level: level,
-                            title: showsSPFPrefix ? "SPF \(level)" : "\(level)",
-                            accessibilityIdentifier: "\(accessibilityPrefix).\(accessibilityName).\(level)"
-                        )
+    private func spfOptions(_ levels: [Int], name: String) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppSpacing.xxs) {
+                ForEach(levels, id: \.self) { level in
+                    let isSelected = selectedSPF == level
+                    Button {
+                        withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
+                            selectedSPF = isSelected ? nil : level
+                        }
+                    } label: {
+                        HStack(spacing: AppSpacing.xxs) {
+                            if isSelected {
+                                selectionCheck
+                            }
+                            AppText("\(level)", style: .bodyMedium)
+                        }
+                        .padding(.horizontal, AppSpacing.xs)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .background(isSelected ? AppColor.control : AppColor.surface, in: RoundedRectangle(cornerRadius: AppRadius.control))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppRadius.control)
+                                .stroke(isSelected ? AppColor.accent : AppColor.stroke, lineWidth: 1)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("SPF \(level)")
+                    .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .accessibilityIdentifier("\(accessibilityPrefix).\(name).\(level)")
                 }
             }
-            .accessibilityIdentifier("\(accessibilityPrefix).\(accessibilityName)Selector")
         }
-    }
-
-    private func spfButton(level: Int, title: String, accessibilityIdentifier: String) -> some View {
-        let isSelected = selectedSPF == level
-
-        return Button {
-            withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
-                selectedSPF = isSelected ? nil : level
-            }
-        } label: {
-            HStack(spacing: 5) {
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(AppFont.rounded(size: 10, weight: .bold))
-                }
-
-                Text(title)
-                    .font(AppFont.rounded(size: 15, weight: .medium))
-            }
-            .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
-            .frame(minWidth: 48, minHeight: 40)
-            .padding(.horizontal, title.count > 3 || isSelected ? 12 : 0)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .fill(isSelected ? AppPalette.sun : AppPalette.cardFill.opacity(0.72))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .stroke(isSelected ? Color.clear : AppPalette.hairlineStroke, lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("SPF \(level)")
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier(accessibilityIdentifier)
+        .accessibilityIdentifier("\(accessibilityPrefix).\(name)Selector")
     }
 
     private var coveredAreasSelector: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Areas Covered")
-                .font(AppFont.rounded(size: 14, weight: .semibold))
-                .foregroundStyle(AppPalette.softInk)
-
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 14) {
-                    SunCoveredAreaIllustration()
-                        .frame(width: 148, height: 190)
-                        .accessibilityHidden(true)
-
-                    VStack(spacing: 8) {
-                        ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
-                            areaButton(area)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("\(accessibilityPrefix).areas")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    SunCoveredAreaIllustration()
-                        .frame(maxWidth: .infinity)
-                        .accessibilityHidden(true)
-
-                    LazyVGrid(columns: areaColumns, spacing: 8) {
-                        ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
-                            areaButton(area)
-                        }
-                    }
-                    .accessibilityIdentifier("\(accessibilityPrefix).areas")
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            AppText("Coverage (optional)", style: .bodyMedium)
+                .accessibilityAddTraits(.isHeader)
+            LazyVGrid(
+                columns: Array(
+                    repeating: GridItem(.flexible(), spacing: AppSpacing.xxs),
+                    count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+                ),
+                spacing: AppSpacing.xxs
+            ) {
+                ForEach(SunManualLogInput.coveredAreas, id: \.self) { area in
+                    areaButton(area)
                 }
             }
+            .accessibilityIdentifier("\(accessibilityPrefix).areas")
         }
-    }
-
-    private var areaColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: 104), spacing: 8)]
     }
 
     private func areaButton(_ area: String) -> some View {
         let isSelected = selectedAreas.contains(area)
-
         return Button {
             withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
                 if isSelected {
@@ -322,39 +174,18 @@ struct SunManualLogFields: View {
                 }
             }
         } label: {
-            HStack(spacing: 8) {
-                Text(area)
-                    .font(AppFont.rounded(size: 14, weight: isSelected ? .bold : .semibold))
-
+            HStack(spacing: AppSpacing.xxs) {
+                AppText(area, style: .body)
                 Spacer(minLength: 0)
-
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? AppPalette.sun : Color.clear)
-                        .overlay {
-                            Circle()
-                                .stroke(isSelected ? AppPalette.sun : AppPalette.hairlineStroke, lineWidth: 1.4)
-                        }
-
-                    if isSelected {
-                        Image(systemName: "checkmark")
-                            .font(AppFont.rounded(size: 10, weight: .bold))
-                            .foregroundStyle(AppPalette.onAccent)
-                    }
-                }
-                .frame(width: 22, height: 22)
-                .accessibilityHidden(true)
+                selectionCheck.opacity(isSelected ? 1 : 0)
             }
-            .foregroundStyle(AppPalette.ink)
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .fill(AppPalette.cardFill.opacity(isSelected ? 0.92 : 0.72))
-            )
+            .padding(.horizontal, AppSpacing.xs)
+            .padding(.vertical, AppSpacing.xs)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(isSelected ? AppColor.control : AppColor.surface, in: RoundedRectangle(cornerRadius: AppRadius.control))
             .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                    .stroke(isSelected ? AppPalette.sun.opacity(0.75) : AppPalette.hairlineStroke, lineWidth: 1)
+                RoundedRectangle(cornerRadius: AppRadius.control)
+                    .stroke(isSelected ? AppColor.accent : AppColor.stroke, lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
@@ -364,47 +195,35 @@ struct SunManualLogFields: View {
         .accessibilityIdentifier("\(accessibilityPrefix).area.\(area)")
     }
 
+    private var selectionCheck: some View {
+        SunIcon.check.image.resizable().scaledToFit()
+            .frame(width: 18, height: 18)
+            .foregroundStyle(AppColor.accent)
+            .accessibilityHidden(true)
+    }
+
     private var notesField: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("Notes (optional)")
-                    .font(AppFont.rounded(size: 14, weight: .semibold))
-                    .foregroundStyle(AppPalette.softInk)
-
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(spacing: AppSpacing.xs) {
+                AppText("Notes (optional)", style: .bodyMedium)
                 Spacer(minLength: 0)
-
-                if hasNotes {
-                    Button("Clear Note") {
-                        notes = ""
-                    }
-                    .font(AppFont.rounded(size: 13, weight: .semibold))
-                    .foregroundStyle(AppPalette.ink)
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("\(accessibilityPrefix).clearNote")
+                if !notes.isEmpty {
+                    Button("Clear note") { notes = "" }
+                        .font(AppTextStyle.captionMedium.font)
+                        .tint(AppColor.accent)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("\(accessibilityPrefix).clearNote")
                 }
             }
 
             if !suggestions.noteSnippets.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(suggestions.noteSnippets.enumerated()), id: \.offset) { index, noteSnippet in
-                            Button {
-                                notes = SunManualLogInput.clampedNotes(noteSnippet)
-                            } label: {
-                                Text(noteSnippet)
-                                    .font(AppFont.rounded(size: 13, weight: .medium))
-                                    .foregroundStyle(AppPalette.ink)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        Capsule()
-                                            .fill(AppPalette.cardFill.opacity(0.72))
-                                    )
-                                    .overlay {
-                                        Capsule()
-                                            .stroke(AppPalette.hairlineStroke, lineWidth: 1)
-                                    }
+                    HStack(spacing: AppSpacing.xxs) {
+                        ForEach(Array(suggestions.noteSnippets.enumerated()), id: \.offset) { index, snippet in
+                            Button { notes = snippet } label: {
+                                AppText(snippet, style: .caption, color: AppColor.accent)
+                                    .padding(.horizontal, AppSpacing.xs)
+                                    .frame(minHeight: 44)
                             }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("\(accessibilityPrefix).noteSnippet.\(index)")
@@ -414,54 +233,28 @@ struct SunManualLogFields: View {
                 .accessibilityIdentifier("\(accessibilityPrefix).noteSnippets")
             }
 
-            TextField("Add notes about your sunscreen", text: $notes, axis: .vertical)
-                .font(AppFont.rounded(size: 15))
+            TextField("Notes", text: $notes, axis: .vertical)
+                .font(AppTextStyle.body.font)
+                .foregroundStyle(AppColor.Text.primary)
                 .textInputAutocapitalization(.sentences)
                 .submitLabel(.done)
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .fill(AppPalette.cardFill.opacity(0.72))
-                )
+                .padding(AppSpacing.sm)
+                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: AppRadius.control))
                 .overlay {
-                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
-                        .stroke(AppPalette.hairlineStroke, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: AppRadius.control)
+                        .stroke(AppColor.stroke, lineWidth: 1)
                 }
                 .accessibilityLabel("Notes")
                 .accessibilityIdentifier("\(accessibilityPrefix).notesField")
-                .onChange(of: notes) { _, newValue in
-                    let clampedNotes = SunManualLogInput.clampedNotes(newValue)
-                    if clampedNotes != newValue {
-                        notes = clampedNotes
-                    }
-                }
 
-            Text(noteCountText)
-                .font(AppFont.rounded(size: 12, weight: .medium))
-                .foregroundStyle(AppPalette.softInk.opacity(0.86))
-                .accessibilityIdentifier("\(accessibilityPrefix).noteCount")
+            let remaining = SunManualLogInput.noteCharacterLimit
+                - SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas).count
+            AppText(
+                remaining >= 0 ? "\(remaining) characters left" : "\(-remaining) characters over the limit",
+                style: .caption,
+                color: remaining >= 0 ? AppColor.Text.secondary : AppPalette.warning
+            )
+            .accessibilityIdentifier("\(accessibilityPrefix).noteCount")
         }
-    }
-
-    private var hasNotes: Bool {
-        !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var noteCountText: String {
-        let remaining = SunManualLogInput.remainingNoteCharacters(for: notes)
-        if remaining == 1 {
-            return "1 character left"
-        }
-
-        return "\(remaining) characters left"
-    }
-}
-
-private struct SunCoveredAreaIllustration: View {
-    var body: some View {
-        SunclubVisualAsset.coverageFaceDiagram.image
-            .resizable()
-            .scaledToFit()
-            .frame(maxWidth: 148, maxHeight: 190)
     }
 }

@@ -9,20 +9,12 @@ struct RootView: View {
         Group {
             if appState.shouldShowInitialICloudRestoreGate {
                 InitialICloudRestoreView()
-            } else if appState.settings.hasCompletedOnboarding {
+            } else if appState.settings.hasCompletedOnboarding && !router.retainsOnboarding {
                 tabbedRoot
             } else {
                 onboardingRoot
             }
         }
-        .overlay(alignment: .leading) {
-            if RuntimeEnvironment.isUITesting {
-                EdgeBackSwipeOverlay(canGoBack: router.canGoBack) {
-                    router.goBack()
-                }
-            }
-        }
-        .interactivePopGestureEnabled()
         .tint(AppPalette.nativeChromeTint)
     }
 
@@ -30,9 +22,10 @@ struct RootView: View {
         NavigationStack(path: pathBinding(for: .today)) {
             WelcomeView()
                 .navigationDestination(for: AppRoute.self) { route in
-                    destination(for: route)
+                    destination(for: route, in: .today)
                 }
         }
+        .overlay(alignment: .leading) { legacyBackGesture(for: .today) }
     }
 
     private var tabbedRoot: some View {
@@ -60,10 +53,11 @@ struct RootView: View {
                     .navigationTitle(tab.title)
                     .navigationBarTitleDisplayMode(.large)
                     .navigationDestination(for: AppRoute.self) { route in
-                        destination(for: route)
+                        destination(for: route, in: tab)
                             .navigationBarTitleDisplayMode(.inline)
                     }
             }
+            .overlay(alignment: .leading) { legacyBackGesture(for: tab) }
             .toolbar(router.path(for: tab).isEmpty ? .visible : .hidden, for: .tabBar)
         } label: {
             Label {
@@ -87,6 +81,20 @@ struct RootView: View {
     }
 
     @ViewBuilder
+    private func legacyBackGesture(for tab: AppTab) -> some View {
+        if #available(iOS 26.0, *) {
+            EmptyView()
+        } else {
+            EdgeBackSwipeOverlay(canGoBack: !router.path(for: tab).isEmpty) {
+                var path = router.path(for: tab)
+                guard !path.isEmpty else { return }
+                path.removeLast()
+                router.setPath(path, for: tab)
+            }
+        }
+    }
+
+    @ViewBuilder
     private func tabRoot(for tab: AppTab) -> some View {
         switch tab {
         case .today:
@@ -100,7 +108,7 @@ struct RootView: View {
 
     @ViewBuilder
     // swiftlint:disable:next cyclomatic_complexity
-    private func destination(for route: AppRoute) -> some View {
+    private func destination(for route: AppRoute, in tab: AppTab) -> some View {
         switch route {
         case .welcome:
             WelcomeView()
@@ -118,6 +126,10 @@ struct RootView: View {
             WeeklyReportView()
         case .settings:
             SettingsView()
+        case .settingsSunscreen:
+            SettingsView(detail: .sunscreen)
+        case .settingsHealth:
+            SettingsView(detail: .health)
         case .settingsSunscreenReminders:
             SettingsView(detail: .sunscreenReminders)
         case .settingsReapplyReminder:
@@ -146,10 +158,8 @@ struct RootView: View {
             HistoryView()
         case .backfillYesterday:
             let calendar = Calendar.current
-            let selectedDay = appState.startOfLocalDay(appState.selectedDay)
             let today = appState.startOfLocalDay(appState.referenceDate)
-            let anchorDay = min(selectedDay, today)
-            let yesterday = calendar.date(byAdding: .day, value: -1, to: anchorDay) ?? anchorDay
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
             HistoryRecordEditorView(
                 day: yesterday,
                 existingRecord: appState.record(for: yesterday),
@@ -168,7 +178,8 @@ struct RootView: View {
             let missedDay = calendar.date(byAdding: .day, value: -2, to: today) ?? today
             HistoryEditorTestHarnessView(day: missedDay)
         case .manualLog:
-            ManualLogView(context: consumeManualLogContext())
+            ManualLogRouteView(payload: router.payload(for: tab))
+                .id(router.payload(for: tab))
         case .achievements:
             WeeklyReportView()
         case .friends:
@@ -178,7 +189,8 @@ struct RootView: View {
         case .skinHealthReport:
             HistoryView()
         case .productScanner:
-            ManualLogView(context: consumeManualLogContext())
+            ManualLogRouteView(payload: router.payload(for: tab))
+                .id(router.payload(for: tab))
         case .yearInReview:
             HistoryView()
         case .valueProps:
@@ -186,20 +198,33 @@ struct RootView: View {
         }
     }
 
-    private func consumeManualLogContext() -> AppLogContext {
-        let payload = router.payload
-        router.payload = .empty
-        let baseContext = appState.consumeManualLogRouteContext()
-        guard payload.targetDate != nil || payload.targetDayPart != nil else {
-            return baseContext
-        }
-        return AppLogContext(
-            date: payload.targetDate.map(appState.startOfLocalDay) ?? baseContext.date,
-            dayPart: payload.targetDayPart ?? baseContext.dayPart,
-            source: baseContext.source
-        )
-    }
+}
 
+/// Resolve external context once, before displaying the fixed-date editor.
+private struct ManualLogRouteView: View {
+    @Environment(AppState.self) private var appState
+    let payload: AppRoutePayload
+    @State private var context: AppLogContext?
+
+    var body: some View {
+        Group {
+            if let context {
+                ManualLogView(context: context)
+            } else {
+                ProgressView()
+                    .task {
+                        let pending = appState.pendingManualLogContext
+                        _ = appState.consumeManualLogRouteContext()
+                        let date = payload.targetDate ?? pending?.date ?? appState.referenceDate
+                        context = appState.currentLogContext(
+                            for: date,
+                            source: pending?.source ?? .manualLog,
+                            dayPart: payload.targetDayPart ?? pending?.dayPart
+                        )
+                    }
+            }
+        }
+    }
 }
 
 // Native tab item IDs are installed by title because UIKit owns the accessible tab controls.
