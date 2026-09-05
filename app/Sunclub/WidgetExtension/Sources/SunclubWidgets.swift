@@ -335,7 +335,6 @@ private struct SunclubRecordedDays: View {
                         }
                     }
                 }
-                .opacity(day > now ? 0.5 : 1)
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(day.formatted(date: .abbreviated, time: .omitted)), \(applied ? "logged" : (calendar.startOfDay(for: day) > calendar.startOfDay(for: now) ? "upcoming" : "not logged"))")

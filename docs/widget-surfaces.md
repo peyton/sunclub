@@ -21,11 +21,16 @@ app's snapshot; signed-build interaction checks use the shared app group.
 ![Before: widget gallery](images/widget-surfaces/before.png)
 ![After: reapplication logged in place](images/widget-surfaces/after.png)
 
+![Widget and Live Activity after an in-place reapplication](images/widget-surfaces/timers.png)
+
 Automated coverage checks current-day state, early reapplication, reminders off,
 rapid taps, failed persistence, superseded reminder work, midnight, sunset and
 all shipped widget families. Live Activity timers no longer depend on high UV.
 
-The visual checks above cover the installed small widget and its Today route.
+The visual checks cover the installed small widget, its Today route, synchronized
+widget/Live Activity timer updates, and selected gallery previews: small/medium/large Sunscreen, small Logged Days,
+medium Stats and medium History. App-owned logging intents execute
+in the app process so ActivityKit can update existing activities.
 Physical Watch/offline delivery, OS refresh latency, and every widget family at
 all accessibility sizes still require device acceptance testing. A simulator
 screenshot does not establish full accessibility compliance.

@@ -1154,3 +1154,14 @@ def test_info_plist_has_no_empty_string_values() -> None:
     assert empty_keys == [], (
         f"Info.plist has empty string values for keys: {empty_keys}"
     )
+
+
+def test_app_owned_logging_intents_run_in_app_process_without_opening_app():
+    source = (
+        REPO_ROOT / "app/Sunclub/Sources/Intents/LogSunscreenIntent.swift"
+    ).read_text()
+    for intent in ("LogSunscreenWidgetIntent", "LogReapplicationLiveActivityIntent"):
+        declaration = f"struct {intent}: LiveActivityIntent {{"
+        assert declaration in source
+        body = source.split(declaration, 1)[1].split("\nstruct ", 1)[0]
+        assert "static let openAppWhenRun = false" in body

@@ -337,7 +337,8 @@ struct LogSunscreenIntent: AppIntent {
 }
 
 /// App-owned widget/control action. Public Shortcut intents retain their fixed meaning.
-struct LogSunscreenWidgetIntent: AppIntent {
+/// LiveActivityIntent runs in the app process so a widget tap can update its active timer.
+struct LogSunscreenWidgetIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Log sunscreen"
     static let description = IntentDescription("Logs sunscreen or a reapplication using today's current history.")
     static let openAppWhenRun = false
