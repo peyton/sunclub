@@ -19,6 +19,8 @@ def tooling(tmp_path):
     (repo / "app").mkdir()
     binary = tmp_path / "bin"
     binary.mkdir()
+    # Match macOS hosted runners, including nested `exec bash` entrypoints.
+    (binary / "bash").symlink_to("/bin/bash")
     log = tmp_path / "commands"
     mise = binary / "mise"
     mise.write_text("""#!/usr/bin/env bash
@@ -61,7 +63,7 @@ esac
 
     def run(script, *args, **env):
         return subprocess.run(
-            ["bash", str(repo / "scripts/tooling" / script), *args],
+            ["/bin/bash", str(repo / "scripts/tooling" / script), *args],
             cwd=repo,
             env={**environment, **env},
             capture_output=True,

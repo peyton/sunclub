@@ -49,6 +49,7 @@ def archive(tmp_path):
     binary = tmp_path / "bin"
     binary.mkdir()
     log = tmp_path / "commands"
+    log.touch()
     commands = {
         "mise": """case "$*" in
   'exec -- uv run python -m scripts.appstore.validate_metadata'*) exit 0 ;;
@@ -91,7 +92,7 @@ fi
     def run(*args, **env):
         result = subprocess.run(
             [
-                "bash",
+                "/bin/bash",
                 str(repo / "scripts/appstore/archive-and-upload.sh"),
                 "--skip-generate",
                 *args,

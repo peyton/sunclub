@@ -52,11 +52,12 @@ resolve_version_metadata() {
   fi
 
   local exports
-  local version_args=()
-  if [ "${1:-development}" != "release" ]; then
-    version_args+=(--development)
+  if [ "${1:-development}" = "release" ]; then
+    set --
+  else
+    set -- --development
   fi
-  if ! exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell "${version_args[@]}")"; then
+  if ! exports="$(run_repo_python_module scripts.tooling.resolve_versions --format shell "$@")"; then
     printf 'Error: version resolution failed\n' >&2
     return 1
   fi
@@ -92,20 +93,19 @@ prepare_xcode_env() {
 
 run_tuist_xcodebuild() {
   local log_file exit_code
-  local cache_args=()
   # GitHub setup starts the cache service. Local commands must work without it.
   local default_cache_disabled=1
   if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     default_cache_disabled=0
   fi
   if [ "${SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE:-$default_cache_disabled}" = "1" ]; then
-    cache_args+=(COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO)
+    set -- COMPILATION_CACHE_ENABLE_CACHING=NO COMPILATION_CACHE_ENABLE_PLUGIN=NO COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=NO "$@"
   fi
 
   log_file="$(mktemp "${TMPDIR:-/tmp}/sunclub-tuist-xcodebuild.XXXXXX")"
 
   set +e
-  run_in_app run_mise_exec tuist xcodebuild "${cache_args[@]}" "$@" 2>&1 | tee "$log_file"
+  run_in_app run_mise_exec tuist xcodebuild "$@" 2>&1 | tee "$log_file"
   exit_code="${PIPESTATUS[0]}"
   set -e
 

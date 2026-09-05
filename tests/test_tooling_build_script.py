@@ -77,7 +77,7 @@ printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
             "--derived-data-path",
@@ -143,7 +143,7 @@ printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
         ],
@@ -197,7 +197,7 @@ exit 0
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
         ],
@@ -255,7 +255,7 @@ exit 0
 
     result = subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
         ],
@@ -306,7 +306,7 @@ exit 0
 
     result = subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
         ],
@@ -332,7 +332,7 @@ def test_prepare_xcode_env_exports_tuist_manifest_variables(
 
     result = subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             "-lc",
             """
 source scripts/tooling/common.sh
@@ -398,7 +398,7 @@ printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             "-c",
             """
 source scripts/tooling/common.sh
@@ -444,7 +444,7 @@ exit 64
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             "-c",
             """
 source scripts/tooling/common.sh
@@ -508,7 +508,7 @@ printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             "-c",
             """
 source scripts/tooling/common.sh
@@ -585,7 +585,7 @@ printf '%s\\n' "$@" >> {shlex.quote(str(mise_log))}
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             "-c",
             """
 source scripts/tooling/common.sh
@@ -669,7 +669,7 @@ exit 0
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "test_ios.sh"),
             "--suite",
             "unit",
@@ -752,7 +752,7 @@ exit 0
 
     result = subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "test_ios.sh"),
             "--suite",
             "ui",
@@ -837,7 +837,7 @@ exit 0
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "test_ios.sh"),
             "--suite",
             "unit",
@@ -888,7 +888,7 @@ exit 0
 
     subprocess.run(
         [
-            "bash",
+            "/bin/bash",
             str(repo_root / "scripts" / "tooling" / "build.sh"),
             "--skip-generate",
         ],
