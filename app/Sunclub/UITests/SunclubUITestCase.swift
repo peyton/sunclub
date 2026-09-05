@@ -185,9 +185,9 @@ class SunclubUITestCase: XCTestCase {
     @MainActor
     func performBackSwipe(in app: XCUIApplication) {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
-        // A deliberate drag avoids XCTest's abrupt default-speed deceleration being
-        // interpreted by native navigation as a request to cancel the transition.
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5))
+        // Use the full available travel: native prediction can cancel shorter drags.
+        // Keep cancellation coverage separate from this completed-swipe action.
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
     }
 
