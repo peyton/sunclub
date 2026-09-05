@@ -203,26 +203,6 @@ final class SunclubHomePresentationTests: SunclubTestCase {
     }
 
     @MainActor
-    func testContextualTabActionUsesDailyPlanCompactAndExpandedCopy() {
-        let presentation = HomeDailyPlanPresentation(
-            title: "Plan the next reapply",
-            detail: "Reapply around 2:30 PM when you are outdoors.",
-            actionTitle: "Log Reapply",
-            action: .logReapply,
-            symbolName: "clock.arrow.circlepath",
-            tone: .action,
-            facts: []
-        )
-
-        let action = SunAppTabBarAction(presentation: presentation)
-
-        XCTAssertEqual(action.shortTitle, "Reapply")
-        XCTAssertEqual(action.title, "Log Reapply")
-        XCTAssertEqual(action.systemImage, "clock.arrow.circlepath")
-        XCTAssertEqual(action.accessibilityHint, "Reapply around 2:30 PM when you are outdoors.")
-    }
-
-    @MainActor
     func testHomeRecoveryActionsStayQuietForNewUsers() throws {
         let state = try makeAppState()
 

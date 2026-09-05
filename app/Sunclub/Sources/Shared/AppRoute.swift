@@ -58,8 +58,6 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
             return .today
         case .history:
             return .history
-        case .weeklySummary:
-            return .insights
         case .settings:
             return .settings
         default:
@@ -72,7 +70,7 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
         case .history, .backfillYesterday, .historyEditToday, .historyBackfillTwoDaysAgo:
             return .history
         case .weeklySummary, .achievements, .skinHealthReport, .yearInReview:
-            return .insights
+            return .history
         case .settings,
              .settingsSunscreenReminders,
              .settingsReapplyReminder,
@@ -97,7 +95,6 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
 enum AppTab: String, CaseIterable, Hashable, Identifiable {
     case today
     case history
-    case insights
     case settings
 
     var id: String { rawValue }
@@ -105,26 +102,11 @@ enum AppTab: String, CaseIterable, Hashable, Identifiable {
     var title: String {
         switch self {
         case .today:
-            return "Timeline"
+            return "Today"
         case .history:
             return "History"
-        case .insights:
-            return "Insights"
         case .settings:
             return "Settings"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .today:
-            return "sun.max.fill"
-        case .history:
-            return "calendar"
-        case .insights:
-            return "chart.bar.fill"
-        case .settings:
-            return "gearshape.fill"
         }
     }
 
@@ -134,8 +116,6 @@ enum AppTab: String, CaseIterable, Hashable, Identifiable {
             return .home
         case .history:
             return .history
-        case .insights:
-            return .weeklySummary
         case .settings:
             return .settings
         }
@@ -147,8 +127,6 @@ enum AppTab: String, CaseIterable, Hashable, Identifiable {
             return "timeline.footer.today"
         case .history:
             return "home.historyCard"
-        case .insights:
-            return "home.streakCard"
         case .settings:
             return "timeline.footer.settings"
         }
@@ -167,7 +145,6 @@ final class AppRouter {
     var selectedTab: AppTab = .today
     var todayPath: [AppRoute] = []
     var historyPath: [AppRoute] = []
-    var insightsPath: [AppRoute] = []
     var settingsPath: [AppRoute] = []
     var payload: AppRoutePayload = .empty
 
@@ -194,8 +171,6 @@ final class AppRouter {
             return todayPath
         case .history:
             return historyPath
-        case .insights:
-            return insightsPath
         case .settings:
             return settingsPath
         }
@@ -207,8 +182,6 @@ final class AppRouter {
             todayPath = path
         case .history:
             historyPath = path
-        case .insights:
-            insightsPath = path
         case .settings:
             settingsPath = path
         }
@@ -301,7 +274,6 @@ final class AppRouter {
     private func clearAllPaths() {
         todayPath = []
         historyPath = []
-        insightsPath = []
         settingsPath = []
     }
 }

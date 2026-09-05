@@ -51,7 +51,10 @@ final class SunclubNavigationTests: SunclubTestCase {
         XCTAssertFalse(router.canGoBack)
 
         router.open(.weeklySummary)
-        XCTAssertEqual(router.selectedTab, .insights)
+        XCTAssertEqual(router.selectedTab, .history)
+        XCTAssertEqual(router.path, [.weeklySummary])
+        router.goBack()
+        XCTAssertEqual(router.selectedTab, .history)
         XCTAssertTrue(router.path.isEmpty)
 
         router.open(.settings)
@@ -101,12 +104,11 @@ final class SunclubNavigationTests: SunclubTestCase {
     }
 
     @MainActor
-    func testAppRouterPreservesFourIndependentTabStacks() {
+    func testAppRouterPreservesThreeIndependentTabStacks() {
         let router = AppRouter()
         let expectedPaths: [AppTab: [AppRoute]] = [
             .today: [.manualLog],
-            .history: [.backfillYesterday],
-            .insights: [.yearInReview],
+            .history: [.weeklySummary, .backfillYesterday],
             .settings: [.privacy]
         ]
 

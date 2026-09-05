@@ -20,11 +20,11 @@ enum AppColor {
     enum Text {
         static let primary = AppColor.adaptive(
             light: Color(red: 0.025, green: 0.108, blue: 0.205),
-            dark: Color(red: 0.964, green: 0.925, blue: 0.855)
+            dark: Color(red: 0.945, green: 0.957, blue: 0.976)
         )
         static let secondary = AppColor.adaptive(
             light: Color(red: 0.310, green: 0.360, blue: 0.440),
-            dark: Color(red: 0.745, green: 0.690, blue: 0.620)
+            dark: Color(red: 0.690, green: 0.737, blue: 0.800)
         )
     }
 
@@ -37,8 +37,8 @@ enum AppColor {
     }
 
     static let background = adaptive(
-        light: Color(red: 0.988, green: 0.965, blue: 0.925),
-        dark: Color(red: 0.114, green: 0.098, blue: 0.086)
+        light: Color(red: 0.980, green: 0.976, blue: 0.965),
+        dark: Color(red: 0.055, green: 0.075, blue: 0.106)
     )
     static let backgroundWarm = adaptive(
         light: Color(red: 1.000, green: 0.933, blue: 0.720),
@@ -46,15 +46,15 @@ enum AppColor {
     )
     static let surface = adaptive(
         light: Color(red: 1.000, green: 0.995, blue: 0.982),
-        dark: Color(red: 0.171, green: 0.150, blue: 0.129)
+        dark: Color(red: 0.090, green: 0.114, blue: 0.153)
     )
     static let surfaceElevated = adaptive(
         light: Color(red: 1.000, green: 1.000, blue: 1.000),
-        dark: Color(red: 0.252, green: 0.220, blue: 0.184)
+        dark: Color(red: 0.118, green: 0.145, blue: 0.188)
     )
     static let control = adaptive(
         light: Color(red: 0.965, green: 0.976, blue: 1.000),
-        dark: Color(red: 0.294, green: 0.252, blue: 0.207)
+        dark: Color(red: 0.157, green: 0.188, blue: 0.235)
     )
     static let accent = adaptive(
         light: Color(red: 0.080, green: 0.455, blue: 0.980),
@@ -82,20 +82,15 @@ enum AppColor {
     )
     static let muted = adaptive(
         light: Color(red: 0.825, green: 0.850, blue: 0.875),
-        dark: Color(red: 0.430, green: 0.395, blue: 0.360)
+        dark: Color(red: 0.420, green: 0.467, blue: 0.529)
     )
     static let stroke = adaptive(
         light: Color(red: 0.025, green: 0.108, blue: 0.205).opacity(0.095),
-        dark: Color(red: 1.000, green: 0.900, blue: 0.760).opacity(0.160)
+        dark: Color(red: 0.800, green: 0.855, blue: 0.940).opacity(0.160)
     )
-    static let primaryAction = adaptive(
-        light: Color(red: 0.025, green: 0.108, blue: 0.205),
-        dark: Color(red: 1.000, green: 0.705, blue: 0.145)
-    )
-    static let primaryActionForeground = adaptive(
-        light: .white,
-        dark: Color(red: 0.012, green: 0.036, blue: 0.075)
-    )
+    // Native prominent glass uses white labels; keep its tint readable in both appearances.
+    static let primaryAction = Color(red: 0.055, green: 0.365, blue: 0.780)
+    static let primaryActionForeground = Color.white
     static let onAccent = Color(red: 0.012, green: 0.036, blue: 0.075)
     static let onColor = Color.white
 }
@@ -238,6 +233,7 @@ private struct SunGlassButtonStyleModifier<LegacyStyle: ButtonStyle>: ViewModifi
             switch role {
             case .primary:
                 content.buttonStyle(.glassProminent)
+                    .tint(AppColor.primaryAction)
             case .secondary, .icon:
                 content.buttonStyle(.glass)
             }
@@ -292,6 +288,11 @@ extension View {
 }
 
 enum AppFont {
+    /// Supply a @ScaledMetric value to honor the view's Dynamic Type environment.
+    static func heroMetric(size: CGFloat = 72) -> Font {
+        .system(size: size, weight: .medium, design: .rounded)
+    }
+
     static func rounded(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(textStyle(for: size), design: .rounded, weight: weight)
     }

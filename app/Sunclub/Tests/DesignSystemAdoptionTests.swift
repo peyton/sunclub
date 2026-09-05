@@ -127,19 +127,6 @@ final class DesignSystemAdoptionTests: XCTestCase {
     }
 
     func testKnownGlassGroupsKeepSingleMaterialBoundary() throws {
-        let history = try source("app/Sunclub/Sources/Views/HistoryView.swift")
-        for marker in [
-            "tint: label.contains(\"open\") ? AppPalette.sun : AppPalette.success,\n            usesGlass: false",
-            "accessibilityIdentifier: \"history.month.applied\",\n            usesGlass: false",
-            "accessibilityIdentifier: \"history.month.active\",\n            usesGlass: false",
-            "accessibilityIdentifier: \"history.month.rate\",\n            usesGlass: false"
-        ] {
-            XCTAssertTrue(
-                history.contains(marker),
-                "History must flatten known metric components inside its glass parent."
-            )
-        }
-
         let timeline = try source("app/Sunclub/Sources/Views/TimelineHomeView.swift")
         for marker in [
             "tint: AppPalette.streakAccent,\n            usesGlass: false",
@@ -215,7 +202,10 @@ final class DesignSystemAdoptionTests: XCTestCase {
                     "\(path) must replace \(legacyCall) with the availability-aware glass card helper."
                 )
             }
-            XCTAssertTrue(content.contains(".sunGlassCard("), "\(path) must adopt sunGlassCard.")
+            XCTAssertTrue(
+                content.contains(".sunGlassCard(") || content.contains("AppCard("),
+                "\(path) must use a shared availability-aware card."
+            )
         }
 
         let interactiveCardPaths = [
@@ -306,26 +296,6 @@ final class DesignSystemAdoptionTests: XCTestCase {
             content.components(separatedBy: ".onScrollGeometryChange(").count - 1,
             2,
             "SunLightScreen and SunDarkScreen should both drive the fade from scroll geometry."
-        )
-    }
-
-    func testTabBarBottomScrimSpansTheScreen() throws {
-        let content = try source("app/Sunclub/Sources/Shared/AppTheme.swift")
-        guard let start = content.range(of: "struct SunAppTabBar: View {"),
-              let end = content.range(of: "    private func tabButton", range: start.upperBound..<content.endIndex) else {
-            return XCTFail("AppTheme.swift should keep SunAppTabBar as a distinct view.")
-        }
-
-        let tabBar = content[start.lowerBound..<end.lowerBound]
-        XCTAssertTrue(
-            tabBar.contains(
-                """
-                        .padding(.bottom, 12)
-                        .frame(maxWidth: .infinity)
-                        .background {
-                """
-            ),
-            "The tab bar bottom scrim must expand before its background so page backdrops do not bleed at the screen edges."
         )
     }
 

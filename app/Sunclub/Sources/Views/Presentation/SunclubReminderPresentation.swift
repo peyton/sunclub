@@ -77,9 +77,16 @@ struct SunclubReminderPresentation {
     }
 
     var reapplyCheckInPresentation: ReapplyCheckInPresentation? {
-        guard reapplyReminderEnabled,
-              let todayRecord else {
+        guard let todayRecord else {
             return nil
+        }
+
+        if !reapplyReminderEnabled {
+            return ReapplyCheckInPresentation(
+                title: "Reapply",
+                detail: "Record another application. Reapply reminders are off.",
+                actionTitle: todayRecord.reapplyCount > 0 ? "Log Another Reapply" : "Log Reapply"
+            )
         }
 
         if todayRecord.reapplyCount > 0 {

@@ -12,13 +12,20 @@ struct HistoryView: View {
     @State private var lastDeletedBatchID: UUID?
     @State private var lastDeletedDay: Date?
     @State private var failedDeletionDay: Date?
-    @State private var isShowingMonthlyInsights = true
+    @State private var didFailUndo = false
+    @State private var isShowingMonthlyInsights = false
+    @State private var isCalendarExpanded = false
+    @State private var hasInitializedSelection = false
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 24
+    @ScaledMetric(relativeTo: .caption) private var smallIconSize: CGFloat = 16
 
+    let preselectedDay: Date?
     let showsBackButton: Bool
 
     private let calendar = Calendar.current
 
     init(preselectedDay: Date? = nil, showsBackButton: Bool = true) {
+        self.preselectedDay = preselectedDay
         self.showsBackButton = showsBackButton
         let initialMonth = preselectedDay ?? Date()
         _displayedMonth = State(initialValue: initialMonth)
@@ -28,39 +35,53 @@ struct HistoryView: View {
     var body: some View {
         let presentation = historyPresentation
 
-        SunLightScreen {
-            VStack(alignment: .leading, spacing: 22) {
-                SunLightHeader(title: "History", showsBack: showsBackButton, onBack: {
-                    router.goBack()
-                })
+        SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.readable,
+            contentFrameAlignment: .center,
+            scrollAccessibilityIdentifier: "history.scroll"
+        ) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                historyHeader
 
-                monthNavigator
-
-                calendarMonthCard(presentation: presentation)
-
-                statsSection(stats: presentation.monthStats)
+                if isCalendarExpanded {
+                    VStack(spacing: AppSpacing.sm) {
+                        monthNavigator
+                        calendarMonthCard(presentation: presentation)
+                        historyLegend(presentation: presentation)
+                        historyEmptyHint(presentation: presentation)
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("history.calendarExpansion")
+                } else {
+                    weekStrip(presentation: presentation)
+                }
 
                 deleteUndoBanner
 
                 deletionErrorBanner
 
-                if let selectedDay = selectedDay {
-                    dayDetailCard(for: selectedDay, presentation: presentation)
-                }
+                dayDetailCard(for: selectedDay ?? presentation.today, presentation: presentation)
 
-                historyOverviewCard(presentation: presentation)
+                weeklySummary(presentation: presentation)
 
-                historyLegend(presentation: presentation)
-
-                if selectedDay == nil {
-                    historyEmptyHint(presentation: presentation)
+                if isCalendarExpanded {
+                    statsSection(stats: presentation.monthStats)
                 }
 
                 Spacer(minLength: 0)
             }
         }
         .sunNavigationBarCompatibility()
+        .toolbar(.hidden, for: .navigationBar)
         .interactivePopGestureEnabled()
+        .onAppear {
+            guard !hasInitializedSelection else { return }
+            applyPreselectedDay(preselectedDay)
+            hasInitializedSelection = true
+        }
+        .onChange(of: preselectedDay) { _, day in
+            applyPreselectedDay(day)
+        }
         .confirmationDialog(
             deleteDialogTitle,
             isPresented: Binding(
@@ -89,59 +110,76 @@ struct HistoryView: View {
         }
     }
 
-    private func historyOverviewCard(presentation: HistoryPresentation) -> some View {
-        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 14) {
-                SunInfoRow(
-                    title: "iCloud History",
-                    detail: "Your sunscreen history stays private and follows your devices when iCloud sync is on.",
-                    systemImage: "icloud.fill",
-                    tint: AppPalette.pool
-                )
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        historyOverviewMetric(
-                            value: "\(presentation.monthStats.appliedCount)",
-                            label: "logged days"
-                        )
-                        historyOverviewMetric(
-                            value: "\(max(0, presentation.monthStats.totalDays - presentation.monthStats.appliedCount))",
-                            label: "open days"
-                        )
+    private var historyHeader: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            if showsBackButton {
+                Button {
+                    router.goBack()
+                } label: {
+                    HStack(spacing: AppSpacing.xxs) {
+                        SunIcon.chevronLeft.image.resizable().scaledToFit()
+                            .frame(width: smallIconSize, height: smallIconSize)
+                            .accessibilityHidden(true)
+                        AppText("Back", style: .captionMedium, color: AppColor.accent)
                     }
+                    .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("screen.back")
+            }
 
-                    VStack(spacing: 10) {
-                        historyOverviewMetric(
-                            value: "\(presentation.monthStats.appliedCount)",
-                            label: "logged days"
-                        )
-                        historyOverviewMetric(
-                            value: "\(max(0, presentation.monthStats.totalDays - presentation.monthStats.appliedCount))",
-                            label: "open days"
-                        )
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: AppSpacing.xs) {
+                    historyHeading
+                    Spacer(minLength: 0)
+                    calendarDisclosure
+                }
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                    historyHeading
+                    calendarDisclosure
                 }
             }
         }
-        .accessibilityIdentifier("history.overview")
     }
 
-    private func historyOverviewMetric(value: String, label: String) -> some View {
-        StatCard(
-            value: value,
-            label: label,
-            systemImage: label.contains("open") ? "calendar" : "checkmark.circle.fill",
-            tint: label.contains("open") ? AppPalette.sun : AppPalette.success,
-            usesGlass: false
+    private var historyHeading: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+            AppText("History", style: .largeTitle)
+                .accessibilityAddTraits(.isHeader)
+            AppText(displayedMonth.formatted(.dateTime.month(.wide).year()), style: .caption, color: AppColor.Text.secondary)
+                .accessibilityIdentifier("history.monthTitle")
+        }
+    }
+
+    private var calendarDisclosure: some View {
+        Button {
+            withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+                isCalendarExpanded.toggle()
+            }
+        } label: {
+            SunIcon.calendar.image.resizable().scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .accessibilityHidden(true)
+        }
+        .sunGlassIconButton(
+            legacyStyle: HistoryMonthNavigationButtonStyle(isEnabled: true, cornerRadius: AppRadius.pill)
         )
+        .buttonBorderShape(.circle)
+        .controlSize(.regular)
+        .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel(isCalendarExpanded ? "Show week" : "Show calendar")
+        .accessibilityValue(isCalendarExpanded ? "Expanded" : "Collapsed")
+        .accessibilityHint(isCalendarExpanded
+            ? "Returns to the compact selected week."
+            : "Shows the full calendar, month navigation, and monthly patterns.")
+        .accessibilityIdentifier("history.calendarToggle")
     }
 
     @ViewBuilder
     private var deleteUndoBanner: some View {
         if let lastDeletedBatchID,
            let lastDeletedDay {
-            HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Entry deleted")
                         .font(AppTextStyle.bodyMedium.font)
@@ -152,18 +190,31 @@ struct HistoryView: View {
                         .foregroundStyle(AppPalette.softInk)
                 }
 
-                Spacer(minLength: 0)
-
                 Button("Undo Delete") {
                     appState.undoChange(lastDeletedBatchID)
-                    selectedDay = lastDeletedDay
-                    self.lastDeletedBatchID = nil
-                    self.lastDeletedDay = nil
+                    didFailUndo = appState.record(for: lastDeletedDay) == nil
+                    if !didFailUndo {
+                        selectedDay = lastDeletedDay
+                        displayedMonth = lastDeletedDay
+                        self.lastDeletedBatchID = nil
+                        self.lastDeletedDay = nil
+                    }
                 }
                 .font(AppTextStyle.bodyMedium.font)
                 .foregroundStyle(AppPalette.ink)
+                .frame(minHeight: 44)
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("history.undoDelete")
+
+                if didFailUndo {
+                    AppText("Couldn’t undo the deletion. Try again or review Recovery & Changes.", style: .caption)
+                        .accessibilityIdentifier("history.undoError")
+                    Button("Review Recovery & Changes") {
+                        router.push(.recovery)
+                    }
+                    .buttonStyle(SunSecondaryButtonStyle())
+                    .accessibilityIdentifier("history.undoRecovery")
+                }
             }
             .padding(14)
             .sunGlassCard(
@@ -224,10 +275,172 @@ struct HistoryView: View {
         }
     }
 
+    private func weekStrip(presentation: HistoryPresentation) -> some View {
+        let week = weekPresentation(presentation)
+        return ScrollViewReader { proxy in
+            ViewThatFits(in: .horizontal) {
+                weekDays(week.days, presentation: presentation)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    weekDays(week.days, presentation: presentation)
+                }
+                .onAppear {
+                    proxy.scrollTo(selectedDay ?? presentation.today, anchor: .center)
+                }
+                .onChange(of: selectedDay) { _, day in
+                    proxy.scrollTo(day ?? presentation.today, anchor: .center)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Week containing \((selectedDay ?? presentation.today).formatted(.dateTime.month(.wide).day()))")
+        .accessibilityIdentifier("history.weekStrip")
+    }
+
+    private func weekDays(_ days: [Date], presentation: HistoryPresentation) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(days, id: \.self) { day in
+                let state = dayCellState(for: day, presentation: presentation)
+                Button {
+                    selectDay(day, state: state, allowsAdjacentMonth: true)
+                } label: {
+                    VStack(spacing: AppSpacing.xs) {
+                        Text(calendar.veryShortStandaloneWeekdaySymbols[calendar.component(.weekday, from: day) - 1])
+                            .font(AppTextStyle.caption.font)
+                            .foregroundStyle(AppColor.Text.secondary)
+                        VStack(spacing: AppSpacing.xxs) {
+                            Text("\(calendar.component(.day, from: day))")
+                                .font(AppFont.rounded(size: 20, weight: state.isSelected ? .semibold : .medium))
+                                .foregroundStyle(state.isFuture ? AppColor.Text.secondary : AppColor.Text.primary)
+                            weekDayMarker(state)
+                                .frame(width: smallIconSize, height: smallIconSize)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(.vertical, AppSpacing.xs)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if state.isSelected {
+                                Capsule()
+                                    .fill(AppColor.surfaceElevated)
+                                    .overlay { Capsule().stroke(AppColor.stroke, lineWidth: 1) }
+                                    .appShadow(AppShadow.soft)
+                            }
+                        }
+                    }
+                    .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 76 : 44, maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(state.isFuture)
+                .accessibilityLabel(dayAccessibilityLabel(for: day, state: state))
+                .accessibilityHint(dayAccessibilityHint(hasRecord: state.hasRecord, isToday: state.isToday, isFuture: state.isFuture))
+                .accessibilityAddTraits(state.isSelected ? .isSelected : [])
+                .accessibilityIdentifier(dayAccessibilityIdentifier(for: day))
+                .contextMenu { calendarDayContextMenu(for: state, allowsAdjacentMonth: true) }
+                .id(day)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func weekDayMarker(_ state: HistoryDayCellState) -> some View {
+        switch state.status {
+        case .applied:
+            SunIcon.check.image.resizable().scaledToFit()
+                .foregroundStyle(state.isSelected ? AppColor.accent : AppColor.Text.secondary)
+        case .todayPending:
+            SunIcon.clock.image.resizable().scaledToFit()
+                .foregroundStyle(AppColor.accent)
+        case .missed:
+            Capsule().fill(AppColor.Text.secondary).frame(width: smallIconSize * 0.6, height: 2)
+        case .untracked:
+            Circle().stroke(AppColor.Text.secondary, lineWidth: 1).padding(smallIconSize * 0.3)
+        case .future:
+            Circle().fill(AppColor.muted).padding(smallIconSize * 0.3)
+        }
+    }
+
+    private func weekPresentation(_ presentation: HistoryPresentation) -> HistoryWeekPresentation {
+        HistoryWeekPresentation(
+            selectedDay: selectedDay ?? presentation.today,
+            recordDays: presentation.recordDateSet,
+            today: presentation.today,
+            eligibleFrom: presentation.eligibilityStart,
+            calendar: calendar
+        )
+    }
+
+    private func weeklySummary(presentation: HistoryPresentation) -> some View {
+        let week = weekPresentation(presentation)
+        let isCurrentWeek = week.days.contains(presentation.today)
+        return VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            AppText(isCurrentWeek ? "This week" : "Selected week", style: .sectionHeader)
+                .accessibilityAddTraits(.isHeader)
+            AppCard(padding: AppSpacing.sm, showsShadow: false) {
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                    HStack(spacing: AppSpacing.sm) {
+                        SunIcon.calendar.image.resizable().scaledToFit()
+                            .frame(width: iconSize, height: iconSize)
+                            .foregroundStyle(AppColor.Text.primary)
+                            .accessibilityHidden(true)
+                        AppText(
+                            week.eligibleDayCount > 0
+                                ? "\(week.loggedDayCount) of \(week.eligibleDayCount) days logged"
+                                : "No tracked days this week",
+                            style: .bodyMedium
+                        )
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("history.selectedWeekCounts")
+
+                    Divider().overlay(AppColor.stroke)
+
+                    weeklyInsightsButton
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("history.weekSummary")
+    }
+
+    private var weeklyInsightsButton: some View {
+        Button {
+            router.push(.weeklySummary)
+        } label: {
+            HStack(spacing: AppSpacing.xxs) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: AppSpacing.xxs) {
+                        weeklyInsightsLabel
+                    }
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        weeklyInsightsLabel
+                    }
+                }
+                Spacer(minLength: 0)
+                SunIcon.chevronRight.image.resizable().scaledToFit()
+                    .frame(width: smallIconSize, height: smallIconSize)
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Weekly insights")
+        .accessibilityValue("Last 7 days")
+        .accessibilityHint("Opens your report for the last seven days.")
+        .accessibilityIdentifier("home.streakCard")
+    }
+
+    @ViewBuilder
+    private var weeklyInsightsLabel: some View {
+        AppText("Weekly insights", style: .captionMedium, color: AppColor.accent)
+        AppText("Last 7 days", style: .caption, color: AppColor.Text.secondary)
+    }
+
     private var monthNavigator: some View {
         SunGlassEffectContainer(spacing: 12) {
             HStack {
-                monthNavigationButton(systemName: "chevron.left") {
+                monthNavigationButton(icon: .chevronLeft) {
                     changeMonth(by: -1)
                 }
                 .accessibilityLabel("Previous month")
@@ -236,14 +449,17 @@ struct HistoryView: View {
 
                 Spacer()
 
-                Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
-                    .font(AppTextStyle.title.font)
-                    .foregroundStyle(AppPalette.ink)
-                    .accessibilityIdentifier("history.monthTitle")
+                Button("Today", action: jumpToToday)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .foregroundStyle(AppColor.accent)
+                    .frame(minHeight: 44)
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Returns to the current month and selects today.")
+                    .accessibilityIdentifier("history.today")
 
                 Spacer()
 
-                monthNavigationButton(systemName: "chevron.right", isEnabled: canGoForward) {
+                monthNavigationButton(icon: .chevronRight, isEnabled: canGoForward) {
                     changeMonth(by: 1)
                 }
                 .accessibilityLabel("Next month")
@@ -254,13 +470,13 @@ struct HistoryView: View {
     }
 
     private func monthNavigationButton(
-        systemName: String,
+        icon: SunIcon,
         isEnabled: Bool = true,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(AppFont.rounded(size: 16, weight: .semibold))
+            icon.image.resizable().scaledToFit()
+                .frame(width: smallIconSize, height: smallIconSize)
                 .foregroundStyle(isEnabled ? AppPalette.ink : AppPalette.muted)
                 .frame(width: 44, height: 44)
         }
@@ -293,8 +509,9 @@ struct HistoryView: View {
         let visibleSymbols = dynamicTypeSize.isAccessibilitySize
             ? calendar.veryShortStandaloneWeekdaySymbols
             : calendar.shortStandaloneWeekdaySymbols
-        return Array(zip(visibleSymbols, calendar.standaloneWeekdaySymbols)).map {
-            (visible: $0.0, spoken: $0.1)
+        return (0..<7).map { offset in
+            let index = (calendar.firstWeekday - 1 + offset) % 7
+            return (visible: visibleSymbols[index], spoken: calendar.standaloneWeekdaySymbols[index])
         }
     }
 
@@ -331,6 +548,7 @@ struct HistoryView: View {
                 accessibilityIdentifier: "history.legend.future"
             )
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("history.legend")
     }
 
@@ -363,15 +581,23 @@ struct HistoryView: View {
     }
 
     private func calendarMonthCard(presentation: HistoryPresentation) -> some View {
-        VStack(spacing: 12) {
-            weekdayHeader
-
-            calendarGrid(presentation: presentation)
-                .id(displayedMonth)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+        ViewThatFits(in: .horizontal) {
+            calendarMonthContent(presentation: presentation, allowsMonthSwipe: true)
+            ScrollView(.horizontal, showsIndicators: true) {
+                calendarMonthContent(presentation: presentation, allowsMonthSwipe: false)
+            }
         }
-        .padding(14)
+        .padding(AppSpacing.xxs)
         .sunGlassCard(cornerRadius: AppRadius.card)
+    }
+
+    private func calendarMonthContent(presentation: HistoryPresentation, allowsMonthSwipe: Bool) -> some View {
+        VStack(spacing: AppSpacing.xs) {
+            weekdayHeader
+            calendarGrid(presentation: presentation, allowsMonthSwipe: allowsMonthSwipe)
+                .id(displayedMonth)
+        }
+        .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 532 : 308)
     }
 
     private func historyEmptyHint(presentation: HistoryPresentation) -> some View {
@@ -400,7 +626,7 @@ struct HistoryView: View {
         .accessibilityIdentifier("history.emptyHint")
     }
 
-    private func calendarGrid(presentation: HistoryPresentation) -> some View {
+    private func calendarGrid(presentation: HistoryPresentation, allowsMonthSwipe: Bool) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
             ForEach(Array(presentation.monthDays.enumerated()), id: \.offset) { _, day in
                 calendarDayButton(
@@ -416,8 +642,9 @@ struct HistoryView: View {
         .highPriorityGesture(
             DragGesture(minimumDistance: 24)
                 .onEnded(handleCalendarSwipe),
-            including: .all
+            including: allowsMonthSwipe ? .all : .none
         )
+        .accessibilityElement(children: .contain)
         .accessibilityAction(named: "Previous Month") {
             changeMonth(by: -1)
         }
@@ -477,6 +704,7 @@ struct HistoryView: View {
             dayAccessibilityHint(hasRecord: state.hasRecord, isToday: state.isToday, isFuture: state.isFuture)
         )
         .accessibilityIdentifier(dayAccessibilityIdentifier(for: state.dayStart))
+        .accessibilityAddTraits(state.isSelected ? .isSelected : [])
         .contextMenu {
             calendarDayContextMenu(for: state)
         }
@@ -485,24 +713,26 @@ struct HistoryView: View {
             editorPresentation = HistoryEditorPresentation(day: state.dayStart)
         }
         .accessibilityAction(named: "Delete Entry") {
-            guard state.hasRecord else { return }
+            guard state.isCurrentMonth, !state.isFuture, state.hasRecord else { return }
             dayPendingDeletion = state.dayStart
         }
     }
 
     @ViewBuilder
-    private func calendarDayContextMenu(for state: HistoryDayCellState) -> some View {
-        if state.hasRecord {
-            Button("Edit Entry") {
-                editorPresentation = HistoryEditorPresentation(day: state.dayStart)
-            }
+    private func calendarDayContextMenu(for state: HistoryDayCellState, allowsAdjacentMonth: Bool = false) -> some View {
+        if !state.isFuture, state.isCurrentMonth || allowsAdjacentMonth {
+            if state.hasRecord {
+                Button("Edit Entry") {
+                    editorPresentation = HistoryEditorPresentation(day: state.dayStart)
+                }
 
-            Button("Delete Entry", role: .destructive) {
-                dayPendingDeletion = state.dayStart
-            }
-        } else if state.isCurrentMonth, !state.isFuture {
-            Button(state.isToday ? "Log Today" : "Backfill Day") {
-                editorPresentation = HistoryEditorPresentation(day: state.dayStart)
+                Button("Delete Entry", role: .destructive) {
+                    dayPendingDeletion = state.dayStart
+                }
+            } else {
+                Button(state.isToday ? "Log Today" : "Backfill Day") {
+                    editorPresentation = HistoryEditorPresentation(day: state.dayStart)
+                }
             }
         }
     }
@@ -538,24 +768,26 @@ struct HistoryView: View {
         }
     }
 
-    private func selectDay(_ day: Date, state: HistoryDayCellState) {
-        guard state.isCurrentMonth && !state.isFuture else { return }
+    private func selectDay(_ day: Date, state: HistoryDayCellState, allowsAdjacentMonth: Bool = false) {
+        guard (state.isCurrentMonth || allowsAdjacentMonth) && !state.isFuture else { return }
 
         withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
-            selectedDay = day
+            selectedDay = state.dayStart
+            if !state.isCurrentMonth {
+                displayedMonth = state.dayStart
+            }
         }
     }
 
     private func dayTextColor(isCurrentMonth: Bool, isFuture: Bool, isSelected: Bool) -> Color {
         if !isCurrentMonth { return AppPalette.muted }
         if isFuture { return AppPalette.muted }
-        if isSelected { return AppPalette.onAccent }
         return AppPalette.ink
     }
 
     private func dayBackgroundColor(isSelected: Bool, isCurrentStreak: Bool) -> Color {
         if isSelected {
-            return AppPalette.ink
+            return AppColor.accentSoft
         }
 
         if isCurrentStreak {
@@ -567,7 +799,7 @@ struct HistoryView: View {
 
     private func dayBorderColor(isSelected: Bool, isCurrentStreak: Bool) -> Color {
         if isSelected {
-            return AppPalette.sun
+            return AppColor.accent
         }
 
         if isCurrentStreak {
@@ -605,75 +837,171 @@ struct HistoryView: View {
             for: dayStart,
             with: presentation.recordDateSet,
             now: presentation.today,
+            eligibleFrom: presentation.eligibilityStart,
             calendar: calendar
         )
         let conflict = appState.conflict(for: dayStart)
 
-        VStack(alignment: .leading, spacing: 10) {
-            Text(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.softInk)
-
-            dayDetailBody(record: record, status: status, conflict: conflict)
-
-            actionButtons(for: dayStart, record: record, status: status)
-                .padding(.top, 4)
-        }
-        .padding(18)
-        .sunGlassCard(
-            cornerRadius: AppRadius.button,
-            fillOpacity: 0.72,
-            legacyShadow: nil
-        )
-    }
-
-    private func dayDetailBody(
-        record: DailyRecord?,
-        status: DayStatus,
-        conflict: SunclubConflictItem?
-    ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: statusSymbol(for: status))
-                .font(AppFont.rounded(size: 18, weight: .semibold))
-                .foregroundStyle(statusColor(for: status))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(statusTitle(for: status))
-                    .font(AppTextStyle.sectionHeader.font)
-                    .foregroundStyle(AppPalette.ink)
-                    .accessibilityIdentifier("history.statusTitle")
-
-                dayRecordMetadata(record)
-                dayRecordDetails(record)
-                conflictBanner(conflict)
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: AppSpacing.xxs) {
+                    selectedDayHeading(day)
+                    Spacer(minLength: 0)
+                    selectedDayTodayLabel(day)
+                }
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                    selectedDayHeading(day)
+                    selectedDayTodayLabel(day)
+                }
             }
 
-            Spacer()
+            AppCard(padding: AppSpacing.sm, showsShadow: false) {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                    if let record {
+                        dayApplicationRows(record, day: dayStart)
+                    } else {
+                        AppText(statusTitle(for: status), style: .bodyMedium)
+                            .accessibilityIdentifier("history.statusTitle")
+                        AppText("No sunscreen logged for this day.", style: .caption, color: AppColor.Text.secondary)
+                    }
+
+                    dayRecordDetails(record)
+                    conflictBanner(conflict)
+
+                    if record == nil, status != .future {
+                        backfillButton(for: dayStart)
+                    }
+                }
+            }
+
+            if record != nil {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: AppSpacing.sm) { selectedRecordActions(dayStart) }
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) { selectedRecordActions(dayStart) }
+                }
+            }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("history.dayDetail")
+    }
+
+    private func selectedDayHeading(_ day: Date) -> some View {
+        AppText(day.formatted(.dateTime.weekday(.wide).month(.wide).day()), style: .bodyMedium)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("history.selectedDate")
     }
 
     @ViewBuilder
-    private func dayRecordMetadata(_ record: DailyRecord?) -> some View {
-        if let record {
-            Text("\(record.method.displayName) log at \(record.verifiedAt.formatted(date: .omitted, time: .shortened))")
-                .font(AppTextStyle.caption.font)
-                .foregroundStyle(AppPalette.softInk)
-        } else {
-            Text("No entry for this day yet.")
-                .font(AppTextStyle.caption.font)
-                .foregroundStyle(AppPalette.softInk)
+    private func selectedDayTodayLabel(_ day: Date) -> some View {
+        if isToday(day) {
+            AppText("Today", style: .caption, color: AppColor.accent)
         }
+    }
+
+    private func dayApplicationRows(_ record: DailyRecord, day: Date) -> some View {
+        let applications = HistoryApplicationPresentation(
+            verifiedAt: record.verifiedAt,
+            reapplyCount: record.reapplyCount,
+            lastReappliedAt: record.lastReappliedAt
+        )
+        return VStack(alignment: .leading, spacing: 0) {
+            AppText(
+                "\(applications.applicationCount) \(applications.applicationCount == 1 ? "application" : "applications")",
+                style: .caption,
+                color: AppColor.Text.secondary
+            )
+            .accessibilityLabel("Logged, \(applications.applicationCount) \(applications.applicationCount == 1 ? "application" : "applications")")
+            .accessibilityIdentifier("history.statusTitle")
+
+            ForEach(applications.timestamps) { timestamp in
+                if timestamp.id != applications.timestamps.first?.id {
+                    Divider().overlay(AppColor.stroke)
+                }
+                applicationRow(timestamp, record: record, day: day)
+            }
+
+            if applications.untimedReapplicationCount > 0 {
+                AppText(
+                    "\(applications.untimedReapplicationCount) more \(applications.untimedReapplicationCount == 1 ? "reapplication" : "reapplications") · times not saved",
+                    style: .caption,
+                    color: AppColor.Text.secondary
+                )
+                .accessibilityIdentifier("history.earlierReapplications")
+            }
+        }
+    }
+
+    private func applicationRow(_ timestamp: HistoryApplicationPresentation.Timestamp, record: DailyRecord, day: Date) -> some View {
+        Button {
+            editorPresentation = HistoryEditorPresentation(day: day)
+        } label: {
+            HStack(spacing: AppSpacing.sm) {
+                SunIcon.check.image.resizable().scaledToFit()
+                    .frame(width: iconSize, height: iconSize)
+                    .foregroundStyle(AppPalette.aloe)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                    AppText(timestamp.date.formatted(date: .omitted, time: .shortened), style: .bodyMedium)
+                    AppText(
+                        applicationDetail(timestamp, record: record),
+                        style: .caption,
+                        color: AppColor.Text.secondary
+                    )
+                }
+                Spacer(minLength: 0)
+                SunIcon.chevronRight.image.resizable().scaledToFit()
+                    .frame(width: smallIconSize, height: smallIconSize)
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.vertical, AppSpacing.sm)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens the saved day entry for editing. Reapplication counts stay with this day.")
+        .accessibilityIdentifier("history.application.\(timestamp.id)")
+    }
+
+    private func applicationDetail(_ timestamp: HistoryApplicationPresentation.Timestamp, record: DailyRecord) -> String {
+        var parts: [String] = []
+        if timestamp.kind == .reapplication {
+            parts.append("Reapplied")
+        } else {
+            parts.append(record.method.displayName)
+        }
+        if let spf = record.spfLevel { parts.append("SPF \(spf)") }
+        let areas = SunManualLogInput.coveredAreas(in: record.notes)
+        let orderedAreas = SunManualLogInput.coveredAreas.filter { areas.contains($0) }
+        if !orderedAreas.isEmpty { parts.append(orderedAreas.joined(separator: " & ")) }
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private func selectedRecordActions(_ day: Date) -> some View {
+        Button("Edit Entry") {
+            editorPresentation = HistoryEditorPresentation(day: day)
+        }
+        .accessibilityIdentifier("history.editRecord")
+        .font(AppTextStyle.captionMedium.font)
+        .foregroundStyle(AppColor.accent)
+        .frame(minHeight: 44)
+        .buttonStyle(.plain)
+
+        Button("Delete", role: .destructive) {
+            dayPendingDeletion = day
+        }
+        .accessibilityIdentifier("history.deleteRecord")
+        .font(AppTextStyle.captionMedium.font)
+        .foregroundStyle(AppPalette.warning)
+        .frame(minHeight: 44)
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
     private func dayRecordDetails(_ record: DailyRecord?) -> some View {
-        if let spf = record?.spfLevel {
-            Text("SPF \(spf)")
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.sun)
-        }
-
-        if let notes = record?.trimmedNotes {
+        let notes = SunManualLogInput.notesRemovingCoveredAreas(record?.notes)
+        if !notes.isEmpty {
             Text(notes)
                 .font(AppTextStyle.caption.font)
                 .foregroundStyle(AppPalette.softInk)
@@ -702,91 +1030,31 @@ struct HistoryView: View {
                 .accessibilityIdentifier("history.conflict.review")
             }
             .padding(.top, 6)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("history.conflictBanner")
         }
     }
 
     private func statsSection(stats: HistoryMonthStats) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Month summary")
-                .font(AppTypography.sectionLabel)
-                .foregroundStyle(AppPalette.softInk)
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    monthMetricPills(stats: stats)
-                }
-
-                VStack(spacing: 10) {
-                    monthMetricPills(stats: stats)
-                }
-            }
-
-            if isShowingMonthlyInsights, stats.appliedCount > 0 {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("\(stats.appliedCount) of \(stats.totalDays) active days logged")
-                        .font(AppTypography.metric)
-                        .foregroundStyle(AppPalette.ink)
-
-                    Text("Log rate: \(stats.rate)")
-                        .font(AppTypography.metric)
-                        .foregroundStyle(AppPalette.ink)
-
-                    if stats.bestStreak > 0 {
-                        Text("Longest run: \(stats.bestStreak) days")
-                            .font(AppTypography.metric)
-                            .foregroundStyle(AppPalette.ink)
-                    }
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .sunGlassCard(
-                    cornerRadius: AppRadius.insetCard,
-                    fillOpacity: 0.3,
-                    legacyFill: AppPalette.warmGlow,
-                    legacyStroke: .clear,
-                    legacyShadow: nil
-                )
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            AppText("Month summary", style: .sectionHeader)
+                .accessibilityAddTraits(.isHeader)
+            AppText(
+                "\(stats.appliedCount) of \(stats.totalDays) active days logged · \(stats.rate)",
+                style: .caption,
+                color: AppColor.Text.secondary
+            )
                 .accessibilityIdentifier("history.monthSummary")
+            if stats.bestStreak > 0 {
+                AppText("Longest run: \(stats.bestStreak) days", style: .caption, color: AppColor.Text.secondary)
             }
 
             if stats.appliedCount > 0 {
                 monthlyInsightDisclosure(stats.insights)
             }
         }
-        .padding(16)
-        .sunGlassCard(cornerRadius: AppRadius.card)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("history.monthStats")
-    }
-
-    @ViewBuilder
-    private func monthMetricPills(stats: HistoryMonthStats) -> some View {
-        SunMetricPill(
-            value: "\(stats.appliedCount)",
-            label: "logged days",
-            symbolName: "checkmark.circle.fill",
-            tint: AppPalette.success,
-            accessibilityIdentifier: "history.month.applied",
-            usesGlass: false
-        )
-
-        SunMetricPill(
-            value: "\(stats.totalDays)",
-            label: "active days",
-            symbolName: "calendar",
-            tint: AppPalette.sun,
-            accessibilityIdentifier: "history.month.active",
-            usesGlass: false
-        )
-
-        SunMetricPill(
-            value: stats.rate,
-            label: "month",
-            symbolName: "chart.bar.fill",
-            tint: AppPalette.pool,
-            accessibilityIdentifier: "history.month.rate",
-            usesGlass: false
-        )
     }
 
     private var historyPresentation: HistoryPresentation {
@@ -902,50 +1170,19 @@ struct HistoryView: View {
         }
     }
 
-    @ViewBuilder
-    private func actionButtons(for day: Date, record: DailyRecord?, status: DayStatus) -> some View {
-        if record != nil {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) {
-                    loggedDayActions(for: day)
-                }
-
-                VStack(spacing: 10) {
-                    loggedDayActions(for: day)
-                }
-            }
-            .accessibilityLabel("\(statusTitle(for: status)) entry actions")
-        } else {
-            PrimaryButton(
-                isToday(day) ? "Log Today" : "Backfill Day",
-                systemImage: isToday(day) ? "sun.max" : "calendar.badge.plus",
-                identifier: "history.backfillRecord",
-                usesGlass: false
-            ) {
-                editorPresentation = HistoryEditorPresentation(day: day)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func loggedDayActions(for day: Date) -> some View {
-        PrimaryButton(
-            "Edit Entry",
-            systemImage: "pencil",
-            identifier: "history.editRecord",
-            usesGlass: false
-        ) {
+    private func backfillButton(for day: Date) -> some View {
+        Button {
             editorPresentation = HistoryEditorPresentation(day: day)
+        } label: {
+            HStack(spacing: AppSpacing.xxs) {
+                SunIcon.plus.image.resizable().scaledToFit()
+                    .frame(width: smallIconSize, height: smallIconSize)
+                    .accessibilityHidden(true)
+                AppText(isToday(day) ? "Log Today" : "Backfill Day", style: .bodyMedium, color: AppColor.primaryActionForeground)
+            }
         }
-
-        SecondaryPillButton(
-            "Delete",
-            systemImage: "trash",
-            identifier: "history.deleteRecord",
-            usesGlass: false
-        ) {
-            dayPendingDeletion = day
-        }
+        .buttonStyle(SunPrimaryButtonStyle())
+        .accessibilityIdentifier("history.backfillRecord")
     }
 
     private func isToday(_ day: Date) -> Bool {
@@ -993,9 +1230,11 @@ struct HistoryView: View {
         switch appState.deleteRecord(for: day) {
         case let .success(receipt):
             selectedDay = calendar.startOfDay(for: day)
+            displayedMonth = calendar.startOfDay(for: day)
             lastDeletedDay = calendar.startOfDay(for: day)
             lastDeletedBatchID = receipt.batchID
             failedDeletionDay = nil
+            didFailUndo = false
             return true
         case .failure:
             return false
@@ -1003,14 +1242,28 @@ struct HistoryView: View {
     }
 
     private func changeMonth(by offset: Int) {
-        guard offset != 0 else { return }
-        guard offset < 0 || canGoForward else { return }
+        guard let day = HistoryWeekPresentation.selectionAfterMovingMonth(
+            from: displayedMonth,
+            by: offset,
+            referenceDate: appState.referenceDate,
+            calendar: calendar
+        ) else { return }
 
         withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
-            displayedMonth = calendar.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
-            selectedDay = nil
+            displayedMonth = day
+            selectedDay = day
             isShowingMonthlyInsights = false
         }
+    }
+
+    private func applyPreselectedDay(_ day: Date?) {
+        let selection = HistoryWeekPresentation.initialSelection(
+            preselectedDay: day,
+            referenceDate: appState.referenceDate,
+            calendar: calendar
+        )
+        displayedMonth = selection
+        selectedDay = selection
     }
 
     private func jumpToToday() {
@@ -1079,24 +1332,6 @@ struct HistoryView: View {
         "history.day.\(Self.dayIdentifierFormatter.string(from: day))"
     }
 
-    private func statBubble(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(AppTextStyle.title.font)
-                .foregroundStyle(AppPalette.ink)
-            Text(label)
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.softInk)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .sunGlassCard(
-            cornerRadius: AppRadius.small,
-            fillOpacity: 0.72,
-            legacyShadow: nil
-        )
-    }
-
     private func monthInsightCard(
         title: String,
         value: String,
@@ -1126,26 +1361,6 @@ struct HistoryView: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier)
-    }
-
-    private func statusSymbol(for status: DayStatus) -> String {
-        switch status {
-        case .applied: return "checkmark.circle.fill"
-        case .todayPending: return "circle.dashed"
-        case .missed: return "xmark.circle"
-        case .untracked: return "ellipsis.circle"
-        case .future: return "circle"
-        }
-    }
-
-    private func statusColor(for status: DayStatus) -> Color {
-        switch status {
-        case .applied: return AppPalette.success
-        case .todayPending: return AppPalette.sun
-        case .missed: return AppPalette.softInk
-        case .untracked: return AppPalette.muted
-        case .future: return AppPalette.muted
-        }
     }
 
     private func statusTitle(for status: DayStatus) -> String {
@@ -1214,16 +1429,17 @@ private struct HistoryMonthNavigationButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
 
     let isEnabled: Bool
+    var cornerRadius: CGFloat = AppRadius.small
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .frame(width: 44, height: 44)
+            .frame(minWidth: 44, minHeight: 44)
             .background(
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(controlFill)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(AppPalette.hairlineStroke, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.88 : 1)

@@ -118,13 +118,14 @@ Expected sequence:
 
 ### Home
 
-- Serve as the app's main dashboard.
-- Show current streak prominently.
+- Use Today as the focused home screen with a central UV gauge and truthful sunscreen-log status.
+- Keep real UV source, freshness, unavailable states, and the detailed hourly forecast accessible.
 - Show the selected day as relative date copy, such as `Today, April 22` or `Tomorrow, April 23`.
-- Use the horizontal timeline for day selection and show UV forecast blocks for morning, evening, and night.
-- Surface elevated UV days when protection needs are stronger.
-- Provide a single primary call to action: `Log Manually`.
-- Provide quick access to weekly summary and settings.
+- Retain horizontal day browsing below today's primary content; past and future detail stays date-specific.
+- Provide a single primary call to action: `Log sunscreen` before the first log, then `Log reapplication`.
+- Keep editing on the saved-status row. Reapplication tracking works independently of optional reminders.
+- Show reminder/recovery actions when needed; estimated reapply targets do not claim a notification is pending.
+- Use three native tabs: Today, History, and Settings. Weekly insights lives inside History.
 
 ### Verification Success
 
@@ -141,7 +142,9 @@ Expected sequence:
 
 ### History
 
-- Show the user's month-by-month completion calendar.
+- Start with a compact week strip and the selected day's grouped sunscreen records.
+- Keep the month-by-month calendar and monthly review available through an explicit calendar control.
+- Offer weekly insights without adding another navigation tab.
 - Let the user inspect one selected day at a time.
 - Allow correcting an existing manual entry or backfilling a missed past day.
 - Keep future days read-only.
