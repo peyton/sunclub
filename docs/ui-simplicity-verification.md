@@ -8,11 +8,11 @@ Xcode 26.6.0, iPhone 17 Pro simulator on iOS 26.5; compile cache disabled. UI te
 
 | Check                             | Result                                              |
 | --------------------------------- | --------------------------------------------------- |
-| Full unit suite                   | 560 passed, 0 failures after recovery follow-up (September 5) |
+| Full unit suite                   | 561 passed, 0 failures after history-only recovery follow-up (September 5) |
 | Python suite                      | 279 passed, 0 failures (September 5)                |
 | Website build and validation      | Passed                                              |
 | CI lint                           | Passed; 0 errors, 54 SwiftLint warnings             |
-| Full UI suite with final input follow-up | 79 passed, 0 failures on `bf059e4` (September 5); subsequent recovery changes require fresh full CI |
+| Full UI suite with final input follow-up | 79 passed, 0 failures on `e2628c7` (September 5); history-only recovery guard requires fresh full CI |
 | Affected navigation follow-up      | 3/3 passed: cancelled/completed swipe with selected date, Forecast and Recovery |
 | Full-travel back-swipe repetitions | Insights 20/20 passed; unchanged shorter-input control also passed 20/20 locally |
 | iOS 18.6 compatibility UI suite   | Original 14/14; final Back/swipe/cancelled-gesture follow-up 2/2 |
@@ -78,6 +78,8 @@ Today logs the current local day with a single action and guarded Undo/Edit. His
 
 ## Evidence and limitations
 
+- Review on `e2628c7` reproduced two failed assertions when Undo/Redo of an imported history-only timeline batch overwrote newer store-only preferences. Recovery now requires an actual settings revision in the returned batch before applying preferences; import provenance alone is insufficient. The serialized-backup regression also verifies the log is restored and deleted correctly. Explicit import nil restoration and ordinary known-envelope recovery remain intact. All 561 unit tests, including 45 import recovery cases, passed ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/cd9b6296-7a0e-4d0a-99e7-12877cccd3d0)); Python passed 279 tests and lint retained 54 warnings with no errors. Fresh full UI, exact-head CI and review remain the merge gate.
+- The preceding recovery correction passed all 79 local UI tests on the exact tree committed as `e2628c7` ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/3d812bc8-cfd3-40f5-a5a6-2d7140c11af3)). That evidence is retained separately from the final history-only recovery guard.
 - Full local UI on `bf059e4` passed 79/79 ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/56535fcf-b9e9-421d-aabe-e37d17e55d33)); its [full candidate CI](https://github.com/peyton/sunclub/actions/runs/33969684828) and [PR smoke CI](https://github.com/peyton/sunclub/actions/runs/33969676498) also passed every expected job. Fresh review found two import Undo ancestry defects, so these green checks did not authorize merging. Both defects were reproduced before correction; their follow-up requires fresh exact-head checks and review.
 - Nine added import-recovery cases cover undone edits, Redo, intervening settings changes, identical replacement logs, missing inverse ancestry and nested preferences. The failing run reproduced nine assertions across six tests; all 42 import tests then passed ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/4314c6cc-a46b-4b29-b993-03da2db839e0)). Settings replay follows validated pre-target checkpoints, preserving ordinary whole-snapshot Undo/Redo semantics without reapplying imported values. Day ownership follows the actual restored predecessor rather than snapshot equality alone.
 - Two additional AppState cases cover visible and stored preferences through Undo → Redo → Undo → Undo Import, plus preservation of unrecorded local preferences with and without an import. The first reproduced five failed assertions before correction. Ordinary settings recovery now applies changed, known nonnil preference snapshots before refresh; unchanged or nil/pre-ledger envelopes retain their conservative behavior. Explicit import recovery still restores nil. All 560 unit tests, including 44 import recovery tests, passed ([result](https://tuist.dev/peyton/sunclub/tests/test-runs/71cc3da8-7abe-4964-911f-e14cf7f0bc78)); Python passed 279 tests and lint retained 54 existing warnings with no errors. Read-only review found no further concrete issues in this follow-up.

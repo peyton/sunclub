@@ -248,6 +248,46 @@ final class ImportUndoSettingsTests: XCTestCase {
         }
     }
 
+    func testImportedTimelineUndoAndRedoPreserveStoreOnlyPreferences() throws {
+        let source = try makeHistory()
+        let day = Calendar.current.startOfDay(for: Date(timeIntervalSince1970: 1_780_000_000))
+        _ = try source.applyDayChange(
+            for: day, kind: .manualLog, summary: "Log", changedFields: [.verifiedAt, .notes]
+        ) { _ in
+            DailyRecord(
+                startOfDay: day, verifiedAt: day.addingTimeInterval(9 * 3_600),
+                method: .manual, notes: "From backup"
+            ).projectionSnapshot
+        }
+        _ = try XCTUnwrap(source.deleteAllRecords())
+        let document = try SunclubBackupService().exportDocument(from: source.fetchContext())
+        let (target, store) = try makeApp()
+        let session = try target.importBackupDocument(
+            SunclubBackupDocument(data: document.serializedData())
+        ).importSessionID
+        let deletion = try XCTUnwrap(target.changeBatches.first {
+            $0.importSessionID == session && $0.kind == .deleteRecord && $0.scope == .timeline
+        })
+        var later = store.load()
+        later.automation.shortcutWritesEnabled = false
+        later.preferredName = "On this device"
+        store.save(later)
+
+        _ = try target.undoChange(deletion.id).get()
+
+        XCTAssertEqual(store.load(), later)
+        XCTAssertEqual(target.records.first?.notes, "From backup")
+        var latest = later
+        latest.automation.shortcutWritesEnabled = true
+        latest.preferredName = "Updated on this device"
+        store.save(latest)
+
+        _ = try target.redoChange(deletion.id).get()
+
+        XCTAssertEqual(store.load(), latest)
+        XCTAssertTrue(target.records.isEmpty)
+    }
+
     func testUndoPreservesDirectStoreEditWithoutImportedSiblingPreferences() throws {
         let (target, store) = try makeApp()
         let session = try target.importBackupDocument(envelopeBackup()).importSessionID

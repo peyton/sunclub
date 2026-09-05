@@ -693,12 +693,14 @@ final class AppState: SunclubReminderState {
         do {
             let previousPreferences = try historyService.settings().restorablePreferences
             let batch = try operation()
-            if batch.scope == .timeline || batch.scope == .settings {
+            if batch.scope == .timeline || batch.scope == .settings,
+               try historyService.settingsRevision(forBatchID: batch.id) != nil {
                 let preferences = try historyService.settings().restorablePreferences
                 let restoresKnownPreferences = batch.scope == .settings && previousPreferences != nil
                     && preferences != nil && preferences != previousPreferences
                 if batch.importSessionID != nil || restoresKnownPreferences {
                     // Apply known recovery snapshots before refresh can merge the undone value back.
+                    // Import provenance alone does not make a history-only batch own preferences.
                     // Ordinary nil/pre-ledger recovery cannot establish ownership of local preferences.
                     applyRestoredPreferences(preferences, to: growthFeatureStore.load())
                 }

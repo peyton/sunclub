@@ -1588,7 +1588,7 @@ final class SunclubHistoryService {
         )
     }
 
-    private func settingsRevision(forBatchID batchID: UUID) throws -> SettingsRevision? {
+    func settingsRevision(forBatchID batchID: UUID) throws -> SettingsRevision? {
         let predicate = #Predicate<SettingsRevision> { $0.batchID == batchID }
         return try context.fetch(FetchDescriptor(predicate: predicate)).first
     }
