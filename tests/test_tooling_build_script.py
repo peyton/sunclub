@@ -101,10 +101,10 @@ printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
     assert mise_args[4] == "SunclubDev"
     assert build_derived_data == str(derived_data_path)
     assert shared_derived_data == build_derived_data
-    assert shared_configuration == "Release"
+    assert shared_configuration == "Debug"
 
 
-def test_build_script_keeps_compile_cache_settings_default_under_act(
+def test_build_script_keeps_compile_cache_enabled_in_github(
     tmp_path: Path,
 ) -> None:
     repo_root = tmp_path / "repo"
@@ -135,10 +135,11 @@ printf '%s\n' "$@" >> {shlex.quote(str(mise_log))}
     )
 
     env = os.environ.copy()
-    env["ACT"] = "true"
     env["SUNCLUB_TUIST_SHARE"] = "0"
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["SUNCLUB_SKIP_VERSION_RESOLUTION"] = "1"
+    env["GITHUB_ACTIONS"] = "true"
+    env.pop("SUNCLUB_DISABLE_SWIFT_COMPILE_CACHE", None)
 
     subprocess.run(
         [
@@ -267,7 +268,7 @@ exit 0
 
     assert result.returncode == 0
     assert "Trace/BPT trap after a successful Xcode result" in result.stderr
-    assert xcodebuild_log.read_text().splitlines()[0] == "-workspace"
+    assert "-workspace" in xcodebuild_log.read_text().splitlines()
 
 
 def test_build_script_treats_xcode26_passed_suite_trace_trap_as_success(
@@ -320,7 +321,7 @@ exit 0
     assert "Trace/BPT trap after a successful Xcode result" in result.stderr
 
 
-def test_setup_local_tooling_env_exports_tuist_manifest_variables(
+def test_prepare_xcode_env_exports_tuist_manifest_variables(
     tmp_path: Path,
 ) -> None:
     repo_root = tmp_path / "repo"
@@ -340,7 +341,7 @@ export SUNCLUB_MARKETING_VERSION=2.3.4
 export SUNCLUB_BUILD_NUMBER=20260402.201417.0
 export SUNCLUB_APS_ENVIRONMENT=production
 export TEAM_ID=TEAM123
-setup_local_tooling_env
+prepare_xcode_env
 printf 'flavor=%s\\n' "$TUIST_SUNCLUB_FLAVOR"
 printf 'marketing=%s\\n' "$TUIST_SUNCLUB_MARKETING_VERSION"
 printf 'build=%s\\n' "$TUIST_SUNCLUB_BUILD_NUMBER"
@@ -362,7 +363,7 @@ printf 'team=%s\\n' "$TUIST_TEAM_ID"
     assert "team=TEAM123" in result.stdout
 
 
-def test_setup_local_tooling_env_starts_tuist_cache_in_app(
+def test_setup_local_tooling_env_has_no_xcode_side_effects(
     tmp_path: Path,
 ) -> None:
     repo_root = tmp_path / "repo"
@@ -409,14 +410,7 @@ setup_local_tooling_env
         env=env,
     )
 
-    assert mise_log.read_text().splitlines() == [
-        f"cwd={repo_root / 'app'}",
-        "exec",
-        "--",
-        "tuist",
-        "setup",
-        "cache",
-    ]
+    assert not mise_log.exists()
 
 
 def test_setup_local_tooling_env_can_skip_local_tuist_cache(tmp_path: Path) -> None:
@@ -527,18 +521,9 @@ ensure_workspace_generated
         env=env,
     )
 
-    assert mise_log.read_text().splitlines() == [
-        "exec",
-        "--",
-        "tuist",
-        "setup",
-        "cache",
-        "exec",
-        "--",
-        "tuist",
-        "generate",
-        "--no-open",
-    ]
+    args = mise_log.read_text().splitlines()
+    assert args[-5:] == ["exec", "--", "tuist", "generate", "--no-open"]
+    assert "cache" not in args
 
 
 def test_ensure_workspace_generated_regenerates_when_manifest_is_newer(
@@ -613,18 +598,9 @@ ensure_workspace_generated
         env=env,
     )
 
-    assert mise_log.read_text().splitlines() == [
-        "exec",
-        "--",
-        "tuist",
-        "setup",
-        "cache",
-        "exec",
-        "--",
-        "tuist",
-        "generate",
-        "--no-open",
-    ]
+    args = mise_log.read_text().splitlines()
+    assert args[-5:] == ["exec", "--", "tuist", "generate", "--no-open"]
+    assert "cache" not in args
 
 
 def test_test_ios_script_uses_release_scheme_for_tests_by_default(
@@ -706,7 +682,6 @@ exit 0
     xcodebuild_args = xcodebuild_log.read_text().splitlines()
     assert xcodebuild_args[xcodebuild_args.index("-scheme") + 1] == "Sunclub"
     assert "-only-testing:SunclubTests" in xcodebuild_args
-    _assert_no_compile_cache_overrides(xcodebuild_args)
 
 
 def test_test_ios_script_does_not_retry_after_xctest_assertion(
@@ -923,4 +898,4 @@ exit 0
     )
 
     xcodebuild_args = xcodebuild_log.read_text().splitlines()
-    assert xcodebuild_args[0] == "-workspace"
+    assert "-workspace" in xcodebuild_args

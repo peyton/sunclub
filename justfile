@@ -1,8 +1,18 @@
 #!/usr/bin/env -S just --working-directory . --justfile
 
+export MISE_CONFIG_DIR := justfile_directory() / ".config/mise"
+export MISE_TRUSTED_CONFIG_PATHS := justfile_directory()
+export MISE_LOCKED := "1"
+export UV_FROZEN := "true"
+export UV_CACHE_DIR := justfile_directory() / ".cache/uv"
+export UV_PROJECT_ENVIRONMENT := justfile_directory() / ".venv"
+
 [private]
 @default:
     just --list
+
+cache-setup:
+    bash -c 'source scripts/tooling/common.sh; setup_local_tuist_cache'
 
 bootstrap:
     bash scripts/tooling/bootstrap.sh
@@ -120,8 +130,7 @@ release-tag VERSION:
     VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
 
 [group('app')]
-release-testflight VERSION:
-    VERSION={{VERSION}} bash scripts/appstore/release-tag.sh
+release-testflight VERSION: (release-tag VERSION)
 
 [group('app')]
 release-doctor:
@@ -132,7 +141,9 @@ release-preflight:
     just appstore-validate-strict
     just test-python
     just test-unit
-    just ci-build
+    just test-ui
+    just ci-build dev
+    just ci-build prod
 
 [group('app')]
 generate:
@@ -191,8 +202,11 @@ cloudkit-import-schema:
 cloudkit-reset-dev:
     bash scripts/cloudkit/reset-development.sh
 
-test-unit:
-    bash scripts/tooling/test_ios.sh --suite unit
+test-unit FILTER="":
+    bash scripts/tooling/test_ios.sh --suite unit --filter "{{FILTER}}"
+
+test-ui-smoke:
+    bash scripts/tooling/test_ios.sh --suite ui-smoke
 
 test-ui:
     bash scripts/tooling/test_ios.sh --suite ui
@@ -212,7 +226,9 @@ ci-lint: lint
 
 ci-python: test-python
 
-ci-build:
-    bash scripts/tooling/ci_build.sh
+ci-build FLAVOR="dev":
+    bash scripts/tooling/ci_build.sh "{{FLAVOR}}"
 
-ci: ci-lint ci-python test-unit test-ui ci-build
+ci: ci-lint ci-python test-unit test-ui
+    just ci-build dev
+    just ci-build prod

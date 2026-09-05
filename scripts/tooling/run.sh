@@ -5,9 +5,10 @@ set -euo pipefail
 source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
 setup_local_tooling_env
+apply_flavor_defaults
 
 simulator_udid="$(resolve_simulator_udid "$RUN_SIMULATOR_NAME" "$DEFAULT_SIMULATOR_DEVICE")"
-derived_data_path="$REPO_ROOT/$RUN_DERIVED_DATA"
+derived_data_path="$REPO_ROOT/$BUILD_DERIVED_DATA"
 
 bash "$TOOLING_DIR/build.sh" \
   --configuration Debug \

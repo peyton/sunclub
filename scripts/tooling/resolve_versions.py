@@ -92,14 +92,22 @@ def resolve_marketing_version(
 
 
 def resolve_build_number(
-    environment: Mapping[str, str], *, now: datetime | None = None
+    environment: Mapping[str, str],
+    *,
+    now: datetime | None = None,
+    development: bool = False,
 ) -> str:
     explicit = environment.get("SUNCLUB_BUILD_NUMBER")
     if explicit:
         return explicit
 
-    moment = now or datetime.now(UTC)
     release_tag = github_release_tag(environment)
+    if development and release_tag is None:
+        # Ordinary build/test commands share a stable generation identity.
+        # Explicit builds and release tags retain their release numbering.
+        return "1"
+
+    moment = now or datetime.now(UTC)
     if release_tag is not None and environment.get("GITHUB_RUN_NUMBER"):
         run_number = environment["GITHUB_RUN_NUMBER"]
         attempt = environment.get("GITHUB_RUN_ATTEMPT", "1")
@@ -113,10 +121,13 @@ def resolve_versions(
     repo_root: Path = REPO_ROOT,
     *,
     now: datetime | None = None,
+    development: bool = False,
 ) -> ResolvedVersions:
     return ResolvedVersions(
         marketing_version=resolve_marketing_version(environment, repo_root),
-        build_number=resolve_build_number(environment, now=now),
+        build_number=resolve_build_number(
+            environment, now=now, development=development
+        ),
     )
 
 
@@ -155,6 +166,11 @@ if __name__ == "__main__":
         description="Resolve Sunclub marketing/build versions."
     )
     parser.add_argument(
+        "--development",
+        action="store_true",
+        help="Use a stable local build number unless explicitly set or releasing a tag.",
+    )
+    parser.add_argument(
         "--format",
         choices=("shell", "github-env", "json"),
         default="shell",
@@ -162,7 +178,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    resolved = resolve_versions(os.environ, REPO_ROOT)
+    resolved = resolve_versions(os.environ, REPO_ROOT, development=args.development)
     if args.format == "shell":
         print(shell_exports(resolved))
     elif args.format == "github-env":

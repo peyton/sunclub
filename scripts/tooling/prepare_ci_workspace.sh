@@ -5,4 +5,4 @@ set -euo pipefail
 source "$(cd -- "$(dirname -- "$0")" && pwd)/common.sh"
 
 setup_local_tooling_env
-prepare_ci_workspace "${1:-github-actions}"
+prepare_ci_workspace

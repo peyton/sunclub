@@ -51,7 +51,6 @@ class ToolingConfig:
     screenshot_simulator_prefix: str
     test_xcodebuild_args: str
     build_derived_data: str
-    run_derived_data: str
     test_derived_data: str
     screenshot_derived_data: str
     archive_derived_data: str
@@ -131,7 +130,6 @@ CONFIG = ToolingConfig(
     screenshot_simulator_prefix=_raw_config["SCREENSHOT_SIMULATOR_PREFIX"],
     test_xcodebuild_args=_raw_config["TEST_XCODEBUILD_ARGS"],
     build_derived_data=_raw_config["BUILD_DERIVED_DATA"],
-    run_derived_data=_raw_config["RUN_DERIVED_DATA"],
     test_derived_data=_raw_config["TEST_DERIVED_DATA"],
     screenshot_derived_data=_raw_config["SCREENSHOT_DERIVED_DATA"],
     archive_derived_data=_raw_config["ARCHIVE_DERIVED_DATA"],
