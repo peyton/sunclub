@@ -49,7 +49,9 @@ final class SunclubRecoveryCoordinator {
         }
         return result
     }
-    func restoreImport(_ id: UUID) throws -> SunclubChangeBatch { try history.restoreImportSession(id) }
+    func restoreImport(_ id: UUID, currentPreferences: SunclubRestorablePreferences) throws -> SunclubChangeBatch {
+        try history.restoreImportSession(id, currentPreferences: currentPreferences)
+    }
     func undo(_ id: UUID) throws -> SunclubChangeBatch { try history.undo(batchID: id) }
     func redo(_ id: UUID) throws -> SunclubChangeBatch { try history.redo(batchID: id) }
     func undoIfCurrent(_ id: UUID) throws -> SunclubChangeBatch { try history.undoChangeIfCurrent(batchID: id) }
@@ -65,12 +67,14 @@ final class SunclubRecoveryCoordinator {
         try backups.exportBackup(from: context, to: url, restorablePreferences: preferences)
     }
 
-    func importDocument(_ document: SunclubBackupDocument) throws -> SunclubBackupImportSummary {
-        try backups.importBackupDocument(document, into: context)
+    func importDocument(
+        _ document: SunclubBackupDocument, currentPreferences: SunclubRestorablePreferences
+    ) throws -> SunclubBackupImportSummary {
+        try backups.importBackupDocument(document, into: context, currentPreferences: currentPreferences)
     }
 
-    func importDocument(from url: URL) throws -> SunclubBackupImportSummary {
-        try backups.importBackup(from: url, into: context)
+    func importDocument(from url: URL, currentPreferences: SunclubRestorablePreferences) throws -> SunclubBackupImportSummary {
+        try backups.importBackup(from: url, into: context, currentPreferences: currentPreferences)
     }
 
     @MainActor

@@ -123,6 +123,7 @@ let automationSources: [SourceFileGlob] = [
     "Sources/Services/SunclubGrowthFeatureStore.swift",
     "Sources/Services/SunclubHistoricalUVStore.swift",
     "Sources/Services/SunclubHistoryService.swift",
+    "Sources/Services/SettingsImportUndo.swift",
     "Sources/Services/ManualLogSuggestions.swift",
     "Sources/Services/SunclubQuickLogAction.swift",
     "Sources/Services/SunclubShareArtifactService.swift",

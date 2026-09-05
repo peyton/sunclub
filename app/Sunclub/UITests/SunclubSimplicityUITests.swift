@@ -58,12 +58,16 @@ final class SunclubSimplicityUITests: SunclubUITestCase {
     }
 
     @MainActor
-    func testInsightsBackPreservesSelectedHistoryDate() {
+    func testInsightsSwipePreservesSelectedHistoryDateAfterCancelledGesture() {
         let app = launchHistoryWithSeededRecords()
         selectHistoryDay(offset: -1, in: app)
         tapHittableElement(app.buttons["home.streakCard"], in: app)
         XCTAssertTrue(insightsSummary(in: app).waitForExistence(timeout: 5))
-        navigationBackButton(in: app).tap()
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
+        let shortDrag = app.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: shortDrag, withVelocity: .slow, thenHoldForDuration: 0.15)
+        assertInsightsVisible(in: app)
+        performBackSwipe(in: app)
         let expectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
             .formatted(.dateTime.weekday(.wide).month(.wide).day())
         XCTAssertTrue(waitForLabel(expectedDate, on: app.staticTexts["history.selectedDate"]))

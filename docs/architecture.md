@@ -10,6 +10,7 @@
 | Foreground log validation and timestamp policy              | `Services/SunclubLogRequestResolver.swift`                 |
 | Current-day one-tap logging and defaults                    | `Services/SunTodayLogAction.swift`                         |
 | Revisions, projections and rollback                         | `Services/SunclubHistoryService.swift` and history helpers |
+| Selective settings replay for Undo Import                   | `Services/SettingsImportUndo.swift`                       |
 | UV refresh and stale-response rejection                     | `Services/SunclubUVCoordinator.swift`                      |
 | Reminder health, permission and scheduling                  | `Services/SunclubReminderCoordinator.swift`                |
 | Restore, recovery, import and export coordination           | `Services/SunclubRecoveryCoordinator.swift`                |

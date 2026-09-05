@@ -6,7 +6,6 @@ struct SunclubBackupImportSummary: Equatable {
     let exportedAt: Date
     let importedBatchCount: Int
     let importSessionID: UUID
-    let restoredPreferences: SunclubRestorablePreferences?
 
     var statusMessage: String {
         let noun = restoredRecordCount == 1 ? "day" : "days"
@@ -63,7 +62,10 @@ struct SunclubBackupService {
     }
 
     @MainActor
-    func importBackupDocument(_ document: SunclubBackupDocument, into context: ModelContext) throws -> SunclubBackupImportSummary {
+    func importBackupDocument(
+        _ document: SunclubBackupDocument, into context: ModelContext,
+        currentPreferences: SunclubRestorablePreferences? = nil
+    ) throws -> SunclubBackupImportSummary {
         let temporaryDirectory = try makeTemporaryDirectory()
         defer { removeItemIfPresent(at: temporaryDirectory) }
 
@@ -76,20 +78,23 @@ struct SunclubBackupService {
         let historyService = SunclubHistoryService(context: context)
         let importResult = try historyService.importDomainData(
             from: importedContext,
-            sourceDescription: "Local backup import"
+            sourceDescription: "Local backup import",
+            importedPreferences: document.payload.restorablePreferences,
+            currentPreferences: currentPreferences
         )
 
         return SunclubBackupImportSummary(
             restoredRecordCount: importedSnapshot.records.count,
             exportedAt: document.payload.createdAt,
             importedBatchCount: importResult.importedBatchCount,
-            importSessionID: importResult.importSessionID,
-            restoredPreferences: document.payload.restorablePreferences
+            importSessionID: importResult.importSessionID
         )
     }
 
     @MainActor
-    func importBackup(from url: URL, into context: ModelContext) throws -> SunclubBackupImportSummary {
+    func importBackup(
+        from url: URL, into context: ModelContext, currentPreferences: SunclubRestorablePreferences? = nil
+    ) throws -> SunclubBackupImportSummary {
         let didAccess = url.startAccessingSecurityScopedResource()
         defer {
             if didAccess {
@@ -99,7 +104,7 @@ struct SunclubBackupService {
 
         let data = try Data(contentsOf: url)
         let document = try SunclubBackupDocument(data: data)
-        return try importBackupDocument(document, into: context)
+        return try importBackupDocument(document, into: context, currentPreferences: currentPreferences)
     }
 
     static func storeFiles(at storeURL: URL, fileManager: FileManager = .default) throws -> [SunclubBackupStoreFile] {

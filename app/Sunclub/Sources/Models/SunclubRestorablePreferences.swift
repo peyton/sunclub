@@ -56,6 +56,17 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
         return merged
     }
 
+    /// Explicit recovery replaces only restorable fields; device permissions and usage stay local.
+    func replacingRestorableFields(in current: SunclubGrowthSettings) -> SunclubGrowthSettings {
+        var restored = current
+        restored.preferredName = preferredName
+        restored.uvBriefing = uvBriefing
+        restored.friends = friends
+        restored.accountability = accountability
+        restored.automation = automation
+        return restored
+    }
+
     var hasMeaningfulContent: Bool {
         !preferredName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || uvBriefing != SunclubUVBriefingPreferences()

@@ -122,6 +122,7 @@ The public contract is [App Automation](../docs/app-automation.md).
 - Backup import restores the phone first. Publishing imported changes to iCloud is an explicit action; import must not automatically publish deletions or rollbacks.
 - Recovery & Changes shows imports, conflicts and supported undo/redo operations without changing older revisions in place.
 - Publish, restore, undo and redo expose success/failure. Failed actions remain retryable; failed undo must not mark a conflict resolved.
+- Undo Import restores pre-import preferences, including empty/default values, while preserving identifiable later edits and device-only preferences. If older or remote history cannot distinguish the changes safely, leave everything unchanged and explain the failure. Undo stays local, including after explicitly publishing the import.
 - Ephemeral receipt Undo checks that the affected revision/projection is still current. Explicit historical recovery remains available separately.
 - No-op changes do not schedule extra effects. Preserve streak continuity through projection and conflict handling.
 - Preserve old supported stores, schema migrations, private settings envelopes and compatibility identities. Persisted-field changes require a new immutable versioned schema and prior-store migration coverage.
