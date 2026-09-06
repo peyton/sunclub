@@ -139,6 +139,7 @@ struct SunclubHistoryControl: ControlWidget {
 
 private struct SunclubLogTodayWidgetView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetRenderingMode) private var renderingMode
     let entry: SunclubSnapshotEntry
 
     private var status: SunclubApplicationStatus { entry.snapshot.applicationStatus(now: entry.date) }
@@ -199,10 +200,22 @@ private struct SunclubLogTodayWidgetView: View {
                             Text(!status.isSetupComplete ? "Open" : (status.hasLoggedToday ? "Again" : "Log"))
                                 .fixedSize()
                         }
+                        .padding(.horizontal, AppSpacing.xxs)
                         .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(renderingMode == .fullColor ? AppColor.primaryActionForeground : .primary)
+                        .background {
+                            if renderingMode == .fullColor {
+                                Capsule().fill(AppColor.primaryAction)
+                            }
+                        }
+                        .overlay {
+                            if renderingMode != .fullColor {
+                                Capsule().stroke(.primary, lineWidth: 1)
+                            }
+                        }
+                        .contentShape(Capsule())
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppColor.primaryAction)
+                    .buttonStyle(.plain)
                     .accessibilityLabel(status.actionTitle)
                 }
                 .font(.callout)

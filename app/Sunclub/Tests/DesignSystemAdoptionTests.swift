@@ -346,7 +346,7 @@ final class DesignSystemAdoptionTests: XCTestCase {
             "app/Sunclub/WatchApp/Sources/SunclubWatchHomeView.swift": [
                 "AppCard",
                 "AppText",
-                "AppPrimaryButtonStyle"
+                "AppColor.primaryAction"
             ]
         ]
 
