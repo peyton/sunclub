@@ -58,22 +58,32 @@ private struct SunclubLiveActivityLockScreenView: View {
     let state: SunclubLiveActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(state.statusTitle())
-                .font(.headline)
-                .fontDesign(.rounded)
-                .fixedSize(horizontal: false, vertical: true)
-            SunclubLiveActivityTimerValue(state: state, size: 34)
-            if !state.hasPendingCheckIn() {
-                Text(state.hasCurrentApplication() ? state.appliedLabel : "Open Sunclub to log today")
-                    .font(.subheadline)
-                    .fontDesign(.rounded)
-                    .foregroundStyle(AppColor.Text.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(state.statusTitle())
+                        .font(.headline)
+                        .lineLimit(2)
+                    Text(state.hasPendingCheckIn() ? "Unconfirmed" :
+                            (state.hasCurrentApplication() ? state.appliedLabel : "Open Sunclub to log today"))
+                        .font(.caption)
+                        .foregroundStyle(AppColor.Text.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if state.hasCurrentApplication() {
+                    SunclubLiveActivityTimerValue(state: state, size: 28)
+                        .frame(maxWidth: 140, alignment: .trailing)
+                }
             }
             SunclubLiveActivityLogButton(state: state)
         }
+        .fontDesign(.rounded)
         .foregroundStyle(AppColor.Text.primary)
-        .padding(16)
+        // The system caps Lock Screen activity height; keep larger text legible within that surface.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .padding(12)
     }
 }
 
@@ -84,23 +94,20 @@ private struct SunclubLiveActivityLogButton: View {
         if state.hasPendingCheckIn(), let checkInID = state.pendingDepartureCheckInID {
             HStack(spacing: 8) {
                 Link(destination: SunclubWidgetRoute.departureCheckIn.url) {
-                    Text("Already applied")
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                    Text("Already applied").lineLimit(1).minimumScaleFactor(0.75)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppColor.primaryAction)
+                .buttonStyle(SunclubLiveActivityButtonStyle(isPrimary: true))
                 .accessibilityHint("Choose when you applied sunscreen.")
                 Button(intent: SnoozeDepartureCheckInIntent(checkInID: checkInID.uuidString)) {
-                    Text("In 15 min")
-                        .frame(minHeight: 44)
+                    Text("In 15 min").lineLimit(1).minimumScaleFactor(0.75)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SunclubLiveActivityButtonStyle())
                 .accessibilityLabel("Remind me in 15 minutes")
                 Button(intent: DismissDepartureCheckInIntent(checkInID: checkInID.uuidString)) {
                     Image(systemName: "xmark")
-                        .frame(minWidth: 44, minHeight: 44)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SunclubLiveActivityButtonStyle())
+                .frame(width: 44)
                 .accessibilityLabel("Dismiss check-in")
             }
             .font(.callout.weight(.semibold))
@@ -110,17 +117,33 @@ private struct SunclubLiveActivityLogButton: View {
                 Label("Log reapplication", systemImage: "arrow.clockwise")
                     .font(.callout.weight(.semibold))
                     .fontDesign(.rounded)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(AppColor.primaryAction)
+            .buttonStyle(SunclubLiveActivityButtonStyle(isPrimary: true))
             .accessibilityHint("Records another sunscreen application.")
         } else {
             Link("Open Sunclub", destination: SunclubWidgetRoute.today.url)
                 .font(.callout.weight(.semibold))
-                    .fontDesign(.rounded)
+                .fontDesign(.rounded)
+                .buttonStyle(SunclubLiveActivityButtonStyle())
         }
+    }
+}
+
+/// An explicit target height avoids the additional vertical padding of bordered button styles.
+private struct SunclubLiveActivityButtonStyle: ButtonStyle {
+    var isPrimary = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .foregroundStyle(isPrimary ? AppColor.primaryActionForeground : AppColor.Text.primary)
+            .background(isPrimary ? AppColor.primaryAction : AppColor.control,
+                        in: RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(Rectangle())
     }
 }
 
@@ -161,7 +184,7 @@ private struct SunclubLiveActivityTimerValue: View {
                     .font(AppFont.heroMetric(size: isCompact ? 11 : timerSize))
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(isCompact ? 0.7 : 1)
+                    .minimumScaleFactor(isCompact ? 0.7 : 0.8)
             } else {
                 Text(state.fallbackTimerText(now: now))
                     .font(isCompact ? .caption2 : .title2)
