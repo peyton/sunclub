@@ -57,16 +57,16 @@ These steps still require real App Store Connect data and cannot be faked safely
 
 ## Review Notes
 
-- Sunclub is free-only for v1.
+- Sunclub is free.
 - The app is iPhone-only.
 - Sunclub is not a regulated medical device; it is sunscreen habit guidance, not diagnosis, monitoring, prevention, or treatment.
 - This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
 - Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
-- To navigate to WeatherKit functionality: complete onboarding, open Settings, expand Travel & Health, find UV & Health, enable Live UV with the Use Apple Weather for Live UV switch, grant location permission if prompted, then return to Timeline/Home.
+- To navigate to WeatherKit functionality: complete onboarding, open Settings, open UV & Weather, then select Choose a City or turn on Use current location and grant permission. Return to Today and tap the UV card to view the forecast.
 - WeatherKit requests occur only while the main app is active. They are cache- and rate-limit-gated, may start automatically on launch or foreground activation or after a user refresh or settings action, and are covered by the remote config at `https://sunclub.peyton.app/config/weatherkit.json`.
 - Apple Weather forecasts are cached for up to eight hours; last-known Apple Weather values may appear for up to 24 hours with their age clearly shown. Apple Weather attribution and a visible legal/data-source link apply only to those Apple Weather values.
 - The fallback when no Apple Weather value is available is a clearly labeled on-device estimate based on available latitude, season, and time, or a generic season-and-time estimate without location.
-- The primary check-in flow is manual logging from Home.
+- The primary check-in flow is logging from Today.
 - Weekly Summary and reminder settings remain part of the submission flow.
 
 ## WeatherKit Reviewer Reply Draft
@@ -81,11 +81,9 @@ Live UV is off by default. The app's core features, including manual sunscreen l
 To navigate to the WeatherKit functionality:
 1. Complete onboarding.
 2. Open Settings.
-3. Expand Travel & Health.
-4. Find UV & Health.
-5. Enable Live UV with the Use Apple Weather for Live UV switch.
-6. Grant location permission if prompted.
-7. Return to Timeline/Home.
+3. Open UV & Weather.
+4. Select Choose a City to use a saved city, or turn on Use current location and grant permission.
+5. Return to Today and tap the UV card to view the forecast.
 
 When Live UV is enabled, Apple Weather UV data is shown with Apple Weather attribution and a visible Data Sources/legal attribution link. Apple Weather forecasts are cached for up to eight hours, and last-known Apple Weather values can appear for up to 24 hours with their age clearly shown. Attribution applies only to Apple Weather values, including cached or last-known values.
 

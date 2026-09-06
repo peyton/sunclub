@@ -38,32 +38,39 @@ Required environment variables:
 
 Description:
 
-Sunclub is a private sunscreen tracker for exact application logging, live UV context, helpful progress, and reliable reapply reminders.
+Make sunscreen part of your everyday skincare routine.
 
-Record what you applied and when, see when sun protection is recommended, and keep the next useful action close at hand.
+A quick log. A timely reminder. A little more consistency. Sunclub keeps your daily SPF routine simple, whether you are getting ready for work or heading outside.
 
-Features:
+LOG IN A MOMENT
+Log sunscreen with a tap, or add the time, SPF, covered areas, and product details. Forgot to log? Add an earlier application to your history.
 
-• Accurate Logging — Record an exact time, SPF, covered areas, and optional product details.
-• Live UV Context — See Apple Weather UV guidance with a clear source and update time.
-• Reliable Reminders — Set daily and reapply reminders, then log or snooze from the notification.
-• Apple Watch and Widgets — Check UV and log sunscreen from the surfaces you already use.
-• Shortcuts and Live Activities — Automate non-destructive actions and keep reapply timing visible.
-• Private by Default — No app-owned accounts, no ads, optional private iCloud sync, local backup/import, and no analytics SDKs.
+REMEMBER TO REAPPLY
+Choose daily and reapplication reminders that fit your routine. Log or snooze from a notification, and keep reapplication timing close with Live Activities. Follow your sunscreen label for when to reapply.
 
-Sunclub supports a sunscreen routine without medical scoring or pressure-based goals.
+CHECK THE UV
+See UV context for your day, with a clear source and update time. Turn on optional Apple Weather forecasts for your current location or a saved city.
+
+SEE YOUR ROUTINE TAKE SHAPE
+Look back at your sunscreen history, recent days, and streak. Keep a useful record of the habit you are building.
+
+KEEP IT CLOSE
+Log from widgets and Apple Watch, or make Sunclub part of your Shortcuts.
+
+YOUR ROUTINE, YOUR DATA
+Free. No account, ads, or analytics SDKs. Keep your history on your device, enable optional private iCloud sync, and export a backup whenever you need one.
 
 Keywords: sunscreen, spf, uv, habit, streak, daily, reminder, skincare, sun care
 
-Promotional text: Log sunscreen with an exact time, check sourced UV guidance, and act on reliable reapply reminders — private by default.
+Promotional text: Your daily SPF ritual. Log sunscreen in a tap, remember to reapply, and see your routine take shape. Free, private, and made for everyday skincare.
 
-What's New: This update makes logging and reminders more trustworthy: edit exact application times, see clearer live UV sources, use contextual next actions, and act on reapply notifications. It also improves Larger Text layouts.
+What's New: Simplify, simplify, simplify. Fix notification and other bugs
 
 ## App Review Notes
 
 - Demo account required: no
 - Demo account notes: No account required. App data is stored on device and can sync through the user's private iCloud database when iCloud sync is enabled.
-- Notes: Yes, Sunclub includes WeatherKit as an optional Live UV enhancement powered by Apple Weather. Live UV is off by default; core manual logging, progress, reminders, widgets, and watch surfaces work without WeatherKit or location. To navigate to WeatherKit functionality: complete onboarding, open Settings, open UV & Health, enable Live UV, choose a city or grant location permission, then return to Timeline/Home. WeatherKit requests occur only while the main app is active; they are cache- and rate-limit-gated and may start automatically on launch or foreground activation, or after a user refresh or settings action. Apple Weather forecasts are cached for up to eight hours; last-known Apple Weather values may appear for up to 24 hours with their age clearly shown. The fallback when no Apple Weather value is available is a clearly labeled on-device estimate based on available latitude, season, and time, or generic season and time without location. Apple Weather attribution and the Data Sources legal link apply only to Apple Weather values, including cached or last-known Apple Weather values. Reviewers can complete onboarding, log sunscreen manually from Home, open Insights, and adjust reminder settings from Settings.
+- Notes: Yes, Sunclub includes WeatherKit as an optional Live UV enhancement powered by Apple Weather. Live UV is off by default; core manual logging, progress, reminders, widgets, and watch surfaces work without WeatherKit or location. To navigate to WeatherKit functionality: complete onboarding, open Settings, open UV & Weather, then choose Choose a City to use a saved city, or turn on Use current location and grant location permission. Return to Today and tap the UV card to view the forecast. WeatherKit requests occur only while the main app is active; they are cache- and rate-limit-gated and may start automatically on launch or foreground activation, or after a user refresh or settings action. Apple Weather forecasts are cached for up to eight hours; last-known Apple Weather values may appear for up to 24 hours with their age clearly shown. The fallback when no Apple Weather value is available is a clearly labeled on-device estimate based on available latitude, season, and time, or generic season and time without location. Apple Weather attribution and the Data Sources legal link apply only to Apple Weather values, including cached or last-known Apple Weather values. Reviewers can complete onboarding, tap Log sunscreen on Today, review logged applications in History, and adjust reminders in Settings > Reminders.
 - Contact first name: `SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME`
 - Contact last name: `SUNCLUB_APP_REVIEW_CONTACT_LAST_NAME`
 - Contact email: `SUNCLUB_APP_REVIEW_CONTACT_EMAIL`
@@ -75,11 +82,11 @@ What's New: This update makes logging and reminders more trustworthy: edit exact
 - Required size class: 6.9-inch iPhone
 - Display type: APP_IPHONE_67
 - Generated output: `.build/appstore-screenshots`
-- log-spf: route `manualLog`, headline "Log the exact time", caption "Record time, SPF, covered areas, and an optional reusable profile."
-- uv-timeline: route `home`, headline "Know today's UV", caption "See sourced Apple Weather UV, its update time, and the next useful action."
-- reapply-time: route `verifySuccess`, headline "Act on reminders", caption "Follow your label, log a reapplication, or snooze for 30 minutes."
-- weekly-progress: route `weeklySummary`, headline "Build from day one", caption "Review eligible days and encouraging local-first progress insights."
-- private-settings: route `settings`, headline "Private by default", caption "No account, no ads, optional iCloud sync and local backup."
+- daily-ritual: route `home`, headline "Your daily SPF ritual", caption "One quick log for your everyday skincare routine."
+- log-spf: route `manualLog`, headline "Log it. Get on with your day.", caption "Keep the time, SPF, and details that matter to you."
+- reapply-time: route `home`, headline "Make reapplying a habit", caption "Keep your next reapplication close at hand."
+- uv-forecast: route `uvForecast`, headline "A little context for your day", caption "Check the UV with a clear source and forecast."
+- routine-history: route `weeklySummary`, headline "See your routine take shape", caption "Look back on the days you made time for SPF."
 
 ## App Privacy
 
@@ -98,6 +105,8 @@ Manual App Store Connect answer: select Data Not Collected and do not mark track
 - unrestricted_web_access: no
 - broad_user_generated_content: no
 - in_app_chat: no
+- social_media: no
+- social_media_age_restricted: no
 - gambling_or_contests: no
 - mature_or_suggestive_content: none
 - sexual_content_or_nudity: none
