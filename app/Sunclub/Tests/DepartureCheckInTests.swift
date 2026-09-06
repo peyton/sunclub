@@ -251,6 +251,87 @@ final class DepartureCheckInTests: XCTestCase {
         XCTAssertEqual(try history.departureCheckIns().first?.resolution, .confirmed)
     }
 
+    func testWestwardTravelKeepsCheckInActiveAndConfirmsActualLocalApplicationDay() throws {
+        let fixture = try westwardTravelFixture()
+        let history = fixture.history
+        let original = fixture.original
+        let arrival = fixture.arrival
+        let localCalendar = fixture.calendar
+        XCTAssertFalse(localCalendar.isDate(original.day, inSameDayAs: arrival), "The original midnight falls on yesterday after travel.")
+        XCTAssertTrue(original.isActive(at: arrival, calendar: localCalendar))
+        XCTAssertNil(try history.recordDeparture(at: arrival), "Travel must not create a second departure for the current day.")
+        let snoozedUntil = arrival.addingTimeInterval(900)
+        XCTAssertNotNil(try history.resolveDeparture(id: original.id, action: .snooze(until: snoozedUntil), now: arrival))
+        XCTAssertFalse(try XCTUnwrap(history.departureCheckIns().first).isActive(at: arrival, calendar: localCalendar))
+        let appliedAt = arrival.addingTimeInterval(-1800)
+        let confirmation = try XCTUnwrap(history.resolveDeparture(id: original.id,
+            action: .confirm(appliedAt: appliedAt, spfLevel: 50, notes: nil), now: arrival))
+        let application = try XCTUnwrap(history.record(for: arrival))
+        XCTAssertEqual(application.startOfDay, localCalendar.startOfDay(for: appliedAt))
+        XCTAssertEqual(application.verifiedAt, appliedAt)
+        XCTAssertNil(try history.record(for: original.day), "Confirmation must not write an application to yesterday.")
+        XCTAssertEqual(try history.departureCheckIns().first?.day, original.day)
+        XCTAssertTrue(try history.fetchContext().fetch(FetchDescriptor<DepartureCheckInRevision>()).allSatisfy { $0.day == original.day })
+        _ = try history.undoChangeIfCurrent(batchID: confirmation.id)
+        XCTAssertNil(try history.record(for: arrival))
+        let restored = try XCTUnwrap(history.departureCheckIns().first)
+        XCTAssertEqual(restored.id, original.id)
+        XCTAssertEqual(restored.day, original.day)
+        XCTAssertEqual(restored.resolution, .unconfirmed)
+        XCTAssertEqual(restored.snoozedUntil, snoozedUntil)
+        XCTAssertTrue(restored.isActive(at: snoozedUntil, calendar: localCalendar))
+    }
+
+    func testOrdinaryLogAfterWestwardTravelResolvesOriginalRevisionIdentity() throws {
+        let fixture = try westwardTravelFixture()
+        let mutations = SunclubMutationService(history: fixture.history, calendar: fixture.calendar)
+        let result = try mutations.upsert(.init(day: fixture.arrival, verifiedAt: fixture.arrival, method: .quickLog,
+            spfLevel: nil, notes: nil, replaceOptionalFields: false, preserveExistingDuration: false,
+            kind: .manualLog, summary: "Log after arriving"))
+        let confirmed = try XCTUnwrap(fixture.history.departureCheckIns().first)
+        XCTAssertEqual(confirmed.id, fixture.original.id)
+        XCTAssertEqual(confirmed.day, fixture.original.day)
+        XCTAssertEqual(confirmed.resolution, .confirmed)
+        XCTAssertEqual(confirmed.linkedApplicationAt, fixture.arrival)
+        _ = try fixture.history.undoChangeIfCurrent(batchID: XCTUnwrap(result.batch).id)
+        XCTAssertEqual(try fixture.history.departureCheckIns().first?.resolution, .unconfirmed)
+        XCTAssertEqual(try fixture.history.departureCheckIns().first?.day, fixture.original.day)
+    }
+
+    func testCheckInMembershipAndExpiryAcrossDSTDays() throws {
+        var localCalendar = Calendar(identifier: .gregorian)
+        localCalendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
+        let formatter = ISO8601DateFormatter()
+        for timestamp in ["2026-03-08T16:00:00Z", "2026-11-01T17:00:00Z"] {
+            let departedAt = try XCTUnwrap(formatter.date(from: timestamp))
+            let originalDay = localCalendar.startOfDay(for: departedAt)
+            let checkIn = DepartureCheckInSnapshot(id: UUID(), day: originalDay, departedAt: departedAt)
+            let nextDay = try XCTUnwrap(localCalendar.date(byAdding: .day, value: 1, to: originalDay))
+            XCTAssertTrue(checkIn.isActive(at: nextDay.addingTimeInterval(-1), calendar: localCalendar))
+            XCTAssertFalse(checkIn.isActive(at: nextDay, calendar: localCalendar))
+            XCTAssertEqual(checkIn.day, originalDay)
+        }
+    }
+
+    private func westwardTravelFixture() throws -> (
+        history: SunclubHistoryService, original: DepartureCheckInSnapshot, arrival: Date, calendar: Calendar
+    ) {
+        var newYork = Calendar(identifier: .gregorian)
+        newYork.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        var losAngeles = Calendar(identifier: .gregorian)
+        losAngeles.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
+        let formatter = ISO8601DateFormatter()
+        let departure = try XCTUnwrap(formatter.date(from: "2026-09-05T12:00:00Z"))
+        let arrival = try XCTUnwrap(formatter.date(from: "2026-09-05T16:00:00Z"))
+        let container = try SunclubModelContainerFactory.makeInMemoryContainer()
+        let context = ModelContext(container)
+        let origin = SunclubHistoryService(context: context, calendar: newYork)
+        try origin.bootstrapIfNeeded()
+        _ = try origin.recordDeparture(at: departure)
+        let original = try XCTUnwrap(origin.departureCheckIns().first)
+        return (SunclubHistoryService(context: context, calendar: losAngeles), original, arrival, losAngeles)
+    }
+
     func testV5MigrationPreservesRecordsAndAddsEmptyCheckInHistory() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

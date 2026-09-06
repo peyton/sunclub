@@ -24,7 +24,7 @@ struct DepartureCheckInView: View {
                     }
                     Button("Done") { router.goHome() }.buttonStyle(SunPrimaryButtonStyle())
                 } else if let checkIn = appState.departureCheckIns.first(where: {
-                    $0.resolution == .unconfirmed && Calendar.current.isDate($0.day, inSameDayAs: appState.referenceDate)
+                    $0.resolution == .unconfirmed && $0.isOnDay(appState.referenceDate)
                 }) {
                     AppText("Did you apply sunscreen?", style: .title)
                     AppText("You left home at \(checkIn.departedAt.formatted(date: .omitted, time: .shortened)). If you already applied, choose when.",
@@ -78,7 +78,7 @@ struct DepartureCheckInView: View {
         case let .success(receipt):
             error = nil
             if case .confirm = action {
-                if receipt.didChange || appState.record(for: checkIn.day) != nil { self.receipt = receipt }
+                if receipt.didChange || appState.record(for: checkIn.departedAt) != nil { self.receipt = receipt }
                 else { error = "This check-in has already been updated. Return to Today to review it." }
             }
             else { router.goHome() }

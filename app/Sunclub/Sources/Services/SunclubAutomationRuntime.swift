@@ -687,18 +687,18 @@ enum SunclubAutomationRuntime {
         let checkIns = try history.departureCheckIns()
         guard let checkIn = checkIns.first(where: {
             if let requestedID { return $0.id == requestedID }
-            return $0.resolution == .unconfirmed && calendar.isDate($0.day, inSameDayAs: runtimeContext.now)
+            return $0.resolution == .unconfirmed && $0.isOnDay(runtimeContext.now, calendar: calendar)
         }) else { throw SunclubAutomationError.unavailable("No check-in is waiting.") }
         let resolution: DepartureCheckInAction
         switch action {
         case let .confirmDepartureCheckIn(_, appliedAt):
             let defaults = SunManualLogDefaultResolver.oneTapDefaults(
-                from: try history.records(), excluding: checkIn.day,
+                from: try history.records(), excluding: calendar.startOfDay(for: appliedAt),
                 profileSPF: try history.settings().sunscreenProfile?.spf, calendar: calendar
             )
             resolution = .confirm(appliedAt: appliedAt, spfLevel: defaults.spfLevel, notes: defaults.oneTapNotes)
         case .snoozeDepartureCheckIn:
-            guard calendar.isDate(checkIn.day, inSameDayAs: runtimeContext.now) else {
+            guard checkIn.isOnDay(runtimeContext.now, calendar: calendar) else {
                 throw SunclubAutomationError.invalidInput("Only today's check-in can be snoozed.")
             }
             resolution = .snooze(until: runtimeContext.now.addingTimeInterval(900))
@@ -1169,7 +1169,7 @@ enum SunclubAutomationRuntime {
         now: Date
     ) throws {
         let pending = try historyService.departureCheckIns().first {
-            $0.resolution == .unconfirmed && calendar.isDate($0.day, inSameDayAs: now)
+            $0.resolution == .unconfirmed && $0.isOnDay(now, calendar: calendar)
         }
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: try historyService.settings(),

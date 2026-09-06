@@ -369,8 +369,9 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
         if let departure = state.pendingDepartureReminder,
            departure.resolution == .unconfirmed,
-           calendar.isDate(departure.day, inSameDayAs: now()),
-           let deadline = departure.snoozedUntil, deadline > now() {
+           departure.isOnDay(now(), calendar: calendar),
+           let deadline = departure.snoozedUntil, deadline > now(),
+           calendar.isDate(deadline, inSameDayAs: now()) {
             requests.append(NotificationPlannedRequest(
                 category: .leaveHome, request: makeDepartureCheckInRequest(id: departure.id, at: deadline)
             ))
@@ -952,7 +953,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             .max { $0.identifier < $1.identifier }.map { [$0] } ?? []
         if let departure = state.pendingDepartureReminder,
            departure.resolution == .unconfirmed,
-           calendar.isDate(departure.day, inSameDayAs: now()), state.record(for: now()) == nil,
+           departure.isOnDay(now(), calendar: calendar), state.record(for: now()) == nil,
+           departure.snoozedUntil.map({ calendar.isDate($0, inSameDayAs: now()) }) ?? true,
            let request = pendingRequests.first(where: {
                $0.identifier == "\(NotificationConstants.leaveHomePrefix)\(departure.id.uuidString)"
            }) {
@@ -1281,7 +1283,7 @@ private final class BackgroundReminderState: SunclubReminderState {
         recordedDays = records.map(\.startOfDay)
         growthSettings = SunclubGrowthFeatureStore().load()
         pendingDepartureReminder = try history.departureCheckIns().first {
-            $0.resolution == .unconfirmed && Calendar.current.isDateInToday($0.day)
+            $0.resolution == .unconfirmed && $0.isOnDay(Date())
         }
     }
 

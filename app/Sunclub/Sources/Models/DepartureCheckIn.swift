@@ -16,8 +16,14 @@ struct DepartureCheckInSnapshot: Codable, Equatable, Identifiable, Sendable {
     var snoozedUntil: Date?
     var linkedApplicationAt: Date?
 
+    /// `day` remains the immutable revision key. Presentation follows the departure's
+    /// actual timestamp so moving time zones cannot shift a midnight key to yesterday.
+    func isOnDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+        calendar.isDate(departedAt, inSameDayAs: date)
+    }
+
     func isActive(at now: Date, calendar: Calendar = .current) -> Bool {
-        resolution == .unconfirmed && calendar.isDate(day, inSameDayAs: now)
+        resolution == .unconfirmed && isOnDay(now, calendar: calendar)
             && (snoozedUntil.map { $0 <= now } ?? true)
     }
 }

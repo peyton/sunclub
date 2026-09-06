@@ -655,6 +655,69 @@ final class NotificationManagerTests: XCTestCase {
         XCTAssertEqual(Set(pending.keys), [try XCTUnwrap(currentRequestID)])
     }
 
+    func testTraveledPendingInitialDepartureSurvivesReconciliation() async throws {
+        let (state, manager, center, now) = try traveledDepartureFixture()
+        let departure = try XCTUnwrap(state.pendingDepartureReminder)
+        let initial = await manager.scheduleDepartureCheckIn(id: departure.id, at: now)
+        XCTAssertTrue(initial.isSuccessful)
+        _ = await manager.scheduleReminders(using: state)
+        XCTAssertEqual(center.pendingRequests.filter { $0.identifier.hasPrefix("sunscreen.leave-home.") }.map(\.identifier),
+                       ["sunscreen.leave-home.\(departure.id.uuidString)"])
+    }
+
+    func testTraveledSnoozedDepartureIsRecreatedAndPreserved() async throws {
+        let (state, manager, center, now) = try traveledDepartureFixture()
+        let deadline = now.addingTimeInterval(900)
+        state.pendingDepartureReminder?.snoozedUntil = deadline
+        _ = await manager.scheduleReminders(using: state)
+        _ = await manager.scheduleReminders(using: state)
+        let requests = center.pendingRequests.filter { $0.identifier.hasPrefix("sunscreen.leave-home.") }
+        XCTAssertEqual(requests.count, 1)
+        let trigger = try XCTUnwrap(requests.first?.trigger as? UNCalendarNotificationTrigger)
+        XCTAssertEqual(Calendar.current.date(from: trigger.dateComponents), deadline)
+    }
+
+    func testLateDepartureSnoozeIsNotRecreatedOrPreservedAcrossMidnight() async throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(calendar.date(bySettingHour: 23, minute: 55, second: 0, of: Date()))
+        let deadline = now.addingTimeInterval(900)
+        var departure = DepartureCheckInSnapshot(id: UUID(), day: calendar.startOfDay(for: now),
+            departedAt: now.addingTimeInterval(-8 * 3600))
+        departure.snoozedUntil = deadline
+        let center = TestUserNotificationCenterClient()
+        let manager = NotificationManager(center: center, calendar: calendar, now: { now })
+        let state = DepartureReminderTestState(
+            underlying: try makeAppState(notificationManager: manager, clock: { now }), departure: departure
+        )
+        _ = await manager.scheduleReminders(using: state)
+        XCTAssertFalse(center.pendingRequests.contains { $0.identifier.hasPrefix("sunscreen.leave-home.") })
+        // Older versions may already have accepted the invalid next-day request.
+        center.pendingRequests.append(SunclubDepartureReminderBridge.request(id: departure.id, fireDate: deadline, now: now))
+        _ = await manager.scheduleReminders(using: state)
+        XCTAssertFalse(center.pendingRequests.contains { $0.identifier.hasPrefix("sunscreen.leave-home.") })
+    }
+
+    private func traveledDepartureFixture() throws -> (
+        DepartureReminderTestState, NotificationManager, TestUserNotificationCenterClient, Date
+    ) {
+        var newYork = Calendar(identifier: .gregorian)
+        newYork.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        var losAngeles = Calendar(identifier: .gregorian)
+        losAngeles.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
+        let formatter = ISO8601DateFormatter()
+        let departedAt = try XCTUnwrap(formatter.date(from: "2026-09-05T12:00:00Z"))
+        let now = try XCTUnwrap(formatter.date(from: "2026-09-05T16:00:00Z"))
+        let departure = DepartureCheckInSnapshot(id: UUID(), day: newYork.startOfDay(for: departedAt), departedAt: departedAt)
+        XCTAssertFalse(losAngeles.isDate(departure.day, inSameDayAs: now))
+        XCTAssertTrue(departure.isOnDay(now, calendar: losAngeles))
+        let center = TestUserNotificationCenterClient()
+        let manager = NotificationManager(center: center, calendar: losAngeles, now: { now })
+        let state = DepartureReminderTestState(
+            underlying: try makeAppState(notificationManager: manager, clock: { now }), departure: departure
+        )
+        return (state, manager, center, now)
+    }
+
     private func makeAppState(
         notificationManager: NotificationScheduling,
         clock: @escaping () -> Date = Date.init

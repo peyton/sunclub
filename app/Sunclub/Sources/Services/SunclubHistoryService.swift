@@ -115,7 +115,7 @@ final class SunclubHistoryService {
     func recordDeparture(at now: Date) throws -> SunclubChangeBatch? {
         let day = calendar.startOfDay(for: now)
         guard try record(for: day) == nil,
-              !(try departureCheckIns()).contains(where: { $0.day == day }) else { return nil }
+              !(try departureCheckIns()).contains(where: { $0.isOnDay(now, calendar: calendar) }) else { return nil }
         let snapshot = DepartureCheckInSnapshot(id: UUID(), day: day, departedAt: now)
         return try commitRecoveryChange(validate: {}, {
             let batch = try createBatch(kind: .departureCheckIn, scope: .day,
@@ -129,7 +129,7 @@ final class SunclubHistoryService {
     func resolveDeparture(id: UUID, action: DepartureCheckInAction, now: Date) throws -> SunclubChangeBatch? {
         guard var snapshot = try departureCheckIns().first(where: { $0.id == id }),
               snapshot.resolution == .unconfirmed,
-              calendar.isDate(snapshot.day, inSameDayAs: now) else { return nil }
+              snapshot.isOnDay(now, calendar: calendar) else { return nil }
         var application: DailyRecordProjectionSnapshot?
         switch action {
         case .dismiss:
@@ -141,17 +141,18 @@ final class SunclubHistoryService {
             snapshot.snoozedUntil = until
         case let .confirm(appliedAt, spfLevel, notes):
             guard appliedAt <= now else { throw HistoryServiceError.futureApplicationTime }
-            guard calendar.isDate(appliedAt, inSameDayAs: snapshot.day) else {
+            guard snapshot.isOnDay(appliedAt, calendar: calendar) else {
                 throw HistoryServiceError.staleChange
             }
             snapshot.resolution = .confirmed
             snapshot.snoozedUntil = nil
-            if let existing = try record(for: snapshot.day) {
+            let applicationDay = calendar.startOfDay(for: appliedAt)
+            if let existing = try record(for: applicationDay) {
                 // A racing log from another surface wins. Confirmation never overwrites it.
                 snapshot.linkedApplicationAt = existing.verifiedAt
             } else {
                 snapshot.linkedApplicationAt = appliedAt
-                application = DailyRecordProjectionSnapshot(startOfDay: snapshot.day, verifiedAt: appliedAt,
+                application = DailyRecordProjectionSnapshot(startOfDay: applicationDay, verifiedAt: appliedAt,
                     methodRawValue: VerificationMethod.manual.rawValue, verificationDuration: nil,
                     spfLevel: SunManualLogInput.normalizedSPF(spfLevel), notes: SunManualLogInput.normalizedNotes(notes),
                     reapplyCount: 0, lastReappliedAt: nil)
@@ -159,7 +160,7 @@ final class SunclubHistoryService {
         }
         return try commitRecoveryChange(validate: {}, {
             let batch = try createBatch(kind: .departureCheckIn, scope: .day,
-                scopeIdentifier: Self.scopeIdentifier(for: snapshot.day), summary: "Updated sunscreen check-in.")
+                scopeIdentifier: Self.scopeIdentifier(for: calendar.startOfDay(for: snapshot.departedAt)), summary: "Updated sunscreen check-in.")
             context.insert(try DepartureCheckInRevision(batchID: batch.id, day: snapshot.day, snapshot: snapshot))
             if let application {
                 context.insert(DailyRecordRevision(batch: batch, snapshot: application, changedFields: Self.allRecordFields))
@@ -394,11 +395,11 @@ final class SunclubHistoryService {
                     )
                 }
 
-                if var checkIn = try departureCheckIns().first(where: { $0.day == targetDay && $0.resolution != .dismissed }) {
+                if var checkIn = try departureCheckIns().first(where: { $0.isOnDay(targetDay, calendar: calendar) && $0.resolution != .dismissed }) {
                     checkIn.resolution = nextSnapshot == nil ? .unconfirmed : .confirmed
                     checkIn.snoozedUntil = nil
                     checkIn.linkedApplicationAt = nextSnapshot?.verifiedAt
-                    context.insert(try DepartureCheckInRevision(batchID: batch.id, day: targetDay, snapshot: checkIn))
+                    context.insert(try DepartureCheckInRevision(batchID: batch.id, day: checkIn.day, snapshot: checkIn))
                 }
                 try rebuildProjections(savingChanges: false)
                 try mutationGuard()

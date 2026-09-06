@@ -307,7 +307,7 @@ final class AppState: SunclubReminderState {
     var pendingDepartureReminder: DepartureCheckInSnapshot? {
         guard record(for: referenceDate) == nil else { return nil }
         return departureCheckIns.first {
-            $0.resolution == .unconfirmed && calendar.isDate($0.day, inSameDayAs: referenceDate)
+            $0.resolution == .unconfirmed && $0.isOnDay(referenceDate, calendar: calendar)
         }
     }
 

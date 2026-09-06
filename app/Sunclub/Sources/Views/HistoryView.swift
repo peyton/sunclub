@@ -113,7 +113,7 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func departureHistory(for day: Date) -> some View {
-        ForEach(appState.departureCheckIns.filter { calendar.isDate($0.day, inSameDayAs: day) }) { checkIn in
+        ForEach(appState.departureCheckIns.filter { $0.isOnDay(day, calendar: calendar) }) { checkIn in
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 AppText("Left home at \(checkIn.departedAt.formatted(date: .omitted, time: .shortened))", style: .bodyMedium)
                 AppText(checkIn.resolution == .unconfirmed ? "Unconfirmed" :
@@ -366,7 +366,7 @@ struct HistoryView: View {
     }
 
     private func hasUnconfirmedDeparture(on day: Date) -> Bool {
-        appState.departureCheckIns.contains { calendar.isDate($0.day, inSameDayAs: day) && $0.resolution == .unconfirmed }
+        appState.departureCheckIns.contains { $0.isOnDay(day, calendar: calendar) && $0.resolution == .unconfirmed }
     }
 
     @ViewBuilder
