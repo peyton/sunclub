@@ -134,10 +134,6 @@ def generate_review_package(raw_manifest: Mapping[str, Any]) -> str:
             "- Collected data types: "
             + (", ".join(privacy.get("collected_data_types", [])) or "none"),
             f"- Collection purpose: {privacy.get('collection_purpose', 'App Functionality')}",
-            (
-                "- Public CloudKit accountability transport: "
-                f"{yes_no(privacy['public_cloudkit_accountability_transport'])}"
-            ),
             f"- Notification purpose: {privacy['notifications_usage_description']}",
             "- App Store Connect questionnaire gate: `SUNCLUB_APP_PRIVACY_COMPLETED=1`",
             "",

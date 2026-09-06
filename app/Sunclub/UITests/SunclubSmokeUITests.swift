@@ -110,8 +110,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
     @MainActor
     func testAccessibilityScorecardCoreTasksRemainUsable() throws {
         let app = launchHome(additionalArguments: accessibilityScorecardArguments + [
-            "UITEST_UV_INDEX=8",
-            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
+            "UITEST_UV_INDEX=8"
         ])
 
         let logAction = app.buttons["home.logManually"]

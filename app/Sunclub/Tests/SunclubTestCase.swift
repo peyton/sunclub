@@ -13,7 +13,6 @@ final class MockNotificationManager: NotificationScheduling {
     private(set) var scheduledUVPlaces: [SunclubSelectedUVPlace?] = []
     private(set) var scheduleReapplyReminderPlans: [ReapplyReminderPlan] = []
     private(set) var scheduleLeaveHomeReminderLevels: [UVLevel] = []
-    private(set) var accountabilityPokeNotifications: [(friendName: String, message: String, route: AppRoute)] = []
     private(set) var refreshStreakRiskReminderCount = 0
     private(set) var scheduleReapplyReminderRoutes: [AppRoute] = []
     private(set) var scheduleLeaveHomeReminderRoutes: [AppRoute] = []
@@ -56,16 +55,6 @@ final class MockNotificationManager: NotificationScheduling {
     ) async -> NotificationOperationResult {
         scheduleLeaveHomeReminderLevels.append(level)
         scheduleLeaveHomeReminderRoutes.append(route)
-        return notificationOperationResult
-    }
-
-    @discardableResult
-    func scheduleAccountabilityPokeNotification(
-        friendName: String,
-        message: String,
-        route: AppRoute
-    ) async -> NotificationOperationResult {
-        accountabilityPokeNotifications.append((friendName, message, route))
         return notificationOperationResult
     }
 
@@ -173,96 +162,12 @@ final class FakeCloudSyncEngineDriver: CloudSyncEngineDriving {
     }
 }
 
-@MainActor
-final class FakeAccountabilityService: SunclubAccountabilityServing {
-    let supportsDirectDelivery = true
-
-    private(set) var publishedProfiles: [SunclubAccountabilityProfile] = []
-    private(set) var fetchedProfileRequests: [[UUID]] = []
-    private(set) var sentInviteResponses: [SunclubAccountabilityInviteResponse] = []
-    private(set) var sentPokes: [SunclubAccountabilityPokeEnvelope] = []
-    private(set) var installedSubscriptionProfileIDs: [UUID] = []
-    var profilesByID: [UUID: SunclubAccountabilityProfile] = [:]
-    var remoteEvents = SunclubAccountabilityRemoteEvents(inviteResponses: [], pokes: [])
-    var sendPokeError: Error?
-    var installSubscriptionsError: Error?
-
-    func publishProfile(_ profile: SunclubAccountabilityProfile) async throws {
-        publishedProfiles.append(profile)
-    }
-
-    func fetchProfiles(profileIDs: [UUID]) async throws -> [SunclubAccountabilityProfile] {
-        fetchedProfileRequests.append(profileIDs)
-        return profileIDs.compactMap { profilesByID[$0] }
-    }
-
-    func sendInviteResponse(_ response: SunclubAccountabilityInviteResponse) async throws {
-        sentInviteResponses.append(response)
-    }
-
-    func sendPoke(_ poke: SunclubAccountabilityPokeEnvelope) async throws {
-        if let sendPokeError {
-            throw sendPokeError
-        }
-        sentPokes.append(poke)
-    }
-
-    func fetchRemoteEvents(for profileID: UUID) async throws -> SunclubAccountabilityRemoteEvents {
-        remoteEvents
-    }
-
-    func installSubscriptions(for profileID: UUID) async throws {
-        if let installSubscriptionsError {
-            throw installSubscriptionsError
-        }
-        installedSubscriptionProfileIDs.append(profileID)
-    }
-}
-
-enum FakeAccountabilityError: Error {
-    case sendFailed
-}
-
 struct StaticCloudKitEntitlementProvider: SunclubCloudKitEntitlementProviding {
     var entitlements: [String: Any]
 
     func entitlementValue(for key: String) -> Any? {
         entitlements[key]
     }
-}
-
-@MainActor
-final class FakeAccountabilityDatabase: SunclubAccountabilityDatabase {
-    private(set) var fetchedRecordNames: [String] = []
-    private(set) var savedRecordNames: [String] = []
-    private(set) var savedSubscriptions: [CKSubscription] = []
-    private var recordsByName: [String: CKRecord] = [:]
-
-    func record(for recordID: CKRecord.ID) async throws -> CKRecord {
-        fetchedRecordNames.append(recordID.recordName)
-        if let record = recordsByName[recordID.recordName] {
-            return record
-        }
-
-        throw NSError(domain: CKErrorDomain, code: CKError.Code.unknownItem.rawValue)
-    }
-
-    func save(_ record: CKRecord) async throws -> CKRecord {
-        savedRecordNames.append(record.recordID.recordName)
-        recordsByName[record.recordID.recordName] = record
-        return record
-    }
-
-    func save(_ subscription: CKSubscription) async throws -> CKSubscription {
-        savedSubscriptions.append(subscription)
-        return subscription
-    }
-
-    func records(matching query: CKQuery, limit: Int) async throws -> [CKRecord] {
-        []
-    }
-
-    func deleteRecord(withID recordID: CKRecord.ID) async throws {}
 }
 
 @MainActor
@@ -316,7 +221,6 @@ class SunclubTestCase: XCTestCase {
         uvIndexService: UVIndexService? = nil,
         uvBriefingService: SunclubUVBriefingService? = nil,
         cloudSyncCoordinator: CloudSyncControlling? = nil,
-        accountabilityService: SunclubAccountabilityServing? = nil,
         growthFeatureStore: SunclubGrowthFeatureStoring? = nil,
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
@@ -331,7 +235,6 @@ class SunclubTestCase: XCTestCase {
             cloudSyncCoordinator: cloudSyncCoordinator,
             widgetSnapshotStore: widgetSnapshotStore,
             growthFeatureStore: growthFeatureStore ?? SunclubGrowthFeatureStore.shared,
-            accountabilityService: accountabilityService,
             runtimeEnvironment: runtimeEnvironment,
             homeExitReminderMonitor: homeExitReminderMonitor,
             clock: clock
@@ -403,30 +306,6 @@ class SunclubTestCase: XCTestCase {
         }
 
         XCTFail("Timed out waiting for reminder reschedule", file: file, line: line)
-    }
-
-    func makeAccountabilityInviteEnvelope(
-        profileID: UUID = UUID(uuidString: "391D15FD-475F-4EE5-9A85-E68E27980EA8") ?? UUID(),
-        snapshotID: UUID = UUID(uuidString: "9C9E0C71-0C6B-46C2-8AC0-32E3AC1EE0E5") ?? UUID(),
-        displayName: String,
-        currentStreak: Int = 2,
-        hasLoggedToday: Bool = false
-    ) -> SunclubAccountabilityInviteEnvelope {
-        SunclubAccountabilityInviteEnvelope(
-            profileID: profileID,
-            displayName: displayName,
-            relationshipToken: "test-relationship-token",
-            issuedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
-            snapshot: SunclubFriendSnapshot(
-                id: snapshotID,
-                name: displayName,
-                currentStreak: currentStreak,
-                longestStreak: 7,
-                hasLoggedToday: hasLoggedToday,
-                lastSharedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
-                seasonStyle: .summerGlow
-            )
-        )
     }
 
     @MainActor

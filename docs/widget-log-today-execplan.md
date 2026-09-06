@@ -18,8 +18,8 @@ Sunclub's product loop is stronger when the user can see daily state before open
 - [x] (2026-04-12) Reworked `Log Today` into an icon-led layout with compact copy and added medium, large, and extra-large Home Screen variants.
 - [x] (2026-04-12) Added presentation unit coverage for every `Log Today` family and UI coverage for the logged-state widget update route.
 - [x] (2026-04-12) Ran the unit, lint, and UI validation suites to completion.
-- [x] (2026-04-24) Reworked the widget suite around at-a-glance status and trend value: `Today`, `Streak`, `Stats`, `History`, and `Buddies` gallery names; simpler stat hierarchy; Today reapply-due copy; and a large History flagship calendar.
-- [x] (2026-04-24) Added `todaySPFLevel` to the app-group snapshot with legacy decode defaults and added presentation coverage for Today, History, current-week counts, and Buddies empty/active states.
+- [x] (2026-04-24) Reworked the widget suite around at-a-glance status and trend value: `Today`, `Streak`, `Stats`, `History` gallery names; simpler stat hierarchy; Today reapply-due copy; and a large History flagship calendar.
+- [x] (2026-04-24) Added `todaySPFLevel` to the app-group snapshot with legacy decode defaults and added presentation coverage for Today, History, current-week counts.
 - [x] (2026-05-18) Split app-owned widget/control logging from user-run Shortcuts with non-discoverable widget intents and a `SunclubAutomationInvocation.widget` runtime path.
 - [x] (2026-05-18) Made the Today widget tap contract explicit in presentation state: open days log in place, reapply-due days log reapply in place, setup opens summary, and logged days open edit.
 - [x] (2026-05-18) Expanded Today widget button/link labels to the full rendered surface so iOS 26 Home Screen taps do not fall through to app navigation outside the visible content.
@@ -51,7 +51,7 @@ Sunclub's product loop is stronger when the user can see daily state before open
   Date/Author: 2026-04-02 / Codex
 
 - Decision: Use short public gallery/control labels while keeping widget kind strings, widget routes, and deep links stable.
-  Rationale: Gallery labels now read `Today`, `Streak`, `Stats`, `History`, and `Buddies` without repeating `Sunclub`; internal identifiers remain stable for existing widgets and route handling.
+  Rationale: Gallery labels now read `Today`, `Streak`, `Stats`, `History` without repeating `Sunclub`; internal identifiers remain stable for existing widgets and route handling.
   Date/Author: 2026-04-24 / Codex
 
 - Decision: Add optional `todaySPFLevel` only to the widget snapshot JSON.
@@ -138,7 +138,7 @@ Out of scope:
 
 - Outcome: Shared snapshot-backed widget suite implemented with Home Screen, Lock Screen, and Control Center coverage.
 - Outcome: `Log Today` now uses an icon-led compact small layout, expands into metrics/history on larger Home Screen sizes, and keeps Lock Screen copy short enough for accessory families.
-- Outcome: The 2026-04-24 polish pass made the public suite `Today`, `Streak`, `Stats`, `History`, and `Buddies`; Today now has open/protected/reapply-due states; Stats/Streak are one-stat-forward; and large History is the flagship calendar surface.
+- Outcome: The 2026-04-24 polish pass made the public suite `Today`, `Streak`, `Stats`, `History`; Today now has open/protected/reapply-due states; Stats/Streak are one-stat-forward; and large History is the flagship calendar surface.
 - Outcome: The 2026-05-18 widget action fix made Home Screen Today taps complete in place through widget-only intents, preserved shared automation runtime writes, and widened the tappable surface for iOS 26 widget hosts.
 - Outcome: The 2026-05-18 stuck-widget fix removed the 2400x2400 bitmap artwork from the widget source and moved AppIntent buttons off the root Today widget surface.
 - Outcome: The 2026-05-18 compact redesign reduces Today/Stats/History text density and padding, shortens History metric copy, and keeps Lock Screen open/reapply Today widgets as in-place widget actions instead of app launches.

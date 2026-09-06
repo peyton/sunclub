@@ -179,7 +179,6 @@ final class NotificationManagerTests: XCTestCase {
             ("sunscreen.streak-risk.1", .streakRisk),
             ("sunscreen.reapply.1", .reapply),
             ("sunscreen.leave-home.1", .leaveHome),
-            ("sunscreen.accountability-poke.1", .accountabilityPoke),
             ("sunscreen.test.current", .test)
         ]
         center.pendingRequests = expectedIdentifiers.map { pair in

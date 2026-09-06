@@ -163,7 +163,7 @@ The embedded single-target watch app plist must stay minimal and App Store-safe:
 - keep `WatchApp/Resources/Assets.xcassets/AppIcon.appiconset`
 - keep the runtime configuration keys `SunclubAppGroupID`,
   `SunclubICloudContainerIdentifier`,
-  `SunclubPublicAccountabilityTransportEnabled`, and `SunclubURLScheme`
+  and `SunclubURLScheme`
 - do not include `CFBundleURLTypes` or `CFBundleIconName`
 
 The watch app owns `SunclubWatch.entitlements`, including the app-group

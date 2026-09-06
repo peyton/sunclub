@@ -36,7 +36,7 @@
 ## Task 3: App architecture
 
 - AppState becomes observable state/composition/coordination. Extract cohesive
-  logging/settings, UV, reminder, recovery, accountability responsibilities.
+  logging/settings, UV, reminder and recovery responsibilities.
 - One dependency bundle with production/test factories, clock and existing
   protocol injection. Services consume explicit inputs, not whole AppState.
 - Share app/automation log/edit/backfill/reapply/reminder mutation logic using

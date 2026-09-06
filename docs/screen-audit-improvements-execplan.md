@@ -6,14 +6,14 @@ This repository stores its agent planning rules outside the checkout at `~/.agen
 
 ## Purpose / Big Picture
 
-Sunclub should make sunscreen logging faster, reduce repeated information on each screen, and keep the most important action or status near the top. After this change, a user can open the iOS app and immediately see today's logging state and next action, then move through History, Weekly Summary, Settings, Automation, Accountability, Reports, Scanner, and Recovery without duplicated summaries competing for attention. On Apple Watch, the user should be able to log sunscreen without scrolling.
+Sunclub should make sunscreen logging faster, reduce repeated information on each screen, and keep the most important action or status near the top. After this change, a user can open the iOS app and immediately see today's logging state and next action, then move through History, Weekly Summary, Settings, Automation, Reports, Scanner, and Recovery without duplicated summaries competing for attention. On Apple Watch, the user should be able to log sunscreen without scrolling.
 
 The work is deliberately a focused product polish pass rather than a redesign. It keeps the existing visual identity, persistence model, automation routes, and data sync behavior unchanged.
 
 ## Progress
 
 - [x] (2026-04-14 11:38Z) Read repository instructions, planning rules, project structure, SwiftUI screen files, watch app view, and build entry points.
-- [x] (2026-04-14 12:00Z) Audited iOS routes and watch logging in the simulator, including Home, Manual Log, Weekly Summary, History, Settings, Achievements, Accountability, Skin Health Report, Product Scanner, Automation, Reapply Check-In, Recovery, and the 40 mm watch app.
+- [x] (2026-04-14 12:00Z) Audited iOS routes and watch logging in the simulator, including Home, Manual Log, Weekly Summary, History, Settings, Achievements, Skin Health Report, Product Scanner, Automation, Reapply Check-In, Recovery, and the 40 mm watch app.
 - [x] (2026-04-14 12:04Z) Implemented more than thirty focused improvements or fixes across iOS screens and the watch app.
 - [x] (2026-04-14 12:17Z) Preserved existing UI and unit test coverage; no new test target was needed because existing route, accessibility, watch-sync, and scorecard tests cover the touched behavior.
 - [x] (2026-04-14 12:17Z) Ran local build, unit tests, UI tests, and lint; see validation notes below.

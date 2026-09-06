@@ -8,7 +8,7 @@ This document follows the ExecPlan requirements in `/Users/peyton/.agents/PLANS.
 
 Sunclub should never tell a person that sunscreen was logged when the durable history write failed, silently lose reminders because too many requests were scheduled, or present a precise UV number without a real place and sufficiently recent weather data. After this work, a person can enter an exact application time and an honest sunscreen profile, see one clear next action, receive reliable and actionable reminders, understand the source and freshness of UV guidance, and review progress that starts when their habit starts rather than counting earlier days as failures.
 
-The same behavior must hold across the iPhone app, widgets, Watch, App Intents, custom URL automation, local backup, and private CloudKit history. The shipping product must remain free, local-first, account-free, dependency-free, accessible, and careful not to make medical or exact burn-time claims. Public accountability sharing stays disabled until it is intentionally restored as a visible product feature; App Store and website privacy statements must describe the build that is actually shipped.
+The same behavior must hold across the iPhone app, widgets, Watch, App Intents, custom URL automation, local backup, and private CloudKit history. The shipping product must remain free, local-first, account-free, dependency-free, accessible, and careful not to make medical or exact burn-time claims.
 
 ## Progress
 
@@ -18,7 +18,6 @@ The same behavior must hold across the iPhone app, widgets, Watch, App Intents, 
 - [x] (2026-08-11 04:15Z) Implemented truthful application-history mutations and retryable failure presentation across in-app, widget, Watch, Shortcut, and URL entry points.
 - [x] (2026-08-11 04:15Z) Rebuilt notification scheduling around repeating fixed requests, seven-day verified-UV windows, a sixty-request owned cap, complete scheduling reports, and test/reapply/snooze actions.
 - [x] (2026-08-11 04:15Z) Replaced location-free numeric UV fallback with selected-city or live-location Apple Weather data, a two-hour freshness limit, explicit unavailable states, and protection-window presentation.
-- [x] (2026-08-11 04:15Z) Disabled dormant public accountability transport and aligned the privacy manifest, website, App Store metadata, and review package with Data Not Collected.
 - [x] (2026-08-11 04:15Z) Added exact application time, future-time rejection, one optional sunscreen profile, consistent covered-area defaults, and a backwards-compatible V4-to-V5 settings migration.
 - [x] (2026-08-11 04:15Z) Rendered and dispatched the existing contextual Home action across Home, the center action, widgets, Watch, and automation, while simplifying duplicated Today content.
 - [x] (2026-08-11 04:15Z) Hardened CloudKit batch quarantine, logical revision ordering, preference restore, and rollback-safe one-batch history deletion.
@@ -42,13 +41,11 @@ The same behavior must hold across the iPhone app, widgets, Watch, App Intents, 
   Evidence: the onboarding action advances with live UV disabled; `UVIndexService` then calls `SunclubUVEstimator` without coordinates and labels the result as locally estimated.
 
 - Observation: The public product currently makes conflicting privacy statements.
-  Evidence: the production build enables public accountability transport and checked-in metadata/privacy copy describes associated data, while the current App Store privacy label says “Data Not Collected.”
 
 - Observation: `ModelContext.transaction` rollback restores persisted rows but does not automatically restore already-mutated in-memory projection objects.
   Evidence: the injected pre-commit failure test initially left the current `Settings` projection changed after the transaction threw. The history service now rolls back and rebuilds projections from durable revisions before returning the failure.
 
 - Observation: Restoring transport bookkeeping can create a publish loop even when the user-owned preferences are valid.
-  Evidence: the first restorable accountability envelope included `lastPublishedAt` and subscription-install timestamps. Applying it changed the payload again and republished. The versioned projection now excludes those device-specific fields while preserving relationship credentials and user choices.
 
 - Observation: A fresh UV value can become stale while a passive surface remains visible without launching the app.
   Evidence: the first shared widget snapshot contained only numeric values. The snapshot and Live Activity state now carry `uvValidUntil`; widgets, Watch, and Live Activities gate display and refresh timing on that expiry.
@@ -91,10 +88,6 @@ The same behavior must hold across the iPhone app, widgets, Watch, App Intents, 
   Rationale: these are user-owned preferences that must survive app updates, reinstall restore, and device changes. A schema migration is required by repository policy for persisted fields.
   Date/Author: 2026-08-11 / Codex
 
-- Decision: Disable public accountability transport in the production flavor rather than merely changing the storefront declaration.
-  Rationale: the visible production route set intentionally hides social features and the current product specification calls them non-goals. Shipping dormant collection capability creates needless privacy ambiguity.
-  Date/Author: 2026-08-11 / Codex
-
 - Decision: Preserve the existing product-page design system and improve hierarchy within it rather than restyling the application.
   Rationale: the audit found a strong visual foundation; the problems are truth, action priority, information duplication, and accessibility scaling.
   Date/Author: 2026-08-11 / Codex
@@ -107,10 +100,6 @@ The same behavior must hold across the iPhone app, widgets, Watch, App Intents, 
   Rationale: device clocks are not a trustworthy conflict clock. Preserving source time for display while separating it from projection order makes merges deterministic under clock skew.
   Date/Author: 2026-08-11 / Codex
 
-- Decision: Restore accountability relationship and invite credentials because cross-device recovery of those relationships is an explicit requirement, but exclude device-specific publish and subscription bookkeeping.
-  Rationale: omitting the relationship credentials would make the restored connection unusable. Local backup copy now clearly warns that the JSON contains private connection data and must be stored securely; no URL callback credential exists in the restorable automation preferences.
-  Date/Author: 2026-08-11 / Codex
-
 - Decision: Keep the App Store update local and validation-ready rather than mutating the live storefront during implementation.
   Rationale: final contact values, privacy questionnaire confirmation, medical-device status, screenshot upload, and submission are account-owned release actions. The repository now fails strict validation until those explicit confirmations are supplied.
   Date/Author: 2026-08-11 / Codex
@@ -121,7 +110,7 @@ The ten improvements are implemented as one cohesive trust and usability pass. D
 
 The V5 migration keeps V4 definitions immutable, assigns deterministic logical order to prior revision groups, and seeds selected place and sunscreen profile as absent. The complete unit suite passed 372 tests and Python passed 199 tests. The full UI result recorded 63 passing tests and one Simulator-runner termination with no assertion failure; that terminated route then passed 1/1 in isolation, covering all 64 cases. Development CI build, the cache-disabled unsigned production archive, app/widgets/Watch linking, website validation, draft App Store metadata validation, and review-package generation succeeded. Lint completed with 47 warnings and zero serious findings. Eighteen current iPhone 17 Pro Max captures cover standard and accessibility text in light, dark, and increased-contrast appearances; the final contact sheet is `.build/trust-reliability-review/contact-sheet.png` and the labeled review page is `.build/trust-reliability-review/contact-sheet.html`.
 
-Intentional omissions are narrow: Sunclub does not calculate burn time, promise Focus bypass, enable public accountability transport, add a third-party service, or submit a new App Store version from this implementation branch. Strict App Store validation correctly remains blocked until real review contact values are supplied and the App Privacy and not-a-medical-device confirmations are completed in App Store Connect.
+Strict App Store validation correctly remains blocked until real review contact values are supplied and the App Privacy and not-a-medical-device confirmations are completed in App Store Connect.
 
 ## Context and Orientation
 
@@ -155,7 +144,7 @@ Add a selected-place value to versioned settings and a small city-search sheet p
 
 Add the optional sunscreen profile to the current SwiftData settings schema, its revision payload, backup payload, and widget/watch snapshot where needed. Freeze the prior schema, add the next version and migration stage, and add a migration test opening a prior shipped store. Existing users migrate with no profile and no selected place. Update Manual Log to edit exact date and time, reject a future timestamp, show the saved profile or neutral SPF wording, and resolve prior SPF and structured covered areas consistently. Free-form notes must not become automatic defaults.
 
-Set the production accountability transport flag to false. Remove or neutralize production metadata and public copy that says dormant public sharing collects data, while retaining private CloudKit sync disclosures. Update App Store metadata with accurate release notes and feature copy for Watch, widgets, Shortcuts, Live Activities, and private sync. Keep compatibility code and old routes only where existing installs or automation require them, but they must not activate public transport.
+Update App Store metadata with accurate release notes and feature copy for Watch, widgets, Shortcuts, Live Activities, and private sync. Keep compatibility code and old routes only where existing installs or automation require them.
 
 ### Milestone 3: Put the right action and information first
 
@@ -171,7 +160,7 @@ Decode fetched CloudKit revisions one record at a time. Apply all valid revision
 
 Extend the revision envelope with backward-compatible logical ordering metadata. New local revisions increment the greatest observed logical value; remote merge compares logical order first and deterministic identifiers second. Preserve source timestamps for display only. Old revisions without the field derive a stable fallback order from existing revision identifiers and CloudKit server metadata. Add skew tests where remote wall clocks are both ahead of and behind local time.
 
-Include user-owned app-group automation, privacy, and accountability preferences in local backup and private CloudKit restore payloads, with a versioned optional section so old backups continue to decode. Restore these preferences only after meaningful local/remote history selection, and never replace a more complete current setting with a default. Implement delete-all history as one history-service batch mutation and projection rebuild; on failure, retain the original projected history and keep the confirmation UI visible with a retryable error.
+Include user-owned app-group automation and privacy preferences in local backup and private CloudKit restore payloads, with a versioned optional section so old backups continue to decode. Restore these preferences only after meaningful local/remote history selection, and never replace a more complete current setting with a default. Implement delete-all history as one history-service batch mutation and projection rebuild; on failure, retain the original projected history and keep the confirmation UI visible with a retryable error.
 
 ### Milestone 5: Verify the complete product story
 
@@ -225,7 +214,7 @@ Fetch a CloudKit batch containing one malformed and one valid revision. The vali
 
 Create a new user with no records and observe no historical missed days. Add a first record and verify only eligible days enter week/month rates. Log a new personal best and observe one celebratory acknowledgement; normal opens do not repeat it. Insights show only metrics supported by real local history and real UV observations.
 
-Finally, inspect the generated production configuration and App Store review package. Public accountability transport is disabled, dormant public-sharing collection language is absent, private iCloud behavior remains documented, and release notes no longer say “Initial release.”
+Finally, inspect the generated production configuration and App Store review package.
 
 ## Idempotence and Recovery
 
@@ -235,7 +224,7 @@ The settings migration is additive and optional. Never edit prior `VersionedSche
 
 CloudKit decode and bulk-delete changes are additive until tests prove the new path. Preserve the old revision decoder as a backward-compatible fallback. Do not reset the development CloudKit environment or delete real remote records during verification. Use mocks and temporary stores for failure, malformed-record, clock-skew, and rollback scenarios.
 
-The production accountability flag and metadata changes are reversible by one explicit future feature decision, but do not re-enable them without restoring visible routes, updating privacy declarations, and validating the final IPA. Generated workspace and `.build/` artifacts are disposable; source files and docs are not. Keep unrelated worktree changes unstaged and never use destructive Git resets.
+Generated workspace and `.build/` artifacts are disposable; source files and docs are not. Keep unrelated worktree changes unstaged and never use destructive Git resets.
 
 ## Artifacts and Notes
 
@@ -257,11 +246,11 @@ Extend the UV presentation model with availability, source, observed/fetched tim
 
 Extend the revision envelope with an optional non-negative logical order and server-received date. New encoders write both when available; old decoders accept neither. Projection ordering compares logical order, then server-received date, then stable revision identifier. Source-device `createdAt` remains available for display and diagnostics but is not the deciding conflict clock.
 
-Extend local and private-CloudKit backup payloads with an optional versioned preferences section containing automation permission choices, privacy choices, selected UV place, sunscreen profile, and accountability preferences. The automation payload contains choices only, not callback URLs or credentials. Preserve accountability relationship credentials so restored connections remain usable, omit device-specific transport bookkeeping, and warn that local backup files contain private connection data and require secure storage.
+Extend local and private-CloudKit backup payloads with an optional versioned preferences section containing automation permission choices, privacy choices, selected UV place, sunscreen profile. The automation payload contains choices only, not callback URLs or credentials.
 
 The existing `HomeDailyPlanAction` and `HomeDailyPlanPresentation` remain the single contextual-action interface. Add dispatch and rendering adapters rather than a parallel action enum.
 
-Revision note (2026-08-11 04:15Z): Updated the living plan after implementation and focused integration review, recording the completed product behavior, V5 migration shape, rollback and passive-UV discoveries, deliberate relationship-restore policy, verified gates, and remaining final UI/visual and external storefront steps.
+Revision note (2026-08-11 04:15Z): Updated the living plan after implementation and focused integration review, recording the completed product behavior, V5 migration shape, rollback and passive-UV discoveries, verified gates, and remaining final UI/visual and external storefront steps.
 
 Revision note (2026-08-11 07:15Z): Closed the final verification milestone with exact unit/UI/Python/lint results, current visual-review artifacts, production archive evidence, the midnight fixture correction, and the remaining account-owned storefront confirmations.
 

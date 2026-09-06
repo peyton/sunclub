@@ -157,8 +157,7 @@ final class SettingsRecoverySimplicityTests: XCTestCase {
             historyService: history, cloudSyncCoordinator: cloud,
             growthFeatureStore: SunclubGrowthFeatureStore(userDefaults: defaults),
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
-                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false
             ),
             homeExitReminderMonitor: MockHomeExitReminderMonitor(),
             clock: { self.day.addingTimeInterval(18 * 3_600) }

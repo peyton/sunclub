@@ -210,21 +210,6 @@ def test_info_plist_declares_copyright_owner() -> None:
     )
 
 
-def test_public_accountability_transport_disabled_for_all_flavors() -> None:
-    info = load_info_plist()
-    source = PROJECT_SWIFT.read_text()
-
-    assert (
-        info["SunclubPublicAccountabilityTransportEnabled"]
-        == "$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"
-    )
-    assert "let publicAccountabilityTransportEnabled: Bool" in source
-    assert "publicAccountabilityTransportEnabled: true" not in source
-    assert source.count("publicAccountabilityTransportEnabled: false") == 2
-    assert 'flavor.publicAccountabilityTransportEnabled ? "YES" : "NO"' in source
-    assert "SunclubPublicAccountabilityTransportEnabled" in source
-
-
 def test_info_plist_declares_log_today_home_screen_quick_action() -> None:
     info = load_info_plist()
 
@@ -337,15 +322,6 @@ def test_widget_keeps_shipped_families_and_separates_logging_from_navigation() -
             "accessoryInline",
             "accessoryRectangular",
         },
-        "SunclubAccountabilityWidget": {
-            "systemSmall",
-            "systemMedium",
-            "systemLarge",
-            "systemExtraLarge",
-            "accessoryInline",
-            "accessoryCircular",
-            "accessoryRectangular",
-        },
     }
     for kind, expected in expected_families.items():
         widget_source = source.split(f"struct {kind}: Widget {{", 1)[1]
@@ -362,7 +338,6 @@ def test_widget_keeps_shipped_families_and_separates_logging_from_navigation() -
         "SunclubStreakWidget",
         "SunclubStatsWidget",
         "SunclubCalendarWidget",
-        "SunclubAccountabilityWidget",
     ):
         assert f'widgetKind("{kind}")' in source
 
@@ -394,7 +369,6 @@ def test_watch_targets_compile_shared_snapshot_model_dependencies() -> None:
 
     for target_source in (watch_app_target, watch_widget_target):
         target_source = expanded_source_groups(source, target_source)
-        assert '"Sources/Models/AccountabilityModels.swift"' in target_source
         assert '"Sources/Models/VerificationMethod.swift"' in target_source
         assert '"Sources/WidgetSupport/SunclubWidgetSupport.swift"' in target_source
 
@@ -413,7 +387,6 @@ def test_single_target_watch_app_owns_watch_sources_and_metadata() -> None:
     for runtime_key in (
         "SunclubAppGroupID",
         "SunclubICloudContainerIdentifier",
-        "SunclubPublicAccountabilityTransportEnabled",
         "SunclubURLScheme",
     ):
         assert f'"{runtime_key}"' in watch_app_target
@@ -452,7 +425,6 @@ def test_watch_app_target_uses_app_store_safe_metadata_and_icons() -> None:
     for required_key in (
         "SunclubAppGroupID",
         "SunclubICloudContainerIdentifier",
-        "SunclubPublicAccountabilityTransportEnabled",
         "SunclubURLScheme",
     ):
         assert required_key in watch_app_target
@@ -909,7 +881,6 @@ def test_archive_script_uses_app_store_connect_cli_auth() -> None:
     for runtime_key in (
         "SunclubAppGroupID",
         "SunclubICloudContainerIdentifier",
-        "SunclubPublicAccountabilityTransportEnabled",
         "SunclubURLScheme",
     ):
         assert (
@@ -1061,31 +1032,6 @@ def test_privacy_manifest_declares_no_collected_data() -> None:
     assert manifest["NSPrivacyCollectedDataTypes"] == []
 
 
-def test_public_cloudkit_database_usage_is_guarded_by_transport_flag() -> None:
-    app_state = "\n".join(
-        path.read_text() for path in (SOURCES_DIR / "Services").rglob("*.swift")
-    )
-    runtime_config = (
-        SOURCES_DIR / "Shared" / "SunclubRuntimeConfiguration.swift"
-    ).read_text()
-    service = (
-        SOURCES_DIR / "Services" / "SunclubAccountabilityService.swift"
-    ).read_text()
-    files_with_public_database = [
-        path.relative_to(REPO_ROOT).as_posix()
-        for path in SOURCES_DIR.rglob("*.swift")
-        if "publicCloudDatabase" in path.read_text()
-    ]
-
-    assert files_with_public_database == [
-        "app/Sunclub/Sources/Services/SunclubAccountabilityService.swift"
-    ]
-    assert "isPublicAccountabilityTransportEnabled" in runtime_config
-    assert "if !runtimeEnvironment.isPublicAccountabilityTransportEnabled" in app_state
-    assert "return NoopSunclubAccountabilityService()" in app_state
-    assert "publicCloudDatabase" in service
-
-
 def test_privacy_manifest_declares_no_tracking_domains() -> None:
     manifest = load_privacy_manifest()
 
@@ -1166,3 +1112,14 @@ def test_app_owned_logging_intents_run_in_app_process_without_opening_app():
         assert declaration in source
         body = source.split(declaration, 1)[1].split("\nstruct ", 1)[0]
         assert "static let openAppWhenRun = false" in body
+
+
+def test_app_uses_only_private_cloudkit_storage() -> None:
+    for path in SOURCES_DIR.rglob("*.swift"):
+        assert "publicCloudDatabase" not in path.read_text(), path
+
+
+def test_info_plist_has_no_local_peer_discovery_permissions() -> None:
+    info = load_info_plist()
+    assert "NSLocalNetworkUsageDescription" not in info
+    assert "NSBonjourServices" not in info

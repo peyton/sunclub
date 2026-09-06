@@ -30,8 +30,7 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case historyBackfillTwoDaysAgo
     case manualLog
     case achievements
-    case friends
-    case accountabilityOnboarding
+
     case skinHealthReport
     case productScanner
     case yearInReview
@@ -43,8 +42,6 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
         switch self {
         case .achievements, .yearInReview:
             return .weeklySummary
-        case .friends, .accountabilityOnboarding:
-            return .settings
         case .skinHealthReport:
             return .history
         case .productScanner:
@@ -90,9 +87,7 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
              .automation,
              .privacy,
              .support,
-             .recovery,
-             .friends,
-             .accountabilityOnboarding:
+             .recovery:
             return .settings
         default:
             return .today

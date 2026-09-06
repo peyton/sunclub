@@ -227,32 +227,6 @@ struct ManualLogPrefill: Equatable {
     let notes: String
 }
 
-enum HomeAccountabilityActionKind: Equatable {
-    case invite
-    case poke
-    case view
-}
-
-struct HomeAccountabilityFriendPresentation: Equatable, Identifiable {
-    let id: UUID
-    let name: String
-    let status: String
-    let streak: String
-    let hasLoggedToday: Bool
-}
-
-struct HomeAccountabilityPresentation: Equatable {
-    let title: String
-    let detail: String
-    let openCountText: String
-    let loggedCountText: String
-    let primaryActionTitle: String
-    let primaryActionKind: HomeAccountabilityActionKind
-    let primaryFriendID: UUID?
-    let latestPokeText: String?
-    let friends: [HomeAccountabilityFriendPresentation]
-}
-
 struct FutureDayPreview: Equatable {
     let suggestedSPF: Int
     let suggestionText: String

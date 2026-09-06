@@ -17,7 +17,7 @@ This is a visual and interaction polish pass only. It does not change SwiftData 
 - [x] (2026-04-24T09:40:57Z) Confirmed this pass can stay visual-only and does not require a SwiftData schema migration.
 - [x] (2026-04-24T10:22:17Z) Added shared polish primitives in `app/Sunclub/Sources/Shared/AppTheme.swift`.
 - [x] (2026-04-24T10:22:17Z) Applied the shared primitives to the first priority screens: Home, Manual Log, Success, History/Backfill, Reapply, Weekly Summary, and Onboarding.
-- [x] (2026-04-24T10:22:17Z) Extended the same visual language across Settings, Automation, Recovery, Friends, Reports, Product Scanner, and Year in Review.
+- [x] (2026-04-24T10:22:17Z) Extended the same visual language across Settings, Automation, Recovery, Reports, Product Scanner, and Year in Review.
 - [x] (2026-04-24T10:22:17Z) Preserved existing UI-test identifiers and restored the manual-log details disclosure after the first UI run exposed regressions.
 - [x] (2026-04-24T10:22:17Z) Ran generation, lint, unit, and UI validation commands and recorded evidence here.
 
@@ -58,7 +58,7 @@ This is a visual and interaction polish pass only. It does not change SwiftData 
 
 ## Outcomes & Retrospective
 
-Implemented a broad first polish pass without changing persistence, sync, signing, or release behavior. The app now has shared card, title, metric pill, week progress, text-button, and empty-state primitives. Home leads with a Today status card, protection ring, weekly row, and metrics before the timeline. Manual Log, Success, Reapply, Weekly Summary, History, Backfill, Onboarding, Settings, Automation, Recovery, Friends, Reports, Product Scanner, and Year in Review now use calmer hierarchy, warmer cards, fewer heavy orange CTAs, and more specific copy.
+Implemented a broad first polish pass without changing persistence, sync, signing, or release behavior. The app now has shared card, title, metric pill, week progress, text-button, and empty-state primitives. Home leads with a Today status card, protection ring, weekly row, and metrics before the timeline. Manual Log, Success, Reapply, Weekly Summary, History, Backfill, Onboarding, Settings, Automation, Recovery, Reports, Product Scanner, and Year in Review now use calmer hierarchy, warmer cards, fewer heavy orange CTAs, and more specific copy.
 
 The first UI run found two compatibility regressions: the Today hero reused a logged-only identifier for unlogged state, and Manual Log removed the optional details disclosure expected by smart-reuse and accessibility tests. Both were fixed, and the clean rerun passed.
 
@@ -84,7 +84,7 @@ Fourth, update `HistoryView.swift` and the nested `HistoryRecordEditorView`. His
 
 Fifth, update `ReapplyCheckInView.swift`, `WeeklyReportView.swift`, and `OnboardingView.swift`. Reapply should present an instant two-choice decision. Weekly Summary should keep the large fraction while adding a plain-language summary and making History secondary. Onboarding and notification permission should use the requested calmer copy.
 
-If time permits after the first priority screens, extend the same primitives to Settings, Automation, Recovery, Achievements, Friends, Skin Health Report, Product Scanner, Year in Review, and widgets. If not, leave this plan with clear remaining tasks for those lower-priority surfaces.
+If time permits after the first priority screens, extend the same primitives to Settings, Automation, Recovery, Achievements, Skin Health Report, Product Scanner, Year in Review, and widgets. If not, leave this plan with clear remaining tasks for those lower-priority surfaces.
 
 ## Concrete Steps
 

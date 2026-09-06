@@ -25,7 +25,6 @@ struct SunclubFlavor {
     let cloudKitContainerIdentifier: String
     let displayName: String
     let urlScheme: String
-    let publicAccountabilityTransportEnabled: Bool
 
     var appPathName: String { appTargetName }
 }
@@ -42,8 +41,7 @@ let productionFlavor = SunclubFlavor(
     appGroupID: "group.app.peyton.sunclub",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub",
     displayName: "Sunclub",
-    urlScheme: "sunclub",
-    publicAccountabilityTransportEnabled: false
+    urlScheme: "sunclub"
 )
 
 let developmentFlavor = SunclubFlavor(
@@ -58,8 +56,7 @@ let developmentFlavor = SunclubFlavor(
     appGroupID: "group.app.peyton.sunclub.dev",
     cloudKitContainerIdentifier: "iCloud.app.peyton.sunclub.dev",
     displayName: "Sunclub Dev",
-    urlScheme: "sunclub-dev",
-    publicAccountabilityTransportEnabled: false
+    urlScheme: "sunclub-dev"
 )
 
 func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
@@ -70,9 +67,6 @@ func flavorBuildSettings(_ flavor: SunclubFlavor) -> SettingsDictionary {
         "SUNCLUB_ICLOUD_ENVIRONMENT": .string(cloudKitEnvironment),
         "SUNCLUB_URL_SCHEME": .string(flavor.urlScheme),
         "SUNCLUB_DISPLAY_NAME": .string(flavor.displayName),
-        "SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED": .string(
-            flavor.publicAccountabilityTransportEnabled ? "YES" : "NO"
-        )
     ]
 }
 
@@ -100,7 +94,6 @@ let sharedPresentationSources: [SourceFileGlob] = [
 ]
 
 let watchModelSources: [SourceFileGlob] = [
-    "Sources/Models/AccountabilityModels.swift",
     "Sources/Models/DailyRecord.swift",
     "Sources/Models/GrowthFeatures.swift",
     "Sources/Models/SunclubRestorablePreferences.swift",
@@ -115,7 +108,6 @@ let automationSources: [SourceFileGlob] = [
     "Sources/Models/**",
     "Sources/Services/CloudSyncWireModels.swift",
     "Sources/Services/ReminderPlanner.swift",
-    "Sources/Services/SunclubAccountabilityCodec.swift",
     "Sources/Services/SunclubAutomationRuntime.swift",
     "Sources/Services/SunclubBackupDocument.swift",
     "Sources/Services/SunclubBackupService.swift",
@@ -173,7 +165,6 @@ func widgetTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleVersion": "$(SUNCLUB_BUILD_NUMBER)",
             "SunclubAppGroupID": "$(SUNCLUB_APP_GROUP_ID)",
             "SunclubICloudContainerIdentifier": "$(SUNCLUB_ICLOUD_CONTAINER)",
-            "SunclubPublicAccountabilityTransportEnabled": "$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)",
             "SunclubURLScheme": "$(SUNCLUB_URL_SCHEME)",
             "NSExtension": [
                 "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -203,7 +194,6 @@ func watchAppTarget(for flavor: SunclubFlavor) -> Target {
             "WKApplication": .boolean(true),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
-            "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)")
         ]),
         sources: .sourceFilesList(globs: ["WatchApp/Sources/**", "Sources/Services/SunclubWatchSyncCoordinator.swift"] + sharedPresentationSources + watchModelSources),
@@ -231,7 +221,6 @@ func watchWidgetTarget(for flavor: SunclubFlavor) -> Target {
             "CFBundleVersion": .string("$(SUNCLUB_BUILD_NUMBER)"),
             "SunclubAppGroupID": .string("$(SUNCLUB_APP_GROUP_ID)"),
             "SunclubICloudContainerIdentifier": .string("$(SUNCLUB_ICLOUD_CONTAINER)"),
-            "SunclubPublicAccountabilityTransportEnabled": .string("$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)"),
             "SunclubURLScheme": .string("$(SUNCLUB_URL_SCHEME)"),
             "NSExtension": .dictionary([
                 "NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")

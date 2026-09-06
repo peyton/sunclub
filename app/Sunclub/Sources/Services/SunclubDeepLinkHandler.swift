@@ -29,10 +29,6 @@ enum SunclubDeepLinkHandler {
             return handleWidgetLogToday(appState: appState, router: router)
         case let .widgetRoute(route):
             return openAfterOnboarding(route.appRoute, appState: appState, router: router)
-        case let .accountabilityInvite(code):
-            return handleAccountabilityInvite(code, appState: appState, router: router)
-        case let .accountabilityPoke(friendID):
-            return handleAccountabilityPoke(friendID, appState: appState, router: router)
         case let .automation(request):
             return handleAutomation(request, appState: appState, router: router, openExternalURL: openExternalURL)
         }
@@ -81,33 +77,6 @@ enum SunclubDeepLinkHandler {
             appState.scheduleReapplyReminder()
         }
         router.open(.verifySuccess)
-        return true
-    }
-
-    @MainActor
-    private static func handleAccountabilityInvite(_ code: String, appState: AppState, router: AppRouter) -> Bool {
-        guard appState.settings.hasCompletedOnboarding else {
-            try? appState.queuePendingAccountabilityInviteCode(code)
-            router.goToWelcome()
-            return true
-        }
-
-        try? appState.importAccountabilityInviteCode(code)
-        router.open(.friends)
-        return true
-    }
-
-    @MainActor
-    private static func handleAccountabilityPoke(_ friendID: UUID?, appState: AppState, router: AppRouter) -> Bool {
-        guard appState.settings.hasCompletedOnboarding else {
-            router.goToWelcome()
-            return true
-        }
-
-        if let friendID {
-            appState.sendDirectPoke(to: friendID)
-        }
-        router.open(.friends)
         return true
     }
 
@@ -190,8 +159,6 @@ enum SunclubDeepLinkHandler {
             router.goHome()
         case .setReminder, .setReapply, .setToggle:
             router.open(.automation)
-        case .importFriend, .pokeFriend:
-            router.open(.friends)
         case .status, .timeSinceLastApplication:
             router.goHome()
         case .open, .exportBackup, .createSkinHealthReport, .createStreakCard:
@@ -226,8 +193,6 @@ enum SunclubDeepLinkHandler {
             )
         case .setReminder, .setReapply, .setToggle, .status, .timeSinceLastApplication:
             router.open(.automation)
-        case .importFriend, .pokeFriend:
-            router.open(.friends)
         case .open:
             if error == .urlOpenActionsDisabled {
                 router.open(.automation)

@@ -39,7 +39,7 @@ Owner: settings worker. Edit Settings*.swift, OnboardingView.swift, ReapplyCheck
 - Add local SettingsDetail sunscreen and health destinations. Controller supplies AppRoute.settingsSunscreen, .settingsHealth and root/automation mappings. Legacy reminder routes resolve to reminders; healthWeather remains UV & Weather with contextual Health access if needed.
 - Health toggle must reconcile with persisted authorization outcome; controller owns AppState changes if required. Rename Weather location switch Use current location; retain manual city and fallback behavior.
 - Welcome -> optional reminders -> Today. Defer location/city to Settings/contextual setup. Preserve initial iCloud restore gate and onboarding persistence. Distinguish save failure from notification failure with accurate Retry/Continue.
-- Onboarding always finishes at Today after importing legacy pending invites; do not delete social identities or data.
+- Onboarding always finishes at Today.
 - Reapply Last logged uses latest application. Preserve logging with reminders disabled.
 - Catalog names must match shipped intents. Remove misleading plus/setup cards and static Ask Before Running pseudo-setting.
 - Write examples are copy-only, never Test/Run sample writes. Preserve real public URL actions and four permission controls.

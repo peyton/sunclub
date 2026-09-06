@@ -218,24 +218,7 @@ final class BackupTests: XCTestCase {
         XCTAssertNotNil(target.recentImportSession?.publishedAt)
     }
 
-    func testBackupRestoresAutomationPrivacyAndAccountabilityPreferences() async throws {
-        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
-        let friend = SunclubFriendSnapshot(
-            name: "Maya",
-            currentStreak: 4,
-            longestStreak: 8,
-            hasLoggedToday: true,
-            lastSharedAt: now,
-            seasonStyle: .summerGlow
-        )
-        let accountability = SunclubAccountabilitySettings(
-            displayName: "Peyton",
-            inviteTokens: [SunclubAccountabilityInviteToken(token: "restore-token", createdAt: now)],
-            activatedAt: now,
-            lastPublishedAt: now,
-            subscriptionsInstalledAt: now,
-            subscriptionInstallVersion: 2
-        )
+    func testOlderBackupIgnoresRetiredFieldsAndRestoresPreferencesAndHistory() async throws {
         let sourceGrowthSettings = SunclubGrowthSettings(
             preferredName: "Peyton",
             uvBriefing: SunclubUVBriefingPreferences(
@@ -244,8 +227,6 @@ final class BackupTests: XCTestCase {
                 morningHour: 9,
                 morningMinute: 15
             ),
-            friends: [friend],
-            accountability: accountability,
             automation: SunclubAutomationPreferences(
                 shortcutWritesEnabled: false,
                 urlOpenActionsEnabled: true,
@@ -259,19 +240,26 @@ final class BackupTests: XCTestCase {
             growthFeatureStore: sourceStore
         )
         let expectedPreferences = SunclubRestorablePreferences(growthSettings: sourceGrowthSettings)
-        let expectedAccountability = expectedPreferences.accountability
         XCTAssertEqual(source.settings.restorablePreferences, expectedPreferences)
         XCTAssertTrue(
             source.changeBatches.contains { $0.kind == .preferenceSettings }
         )
 
-        let document = try source.exportBackupDocument()
+        source.completeOnboarding()
+        source.saveManualRecord(for: Date(), spfLevel: 50, notes: "Preserved history")
+        let exported = try source.exportBackupDocument()
+        var legacyPayload = try XCTUnwrap(JSONSerialization.jsonObject(with: exported.serializedData()) as? [String: Any])
+        var legacyPreferences = try XCTUnwrap(legacyPayload["restorablePreferences"] as? [String: Any])
+        // Populated retired keys from older backups must be ignored without dropping retained fields.
+        legacyPreferences["friends"] = [["name": "Maya", "currentStreak": 4, "hasLoggedToday": true]]
+        legacyPreferences["accountability"] = [
+            "displayName": "Peyton",
+            "inviteTokens": [["token": "old-token", "createdAt": "2026-09-01T12:00:00Z"]],
+            "connections": [["relationshipToken": "old-connection"]]
+        ]
+        legacyPayload["restorablePreferences"] = legacyPreferences
+        let document = try SunclubBackupDocument(data: JSONSerialization.data(withJSONObject: legacyPayload))
         XCTAssertEqual(document.payload.restorablePreferences?.automation, sourceGrowthSettings.automation)
-        XCTAssertEqual(document.payload.restorablePreferences?.accountability, expectedAccountability)
-        XCTAssertEqual(expectedAccountability.inviteTokens, accountability.inviteTokens)
-        XCTAssertNil(expectedAccountability.lastPublishedAt)
-        XCTAssertNil(expectedAccountability.subscriptionsInstalledAt)
-        XCTAssertEqual(expectedAccountability.subscriptionInstallVersion, 0)
 
         let targetStore = BackupMemoryGrowthFeatureStore(settings: SunclubGrowthSettings())
         let target = try makeAppState(
@@ -284,10 +272,17 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(target.growthSettings.preferredName, "Peyton")
         XCTAssertEqual(target.growthSettings.uvBriefing, sourceGrowthSettings.uvBriefing)
         XCTAssertEqual(target.growthSettings.automation, sourceGrowthSettings.automation)
-        XCTAssertEqual(target.growthSettings.friends, [friend])
-        XCTAssertEqual(target.growthSettings.accountability, expectedAccountability)
         XCTAssertEqual(targetStore.load(), target.growthSettings)
         XCTAssertEqual(target.settings.restorablePreferences, expectedPreferences)
+        XCTAssertTrue(target.settings.hasCompletedOnboarding)
+        XCTAssertEqual(target.records.count, 1)
+        XCTAssertEqual(target.records.first?.spfLevel, 50)
+        XCTAssertEqual(target.records.first?.notes, "Preserved history")
+        XCTAssertGreaterThan(target.pendingImportedBatchCount, 0)
+        let reencoded = try XCTUnwrap(JSONSerialization.jsonObject(with: document.serializedData()) as? [String: Any])
+        let retainedPreferences = try XCTUnwrap(reencoded["restorablePreferences"] as? [String: Any])
+        XCTAssertNil(retainedPreferences["friends"])
+        XCTAssertNil(retainedPreferences["accountability"])
     }
 
     func testLegacyBackupWithoutPreferenceEnvelopePreservesCurrentPreferences() async throws {
@@ -362,8 +357,7 @@ final class BackupTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: true,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
     }

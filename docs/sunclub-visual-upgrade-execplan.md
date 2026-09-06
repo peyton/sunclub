@@ -6,7 +6,7 @@ The repository instruction references `~/.agent/PLANS.md`, but that file is not 
 
 ## Purpose / Big Picture
 
-Sunclub already helps people log sunscreen quickly, but its current interface depends mostly on simple cards and SF Symbols. This pass makes the app feel more distinctive and polished by adding a project-local visual asset pack, richer sunscreen-specific illustrations, warmer textured surfaces, improved streak and success moments, and more intentional widgets and share cards. A user should notice the upgrade immediately on onboarding, Home, Manual Log, Product Scanner, Weekly Summary, History, Achievements, Friends, Skin Health Report, widgets, and generated share cards, without any change to their data or logging flow.
+Sunclub already helps people log sunscreen quickly, but its current interface depends mostly on simple cards and SF Symbols. This pass makes the app feel more distinctive and polished by adding a project-local visual asset pack, richer sunscreen-specific illustrations, warmer textured surfaces, improved streak and success moments, and more intentional widgets and share cards. A user should notice the upgrade immediately on onboarding, Home, Manual Log, Product Scanner, Weekly Summary, History, Achievements, Skin Health Report, widgets, and generated share cards, without any change to their data or logging flow.
 
 ## Progress
 
@@ -55,7 +55,7 @@ First, add a small repo-local asset generator under `scripts/` and expose it thr
 
 Second, extend `AppTheme.swift` with a central `SunclubVisualAsset` enum, asset-backed SwiftUI helpers, a richer palette, shared glass card styling, animated motif views, and screen-level decorative components. This keeps raw asset names out of feature views.
 
-Third, update the core SwiftUI screens. Welcome and notification onboarding get custom hero illustrations. Home gets a richer streak hero, UV treatment, and visual feature tiles. Manual Log and Product Scanner get SPF bottle/scanner art and a premium scan frame. Weekly Summary, History, Achievements, Friends, and Skin Health Report get stronger illustrated empty or intro states and refined card treatments. Existing user-facing copy, routes, and accessibility identifiers should remain stable unless the copy is directly improved.
+Third, update the core SwiftUI screens. Welcome and notification onboarding get custom hero illustrations. Home gets a richer streak hero, UV treatment, and visual feature tiles. Manual Log and Product Scanner get SPF bottle/scanner art and a premium scan frame. Weekly Summary, History, Achievements, and Skin Health Report get stronger illustrated empty or intro states and refined card treatments. Existing user-facing copy, routes, and accessibility identifiers should remain stable unless the copy is directly improved.
 
 Fourth, update widgets, Live Activity, and generated share cards. Widget backgrounds should use the new texture assets. Live Activity should use the expanded UV color ramp and a compact protected-state motif. Share-card rendering should draw a more intentional Sunclub backdrop and badge treatments so exported images match the app.
 
@@ -83,7 +83,7 @@ Run these commands from `/Users/peyton/.codex/worktrees/7cc7/sunclub`:
     just test-ui
     just ci
 
-Acceptance is visual and functional. Onboarding should show custom sunscreen-themed hero artwork. Home should show a richer textured background, improved streak hero, more expressive UV card, and polished feature cards. Manual Log and Product Scanner should show sunscreen/scanner-specific illustrations. Weekly Summary, History, Achievements, Friends, Skin Health Report, widgets, Live Activity, and share-card exports should no longer feel like generic symbol-only surfaces. Tests should pass, or any environment-specific blocker should be documented with the exact failing command.
+Acceptance is visual and functional. Onboarding should show custom sunscreen-themed hero artwork. Home should show a richer textured background, improved streak hero, more expressive UV card, and polished feature cards. Manual Log and Product Scanner should show sunscreen/scanner-specific illustrations. Weekly Summary, History, Achievements, Skin Health Report, widgets, Live Activity, and share-card exports should no longer feel like generic symbol-only surfaces. Tests should pass, or any environment-specific blocker should be documented with the exact failing command.
 
 ## Idempotence and Recovery
 

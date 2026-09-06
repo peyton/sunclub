@@ -15,7 +15,6 @@ final class AchievementTests: XCTestCase {
         .homeBase,
         .liveSignal,
         .bottleDetective,
-        .socialSpark
     ]
 
     func testAllAchievementsIncludeNewSetAndMetadata() throws {
@@ -26,8 +25,8 @@ final class AchievementTests: XCTestCase {
             calendar: calendar
         )
 
-        XCTAssertEqual(SunclubAchievementID.allCases.count, 18)
-        XCTAssertEqual(achievements.count, 18)
+        XCTAssertEqual(SunclubAchievementID.allCases.count, 17)
+        XCTAssertEqual(achievements.count, 17)
 
         for id in newAchievementIDs {
             let achievement = try XCTUnwrap(achievements.first(where: { $0.id == id }))
@@ -58,7 +57,6 @@ final class AchievementTests: XCTestCase {
         XCTAssertTrue(try achievement(.homeBase, settings: makeSettings(homeBase: true)).isUnlocked)
         XCTAssertTrue(try achievement(.liveSignal, growthSettings: makeGrowthSettings(dailyUVBriefingEnabled: true)).isUnlocked)
         XCTAssertTrue(try achievement(.bottleDetective, growthSettings: SunclubGrowthSettings(telemetry: SunclubGrowthTelemetry(productScanUseCount: 1))).isUnlocked)
-        XCTAssertTrue(try achievement(.socialSpark, growthSettings: SunclubGrowthSettings(telemetry: SunclubGrowthTelemetry(shareActionCount: 1))).isUnlocked)
     }
 
     func testNewAchievementsStayLockedBelowTarget() throws {
@@ -78,7 +76,6 @@ final class AchievementTests: XCTestCase {
         XCTAssertFalse(try achievement(.homeBase, settings: makeSettings(homeBase: false)).isUnlocked)
         XCTAssertFalse(try achievement(.liveSignal, growthSettings: makeGrowthSettings(dailyUVBriefingEnabled: false)).isUnlocked)
         XCTAssertFalse(try achievement(.bottleDetective, growthSettings: SunclubGrowthSettings()).isUnlocked)
-        XCTAssertFalse(try achievement(.socialSpark, growthSettings: SunclubGrowthSettings()).isUnlocked)
     }
 
     func testLegacyGrowthSettingsDecodeWithoutTelemetry() throws {
@@ -111,17 +108,11 @@ final class AchievementTests: XCTestCase {
         XCTAssertEqual(decoded.telemetry, SunclubGrowthTelemetry())
     }
 
-    func testTelemetryMethodsPersistAndAffectAchievements() throws {
+    func testProductScanTelemetryPersistsAndUnlocksAchievement() throws {
         let store = CapturingGrowthFeatureStore(settings: SunclubGrowthSettings())
         let state = try makeAppState(growthFeatureStore: store)
 
-        XCTAssertFalse(try state.achievement(.socialSpark).isUnlocked)
         XCTAssertFalse(try state.achievement(.bottleDetective).isUnlocked)
-
-        state.recordShareActionStarted()
-        XCTAssertEqual(store.settings.telemetry.shareActionCount, 1)
-        XCTAssertNotNil(store.settings.telemetry.lastSharedAt)
-        XCTAssertTrue(try state.achievement(.socialSpark).isUnlocked)
 
         state.recordProductScanUsedForLog(spfLevel: nil)
         XCTAssertEqual(store.settings.telemetry.productScanUseCount, 0)
@@ -178,8 +169,7 @@ final class AchievementTests: XCTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: true,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
     }

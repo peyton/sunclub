@@ -91,29 +91,6 @@ enum SunclubGrowthAnalytics {
         )
     }
 
-    static func localFriendSnapshot(
-        preferredName: String,
-        records: [DailyRecord],
-        now: Date = Date(),
-        calendar: Calendar = .current
-    ) -> SunclubFriendSnapshot {
-        let recordedDays = records.map(\.startOfDay)
-        let currentStreak = CalendarAnalytics.currentStreak(records: recordedDays, now: now, calendar: calendar)
-        let longestStreak = CalendarAnalytics.longestStreak(records: recordedDays, calendar: calendar)
-        let hasLoggedToday = Set(recordedDays.map { calendar.startOfDay(for: $0) }).contains(calendar.startOfDay(for: now))
-        let resolvedName = preferredName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let seasonStyle = seasonalStyle(for: now, calendar: calendar)
-
-        return SunclubFriendSnapshot(
-            name: resolvedName.isEmpty ? "Sunclub Friend" : resolvedName,
-            currentStreak: currentStreak,
-            longestStreak: longestStreak,
-            hasLoggedToday: hasLoggedToday,
-            lastSharedAt: now,
-            seasonStyle: seasonStyle
-        )
-    }
-
     static func seasonalStyle(for date: Date, calendar: Calendar = .current) -> SunclubSeasonStyle {
         let month = calendar.component(.month, from: date)
         switch month {
@@ -139,7 +116,6 @@ enum SunclubGrowthAnalytics {
         let hasHomeBase: Bool
         let hasLiveSignal: Bool
         let productScanUseCount: Int
-        let hasSocialSpark: Bool
     }
 
     private static func achievementProgressContext(
@@ -171,8 +147,7 @@ enum SunclubGrowthAnalytics {
             ),
             hasHomeBase: leaveHomeReminder?.isEnabled == true && leaveHomeReminder?.homeLocation != nil,
             hasLiveSignal: growthSettings.uvBriefing.dailyBriefingEnabled,
-            productScanUseCount: growthSettings.telemetry.productScanUseCount,
-            hasSocialSpark: growthSettings.telemetry.shareActionCount > 0 || !growthSettings.friends.isEmpty
+            productScanUseCount: growthSettings.telemetry.productScanUseCount
         )
     }
 
@@ -229,8 +204,6 @@ enum SunclubGrowthAnalytics {
             return context.hasLiveSignal ? 1 : 0
         case .bottleDetective:
             return context.productScanUseCount
-        case .socialSpark:
-            return context.hasSocialSpark ? 1 : 0
         }
     }
 
@@ -268,8 +241,6 @@ enum SunclubGrowthAnalytics {
             return isUnlocked ? "Daily UV briefing is enabled for morning guidance." : "Turn on Daily UV Briefing in Settings."
         case .bottleDetective:
             return isUnlocked ? "You used the product scanner to prefill an SPF log." : "Scan a sunscreen bottle and use the SPF in a log."
-        case .socialSpark:
-            return isUnlocked ? "You shared Sunclub progress or imported a friend." : "Share a Sunclub card or import a friend code."
         }
     }
 
@@ -510,38 +481,4 @@ enum SunclubGrowthAnalytics {
         return entries
     }
 
-}
-
-enum SunclubFriendCodeCodec {
-    private static let encoder = JSONEncoder()
-    private static let decoder = JSONDecoder()
-
-    static func encode(_ snapshot: SunclubFriendSnapshot) throws -> String {
-        let payload = try encoder.encode(snapshot)
-        return payload.base64EncodedString()
-    }
-
-    static func decode(_ code: String) throws -> SunclubFriendSnapshot {
-        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let data = Data(base64Encoded: trimmed) else {
-            throw SunclubFriendCodeError.invalidCode
-        }
-
-        do {
-            return try decoder.decode(SunclubFriendSnapshot.self, from: data)
-        } catch {
-            throw SunclubFriendCodeError.invalidCode
-        }
-    }
-}
-
-enum SunclubFriendCodeError: LocalizedError {
-    case invalidCode
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidCode:
-            return "That friend code could not be read."
-        }
-    }
 }

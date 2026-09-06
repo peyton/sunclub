@@ -70,7 +70,7 @@ extension SettingsView {
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("Export a backup before you reinstall the app or move to a new device. Backups contain private logs, settings, automation choices, and connection data, so store them securely. Import restores this phone first and leaves iCloud unchanged until you send those changes.")
+                Text("Export a backup before you reinstall the app or move to a new device. Backups contain private logs, settings, and automation choices, so store them securely. Import restores this phone first and leaves iCloud unchanged until you send those changes.")
                     .font(AppFont.rounded(size: 14))
                     .foregroundStyle(AppPalette.softInk)
 

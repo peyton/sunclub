@@ -5,9 +5,9 @@ Sunclub should be automatable from Apple Shortcuts, Control Center, widgets, cus
 ## Progress
 
 - [x] Add Codable automation preferences to growth settings without a SwiftData schema bump.
-- [x] Add a shared automation runtime for non-destructive writes, status reads, files, and friend actions.
+- [x] Add a shared automation runtime for non-destructive writes, status reads, and files.
 - [x] Expand App Intents and App Shortcuts while keeping the widget/control target compiling.
-- [x] Extend deep links with `automation` and `x-callback-url` hosts while preserving legacy widget and accountability URLs.
+- [x] Extend deep links with `automation` and `x-callback-url` hosts while preserving legacy widget URLs.
 - [x] Add Automation UI in Settings and Home.
 - [x] Document the URL, x-callback, Shortcuts, privacy, and future-feature contract in `docs/`, `web/`, and `AGENTS.md`.
 - [x] Add unit, UI, and web tests, then run release-adjacent verification.

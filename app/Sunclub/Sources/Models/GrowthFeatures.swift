@@ -4,11 +4,9 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
     var preferredName: String
     var healthKit: SunclubHealthKitPreferences
     var uvBriefing: SunclubUVBriefingPreferences
-    var friends: [SunclubFriendSnapshot]
     var presentedAchievementIDs: [String]
     var telemetry: SunclubGrowthTelemetry
     var scannedSPFLevels: [Int]
-    var accountability: SunclubAccountabilitySettings
     var automation: SunclubAutomationPreferences
     var successPhraseState: Data?
 
@@ -16,22 +14,18 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         preferredName: String = "",
         healthKit: SunclubHealthKitPreferences = SunclubHealthKitPreferences(),
         uvBriefing: SunclubUVBriefingPreferences = SunclubUVBriefingPreferences(),
-        friends: [SunclubFriendSnapshot] = [],
         presentedAchievementIDs: [String] = [],
         telemetry: SunclubGrowthTelemetry = SunclubGrowthTelemetry(),
         scannedSPFLevels: [Int] = [],
-        accountability: SunclubAccountabilitySettings = SunclubAccountabilitySettings(),
         automation: SunclubAutomationPreferences = SunclubAutomationPreferences(),
         successPhraseState: Data? = nil
     ) {
         self.preferredName = preferredName
         self.healthKit = healthKit
         self.uvBriefing = uvBriefing
-        self.friends = friends
         self.presentedAchievementIDs = presentedAchievementIDs
         self.telemetry = telemetry
         self.scannedSPFLevels = Self.normalizedSPFLevels(scannedSPFLevels)
-        self.accountability = accountability
         self.automation = automation
         self.successPhraseState = successPhraseState
     }
@@ -40,11 +34,9 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
         case preferredName
         case healthKit
         case uvBriefing
-        case friends
         case presentedAchievementIDs
         case telemetry
         case scannedSPFLevels
-        case accountability
         case automation
         case successPhraseState
     }
@@ -57,15 +49,12 @@ struct SunclubGrowthSettings: Codable, Equatable, Sendable {
             ?? SunclubHealthKitPreferences()
         uvBriefing = try container.decodeIfPresent(SunclubUVBriefingPreferences.self, forKey: .uvBriefing)
             ?? SunclubUVBriefingPreferences()
-        friends = try container.decodeIfPresent([SunclubFriendSnapshot].self, forKey: .friends) ?? []
         presentedAchievementIDs = try container.decodeIfPresent([String].self, forKey: .presentedAchievementIDs) ?? []
         telemetry = try container.decodeIfPresent(SunclubGrowthTelemetry.self, forKey: .telemetry)
             ?? SunclubGrowthTelemetry()
         scannedSPFLevels = Self.normalizedSPFLevels(
             try container.decodeIfPresent([Int].self, forKey: .scannedSPFLevels) ?? []
         )
-        accountability = try container.decodeIfPresent(SunclubAccountabilitySettings.self, forKey: .accountability)
-            ?? SunclubAccountabilitySettings()
         automation = try container.decodeIfPresent(SunclubAutomationPreferences.self, forKey: .automation)
             ?? SunclubAutomationPreferences()
         successPhraseState = try container.decodeIfPresent(Data.self, forKey: .successPhraseState)
@@ -105,26 +94,15 @@ struct SunclubAutomationPreferences: Codable, Equatable, Sendable {
 }
 
 struct SunclubGrowthTelemetry: Codable, Equatable, Sendable {
-    var shareActionCount: Int
     var productScanUseCount: Int
-    var lastSharedAt: Date?
     var lastProductScanUsedAt: Date?
 
     init(
-        shareActionCount: Int = 0,
         productScanUseCount: Int = 0,
-        lastSharedAt: Date? = nil,
         lastProductScanUsedAt: Date? = nil
     ) {
-        self.shareActionCount = max(0, shareActionCount)
         self.productScanUseCount = max(0, productScanUseCount)
-        self.lastSharedAt = lastSharedAt
         self.lastProductScanUsedAt = lastProductScanUsedAt
-    }
-
-    mutating func recordShare(at date: Date) {
-        shareActionCount += 1
-        lastSharedAt = date
     }
 
     mutating func recordProductScanUse(at date: Date) {
@@ -168,38 +146,6 @@ struct SunclubUVBriefingPreferences: Codable, Equatable, Sendable {
     }
 }
 
-struct SunclubFriendSnapshot: Codable, Equatable, Identifiable, Sendable {
-    var id: UUID
-    var name: String
-    var currentStreak: Int
-    var longestStreak: Int
-    var hasLoggedToday: Bool
-    var lastSharedAt: Date
-    var seasonStyleRawValue: String
-
-    init(
-        id: UUID = UUID(),
-        name: String,
-        currentStreak: Int,
-        longestStreak: Int,
-        hasLoggedToday: Bool,
-        lastSharedAt: Date,
-        seasonStyle: SunclubSeasonStyle
-    ) {
-        self.id = id
-        self.name = name
-        self.currentStreak = max(0, currentStreak)
-        self.longestStreak = max(0, longestStreak)
-        self.hasLoggedToday = hasLoggedToday
-        self.lastSharedAt = lastSharedAt
-        seasonStyleRawValue = seasonStyle.rawValue
-    }
-
-    var seasonStyle: SunclubSeasonStyle {
-        SunclubSeasonStyle(rawValue: seasonStyleRawValue) ?? .summerGlow
-    }
-}
-
 enum SunclubSeasonStyle: String, Codable, CaseIterable, Sendable {
     case summerGlow
     case winterShield
@@ -223,7 +169,6 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
     case homeBase
     case liveSignal
     case bottleDetective
-    case socialSpark
 
     var id: String { rawValue }
 
@@ -263,8 +208,6 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return "Live Signal"
         case .bottleDetective:
             return "Bottle Detective"
-        case .socialSpark:
-            return "Social Spark"
         }
     }
 
@@ -304,8 +247,6 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return "antenna.radiowaves.left.and.right"
         case .bottleDetective:
             return "magnifyingglass.circle.fill"
-        case .socialSpark:
-            return "person.2.fill"
         }
     }
 
@@ -328,7 +269,6 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
         case .homeBase: return "Set up leave-home reminders"
         case .liveSignal: return "Keep daily UV briefing on"
         case .bottleDetective: return "Scan a sunscreen bottle"
-        case .socialSpark: return "Share a streak or add a friend"
         }
     }
 
@@ -358,7 +298,7 @@ enum SunclubAchievementID: String, Codable, CaseIterable, Identifiable, Sendable
             return 3
         case .highUVHero:
             return 10
-        case .homeBase, .liveSignal, .bottleDetective, .socialSpark:
+        case .homeBase, .liveSignal, .bottleDetective:
             return 1
         }
     }

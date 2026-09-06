@@ -16,7 +16,7 @@ enum SunclubAutomationError: LocalizedError, Equatable {
     case urlWriteActionsDisabled
     case unsupportedAction(String)
     case recordRequired
-    case friendNotFound
+
     case invalidInput(String)
     case unavailable(String)
 
@@ -34,8 +34,6 @@ enum SunclubAutomationError: LocalizedError, Equatable {
             return "unsupportedAction"
         case .recordRequired:
             return "recordRequired"
-        case .friendNotFound:
-            return "friendNotFound"
         case .invalidInput:
             return "invalidInput"
         case .unavailable:
@@ -57,8 +55,6 @@ enum SunclubAutomationError: LocalizedError, Equatable {
             return "Sunclub does not support the Shortcuts action \(action)."
         case .recordRequired:
             return "Log sunscreen for today before using this shortcut."
-        case .friendNotFound:
-            return "Sunclub could not find that Activity sharing friend."
         case let .invalidInput(message):
             return message
         case let .unavailable(message):
@@ -81,7 +77,7 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
     case privacy
     case support
     case achievements
-    case friends
+
     case healthReport = "health-report"
     case productScanner = "product-scanner"
     case recovery
@@ -114,8 +110,6 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
             return .support
         case .achievements:
             return .weeklySummary
-        case .friends:
-            return .settings
         case .healthReport:
             return .history
         case .productScanner:
@@ -153,8 +147,6 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
             return "Support"
         case .achievements:
             return "Insights"
-        case .friends:
-            return "Settings"
         case .healthReport:
             return "History"
         case .productScanner:
@@ -214,8 +206,6 @@ enum SunclubAutomationAction: Equatable {
     case setReminder(kind: SunclubAutomationReminderKind, time: ReminderTime)
     case setReapply(enabled: Bool, intervalMinutes: Int?)
     case setToggle(SunclubAutomationToggle, enabled: Bool)
-    case importFriend(code: String)
-    case pokeFriend(id: UUID)
     case open(SunclubAutomationRoute)
     case exportBackup
     case createSkinHealthReport(start: Date?, end: Date?)
@@ -239,10 +229,6 @@ enum SunclubAutomationAction: Equatable {
             return "set-reapply"
         case .setToggle:
             return "set-toggle"
-        case .importFriend:
-            return "import-friend"
-        case .pokeFriend:
-            return "poke-friend"
         case .open:
             return "open"
         case .exportBackup:
@@ -261,9 +247,7 @@ enum SunclubAutomationAction: Equatable {
              .reapply,
              .setReminder,
              .setReapply,
-             .setToggle,
-             .importFriend,
-             .pokeFriend:
+             .setToggle:
             return true
         case .status, .timeSinceLastApplication, .open, .exportBackup, .createSkinHealthReport, .createStreakCard:
             return false
@@ -299,7 +283,6 @@ struct SunclubAutomationResult: Equatable {
     var todayLogged: Bool?
     var weeklyApplied: Int?
     var recordDate: String?
-    var friend: String?
     var route: String?
     var fileURL: URL?
     var fileTypeIdentifier: String?
@@ -329,9 +312,6 @@ struct SunclubAutomationResult: Equatable {
         }
         if let recordDate {
             items.append(URLQueryItem(name: "recordDate", value: recordDate))
-        }
-        if let friend {
-            items.append(URLQueryItem(name: "friend", value: friend))
         }
         if let route {
             items.append(URLQueryItem(name: "route", value: route))
@@ -540,8 +520,7 @@ enum SunclubAutomationRuntime {
         context: ModelContext,
         growthStore: SunclubGrowthFeatureStoring,
         widgetStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
-        now: Date = Date(),
-        supportsDirectAccountabilityTransport: Bool = SunclubRuntimeConfiguration.isPublicAccountabilityTransportEnabled
+        now: Date = Date()
     ) throws -> SunclubAutomationResult {
         let runtimeContext = RuntimeContext(
             modelContext: context,
@@ -557,16 +536,14 @@ enum SunclubAutomationRuntime {
         return try performValidated(
             action,
             runtimeContext: runtimeContext,
-            growthSettings: &growthSettings,
-            supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
+            growthSettings: &growthSettings
         )
     }
 
     private static func performValidated(
         _ action: SunclubAutomationAction,
         runtimeContext: RuntimeContext,
-        growthSettings: inout SunclubGrowthSettings,
-        supportsDirectAccountabilityTransport: Bool
+        growthSettings: inout SunclubGrowthSettings
     ) throws -> SunclubAutomationResult {
         switch action {
         case let .logToday(spfLevel, notes):
@@ -623,20 +600,6 @@ enum SunclubAutomationRuntime {
                 runtimeContext: runtimeContext,
                 growthSettings: &growthSettings
             )
-        case let .importFriend(code):
-            return try importFriend(
-                code: code,
-                runtimeContext: runtimeContext,
-                growthSettings: &growthSettings,
-                supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
-            )
-        case let .pokeFriend(id):
-            return try pokeFriend(
-                id: id,
-                runtimeContext: runtimeContext,
-                growthSettings: &growthSettings,
-                supportsDirectAccountabilityTransport: supportsDirectAccountabilityTransport
-            )
         case let .open(route):
             return SunclubAutomationResult(
                 action: action.identifier,
@@ -666,18 +629,6 @@ enum SunclubAutomationRuntime {
                 now: runtimeContext.now,
                 action: action.identifier
             )
-        }
-    }
-
-    static func friends(growthStore: SunclubGrowthFeatureStoring = SunclubGrowthFeatureStore.shared) -> [SunclubFriendSnapshot] {
-        growthStore.load().friends.sorted { lhs, rhs in
-            if lhs.hasLoggedToday != rhs.hasLoggedToday {
-                return !lhs.hasLoggedToday && rhs.hasLoggedToday
-            }
-            if lhs.currentStreak != rhs.currentStreak {
-                return lhs.currentStreak > rhs.currentStreak
-            }
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
     }
 
@@ -926,114 +877,6 @@ enum SunclubAutomationRuntime {
         )
     }
 
-    private static func importFriend(
-        code: String,
-        runtimeContext: RuntimeContext,
-        growthSettings: inout SunclubGrowthSettings,
-        supportsDirectAccountabilityTransport: Bool
-    ) throws -> SunclubAutomationResult {
-        let envelope = try SunclubAccountabilityCodec.envelope(from: code)
-        guard envelope.profileID != growthSettings.accountability.localProfileID else {
-            throw SunclubAutomationError.invalidInput("That invite belongs to this Sunclub profile.")
-        }
-
-        if !growthSettings.accountability.isActive {
-            let name = growthSettings.preferredName.trimmingCharacters(in: .whitespacesAndNewlines)
-            growthSettings.accountability.displayName = name.isEmpty ? "Sunclub Friend" : name
-            growthSettings.accountability.activatedAt = runtimeContext.now
-            _ = growthSettings.accountability.ensureInviteToken(now: runtimeContext.now)
-        }
-
-        var importedSnapshot = envelope.snapshot
-        importedSnapshot.name = envelope.displayName.isEmpty ? importedSnapshot.name : envelope.displayName
-        if let existingConnection = growthSettings.accountability.connections.first(where: { $0.friendProfileID == envelope.profileID }) {
-            importedSnapshot.id = existingConnection.friendSnapshotID
-        }
-        upsertFriendSnapshot(importedSnapshot, growthSettings: &growthSettings)
-        upsertConnection(
-            SunclubFriendConnection(
-                friendProfileID: envelope.profileID,
-                friendSnapshotID: importedSnapshot.id,
-                friendDisplayName: importedSnapshot.name,
-                relationshipToken: envelope.relationshipToken,
-                acceptedAt: runtimeContext.now,
-                canDirectPoke: supportsDirectAccountabilityTransport
-            ),
-            growthSettings: &growthSettings
-        )
-        runtimeContext.growthStore.save(growthSettings)
-        try syncSnapshot(
-            historyService: runtimeContext.historyService,
-            growthSettings: growthSettings,
-            widgetStore: runtimeContext.widgetStore,
-            now: runtimeContext.now
-        )
-
-        return SunclubAutomationResult(
-            action: "import-friend",
-            status: "ok",
-            message: "Added \(importedSnapshot.name).",
-            friend: importedSnapshot.name
-        )
-    }
-
-    private static func pokeFriend(
-        id: UUID,
-        runtimeContext: RuntimeContext,
-        growthSettings: inout SunclubGrowthSettings,
-        supportsDirectAccountabilityTransport: Bool
-    ) throws -> SunclubAutomationResult {
-        guard let friend = growthSettings.friends.first(where: { $0.id == id }) else {
-            throw SunclubAutomationError.friendNotFound
-        }
-
-        guard supportsDirectAccountabilityTransport,
-              let connection = growthSettings.accountability.connections.first(where: { $0.friendSnapshotID == id }),
-              connection.canDirectPoke else {
-            return SunclubAutomationResult(
-                action: "poke-friend",
-                status: "needs-message",
-                message: "Open Sunclub to message \(friend.name).",
-                friend: friend.name,
-                route: AppRoute.friends.rawValue
-            )
-        }
-
-        let message = friend.hasLoggedToday
-            ? "\(friend.name) logged today. Reapply if the sun is still out."
-            : "\(friend.name) still has an open sunscreen day."
-        growthSettings.accountability.pokeHistory.insert(
-            SunclubAccountabilityPoke(
-                friendProfileID: connection.friendProfileID,
-                friendName: friend.name,
-                direction: .sent,
-                channel: .direct,
-                status: .sent,
-                message: message,
-                createdAt: runtimeContext.now
-            ),
-            at: 0
-        )
-        growthSettings.accountability.pokeHistory = Array(growthSettings.accountability.pokeHistory.prefix(50))
-        if let index = growthSettings.accountability.connections.firstIndex(where: { $0.friendSnapshotID == id }) {
-            growthSettings.accountability.connections[index].lastPokeSentAt = runtimeContext.now
-        }
-        runtimeContext.growthStore.save(growthSettings)
-        try syncSnapshot(
-            historyService: runtimeContext.historyService,
-            growthSettings: growthSettings,
-            widgetStore: runtimeContext.widgetStore,
-            now: runtimeContext.now
-        )
-
-        return SunclubAutomationResult(
-            action: "poke-friend",
-            status: "ok",
-            message: "Reminded \(friend.name).",
-            friend: friend.name
-        )
-    }
-
     private static func exportBackup(
         context: ModelContext,
         growthSettings: SunclubGrowthSettings,
@@ -1159,7 +1002,7 @@ enum SunclubAutomationRuntime {
             settings.longestStreak = longestStreak
             try historyService.fetchContext().save()
         }
-        try syncSnapshot(historyService: historyService, growthSettings: growthSettings, widgetStore: widgetStore, now: now)
+        try syncSnapshot(historyService: historyService, widgetStore: widgetStore, now: now)
 
         let weekly = CalendarAnalytics.weeklyReport(records: recordedDays, now: now, calendar: calendar)
         return SunclubAutomationResult(
@@ -1268,14 +1111,12 @@ enum SunclubAutomationRuntime {
 
     private static func syncSnapshot(
         historyService: SunclubHistoryService,
-        growthSettings: SunclubGrowthSettings,
         widgetStore: SunclubWidgetSnapshotStore,
         now: Date
     ) throws {
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: try historyService.settings(),
             records: try historyService.records(),
-            growthSettings: growthSettings,
             now: now,
             calendar: calendar
         )
@@ -1303,22 +1144,6 @@ enum SunclubAutomationRuntime {
             second: 0,
             of: day
         ) ?? day
-    }
-
-    private static func upsertFriendSnapshot(_ snapshot: SunclubFriendSnapshot, growthSettings: inout SunclubGrowthSettings) {
-        if let index = growthSettings.friends.firstIndex(where: { $0.id == snapshot.id || $0.name == snapshot.name }) {
-            growthSettings.friends[index] = snapshot
-        } else {
-            growthSettings.friends.append(snapshot)
-        }
-    }
-
-    private static func upsertConnection(_ connection: SunclubFriendConnection, growthSettings: inout SunclubGrowthSettings) {
-        if let index = growthSettings.accountability.connections.firstIndex(where: { $0.friendProfileID == connection.friendProfileID }) {
-            growthSettings.accountability.connections[index] = connection
-        } else {
-            growthSettings.accountability.connections.append(connection)
-        }
     }
 
     private static func normalizedSPF(_ spfLevel: Int?) -> Int? {

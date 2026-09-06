@@ -8,7 +8,7 @@ enum NotificationRequestCategory: String, CaseIterable, Codable, Hashable, Senda
     case streakRisk
     case reapply
     case leaveHome
-    case accountabilityPoke
+
     case test
 
     var diagnosticLabel: String {
@@ -27,8 +27,6 @@ enum NotificationRequestCategory: String, CaseIterable, Codable, Hashable, Senda
             return "Reapply"
         case .leaveHome:
             return "Leave home"
-        case .accountabilityPoke:
-            return "Activity sharing"
         case .test:
             return "Test"
         }

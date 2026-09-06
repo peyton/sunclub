@@ -88,8 +88,6 @@ The work is visual and product-surface focused. It must not change SwiftData mod
   Date/Author: 2026-05-06 / Codex
 
 - Decision: Preserve core Home identifiers such as `home.logManually`, `home.todayStatus`, `home.historyCard`, and `home.streakCard`, but replace the old footer Sharing affordance with a Settings tab.
-  Rationale: The attached product page shows Today, History, a central log action, Insights, and Settings in the bottom bar. Friend sharing remains available from Settings quick access instead of occupying the primary product-page footer.
-  Date/Author: 2026-05-06 / Codex
 
 - Decision: Keep root tab taps as root-tab actions even though `AppRouter` still stores per-tab paths.
   Rationale: The reported bug was that tapping tabs behaved like pushed navigation. The tab bar should land on Today, History, Insights, or Settings roots with the bar visible, while pushed detail screens keep using the app back affordance.
@@ -112,8 +110,7 @@ These are implemented user-visible polish improvements from the completion pass 
 - [x] [Settings] 003. Detail back returns to the Settings hub instead of leaving the tab.
 - [x] [Settings] 004. The Settings hub now starts with a plain-language status card.
 - [x] [Settings] 005. Account controls are grouped separately from daily sunscreen controls.
-- [x] [Settings] 006. Profile is a working row that opens the existing profile and sharing destination.
-- [x] [Settings] 007. Activity Sharing is preserved as a working Settings row.
+- [x] [Settings] 006. Profile uses the shared Settings styling.
 - [x] [Settings] 008. Daily reminder controls moved into Sunscreen & Reminders.
 - [x] [Settings] 009. Reapply controls moved into a product-style detail page.
 - [x] [Settings] 010. Notification health controls are reachable from a Notifications detail page.
@@ -220,10 +217,9 @@ Source: `.build/gpt55-pro-review/chatgpt-critique.md`, 150 numbered items: 14 Cr
 | 41-65 | Log Sunscreen and Areas Covered art | Manual Log now uses the reference form hierarchy, default Face/Neck coverage, product preset rows, disabled invalid saves, and a regenerated coverage-face asset at 1x/2x/3x through the existing visual asset path. |
 | 66-78 | Logged, reapply, and UV detail | Save returns to Today or a concise logged confirmation, reapply is action-first with Log/Snooze/Dismiss controls, snooze persists through AppState, and UV detail/fallback copy stays factual. |
 | 79-88 | History and calendar | History surfaces use stronger selected/logged states, a nearby month summary, neutral stats, edit/delete confirmation paths, and P0 edge cards for export/delete/iCloud-off review. |
-| 89-105 | Insights, social, scanner, reports, tap-to-release, challenges | Shipping navigation and capture exclude achievements, friends/social, scanner, skin-health report, year-in-review, tap-to-release, and challenge-style screens. Compatibility routes remain parseable but normalize to Insights, Settings, History, or Log Sunscreen. |
+| 89-105 | Insights, scanner, reports, tap-to-release, challenges | Shipping navigation and capture exclude achievements, scanner, skin-health report, year-in-review, tap-to-release, and challenge-style screens. Compatibility routes remain parseable but normalize to Insights, Settings, History, or Log Sunscreen. |
 | 106-120 | Settings, privacy, support, Shortcuts | Settings, Privacy, Support, and Automation use grouped P0 rows. Privacy exposes export/delete controls with confirmations, Support uses help/email/feedback/about rows, and automation docs/copy now describe supported non-destructive routes and writes. |
 | 121-130 | Accessibility variants | Dark-mode Today, large-text Log Sunscreen, and high-contrast History are captured. UI tests cover the common-task accessibility scorecard path, large text manual logging, high contrast history, and settings automation controls. |
-| 131-150 | Widgets, Watch, Live Activity, App Store | Watch, widgets, Live Activity, and App Store review cards use logged/reapply/UV language instead of protected/streak-pressure language. The legacy activity-sharing widget kind stays registered for existing installs, while production navigation and the contact sheet do not promote it. |
 
 ## Outcomes & Retrospective
 
@@ -249,7 +245,7 @@ First, update `AppDesignSystem.swift` and `AppTheme.swift` to match the product 
 
 Second, rebuild Home. Keep `TimelineHomeView` as the only Home screen, but make it read like the product page's phone mock: top Today/date header, large UV context card, logged/open sunscreen row, sun exposure mini chart, hourly forecast strip, week/history/streak summary, and a bottom bar with Today, History, central log action, Insights, and Settings. Preserve existing route behavior where it does not conflict with the product-page visual contract.
 
-Third, apply the same system to the rest of the app. Manual Log should use form rows and area/product details that feel like the product page's logging mock. History should use segmented controls, calendar cards, and summary rows. Settings and Automation should use grouped rows with blue/amber feature icons. Onboarding, success, reapply, weekly report, scanner, skin report, year review, recovery, friends, achievements, Watch, and widgets should use the same palette, component shapes, and copy tone.
+Third, apply the same system to the rest of the app. Manual Log should use form rows and area/product details that feel like the product page's logging mock. History should use segmented controls, calendar cards, and summary rows. Settings and Automation should use grouped rows with blue/amber feature icons. Onboarding, success, reapply, weekly report, scanner, skin report, year review, recovery, achievements, Watch, and widgets should use the same palette, component shapes, and copy tone.
 
 Fourth, update docs and tests that intentionally encode older design choices. Keep accessibility rules intact: no `minimumScaleFactor`, no fixed `lineLimit` for essential copy, no direct animations that ignore Reduce Motion, and no low-contrast text on accent fills.
 

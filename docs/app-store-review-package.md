@@ -57,7 +57,7 @@ Keywords: sunscreen, spf, uv, habit, streak, daily, reminder, skincare, sun care
 
 Promotional text: Log sunscreen with an exact time, check sourced UV guidance, and act on reliable reapply reminders — private by default.
 
-What's New: This update makes logging and reminders more trustworthy: edit exact application times, see clearer live UV sources, use contextual next actions, and act on reapply notifications. It also improves Larger Text layouts and keeps public Activity sharing disabled while that feature is not part of the visible app.
+What's New: This update makes logging and reminders more trustworthy: edit exact application times, see clearer live UV sources, use contextual next actions, and act on reapply notifications. It also improves Larger Text layouts.
 
 ## App Review Notes
 
@@ -87,11 +87,10 @@ What's New: This update makes logging and reminders more trustworthy: edit exact
 - Data collection: none
 - Collected data types: none
 - Collection purpose: Not Collected
-- Public CloudKit accountability transport: no
 - Notification purpose: Notifications remind the user to apply or reapply sunscreen.
 - App Store Connect questionnaire gate: `SUNCLUB_APP_PRIVACY_COMPLETED=1`
 
-Manual App Store Connect answer: select Data Not Collected and do not mark tracking, ads, or analytics. The production build keeps public Activity sharing transport disabled. Local history and optional private iCloud sync remain user-controlled and are not accessible to the developer.
+Manual App Store Connect answer: select Data Not Collected and do not mark tracking, ads, or analytics. Local history and optional private iCloud sync remain user-controlled and are not accessible to the developer.
 
 ## Age Rating
 
@@ -139,7 +138,6 @@ Manual App Store Connect answer: select Data Not Collected and do not mark track
 - kids_category: no
 - iphone_only_v1: yes
 - accessibility_criteria_reviewed: yes
-- public_cloudkit_accountability_transport_enabled: no
 
 ## Medical Device Status
 

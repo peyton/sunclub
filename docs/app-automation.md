@@ -48,7 +48,7 @@
 - Development scheme: `sunclub-dev`.
 - Direct host: `sunclub://automation/...`.
 - x-callback host: `sunclub://x-callback-url/...`.
-- Legacy hosts kept: `sunclub://widget/...`, `sunclub://accountability/...`. Accountability links are compatibility-only and route to Settings.
+- Legacy widget host: `sunclub://widget/...`.
 
 ## Direct URL Actions
 
@@ -75,9 +75,9 @@ Examples: `sunclub://automation/open?route=settings-sunscreen` and `sunclub://x-
 
 The foreground reapply check-in remains available after today's first log even with reminders off. Recording and notification preferences are independent; snooze appears only when reapply reminders are enabled. Existing Log Reapply intents and URL actions continue through the shared mutation runtime.
 
-Compatibility routes are normalized before display: `achievements` opens weekly insights inside History, `friends` opens Settings, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
+Compatibility routes are normalized before display: `achievements` opens weekly insights inside History, `health-report` opens History, and `product-scanner` opens Log Sunscreen.
 
-Legacy app destinations `settingsSunscreenReminders`, `settingsReapplyReminder` and `settingsNotifications` remain accepted and show the consolidated Reminders page. These AppRoute names are not additional public URL route values. Compatibility sharing data and pending invites are retained; onboarding imports pending invites before finishing at Today.
+Legacy app destinations `settingsSunscreenReminders`, `settingsReapplyReminder` and `settingsNotifications` remain accepted and show the consolidated Reminders page. These AppRoute names are not additional public URL route values.
 
 Widget status links open Today. The legacy `updateToday` widget route still opens the existing editor for callers that already use it.
 

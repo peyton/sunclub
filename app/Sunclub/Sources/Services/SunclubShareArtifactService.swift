@@ -464,8 +464,7 @@ enum SunclubShareArtifactService {
             let dayLabel = achievement.currentValue == 1 ? "day" : "days"
             return "Longest streak: \(achievement.currentValue) \(dayLabel)"
         case .firstReapply, .firstBackfill, .summerSurvivor, .winterWarrior, .morningGlow, .weekendCanopy,
-             .spfSampler, .noteTaker, .reapplyRelay, .highUVHero, .homeBase, .liveSignal, .bottleDetective,
-             .socialSpark:
+             .spfSampler, .noteTaker, .reapplyRelay, .highUVHero, .homeBase, .liveSignal, .bottleDetective:
             return achievement.isUnlocked ? "Unlocked" : "\(achievement.currentValue)/\(achievement.targetValue)"
         }
     }

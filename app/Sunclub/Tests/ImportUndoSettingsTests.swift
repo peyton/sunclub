@@ -5,6 +5,62 @@ import XCTest
 
 @MainActor
 final class ImportUndoSettingsTests: XCTestCase {
+    func testStoredVersionOnePreferencesSurviveProjectionAndBackupImport() throws {
+        let source = try makeHistory()
+        let settings = try source.settings()
+        let legacyData = Data("""
+        {
+            "version": 1,
+            "preferredName": "Restored name",
+            "uvBriefing": {
+                "dailyBriefingEnabled": false, "extremeAlertEnabled": true,
+                "morningHour": 9, "morningMinute": 15
+            },
+            "automation": {
+                "shortcutWritesEnabled": false, "urlOpenActionsEnabled": true,
+                "urlWriteActionsEnabled": false, "callbackResultDetailsEnabled": false
+            },
+            "friends": [{"name": "Maya", "currentStreak": 4}],
+            "accountability": {"displayName": "Restored name", "inviteTokens": [{"token": "old-token"}]}
+        }
+        """.utf8)
+        settings.restorablePreferencesData = legacyData
+        settings.hasCompletedOnboarding = true
+        let batch = SunclubChangeBatch(
+            logicalOrder: 100, kind: .preferenceSettings, scope: .settings, scopeIdentifier: "settings",
+            authorDeviceID: "prior-device", summary: "Prior version preferences"
+        )
+        let revision = SettingsRevision(
+            batch: batch, snapshot: settings.projectionSnapshot,
+            changedFields: [.restorablePreferences, .hasCompletedOnboarding]
+        )
+        revision.restorablePreferencesData = legacyData
+        source.fetchContext().insert(batch)
+        source.fetchContext().insert(revision)
+        try source.fetchContext().save()
+        try source.refreshProjectedState()
+
+        XCTAssertEqual(try source.settings().restorablePreferences?.version, 1)
+        XCTAssertEqual(try source.settings().restorablePreferences?.preferredName, "Restored name")
+        XCTAssertTrue(try source.settings().hasCompletedOnboarding)
+        let document = try SunclubBackupService().exportDocument(from: source.fetchContext())
+        let target = try makeHistory()
+        _ = try SunclubBackupService().importBackupDocument(
+            SunclubBackupDocument(data: document.serializedData()), into: target.fetchContext()
+        )
+        try target.refreshProjectedState()
+
+        let restored = try XCTUnwrap(target.settings().restorablePreferences)
+        XCTAssertEqual(restored.preferredName, "Restored name")
+        XCTAssertEqual(restored.uvBriefing.morningHour, 9)
+        XCTAssertFalse(restored.automation.shortcutWritesEnabled)
+        XCTAssertFalse(restored.automation.urlWriteActionsEnabled)
+        XCTAssertTrue(try target.settings().hasCompletedOnboarding)
+        XCTAssertTrue(try target.changeBatches().contains { $0.id == batch.id })
+        let revisions = try target.fetchContext().fetch(FetchDescriptor<SettingsRevision>())
+        XCTAssertTrue(revisions.contains { $0.id == revision.id })
+    }
+
     // Undo must restore explicit false, default numbers, and nil fields, not recover imported values into them.
     func testUndoRestoresDefaultAndEmptySettings() throws {
         let target = try makeHistory()
@@ -131,8 +187,8 @@ final class ImportUndoSettingsTests: XCTestCase {
         ).importSessionID
         let imported = try XCTUnwrap(target.settings().restorablePreferences)
         let renamed = SunclubRestorablePreferences(
-            preferredName: "My name", uvBriefing: imported.uvBriefing, friends: imported.friends,
-            accountability: imported.accountability, automation: imported.automation
+            preferredName: "My name", uvBriefing: imported.uvBriefing,
+            automation: imported.automation
         )
         let edit = try XCTUnwrap(target.applySettingsChange(
             kind: .preferenceSettings, summary: "Later name", changedFields: [.restorablePreferences]
@@ -168,7 +224,6 @@ final class ImportUndoSettingsTests: XCTestCase {
         let original = store.load()
         let session = try target.importBackupDocument(envelopeBackup()).importSessionID
         XCTAssertFalse(target.growthSettings.automation.shortcutWritesEnabled)
-        XCTAssertFalse(target.growthSettings.accountability.inviteTokens.isEmpty)
 
         _ = try target.restoreImportedChanges(for: session).get()
         target.refresh()
@@ -176,7 +231,6 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertEqual(target.growthSettings.preferredName, original.preferredName)
         XCTAssertEqual(target.growthSettings.automation, original.automation)
         XCTAssertEqual(target.growthSettings.uvBriefing, original.uvBriefing)
-        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
         XCTAssertEqual(store.load(), target.growthSettings)
         XCTAssertEqual(target.settings.restorablePreferences?.automation, original.automation)
     }
@@ -194,8 +248,6 @@ final class ImportUndoSettingsTests: XCTestCase {
         XCTAssertEqual(target.growthSettings.preferredName, "My name")
         XCTAssertEqual(target.growthSettings.automation, original.automation)
         XCTAssertEqual(target.growthSettings.uvBriefing, original.uvBriefing)
-        XCTAssertTrue(target.growthSettings.accountability.inviteTokens.isEmpty)
-        XCTAssertEqual(target.growthSettings.accountability.localProfileID, original.accountability.localProfileID)
         XCTAssertEqual(store.load(), target.growthSettings)
     }
 
@@ -223,7 +275,6 @@ final class ImportUndoSettingsTests: XCTestCase {
         target.refresh()
         XCTAssertEqual(target.growthSettings.preferredName, original.preferredName)
         XCTAssertEqual(target.growthSettings.automation, original.automation)
-        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
         XCTAssertEqual(target.growthSettings.scannedSPFLevels, original.scannedSPFLevels)
         XCTAssertEqual(target.growthSettings.successPhraseState, original.successPhraseState)
         XCTAssertEqual(store.load(), target.growthSettings)
@@ -509,65 +560,10 @@ final class ImportUndoSettingsTests: XCTestCase {
 
         let (reopened, _) = try makeApp(context: context, store: store)
 
-        XCTAssertEqual(reopened.growthSettings.accountability.localProfileID, original.accountability.localProfileID)
-        XCTAssertTrue(reopened.growthSettings.accountability.inviteTokens.isEmpty)
         XCTAssertEqual(reopened.growthSettings.automation, original.automation)
         XCTAssertEqual(reopened.growthSettings.scannedSPFLevels, original.scannedSPFLevels)
         XCTAssertEqual(reopened.growthSettings.successPhraseState, original.successPhraseState)
         XCTAssertEqual(reopened.growthSettings.healthKit, original.healthKit)
-    }
-
-    func testImportUndoAndRedoPreserveCurrentProfileSyncMetadata() throws {
-        let store = ImportUndoSettingsStore()
-        var original = store.load()
-        original.accountability.displayName = "Local"
-        original.accountability.lastPublishedAt = Date(timeIntervalSince1970: 1_780_000_100)
-        original.accountability.subscriptionsInstalledAt = Date(timeIntervalSince1970: 1_780_000_200)
-        original.accountability.subscriptionInstallVersion = 2
-        store.save(original)
-        let (target, _) = try makeApp(store: store)
-        let session = try target.importBackupDocument(envelopeBackup()).importSessionID
-        let batch = try XCTUnwrap(target.changeBatches.first { $0.kind == .importLocal })
-
-        _ = try target.restoreImportedChanges(for: session).get()
-
-        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
-        XCTAssertEqual(store.load().accountability, original.accountability)
-        let projection = try XCTUnwrap(target.settings.restorablePreferences).accountability
-        XCTAssertNil(projection.lastPublishedAt)
-        XCTAssertNil(projection.subscriptionsInstalledAt)
-        XCTAssertEqual(projection.subscriptionInstallVersion, 0)
-
-        _ = try target.redoChange(batch.id).get()
-
-        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
-        XCTAssertEqual(store.load().accountability, original.accountability)
-    }
-
-    func testRestoringAnotherProfileDoesNotReuseEitherProfilesDeviceMetadata() {
-        let current = SunclubGrowthSettings(accountability: SunclubAccountabilitySettings(
-            lastPublishedAt: Date(timeIntervalSince1970: 1_780_000_100),
-            subscriptionsInstalledAt: Date(timeIntervalSince1970: 1_780_000_200),
-            subscriptionInstallVersion: 2
-        ))
-        let imported = SunclubAccountabilitySettings(
-            displayName: "Another profile",
-            lastPublishedAt: Date(timeIntervalSince1970: 1_780_000_300),
-            subscriptionsInstalledAt: Date(timeIntervalSince1970: 1_780_000_400),
-            subscriptionInstallVersion: 2
-        )
-        let preferences = SunclubRestorablePreferences(
-            preferredName: "", uvBriefing: SunclubUVBriefingPreferences(), friends: [],
-            accountability: imported, automation: SunclubAutomationPreferences()
-        )
-
-        let restored = preferences.replacingRestorableFields(in: current)
-
-        XCTAssertEqual(restored.accountability.localProfileID, imported.localProfileID)
-        XCTAssertEqual(restored.accountability.displayName, "Another profile")
-        XCTAssertNil(restored.accountability.lastPublishedAt)
-        XCTAssertNil(restored.accountability.subscriptionsInstalledAt)
-        XCTAssertEqual(restored.accountability.subscriptionInstallVersion, 0)
     }
 
     // Older envelope-only imports lack an ownership marker; do not pretend a selective inverse is known.
@@ -678,38 +674,7 @@ final class ImportUndoSettingsTests: XCTestCase {
         target.refresh()
 
         XCTAssertEqual(target.growthSettings.automation, original.automation)
-        XCTAssertEqual(target.growthSettings.accountability, original.accountability)
         XCTAssertEqual(store.load(), target.growthSettings)
-    }
-
-    func testUndoKeepsLaterFriendChangeWithoutImportedSiblingFields() throws {
-        let original = SunclubFriendSnapshot(
-            name: "Original", currentStreak: 1, longestStreak: 1, hasLoggedToday: false,
-            lastSharedAt: Date(timeIntervalSince1970: 1_780_000_000), seasonStyle: .summerGlow
-        )
-        let store = ImportUndoSettingsStore()
-        store.save(SunclubGrowthSettings(friends: [original]))
-        let (target, _) = try makeApp(store: store)
-        var imported = original
-        imported.name = "Imported"
-        imported.currentStreak = 99
-        imported.longestStreak = 99
-        imported.hasLoggedToday = true
-        imported.lastSharedAt = original.lastSharedAt.addingTimeInterval(60)
-        let preferences = SunclubRestorablePreferences(growthSettings: SunclubGrowthSettings(friends: [imported]))
-        let session = try target.importBackupDocument(envelopeBackup(preferences: preferences)).importSessionID
-        XCTAssertEqual(target.growthSettings.friends.first?.name, "Imported")
-        var later = store.load()
-        later.friends[0].currentStreak = 2
-        store.save(later)
-
-        _ = try target.restoreImportedChanges(for: session).get()
-
-        let friend = try XCTUnwrap(target.growthSettings.friends.first)
-        XCTAssertEqual(friend.currentStreak, 2)
-        XCTAssertEqual(friend.name, "Original")
-        XCTAssertEqual(friend.longestStreak, 1)
-        XCTAssertFalse(friend.hasLoggedToday)
     }
 
     private func makeHistory() throws -> SunclubHistoryService {
@@ -737,9 +702,7 @@ final class ImportUndoSettingsTests: XCTestCase {
         _ = try target.restoreImportedChanges(for: session.importSessionID).get()
         let (reopened, _) = try makeApp(context: history.fetchContext(), store: store)
 
-        XCTAssertTrue(target.growthSettings.accountability.inviteTokens.isEmpty)
         XCTAssertEqual(target.growthSettings.automation, SunclubAutomationPreferences())
-        XCTAssertTrue(reopened.growthSettings.accountability.inviteTokens.isEmpty)
         XCTAssertEqual(reopened.growthSettings.automation, SunclubAutomationPreferences())
     }
 
@@ -762,31 +725,6 @@ final class ImportUndoSettingsTests: XCTestCase {
 
         XCTAssertEqual(try history.settings().reminderHour, 10)
         XCTAssertFalse(try history.settings().usesLiveUV)
-    }
-
-    func testUndoKeepsAnExplicitlyReplacedRelationshipCredential() throws {
-        let friend = SunclubFriendSnapshot(
-            name: "Friend", currentStreak: 1, longestStreak: 1, hasLoggedToday: false,
-            lastSharedAt: Date(timeIntervalSince1970: 1_780_000_000), seasonStyle: .summerGlow
-        )
-        let profileID = UUID()
-        let preferences = SunclubRestorablePreferences(growthSettings: SunclubGrowthSettings(
-            friends: [friend], accountability: SunclubAccountabilitySettings(connections: [SunclubFriendConnection(
-                friendProfileID: profileID, friendSnapshotID: friend.id, friendDisplayName: "Friend",
-                relationshipToken: "imported-token", acceptedAt: friend.lastSharedAt
-            )])
-        ))
-        let (target, _) = try makeApp()
-        let session = try target.importBackupDocument(envelopeBackup(preferences: preferences)).importSessionID
-        target.importAccountabilityInvite(SunclubAccountabilityInviteEnvelope(
-            profileID: profileID, displayName: "Friend", relationshipToken: "replacement-token",
-            issuedAt: friend.lastSharedAt.addingTimeInterval(60), snapshot: friend
-        ), sendsResponse: false)
-        XCTAssertEqual(target.growthSettings.accountability.connections.first?.relationshipToken, "replacement-token")
-
-        _ = try target.restoreImportedChanges(for: session).get()
-
-        XCTAssertEqual(target.growthSettings.accountability.connections.first?.relationshipToken, "replacement-token")
     }
 
     func testLegacyRecoveryUndoDoesNotResetALaterLocalName() throws {
@@ -853,9 +791,6 @@ final class ImportUndoSettingsTests: XCTestCase {
         let preferences = suppliedPreferences ?? SunclubRestorablePreferences(growthSettings: SunclubGrowthSettings(
             preferredName: "Imported name",
             uvBriefing: SunclubUVBriefingPreferences(dailyBriefingEnabled: false, morningHour: 11),
-            accountability: SunclubAccountabilitySettings(inviteTokens: [
-                SunclubAccountabilityInviteToken(token: "test-import-token", createdAt: Date(timeIntervalSince1970: 1_780_000_000))
-            ]),
             automation: SunclubAutomationPreferences(shortcutWritesEnabled: false, urlWriteActionsEnabled: false)
         ))
         let document = try SunclubBackupService().exportDocument(
@@ -874,8 +809,7 @@ final class ImportUndoSettingsTests: XCTestCase {
             context: suppliedContext ?? ModelContext(container), notificationManager: MockNotificationManager(),
             uvIndexService: UVIndexService(), historyService: suppliedHistory, growthFeatureStore: store,
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
-                isRunningTests: false, isPreviewing: true, hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                isRunningTests: false, isPreviewing: true, hasAppGroupContainer: false
             )
         )
         return (app, store)

@@ -179,7 +179,6 @@ Bring the current Timeline-first Sunclub app closer to the attached design refer
 - [x] [Data Handling] 135. Clamped decoded reapply interval to a positive value.
 - [x] [Data Handling] 136. Preserved optional SPF decoding.
 - [x] [Data Handling] 137. Preserved optional UV decoding.
-- [x] [Data Handling] 138. Preserved optional accountability decoding.
 - [x] [Data Handling] 139. Added minimal legacy widget payload decode test.
 - [x] [Data Handling] 140. Kept import/export backup tests as release-gate coverage.
 - [x] [Privacy/Support/Insights] 141. Flattened Support out of a card-within-card layout.

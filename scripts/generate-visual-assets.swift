@@ -397,31 +397,6 @@ private func drawPerson(
     stroke(context, RGBA(1, 1, 1, 0.34), path: roundedRect(torso.insetBy(dx: 2, dy: 2), radius: 44), width: 3)
 }
 
-private func drawFriendsPair(_ context: CGContext, size: CGSize) {
-    let card = CGRect(x: 102, y: 78, width: size.width - 204, height: size.height - 156)
-    fillPath(context, RGBA(1, 1, 1, 0.82), path: roundedRect(card, radius: 38))
-    stroke(context, RGBA(0.13, 0.11, 0.10, 0.08), path: roundedRect(card, radius: 38), width: 2)
-
-    let tokenA = CGPoint(x: 226, y: 220)
-    let tokenB = CGPoint(x: 374, y: 220)
-    context.setFillColor(RGBA(Palette.sun.r, Palette.sun.g, Palette.sun.b, 0.16).cgColor)
-    context.fillEllipse(in: CGRect(x: tokenA.x - 62, y: tokenA.y - 62, width: 124, height: 124))
-    context.setFillColor(RGBA(Palette.aloe.r, Palette.aloe.g, Palette.aloe.b, 0.16).cgColor)
-    context.fillEllipse(in: CGRect(x: tokenB.x - 62, y: tokenB.y - 62, width: 124, height: 124))
-    context.setFillColor(Palette.sun.cgColor)
-    context.fillEllipse(in: CGRect(x: tokenA.x - 34, y: tokenA.y - 34, width: 68, height: 68))
-    context.setFillColor(Palette.aloe.cgColor)
-    context.fillEllipse(in: CGRect(x: tokenB.x - 34, y: tokenB.y - 34, width: 68, height: 68))
-
-    let center = CGPoint(x: 300, y: 220)
-    drawSunRing(context, center: center, radius: 42, tint: Palette.warmGlow)
-    strokeLine(context, RGBA(0.13, 0.11, 0.10, 0.16), from: CGPoint(x: tokenA.x + 42, y: tokenA.y), to: CGPoint(x: center.x - 34, y: center.y), width: 5)
-    strokeLine(context, RGBA(0.13, 0.11, 0.10, 0.16), from: CGPoint(x: center.x + 34, y: center.y), to: CGPoint(x: tokenB.x - 42, y: tokenB.y), width: 5)
-
-    fill(context, RGBA(0.13, 0.11, 0.10, 0.10), in: CGRect(x: card.minX + 74, y: card.minY + 62, width: card.width - 148, height: 10))
-    fill(context, RGBA(0.13, 0.11, 0.10, 0.06), in: CGRect(x: card.minX + 118, y: card.minY + 84, width: card.width - 236, height: 10))
-}
-
 private func drawReport(_ context: CGContext, rect: CGRect) {
     fill(context, Palette.white, in: rect)
     fill(context, Palette.pool, in: CGRect(x: rect.minX + 30, y: rect.minY + 34, width: rect.width - 60, height: 18))
@@ -564,9 +539,6 @@ private func specs() -> [AssetSpec] {
         },
         AssetSpec(name: "IllustrationAchievementsShelf", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, size in
             drawAchievementShelf(context, size: size)
-        },
-        AssetSpec(name: "IllustrationFriendsPair", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, size in
-            drawFriendsPair(context, size: size)
         },
         AssetSpec(name: "IllustrationSkinReport", width: illustrationSize.0, height: illustrationSize.1, isOpaque: false) { context, _ in
             drawReport(context, rect: CGRect(x: 172, y: 66, width: 256, height: 308))

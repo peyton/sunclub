@@ -371,7 +371,6 @@ struct EnableNotificationsView: View {
     }
 
     static func finishOnboarding(appState: AppState, router: AppRouter) {
-        appState.importPendingAccountabilityInvitesIfNeeded()
         router.goHome()
     }
 }

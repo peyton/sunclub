@@ -133,7 +133,7 @@ GitHub run cross-check:
 - Keep the embedded watch app `Info.plist` App Store-safe. The watch app plist
   must keep `WKCompanionAppBundleIdentifier`, version fields, and the
   single-target runtime keys `SunclubAppGroupID`,
-  `SunclubICloudContainerIdentifier`, `SunclubPublicAccountabilityTransportEnabled`,
+  `SunclubICloudContainerIdentifier`,
   and `SunclubURLScheme`. It must not include `CFBundleURLTypes`. App Store
   Connect also rejects `CFBundleIconName` in the embedded watch app plist, so
   rely on compiled watch assets instead of that key.

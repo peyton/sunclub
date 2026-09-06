@@ -9,7 +9,6 @@ import XCTest
 final class AutomationTests: XCTestCase {
     func testAutomationDeepLinksRoundTripDirectAndXCallbackActions() throws {
         let day = try makeDate(year: 2026, month: 4, day: 14)
-        let friendID = try XCTUnwrap(UUID(uuidString: "D2A26E1B-7E95-4F45-A103-83D1A8C1E656"))
         let callback = SunclubXCallback(
             successURL: URL(string: "shortcuts://callback/success")!,
             errorURL: URL(string: "shortcuts://callback/error")!,
@@ -25,8 +24,6 @@ final class AutomationTests: XCTestCase {
             .setReminder(kind: .weekday, time: ReminderTime(hour: 8, minute: 30)),
             .setReminder(kind: .weekend, time: ReminderTime(hour: 10, minute: 15)),
             .setReapply(enabled: true, intervalMinutes: 120),
-            .importFriend(code: "sunclub-invite-code"),
-            .pokeFriend(id: friendID)
         ]
         actions.append(contentsOf: SunclubAutomationToggle.allCases.map { .setToggle($0, enabled: false) })
         actions.append(contentsOf: SunclubAutomationRoute.allCases.map { .open($0) })
@@ -69,7 +66,6 @@ final class AutomationTests: XCTestCase {
             todayLogged: true,
             weeklyApplied: 5,
             recordDate: "2026-04-14",
-            friend: "Maya",
             route: "automation",
             lastAppliedAt: "2026-04-14T15:30:00.000Z",
             minutesSinceLastApplication: 42
@@ -88,7 +84,6 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(queryValue("todayLogged", in: detailedSuccess), "true")
         XCTAssertEqual(queryValue("weeklyApplied", in: detailedSuccess), "5")
         XCTAssertEqual(queryValue("recordDate", in: detailedSuccess), "2026-04-14")
-        XCTAssertEqual(queryValue("friend", in: detailedSuccess), "Maya")
         XCTAssertEqual(queryValue("route", in: detailedSuccess), "automation")
         XCTAssertEqual(queryValue("lastAppliedAt", in: detailedSuccess), "2026-04-14T15:30:00.000Z")
         XCTAssertEqual(queryValue("minutesSinceLastApplication", in: detailedSuccess), "42")
@@ -137,7 +132,6 @@ final class AutomationTests: XCTestCase {
     }
 
     func testAutomationCatalogURLExamplesStayParseable() throws {
-        let friendID = try XCTUnwrap(UUID(uuidString: "D2A26E1B-7E95-4F45-A103-83D1A8C1E656"))
         let examples: [(String, SunclubAutomationAction)] = [
             ("sunclub://automation/log-today?spf=50&notes=Beach%20bag", .logToday(spfLevel: 50, notes: "Beach bag")),
             ("sunclub://automation/status", .status),
@@ -153,8 +147,6 @@ final class AutomationTests: XCTestCase {
             ("sunclub://automation/set-reminder?kind=weekday&time=08:30", .setReminder(kind: .weekday, time: ReminderTime(hour: 8, minute: 30))),
             ("sunclub://automation/set-reapply?enabled=true&interval=90", .setReapply(enabled: true, intervalMinutes: 90)),
             ("sunclub://automation/set-toggle?name=dailyUVBriefing&enabled=true", .setToggle(.dailyUVBriefing, enabled: true)),
-            ("sunclub://automation/import-friend?code=sunclub-invite-code", .importFriend(code: "sunclub-invite-code")),
-            ("sunclub://automation/poke-friend?id=\(friendID.uuidString)", .pokeFriend(id: friendID))
         ]
 
         for (urlString, expectedAction) in examples {
@@ -184,7 +176,6 @@ final class AutomationTests: XCTestCase {
             "sunclub://automation/set-reapply?enabled=true&interval=later",
             "sunclub://automation/set-toggle?name=liveUV&enabled=true",
             "sunclub://automation/open?route=unknown",
-            "sunclub://automation/poke-friend?id=not-a-uuid"
         ]
 
         for urlString in malformedURLs {
@@ -537,52 +528,6 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(afterReapply.message, "Last sunscreen application was 0 minutes ago.")
     }
 
-    func testFriendEntityQueryImportInviteAndPokeAutomationUseSeededFriends() async throws {
-        let friendID = try XCTUnwrap(UUID(uuidString: "C57B4D7A-BCB1-4A12-AF1E-069111E4D814"))
-        let loggedFriendID = try XCTUnwrap(UUID(uuidString: "8E70869B-92D5-4AE4-A2B5-55AC64C01863"))
-        let queryStore = MemoryGrowthFeatureStore(
-            settings: SunclubGrowthSettings(
-                friends: [
-                    friendSnapshot(id: loggedFriendID, name: "Zoe", currentStreak: 8, hasLoggedToday: true),
-                    friendSnapshot(id: friendID, name: "Maya", currentStreak: 2, hasLoggedToday: false)
-                ]
-            )
-        )
-        let query = SunclubFriendQuery(growthStore: queryStore)
-
-        let suggested = try await query.suggestedEntities()
-        XCTAssertEqual(suggested.map(\.name), ["Maya", "Zoe"])
-        XCTAssertEqual(suggested.first?.status, "Not logged today")
-        let filtered = try await query.entities(for: [loggedFriendID])
-        XCTAssertEqual(filtered.map(\.name), ["Zoe"])
-
-        let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
-        let automationStore = MemoryGrowthFeatureStore(settings: SunclubGrowthSettings(preferredName: "Peyton"))
-        let harness = try makeHarness(growthStore: automationStore, clock: { now })
-        harness.state.completeOnboarding()
-        let envelope = SunclubAccountabilityInviteEnvelope(
-            profileID: try XCTUnwrap(UUID(uuidString: "1ED0032A-35D9-4B9A-A33F-A8C7A275D3D1")),
-            displayName: "Maya",
-            relationshipToken: "automation-friend-token",
-            issuedAt: now,
-            snapshot: friendSnapshot(id: friendID, name: "Maya", currentStreak: 2, hasLoggedToday: false)
-        )
-        let code = try SunclubAccountabilityCodec.backupCode(for: envelope)
-
-        let importResult = try harness.state.performAutomationAction(.importFriend(code: code), invocation: .url)
-        XCTAssertEqual(importResult.friend, "Maya")
-        XCTAssertEqual(harness.state.friends.map(\.name), ["Maya"])
-        XCTAssertFalse(harness.state.growthSettings.accountability.connections.first?.canDirectPoke ?? true)
-
-        let pokeResult = try harness.state.performAutomationAction(.pokeFriend(id: friendID), invocation: .url)
-        XCTAssertEqual(pokeResult.friend, "Maya")
-        XCTAssertEqual(pokeResult.status, "needs-message")
-        XCTAssertEqual(pokeResult.message, "Open Sunclub to message Maya.")
-        let savedSettings = automationStore.load()
-        XCTAssertTrue(savedSettings.accountability.pokeHistory.isEmpty)
-        XCTAssertNil(savedSettings.accountability.connections.first?.lastPokeSentAt)
-    }
-
     func testAppAndAutomationEditsPreserveTheSameHistoryFields() throws {
         let now = try makeDate(year: 2026, month: 7, day: 12, hour: 13)
         let app = try makeHarness(clock: { now }).state
@@ -779,8 +724,7 @@ final class AutomationTests: XCTestCase {
         let runtimeEnvironment = RuntimeEnvironmentSnapshot(
             isRunningTests: growthStore == nil,
             isPreviewing: growthStore != nil,
-            hasAppGroupContainer: false,
-            isPublicAccountabilityTransportEnabled: false
+            hasAppGroupContainer: false
         )
         let historyService = SunclubHistoryService(context: context)
         let state = AppState(
@@ -841,22 +785,6 @@ final class AutomationTests: XCTestCase {
             .value
     }
 
-    private func friendSnapshot(
-        id: UUID,
-        name: String,
-        currentStreak: Int,
-        hasLoggedToday: Bool
-    ) -> SunclubFriendSnapshot {
-        SunclubFriendSnapshot(
-            id: id,
-            name: name,
-            currentStreak: currentStreak,
-            longestStreak: max(currentStreak, 7),
-            hasLoggedToday: hasLoggedToday,
-            lastSharedAt: Date(timeIntervalSinceReferenceDate: 800_000_000),
-            seasonStyle: .summerGlow
-        )
-    }
 }
 
 @MainActor

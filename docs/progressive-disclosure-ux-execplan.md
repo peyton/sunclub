@@ -6,7 +6,7 @@ The local instructions referenced `~/.agent/PLANS.md`, but that path does not ex
 
 ## Purpose / Big Picture
 
-Sunclub already supports many helpful sunscreen habit features, but the first screen exposes too many of them before a casual user has completed the basic loop. After this change, a user who only wants to log sunscreen and see progress should see Today, streak, and recent progress first. Deeper features such as scanner, friends, reports, UV controls, backup, iCloud, HealthKit, and recovery remain available, but they are revealed through clearer sections, contextual prompts, or explicit exploration.
+Sunclub already supports many helpful sunscreen habit features, but the first screen exposes too many of them before a casual user has completed the basic loop. After this change, a user who only wants to log sunscreen and see progress should see Today, streak, and recent progress first. Deeper features such as scanner, reports, UV controls, backup, iCloud, HealthKit, and recovery remain available, but they are revealed through clearer sections, contextual prompts, or explicit exploration.
 
 The result should be visible by launching the app in UI test mode after onboarding. Home should lead with the daily log state and streak, Manual Log should make SPF and notes optional, Weekly Summary and History should use neutral progress language, and Settings should group advanced controls behind task-oriented sections.
 
@@ -15,7 +15,7 @@ The result should be visible by launching the app in UI test mode after onboardi
 - [x] (2026-04-12 01:18Z) Read the provided audit plan, inspected the existing SwiftUI screens, and confirmed the worktree was clean.
 - [x] (2026-04-12 01:47Z) Refactored routing and Home presentation so core progress appears before advanced discovery.
 - [x] (2026-04-12 01:55Z) Refactored Manual Log and Product Scanner so SPF scanning and details are optional, user-confirmed helpers.
-- [x] (2026-04-12 02:06Z) Refactored Weekly Summary, History, Recovery, Friends, and Settings copy/layout for progressive disclosure.
+- [x] (2026-04-12 02:06Z) Refactored Weekly Summary, History, Recovery, and Settings copy/layout for progressive disclosure.
 - [x] (2026-04-12 02:15Z) Updated UI and unit tests for the changed navigation and disclosure surfaces.
 - [x] (2026-04-12 02:26Z) Ran `just test-unit` and `just test-ui`; both passed.
 - [x] (2026-04-12 02:38Z) Ran `just lint`; it completed successfully with 20 non-serious SwiftLint warnings.
@@ -42,15 +42,15 @@ The result should be visible by launching the app in UI test mode after onboardi
 
 ## Outcomes & Retrospective
 
-The progressive disclosure pass is implemented without deleting feature areas. Home now leads with Today and streak/progress, keeps UV compact by default, shows one contextual suggestion, and collapses Achievements, Accountability, Health Report, and SPF Scanner behind Explore. Manual Log accepts a valid one-tap log without SPF or notes, and optional details now include explicit SPF empty/clear states plus Scan SPF. Product Scanner requires confirmation before applying a detected SPF to today's log.
+The progressive disclosure pass is implemented without deleting feature areas. Home now leads with Today and streak/progress, keeps UV compact by default, shows one contextual suggestion, and collapses Achievements, Health Report, and SPF Scanner behind Explore. Manual Log accepts a valid one-tap log without SPF or notes, and optional details now include explicit SPF empty/clear states plus Scan SPF. Product Scanner requires confirmation before applying a detected SPF to today's log.
 
-Secondary flows now use plainer, task-oriented structure: Weekly Summary says "Last 7 days" and offers Backfill; History has a legend, selected-day guidance, undo-aware delete copy, and collapsible monthly patterns; Recovery has empty and grouped states; Settings is split into Reminders, Progress, Data & Sync, and Advanced; Friends is framed as optional accountability with import validation.
+Secondary flows now use plainer, task-oriented structure: Weekly Summary says "Last 7 days" and offers Backfill; History has a legend, selected-day guidance, undo-aware delete copy, and collapsible monthly patterns; Recovery has empty and grouped states; Settings is split into Reminders, Progress, Data & Sync, and Advanced.
 
 Validation passed with `just test-unit`, `just test-ui`, and `just lint`. No schema migration or new dependency was needed.
 
 ## Context and Orientation
 
-The main iOS app is under `app/Sunclub/Sources`. `RootView.swift` owns the single `NavigationStack` and routes to views using `AppRoute` and `AppRouter` in `Shared/AppRoute.swift`. Home is implemented in `Views/HomeView.swift`; it currently shows the daily card, full UV forecast, achievement celebration, a grid of advanced features, the streak card, secondary recovery actions, and History. Manual logging uses `Views/ManualLogView.swift` plus reusable fields in `Shared/SunManualLogFields.swift`. Weekly summary, history editing, settings, recovery, friends, and scanner each have their own SwiftUI files in `Views`.
+The main iOS app is under `app/Sunclub/Sources`. `RootView.swift` owns the single `NavigationStack` and routes to views using `AppRoute` and `AppRouter` in `Shared/AppRoute.swift`. Home is implemented in `Views/HomeView.swift`; it currently shows the daily card, full UV forecast, achievement celebration, a grid of advanced features, the streak card, secondary recovery actions, and History. Manual logging uses `Views/ManualLogView.swift` plus reusable fields in `Shared/SunManualLogFields.swift`. Weekly summary, history editing, settings, recovery, and scanner each have their own SwiftUI files in `Views`.
 
 Progressive disclosure means the default screen should focus on the user's immediate task and only reveal less common features when the user asks for them or when context makes them urgent.
 
@@ -62,7 +62,7 @@ Next, reorganize Home. The body should read as header, today, streak/progress, o
 
 Then, make Manual Log faster by presenting SPF and notes as optional details with an explicit empty SPF state. Add a Scan SPF entry that routes to Product Scanner. Product Scanner should still scan and remember SPF values, but applying a scan to today's log should require a confirmation button before routing back to Manual Log.
 
-Finally, update secondary screens: Weekly Summary uses "Last 7 days" and neutral not-logged copy with backfill entry points; History gains a legend, an empty-state hint, undo-aware delete copy, and collapsed monthly insights; Settings is grouped into Reminders, Progress, Data & Sync, and Advanced sections; Recovery gets an empty state; Friends import gets validation; achievements and sharing copy become plainer.
+Finally, update secondary screens: Weekly Summary uses "Last 7 days" and neutral not-logged copy with backfill entry points; History gains a legend, an empty-state hint, undo-aware delete copy, and collapsed monthly insights; Settings is grouped into Reminders, Progress, Data & Sync, and Advanced sections; Recovery gets an empty state; achievements and sharing copy become plainer.
 
 ## Concrete Steps
 

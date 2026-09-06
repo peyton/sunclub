@@ -14,7 +14,6 @@
 | UV refresh and stale-response rejection                     | `Services/SunclubUVCoordinator.swift`                      |
 | Reminder health, permission and scheduling                  | `Services/SunclubReminderCoordinator.swift`                |
 | Restore, recovery, import and export coordination           | `Services/SunclubRecoveryCoordinator.swift`                |
-| Activity sharing policy and transport coordination          | `Services/SunclubAccountabilityCoordinator.swift`          |
 | Pure screen calculations                                    | `Views/Presentation/`                                      |
 | Shared styling and product screen wrappers                  | `Shared/AppDesignSystem.swift`, `Shared/AppTheme.swift`    |
 | Persistence schema and container factory                    | `Models/SunclubSchema.swift`                               |
