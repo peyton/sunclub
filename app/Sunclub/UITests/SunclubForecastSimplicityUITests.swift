@@ -13,7 +13,7 @@ final class SunclubForecastSimplicityUITests: SunclubUITestCase {
         XCTAssertTrue(hero.label.contains("Current UV"))
         XCTAssertTrue(scrollToElement(app.staticTexts["uvForecast.dailyPeak"], in: app))
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.tips"], in: app, attempts: 30))
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.weatherKitAttribution"], in: app))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.weatherKitAttribution"], in: app), app.debugDescription)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Cached'")).firstMatch.exists)
     }
 

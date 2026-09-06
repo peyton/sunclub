@@ -176,6 +176,7 @@ struct UVForecastDetailView: View {
         if let currentUV {
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 Text(Self.freshnessDetail(for: currentUV.source, updatedAt: appState.uvStatus.updatedAt))
+                    .accessibilityIdentifier("uvForecast.dataQuality")
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppColor.Text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -185,7 +186,6 @@ struct UVForecastDetailView: View {
                     showAttributionLink: currentUV.source.shouldDisplayAttribution
                 )
             }
-            .accessibilityIdentifier("uvForecast.dataQuality")
         }
     }
 

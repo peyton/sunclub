@@ -120,7 +120,7 @@ struct TimelineHomeView: View {
         if let receipt,
            Calendar.current.isDate(receipt.day, inSameDayAs: appState.referenceDate),
            let batchID = receipt.batchID, appState.canUndoChangeIfCurrent(batchID: batchID) {
-            Button("Undo") {
+            Button {
                 switch appState.undoChangeIfCurrent(batchID: batchID) {
                 case .success:
                     self.receipt = nil
@@ -128,15 +128,23 @@ struct TimelineHomeView: View {
                 case let .failure(error):
                     undoError = error.localizedDescription
                 }
+            } label: {
+                Text("Undo")
+                    .font(AppTextStyle.body.font)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            .frame(minWidth: AppSpacing.xl + AppSpacing.sm, minHeight: AppSpacing.xl + AppSpacing.sm)
             .accessibilityIdentifier("home.undoLog")
         }
-        Button("Edit log") {
+        Button {
             let now = appState.referenceDate
             router.push(.manualLog, targetDate: now, targetDayPart: appState.dayPart(for: now))
+        } label: {
+            Text("Edit log")
+                .font(AppTextStyle.body.font)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
-        .frame(minWidth: AppSpacing.xl + AppSpacing.sm, minHeight: AppSpacing.xl + AppSpacing.sm)
         .accessibilityIdentifier("home.sunscreenLogCard")
     }
 
