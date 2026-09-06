@@ -254,8 +254,7 @@ final class ManualLogSimplicityTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             ),
             widgetSnapshotStore: SunclubWidgetSnapshotStore(userDefaults: defaults),
             clock: { now }

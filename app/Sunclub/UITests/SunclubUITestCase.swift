@@ -146,31 +146,6 @@ class SunclubUITestCase: XCTestCase {
         Bundle.main.object(forInfoDictionaryKey: "SunclubURLScheme") as? String ?? "sunclub-dev"
     }
 
-    func accountabilityInviteURL(displayName: String) throws -> String {
-        let envelope: [String: Any] = [
-            "profileID": "391D15FD-475F-4EE5-9A85-E68E27980EA8",
-            "displayName": displayName,
-            "relationshipToken": "uitest-relationship-token",
-            "issuedAt": 800_000_000,
-            "snapshot": [
-                "id": "9C9E0C71-0C6B-46C2-8AC0-32E3AC1EE0E5",
-                "name": displayName,
-                "currentStreak": 2,
-                "longestStreak": 7,
-                "hasLoggedToday": false,
-                "lastSharedAt": 800_000_000,
-                "seasonStyleRawValue": "summerGlow"
-            ]
-        ]
-        let data = try JSONSerialization.data(withJSONObject: envelope)
-        let code = "SUNCLUB-ACCOUNTABILITY-\(data.base64EncodedString())"
-        var allowedCharacters = CharacterSet.urlQueryAllowed
-        allowedCharacters.remove(charactersIn: "+=&")
-        let encodedCode = try XCTUnwrap(code.addingPercentEncoding(withAllowedCharacters: allowedCharacters))
-        let scheme = automationScheme
-        return "\(scheme)://accountability/invite?code=\(encodedCode)"
-    }
-
     @discardableResult
     @MainActor
     func completeOnboarding(in app: XCUIApplication) -> XCUIApplication {

@@ -64,65 +64,64 @@ Claude Code could not run because of the local quota error recorded above. A rea
 
 The reviewer marked these Codex proposals as highest value: Home next-action clarity, competing CTA cleanup, low-UV logging copy, post-log next-state copy, add-details prompts, notification health clarity and tests, reminder schedule previews and DST tests, missed-today/yesterday recovery prompts, delete undo, backup/import summaries, conflict field details, data safety, Home priority tests, manual-log behavior tests, reapply scheduling tests, note limits, scanner permission fallback, HealthKit non-blocking failures, calendar accessibility values, Dynamic Type and widget tests, App Intent and URL contract tests, and container-factory release gates.
 
-The reviewer marked these as useful but partly covered: progressive disclosure, first-run copy, optional social suppression, local-only import banners, view splitting, scanner confirmation, weekly/monthly summary polish, visual regression coverage, widget/watch copy alignment. The reviewer marked these as lower priority for the first batch: Home reminder coaching, "mostly indoors" logging copy, edit-last-log shortcuts, history search, and Settings search. The reviewer marked persisted skip/dismissal semantics and HealthKit feedback as risky unless designed with persistence and release gates.
+The reviewer marked these as useful but partly covered: progressive disclosure, first-run copy, local-only import banners, view splitting, scanner confirmation, weekly/monthly summary polish, visual regression coverage, widget/watch copy alignment. The reviewer marked these as lower priority for the first batch: Home reminder coaching, "mostly indoors" logging copy, edit-last-log shortcuts, history search, and Settings search. The reviewer marked persisted skip/dismissal semantics and HealthKit feedback as risky unless designed with persistence and release gates.
 
 The reviewer provided 55 additional proposals:
 
 1. Add a pure Home next-action presentation outside `HomeView` so Home action priority is unit-testable.
 2. Give the next-action model explicit reasons such as not logged, needs details, reapply available, notification repair, import review, conflict review, and backfill.
 3. Make the Home footer render from that model instead of independently checking today's record.
-4. Add a unit test proving sync conflict beats optional social/accountability prompts.
-5. Add a unit test proving notification-denied never hides manual logging.
-6. Add a unit test proving already logged plus reapply disabled routes to weekly summary.
-7. Add a unit test proving already logged plus reapply enabled routes to reapply check-in.
-8. Add a first-run Home state that suppresses backfill and accountability until at least three logged days.
-9. Add "Last saved at" copy on the logged Home card using `verifiedAt`.
-10. Make "Edit Today's Log" show only after today is logged and keep it visually secondary.
-11. Reschedule the next reapply reminder after `recordReapplication` instead of canceling and stranding users outside for the rest of the day.
-12. Add a setting-level explanation that reapply reminders are interval reminders, not medical advice.
-13. Add a test for reapply after first check-in scheduling the next interval before sunset.
-14. Add a test for reapply after sunset canceling cleanly with user-visible explanation.
-15. Add Home copy for "reapply reminders off" after today is logged.
-16. Add Settings preview of the actual next daily reminder date, not only weekday/weekend time.
-17. Add a notification-health case for authorization allowed but stale reapply reminders only.
-18. Add a notification-health case for provisional or ephemeral authorization copy.
-19. Add "Refresh Reminders" success feedback in Settings and Home.
-20. Add reminder schedule tests for DST spring-forward and fall-back with explicit calendars.
-21. Normalize manual and automation SPF inputs to the same allowed range.
-22. Add tests for `spf=0`, negative SPF, and huge SPF across URL and Shortcut automation.
-23. Add visible "SPF optional" success copy when no SPF was saved.
-24. Add a note-character limit to `SunManualLogFields` and enforce the same limit in automation.
-25. Add normalized case-insensitive note-snippet dedupe in `ManualLogSuggestionEngine`.
-26. Add a clear-note test for Manual Log and History editor because optional-field replacement differs by flow.
-27. Add a "Clear note" affordance when a note exists.
-28. Add keyboard submit/dismiss behavior tests for the multiline note field.
-29. Add UI tests for optional-details collapsed and expanded states.
-30. Add scanner result confidence language based on OCR source.
-31. Add a backup import dry-run summary before applying imported projected state.
-32. Add tests proving backup import does not delete current non-imported days without a clear restore point.
-33. Add Recovery conflict rows that show field names changed, not only the conflict summary.
-34. Add Recovery filtering between "Needs review" and "Recent updates."
-35. Add a direct "Undo last change" Home banner only for destructive History delete.
-36. Add a delete undo snackbar or toast in History using existing change-batch undo.
-37. Add tests proving undo after delete restores SPF, notes, reapply count, and timestamp.
-38. Add import-session count and detail to Settings Data & Sync before "Send to iCloud."
-39. Add an iCloud paused state on Home only when pending local changes exist.
-40. Add a data-safety test that all import/recovery buttons remain accessible with large text.
-41. Split presentation-only Home helpers out of `AppState` without changing persistence.
-42. Split `HomeView` subviews into local files after the next-action model lands.
-43. Extract Settings backup/iCloud sections into small views with explicit bindings.
-44. Extract `HistoryRecordEditorView` from `HistoryView.swift`.
-45. Add a test guard against direct `ModelContainer` creation outside `SunclubModelContainerFactory`.
-46. Add a test that `finishDurableChange` does not queue nil or no-op batches to CloudKit.
-47. Add a test for widget snapshot refresh after History edit, delete, undo, and reapply.
-48. Add a test for watch log when onboarding is incomplete and when today already exists.
-49. Add a test that URL open actions blocked by preferences route to Automation without mutating navigation unexpectedly.
-50. Add a test that malformed automation links with invalid action names fail parseably.
-51. Add "what changed since last visit" copy only for meaningful recovery/import states.
-52. Add accessible values for Home metadata pills so VoiceOver reads title and value together.
-53. Add Voice Control-friendly visible labels for icon-only Home and Settings actions where practical.
-54. Add Dynamic Type UI coverage for Product Scanner denied, no-result, and result states.
-55. Add a concise "daily routine" product contract test: launch seeded app, see exactly one primary Home CTA, log, success, return Home, see logged state and one next CTA.
+4. Add a unit test proving notification-denied never hides manual logging.
+5. Add a unit test proving already logged plus reapply disabled routes to weekly summary.
+6. Add a unit test proving already logged plus reapply enabled routes to reapply check-in.
+7. Add a first-run Home state that suppresses backfill until at least three logged days.
+8. Add "Last saved at" copy on the logged Home card using `verifiedAt`.
+9. Make "Edit Today's Log" show only after today is logged and keep it visually secondary.
+10. Reschedule the next reapply reminder after `recordReapplication` instead of canceling and stranding users outside for the rest of the day.
+11. Add a setting-level explanation that reapply reminders are interval reminders, not medical advice.
+12. Add a test for reapply after first check-in scheduling the next interval before sunset.
+13. Add a test for reapply after sunset canceling cleanly with user-visible explanation.
+14. Add Home copy for "reapply reminders off" after today is logged.
+15. Add Settings preview of the actual next daily reminder date, not only weekday/weekend time.
+16. Add a notification-health case for authorization allowed but stale reapply reminders only.
+17. Add a notification-health case for provisional or ephemeral authorization copy.
+18. Add "Refresh Reminders" success feedback in Settings and Home.
+19. Add reminder schedule tests for DST spring-forward and fall-back with explicit calendars.
+20. Normalize manual and automation SPF inputs to the same allowed range.
+21. Add tests for `spf=0`, negative SPF, and huge SPF across URL and Shortcut automation.
+22. Add visible "SPF optional" success copy when no SPF was saved.
+23. Add a note-character limit to `SunManualLogFields` and enforce the same limit in automation.
+24. Add normalized case-insensitive note-snippet dedupe in `ManualLogSuggestionEngine`.
+25. Add a clear-note test for Manual Log and History editor because optional-field replacement differs by flow.
+26. Add a "Clear note" affordance when a note exists.
+27. Add keyboard submit/dismiss behavior tests for the multiline note field.
+28. Add UI tests for optional-details collapsed and expanded states.
+29. Add scanner result confidence language based on OCR source.
+30. Add a backup import dry-run summary before applying imported projected state.
+31. Add tests proving backup import does not delete current non-imported days without a clear restore point.
+32. Add Recovery conflict rows that show field names changed, not only the conflict summary.
+33. Add Recovery filtering between "Needs review" and "Recent updates."
+34. Add a direct "Undo last change" Home banner only for destructive History delete.
+35. Add a delete undo snackbar or toast in History using existing change-batch undo.
+36. Add tests proving undo after delete restores SPF, notes, reapply count, and timestamp.
+37. Add import-session count and detail to Settings Data & Sync before "Send to iCloud."
+38. Add an iCloud paused state on Home only when pending local changes exist.
+39. Add a data-safety test that all import/recovery buttons remain accessible with large text.
+40. Split presentation-only Home helpers out of `AppState` without changing persistence.
+41. Split `HomeView` subviews into local files after the next-action model lands.
+42. Extract Settings backup/iCloud sections into small views with explicit bindings.
+43. Extract `HistoryRecordEditorView` from `HistoryView.swift`.
+44. Add a test guard against direct `ModelContainer` creation outside `SunclubModelContainerFactory`.
+45. Add a test that `finishDurableChange` does not queue nil or no-op batches to CloudKit.
+46. Add a test for widget snapshot refresh after History edit, delete, undo, and reapply.
+47. Add a test for watch log when onboarding is incomplete and when today already exists.
+48. Add a test that URL open actions blocked by preferences route to Automation without mutating navigation unexpectedly.
+49. Add a test that malformed automation links with invalid action names fail parseably.
+50. Add "what changed since last visit" copy only for meaningful recovery/import states.
+51. Add accessible values for Home metadata pills so VoiceOver reads title and value together.
+52. Add Voice Control-friendly visible labels for icon-only Home and Settings actions where practical.
+53. Add Dynamic Type UI coverage for Product Scanner denied, no-result, and result states.
+54. Add a concise "daily routine" product contract test: launch seeded app, see exactly one primary Home CTA, log, success, return Home, see logged state and one next CTA.
 
 The reviewer recommended the first implementation batch be the Home next-action slice: add a derived Home presentation model, render Home footer and priority from the model, test conflict/import review, notification repair, log today, logged reapply, logged progress, and backfill, and avoid persisted dismissals, skip semantics, schema changes, and broad view splitting.
 
@@ -224,58 +223,57 @@ The following proposals are intentionally broad. Each item is phrased as a neces
 6. Add a deterministic "today closes at midnight" explanation near streak-risk nudges.
 7. Add a time-of-day Home greeting that never implies sunscreen is needed at night unless a streak is still open.
 8. Make the Home streak card less dominant after a long streak if today is not logged; the next action should remain visually primary.
-9. Add Home copy for first-day users that explains one log is enough; do not lead with optional automation, reports, or friends.
-10. Hide or delay optional social/accountability prompts until the user has a stable logging pattern and has dismissed core recovery states.
-11. Add a "why am I seeing this?" detail for notification repair banners.
-12. Make notification-denied state route directly to the exact Settings section or explain that manual logging still works.
-13. Add stale-notification tests that prove repair banners disappear after a successful schedule refresh.
-14. Add a reminder schedule preview showing the next two actual fire times for weekday/weekend plus time-zone handling.
-15. Add tests around daylight saving time and travel-time-zone reminder behavior.
-16. Add a short "good reminder time" coaching result to Home only when enough historical data exists.
-17. Add a recovery prompt for a missed today after the usual reminder time, not just yesterday backfill.
-18. Add a "missed yesterday" backfill prompt only when the user has an active or recent habit, and suppress it after repeated dismissals.
-19. Persist dismissals for Home recovery prompts so users are not nagged daily about a day they intentionally skipped.
-20. Add "Skip yesterday" as a non-destructive dismissal that records no log and preserves data honesty.
-21. Add an undo affordance after deleting a record in History.
-22. Add a visible summary of the data that will change before importing a backup.
-23. Add a local-only import banner on Home that clearly states iCloud will not be overwritten unless the user sends the import.
-24. Add a conflict detail preview that highlights which fields changed: SPF, notes, reapply count, or timestamp.
-25. Add a "data safety center" in Settings that combines backup export, import, iCloud status, and recent recovery items.
-26. Split `AppState` into narrower presentation or domain helpers without changing persistence behavior.
-27. Split `HomeView` into dedicated subviews for the today card, daily plan card, UV forecast, optional tools, and footer.
-28. Split `SettingsView` into reminder, data, automation, advanced, and support subviews to reduce state coupling.
-29. Split `HistoryView` calendar, selected-day detail, monthly insights, and editor types into smaller files.
-30. Add tests for Home's next-action priority order so bug fixes do not create competing CTAs.
-31. Add tests for manual logging trim behavior when a user clears a note while preserving SPF.
-32. Add tests for same-day log updates preserving or replacing optional fields in the intended contexts.
-33. Add tests for reapply scheduling when a log is updated later in the day.
-34. Add a reapply state that shows the next reminder time after each reapply, not just the count.
-35. Add a same-day "I am mostly indoors" note shortcut to logging, framed as a note rather than a medical recommendation.
-36. Add more useful note snippets by deduplicating normalized text case-insensitively.
-37. Add a maximum note length with visible remaining count and tests.
-38. Add scanned-SPF confidence and source copy that makes the user confirm the scan rather than trusting OCR blindly.
-39. Add a product-scanner fallback path that lets users type SPF when camera or OCR is unavailable.
-40. Add a no-camera-permission scanner state that explains manual logging is still available.
-41. Add HealthKit export status feedback after logging only when HealthKit is enabled.
-42. Add a HealthKit failure state that does not block the daily log.
-43. Add a weekly summary "best day to improve" that uses history but avoids shame-heavy wording.
-44. Add a weekly backfill strip for missed days in the last seven days.
-45. Add a monthly review that differentiates skipped days from future days and unlogged past days.
-46. Add an "edit last log" shortcut on Weekly Summary for users who notice an error.
-47. Add a history search/filter for notes or SPF level once enough records exist.
-48. Add calendar accessibility values that include SPF and note presence on logged days.
-49. Add large Dynamic Type UI tests for Home, Manual Log, Settings, and History with deterministic launch routes.
-50. Add dark-mode visual regression screenshots for the primary daily loop.
-51. Add reduced-motion checks for celebratory and decorative views.
-52. Add widget snapshot tests for midnight rollover and already-logged states.
-53. Add widget copy that matches the in-app daily plan language.
-54. Add watch copy that mirrors the phone's "one log today" model and avoids feature drift.
-55. Add App Intent result copy that tells the user whether the action logged, updated, or was blocked by preferences.
-56. Add App Intent tests for disabling Shortcut writes while allowing open-only actions.
-57. Add URL/x-callback tests for malformed dates, invalid SPF, and disabled callback details.
-58. Add an automation catalog row that states which actions write data and which only open the app.
-59. Add a Settings search or compact index when the number of settings sections grows further.
-60. Add release-gate tests that ensure all SwiftData container creation still routes through `SunclubModelContainerFactory`.
+9. Add Home copy for first-day users that explains one log is enough; do not lead with optional automation or reports.
+10. Add a "why am I seeing this?" detail for notification repair banners.
+11. Make notification-denied state route directly to the exact Settings section or explain that manual logging still works.
+12. Add stale-notification tests that prove repair banners disappear after a successful schedule refresh.
+13. Add a reminder schedule preview showing the next two actual fire times for weekday/weekend plus time-zone handling.
+14. Add tests around daylight saving time and travel-time-zone reminder behavior.
+15. Add a short "good reminder time" coaching result to Home only when enough historical data exists.
+16. Add a recovery prompt for a missed today after the usual reminder time, not just yesterday backfill.
+17. Add a "missed yesterday" backfill prompt only when the user has an active or recent habit, and suppress it after repeated dismissals.
+18. Persist dismissals for Home recovery prompts so users are not nagged daily about a day they intentionally skipped.
+19. Add "Skip yesterday" as a non-destructive dismissal that records no log and preserves data honesty.
+20. Add an undo affordance after deleting a record in History.
+21. Add a visible summary of the data that will change before importing a backup.
+22. Add a local-only import banner on Home that clearly states iCloud will not be overwritten unless the user sends the import.
+23. Add a conflict detail preview that highlights which fields changed: SPF, notes, reapply count, or timestamp.
+24. Add a "data safety center" in Settings that combines backup export, import, iCloud status, and recent recovery items.
+25. Split `AppState` into narrower presentation or domain helpers without changing persistence behavior.
+26. Split `HomeView` into dedicated subviews for the today card, daily plan card, UV forecast, optional tools, and footer.
+27. Split `SettingsView` into reminder, data, automation, advanced, and support subviews to reduce state coupling.
+28. Split `HistoryView` calendar, selected-day detail, monthly insights, and editor types into smaller files.
+29. Add tests for Home's next-action priority order so bug fixes do not create competing CTAs.
+30. Add tests for manual logging trim behavior when a user clears a note while preserving SPF.
+31. Add tests for same-day log updates preserving or replacing optional fields in the intended contexts.
+32. Add tests for reapply scheduling when a log is updated later in the day.
+33. Add a reapply state that shows the next reminder time after each reapply, not just the count.
+34. Add a same-day "I am mostly indoors" note shortcut to logging, framed as a note rather than a medical recommendation.
+35. Add more useful note snippets by deduplicating normalized text case-insensitively.
+36. Add a maximum note length with visible remaining count and tests.
+37. Add scanned-SPF confidence and source copy that makes the user confirm the scan rather than trusting OCR blindly.
+38. Add a product-scanner fallback path that lets users type SPF when camera or OCR is unavailable.
+39. Add a no-camera-permission scanner state that explains manual logging is still available.
+40. Add HealthKit export status feedback after logging only when HealthKit is enabled.
+41. Add a HealthKit failure state that does not block the daily log.
+42. Add a weekly summary "best day to improve" that uses history but avoids shame-heavy wording.
+43. Add a weekly backfill strip for missed days in the last seven days.
+44. Add a monthly review that differentiates skipped days from future days and unlogged past days.
+45. Add an "edit last log" shortcut on Weekly Summary for users who notice an error.
+46. Add a history search/filter for notes or SPF level once enough records exist.
+47. Add calendar accessibility values that include SPF and note presence on logged days.
+48. Add large Dynamic Type UI tests for Home, Manual Log, Settings, and History with deterministic launch routes.
+49. Add dark-mode visual regression screenshots for the primary daily loop.
+50. Add reduced-motion checks for celebratory and decorative views.
+51. Add widget snapshot tests for midnight rollover and already-logged states.
+52. Add widget copy that matches the in-app daily plan language.
+53. Add watch copy that mirrors the phone's "one log today" model and avoids feature drift.
+54. Add App Intent result copy that tells the user whether the action logged, updated, or was blocked by preferences.
+55. Add App Intent tests for disabling Shortcut writes while allowing open-only actions.
+56. Add URL/x-callback tests for malformed dates, invalid SPF, and disabled callback details.
+57. Add an automation catalog row that states which actions write data and which only open the app.
+58. Add a Settings search or compact index when the number of settings sections grows further.
+59. Add release-gate tests that ensure all SwiftData container creation still routes through `SunclubModelContainerFactory`.
 
 ## Plan of Work
 

@@ -14,13 +14,12 @@ The main loop is: open Today, log sunscreen or a reapplication, and return to th
 - Optional fields remain optional. Do not invent missing SPF, coverage or notes.
 - Preserve existing platform targets, public automation routes, permission gates, persisted identities, signing identifiers and recovery behavior.
 - No camera validation, bottle training, social onboarding, household sharing, subscription or purchase flow is required.
-- Compatibility sharing identities, invites, connections and history remain stored and restorable. Removing their old navigation does not authorize deleting data or breaking older callers.
 
 ## Setup
 
 1. Welcome offers Get Started.
 2. Optional reminders offer Enable reminders and Not now.
-3. Successful setup ends at Today, including after importing pending legacy invites.
+3. Successful setup ends at Today.
 
 Persist onboarding completion before scheduling notifications. Save failures keep setup open with accurate retry actions. Notification scheduling failure must say setup was saved and offer Retry reminders or Continue to Today. Continuing must not claim partially scheduled reminders were disabled.
 
@@ -102,7 +101,7 @@ The public contract is [App Automation](../docs/app-automation.md).
 - The catalog uses shipped intent names, not invented action names or installation controls. Advanced URL/callback examples start collapsed; writes are copy-only, while read/open examples may offer Test.
 - Execution confirmation belongs to Apple Shortcuts. Sunclub does not expose a static Ask Before Running pseudo-setting.
 - Outside-app writes use the shared automation and revision-history services, and report success only after persistence succeeds. Failure does not publish success effects.
-- Keep old widget/accountability hosts and compatibility route values. Legacy friends opens Settings, health-report opens History, product-scanner opens logging, and achievements opens Insights.
+- Keep the old widget host and retained compatibility route values. Legacy health-report opens History, product-scanner opens logging, and achievements opens Insights.
 - Destructive, review-heavy, file-picker and permission setup flows open foreground UI. Legacy camera routes do not restore a camera-validation requirement.
 - Universal Links remain deferred; do not add Associated Domains or an apple-app-site-association file.
 

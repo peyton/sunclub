@@ -18,13 +18,8 @@ final class SettingsSimplicityTests: SunclubTestCase {
         XCTAssertNil(state.settings.selectedUVPlace)
     }
 
-    // Catches an imported legacy invite sending the user to Friends instead of Today.
-    func testFinishingOnboardingImportsPendingInviteAndReturnsToToday() throws {
+    func testFinishingOnboardingReturnsToToday() throws {
         let state = try isolatedState()
-        let envelope = makeAccountabilityInviteEnvelope(displayName: "Maya")
-        let code = try SunclubAccountabilityCodec.backupCode(for: envelope)
-        try state.queuePendingAccountabilityInviteCode(code)
-        let identity = state.growthSettings.accountability.localProfileID
         XCTAssertTrue(state.completeOnboarding().succeeded)
         let router = AppRouter()
         router.open(.enableNotifications)
@@ -34,9 +29,6 @@ final class SettingsSimplicityTests: SunclubTestCase {
         XCTAssertTrue(router.path.isEmpty)
         XCTAssertEqual(router.selectedTab, .today)
         XCTAssertTrue(state.settings.hasCompletedOnboarding)
-        XCTAssertEqual(state.friends.map(\.name), ["Maya"])
-        XCTAssertEqual(state.growthSettings.accountability.localProfileID, identity)
-        XCTAssertTrue(state.growthSettings.accountability.pendingInvites.isEmpty)
     }
 
     // Catches using the first daily log when a newer reapplication exists.
@@ -113,8 +105,7 @@ final class SettingsSimplicityTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
     }

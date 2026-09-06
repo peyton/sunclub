@@ -27,7 +27,7 @@
         "sun care"
       ],
       "promotional_text": "Log sunscreen with an exact time, check sourced UV guidance, and act on reliable reapply reminders — private by default.",
-      "whats_new": "This update makes logging and reminders more trustworthy: edit exact application times, see clearer live UV sources, use contextual next actions, and act on reapply notifications. It also improves Larger Text layouts and keeps public Activity sharing disabled while that feature is not part of the visible app."
+      "whats_new": "This update makes logging and reminders more trustworthy: edit exact application times, see clearer live UV sources, use contextual next actions, and act on reapply notifications. It also improves Larger Text layouts."
     }
   },
   "urls": {
@@ -69,12 +69,11 @@
     "data_collection": "none",
     "collected_data_types": [],
     "collection_purpose": "Not Collected",
-    "collection_notes": "The production build keeps public Activity sharing transport disabled. Local history and optional private iCloud sync remain user-controlled and are not accessible to the developer.",
+    "collection_notes": "Local history and optional private iCloud sync remain user-controlled and are not accessible to the developer.",
     "app_store_connect_completed": {
       "env": "SUNCLUB_APP_PRIVACY_COMPLETED",
       "equals": "1"
     },
-    "public_cloudkit_accountability_transport": false,
     "notifications_usage_description": "Notifications remind the user to apply or reapply sunscreen."
   },
   "age_rating_questionnaire": {
@@ -106,8 +105,7 @@
     "third_party_content": false,
     "kids_category": false,
     "iphone_only_v1": true,
-    "accessibility_criteria_reviewed": true,
-    "public_cloudkit_accountability_transport_enabled": false
+    "accessibility_criteria_reviewed": true
   },
   "regulatory": {
     "regulated_medical_device": {

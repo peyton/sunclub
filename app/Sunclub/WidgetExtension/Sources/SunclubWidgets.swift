@@ -78,19 +78,6 @@ struct SunclubCalendarWidget: Widget {
     }
 }
 
-// Retain the shipped kind and families for installed widgets and old links.
-struct SunclubAccountabilityWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: SunclubRuntimeConfiguration.widgetKind("SunclubAccountabilityWidget"), provider: SunclubSnapshotProvider()) { _ in
-            SunclubSettingsWidgetView()
-                .containerBackground(AppColor.surface, for: .widget)
-        }
-        .configurationDisplayName("Settings")
-        .description("Open Sunclub settings.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge, .accessoryInline, .accessoryCircular, .accessoryRectangular])
-    }
-}
-
 private struct SunclubLoggingControlProvider: ControlValueProvider {
     var previewValue: SunclubApplicationStatus {
         SunclubWidgetSnapshot.previewLogged.applicationStatus()
@@ -246,22 +233,6 @@ private struct SunclubLogTodayWidgetView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct SunclubSettingsWidgetView: View {
-    @Environment(\.widgetFamily) private var family
-
-    var body: some View {
-        Group {
-            if family == .accessoryCircular {
-                Image(systemName: "gearshape").accessibilityLabel("Open Sunclub settings")
-            } else {
-                Label("Settings", systemImage: "gearshape")
-                    .font(.headline)
-            }
-        }
-        .widgetURL(SunclubWidgetRoute.settings.url)
     }
 }
 

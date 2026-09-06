@@ -94,7 +94,6 @@ final class AutomationSettingsRouteTests: SunclubTestCase {
         for (name, destination): (String, AppRoute) in [
             ("summary", .weeklySummary),
             ("achievements", .weeklySummary),
-            ("friends", .settings),
             ("health-report", .history),
             ("product-scanner", .manualLog)
         ] {
@@ -118,8 +117,7 @@ final class AutomationSettingsRouteTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
     }

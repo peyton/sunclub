@@ -8,7 +8,6 @@ private enum NotificationConstants {
     static let backgroundTaskID = "com.peyton.sunclub.weekly-report"
     static let dailyManualCategoryID = "SUNSCREEN_DAILY_MANUAL"
     static let reapplyCategoryID = "SUNSCREEN_REAPPLY"
-    static let accountabilityCategoryID = "SUNSCREEN_ACCOUNTABILITY"
     static let actionManualID = "LOG_TODAY_ACTION"
     static let actionReappliedID = "LOG_REAPPLY_ACTION"
     static let actionSnoozeReapplyID = "SNOOZE_REAPPLY_ACTION"
@@ -16,7 +15,6 @@ private enum NotificationConstants {
     static let manualRoute = "manual"
     static let weeklyRoute = "weekly"
     static let reapplyRoute = "reapply"
-    static let accountabilityRoute = "accountability"
     static let dailyPrefix = "sunscreen.daily."
     static let weeklyFallbackPrefix = "sunscreen.weekly.fallback."
     static let weeklyPrimaryPrefix = "sunscreen.weekly.primary."
@@ -25,7 +23,6 @@ private enum NotificationConstants {
     static let leaveHomePrefix = "sunscreen.leave-home."
     static let uvBriefingPrefix = "sunscreen.uv-briefing."
     static let extremeUVPrefix = "sunscreen.uv-extreme."
-    static let accountabilityPokePrefix = "sunscreen.accountability-poke."
     static let testPrefix = "sunscreen.test."
     static let ownedPrefix = "sunscreen."
 }
@@ -132,12 +129,6 @@ protocol NotificationScheduling: AnyObject {
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async -> NotificationOperationResult
     @discardableResult
     func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async -> NotificationOperationResult
-    @discardableResult
-    func scheduleAccountabilityPokeNotification(
-        friendName: String,
-        message: String,
-        route: AppRoute
-    ) async -> NotificationOperationResult
     func cancelDailyReminder(for day: Date, using state: any SunclubReminderState) async
     func cancelReapplyReminders() async
     func notificationHealthSnapshot(using state: any SunclubReminderState) async -> NotificationHealthSnapshot
@@ -223,14 +214,9 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 actions: [actionReapplied, actionSnoozeReapply],
                 intentIdentifiers: []
             )
-            let accountabilityCategory = UNNotificationCategory(
-                identifier: NotificationConstants.accountabilityCategoryID,
-                actions: [],
-                intentIdentifiers: []
-            )
 
             center.configure(
-                categories: [dailyManualCategory, reapplyCategory, accountabilityCategory],
+                categories: [dailyManualCategory, reapplyCategory],
                 delegate: self
             )
         }
@@ -541,28 +527,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         )
 
         return await addImmediateRequest(request, category: .leaveHome)
-    }
-
-    @discardableResult
-    func scheduleAccountabilityPokeNotification(
-        friendName: String,
-        message: String,
-        route: AppRoute
-    ) async -> NotificationOperationResult {
-        let content = makeContent(
-            title: "\(friendName) sent a reminder",
-            body: message.isEmpty ? "Sunscreen reminder." : message,
-            categoryIdentifier: NotificationConstants.accountabilityCategoryID,
-            route: notificationRoute(for: route),
-            type: "accountability_poke",
-            includeDefaultSound: true
-        )
-        let request = UNNotificationRequest(
-            identifier: "\(NotificationConstants.accountabilityPokePrefix)\(Int(now().timeIntervalSince1970))",
-            content: content,
-            trigger: nil
-        )
-        return await addImmediateRequest(request, category: .accountabilityPoke)
     }
 
     func cancelDailyReminder(for day: Date, using state: any SunclubReminderState) async {
@@ -940,9 +904,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if identifier.hasPrefix(NotificationConstants.leaveHomePrefix) {
             return .leaveHome
         }
-        if identifier.hasPrefix(NotificationConstants.accountabilityPokePrefix) {
-            return .accountabilityPoke
-        }
         if identifier.hasPrefix(NotificationConstants.testPrefix) {
             return .test
         }
@@ -993,8 +954,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             return NotificationConstants.reapplyRoute
         case .weeklySummary:
             return NotificationConstants.weeklyRoute
-        case .friends, .accountabilityOnboarding:
-            return NotificationConstants.accountabilityRoute
         default:
             return NotificationConstants.manualRoute
         }
@@ -1104,8 +1063,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                     routeHandler(.weeklySummary)
                 } else if targetRoute == NotificationConstants.reapplyRoute {
                     routeHandler(.reapplyCheckIn)
-                } else if targetRoute == NotificationConstants.accountabilityRoute {
-                    routeHandler(.friends)
                 } else if targetRoute == NotificationConstants.manualRoute {
                     routeHandler(.manualLog)
                 } else {

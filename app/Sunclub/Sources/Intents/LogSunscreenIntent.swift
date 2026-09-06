@@ -49,14 +49,12 @@ enum SunclubWidgetRouteIntentValue: String, AppEnum {
     case summary
     case history
     case updateToday
-    case accountability
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Sunclub Widget Route")
     static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
         .summary: "Summary",
         .history: "History",
         .updateToday: "Update Today",
-        .accountability: "Sunclub"
     ]
 
     var route: SunclubWidgetRoute {
@@ -78,7 +76,7 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
     case privacy
     case support
     case achievements
-    case friends
+
     case healthReport
     case productScanner
     case recovery
@@ -98,7 +96,6 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
         .privacy: "Privacy",
         .support: "Support",
         .achievements: "Insights",
-        .friends: "Settings",
         .healthReport: "History",
         .productScanner: "Log Sunscreen",
         .recovery: "Recovery"
@@ -132,8 +129,6 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
             return .support
         case .achievements:
             return .achievements
-        case .friends:
-            return .friends
         case .healthReport:
             return .healthReport
         case .productScanner:
@@ -171,8 +166,6 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
             self = .support
         case .achievements:
             self = .achievements
-        case .friends:
-            self = .friends
         case .healthReport:
             self = .healthReport
         case .productScanner:
@@ -194,8 +187,6 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
             self = .history
         case .updateToday:
             self = .log
-        case .accountability:
-            self = .friends
         }
     }
 }
@@ -248,54 +239,6 @@ enum SunclubToggleIntentValue: String, AppEnum {
         case .healthKit:
             return .healthKit
         }
-    }
-}
-
-struct SunclubFriendEntity: AppEntity, Identifiable {
-    static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Sunclub Friend")
-    static let defaultQuery = SunclubFriendQuery()
-
-    let id: UUID
-    let name: String
-    let status: String
-
-    var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(name)", subtitle: "\(status)")
-    }
-
-    init(snapshot: SunclubFriendSnapshot) {
-        id = snapshot.id
-        name = snapshot.name
-        status = snapshot.hasLoggedToday ? "Logged today" : "Not logged today"
-    }
-}
-
-private struct SendableGrowthFeatureStore: @unchecked Sendable {
-    let store: SunclubGrowthFeatureStoring
-}
-
-struct SunclubFriendQuery: EntityQuery {
-    private let growthStore: SendableGrowthFeatureStore
-
-    init() {
-        growthStore = SendableGrowthFeatureStore(store: SunclubGrowthFeatureStore.shared)
-    }
-
-    init(growthStore: SunclubGrowthFeatureStoring) {
-        self.growthStore = SendableGrowthFeatureStore(store: growthStore)
-    }
-
-    @MainActor
-    func entities(for identifiers: [UUID]) async throws -> [SunclubFriendEntity] {
-        let identifierSet = Set(identifiers)
-        return SunclubAutomationRuntime.friends(growthStore: growthStore.store)
-            .filter { identifierSet.contains($0.id) }
-            .map(SunclubFriendEntity.init(snapshot:))
-    }
-
-    @MainActor
-    func suggestedEntities() async throws -> [SunclubFriendEntity] {
-        SunclubAutomationRuntime.friends(growthStore: growthStore.store).map(SunclubFriendEntity.init(snapshot:))
     }
 }
 
@@ -753,60 +696,6 @@ struct CreateStreakCardIntent: AppIntent {
         } catch {
             let dialog = SunclubIntentSupport.dialog(for: error)
             return .result(value: IntentFile(data: Data(), filename: "sunclub-logged-days-error.txt", type: .plainText), dialog: dialog)
-        }
-    }
-}
-
-struct ImportFriendInviteIntent: AppIntent {
-    static let title: LocalizedStringResource = "Import Sharing Invite"
-    static let description = IntentDescription("Imports a Sunclub Activity sharing invite code.")
-    static let openAppWhenRun = false
-    static let isDiscoverable = false
-
-    @Parameter(title: "Invite Code")
-    var code: String
-
-    init() {
-        code = ""
-    }
-
-    static var parameterSummary: some ParameterSummary {
-        Summary("Import sharing invite")
-    }
-
-    @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        do {
-            let result = try SunclubIntentSupport.perform(.importFriend(code: code))
-            return .result(dialog: IntentDialog(stringLiteral: result.message))
-        } catch {
-            return .result(dialog: SunclubIntentSupport.dialog(for: error))
-        }
-    }
-}
-
-struct PokeFriendIntent: AppIntent {
-    static let title: LocalizedStringResource = "Remind Friend"
-    static let description = IntentDescription("Opens Activity sharing to remind a friend.")
-    static let openAppWhenRun = false
-    static let isDiscoverable = false
-
-    @Parameter(title: "Friend")
-    var friend: SunclubFriendEntity
-
-    init() {}
-
-    static var parameterSummary: some ParameterSummary {
-        Summary("Remind \(\.$friend)")
-    }
-
-    @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        do {
-            let result = try SunclubIntentSupport.perform(.pokeFriend(id: friend.id))
-            return .result(dialog: IntentDialog(stringLiteral: result.message))
-        } catch {
-            return .result(dialog: SunclubIntentSupport.dialog(for: error))
         }
     }
 }

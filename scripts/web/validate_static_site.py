@@ -136,7 +136,6 @@ FORBIDDEN_PHRASES = (
     "public app store listing",
     "not live yet",
     "coming soon",
-    "public activity sharing transport",
     "message-first foreground route",
     "status=needs-message",
     "x-callback-url",

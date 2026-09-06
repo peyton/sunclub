@@ -43,8 +43,6 @@
 	<string>$(SUNCLUB_APP_GROUP_ID)</string>
 	<key>SunclubICloudContainerIdentifier</key>
 	<string>$(SUNCLUB_ICLOUD_CONTAINER)</string>
-	<key>SunclubPublicAccountabilityTransportEnabled</key>
-	<string>$(SUNCLUB_PUBLIC_ACCOUNTABILITY_TRANSPORT_ENABLED)</string>
 	<key>SunclubURLScheme</key>
 	<string>$(SUNCLUB_URL_SCHEME)</string>
 	<key>CFBundleURLTypes</key>
@@ -68,12 +66,6 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Sunclub uses your location to save Home for leave-home reminders and to pull the UV forecast from Apple Weather for your area.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Sunclub uses the local network only while Nearby Add is open so two friends can exchange accountability invites.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_sunclub-peer._tcp</string>
-	</array>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Sunclub uses your location in the background only to catch the first time you leave Home for the day and send a reminder before you head out.</string>
 	<key>NSLocationAlwaysUsageDescription</key>

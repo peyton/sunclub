@@ -23,7 +23,6 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
     case summary
     case history
     case updateToday
-    case accountability
 
     var appRoute: AppRoute {
         switch self {
@@ -37,8 +36,6 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
             return .history
         case .updateToday:
             return .manualLog
-        case .accountability:
-            return .friends
         }
     }
 
@@ -66,7 +63,6 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let uvValidUntil: Date?
     let reapplyReminderEnabled: Bool
     let reapplyIntervalMinutes: Int
-    let accountabilitySummary: SunclubAccountabilitySummary
 
     static let empty = SunclubWidgetSnapshot(
         isOnboardingComplete: false,
@@ -86,8 +82,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         peakUVHour: nil,
         uvValidUntil: nil,
         reapplyReminderEnabled: false,
-        reapplyIntervalMinutes: 120,
-        accountabilitySummary: .empty
+        reapplyIntervalMinutes: 120
     )
 
     private enum CodingKeys: String, CodingKey {
@@ -109,7 +104,6 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         case uvValidUntil
         case reapplyReminderEnabled
         case reapplyIntervalMinutes
-        case accountabilitySummary
     }
 
     init(
@@ -130,8 +124,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         peakUVHour: Date?,
         uvValidUntil: Date? = nil,
         reapplyReminderEnabled: Bool,
-        reapplyIntervalMinutes: Int,
-        accountabilitySummary: SunclubAccountabilitySummary = .empty
+        reapplyIntervalMinutes: Int
     ) {
         self.isOnboardingComplete = isOnboardingComplete
         self.lastLoggedDay = lastLoggedDay
@@ -151,7 +144,6 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         self.uvValidUntil = uvValidUntil
         self.reapplyReminderEnabled = reapplyReminderEnabled
         self.reapplyIntervalMinutes = reapplyIntervalMinutes
-        self.accountabilitySummary = accountabilitySummary
     }
 
     init(from decoder: Decoder) throws {
@@ -174,7 +166,6 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         uvValidUntil = try container.decodeIfPresent(Date.self, forKey: .uvValidUntil)
         reapplyReminderEnabled = try container.decodeIfPresent(Bool.self, forKey: .reapplyReminderEnabled) ?? false
         reapplyIntervalMinutes = max(1, try container.decodeIfPresent(Int.self, forKey: .reapplyIntervalMinutes) ?? 120)
-        accountabilitySummary = try container.decodeIfPresent(SunclubAccountabilitySummary.self, forKey: .accountabilitySummary) ?? .empty
     }
 
     func hasLoggedToday(now: Date = Date(), calendar: Calendar = Calendar.current) -> Bool {
@@ -319,7 +310,6 @@ enum SunclubWidgetSnapshotBuilder {
     static func make(
         settings: Settings,
         records: [DailyRecord],
-        growthSettings: SunclubGrowthSettings = SunclubGrowthSettings(),
         uvReading: UVReading? = nil,
         uvForecast: SunclubUVForecast? = nil,
         now: Date = Date(),
@@ -370,8 +360,7 @@ enum SunclubWidgetSnapshotBuilder {
             peakUVHour: compactUVPeakHour?.date,
             uvValidUntil: uvValidUntil,
             reapplyReminderEnabled: settings.reapplyReminderEnabled,
-            reapplyIntervalMinutes: settings.reapplyIntervalMinutes,
-            accountabilitySummary: accountabilitySummary(from: growthSettings)
+            reapplyIntervalMinutes: settings.reapplyIntervalMinutes
         )
     }
 
@@ -407,53 +396,7 @@ enum SunclubWidgetSnapshotBuilder {
         return forecast.peakHour
     }
 
-    private static func accountabilitySummary(from settings: SunclubGrowthSettings) -> SunclubAccountabilitySummary {
-        let friends = settings.friends.sorted { lhs, rhs in
-            if lhs.hasLoggedToday != rhs.hasLoggedToday {
-                return !lhs.hasLoggedToday && rhs.hasLoggedToday
-            }
-            if lhs.currentStreak != rhs.currentStreak {
-                return lhs.currentStreak > rhs.currentStreak
-            }
-            return lhs.lastSharedAt > rhs.lastSharedAt
-        }
-        let latestPoke = settings.accountability.pokeHistory.sorted { $0.createdAt > $1.createdAt }.first
-        let primaryPokeFriendID: UUID?
-        if SunclubRuntimeConfiguration.isPublicAccountabilityTransportEnabled {
-            primaryPokeFriendID = friends.first { friend in
-                !friend.hasLoggedToday
-                    && settings.accountability.connections.contains { connection in
-                        connection.friendSnapshotID == friend.id && connection.canDirectPoke
-                    }
-            }?.id
-        } else {
-            primaryPokeFriendID = nil
-        }
-        return SunclubAccountabilitySummary(
-            isActive: settings.accountability.isActive,
-            friendCount: friends.count,
-            loggedCount: friends.filter(\.hasLoggedToday).count,
-            openCount: friends.filter { !$0.hasLoggedToday }.count,
-            topFriends: Array(friends.prefix(4)),
-            latestPoke: latestPoke,
-            primaryPokeFriendID: primaryPokeFriendID,
-            latestPokeText: accountabilityLatestPokeText(latestPoke)
-        )
-    }
 
-    private static func accountabilityLatestPokeText(_ poke: SunclubAccountabilityPoke?) -> String {
-        guard let poke else { return "" }
-        switch (poke.direction, poke.status) {
-        case (.sent, .sent):
-            return "You reminded \(poke.friendName)."
-        case (.sent, .failed):
-            return "Message \(poke.friendName) if the reminder did not send."
-        case (.received, .received):
-            return "\(poke.friendName) reminded you."
-        default:
-            return ""
-        }
-    }
 }
 
 struct SunclubWidgetSnapshotStore {

@@ -61,7 +61,6 @@ REQUIRED_ATTESTATIONS = {
     "kids_category": False,
     "iphone_only_v1": True,
     "accessibility_criteria_reviewed": True,
-    "public_cloudkit_accountability_transport_enabled": False,
 }
 ACCESSIBILITY_FIELDS = {
     "supports_audio_descriptions",
@@ -375,15 +374,6 @@ def validate_manifest(
             errors.append(
                 "privacy.data_collection must be one of "
                 f"{sorted(VALID_DATA_COLLECTION_VALUES)} for this release."
-            )
-        public_transport = privacy.get("public_cloudkit_accountability_transport")
-        if public_transport not in (True, False):
-            errors.append(
-                "privacy.public_cloudkit_accountability_transport must be a boolean."
-            )
-        elif public_transport is True and privacy.get("data_collection") == "none":
-            errors.append(
-                "Public CloudKit accountability transport requires conservative App Privacy data-collection answers, not privacy.data_collection='none'."
             )
         collected_data_types = privacy.get("collected_data_types", [])
         if privacy.get("data_collection") == "app_functionality":

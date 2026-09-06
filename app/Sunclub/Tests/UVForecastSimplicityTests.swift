@@ -19,8 +19,7 @@ final class UVForecastSimplicityTests: SunclubTestCase {
             cloudSyncCoordinator: ProbeCloudSyncCoordinator(),
             growthFeatureStore: SunclubGrowthFeatureStore(userDefaults: defaults),
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
-                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false
             ),
             clock: { now }
         )

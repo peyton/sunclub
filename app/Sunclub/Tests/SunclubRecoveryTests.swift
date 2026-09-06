@@ -197,8 +197,7 @@ final class SunclubRecoveryTests: SunclubTestCase {
         let runtimeEnvironment = RuntimeEnvironmentSnapshot(
             isRunningTests: false,
             isPreviewing: false,
-            hasAppGroupContainer: false,
-            isPublicAccountabilityTransportEnabled: false
+            hasAppGroupContainer: false
         )
 
         let coordinator = AppState.defaultCloudSyncCoordinator(
@@ -219,8 +218,7 @@ final class SunclubRecoveryTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
         let previewCoordinator = AppState.defaultCloudSyncCoordinator(
@@ -228,8 +226,7 @@ final class SunclubRecoveryTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: true,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
 
@@ -250,8 +247,7 @@ final class SunclubRecoveryTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             ),
             homeExitReminderMonitor: nil
         )
@@ -302,8 +298,7 @@ final class SunclubRecoveryTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
         XCTAssertEqual(state.initialICloudRestoreState, .checking)
@@ -326,8 +321,7 @@ final class SunclubRecoveryTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: false,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
         await waitForMainActorTasks()

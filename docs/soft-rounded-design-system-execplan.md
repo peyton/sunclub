@@ -6,7 +6,7 @@ This document follows the ExecPlan requirements in `/Users/peyton/.agents/PLANS.
 
 ## Purpose / Big Picture
 
-Sunclub's daily app surface should feel soft, rounded, calm, and consistent across iPhone and Apple Watch. After this change, the active Home screen will match the provided reference more closely: a simple brand header, a clean timeline, one clear applied-status card, a prominent capsule logging action, and lighter weekly/accountability actions. The same typography, spacing, colors, radius, and button/card treatments will be shared by the rest of the app so users do not move between unrelated visual styles.
+Sunclub's daily app surface should feel soft, rounded, calm, and consistent across iPhone and Apple Watch. After this change, the active Home screen will match the provided reference more closely: a simple brand header, a clean timeline, one clear applied-status card, a prominent capsule logging action, and lighter weekly actions. The same typography, spacing, colors, radius, and button/card treatments will be shared by the rest of the app so users do not move between unrelated visual styles.
 
 The work is visual and structural only. It must not add new features, change SwiftData models, change CloudKit behavior, or alter logging semantics.
 
@@ -68,7 +68,7 @@ Third, remove `HomeView.swift`, remove `RuntimeEnvironment.shouldUseLegacyHome`,
 
 Fourth, redesign `TimelineHomeView`, `SunDayStrip`, `TimelineFooterBar`, and `TimelineLogSection` around the reference layout. The logged-today card title must be `Applied`; the subtitle must be `Optional: add SPF or a note`; the done state must use `StatusBadge`; and the two metrics must use `StatCard`. Non-logged, past, and future states must use truthful short alternatives.
 
-Fifth, migrate representative app surfaces to the new components and typography: Manual Log, Weekly, History, Settings, Recovery, Friends/Accountability, Automation, Reapply, Verification Success, Onboarding, Achievements, Scanner, Skin Health Report, Year in Review, and shared manual-log fields. Use scoped edits that preserve routes, copy intent, accessibility identifiers, and logging behavior.
+Fifth, migrate representative app surfaces to the new components and typography: Manual Log, Weekly, History, Settings, Recovery, Automation, Reapply, Verification Success, Onboarding, Achievements, Scanner, Skin Health Report, Year in Review, and shared manual-log fields. Use scoped edits that preserve routes, copy intent, accessibility identifiers, and logging behavior.
 
 Sixth, update `SunclubWatchHomeView` to use the same rounded typography, color tokens, cards, and button treatment while keeping the logging button above secondary information.
 

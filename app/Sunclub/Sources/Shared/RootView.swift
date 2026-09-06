@@ -182,10 +182,6 @@ struct RootView: View {
                 .id(router.payload(for: tab))
         case .achievements:
             WeeklyReportView()
-        case .friends:
-            SettingsView()
-        case .accountabilityOnboarding:
-            SettingsView()
         case .skinHealthReport:
             HistoryView()
         case .productScanner:

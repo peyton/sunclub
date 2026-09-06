@@ -190,7 +190,6 @@ enum SunclubVisualAsset: String, CaseIterable {
     case illustrationScannerLabel = "IllustrationScannerLabel"
     case illustrationHistoryCalendar = "IllustrationHistoryCalendar"
     case illustrationAchievementsShelf = "IllustrationAchievementsShelf"
-    case illustrationFriendsPair = "IllustrationFriendsPair"
     case illustrationSkinReport = "IllustrationSkinReport"
     case coverageFaceDiagram = "CoverageFaceDiagram"
     case motifSunRing = "MotifSunRing"
@@ -234,8 +233,6 @@ extension SunclubAchievementID {
             return .badgeTraveler
         case .highUVHero:
             return .badgeHighUV
-        case .socialSpark:
-            return .badgeThreeDay
         }
     }
 }

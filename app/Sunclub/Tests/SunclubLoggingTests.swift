@@ -229,8 +229,7 @@ final class SunclubLoggingTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
         let router = AppRouter()
@@ -267,8 +266,7 @@ final class SunclubLoggingTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
 
@@ -317,8 +315,7 @@ final class SunclubLoggingTests: SunclubTestCase {
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
                 isRunningTests: true,
                 isPreviewing: false,
-                hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                hasAppGroupContainer: false
             )
         )
 
@@ -493,7 +490,15 @@ final class SunclubLoggingTests: SunclubTestCase {
         XCTAssertEqual(state.manualLogSuggestionState(for: Date()).scannedSPFLevels, [45, 80])
     }
 
-    func testGrowthSettingsDecodesOlderPayloadWithoutScannedSPFLevels() throws {
+    @MainActor
+    func testPreferredDisplayNameStoresTrimmedName() throws {
+        let state = try makeAppState()
+        state.updatePreferredDisplayName("  Peyton Appleseed  ")
+        XCTAssertEqual(state.preferredDisplayName, "Peyton Appleseed")
+        XCTAssertEqual(state.growthSettings.preferredName, "Peyton Appleseed")
+    }
+
+    func testGrowthSettingsIgnoresRetiredFieldsAndPreservesOlderPreferences() throws {
         let data = Data("""
         {
             "preferredName": "Peyton",
@@ -518,18 +523,41 @@ final class SunclubLoggingTests: SunclubTestCase {
                     "seasonStyleRawValue": "summerGlow"
                 }
             ],
-            "presentedAchievementIDs": []
+            "accountability": {
+                "displayName": "Peyton",
+                "activatedAt": 800000000,
+                "inviteTokens": [{"token": "old-token", "createdAt": 800000000}],
+                "connections": [{"relationshipToken": "old-connection"}]
+            },
+            "automation": {
+                "shortcutWritesEnabled": false,
+                "urlOpenActionsEnabled": true,
+                "urlWriteActionsEnabled": false,
+                "callbackResultDetailsEnabled": false
+            },
+            "telemetry": {
+                "shareActionCount": 5, "lastSharedAt": 800000000,
+                "productScanUseCount": 2, "lastProductScanUsedAt": 800000000
+            },
+            "presentedAchievementIDs": ["streak7"]
         }
         """.utf8)
 
         let settings = try JSONDecoder().decode(SunclubGrowthSettings.self, from: data)
 
         XCTAssertEqual(settings.preferredName, "Peyton")
-        XCTAssertEqual(settings.friends.first?.name, "Maya")
-        XCTAssertEqual(settings.friends.first?.currentStreak, 4)
         XCTAssertEqual(settings.scannedSPFLevels, [])
-        XCTAssertFalse(settings.accountability.isActive)
-        XCTAssertTrue(settings.accountability.connections.isEmpty)
+        XCTAssertEqual(settings.uvBriefing.morningHour, 8)
+        XCTAssertFalse(settings.automation.shortcutWritesEnabled)
+        XCTAssertFalse(settings.automation.urlWriteActionsEnabled)
+        XCTAssertEqual(settings.presentedAchievementIDs, ["streak7"])
+        let encoded = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any])
+        XCTAssertNil(encoded["friends"])
+        XCTAssertNil(encoded["accountability"])
+        XCTAssertEqual(settings.telemetry.productScanUseCount, 2)
+        let telemetry = try XCTUnwrap(encoded["telemetry"] as? [String: Any])
+        XCTAssertNil(telemetry["shareActionCount"])
+        XCTAssertNil(telemetry["lastSharedAt"])
     }
 
     @MainActor

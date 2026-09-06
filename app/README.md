@@ -51,7 +51,7 @@ Sunclub is an iPhone-only iOS app for maintaining a daily sunscreen habit throug
 - Local backup export/import still works without an account migration step. Import changes only the local device until the user explicitly publishes the imported batches to iCloud.
 - The container factory selects and recovers the local store location; widgets read a compact mirrored snapshot from app-group `UserDefaults`.
 - The automation runtime backs Apple Shortcuts, Control Center actions, widgets, custom URL scheme actions, and x-callback-url callers. The public contract lives in `../docs/app-automation.md`.
-- Sunclub still has no app-owned accounts or analytics SDKs. Public Activity sharing transport remains disabled in production while that feature is outside the visible app.
+- Sunclub still has no app-owned accounts or analytics SDKs.
 
 ## Development
 

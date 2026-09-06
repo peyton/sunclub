@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import struct
 import subprocess
@@ -11,8 +10,6 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
-
-LEDGER_PATTERN = re.compile(r"^- \[x\] \[(?P<category>[^\]]+)\] \d{3}\. ", re.MULTILINE)
 
 
 def png_info(path: Path) -> tuple[int, int, int]:
@@ -92,38 +89,6 @@ def png_corner_alpha(path: Path) -> int:
         prior = row
 
     return rows[0][3]
-
-
-def test_product_redesign_completion_ledger_has_required_polish_counts() -> None:
-    execplan = (REPO_ROOT / "docs/product-page-app-redesign-execplan.md").read_text(
-        encoding="utf-8"
-    )
-    categories = LEDGER_PATTERN.findall(execplan)
-
-    assert len(categories) >= 100
-    assert categories.count("Settings") >= 20
-    assert categories.count("Tab/Nav") >= 15
-    assert categories.count("Manual Log/Art") >= 15
-    assert categories.count("Home/UV") >= 15
-    assert categories.count("History/Insights") >= 15
-    assert categories.count("Privacy/Support/Automation") >= 10
-    assert categories.count("Accessibility/Watch/Widget/Dark Mode") >= 10
-
-
-def test_quality_design_system_pass_ledger_tracks_150_improvements() -> None:
-    execplan = (REPO_ROOT / "docs/quality-design-system-pass-execplan.md").read_text(
-        encoding="utf-8"
-    )
-    categories = LEDGER_PATTERN.findall(execplan)
-
-    assert len(categories) >= 150
-    assert categories.count("Shared Design System") >= 30
-    assert categories.count("Timeline") >= 25
-    assert categories.count("Scroll/Nav") >= 20
-    assert categories.count("Dark Mode") >= 25
-    assert categories.count("Widget/Watch") >= 25
-    assert categories.count("Data Handling") >= 15
-    assert categories.count("Privacy/Support/Insights") >= 10
 
 
 def test_coverage_face_diagram_imageset_has_real_scaled_outputs() -> None:

@@ -23,10 +23,6 @@ enum SunclubRuntimeConfiguration {
         stringValue(for: "SunclubURLScheme", fallback: fallbackURLScheme)
     }
 
-    static var isPublicAccountabilityTransportEnabled: Bool {
-        boolValue(for: "SunclubPublicAccountabilityTransportEnabled", fallback: false)
-    }
-
     static func supportsURLScheme(_ scheme: String?) -> Bool {
         guard let normalizedScheme = scheme?.lowercased() else {
             return false

@@ -6,15 +6,15 @@ This repository includes `/Users/peyton/.codex/worktrees/3573/sunclub/AGENTS.md`
 
 ## Purpose / Big Picture
 
-After this change, Sunclub is no longer only a manual log-and-streak app. A user can log from Apple Watch, see richer UV guidance, share branded streak and milestone cards, unlock achievements, join local seasonal challenges, scan sunscreen bottles for SPF, export a skin health report, opt into HealthKit writes, keep lightweight friend accountability snapshots, and see Sunclub on widgets and Live Activities throughout the day. The observable result is that the same underlying habit data appears across iPhone, widgets, Live Activities, Apple Watch, HealthKit, share sheets, and exported reports without introducing any account system or server.
+After this change, Sunclub is no longer only a manual log-and-streak app. A user can log from Apple Watch, see richer UV guidance, share branded streak and milestone cards, unlock achievements, join local seasonal challenges, scan sunscreen bottles for SPF, export a skin health report, opt into HealthKit writes, and see Sunclub on widgets and Live Activities throughout the day. The observable result is that the same underlying habit data appears across iPhone, widgets, Live Activities, Apple Watch, HealthKit, share sheets, and exported reports without introducing any account system or server.
 
 ## Progress
 
 - [x] (2026-04-09 14:05Z) Audited the current iPhone app architecture, widget surface, CloudKit sync model, migration plan, notification stack, and Tuist target setup.
 - [x] (2026-04-09 14:12Z) Verified that the current SDK exposes `HKQuantityTypeIdentifierUVExposure`, so HealthKit support can use a real Apple data type instead of a placeholder.
 - [x] (2026-04-09 14:16Z) Wrote this ExecPlan and fixed the implementation sequence around one shared persistence layer first.
-- [x] (2026-04-09 15:42Z) Added the shared growth-feature persistence layer and analytics/services surface, using app-group backed JSON storage for growth settings and friend snapshots rather than a SwiftData schema bump.
-- [x] (2026-04-09 16:28Z) Implemented the iPhone UI and export flows for achievements, challenges, streak cards, friends, reports, product scanning, and UV briefing.
+- [x] (2026-04-09 15:42Z) Added the shared growth-feature persistence layer and analytics/services surface, using app-group backed JSON storage for growth settings rather than a SwiftData schema bump.
+- [x] (2026-04-09 16:28Z) Implemented the iPhone UI and export flows for achievements, challenges, streak cards, reports, product scanning, and UV briefing.
 - [x] (2026-04-09 16:54Z) Extended notifications, HealthKit, widgets, Live Activities, and widget snapshots to consume the new shared state.
 - [x] (2026-04-09 17:18Z) Added watchOS app and watch complication/widget targets, with WatchConnectivity-based snapshot mirroring and wrist logging routed through the existing quick-log path.
 - [x] (2026-04-09 15:03Z) Verified `just generate` and `just test-unit` from the repo root after the target and feature changes.
@@ -43,7 +43,7 @@ After this change, Sunclub is no longer only a manual log-and-streak app. A user
   Date/Author: 2026-04-09 / Codex
 
 - Decision: Keep the new growth state outside the existing SwiftData schema and store it as compact app-group JSON blobs through `SunclubGrowthFeatureStore`.
-  Rationale: The shipped feature set needs lightweight settings, presented-achievement tracking, and friend snapshots, but it does not require relational queries or legacy-store migration. Avoiding a schema bump kept the change smaller, preserved the existing persisted-model contract, and still satisfied the local-first requirement.
+  Rationale: The shipped feature set needs lightweight settings, presented-achievement tracking,, but it does not require relational queries or legacy-store migration. Avoiding a schema bump kept the change smaller, preserved the existing persisted-model contract, and still satisfied the local-first requirement.
   Date/Author: 2026-04-09 / Codex
 
 - Decision: Sync watch state through `WatchConnectivity` plus the existing widget snapshot store instead of trying to open the iPhone persistence layer directly from watchOS.
@@ -64,11 +64,11 @@ In this repository, “revision history” means the app stores day-level and se
 
 ## Plan of Work
 
-First, add a shared growth-feature state layer that persists compact settings, presented achievements, and lightweight friend snapshots across relaunches without expanding the existing SwiftData schema. Keep it app-group backed so the iPhone app, widgets, and watch mirroring can all consume the same derived state safely.
+First, add a shared growth-feature state layer that persists compact settings, presented achievements across relaunches without expanding the existing SwiftData schema. Keep it app-group backed so the iPhone app, widgets, and watch mirroring can all consume the same derived state safely.
 
-Second, add a shared analytics layer that derives milestone unlocks, challenge progress, annual or custom-range report summaries, share-card content, friend status snapshots, and richer UV briefing data from the existing `DailyRecord` timeline and the current UV service. This layer must be usable from the iPhone app, widgets, Live Activities, watch targets, and export services.
+Second, add a shared analytics layer that derives milestone unlocks, challenge progress, annual or custom-range report summaries, share-card content, and richer UV briefing data from the existing `DailyRecord` timeline and the current UV service. This layer must be usable from the iPhone app, widgets, Live Activities, watch targets, and export services.
 
-Third, extend the iPhone app routes and views. The Home screen should gain a UV briefing card and quick access into the new growth surfaces. Add dedicated screens or sections for achievements, seasonal challenges, friend accountability, and a report/share hub. Add share-sheet wrappers that export branded streak cards, achievement cards, challenge completion cards, and a skin health PDF or image report generated entirely on-device.
+Third, extend the iPhone app routes and views. The Home screen should gain a UV briefing card and quick access into the new growth surfaces. Add dedicated screens or sections for achievements, seasonal challenges, and a report/share hub. Add share-sheet wrappers that export branded streak cards, achievement cards, challenge completion cards, and a skin health PDF or image report generated entirely on-device.
 
 Fourth, add the sunscreen product scanner using Apple Vision text recognition. The scanner should parse visible SPF numbers and likely expiry dates from a captured frame or still image, then pre-fill the existing manual log flow instead of creating a second logging path. The scan result should remain editable before save.
 
@@ -100,10 +100,9 @@ Acceptance is behavioral:
 4. The user can export at least one branded streak card and one skin health report entirely on-device.
 5. The user can open an achievements or challenges surface and see derived milestone state from existing history.
 6. The user can scan a sunscreen label, get SPF prefill, and still edit before save.
-7. The user can add a lightweight friend/accountability snapshot locally and see it in a friends view.
-8. Widgets and Live Activities expose the new ambient logging or UV state.
-9. A watch app target is generated and offers glanceable status plus one-tap logging from the wrist; packaged build verification is still required because local `xcodebuild` hangs before producing a result.
-10. Repo validation commands run from the root without requiring undeclared global dependencies.
+7. Widgets and Live Activities expose the new ambient logging or UV state.
+8. A watch app target is generated and offers glanceable status plus one-tap logging from the wrist; packaged build verification is still required because local `xcodebuild` hangs before producing a result.
+9. Repo validation commands run from the root without requiring undeclared global dependencies.
 
 ## Idempotence and Recovery
 
@@ -114,7 +113,7 @@ All schema and model changes must remain additive and migration-backed so they a
 Important evidence to preserve as this plan progresses:
 
 - The names of the new shared files: `GrowthFeatures.swift`, `UVSupport.swift`, `SunclubGrowthAnalytics.swift`, `SunclubGrowthFeatureStore.swift`, `SunclubHealthKitService.swift`, `SunclubLiveActivityCoordinator.swift`, `SunclubProductScannerService.swift`, `SunclubShareArtifactService.swift`, `SunclubUVBriefingService.swift`, and `SunclubWatchSyncCoordinator.swift`.
-- The names of the new UI files: `AchievementsView.swift`, `FriendsView.swift`, `ProductScannerView.swift`, `SkinHealthReportView.swift`, `SunclubLiveActivityWidget.swift`, `SunclubWatchApp.swift`, `SunclubWatchHomeView.swift`, and `SunclubWatchWidgets.swift`.
+- The names of the new UI files: `AchievementsView.swift`, `ProductScannerView.swift`, `SkinHealthReportView.swift`, `SunclubLiveActivityWidget.swift`, `SunclubWatchApp.swift`, `SunclubWatchHomeView.swift`, and `SunclubWatchWidgets.swift`.
 - The exact verification commands that passed from the repo root: `just generate`, `just lint`, and `just test-unit`.
 - The unresolved watch-target verification note: workspace generation succeeds, but direct packaged watch builds still stall locally without emitting a conclusive result.
 

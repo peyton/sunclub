@@ -130,7 +130,7 @@ struct PrivacyView: View {
 
             privacyActionRow(
                 title: "Export backup",
-                detail: "Create a private backup with logs, settings, and connection data. Store it securely.",
+                detail: "Create a private backup with logs and settings. Store it securely.",
                 systemImage: "square.and.arrow.up.fill",
                 accessibilityIdentifier: "privacy.exportHistory",
                 action: beginBackupExport

@@ -59,7 +59,7 @@ Changed areas:
 
 - Shared theme colors, control sizes, foreground tokens, decorative accessibility behavior, and Reduce Motion-aware animation helpers in `app/Sunclub/Sources/Shared/AppTheme.swift`.
 - Test-only runtime overrides for Dark Interface, Larger Text, Reduced Motion, Differentiate Without Color Alone, and Sufficient Contrast in `app/Sunclub/Sources/Shared/RuntimeEnvironment.swift` and `app/Sunclub/Sources/SunclubApp.swift`.
-- Screen-level fixes across home, history, settings, friends, achievements, reports, scanner, onboarding, recovery, and verification success surfaces.
+- Screen-level fixes across home, history, settings, achievements, reports, scanner, onboarding, recovery, and verification success surfaces.
 - Unit tests for contrast and scorecard invariants in `app/Sunclub/Tests`.
 - UI tests for dark-mode core screens and an accessibility scorecard route covering representative common tasks in `app/Sunclub/UITests/SunclubUITests.swift`.
 - Future-change rules in `AGENTS.md`.

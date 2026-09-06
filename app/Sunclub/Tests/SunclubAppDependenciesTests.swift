@@ -13,7 +13,6 @@ final class SunclubAppDependenciesTests: XCTestCase {
             uvIndexService: UVIndexService(), clock: { date }
         )
         XCTAssertTrue(dependencies.cloudSyncCoordinator is NoopCloudSyncCoordinator)
-        XCTAssertFalse(dependencies.accountabilityService.supportsDirectDelivery)
         XCTAssertTrue(dependencies.homeExitReminderMonitor is NoopHomeExitReminderMonitor)
         let state = AppState(dependencies: dependencies)
         XCTAssertEqual(state.referenceDate, date)

@@ -96,8 +96,6 @@ final class ShareArtifactTests: XCTestCase {
             return "Live UV is turned on for more local guidance."
         case .bottleDetective:
             return "You used the product scanner to prefill an SPF log."
-        case .socialSpark:
-            return "You shared Sunclub progress or imported a friend."
         }
     }
 }

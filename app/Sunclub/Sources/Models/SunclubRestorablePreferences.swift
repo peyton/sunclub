@@ -1,24 +1,19 @@
 import Foundation
 
 /// User-owned, permission-free preferences intended for restore on another device.
-/// The envelope includes private relationship credentials; backup UI must tell people to
-/// store exported files securely. System authorization is excluded because it is device-specific.
+/// System authorization is excluded because it is device-specific.
 struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     let version: Int
     let preferredName: String
     let uvBriefing: SunclubUVBriefingPreferences
-    let friends: [SunclubFriendSnapshot]
-    let accountability: SunclubAccountabilitySettings
     let automation: SunclubAutomationPreferences
 
     init(growthSettings: SunclubGrowthSettings) {
         version = Self.currentVersion
         preferredName = growthSettings.preferredName
         uvBriefing = growthSettings.uvBriefing
-        friends = growthSettings.friends
-        accountability = growthSettings.accountability.restorableProjection
         automation = growthSettings.automation
     }
 
@@ -26,15 +21,11 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
         version: Int = Self.currentVersion,
         preferredName: String,
         uvBriefing: SunclubUVBriefingPreferences,
-        friends: [SunclubFriendSnapshot],
-        accountability: SunclubAccountabilitySettings,
         automation: SunclubAutomationPreferences
     ) {
         self.version = version
         self.preferredName = preferredName
         self.uvBriefing = uvBriefing
-        self.friends = friends
-        self.accountability = accountability
         self.automation = automation
     }
 
@@ -46,12 +37,6 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
 
         merged.uvBriefing = mergedUVBriefing(current: current.uvBriefing)
         merged.automation = mergedAutomation(current: current.automation)
-        merged.friends = mergedFriends(current: current.friends, imported: friends)
-
-        if !current.accountability.hasRestorableContent,
-           accountability.hasRestorableContent {
-            merged.accountability = accountability
-        }
 
         return merged
     }
@@ -61,14 +46,6 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
         var restored = current
         restored.preferredName = preferredName
         restored.uvBriefing = uvBriefing
-        restored.friends = friends
-        restored.accountability = accountability.restorableProjection
-        // Subscription IDs and publication state belong to this device's current profile.
-        if accountability.localProfileID == current.accountability.localProfileID {
-            restored.accountability.lastPublishedAt = current.accountability.lastPublishedAt
-            restored.accountability.subscriptionsInstalledAt = current.accountability.subscriptionsInstalledAt
-            restored.accountability.subscriptionInstallVersion = current.accountability.subscriptionInstallVersion
-        }
         restored.automation = automation
         return restored
     }
@@ -76,28 +53,7 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
     var hasMeaningfulContent: Bool {
         !preferredName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || uvBriefing != SunclubUVBriefingPreferences()
-            || !friends.isEmpty
-            || accountability.hasRestorableContent
             || automation != SunclubAutomationPreferences()
-    }
-
-    private func mergedFriends(
-        current: [SunclubFriendSnapshot],
-        imported: [SunclubFriendSnapshot]
-    ) -> [SunclubFriendSnapshot] {
-        var byID = Dictionary(uniqueKeysWithValues: current.map { ($0.id, $0) })
-        for friend in imported {
-            if let existing = byID[friend.id], existing.lastSharedAt >= friend.lastSharedAt {
-                continue
-            }
-            byID[friend.id] = friend
-        }
-        return byID.values.sorted { lhs, rhs in
-            if lhs.name != rhs.name {
-                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-            }
-            return lhs.id.uuidString < rhs.id.uuidString
-        }
     }
 
     private func mergedUVBriefing(
@@ -162,33 +118,5 @@ struct SunclubRestorablePreferences: Codable, Equatable, Sendable {
         default defaultValue: Value
     ) -> Value {
         imported == defaultValue && current != defaultValue ? current : imported
-    }
-}
-
-private extension SunclubAccountabilitySettings {
-    var restorableProjection: SunclubAccountabilitySettings {
-        SunclubAccountabilitySettings(
-            localProfileID: localProfileID,
-            displayName: displayName,
-            inviteTokens: inviteTokens,
-            activatedAt: activatedAt,
-            dismissedAt: dismissedAt,
-            pendingInvites: pendingInvites,
-            connections: connections,
-            pokeHistory: pokeHistory,
-            lastPublishedAt: nil,
-            subscriptionsInstalledAt: nil,
-            subscriptionInstallVersion: 0
-        )
-    }
-
-    var hasRestorableContent: Bool {
-        !displayName.isEmpty
-            || !inviteTokens.isEmpty
-            || activatedAt != nil
-            || dismissedAt != nil
-            || !pendingInvites.isEmpty
-            || !connections.isEmpty
-            || !pokeHistory.isEmpty
     }
 }

@@ -214,10 +214,6 @@ def redacted_summary_lines(
             f"{format_bool(privacy.get('app_store_connect_completed'))}"
         ),
         (
-            "- Public CloudKit accountability transport: "
-            f"{format_bool(privacy.get('public_cloudkit_accountability_transport'))}"
-        ),
-        (
             "- Regulated medical device status: "
             f"{medical.get('app_store_connect_value') or medical.get('status', 'unknown')}"
         ),

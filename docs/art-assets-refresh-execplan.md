@@ -4,7 +4,7 @@ This ExecPlan is a living document. The sections `Progress`, `Surprises & Discov
 
 ## Purpose / Big Picture
 
-Sunclub should feel like a focused, human-made daily app, not a prototype with low-resolution decorative art. After this work, the non-logo artwork is proposed from actual app screenshots, reviewed on a contact sheet, and then exported into the iOS asset catalog at all supported iOS bitmap scales. The product language should be quieter and clearer: “Accountability” becomes “Activity sharing,” and the app should avoid requirement-leaking or overly cute copy.
+Sunclub should feel like a focused, human-made daily app, not a prototype with low-resolution decorative art. After this work, the non-logo artwork is proposed from actual app screenshots, reviewed on a contact sheet, and then exported into the iOS asset catalog at all supported iOS bitmap scales.
 
 The visible proof is a local contact sheet under `.build/` containing every changed screen. The implementation proof is that the checked-in asset catalog no longer ships review-approved art at only `1x`, and focused build/test commands still pass.
 
@@ -15,7 +15,6 @@ The visible proof is a local contact sheet under `.build/` containing every chan
 - [x] (2026-05-05T20:18Z) User clarified not to use the OpenAI API and to use Codex plus logged-in ChatGPT or ChatGPT Atlas through Computer Use instead.
 - [x] (2026-05-06T02:06Z) Captured 19 deterministic app screenshots and assembled `.build/sunclub-art-review/current-contact-sheet.png`.
 - [x] (2026-05-06T02:24Z) Uploaded the contact sheet to ChatGPT Atlas through Computer Use and received a generated visual pass plus screen-by-screen implementation guidance.
-- [x] (2026-05-06T03:15Z) Implemented safe user-facing copy improvements, including changing visible “Accountability” to “Activity sharing.”
 - [x] (2026-05-06T03:18Z) Replaced the `1x`-only non-logo asset export path with `1x`, `2x`, and `3x` outputs for every generated non-logo imageset.
 - [x] (2026-05-06T03:29Z) Generated the changed-screen contact sheet at `.build/sunclub-art-review/changed-contact-sheet.png` and comparison page at `.build/sunclub-art-review/index.html`.
 - [x] (2026-05-06T03:32Z) Ran focused validation. `just visual-assets`, `just web-check`, `just generate`, Debug simulator build, asset scale validation, icon/logo diff check, `git diff --check`, and `just test-unit` passed.
@@ -26,13 +25,12 @@ The visible proof is a local contact sheet under `.build/` containing every chan
   Evidence: `app/Sunclub/Resources/Assets.xcassets/*/*.png` dimensions show fixed single images, and generated `Contents.json` files contain only `"scale" : "1x"`.
 
 - Observation: The app already has deterministic UI-test routes that can capture many real screens without manual navigation.
-  Evidence: `app/Sunclub/Sources/Shared/AppRoute.swift` includes routes such as `welcome`, `home`, `manualLog`, `achievements`, `friends`, `accountabilityOnboarding`, `productScanner`, and `yearInReview`.
+  Evidence: `app/Sunclub/Sources/Shared/AppRoute.swift` includes routes such as `welcome`, `home`, `manualLog`, `achievements`, `productScanner`, and `yearInReview`.
 
 - Observation: In this Codex session, the available native image tool cannot write generated bitmap files into the repo, and the user explicitly disallowed using the OpenAI API from the shell.
   Evidence: Environment inspection found no `OPENAI_API_KEY`; the user clarified “do not use the openai api—we are using codex.”
 
 - Observation: ChatGPT Atlas accepted the uploaded contact sheet and returned a generated app design overview plus a concrete implementation spec.
-  Evidence: The copied ChatGPT response said “Native image editing has been invoked on the uploaded contact sheet” and recommended a quiet warm-white app, bottom-pinned primary actions, “Activity sharing,” “Shortcuts,” calmer scanner copy, and 1x/2x/3x transparent PNG export for non-logo assets.
 
 - Observation: Local Tuist commands still warn when unauthenticated for remote cache/test-result uploads, and `tuist xcodebuild` can emit a post-success Trace/BPT trap in this environment.
   Evidence: `just generate` succeeded with a missing-auth-token remote cache warning; build commands printed `Build Succeeded`, then the repo wrapper treated the post-success Trace/BPT trap as success. `just test-unit` ran all 282 tests locally and passed despite remote metadata upload 401 warnings.
@@ -45,10 +43,6 @@ The visible proof is a local contact sheet under `.build/` containing every chan
 
 - Decision: Keep app icons, watch icons, and the source logo out of scope.
   Rationale: The user explicitly said not to touch the icon and logo. The app icon images live under `AppIcon.appiconset`, and the logo source is `icon.svg` plus related web icon files.
-  Date/Author: 2026-05-05 / Codex
-
-- Decision: Treat “Activity sharing” as the user-facing name, while initially leaving internal type names such as `SunclubAccountabilitySummary` alone.
-  Rationale: Renaming persistence and deep-link internals would increase migration risk. User-facing labels, copy, docs, and shortcuts display names can change without breaking existing links such as `sunclub://accountability/...`.
   Date/Author: 2026-05-05 / Codex
 
 - Decision: Generate review artifacts under `.build/` until the user approves the direction.
@@ -67,17 +61,17 @@ The visual assets used by the app are in `app/Sunclub/Resources/Assets.xcassets`
 
 The app icon and logo must not be edited. App icon files are in `app/Sunclub/Resources/Assets.xcassets/AppIcon.appiconset`, the watch icon is in `app/Sunclub/WatchApp/Resources/Assets.xcassets/AppIcon.appiconset`, and the source logo is `icon.svg` with a web copy in `web/assets/app-icon.svg`.
 
-The main SwiftUI visual system is in `app/Sunclub/Sources/Shared/AppTheme.swift`. The activity sharing screen is currently implemented in `app/Sunclub/Sources/Views/FriendsView.swift`; it still has internal names that use “Accountability.” The task is to change what users see, not necessarily every internal symbol.
+The main SwiftUI visual system is in `app/Sunclub/Sources/Shared/AppTheme.swift`.
 
 The deterministic route list is in `app/Sunclub/Sources/Shared/AppRoute.swift`, and `app/Sunclub/Sources/Shared/RootView.swift` maps those routes to SwiftUI screens. Screenshot launch arguments such as `UITEST_MODE`, `UITEST_ROUTE=home`, and `UITEST_COMPLETE_ONBOARDING` let scripts capture real app screens.
 
 ## Plan of Work
 
-First, capture a representative set of current screenshots from real app routes. Include onboarding, Home, logging, success, history, achievements, Activity sharing, product scanner, skin report, year in review, settings, automation, and recovery. Use the repo’s `just` and simulator tooling rather than hand-built global commands.
+First, capture a representative set of current screenshots from real app routes. Use the repo’s `just` and simulator tooling rather than hand-built global commands.
 
 Second, use Computer Use to operate the logged-in ChatGPT or ChatGPT Atlas app. Upload the contact sheet or screen images, ask for a quieter expert-app-company pass, and specifically request art direction, copy reductions, and flow simplifications without LLM tells. Save the generated/review output as local `.build/` artifacts when possible, or record the generated recommendations if the desktop tool cannot expose raw image files.
 
-Third, implement safe copy changes in tracked source. Change visible “Accountability” references to “Activity sharing,” soften “poke” and “buddy” language where it appears in user-facing UI, and remove copy that explains internal requirements instead of helping the user act.
+Third, implement safe copy changes in tracked source.
 
 Fourth, update the non-logo asset export path so approved art can ship at iOS `1x`, `2x`, and `3x` scales. The implementation must not touch `AppIcon.appiconset`, the watch app iconset, `icon.svg`, or `web/assets/app-icon.svg`.
 
@@ -100,8 +94,6 @@ Run focused validation. At minimum, run `just generate` after asset-catalog scri
 The review artifact is acceptable when `.build/sunclub-art-review/index.html` or an equivalent `.build/` contact sheet opens locally and shows all changed screens with labels.
 
 The asset export is acceptable only when every changed non-logo imageset has valid `Contents.json` entries for `1x`, `2x`, and `3x`, and the corresponding PNG files exist with proportional dimensions.
-
-The copy pass is acceptable when user-facing “Accountability” is gone from app screens in favor of “Activity sharing,” and friend-sharing copy is calm and action-oriented.
 
 The code is acceptable when focused validation completes or any blocker is recorded with exact command output and a practical fallback.
 

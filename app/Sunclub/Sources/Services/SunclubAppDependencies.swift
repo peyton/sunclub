@@ -16,7 +16,6 @@ struct SunclubAppDependencies {
     let cloudSyncCoordinator: CloudSyncControlling
     let widgetSnapshotStore: SunclubWidgetSnapshotStore
     let growthFeatureStore: SunclubGrowthFeatureStoring
-    let accountabilityService: SunclubAccountabilityServing
     let runtimeEnvironment: RuntimeEnvironmentSnapshot
     let homeExitReminderMonitor: HomeExitReminderMonitoring
     let historicalUVStore: SunclubHistoricalUVStore
@@ -36,7 +35,6 @@ struct SunclubAppDependencies {
         cloudSyncCoordinator: CloudSyncControlling? = nil,
         widgetSnapshotStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
         growthFeatureStore: SunclubGrowthFeatureStoring = SunclubGrowthFeatureStore.shared,
-        accountabilityService: SunclubAccountabilityServing? = nil,
         runtimeEnvironment: RuntimeEnvironmentSnapshot = .current,
         homeExitReminderMonitor: HomeExitReminderMonitoring? = nil,
         historicalUVStore: SunclubHistoricalUVStore? = nil,
@@ -56,7 +54,6 @@ struct SunclubAppDependencies {
             ),
             widgetSnapshotStore: widgetSnapshotStore,
             growthFeatureStore: defaultGrowthFeatureStore(growthFeatureStore, runtimeEnvironment: runtimeEnvironment),
-            accountabilityService: defaultAccountabilityService(accountabilityService, runtimeEnvironment: runtimeEnvironment),
             runtimeEnvironment: runtimeEnvironment,
             homeExitReminderMonitor: homeExitReminderMonitor
                 ?? (runtimeEnvironment.isRunningTests ? NoopHomeExitReminderMonitor() : HomeExitReminderMonitor.shared),
@@ -75,8 +72,7 @@ struct SunclubAppDependencies {
         return live(context: context, notificationManager: notificationManager, uvIndexService: uvIndexService,
              widgetSnapshotStore: SunclubWidgetSnapshotStore(userDefaults: UserDefaults(suiteName: suite)),
              runtimeEnvironment: RuntimeEnvironmentSnapshot(
-                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false
              ), historicalUVStore: SunclubHistoricalUVStore(appGroupID: suite), clock: clock)
     }
 
@@ -100,23 +96,6 @@ struct SunclubAppDependencies {
         }
 
         return store
-    }
-
-    private static func defaultAccountabilityService(
-        _ service: SunclubAccountabilityServing?,
-        runtimeEnvironment: RuntimeEnvironmentSnapshot
-    ) -> SunclubAccountabilityServing {
-        if let service {
-            return service
-        }
-        if runtimeEnvironment.isRunningTests || runtimeEnvironment.isPreviewing {
-            return NoopSunclubAccountabilityService()
-        }
-        if !runtimeEnvironment.isPublicAccountabilityTransportEnabled {
-            return NoopSunclubAccountabilityService()
-        }
-
-        return SunclubAccountabilityService()
     }
 
 }

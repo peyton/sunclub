@@ -21,8 +21,6 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertFalse(app.buttons["home.verifyNow"].exists)
         XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
         assertHomeReadyForLogState(app)
-        XCTAssertFalse(app.buttons["accountabilityOnboarding.next"].exists)
-        XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
         XCTAssertEqual(app.buttons.matching(identifier: "home.logManually").count, 1)
         XCTAssertFalse(app.buttons["home.dailyPlan.action"].exists)
     }
@@ -334,7 +332,6 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertFalse(app.buttons["home.uvBriefingToggle"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.uvStatus"].exists)
         XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
-        XCTAssertFalse(app.buttons["home.feature.friends"].exists)
         XCTAssertFalse(app.buttons["home.feature.skinHealthReport"].exists)
         XCTAssertFalse(app.buttons["home.feature.productScanner"].exists)
         XCTAssertFalse(app.buttons["home.feature.automation"].exists)
@@ -365,86 +362,6 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertTrue(spfRow.waitForExistence(timeout: 5))
         XCTAssertTrue(waitForLabel("SPF 70 selected", on: spfRow))
         XCTAssertTrue(app.buttons["manualLog.spf.70"].isSelected)
-    }
-
-    @MainActor
-    func testHomeKeepsAccountabilityOffP0Settings() throws {
-        let app = launchHome(additionalArguments: [
-            "UITEST_RESET_ACCOUNTABILITY",
-            "UITEST_SEED_HISTORY=achievementProgress"
-        ])
-
-        let hasPrimaryHomeAction = app.buttons["home.logManually"].waitForExistence(timeout: 5)
-            || app.buttons["home.sunscreenLogCard"].waitForExistence(timeout: 2)
-        XCTAssertTrue(hasPrimaryHomeAction)
-        XCTAssertFalse(app.buttons["home.accountabilityNudge.setup"].exists)
-        XCTAssertFalse(app.buttons["home.accountabilityNudge.dismiss"].exists)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
-
-        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["settings.sharing"].exists)
-    }
-
-    @MainActor
-    func testSeededAccountabilityDoesNotSurfaceFriendsInP0() throws {
-        let app = launchHome(additionalArguments: [
-            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
-        ])
-
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.otherElements["home.accountabilityCard"].exists)
-        XCTAssertFalse(app.buttons["home.accountabilityAction"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["home.accountabilityFriendStrip"].exists)
-        XCTAssertFalse(app.otherElements["home.exploreGrid"].exists)
-
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
-        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["settings.sharing"].exists)
-        XCTAssertFalse(app.buttons["friends.activate"].exists)
-    }
-
-    @MainActor
-    func testActiveAccountabilityDoesNotSurfaceSetupInP0() throws {
-        let app = launchHome(additionalArguments: [
-            "UITEST_SEED_ACCOUNTABILITY_ACTIVE"
-        ])
-
-        XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.otherElements["home.accountabilityCard"].exists)
-        XCTAssertFalse(app.staticTexts["Bring in backup"].exists)
-        XCTAssertFalse(app.buttons["home.accountabilityAction"].exists)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.footer.settings"], in: app))
-
-        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.settings"]))
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["settings.sharing"].exists)
-        XCTAssertFalse(app.buttons["friends.activate"].exists)
-    }
-
-    @MainActor
-    func testFriendsRouteIsQuarantinedToSettings() throws {
-        let app = launchHome(additionalArguments: [
-            "UITEST_ROUTE=friends",
-            "UITEST_SEED_ACCOUNTABILITY_FRIEND"
-        ])
-
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["friends.activate"].exists)
-        XCTAssertFalse(app.buttons["friends.add.toggle"].exists)
-    }
-
-    @MainActor
-    func testInviteDeepLinkFinishesOptionalOnboardingAtToday() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["UITEST_MODE", "UITEST_URL=\(try accountabilityInviteURL(displayName: "Maya"))"]
-        app.launch()
-        XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
-        completeOnboarding(in: app)
-        assertHomeReadyForLogState(app)
-        XCTAssertTrue(app.buttons["timeline.footer.today"].isSelected)
-        XCTAssertFalse(app.buttons["friends.activate"].exists)
     }
 
     @MainActor

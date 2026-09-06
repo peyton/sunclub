@@ -14,7 +14,7 @@ Sunclub currently presents every app screen on a bright sunscreen-themed canvas.
 - [x] (2026-04-13 00:56Z) Confirmed the requested work does not require a SwiftData schema bump because no persisted fields or model relationships change.
 - [x] (2026-04-13 00:56Z) Added this ExecPlan before changing app source.
 - [x] (2026-04-13 01:05Z) Added adaptive colors, card surfaces, and a UI-test-only dark appearance hook.
-- [x] (2026-04-13 01:10Z) Replaced bright white card/control fills on Home, Settings, History, Manual Log, Achievements, Friends, Recovery, Weekly Summary, Product Scanner, and Skin Health Report with semantic surfaces.
+- [x] (2026-04-13 01:10Z) Replaced bright white card/control fills on Home, Settings, History, Manual Log, Achievements, Recovery, Weekly Summary, Product Scanner, and Skin Health Report with semantic surfaces.
 - [x] (2026-04-13 01:13Z) Added unit coverage for dark palette contrast and UI coverage for key dark-mode flows.
 - [x] (2026-04-13 01:26Z) Ran generation, unit, UI, lint, and build validation and recorded outcomes here.
 
@@ -23,7 +23,7 @@ Sunclub currently presents every app screen on a bright sunscreen-themed canvas.
 - Observation: The app already has dark visual assets and a `SunDarkBackdrop`, but all app screens use `SunLightScreen`, and `SunLightScreen` always installs the light backdrop.
   Evidence: `rg "SunDarkScreen|SunLightScreen" app/Sunclub/Sources` shows no screen uses `SunDarkScreen`, while all major screens instantiate `SunLightScreen`.
 - Observation: Most screen text already goes through `AppPalette.ink` and `AppPalette.softInk`, so a central adaptive palette can fix most contrast without rewriting every view.
-  Evidence: `rg "foregroundStyle\\(AppPalette\\.(ink|softInk)" app/Sunclub/Sources/Views` returns hits across Home, Settings, History, Manual Log, Achievements, Friends, Recovery, Weekly Summary, Product Scanner, and Skin Health Report.
+  Evidence: `rg "foregroundStyle\\(AppPalette\\.(ink|softInk)" app/Sunclub/Sources/Views` returns hits across Home, Settings, History, Manual Log, Achievements, Recovery, Weekly Summary, Product Scanner, and Skin Health Report.
 - Observation: The default UI-test simulator was shared with another worktree, causing CoreSimulator launch interruptions during a full UI run.
   Evidence: The first `just test-ui` attempt retried and then hit simulator connection errors while another `xcodebuild` process was using the same default simulator. Rerunning with `TEST_SIMULATOR_NAME='Sunclub 1744 Dark UI iPhone 17 Pro'` isolated this worktree and passed all UI tests.
 
@@ -80,7 +80,7 @@ Run these commands from `/Users/peyton/.codex/worktrees/1744/sunclub`:
     just test-ui
     just ci-build
 
-Acceptance is functional and visual. In dark appearance, Home, Settings, Manual Log, History, Weekly Summary, Achievements, Friends, Product Scanner, Recovery, and Skin Health Report should use the dark textured background, readable light foreground text, and dark card/control surfaces. The new unit test should prove color contrast for core palette roles. The new UI test should exercise representative dark-mode navigation and fail if key controls disappear.
+Acceptance is functional and visual. In dark appearance, Home, Settings, Manual Log, History, Weekly Summary, Achievements, Product Scanner, Recovery, and Skin Health Report should use the dark textured background, readable light foreground text, and dark card/control surfaces. The new unit test should prove color contrast for core palette roles. The new UI test should exercise representative dark-mode navigation and fail if key controls disappear.
 
 ## Idempotence and Recovery
 

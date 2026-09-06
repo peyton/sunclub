@@ -546,8 +546,7 @@ final class RecoverySimplicityTests: XCTestCase {
             cloudSyncCoordinator: cloud ?? ProbeCloudSyncCoordinator(),
             growthFeatureStore: growth ?? RecoveryGrowthStore(),
             runtimeEnvironment: RuntimeEnvironmentSnapshot(
-                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false,
-                isPublicAccountabilityTransportEnabled: false
+                isRunningTests: true, isPreviewing: false, hasAppGroupContainer: false
             ),
             homeExitReminderMonitor: MockHomeExitReminderMonitor(),
             clock: { self.day.addingTimeInterval(18 * 3_600) }

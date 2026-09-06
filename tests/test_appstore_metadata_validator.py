@@ -33,7 +33,7 @@ def test_review_package_matches_data_not_collected_manifest() -> None:
 
     assert "select Data Not Collected" in package
     assert "disclose Name, User ID" not in package
-    assert "public Activity sharing transport disabled" in package
+    assert "optional private iCloud sync remain user-controlled" in package
 
 
 def test_validator_rejects_legacy_submission_problems() -> None:
@@ -367,17 +367,3 @@ def test_strict_validation_requires_privacy_and_medical_gates() -> None:
         in errors
     )
     assert warnings == []
-
-
-def test_public_cloudkit_transport_requires_conservative_privacy_answers() -> None:
-    manifest = current_manifest()
-    manifest["privacy"]["public_cloudkit_accountability_transport"] = True
-    manifest["privacy"]["data_collection"] = "none"
-    manifest["privacy"]["collected_data_types"] = []
-
-    errors, _warnings = validator.validate_manifest(manifest, allow_draft=False)
-
-    assert (
-        "Public CloudKit accountability transport requires conservative App Privacy data-collection answers, not privacy.data_collection='none'."
-        in errors
-    )

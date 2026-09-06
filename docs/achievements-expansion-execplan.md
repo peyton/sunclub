@@ -6,15 +6,15 @@ The repository instruction references `~/.agent/PLANS.md`, but that file is not 
 
 ## Purpose / Big Picture
 
-Sunclub currently has a small achievement set that mainly rewards streaks. After this change, the Achievements screen rewards a wider range of sunscreen habits: morning logs, weekend consistency, SPF variety, notes, reapply behavior, high-UV protection, live UV setup, home reminders, product scanning, and sharing or friend activity. A user can open Achievements and immediately see a higher-contrast progress meter with the exact percent, count, and remaining work for each badge.
+Sunclub currently has a small achievement set that mainly rewards streaks. After this change, the Achievements screen rewards a wider range of sunscreen habits: morning logs, weekend consistency, SPF variety, notes, reapply behavior, high-UV protection, live UV setup, home reminders, product scanning. A user can open Achievements and immediately see a higher-contrast progress meter with the exact percent, count, and remaining work for each badge.
 
 ## Progress
 
 - [x] (2026-04-12 00:23Z) Confirmed the current achievement model lives in `app/Sunclub/Sources/Models/GrowthFeatures.swift`, analytics in `app/Sunclub/Sources/Services/SunclubGrowthAnalytics.swift`, and the list UI in `app/Sunclub/Sources/Views/AchievementsView.swift`.
 - [x] (2026-04-12 00:23Z) Confirmed that SwiftData schema changes are unnecessary because achievement event telemetry can live in the existing app-group `SunclubGrowthSettings` JSON.
-- [x] (2026-04-12 00:23Z) Add the 10 new achievement identifiers, metadata, and telemetry-compatible settings decoding.
+- [x] (2026-04-12 00:23Z) Add the 9 new achievement identifiers, metadata, and telemetry-compatible settings decoding.
 - [x] (2026-04-12 00:23Z) Extend analytics to compute each new achievement from records, settings, growth settings, and telemetry.
-- [x] (2026-04-12 00:23Z) Record share and product-scan telemetry through AppState and existing share/scanner UI entry points.
+- [x] (2026-04-12 00:23Z) Record product-scan telemetry through AppState and the existing scanner entry point.
 - [x] (2026-04-12 00:23Z) Replace low-contrast `ProgressView` rows with high-contrast achievement and challenge cards.
 - [x] (2026-04-12 00:23Z) Add unit and UI tests for the new achievements, telemetry compatibility, and visible progress UI.
 - [x] (2026-04-12 00:43Z) Ran `just generate`, `just test-unit`, `just test-ui`, and `just lint`; all required commands completed successfully.
@@ -28,19 +28,12 @@ Sunclub currently has a small achievement set that mainly rewards streaks. After
 
 ## Decision Log
 
-- Decision: Do not bump the SwiftData schema for this feature.
-  Rationale: No `@Model` persisted fields are changing. App-group growth settings already store achievements-related presentation state and friend snapshots, so lightweight share/product telemetry belongs there with a Codable default for older JSON.
-  Date/Author: 2026-04-12 / Codex
-- Decision: Count a share action when the user taps a Sunclub share entry point and the app prepares the share sheet.
-  Rationale: The existing `ActivityShareSheet` does not report iOS share completion, and wiring completion callbacks would add more scope than the achievement needs.
-  Date/Author: 2026-04-12 / Codex
+- Decision: Store product-scan telemetry in the existing app-group growth JSON; no SwiftData field changes are needed.
 - Decision: Treat location-related achievement progress as setup state, not location history.
-  Rationale: The planned `homeBase` badge can be computed from the existing leave-home reminder configuration without storing where sunscreen was applied.
-  Date/Author: 2026-04-12 / Codex
 
 ## Outcomes & Retrospective
 
-Implemented 10 new achievements, growth telemetry with backward-compatible settings decoding, a high-contrast achievements progress UI, share/scanner telemetry entry points, focused unit coverage, and a deterministic UI test route. All 18 achievements render through analytics and share-card coverage, the 10 new achievements unlock from minimal fixtures and remain locked below target, older growth settings JSON keeps existing fields while defaulting telemetry to zero, and telemetry can unlock `bottleDetective` and `socialSpark`.
+Implemented 9 new achievements, growth telemetry with backward-compatible settings decoding, a high-contrast achievements progress UI, scanner telemetry entry points, focused unit coverage, and a deterministic UI test route. All 17 achievements render through analytics and share-card coverage, the 9 new achievements unlock from minimal fixtures and remain locked below target, older growth settings JSON keeps existing fields while defaulting telemetry to zero, and telemetry can unlock `bottleDetective`.
 
 `just lint` initially failed because the expanded analytics function exceeded the SwiftLint body-length rule. The analytics code was split into a short orchestration function plus focused progress/detail helpers, then unit tests and lint were rerun successfully.
 
@@ -52,11 +45,11 @@ Daily sunscreen logs are stored as `DailyRecord` SwiftData models. The app also 
 
 ## Plan of Work
 
-First, add a `SunclubGrowthTelemetry` struct to `GrowthFeatures.swift`, add it to `SunclubGrowthSettings`, and implement custom decoding that defaults missing telemetry to an empty struct. Then add the 10 new achievement enum cases with titles, symbols, and targets.
+First, add a `SunclubGrowthTelemetry` struct to `GrowthFeatures.swift`, add it to `SunclubGrowthSettings`, and implement custom decoding that defaults missing telemetry to an empty struct. Then add the 9 new achievement enum cases with titles, symbols, and targets.
 
-Second, extend `SunclubGrowthAnalytics.achievements` to accept `settings` and `growthSettings`. Compute each badge from local records and app state: early logs use `verifiedAt`, weekend pairs use Saturday plus the following Sunday, SPF variety uses distinct `spfLevel` values, notes use `trimmedNotes`, reapply relay uses the max per-day `reapplyCount`, high-UV hero uses the existing estimated midday UV helper, home base uses leave-home reminder setup, live signal uses `usesLiveUV`, bottle detective uses product scan telemetry, and social spark uses share telemetry or imported friends.
+Second, extend `SunclubGrowthAnalytics.achievements` to accept `settings` and `growthSettings`. Compute each badge from local records and app state: early logs use `verifiedAt`, weekend pairs use Saturday plus the following Sunday, SPF variety uses distinct `spfLevel` values, notes use `trimmedNotes`, reapply relay uses the max per-day `reapplyCount`, high-UV hero uses the existing estimated midday UV helper, home base uses leave-home reminder setup, live signal uses `usesLiveUV`, bottle detective uses product scan telemetry.
 
-Third, add narrow AppState methods for share and scanner telemetry. Call them from `AchievementsView`, `SkinHealthReportView`, `FriendsView`, and `ProductScannerView` only after the relevant share artifact or SPF result is available.
+Third, add narrow AppState methods for scanner telemetry. Call it after a product scan supplies an SPF result.
 
 Fourth, replace the low-contrast progress bars in `AchievementsView` with compact cards that include a visible dark track, bright fill, percent/count pill, and status label. Keep the view composed of small SwiftUI subviews and preserve share buttons for unlocked achievements and completed challenges.
 
@@ -80,7 +73,7 @@ If `just test-ui` cannot complete because a simulator or Xcode runtime is unavai
 
 ## Validation and Acceptance
 
-The change is accepted when `SunclubAchievementID.allCases.count` is 18, unit tests show every new achievement can unlock from a minimal fixture and remain locked below target, old growth settings JSON decodes with existing fields preserved, and telemetry increments can unlock `bottleDetective` and `socialSpark`.
+The change is accepted when `SunclubAchievementID.allCases.count` is 17, unit tests show every new achievement can unlock from a minimal fixture and remain locked below target, old growth settings JSON decodes with existing fields preserved, and telemetry increments can unlock `bottleDetective`.
 
 The Achievements UI is accepted when a UI test opens the deterministic Achievements route and finds an achievement card, a progress meter accessibility identifier, a visible count/percent label, and an unlocked status.
 
@@ -101,13 +94,12 @@ In `GrowthFeatures.swift`, define:
 
     struct SunclubGrowthTelemetry: Codable, Equatable, Sendable
 
-It must include `shareActionCount`, `productScanUseCount`, `lastSharedAt`, and `lastProductScanUsedAt`, with defaults that represent no telemetry.
+It must include `productScanUseCount` and `lastProductScanUsedAt`, with defaults that represent no telemetry.
 
 In `AppState.swift`, define:
 
-    func recordShareActionStarted()
     func recordProductScanUsedForLog(spfLevel: Int?)
 
-Both methods persist growth settings and call achievement synchronization so new badges can appear promptly.
+This method persists growth settings and calls achievement synchronization so new badges can appear promptly.
 
 No external dependencies should be added.

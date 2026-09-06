@@ -15,7 +15,7 @@ The visible outcome is that testers can open the app even when iCloud sync is un
 - [x] (2026-04-13 21:38 PDT) Downloaded the v1.0.24 GitHub Actions artifact and inspected the archive and IPA signatures.
 - [x] (2026-04-13 21:42 PDT) Ran `just cloudkit-doctor`, `just cloudkit-export-schema`, and `just cloudkit-validate-schema`; the CloudKit management token and development schema are valid.
 - [x] (2026-04-13 21:46 PDT) Added a runtime entitlement guard before every `CKContainer(identifier:)` call so missing CloudKit entitlements are recorded as recoverable sync errors instead of causing a signal trap.
-- [x] (2026-04-13 21:46 PDT) Added Swift regression tests for missing CloudKit service and container entitlements in both private sync and public accountability database paths.
+- [x] (2026-04-13 21:46 PDT) Added Swift regression tests for missing CloudKit service and container entitlements in private sync paths.
 - [x] (2026-04-13 21:57 PDT) Hardened release scripts and workflow artifact diagnostics so unsigned archive exports are ad-hoc signed with resolved release entitlements, final IPA entitlements are validated before upload, and diagnostics are persisted.
 - [x] (2026-04-13 21:58 PDT) Updated `AGENTS.md` and release documentation with the corrected TestFlight and CloudKit release rules.
 - [x] (2026-04-13 22:11 PDT) Re-ran `just test-unit`, `just test-python`, `just ci-lint`, simulator launch, and a local unsigned-archive export. The exported IPA diagnostics include production CloudKit, push, app-group, HealthKit, and WeatherKit app entitlements.
@@ -56,7 +56,7 @@ Local validation after the `origin/master` fast-forward showed the corrected exp
 
 The crash log points to `app/Sunclub/Sources/Services/CloudSyncCoordinator.swift`, specifically `configureEngineIfNeeded()`, which calls `CKContainer(identifier: containerIdentifier).privateCloudDatabase`. `CKContainer` is a CloudKit framework type that reads the app's signed entitlements before returning a database object. If the app is missing the CloudKit service or container entitlement, CloudKit can trap the process with `EXC_BREAKPOINT` before Swift code can catch an error.
 
-The string-only validation currently lives in `app/Sunclub/Sources/Services/SunclubCloudKitAvailability.swift`. It validates that the container identifier looks like `iCloud.app.peyton.sunclub`, but it does not inspect signed entitlements. The public accountability feature uses CloudKit too through `CloudKitAccountabilityDatabase` in `app/Sunclub/Sources/Services/SunclubAccountabilityService.swift`, which also creates a `CKContainer(identifier:)`.
+The string-only validation currently lives in `app/Sunclub/Sources/Services/SunclubCloudKitAvailability.swift`. It validates that the container identifier looks like `iCloud.app.peyton.sunclub`, but it does not inspect signed entitlements.
 
 The TestFlight workflow is `.github/workflows/release-testflight.yml`. It calls `scripts/appstore/archive-and-upload.sh --allow-draft-metadata --unsigned-archive --upload-testflight`. The archive script currently validates final IPA entitlements only when the archive was signed. That skip allowed v1.0.24 to upload a minimally entitled app.
 
@@ -64,9 +64,9 @@ The TestFlight workflow is `.github/workflows/release-testflight.yml`. It calls 
 
 First, extend `SunclubCloudKitAvailability` with a small entitlement-provider interface backed by a Mach-O code-signature entitlement reader. The reader opens the app's signed executable, finds the code-signature load command, parses the embedded entitlement blob, and returns values from the actual runtime code signature without calling `CKContainer`. The new runtime validator must confirm that the current process has `com.apple.developer.icloud-container-identifiers` containing the configured container and `com.apple.developer.icloud-services` containing `CloudKit` or the wildcard `*`.
 
-Next, inject that provider into `CloudSyncCoordinator` and `CloudKitAccountabilityDatabase`, and call the runtime validator immediately before creating any `CKContainer(identifier:)`. When entitlements are missing, throw a `SunclubCloudKitConfigurationError` that existing sync error handling records in `CloudSyncPreference.lastSyncErrorDescription`.
+Next, inject that provider into `CloudSyncCoordinator`, and call the runtime validator immediately before creating any `CKContainer(identifier:)`. When entitlements are missing, throw a `SunclubCloudKitConfigurationError` that existing sync error handling records in `CloudSyncPreference.lastSyncErrorDescription`.
 
-Then add Swift unit tests in `app/Sunclub/Tests/SunclubTests.swift` with a fake entitlement provider. The tests must show that valid entitlements pass, missing container or service entitlements fail, `CloudSyncCoordinator.start()` records a recoverable error, and `CloudKitAccountabilityDatabase` throws before constructing a CloudKit database.
+Then add Swift unit tests in `app/Sunclub/Tests/SunclubTests.swift` with a fake entitlement provider. The tests must show that valid entitlements pass, missing container or service entitlements fail, `CloudSyncCoordinator.start()` records a recoverable error, throws before constructing a CloudKit database.
 
 Finally, update the release workflow and archive script so the GitHub artifact includes entitlement diagnostics for the exported IPA, unsigned archives are ad-hoc signed with resolved release entitlements before export, and final IPA entitlement validation gates upload. Update Python metadata tests to lock in the corrected release behavior. Update `docs/testflight-release.md`, `docs/cloudkit-setup.md`, and `AGENTS.md` so future agents know to run the CloudKit commands and inspect final IPA entitlements before a TestFlight release.
 
@@ -141,6 +141,6 @@ Add:
 
     static func validateRuntime(containerIdentifier: String, entitlementProvider: SunclubCloudKitEntitlementProviding) throws
 
-`CloudSyncCoordinator` and `CloudKitAccountabilityDatabase` must accept a `cloudKitEntitlementProvider` initializer argument defaulting to `CodeSignatureCloudKitEntitlementProvider`. Tests should pass a fake dictionary-backed provider.
+`CloudSyncCoordinator` must accept a `cloudKitEntitlementProvider` initializer argument defaulting to `CodeSignatureCloudKitEntitlementProvider`. Tests should pass a fake dictionary-backed provider.
 
 Revision note: Created during the v1.0.24 TestFlight launch-crash investigation so future work can resume with artifact evidence, commands, and design decisions intact.

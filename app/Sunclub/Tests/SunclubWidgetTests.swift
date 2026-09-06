@@ -183,7 +183,7 @@ final class SunclubWidgetTests: XCTestCase {
         )
     }
 
-    func testWidgetSnapshotDecodesLegacyPayloadWithoutAccountabilitySummary() throws {
+    func testWidgetSnapshotDecodesLegacyPayload() throws {
         let data = Data("""
         {
             "isOnboardingComplete": true,
@@ -209,7 +209,6 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertEqual(snapshot.longestStreak, 3)
         XCTAssertNil(snapshot.todaySPFLevel)
-        XCTAssertEqual(snapshot.accountabilitySummary, .empty)
     }
 
     func testWidgetSnapshotDecodesMinimalLegacyPayloadWithDefaults() throws {
@@ -230,10 +229,9 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(snapshot.monthlyDayCount, 0)
         XCTAssertFalse(snapshot.reapplyReminderEnabled)
         XCTAssertEqual(snapshot.reapplyIntervalMinutes, 120)
-        XCTAssertEqual(snapshot.accountabilitySummary, .empty)
     }
 
-    func testWidgetSnapshotDecodesPartialAccountabilitySummaryWithDefaults() throws {
+    func testWidgetSnapshotIgnoresRetiredPayloadFields() throws {
         let data = Data("""
         {
             "isOnboardingComplete": true,
@@ -261,33 +259,12 @@ final class SunclubWidgetTests: XCTestCase {
 
         let snapshot = try JSONDecoder().decode(SunclubWidgetSnapshot.self, from: data)
 
-        XCTAssertTrue(snapshot.accountabilitySummary.isActive)
-        XCTAssertEqual(snapshot.accountabilitySummary.friendCount, 2)
-        XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 0)
-        XCTAssertTrue(snapshot.accountabilitySummary.topFriends.isEmpty)
-        XCTAssertNil(snapshot.accountabilitySummary.latestPoke)
-        XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
-        XCTAssertTrue(snapshot.accountabilitySummary.latestPokeText.isEmpty)
-    }
-
-    func testWidgetSnapshotBuilderIncludesAccountabilitySummary() {
-        let settings = Settings()
-        settings.hasCompletedOnboarding = true
-        let growthSettings = makeAccountabilityGrowthSettings()
-
-        let snapshot = SunclubWidgetSnapshotBuilder.make(
-            settings: settings,
-            records: [],
-            growthSettings: growthSettings
-        )
-
-        XCTAssertTrue(snapshot.accountabilitySummary.isActive)
-        XCTAssertEqual(snapshot.accountabilitySummary.friendCount, 2)
-        XCTAssertEqual(snapshot.accountabilitySummary.loggedCount, 1)
-        XCTAssertEqual(snapshot.accountabilitySummary.openCount, 1)
-        XCTAssertEqual(snapshot.accountabilitySummary.topFriends.first?.name, "Maya")
-        XCTAssertNil(snapshot.accountabilitySummary.primaryPokeFriendID)
-        XCTAssertEqual(snapshot.accountabilitySummary.latestPokeText, "You reminded Maya.")
+        XCTAssertTrue(snapshot.isOnboardingComplete)
+        XCTAssertEqual(snapshot.longestStreak, 3)
+        XCTAssertEqual(snapshot.reapplyIntervalMinutes, 120)
+        let encoded = try JSONEncoder().encode(snapshot)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertNil(object["accountabilitySummary"])
     }
 
     func testSnapshotDayStatusUsesStoredCalendarHistory() {
@@ -670,81 +647,6 @@ final class SunclubWidgetTests: XCTestCase {
             uvValidUntil: uvValidUntil,
             reapplyReminderEnabled: reapplyReminderEnabled,
             reapplyIntervalMinutes: reapplyIntervalMinutes
-        )
-    }
-
-    private func makeAccountabilitySummary(includePrimaryPokeFriend: Bool = true) -> SunclubAccountabilitySummary {
-        let friendID = UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID()
-        return SunclubAccountabilitySummary(
-            isActive: true,
-            friendCount: 1,
-            loggedCount: 0,
-            openCount: 1,
-            topFriends: [
-                SunclubFriendSnapshot(
-                    id: friendID,
-                    name: "Maya",
-                    currentStreak: 2,
-                    longestStreak: 5,
-                    hasLoggedToday: false,
-                    lastSharedAt: Date(),
-                    seasonStyle: .summerGlow
-                )
-            ],
-            latestPoke: nil,
-            primaryPokeFriendID: includePrimaryPokeFriend ? friendID : nil,
-            latestPokeText: "You reminded Maya."
-        )
-    }
-
-    private func makeAccountabilityGrowthSettings() -> SunclubGrowthSettings {
-        let openFriendID = UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID()
-        let profileID = UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID()
-        let openFriend = makeFriendSnapshot(id: openFriendID, name: "Maya", streak: 2, hasLoggedToday: false)
-        let loggedFriend = makeFriendSnapshot(name: "Rae", streak: 4, hasLoggedToday: true)
-
-        return SunclubGrowthSettings(
-            friends: [loggedFriend, openFriend],
-            accountability: SunclubAccountabilitySettings(
-                activatedAt: Date(),
-                connections: [
-                    SunclubFriendConnection(
-                        friendProfileID: profileID,
-                        friendSnapshotID: openFriend.id,
-                        friendDisplayName: "Maya",
-                        relationshipToken: "widget-token",
-                        acceptedAt: Date()
-                    )
-                ],
-                pokeHistory: [
-                    SunclubAccountabilityPoke(
-                        friendProfileID: profileID,
-                        friendName: "Maya",
-                        direction: .sent,
-                        channel: .direct,
-                        status: .sent,
-                        message: "Widget poke",
-                        createdAt: Date()
-                    )
-                ]
-            )
-        )
-    }
-
-    private func makeFriendSnapshot(
-        id: UUID = UUID(),
-        name: String,
-        streak: Int,
-        hasLoggedToday: Bool
-    ) -> SunclubFriendSnapshot {
-        SunclubFriendSnapshot(
-            id: id,
-            name: name,
-            currentStreak: streak,
-            longestStreak: streak + 3,
-            hasLoggedToday: hasLoggedToday,
-            lastSharedAt: Date(),
-            seasonStyle: .summerGlow
         )
     }
 

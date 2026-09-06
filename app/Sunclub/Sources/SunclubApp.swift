@@ -54,7 +54,6 @@ struct SunclubApp: App {
             )
             self.appState = state
             self.router = AppRouter()
-            Self.registerRemoteNotificationHandler(for: state)
             Self.registerWatchSyncHandler(for: state)
             SunclubWatchSyncCoordinator.shared.activate()
             if RuntimeEnvironment.isRunningTests {
@@ -75,7 +74,6 @@ struct SunclubApp: App {
         )
         self.appState = state
         self.router = AppRouter()
-        Self.registerRemoteNotificationHandler(for: state)
         Self.registerWatchSyncHandler(for: state)
         SunclubWatchSyncCoordinator.shared.activate()
         if RuntimeEnvironment.isRunningTests {
@@ -112,9 +110,6 @@ struct SunclubApp: App {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
                     refreshAppStateForForeground()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .sunclubRemoteNotificationReceived)) { _ in
-                    appState.processRemoteAccountabilityEvents()
                 }
             .environment(appState)
             .environment(router)
@@ -304,9 +299,6 @@ struct SunclubApp: App {
     }
 
     private func applyUITestSeedData(from arguments: [String]) {
-        if arguments.contains("UITEST_RESET_ACCOUNTABILITY") {
-            appState.resetAccountabilityForTesting()
-        }
 
         if let seedArgument = arguments.first(where: { $0.hasPrefix("UITEST_SEED_HISTORY=") }) {
             let scenario = String(seedArgument.dropFirst("UITEST_SEED_HISTORY=".count))
@@ -325,13 +317,6 @@ struct SunclubApp: App {
 
         seedUsageInsightsForUITestsIfNeeded(arguments: arguments)
 
-        if arguments.contains("UITEST_SEED_ACCOUNTABILITY_ACTIVE") {
-            appState.activateAccountability(displayName: "Peyton")
-        }
-
-        if arguments.contains("UITEST_SEED_ACCOUNTABILITY_FRIEND") {
-            seedAccountabilityFriendScenario()
-        }
     }
 
     private func applyUITestHistorySeed(_ scenario: String) {
@@ -567,27 +552,6 @@ struct SunclubApp: App {
         appState.refresh()
     }
 
-    private func seedAccountabilityFriendScenario() {
-        appState.activateAccountability(displayName: "Peyton")
-        let friendSnapshot = SunclubFriendSnapshot(
-            id: UUID(uuidString: "33A0D8B2-3E8E-4C4C-A2BB-B06AE2756A47") ?? UUID(),
-            name: "Maya",
-            currentStreak: 2,
-            longestStreak: 5,
-            hasLoggedToday: false,
-            lastSharedAt: Date(),
-            seasonStyle: .summerGlow
-        )
-        let envelope = SunclubAccountabilityInviteEnvelope(
-            profileID: UUID(uuidString: "07F5E424-2D67-44FB-8F46-EAC9F4D6A63D") ?? UUID(),
-            displayName: "Maya",
-            relationshipToken: "uitest-accountability-token",
-            issuedAt: Date(),
-            snapshot: friendSnapshot
-        )
-        appState.importAccountabilityInvite(envelope, sendsResponse: false)
-    }
-
     private func insertSeedRecord(
         day: Date,
         hour: Int,
@@ -671,7 +635,6 @@ struct SunclubApp: App {
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshWeatherKitKillSwitchIfNeeded()
         let uvRefreshTask = appState.refreshUVForecastIfNeeded()
-        appState.refreshAccountabilityForForeground()
         if let route = SunclubWidgetSnapshotStore().takePendingRoute() {
             openExternalRoute(route)
         }
@@ -716,13 +679,6 @@ struct SunclubApp: App {
         }
 
         router.open(route)
-    }
-
-    private static func registerRemoteNotificationHandler(for state: AppState) {
-        SunclubRemoteNotificationBridge.shared.setHandler { _ in
-            let didProcessEvent = await state.processRemoteAccountabilityEventsNow()
-            return didProcessEvent ? .newData : .noData
-        }
     }
 
     private static func registerWatchSyncHandler(for state: AppState) {
@@ -773,27 +729,6 @@ private extension View {
     }
 }
 
-@MainActor
-final class SunclubRemoteNotificationBridge {
-    static let shared = SunclubRemoteNotificationBridge()
-
-    private var handler: (([AnyHashable: Any]) async -> UIBackgroundFetchResult)?
-
-    private init() {}
-
-    func setHandler(_ handler: @escaping ([AnyHashable: Any]) async -> UIBackgroundFetchResult) {
-        self.handler = handler
-    }
-
-    func handle(_ userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
-        guard let handler else {
-            NotificationCenter.default.post(name: .sunclubRemoteNotificationReceived, object: userInfo)
-            return .noData
-        }
-
-        return await handler(userInfo)
-    }
-}
 
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate {
@@ -822,21 +757,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         completionHandler(SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem))
     }
 
-    func application(
-        _ application: UIApplication,
-        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
-    ) {
-        Task { @MainActor in
-            let result = await SunclubRemoteNotificationBridge.shared.handle(userInfo)
-            completionHandler(result)
-        }
-    }
 }
 
-extension Notification.Name {
-    static let sunclubRemoteNotificationReceived = Notification.Name("sunclub.remoteNotificationReceived")
-}
 
 final class SunclubSceneDelegate: NSObject, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
