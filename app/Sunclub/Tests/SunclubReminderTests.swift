@@ -189,7 +189,7 @@ final class SunclubReminderTests: SunclubTestCase {
     }
 
     @MainActor
-    func testScheduleReapplyReminderUsesPreferredCheckInRoute() async throws {
+    func testScheduleReapplyReminderUsesCanonicalReconciliation() async throws {
         let notificationManager = MockNotificationManager()
         let daytime = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 12, hour: 13, minute: 0))
@@ -203,8 +203,8 @@ final class SunclubReminderTests: SunclubTestCase {
         state.scheduleReapplyReminder()
 
         await Task.yield()
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
+        XCTAssertGreaterThan(notificationManager.scheduleRemindersCount, 0)
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
     }
 
     @MainActor
@@ -219,6 +219,7 @@ final class SunclubReminderTests: SunclubTestCase {
             clock: { daytime }
         )
         state.updateReapplySettings(enabled: true, intervalMinutes: 90)
+        XCTAssertTrue(state.markAppliedToday(method: .manual).succeeded)
 
         let result = await state.snoozeReapplyReminder(minutes: 15)
 
@@ -250,7 +251,7 @@ final class SunclubReminderTests: SunclubTestCase {
 
         await Task.yield()
         XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
-        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
+        XCTAssertGreaterThan(notificationManager.scheduleRemindersCount, 0)
     }
 
     @MainActor
@@ -282,8 +283,8 @@ final class SunclubReminderTests: SunclubTestCase {
 
         await Task.yield()
         XCTAssertTrue(handled)
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [90])
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
+        XCTAssertGreaterThan(notificationManager.scheduleRemindersCount, 0)
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
     }
 
     @MainActor
@@ -306,8 +307,8 @@ final class SunclubReminderTests: SunclubTestCase {
         XCTAssertEqual(record.reapplyCount, 1)
         XCTAssertNotNil(record.lastReappliedAt)
         XCTAssertTrue(record.hasReapplied)
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [120])
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderRoutes, [.reapplyCheckIn])
+        XCTAssertGreaterThan(notificationManager.scheduleRemindersCount, 0)
+        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
         XCTAssertEqual(state.reapplyCheckInPresentation?.actionTitle, "Log Another Reapply")
     }
 
@@ -330,7 +331,7 @@ final class SunclubReminderTests: SunclubTestCase {
         let record = try XCTUnwrap(state.record(for: afterSunset))
         XCTAssertEqual(record.reapplyCount, 1)
         XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.isEmpty)
-        XCTAssertEqual(notificationManager.cancelReapplyRemindersCount, 1)
+        XCTAssertGreaterThan(notificationManager.scheduleRemindersCount, 0)
     }
 
     @MainActor
@@ -422,7 +423,7 @@ final class SunclubReminderTests: SunclubTestCase {
             onboardingComplete: true
         )
         XCTAssertEqual(stale?.state, .stale)
-        XCTAssertEqual(stale?.actionTitle, "Refresh Reminders")
+        XCTAssertEqual(stale?.actionTitle, "")
 
         let provisional = NotificationHealthEvaluator.presentation(
             from: NotificationHealthSnapshot(
@@ -435,7 +436,7 @@ final class SunclubReminderTests: SunclubTestCase {
             onboardingComplete: true
         )
         XCTAssertEqual(provisional?.state, .stale)
-        XCTAssertEqual(provisional?.title, "Quiet reminders need attention")
+        XCTAssertEqual(provisional?.title, "Quiet reminders are updating")
     }
 
     @MainActor
@@ -513,7 +514,7 @@ final class SunclubReminderTests: SunclubTestCase {
         await Task.yield()
         XCTAssertEqual(notificationManager.requestAuthorizationIfNeededCount, 1)
         XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
-        XCTAssertEqual(notificationManager.notificationHealthSnapshotCount, 2)
+        XCTAssertEqual(notificationManager.notificationHealthSnapshotCount, 3)
         XCTAssertEqual(state.notificationHealthSnapshot, notificationManager.notificationHealthSnapshotResult)
     }
 }

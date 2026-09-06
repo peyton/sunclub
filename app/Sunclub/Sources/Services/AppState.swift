@@ -28,6 +28,7 @@ final class AppState: SunclubReminderState {
     private let growthFeatureStore: SunclubGrowthFeatureStoring
     private let currentDate: () -> Date
     private(set) var records: [DailyRecord] = []
+    private(set) var departureCheckIns: [DepartureCheckInSnapshot] = []
     private(set) var changeBatches: [SunclubChangeBatch] = []
     private(set) var importSessions: [SunclubImportSession] = []
     private(set) var conflicts: [SunclubConflictItem] = []
@@ -55,7 +56,7 @@ final class AppState: SunclubReminderState {
     private(set) var lastRefreshError: String?
 
     private static let logger = Logger(subsystem: "com.sunclub", category: "AppState")
-    private let calendar = Calendar.current
+    private let calendar = Calendar.autoupdatingCurrent
     private var isNormalizingSelectedDay = false
     private var lastAppliedRestorablePreferences: SunclubRestorablePreferences?
     private var healthKitAuthorizationRequestID: UUID?
@@ -221,6 +222,9 @@ final class AppState: SunclubReminderState {
                     launchRecovery: launchRecoveryResult, syncEnabled: self.syncPreference?.isICloudSyncEnabled ?? true
                 )
                 self.refresh()
+                self.refreshLeaveHomeReminderStatus()
+                self.refreshLiveActivity()
+                if self.settings.hasCompletedOnboarding { self.scheduleReminders() }
             }
         }
     }
@@ -247,6 +251,7 @@ final class AppState: SunclubReminderState {
             settings = try historyService.settings()
             applyRestorablePreferencesFromSettingsIfNeeded()
             records = try historyService.records()
+            departureCheckIns = try historyService.departureCheckIns()
             changeBatches = try historyService.changeBatches()
             importSessions = try historyService.importSessions()
             conflicts = try historyService.unresolvedConflicts()
@@ -295,9 +300,56 @@ final class AppState: SunclubReminderState {
 
     private func scheduleReminders(after uvRefreshTask: Task<Void, Never>) {
         Task {
-            await uvRefreshTask.value
-            await reminderCoordinator.schedule(using: self)
+            await reminderCoordinator.schedule(using: self, after: uvRefreshTask)
         }
+    }
+
+    var pendingDepartureReminder: DepartureCheckInSnapshot? {
+        guard record(for: referenceDate) == nil else { return nil }
+        return departureCheckIns.first {
+            $0.resolution == .unconfirmed && calendar.isDate($0.day, inSameDayAs: referenceDate)
+        }
+    }
+
+    var pendingDepartureCheckIn: DepartureCheckInSnapshot? {
+        guard let pending = pendingDepartureReminder, pending.isActive(at: referenceDate, calendar: calendar) else { return nil }
+        return pending
+    }
+
+    var pendingDepartureCheckInID: UUID? { pendingDepartureCheckIn?.id }
+    var pendingDepartureDate: Date? { pendingDepartureCheckIn?.departedAt }
+
+    func recordDepartureCheckIn(at date: Date) throws -> UUID? {
+        let batch = try mutationService.recordDeparture(at: date)
+        finishDurableChange(batch, reschedulesReminders: false, refreshesUVForecast: false)
+        return try historyService.departureCheckIns().first {
+            $0.isActive(at: date, calendar: calendar)
+        }?.id
+    }
+
+    @discardableResult
+    func resolveDepartureCheckIn(id: UUID, action: DepartureCheckInAction) -> SunclubHistoryMutationResult {
+        do {
+            let now = referenceDate
+            let batch = try mutationService.resolveDeparture(id: id, action: action, now: now)
+            finishDurableChange(batch, reschedulesReminders: true, refreshesUVForecast: false)
+            if batch != nil {
+                if case .confirm = action {
+                    exportHealthKitLogIfNeeded(for: now)
+                    if settings.reapplyReminderEnabled { scheduleReapplyReminder() }
+                }
+            }
+            return .success(SunclubHistoryMutationReceipt(
+                batchID: batch?.id, day: calendar.startOfDay(for: now),
+                verifiedAt: now, kind: .departureCheckIn, didChange: batch != nil
+            ))
+        } catch { return historyMutationFailure(error) }
+    }
+
+    func updateLiveActivities(enabled: Bool) {
+        var reminders = settings.smartReminderSettings
+        reminders.liveActivitiesEnabled = enabled
+        _ = applyReminderSettingsChange(reminders, summary: "Updated Live Activities")
     }
 
     private func refreshStreakRiskReminder() {
@@ -957,6 +1009,9 @@ final class AppState: SunclubReminderState {
         guard result.didChange != false else { return result }
         growthSettings = growthFeatureStore.load()
         refresh()
+        scheduleReminders()
+        refreshLiveActivity()
+        Task { await SunclubDepartureReminderBridge.sync(snapshot: widgetSnapshotStore.load(), now: referenceDate) }
         if action.logsCurrentDay, settings.reapplyReminderEnabled {
             scheduleReapplyReminder()
         }
@@ -986,7 +1041,7 @@ final class AppState: SunclubReminderState {
             guard await refresh.value else { return }
             syncWidgetSnapshot()
             reloadWidgetTimelines()
-            await liveActivityCoordinator.sync(using: self)
+            Task { await liveActivityCoordinator.sync(using: self) }
         }
     }
 
@@ -1285,7 +1340,7 @@ final class AppState: SunclubReminderState {
                 }
                 return nil
             }
-            finishDurableChange(batch, reschedulesReminders: false)
+            finishDurableChange(batch, reschedulesReminders: true)
 
             if batch != nil, calendar.isDate(target, inSameDayAs: currentDate()), record(for: target) == nil {
                 cancelReapplyRemindersIfNeeded()
@@ -1312,7 +1367,7 @@ final class AppState: SunclubReminderState {
 
         do {
             let batch = try historyService.deleteAllRecords()
-            finishDurableChange(batch, reschedulesReminders: false)
+            finishDurableChange(batch, reschedulesReminders: true)
 
             if includedToday, record(for: today) == nil {
                 cancelReapplyRemindersIfNeeded()
@@ -1336,20 +1391,12 @@ final class AppState: SunclubReminderState {
         settings.longestStreak
     }
 
-    func scheduleReapplyReminder() {
-        guard settings.reapplyReminderEnabled else { return }
-        let plan = reapplyReminderPlan
-
-        guard plan.shouldScheduleNotification else {
-            cancelReapplyRemindersIfNeeded()
-            return
-        }
-
+    @discardableResult
+    func scheduleReapplyReminder() -> Task<Void, Never> {
         Task {
-            await notificationManager.scheduleReapplyReminder(
-                plan: plan,
-                route: preferredCheckInRoute
-            )
+            // All logging paths use committed timestamps and the durable snooze state.
+            // The presentation plan remains a preview for a hypothetical application now.
+            _ = await notificationManager.scheduleReminders(using: self)
         }
     }
 
@@ -1357,11 +1404,30 @@ final class AppState: SunclubReminderState {
         guard settings.reapplyReminderEnabled else {
             return .failure("Reapply reminders are off. Turn them on in Settings, then try again.")
         }
-        let plan = ReapplyReminderPlan(snoozeMinutes: minutes, now: currentDate(), calendar: calendar)
-        return await notificationManager.scheduleReapplyReminder(
-            plan: plan,
-            route: preferredCheckInRoute
-        )
+        let reference = currentDate()
+        guard let record = record(for: reference) else {
+            return .failure("Log sunscreen before setting a reapply reminder.")
+        }
+        let applicationDate = record.lastReappliedAt ?? record.verifiedAt
+        guard applicationDate <= reference, calendar.isDate(applicationDate, inSameDayAs: reference) else {
+            return .failure("Log sunscreen today before setting a reapply reminder.")
+        }
+        let plan = ReapplyReminderPlan(snoozeMinutes: minutes, now: reference, calendar: calendar)
+        guard let deadline = plan.fireDate, calendar.isDate(deadline, inSameDayAs: reference) else {
+            return .failure("This reminder would fall on tomorrow. Log sunscreen again when you apply it.")
+        }
+        let result = await notificationManager.scheduleReapplyReminder(plan: plan, route: preferredCheckInRoute)
+        let latest = currentDate()
+        guard settings.reapplyReminderEnabled, calendar.isDate(reference, inSameDayAs: latest),
+              self.record(for: latest).map({ $0.lastReappliedAt ?? $0.verifiedAt }) == applicationDate else {
+            _ = await notificationManager.scheduleReminders(using: self)
+            return .failure("Your sunscreen log changed. Sunclub has checked the current reminders.")
+        }
+        if result.isSuccessful {
+            SunclubLiveActivitySessionStore.saveSnooze(applicationDate: applicationDate, deadline: deadline)
+            refreshLiveActivity()
+        }
+        return result
     }
 
     func updateReapplySettings(enabled: Bool, intervalMinutes: Int) {
@@ -1375,7 +1441,7 @@ final class AppState: SunclubReminderState {
             enabled: enabled, intervalMinutes: clampedIntervalMinutes, summary: "Updated the reapply reminder."
         )
         guard batch != nil else { return }
-        finishDurableChange(batch, reschedulesReminders: false)
+        finishDurableChange(batch, reschedulesReminders: true)
 
         if !enabled {
             cancelReapplyRemindersIfNeeded()
@@ -1405,7 +1471,7 @@ final class AppState: SunclubReminderState {
                 logActionErrorMessage = SunclubHistoryMutationError.missingRecord.localizedDescription
                 return .failure(.missingRecord)
             }
-            finishDurableChange(batch, reschedulesReminders: false)
+            finishDurableChange(batch, reschedulesReminders: true)
 
             if calendar.isDate(targetDay, inSameDayAs: currentDate()) {
                 if settings.reapplyReminderEnabled {
@@ -1687,6 +1753,10 @@ final class AppState: SunclubReminderState {
         uvCoordinator.forecast = forecast
     }
 
+    func refreshLiveActivity() {
+        Task { await liveActivityCoordinator.sync(using: self) }
+    }
+
     func refreshNotificationHealth() {
         Task { await reminderCoordinator.refreshHealth(using: self) }
     }
@@ -1797,7 +1867,7 @@ final class AppState: SunclubReminderState {
         let result = try mutationService.upsert(request)
         let targetDay = result.day
         let batch = result.batch
-        finishDurableChange(batch, reschedulesReminders: false)
+        finishDurableChange(batch, reschedulesReminders: true)
         if batch != nil {
             exportHealthKitLogIfNeeded(for: targetDay)
             recordHistoricalUVIfApplicable(for: targetDay)
@@ -1842,11 +1912,10 @@ final class AppState: SunclubReminderState {
             }
             Task {
                 await liveActivityCoordinator.sync(using: self)
+                await SunclubDepartureReminderBridge.sync(snapshot: widgetSnapshotStore.load(), now: referenceDate)
             }
 
-            if reschedulesReminders {
-                scheduleReminders()
-            }
+            if reschedulesReminders { scheduleReminders() }
 
             refreshStreakRiskReminder()
 
@@ -1979,6 +2048,9 @@ final class AppState: SunclubReminderState {
             records: records,
             uvReading: uvReading,
             uvForecast: uvForecast,
+            pendingDepartureCheckInID: pendingDepartureReminder?.id,
+            pendingDepartureDate: pendingDepartureReminder?.departedAt,
+            pendingDepartureSnoozedUntil: pendingDepartureReminder?.snoozedUntil,
             now: currentDate(),
             calendar: calendar
         )

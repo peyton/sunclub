@@ -23,7 +23,8 @@ final class HomeExitReminderStateStore: HomeExitReminderStateStoring {
     }
 
     func hasObservedInside(on date: Date, calendar: Calendar = .current) -> Bool {
-        defaults.string(forKey: Key.observedInsideDay) == dayStamp(for: date, calendar: calendar)
+        // Occupancy persists overnight. It is cleared on exit or when Home changes.
+        defaults.string(forKey: Key.observedInsideDay) != nil
     }
 
     func markObservedInside(on date: Date, calendar: Calendar = .current) {

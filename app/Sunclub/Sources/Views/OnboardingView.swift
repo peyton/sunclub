@@ -264,6 +264,7 @@ struct EnableNotificationsView: View {
             .frame(maxWidth: .infinity)
         } footer: {
             VStack(spacing: 10) {
+                if !appState.settings.hasCompletedOnboarding || completionError == nil {
                 Button {
                     completeOnboarding(requestsNotifications: true)
                 } label: {
@@ -280,6 +281,7 @@ struct EnableNotificationsView: View {
                 .sunGlassPrimaryButton()
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.enableNotifications")
+                }
 
                 Button(continueTitle) {
                     completeOnboarding(requestsNotifications: false)
@@ -322,7 +324,7 @@ struct EnableNotificationsView: View {
 
     private var enableRemindersTitle: String {
         guard completionError != nil else { return "Enable reminders" }
-        return appState.settings.hasCompletedOnboarding ? "Retry reminders" : "Retry with reminders"
+        return "Retry with reminders"
     }
 
     private var continueTitle: String {
@@ -355,10 +357,14 @@ struct EnableNotificationsView: View {
                 let granted = await notificationManager.configure()
                 guard router.isCurrentOnboardingCompletion(completionID) else { return }
                 if granted {
-                    let report = await notificationManager.scheduleReminders(using: appState)
+                    var report = await notificationManager.scheduleReminders(using: appState)
                     guard router.isCurrentOnboardingCompletion(completionID) else { return }
                     if !report.isSuccessful {
-                        completionError = "Setup was saved, but some reminders could not be scheduled. You can retry or continue to Today."
+                        report = await notificationManager.scheduleReminders(using: appState)
+                    }
+                    guard router.isCurrentOnboardingCompletion(completionID) else { return }
+                    if !report.isSuccessful {
+                        completionError = "Setup was saved, but some reminders could not be scheduled. Sunclub will retry automatically. Continue to Today to start logging."
                         return
                     }
                 }

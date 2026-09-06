@@ -347,7 +347,7 @@ final class SunclubHomePresentationTests: SunclubTestCase {
     }
 
     @MainActor
-    func testHomeDailyPlanStaleNotificationsOfferRepair() throws {
+    func testHomeDailyPlanDoesNotAskUserToRepairNotifications() throws {
         let state = try makeAppState()
         state.completeOnboarding()
         state.markAppliedToday(method: .manual, spfLevel: 50, notes: "Morning")
@@ -362,8 +362,7 @@ final class SunclubHomePresentationTests: SunclubTestCase {
         )
 
         let presentation = state.homeDailyPlanPresentation
-        XCTAssertEqual(presentation.action, .repairReminders)
-        XCTAssertEqual(presentation.actionTitle, "Refresh Reminders")
-        XCTAssertTrue(presentation.detail.contains("Manual logging still works"))
+        XCTAssertNotEqual(presentation.action, .repairReminders)
+        XCTAssertFalse(presentation.actionTitle.isEmpty)
     }
 }

@@ -2,26 +2,10 @@ import XCTest
 
 final class SunclubOnboardingFailureUITests: SunclubUITestCase {
     @MainActor
-    func testSchedulingFailureRemainsVisibleAfterSavingSetupAndRetryReachesToday() {
+    func testSchedulingFailureRetriesAutomaticallyAfterSavingSetup() {
         let app = launchNotificationSetup(scheduling: "fail-once")
-
         tapHittableElement(app.buttons["onboarding.enableNotifications"], in: app)
-
-        let error = app.descendants(matching: .any)["onboarding.completionError"]
-        XCTAssertTrue(
-            error.waitForExistence(timeout: 10),
-            "Saving setup before delayed authorization must not discard the scheduling error."
-        )
-        XCTAssertTrue(error.label.contains("Setup was saved"))
-        let retry = app.buttons["onboarding.enableNotifications"]
-        XCTAssertTrue(waitForLabel("Retry reminders", on: retry))
-        XCTAssertTrue(retry.isEnabled)
-
-        tapHittableElement(retry, in: app)
-
         assertTodayRootVisible(in: app)
-        XCTAssertFalse(error.exists)
-        XCTAssertFalse(app.buttons["welcome.getStarted"].exists)
         XCTAssertFalse(app.buttons["onboarding.enableNotifications"].exists)
     }
 
@@ -38,6 +22,8 @@ final class SunclubOnboardingFailureUITests: SunclubUITestCase {
         )
         XCTAssertTrue(error.label.contains("could not be scheduled"))
         XCTAssertFalse(error.label.localizedCaseInsensitiveContains("disabled"))
+        XCTAssertTrue(error.label.contains("retry automatically"))
+        XCTAssertFalse(app.buttons["onboarding.enableNotifications"].exists)
         let continueButton = app.buttons["onboarding.skipNotifications"]
         XCTAssertTrue(waitForLabel("Continue to Today", on: continueButton))
         XCTAssertTrue(continueButton.isEnabled)

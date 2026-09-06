@@ -165,6 +165,10 @@ struct SunclubApp: App {
             )
         }
 
+        if arguments.contains("UITEST_FORCE_DEPARTURE_CHECK_IN") {
+            _ = try? appState.recordDepartureCheckIn(at: appState.referenceDate)
+        }
+
         if arguments.contains("UITEST_LIVE_UV_ENABLED") {
             appState.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
         }
@@ -631,6 +635,7 @@ struct SunclubApp: App {
 
     private func refreshAppStateForForeground() {
         appState.refresh()
+        appState.refreshLiveActivity()
         appState.refreshNotificationHealth()
         appState.refreshLeaveHomeReminderStatus()
         appState.refreshWeatherKitKillSwitchIfNeeded()
@@ -645,7 +650,7 @@ struct SunclubApp: App {
         guard !isRunningTests, appState.settings.hasCompletedOnboarding else { return }
 
         Task {
-            _ = await NotificationManager.shared.configure()
+            await NotificationManager.shared.scheduleReminders(using: appState)
             await uvRefreshTask.value
             await NotificationManager.shared.scheduleReminders(using: appState)
         }

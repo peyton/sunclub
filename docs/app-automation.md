@@ -155,3 +155,17 @@ Future dates are always view-only. `log-today` and `save-log` reject future targ
 - Settings: expose user-visible automation knobs when the feature writes or returns sensitive data.
 - Tests: add parser, runtime, intent, UI, or web coverage matching the surface.
 - Docs: update this file, website automation docs, and adjacent product docs.
+
+## Departure check-ins
+
+Optional Home monitoring records the first qualifying departure from 06:00–19:59 as **Unconfirmed**, separately from applications. No log or streak is inferred. `Update Sunscreen Check-in` can confirm an actual application time, snooze 15 minutes, or dismiss today's check-in. Shortcut writes and URL writes retain their existing independent permission gates; app-owned notification/widget actions use the app-owned invocation.
+
+- `sunclub://automation/open?route=departure-check-in` opens the time chooser.
+- `sunclub://automation/confirm-check-in?id=<UUID>&applied-at=<ISO8601 timestamp>` confirms the selected time; omitting `id` selects today's unresolved event.
+- `sunclub://automation/snooze-check-in?id=<UUID>` and `sunclub://automation/dismiss-check-in?id=<UUID>` update the check-in without logging sunscreen.
+- The same actions support existing `x-callback-url` handling. Invalid IDs/times are rejected; stale/resolved events cannot overwrite a newer application.
+- `sunclub://widget/open/departure-check-in` is the app-owned foreground time chooser. Small/accessory widgets open it; larger widgets and Live Activities also offer snooze and dismiss.
+
+Confirmation commits application and check-in resolution together. Existing app, Watch, widget and automation logging also resolves an unconfirmed event in the same history batch. Undo restores both. Check-in snapshots and revisions survive backup, import/export, CloudKit and reinstall recovery; they never increase application totals.
+
+Live Activities have an independent Settings switch, enabled by default. Foreground logging and supported Live Activity intents may start a session. Background departure detection relies on local notifications and widgets; it does not guarantee an automatic Live Activity launch. A snooze changes the reminder deadline, never the application timestamp. Reminder schedules repair automatically; legacy repair entrypoints remain compatible.

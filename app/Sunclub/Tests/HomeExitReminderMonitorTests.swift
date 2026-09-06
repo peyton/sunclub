@@ -100,7 +100,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
             calendar: calendar, clock: { now }
         )
         let state = try makeAppState(notificationManager: notificationManager, now: now)
-        configureLeaveHomeReminder(
+        try configureLeaveHomeReminder(
             on: state,
             enabled: true,
             reminderTime: now.addingTimeInterval(600)
@@ -112,7 +112,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderLevels, [.unknown])
-        XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderRoutes, [.manualLog])
+        XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderRoutes, [.departureCheckIn])
         XCTAssertTrue(notificationManager.cancelDailyReminderDays.isEmpty)
         XCTAssertTrue(stateStore.hasFired(on: now, calendar: calendar))
     }
@@ -131,7 +131,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
             calendar: calendar, clock: { now }
         )
         let state = try makeAppState(notificationManager: notificationManager, now: now)
-        configureLeaveHomeReminder(
+        try configureLeaveHomeReminder(
             on: state,
             enabled: true,
             reminderTime: now.addingTimeInterval(600)
@@ -159,7 +159,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
             calendar: calendar, clock: { now }
         )
         let state = try makeAppState(notificationManager: notificationManager, now: now)
-        configureLeaveHomeReminder(
+        try configureLeaveHomeReminder(
             on: state,
             enabled: true,
             reminderTime: now.addingTimeInterval(600)
@@ -174,7 +174,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
         XCTAssertFalse(stateStore.hasFired(on: now, calendar: calendar))
     }
 
-    func testExitDoesNotFireAfterDailyReminderCutoff() async throws {
+    func testExitStillFiresAfterDailyReminderTime() async throws {
         let calendar = Calendar.current
         let now = try referenceTime(in: calendar)
         let notificationManager = MockNotificationManager()
@@ -187,7 +187,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
             calendar: calendar, clock: { now }
         )
         let state = try makeAppState(notificationManager: notificationManager, now: now)
-        configureLeaveHomeReminder(
+        try configureLeaveHomeReminder(
             on: state,
             enabled: true,
             reminderTime: now.addingTimeInterval(-600)
@@ -198,8 +198,61 @@ final class HomeExitReminderMonitorTests: XCTestCase {
         locationService.simulateExit()
         await Task.yield()
 
-        XCTAssertTrue(notificationManager.scheduleLeaveHomeReminderLevels.isEmpty)
+        XCTAssertEqual(notificationManager.scheduleLeaveHomeReminderLevels, [.unknown])
         XCTAssertTrue(notificationManager.cancelDailyReminderDays.isEmpty)
+    }
+
+    func testInsideObservationSurvivesMidnightUntilExit() throws {
+        let calendar = Calendar.current
+        let now = try referenceTime(in: calendar)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let store = HomeExitReminderStateStore(defaults: defaults)
+        store.markObservedInside(on: now.addingTimeInterval(-86400), calendar: calendar)
+        XCTAssertTrue(store.hasObservedInside(on: now, calendar: calendar))
+        store.clearObservedInsideDay()
+        XCTAssertFalse(store.hasObservedInside(on: now, calendar: calendar))
+    }
+
+    func testOutOfHoursExitConsumesOccupancyWithoutCreatingHistory() async throws {
+        let calendar = Calendar.current
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 4, hour: 5)))
+        let notifications = MockNotificationManager()
+        let location = FakeLocationService()
+        let store = FakeHomeExitReminderStateStore()
+        let state = try makeAppState(notificationManager: notifications, now: now)
+        try configureLeaveHomeReminder(on: state, enabled: true, reminderTime: now.addingTimeInterval(3600))
+        let monitor = HomeExitReminderMonitor(locationService: location, notificationManager: notifications,
+            stateStore: store, calendar: calendar, clock: { now })
+        monitor.setStateProvider { state }
+        store.markObservedInside(on: now, calendar: calendar)
+        location.simulateExit()
+        await Task.yield()
+        XCTAssertFalse(store.hasObservedInside(on: now, calendar: calendar))
+        XCTAssertTrue(state.departureCheckIns.isEmpty)
+        XCTAssertTrue(notifications.scheduleLeaveHomeReminderLevels.isEmpty)
+    }
+
+    func testFailedDeliveryRetriesFromDurableCheckInWithoutAnotherExit() async throws {
+        let calendar = Calendar.current
+        let now = try referenceTime(in: calendar)
+        let notifications = MockNotificationManager()
+        notifications.notificationOperationResult = .failure("Unavailable")
+        let location = FakeLocationService()
+        let store = FakeHomeExitReminderStateStore()
+        let state = try makeAppState(notificationManager: notifications, now: now)
+        try configureLeaveHomeReminder(on: state, enabled: true, reminderTime: now)
+        let monitor = HomeExitReminderMonitor(locationService: location, notificationManager: notifications,
+            stateStore: store, calendar: calendar, clock: { now })
+        monitor.setStateProvider { state }
+        store.markObservedInside(on: now, calendar: calendar)
+        location.simulateExit()
+        await Task.yield()
+        XCTAssertEqual(state.departureCheckIns.count, 1)
+        notifications.notificationOperationResult = .success("Accepted")
+        _ = await monitor.refreshMonitoring(using: state, allowPermissionPrompt: false)
+        XCTAssertTrue(store.hasFired(on: now, calendar: calendar))
+        XCTAssertEqual(state.departureCheckIns.count, 1)
+        XCTAssertEqual(notifications.scheduleLeaveHomeReminderLevels.count, 2)
     }
 
     private func makeAppState(notificationManager: NotificationScheduling, now: Date) throws -> AppState {
@@ -217,7 +270,7 @@ final class HomeExitReminderMonitorTests: XCTestCase {
         on state: AppState,
         enabled: Bool,
         reminderTime: Date
-    ) {
+    ) throws {
         let components = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)
         var reminderSettings = state.settings.smartReminderSettings
         reminderSettings.weekdayTime = ReminderTime(hour: components.hour ?? 8, minute: components.minute ?? 0)
@@ -227,8 +280,13 @@ final class HomeExitReminderMonitorTests: XCTestCase {
             homeLocation: HomeLocation(latitude: 34.116, longitude: -118.150),
             radiusMeters: 150
         )
-        state.settings.smartReminderSettings = reminderSettings
-        state.save()
+        let history = SunclubHistoryService(context: state.modelContext)
+        let data = try JSONEncoder().encode(reminderSettings)
+        _ = try history.applySettingsChange(kind: .reminderSettings, summary: "Configure test reminders",
+            changedFields: [.smartReminderSettingsData]) { snapshot in
+            snapshot.smartReminderSettingsData = data
+        }
+        state.refresh()
     }
 
     private func referenceTime(in calendar: Calendar) throws -> Date {

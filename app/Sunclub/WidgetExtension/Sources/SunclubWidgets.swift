@@ -23,6 +23,7 @@ private struct SunclubSnapshotProvider: TimelineProvider {
         let snapshot = store.load()
         var dates = [now]
         if let deadline = snapshot.reapplyDeadline(now: now), deadline > now { dates.append(deadline) }
+        if let snooze = snapshot.pendingDepartureSnoozedUntil, snooze > now { dates.append(snooze) }
         if let midnight = Calendar.current.dateInterval(of: .day, for: now)?.end { dates.append(midnight) }
         // Pre-render transitions so a delayed reload cannot leave yesterday's timer visible.
         let entries = dates.sorted().map { SunclubSnapshotEntry(date: $0, snapshot: snapshot) }
@@ -131,8 +132,18 @@ private struct SunclubLogTodayWidgetView: View {
 
     private var status: SunclubApplicationStatus { entry.snapshot.applicationStatus(now: entry.date) }
 
+    private var pendingID: UUID? {
+        guard !status.hasLoggedToday, let departure = entry.snapshot.pendingDepartureDate,
+              Calendar.current.isDate(departure, inSameDayAs: entry.date), departure <= entry.date,
+              entry.snapshot.pendingDepartureSnoozedUntil.map({ $0 <= entry.date }) ?? true else { return nil }
+        return entry.snapshot.pendingDepartureCheckInID
+    }
+
     var body: some View {
         Group {
+            if let pendingID {
+                pendingCheckIn(id: pendingID)
+            } else {
             switch family {
             case .accessoryCircular:
                 ZStack {
@@ -208,8 +219,31 @@ private struct SunclubLogTodayWidgetView: View {
                 .font(.callout)
                 .fontDesign(.rounded)
             }
+            }
         }
         .widgetURL(SunclubWidgetRoute.today.url)
+    }
+
+    @ViewBuilder
+    private func pendingCheckIn(id: UUID) -> some View {
+        if family == .accessoryCircular {
+            Link(destination: SunclubWidgetRoute.departureCheckIn.url) {
+                Label("Check in", systemImage: "questionmark.circle")
+            }
+            .accessibilityLabel("Did you apply sunscreen? Check in")
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Did you apply sunscreen?").font(.headline)
+                if family != .accessoryRectangular { Text("Unconfirmed").font(.caption).foregroundStyle(.secondary) }
+                Link("Already applied", destination: SunclubWidgetRoute.departureCheckIn.url).frame(minHeight: 32)
+                if family == .systemMedium || family == .systemLarge || family == .systemExtraLarge {
+                    HStack {
+                        Button("Remind in 15 min", intent: SnoozeDepartureCheckInIntent(checkInID: id.uuidString))
+                        Button("Dismiss", intent: DismissDepartureCheckInIntent(checkInID: id.uuidString))
+                    }.font(.caption)
+                }
+            }.fontDesign(.rounded)
+        }
     }
 
     private var statusContent: some View {

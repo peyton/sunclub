@@ -6,10 +6,12 @@ struct SunclubBackupImportSummary: Equatable {
     let exportedAt: Date
     let importedBatchCount: Int
     let importSessionID: UUID
+    var restoredCheckInCount: Int = 0
 
     var statusMessage: String {
         let noun = restoredRecordCount == 1 ? "day" : "days"
-        return "Imported \(restoredRecordCount) \(noun) from backup. iCloud stays unchanged until you send it."
+        let checkIns = restoredCheckInCount > 0 ? " and \(restoredCheckInCount) sunscreen check-ins" : ""
+        return "Imported \(restoredRecordCount) \(noun)\(checkIns) from backup. iCloud stays unchanged until you send it."
     }
 }
 
@@ -38,7 +40,7 @@ struct SunclubBackupService {
         return SunclubBackupDocument(
             payload: SunclubBackupPayload(
                 createdAt: Date(),
-                schemaVersion: "5.0.0",
+                schemaVersion: "6.0.0",
                 storeFiles: storeFiles,
                 restorablePreferences: restorablePreferences
             )
@@ -87,7 +89,8 @@ struct SunclubBackupService {
             restoredRecordCount: importedSnapshot.records.count,
             exportedAt: document.payload.createdAt,
             importedBatchCount: importResult.importedBatchCount,
-            importSessionID: importResult.importSessionID
+            importSessionID: importResult.importSessionID,
+            restoredCheckInCount: try SunclubHistoryService(context: importedContext).departureCheckIns().count
         )
     }
 
@@ -220,6 +223,11 @@ struct SunclubBackupService {
                         importSessionID: batch.importSessionID
                     )
                 )
+            }
+
+            for revision in try sourceContext.fetch(FetchDescriptor<DepartureCheckInRevision>()) {
+                targetContext.insert(try DepartureCheckInRevision(id: revision.id, batchID: revision.batchID,
+                    day: revision.day, snapshot: revision.snapshot))
             }
 
             let sourceRecordRevisions = try sourceContext.fetch(

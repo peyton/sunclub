@@ -418,7 +418,7 @@ final class CloudSyncCoordinator: NSObject, CloudSyncControlling, CKSyncEngineDe
                     return nil
                 }
                 let record = CKRecord(recordType: "ChangeBatch", recordID: recordID)
-                record["payload"] = try JSONEncoder().encode(BatchWire(batch: batch)) as NSData
+                record["payload"] = try JSONEncoder().encode(BatchWire(batch: batch, departureCheckInRevisions: try historyService.departureCheckInWires(for: batchID))) as NSData
                 return record
             case let .recordRevision(revisionID):
                 guard let revision = try historyService.fetchRecordRevisionForSync(id: revisionID) else {

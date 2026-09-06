@@ -36,7 +36,7 @@ enum SunclubStatusPresentation {
         guard leaveHomeReminder.isEnabled else {
             return LeaveHomeReminderStatusPresentation(
                 title: "Home is saved",
-                detail: "Turn this on to use your first trip out as the morning reminder.",
+                detail: "Turn this on for a sunscreen check-in on your first daytime trip out.",
                 symbol: "house.fill",
                 tone: .neutral,
                 actionTitle: nil,

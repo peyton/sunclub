@@ -42,10 +42,11 @@ final class LiveActivityPresentationTests: XCTestCase {
         XCTAssertFalse(state.hasFreshUV(now: now))
     }
 
-    func testDisabledRemindersDoNotPublishActivityFromSnapshot() {
+    func testDisabledNotificationsStillAllowLiveActivityFromSnapshot() {
         let now = Date()
-        XCTAssertNil(SunclubLiveActivitySnapshotBridge.contentState(
-            snapshot: makeSnapshot(now: now, remindersEnabled: false), now: now
+        let noon = Calendar.current.startOfDay(for: now).addingTimeInterval(12 * 3600)
+        XCTAssertNotNil(SunclubLiveActivitySnapshotBridge.contentState(
+            snapshot: makeSnapshot(now: noon, remindersEnabled: false), now: noon
         ))
         XCTAssertNil(SunclubLiveActivitySnapshotBridge.contentState(snapshot: .empty, now: now))
     }
@@ -56,7 +57,100 @@ final class LiveActivityPresentationTests: XCTestCase {
         XCTAssertNil(SunclubLiveActivitySnapshotBridge.contentState(snapshot: snapshot, now: now))
     }
 
-    private func makeSnapshot(now: Date, remindersEnabled: Bool) -> SunclubWidgetSnapshot {
+    func testSnoozePreservesActualApplicationTime() {
+        let now = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        let original = makeState(start: now.addingTimeInterval(-3600), deadline: now)
+        let updated = SunclubLiveActivityCoordinator.snoozedContentState(
+            original, until: now.addingTimeInterval(900), now: now
+        )
+        XCTAssertEqual(updated.reapplyStartDate, original.reapplyStartDate)
+        XCTAssertEqual(updated.lastAppliedLabel, original.lastAppliedLabel)
+        XCTAssertFalse(updated.isReapplyDue(now: now))
+    }
+
+    func testDeadlineOverridesStaleDueLabel() {
+        let now = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        var state = makeState(start: now, deadline: now.addingTimeInterval(900))
+        state.countdownLabel = "due"
+        XCTAssertFalse(state.isReapplyDue(now: now))
+    }
+
+    func testPendingCheckInNeverReportsAnApplicationAndExpiresAtMidnight() throws {
+        let noon = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        let state = SunclubLiveActivitySnapshotBridge.pendingContentState(id: UUID(), departureDate: noon)
+        XCTAssertTrue(state.hasPendingCheckIn(now: noon))
+        XCTAssertFalse(state.hasCurrentApplication(now: noon))
+        XCTAssertEqual(state.statusTitle(now: noon), "Did you apply sunscreen?")
+        let tomorrow = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: noon))
+        XCTAssertFalse(state.hasPendingCheckIn(now: tomorrow))
+        XCTAssertFalse(state.isReapplyDue(now: tomorrow))
+        XCTAssertEqual(state.statusTitle(now: tomorrow), "Not logged today")
+    }
+
+    func testSnoozeSurvivesRefreshAndDoesNotApplyToNextApplication() throws {
+        let suite = "LiveActivityTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let noon = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        let start = noon.addingTimeInterval(-7200)
+        let snoozed = noon.addingTimeInterval(900)
+        SunclubLiveActivitySessionStore.saveSnooze(applicationDate: start, deadline: snoozed, defaults: defaults)
+        XCTAssertEqual(SunclubLiveActivitySessionStore.deadline(applicationDate: start, baseline: noon, now: noon, defaults: defaults), snoozed)
+        // An expired snooze stays due; refresh must not reset the timer.
+        XCTAssertEqual(SunclubLiveActivitySessionStore.deadline(applicationDate: start, baseline: noon, now: snoozed.addingTimeInterval(60), defaults: defaults), snoozed)
+        XCTAssertEqual(SunclubLiveActivitySessionStore.deadline(applicationDate: noon, baseline: noon.addingTimeInterval(7200), now: noon, defaults: defaults), noon.addingTimeInterval(7200))
+    }
+
+    func testDismissedSessionDoesNotRestartButNextApplicationCanStart() {
+        XCTAssertFalse(SunclubLiveActivitySessionStore.shouldStart(sessionID: "application-1", previousSessionID: "application-1", mayStart: true))
+        XCTAssertTrue(SunclubLiveActivitySessionStore.shouldStart(sessionID: "application-2", previousSessionID: "application-1", mayStart: true))
+        XCTAssertFalse(SunclubLiveActivitySessionStore.shouldStart(sessionID: "application-2", previousSessionID: nil, mayStart: false))
+    }
+
+    func testLegacySettingsAndSnapshotDefaultLiveActivitiesOn() throws {
+        let settings = try JSONDecoder().decode(SmartReminderSettings.self, from: Data("{}".utf8))
+        XCTAssertTrue(settings.liveActivitiesEnabled)
+        let snapshot = try JSONDecoder().decode(SunclubWidgetSnapshot.self, from: Data("{}".utf8))
+        XCTAssertTrue(snapshot.liveActivitiesEnabled)
+        XCTAssertNil(snapshot.pendingDepartureCheckInID)
+        var updated = settings
+        updated.liveActivitiesEnabled = false
+        XCTAssertFalse(try JSONDecoder().decode(SmartReminderSettings.self, from: JSONEncoder().encode(updated)).liveActivitiesEnabled)
+        XCTAssertFalse(updated.normalized(fallbackHour: 8, fallbackMinute: 0).liveActivitiesEnabled)
+    }
+
+    func testLiveActivityPreferenceDisablesSnapshotTimerEvenWithRemindersOn() {
+        let noon = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        XCTAssertNil(SunclubLiveActivitySnapshotBridge.contentState(
+            snapshot: makeSnapshot(now: noon, remindersEnabled: true, liveActivitiesEnabled: false), now: noon
+        ))
+    }
+
+    func testFallbackCountdownUsesCurrentDateInsteadOfCachedLabel() {
+        let noon = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        let state = makeState(start: noon, deadline: noon.addingTimeInterval(600))
+        XCTAssertEqual(state.fallbackTimerText(now: noon.addingTimeInterval(300)), "5m")
+    }
+
+    func testWidgetStatusUsesDurableSnoozeWithoutChangingApplication() throws {
+        let suite = "WidgetSnoozeTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let noon = Calendar.current.startOfDay(for: Date()).addingTimeInterval(12 * 3600)
+        let snapshot = makeSnapshot(now: noon, remindersEnabled: true)
+        let due = noon.addingTimeInterval(7200)
+        let snoozed = due.addingTimeInterval(900)
+        SunclubReapplySnoozeStore.save(applicationDate: noon, deadline: snoozed, defaults: defaults)
+        let status = snapshot.applicationStatus(now: due, snoozeDefaults: defaults)
+        XCTAssertEqual(status.lastAppliedAt, noon)
+        XCTAssertEqual(status.reapplyDeadline, snoozed)
+        XCTAssertFalse(status.isReapplyDue)
+        XCTAssertTrue(snapshot.applicationStatus(now: snoozed, snoozeDefaults: defaults).isReapplyDue)
+        let reapplied = makeSnapshot(now: due, remindersEnabled: true)
+        XCTAssertEqual(reapplied.reapplyDeadline(now: due, snoozeDefaults: defaults), due.addingTimeInterval(7200))
+    }
+
+    private func makeSnapshot(now: Date, remindersEnabled: Bool, liveActivitiesEnabled: Bool = true) -> SunclubWidgetSnapshot {
         SunclubWidgetSnapshot(
             isOnboardingComplete: true,
             lastLoggedDay: Calendar.current.startOfDay(for: now),
@@ -66,7 +160,8 @@ final class LiveActivityPresentationTests: XCTestCase {
             currentStreak: 1, longestStreak: 1, weeklyAppliedCount: 1,
             monthlyAppliedCount: 1, monthlyDayCount: 1,
             mostUsedSPF: nil, currentUVIndex: nil, peakUVIndex: nil, peakUVHour: nil,
-            reapplyReminderEnabled: remindersEnabled, reapplyIntervalMinutes: 120
+            reapplyReminderEnabled: remindersEnabled, reapplyIntervalMinutes: 120,
+            liveActivitiesEnabled: liveActivitiesEnabled
         )
     }
 

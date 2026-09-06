@@ -463,7 +463,7 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(snoozed.countdownLabel, "in 30m")
-        XCTAssertEqual(snoozed.reapplyStartDate, now)
+        XCTAssertEqual(snoozed.reapplyStartDate, original.reapplyStartDate)
         XCTAssertEqual(snoozed.reapplyDeadline, deadline)
         XCTAssertEqual(snoozed.currentUVIndex, original.currentUVIndex)
         XCTAssertEqual(snoozed.lastLogDetail, original.lastLogDetail)

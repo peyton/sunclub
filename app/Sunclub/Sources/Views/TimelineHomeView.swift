@@ -53,6 +53,10 @@ struct TimelineHomeView: View {
                 .accessibilityHint("Opens the UV forecast.")
                 .accessibilityIdentifier("home.uvIndexCard")
 
+                if let pending = appState.pendingDepartureCheckIn {
+                    departurePrompt(pending)
+                }
+
                 TodayQuietGlassLogSummary(presentation: log)
 
                 if let reminder = log.reminderText {
@@ -170,17 +174,33 @@ struct TimelineHomeView: View {
                 .frame(minHeight: AppSpacing.xl + AppSpacing.sm)
                 .accessibilityIdentifier("timeline.syncRecoveryCard")
         }
-        if let health = appState.notificationHealthPresentation, health.state != .healthy {
-            Button(health.state == .denied ? "Review reminders" : "Repair reminders") {
-                if health.state == .denied {
-                    router.push(.settingsSunscreenReminders)
-                } else {
-                    appState.repairReminderSchedule()
-                }
-            }
-            .frame(minHeight: AppSpacing.xl + AppSpacing.sm)
-            .accessibilityIdentifier("timeline.notificationHealthAction")
+        if let health = appState.notificationHealthPresentation, health.state == .denied {
+            Button("Review reminders") { router.push(.settingsSunscreenReminders) }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("timeline.notificationHealthAction")
         }
+    }
+
+    private func departurePrompt(_ pending: DepartureCheckInSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            AppText("Did you apply sunscreen?", style: .title)
+            AppText("Left home at \(pending.departedAt.formatted(date: .omitted, time: .shortened)) · Unconfirmed",
+                    style: .caption, color: AppColor.Text.secondary)
+            Button("Already applied") { router.push(.departureCheckIn) }
+                .buttonStyle(SunPrimaryButtonStyle())
+                .accessibilityIdentifier("home.checkIn.confirm")
+            Button("Remind me in 15 minutes") {
+                _ = appState.resolveDepartureCheckIn(id: pending.id, action: .snooze(until: appState.referenceDate.addingTimeInterval(900)))
+            }
+            .buttonStyle(SunSecondaryButtonStyle())
+            .accessibilityIdentifier("home.checkIn.snooze")
+            Button("Dismiss") { _ = appState.resolveDepartureCheckIn(id: pending.id, action: .dismiss) }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("home.checkIn.dismiss")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home.departureCheckIn")
     }
 
     private func logNow() {

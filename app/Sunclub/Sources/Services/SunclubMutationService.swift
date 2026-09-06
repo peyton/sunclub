@@ -63,6 +63,14 @@ final class SunclubMutationService {
         return RecordResult(batch: batch, day: day, verifiedAt: request.verifiedAt, kind: request.kind)
     }
 
+    func recordDeparture(at timestamp: Date) throws -> SunclubChangeBatch? {
+        try history.recordDeparture(at: timestamp)
+    }
+
+    func resolveDeparture(id: UUID, action: DepartureCheckInAction, now: Date) throws -> SunclubChangeBatch? {
+        try history.resolveDeparture(id: id, action: action, now: now)
+    }
+
     func reapply(on day: Date, at timestamp: Date, summary: String) throws -> SunclubChangeBatch? {
         try history.applyDayChange(
             for: day, kind: .reapply, summary: summary,

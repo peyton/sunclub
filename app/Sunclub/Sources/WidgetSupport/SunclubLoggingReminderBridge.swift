@@ -4,6 +4,16 @@ import UserNotifications
 /// Resets the existing reminder after an app-owned background logging action.
 @MainActor
 enum SunclubLoggingReminderBridge {
+    static func syncAfterMutation(didChange: Bool, mayStartLiveActivity: Bool = false) async {
+        guard didChange else { return }
+        let now = Date()
+        await sync(snapshot: SunclubWidgetSnapshotStore().load(), now: now)
+        await SunclubDepartureReminderBridge.sync(snapshot: SunclubWidgetSnapshotStore().load(), now: now)
+        await SunclubLiveActivitySnapshotBridge.updateExisting(
+            snapshot: SunclubWidgetSnapshotStore().load(), now: Date(), mayStart: mayStartLiveActivity
+        )
+    }
+
     static func sync(snapshot: SunclubWidgetSnapshot, now: Date) async {
         guard !RuntimeEnvironment.isRunningTests else { return }
         let center = UNUserNotificationCenter.current()
@@ -17,7 +27,7 @@ enum SunclubLoggingReminderBridge {
     }
 
     static func sync(
-        snapshot: SunclubWidgetSnapshot,
+        snapshot _: SunclubWidgetSnapshot,
         now: Date,
         loadSnapshot: () -> SunclubWidgetSnapshot,
         pendingRequests: () async -> [UNNotificationRequest],
@@ -25,18 +35,39 @@ enum SunclubLoggingReminderBridge {
         addRequest: (UNNotificationRequest) async throws -> Void
     ) async {
         let pending = await pendingRequests()
-        // A newer application or setting change owns the reminder after suspension.
-        guard loadSnapshot() == snapshot else { return }
+        // The shared store is authoritative after suspension. UV and other presentation
+        // refreshes must not discard reminder work for the same committed application.
+        let snapshot = loadSnapshot()
         let replacedIDs = pending.filter { $0.identifier.hasPrefix("sunscreen.reapply.") }.map(\.identifier)
-        removeRequests(replacedIDs)
-        guard let request = request(snapshot: snapshot, now: now),
-              pending.count - replacedIDs.count < 64 else { return }
-        // Logging remains successful if the system declines an optional reminder.
-        try? await addRequest(request)
-        if loadSnapshot() != snapshot {
-            // The per-request suffix prevents cleanup from deleting a newer reminder.
-            removeRequests([request.identifier])
+        if snapshot.hasLoggedToday(now: now) {
+            let todayIDs = pending.filter { request in
+                guard request.identifier.hasPrefix("sunscreen.daily."),
+                      let trigger = request.trigger as? UNCalendarNotificationTrigger,
+                      !trigger.repeats,
+                      let date = Calendar.current.date(from: trigger.dateComponents) else { return false }
+                return Calendar.current.isDate(date, inSameDayAs: now)
+            }.map(\.identifier)
+            let departureIDs = pending.filter { $0.identifier.hasPrefix(SunclubDepartureReminderBridge.prefix) }.map(\.identifier)
+            removeRequests(todayIDs + departureIDs)
         }
+        guard let request = request(snapshot: snapshot, now: now) else {
+            removeRequests(replacedIDs)
+            return
+        }
+        guard pending.contains(where: { $0.identifier == request.identifier }) || pending.count < 64 else { return }
+        // Adding the replacement first keeps an accepted reminder intact on failure.
+        do {
+            if !pending.contains(where: { $0.identifier == request.identifier }) {
+                try await addRequest(request)
+            }
+        } catch { return }
+        let current = loadSnapshot()
+        // Snooze state can change independently of the persisted widget snapshot.
+        if Self.request(snapshot: current, now: now)?.identifier != request.identifier {
+            removeRequests([request.identifier])
+            return
+        }
+        removeRequests(replacedIDs.filter { $0 != request.identifier })
     }
 
     static func request(snapshot: SunclubWidgetSnapshot, now: Date) -> UNNotificationRequest? {
@@ -45,17 +76,21 @@ enum SunclubLoggingReminderBridge {
               let lastApplied = snapshot.lastApplicationDate(now: now),
               lastApplied <= now,
               Calendar.current.isDate(lastApplied, inSameDayAs: now),
-              let deadline = ReminderPlanner.reapplyFireDate(
+              let baseline = ReminderPlanner.reapplyFireDate(
                 from: lastApplied, intervalMinutes: snapshot.reapplyIntervalMinutes
-              ), deadline > now else { return nil }
+              ) else { return nil }
+        let deadline = SunclubLiveActivitySessionStore.deadline(
+            applicationDate: lastApplied, baseline: baseline, now: now
+        )
+        guard deadline > now, Calendar.current.isDate(deadline, inSameDayAs: now) else { return nil }
         let content = UNMutableNotificationContent()
         content.title = "Time to check your sunscreen"
         content.body = "Follow your sunscreen label, and reapply after swimming, sweating, or toweling off."
         content.categoryIdentifier = "SUNSCREEN_REAPPLY"
-        content.userInfo = ["targetRoute": "reapply", "type": "reapply"]
+        content.userInfo = ["targetRoute": "reapply", "type": "reapply", "applicationDate": lastApplied.timeIntervalSince1970]
         content.sound = .default
         return UNNotificationRequest(
-            identifier: "sunscreen.reapply.\(lastApplied.timeIntervalSince1970).\(UUID().uuidString)",
+            identifier: "sunscreen.reapply.\(lastApplied.timeIntervalSince1970).\(deadline.timeIntervalSince1970)",
             content: content,
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: max(1, deadline.timeIntervalSince(now)), repeats: false)
         )

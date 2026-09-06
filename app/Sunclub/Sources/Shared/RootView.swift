@@ -120,6 +120,8 @@ struct RootView: View {
             TimelineHomeView()
         case .verifySuccess:
             VerificationSuccessView()
+        case .departureCheckIn:
+            DepartureCheckInView()
         case .reapplyCheckIn:
             ReapplyCheckInView()
         case .weeklySummary:

@@ -8,6 +8,7 @@ enum AppRoute: String, Hashable, Codable, Identifiable {
     case home
     case verifySuccess
     case reapplyCheckIn
+    case departureCheckIn
     case weeklySummary
     case settings
     case settingsSunscreen

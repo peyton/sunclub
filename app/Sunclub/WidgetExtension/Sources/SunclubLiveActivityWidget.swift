@@ -28,7 +28,7 @@ struct SunclubLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(context.state.hasCurrentApplication() ? context.state.appliedLabel : "Open Sunclub to log today")
+                        Text(context.state.hasPendingCheckIn() ? "Unconfirmed" : (context.state.hasCurrentApplication() ? context.state.appliedLabel : "Open Sunclub to log today"))
                             .font(.footnote)
                             .fontDesign(.rounded)
                             .foregroundStyle(.secondary)
@@ -64,10 +64,12 @@ private struct SunclubLiveActivityLockScreenView: View {
                 .fontDesign(.rounded)
                 .fixedSize(horizontal: false, vertical: true)
             SunclubLiveActivityTimerValue(state: state, size: 34)
-            Text(state.hasCurrentApplication() ? state.appliedLabel : "Open Sunclub to log today")
-                .font(.subheadline)
-                .fontDesign(.rounded)
-                .foregroundStyle(AppColor.Text.secondary)
+            if !state.hasPendingCheckIn() {
+                Text(state.hasCurrentApplication() ? state.appliedLabel : "Open Sunclub to log today")
+                    .font(.subheadline)
+                    .fontDesign(.rounded)
+                    .foregroundStyle(AppColor.Text.secondary)
+            }
             SunclubLiveActivityLogButton(state: state)
         }
         .foregroundStyle(AppColor.Text.primary)
@@ -79,7 +81,31 @@ private struct SunclubLiveActivityLogButton: View {
     let state: SunclubLiveActivityAttributes.ContentState
 
     var body: some View {
-        if state.hasCurrentApplication() {
+        if state.hasPendingCheckIn(), let checkInID = state.pendingDepartureCheckInID {
+            HStack(spacing: 8) {
+                Link(destination: SunclubWidgetRoute.departureCheckIn.url) {
+                    Text("Already applied")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppColor.primaryAction)
+                .accessibilityHint("Choose when you applied sunscreen.")
+                Button(intent: SnoozeDepartureCheckInIntent(checkInID: checkInID.uuidString)) {
+                    Text("In 15 min")
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Remind me in 15 minutes")
+                Button(intent: DismissDepartureCheckInIntent(checkInID: checkInID.uuidString)) {
+                    Image(systemName: "xmark")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Dismiss check-in")
+            }
+            .font(.callout.weight(.semibold))
+            .fontDesign(.rounded)
+        } else if state.hasCurrentApplication() {
             Button(intent: LogReapplicationLiveActivityIntent()) {
                 Label("Log reapplication", systemImage: "arrow.clockwise")
                     .font(.callout.weight(.semibold))
@@ -112,7 +138,14 @@ private struct SunclubLiveActivityTimerValue: View {
     var body: some View {
         let now = Date()
         Group {
-            if !state.hasCurrentApplication(now: now) {
+            if state.hasPendingCheckIn(now: now) {
+                if isCompact {
+                    Image(systemName: "questionmark.circle")
+                        .accessibilityLabel("Sunscreen application unconfirmed")
+                } else {
+                    Text("Unconfirmed").font(.title2.weight(.semibold))
+                }
+            } else if !state.hasCurrentApplication(now: now) {
                 if isCompact {
                     Image(systemName: "sun.max")
                         .accessibilityLabel("Open Sunclub to log today")

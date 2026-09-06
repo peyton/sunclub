@@ -104,6 +104,14 @@ enum SunclubDeepLink: Equatable {
                 spfLevel: query.int("spf"),
                 notes: query.string("notes")
             )
+        case "confirm-check-in":
+            guard let value = query.string("applied-at"), let date = ISO8601DateFormatter().date(from: value),
+                  query.string("id") == nil || query.string("id").flatMap(UUID.init(uuidString:)) != nil else { return nil }
+            return .confirmDepartureCheckIn(id: query.string("id").flatMap(UUID.init(uuidString:)), appliedAt: date)
+        case "snooze-check-in", "dismiss-check-in":
+            guard query.string("id") == nil || query.string("id").flatMap(UUID.init(uuidString:)) != nil else { return nil }
+            let id = query.string("id").flatMap(UUID.init(uuidString:))
+            return name == "snooze-check-in" ? .snoozeDepartureCheckIn(id: id) : .dismissDepartureCheckIn(id: id)
         case "reapply":
             return .reapply
         case "status":
@@ -188,6 +196,10 @@ struct SunclubAutomationRequest: Equatable {
 
     private func queryItems(for action: SunclubAutomationAction) -> [URLQueryItem] {
         switch action {
+        case let .confirmDepartureCheckIn(id, date):
+            return optionalItems([("id", id?.uuidString), ("applied-at", ISO8601DateFormatter().string(from: date))])
+        case let .snoozeDepartureCheckIn(id), let .dismissDepartureCheckIn(id):
+            return optionalItems([("id", id?.uuidString)])
         case let .logToday(spfLevel, notes):
             return optionalItems([
                 ("spf", spfLevel.map(String.init)),

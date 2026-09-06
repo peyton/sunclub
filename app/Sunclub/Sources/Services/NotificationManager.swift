@@ -7,6 +7,11 @@ import UserNotifications
 private enum NotificationConstants {
     static let backgroundTaskID = "com.peyton.sunclub.weekly-report"
     static let dailyManualCategoryID = "SUNSCREEN_DAILY_MANUAL"
+    static let departureCategoryID = "SUNSCREEN_DEPARTURE_CHECK_IN"
+    static let departureRoute = "departure-check-in"
+    static let actionDepartureAppliedID = "SUNSCREEN_DEPARTURE_ALREADY_APPLIED"
+    static let actionDepartureSnoozeID = "SUNSCREEN_DEPARTURE_SNOOZE"
+    static let actionDepartureDismissID = "SUNSCREEN_DEPARTURE_DISMISS"
     static let reapplyCategoryID = "SUNSCREEN_REAPPLY"
     static let actionManualID = "LOG_TODAY_ACTION"
     static let actionReappliedID = "LOG_REAPPLY_ACTION"
@@ -129,9 +134,17 @@ protocol NotificationScheduling: AnyObject {
     func scheduleReapplyReminder(plan: ReapplyReminderPlan, route: AppRoute) async -> NotificationOperationResult
     @discardableResult
     func scheduleLeaveHomeReminder(level: UVLevel, route: AppRoute) async -> NotificationOperationResult
+    @discardableResult
+    func scheduleDepartureCheckIn(id: UUID, at date: Date) async -> NotificationOperationResult
     func cancelDailyReminder(for day: Date, using state: any SunclubReminderState) async
     func cancelReapplyReminders() async
     func notificationHealthSnapshot(using state: any SunclubReminderState) async -> NotificationHealthSnapshot
+}
+
+extension NotificationScheduling {
+    func scheduleDepartureCheckIn(id: UUID, at date: Date) async -> NotificationOperationResult {
+        await scheduleLeaveHomeReminder(level: .unknown, route: .departureCheckIn)
+    }
 }
 
 @MainActor
@@ -153,6 +166,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
     private var configured = false
     private var backgroundTaskRegistered = false
+    private var isReconciling = false
+    private var reconciliationWaiters: [CheckedContinuation<Void, Never>] = []
     private(set) var lastSchedulingReport: NotificationSchedulingReport?
 
     override convenience init() {
@@ -161,7 +176,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     init(
         center: any UserNotificationCenterClient,
-        calendar: Calendar = .current,
+        calendar: Calendar = .autoupdatingCurrent,
         now: @escaping () -> Date = Date.init
     ) {
         self.center = center
@@ -172,6 +187,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     func configure(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
+        configureCategoriesIfNeeded()
+        registerBackgroundTaskIfNeeded()
     }
 
     func registerBackgroundTaskIfNeeded() {
@@ -189,7 +206,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
     }
 
-    func configure() async -> Bool {
+    private func configureCategoriesIfNeeded() {
         if !configured {
             configured = true
 
@@ -215,14 +232,26 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 intentIdentifiers: []
             )
 
+            let departureCategory = UNNotificationCategory(
+                identifier: NotificationConstants.departureCategoryID,
+                actions: [
+                    UNNotificationAction(identifier: NotificationConstants.actionDepartureAppliedID, title: "Already applied", options: [.foreground]),
+                    UNNotificationAction(identifier: NotificationConstants.actionDepartureSnoozeID, title: "Remind me in 15 minutes", options: []),
+                    UNNotificationAction(identifier: NotificationConstants.actionDepartureDismissID, title: "Dismiss", options: [])
+                ],
+                intentIdentifiers: []
+            )
             center.configure(
-                categories: [dailyManualCategory, reapplyCategory],
+                categories: [dailyManualCategory, reapplyCategory, departureCategory],
                 delegate: self
             )
         }
 
-        registerBackgroundTaskIfNeeded()
+    }
 
+    func configure() async -> Bool {
+        configureCategoriesIfNeeded()
+        registerBackgroundTaskIfNeeded()
         do {
             return try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
@@ -241,17 +270,62 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     @discardableResult
     func scheduleReminders(using state: any SunclubReminderState) async -> NotificationSchedulingReport {
+        await acquireReconciliation()
+        defer { releaseReconciliation() }
+        configureCategoriesIfNeeded()
         registerBackgroundTaskIfNeeded()
-        let preservedImmediateRequests = await replaceOwnedRequestsPreservingImmediate()
+        let pendingRequests = await center.pendingNotificationRequests()
+        let preservedImmediateRequests = preservedImmediateRequests(from: pendingRequests, using: state)
         let plannedRequests = makePlannedRequests(using: state)
         let budgetedRequests = NotificationRequestBudget.select(
             from: plannedRequests,
             preservedImmediateCount: preservedImmediateRequests.count
         )
-        let attempt = await addBudgetedRequests(
+        let selectedIDs = Set(budgetedRequests.selected.map { $0.request.identifier })
+        let selectedCategories = Set(budgetedRequests.selected.map(\.category))
+        let preservedIDs = Set(preservedImmediateRequests.map(\.identifier))
+        // Reclaim disabled, expired and unknown requests before consuming more OS slots.
+        // A valid request in a category being changed survives until replacement succeeds.
+        let retiredIDs = pendingRequests.filter { request in
+            guard isSunclubOwned(request), !selectedIDs.contains(request.identifier),
+                  !preservedIDs.contains(request.identifier) else { return false }
+            guard let category = notificationCategory(for: request), selectedCategories.contains(category) else { return true }
+            if category == .reapply, let record = state.record(for: now()),
+               !Self.shouldHandleSnooze(request: request, currentApplication: record.lastReappliedAt ?? record.verifiedAt) {
+                return true
+            }
+            guard let trigger = request.trigger as? UNCalendarNotificationTrigger, !trigger.repeats,
+                  let date = calendar.date(from: trigger.dateComponents) else { return false }
+            return date <= now()
+        }.map(\.identifier)
+        center.removePendingNotificationRequests(withIdentifiers: retiredIDs)
+        var attempt = await addBudgetedRequests(
             budgetedRequests.selected,
-            droppedRequests: budgetedRequests.dropped
+            droppedRequests: budgetedRequests.dropped,
+            authorization: await center.authorizationState()
         )
+        let desiredIDs = Set(budgetedRequests.selected.map { $0.request.identifier })
+            .union(preservedImmediateRequests.map(\.identifier))
+        let failedCategories = Set(attempt.failures.map(\.category))
+        if failedCategories.contains(.daily), pendingRequests.contains(where: {
+            notificationCategory(for: $0) == .daily && ($0.trigger as? UNCalendarNotificationTrigger)?.repeats == true
+        }) {
+            // Calendar recurrence cannot skip individual dates. If its migration only
+            // partly succeeds, keep the old recurrence and roll back dated additions
+            // so the same application reminder never fires from both schedules.
+            let datedIDs = (pendingRequests + budgetedRequests.selected.map(\.request)).filter {
+                notificationCategory(for: $0) == .daily && ($0.trigger as? UNCalendarNotificationTrigger)?.repeats == false
+            }.map(\.identifier)
+            center.removePendingNotificationRequests(withIdentifiers: datedIDs)
+            attempt.scheduledCounts[.daily] = 0
+        }
+        // Only retire superseded requests after their category's replacements succeeded.
+        // Requests for a disabled category are deliberately obsolete.
+        let obsolete = pendingRequests.filter { request in
+            guard isSunclubOwned(request), !desiredIDs.contains(request.identifier) else { return false }
+            return notificationCategory(for: request).map { !failedCategories.contains($0) } ?? true
+        }.map(\.identifier)
+        center.removePendingNotificationRequests(withIdentifiers: obsolete)
         let report = await makeSchedulingReport(
             requested: plannedRequests,
             attempt: attempt
@@ -270,26 +344,36 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return report
     }
 
-    private func replaceOwnedRequestsPreservingImmediate() async -> [UNNotificationRequest] {
-        let pendingRequests = await center.pendingNotificationRequests()
-        let preservedRequests = preservedImmediateRequests(from: pendingRequests)
-        let preservedIdentifiers = Set(preservedRequests.map(\.identifier))
-        let replacedIdentifiers: [String] = pendingRequests.compactMap { request -> String? in
-            guard isSunclubOwned(request), !preservedIdentifiers.contains(request.identifier) else {
-                return nil
-            }
-            return request.identifier
+    private func acquireReconciliation() async {
+        if !isReconciling {
+            isReconciling = true
+            return
         }
+        await withCheckedContinuation { reconciliationWaiters.append($0) }
+    }
 
-        if !replacedIdentifiers.isEmpty {
-            center.removePendingNotificationRequests(withIdentifiers: replacedIdentifiers)
+    private func releaseReconciliation() {
+        if reconciliationWaiters.isEmpty {
+            isReconciling = false
+        } else {
+            reconciliationWaiters.removeFirst().resume()
         }
-        return preservedRequests
     }
 
     private func makePlannedRequests(using state: any SunclubReminderState) -> [NotificationPlannedRequest] {
         var requests = makeDailyReminderRequests(using: state).map {
             NotificationPlannedRequest(category: .daily, request: $0)
+        }
+        if let reapply = makeReapplyRequest(using: state) {
+            requests.append(NotificationPlannedRequest(category: .reapply, request: reapply))
+        }
+        if let departure = state.pendingDepartureReminder,
+           departure.resolution == .unconfirmed,
+           calendar.isDate(departure.day, inSameDayAs: now()),
+           let deadline = departure.snoozedUntil, deadline > now() {
+            requests.append(NotificationPlannedRequest(
+                category: .leaveHome, request: makeDepartureCheckInRequest(id: departure.id, at: deadline)
+            ))
         }
         if let weeklyFallback = makeWeeklyFallbackRequest(using: state) {
             requests.append(NotificationPlannedRequest(category: .weekly, request: weeklyFallback))
@@ -308,7 +392,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     private func addBudgetedRequests(
         _ requests: [NotificationPlannedRequest],
-        droppedRequests: [NotificationPlannedRequest]
+        droppedRequests: [NotificationPlannedRequest],
+        authorization: NotificationAuthorizationState
     ) async -> NotificationSchedulingAttempt {
         var attempt = NotificationSchedulingAttempt(
             scheduledCounts: [:],
@@ -320,22 +405,54 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
                 )
             }
         )
+        var remaining = requests
+        var remainingFailures: [NotificationSchedulingFailure] = []
 
-        for plannedRequest in requests {
-            do {
-                try await center.add(plannedRequest.request)
-                attempt.scheduledCounts[plannedRequest.category, default: 0] += 1
-            } catch {
-                Self.logger.error(
-                    "Failed to add \(plannedRequest.category.rawValue, privacy: .public) notification: \(error.localizedDescription, privacy: .public)"
-                )
-                attempt.failures.append(NotificationSchedulingFailure(
-                    category: plannedRequest.category,
-                    identifier: plannedRequest.request.identifier,
-                    message: error.localizedDescription
-                ))
+        // Back off once per round, not per request: a daemon failure must not
+        // turn a month's reminder queue into a long, blocking onboarding wait.
+        for round in 0..<3 {
+            guard !remaining.isEmpty else { break }
+            if round > 0 {
+                guard authorization.allowsDelivery, !Task.isCancelled else { break }
+                do {
+                    try await Task.sleep(for: .milliseconds(100 * round))
+                } catch { break }
             }
+            let currentPending = await center.pendingNotificationRequests()
+            var ownedIDs = Set(currentPending.filter(isSunclubOwned).map(\.identifier))
+            var retryRequests: [NotificationPlannedRequest] = []
+            var roundFailures: [NotificationSchedulingFailure] = []
+            for planned in remaining {
+                do {
+                    guard authorization.allowsDelivery else {
+                        throw NotificationReconciliationError.notificationsUnavailable
+                    }
+                    let existing = currentPending.first { $0.identifier == planned.request.identifier }
+                    if existing.map({ requestsMatch($0, planned.request) }) != true {
+                        guard ownedIDs.contains(planned.request.identifier)
+                            || ownedIDs.count < NotificationSchedulingPolicy.maximumOwnedPendingRequests else {
+                            throw NotificationReconciliationError.queueFull
+                        }
+                        try await center.add(planned.request)
+                        ownedIDs.insert(planned.request.identifier)
+                    }
+                    attempt.scheduledCounts[planned.category, default: 0] += 1
+                } catch {
+                    retryRequests.append(planned)
+                    roundFailures.append(NotificationSchedulingFailure(
+                        category: planned.category,
+                        identifier: planned.request.identifier,
+                        message: error.localizedDescription
+                    ))
+                }
+            }
+            remaining = retryRequests
+            remainingFailures = roundFailures
         }
+        for failure in remainingFailures {
+            Self.logger.error("Failed to add \(failure.category.rawValue, privacy: .public) notification: \(failure.message, privacy: .public)")
+        }
+        attempt.failures += remainingFailures
         return attempt
     }
 
@@ -377,32 +494,34 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         let timeZone = reminderSettings.notificationTimeZone()
         var scheduleCalendar = calendar
         scheduleCalendar.timeZone = timeZone
+        let referenceNow = now()
+        let today = scheduleCalendar.startOfDay(for: referenceNow)
+        let loggedDays = Set(state.recordedDays.map { scheduleCalendar.startOfDay(for: $0) })
 
-        // One repeating request per weekday supports distinct weekday/weekend times
-        // without consuming a dated request for every future day.
-        let phrases = state.nextDailyPhrases(count: 7)
-        return zip(1...7, phrases).map { weekday, phrase in
-            let reminderTime = (weekday == 1 || weekday == 7)
-                ? reminderSettings.weekendTime
-                : reminderSettings.weekdayTime
-            var components = DateComponents()
-            components.calendar = scheduleCalendar
-            components.timeZone = timeZone
-            components.weekday = weekday
-            components.hour = reminderTime.hour
-            components.minute = reminderTime.minute
-
+        // Dated requests can skip a logged day without deleting future weekday reminders.
+        // Every foreground/background reconciliation replenishes this rolling horizon.
+        return (0..<NotificationSchedulingPolicy.dailyRollingDayCount).compactMap { offset in
+            guard let day = scheduleCalendar.date(byAdding: .day, value: offset, to: today),
+                  !loggedDays.contains(day) else { return nil }
+            let weekday = scheduleCalendar.component(.weekday, from: day)
+            let time = (weekday == 1 || weekday == 7) ? reminderSettings.weekendTime : reminderSettings.weekdayTime
+            guard let fireDate = ReminderPlanner.scheduledDate(
+                for: day, time: time, timeZone: timeZone, calendar: scheduleCalendar
+            ), fireDate > referenceNow else { return nil }
+            let components = scheduleCalendar.dateComponents(
+                [.calendar, .timeZone, .year, .month, .day, .hour, .minute, .second], from: fireDate
+            )
+            let phrases = PhraseBank.dailyPhrases
+            let ordinal = scheduleCalendar.ordinality(of: .day, in: .era, for: day) ?? offset
+            let phrase = phrases.isEmpty ? "Did you apply sunscreen today?" : phrases[abs(ordinal) % phrases.count]
             return UNNotificationRequest(
-                identifier: dailyReminderIdentifier(forWeekday: weekday),
+                identifier: "\(NotificationConstants.dailyPrefix)\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)",
                 content: makeContent(
-                    title: "Sunclub check-in",
-                    body: phrase,
+                    title: "Sunclub check-in", body: phrase,
                     categoryIdentifier: NotificationConstants.dailyManualCategoryID,
-                    route: NotificationConstants.manualRoute,
-                    type: "daily",
-                    includeDefaultSound: true
+                    route: NotificationConstants.manualRoute, type: "daily", includeDefaultSound: true
                 ),
-                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             )
         }
     }
@@ -438,6 +557,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             components.hour = state.growthSettings.uvBriefing.morningHour
             components.minute = state.growthSettings.uvBriefing.morningMinute
             components.timeZone = timeZone
+            guard let fireDate = scheduleCalendar.date(from: components), fireDate > referenceNow else { return nil }
 
             return UNNotificationRequest(
                 identifier: "\(NotificationConstants.uvBriefingPrefix)\(Int(day.timeIntervalSince1970))",
@@ -488,6 +608,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             components.hour = scheduleCalendar.component(.hour, from: peakHour.date)
             components.minute = 0
             components.timeZone = timeZone
+            guard let fireDate = scheduleCalendar.date(from: components), fireDate > referenceNow else { return nil }
 
             return UNNotificationRequest(
                 identifier: "\(NotificationConstants.extremeUVPrefix)\(Int(day.timeIntervalSince1970))",
@@ -509,7 +630,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         level: UVLevel,
         route: AppRoute
     ) async -> NotificationOperationResult {
-        await clearPendingRequests(prefix: NotificationConstants.leaveHomePrefix)
 
         let content = makeContent(
             title: level.shouldShowBanner ? "Heading out? UV is up." : "Heading out?",
@@ -529,23 +649,26 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         return await addImmediateRequest(request, category: .leaveHome)
     }
 
+    @discardableResult
+    func scheduleDepartureCheckIn(id: UUID, at date: Date) async -> NotificationOperationResult {
+        await addImmediateRequest(makeDepartureCheckInRequest(id: id, at: date), category: .leaveHome)
+    }
+
+    private func makeDepartureCheckInRequest(id: UUID, at date: Date) -> UNNotificationRequest {
+        SunclubDepartureReminderBridge.request(id: id, fireDate: date, now: now())
+    }
+
     func cancelDailyReminder(for day: Date, using state: any SunclubReminderState) async {
-        var scheduleCalendar = calendar
-        scheduleCalendar.timeZone = state.settings.smartReminderSettings.notificationTimeZone()
-        center.removePendingNotificationRequests(withIdentifiers: [
-            dailyReminderIdentifier(forWeekday: scheduleCalendar.component(.weekday, from: day))
-        ])
+        // The committed history is the suppression source, including after restart or undo.
+        _ = await scheduleReminders(using: state)
     }
 
     @discardableResult
     func refreshStreakRiskReminder(using state: any SunclubReminderState) async -> NotificationOperationResult {
-        await clearPendingRequests(prefix: NotificationConstants.streakRiskPrefix)
-
-        guard let streakRiskRequest = makeStreakRiskRequest(using: state) else {
-            return .success("No evening reminder is needed right now.")
-        }
-
-        return await addImmediateRequest(streakRiskRequest, category: .streakRisk)
+        let report = await scheduleReminders(using: state)
+        return report.result(for: .streakRisk).failed == 0
+            ? .success("Evening reminder checked.")
+            : .failure("Sunclub couldn't update the evening reminder. It will retry automatically.")
     }
 
     private func makeWeeklyFallbackRequest(using state: any SunclubReminderState) -> UNNotificationRequest? {
@@ -553,6 +676,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         components.weekday = state.settings.weeklyWeekday
         components.hour = state.settings.weeklyHour
         components.minute = 0
+        components.timeZone = state.settings.smartReminderSettings.notificationTimeZone()
 
         return UNNotificationRequest(
             identifier: "\(NotificationConstants.weeklyFallbackPrefix)repeating",
@@ -603,34 +727,13 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
         do {
             let settings = try fetchSettings(context: context)
-            let records = try fetchRecords(context: context)
-            let report = CalendarAnalytics.weeklyReport(records: records, now: now(), calendar: calendar)
-
-            let phrase = PhraseRotation.nextPhrase(from: settings.weeklyPhraseState, catalog: PhraseBank.weeklyPhrases)
-            settings.weeklyPhraseState = phrase.1
-            try context.save()
-
-            let request = UNNotificationRequest(
-                identifier: "\(NotificationConstants.weeklyPrimaryPrefix)\(Int(now().timeIntervalSince1970))",
-                content: makeContent(
-                    title: "Sunclub weekly report",
-                    body: "You logged sunscreen \(report.appliedCount)/\(report.totalDays) days. "
-                        + (report.missedDays.isEmpty ? "All 7 days are logged. " : "Not logged: \(report.missedDays.joined(separator: ", ")). ")
-                        + phrase.0,
-                    categoryIdentifier: NotificationConstants.dailyManualCategoryID,
-                    route: NotificationConstants.weeklyRoute,
-                    type: "weekly_primary"
-                ),
-                trigger: nil
-            )
-
-            try await center.add(request)
+            let succeeded = await reconcileStoredReminders()
             submitWeeklyBackgroundTask(
                 weekday: settings.weeklyWeekday,
                 hour: settings.weeklyHour,
                 minute: 0
             )
-            task.setTaskCompleted(success: true)
+            task.setTaskCompleted(success: succeeded)
         } catch {
             Self.logger.error("Weekly report task failed: \(error.localizedDescription, privacy: .public)")
             task.setTaskCompleted(success: false)
@@ -647,15 +750,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if let existing = try context.fetch(descriptor).first {
             return existing
         }
-        let created = Settings()
-        context.insert(created)
-        try context.save()
-        return created
-    }
-
-    private func fetchRecords(context: ModelContext) throws -> [Date] {
-        let descriptor = FetchDescriptor<DailyRecord>(sortBy: [SortDescriptor(\.startOfDay, order: .reverse)])
-        return try context.fetch(descriptor).map { $0.startOfDay }
+        throw NotificationReconciliationError.missingSettings
     }
 
     @discardableResult
@@ -663,25 +758,27 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         plan: ReapplyReminderPlan,
         route: AppRoute
     ) async -> NotificationOperationResult {
-        await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
-        guard plan.shouldScheduleNotification else {
+        guard let fireDate = plan.fireDate, fireDate > now() else {
+            await cancelReapplyReminders()
             return .success("No reapply reminder is needed right now.")
         }
 
-        let trigger = UNTimeIntervalNotificationTrigger(
-            timeInterval: TimeInterval(plan.intervalMinutes * 60),
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: calendar.dateComponents([.calendar, .timeZone, .year, .month, .day, .hour, .minute, .second], from: fireDate),
             repeats: false
         )
 
         let request = UNNotificationRequest(
-            identifier: "\(NotificationConstants.reapplyPrefix)\(Int(now().timeIntervalSince1970))",
+            identifier: "\(NotificationConstants.reapplyPrefix)current",
             content: makeContent(
                 title: plan.notificationTitle,
                 body: plan.notificationBody,
                 categoryIdentifier: NotificationConstants.reapplyCategoryID,
                 route: notificationRoute(for: route),
                 type: "reapply",
-                includeDefaultSound: true
+                includeDefaultSound: true,
+                applicationDate: SunclubWidgetSnapshotStore().load().lastApplicationDate(now: now())
+                    ?? fireDate.addingTimeInterval(-TimeInterval(plan.intervalMinutes * 60))
             ),
             trigger: trigger
         )
@@ -690,6 +787,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     }
 
     func cancelReapplyReminders() async {
+        await acquireReconciliation()
+        defer { releaseReconciliation() }
         await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
     }
 
@@ -711,7 +810,6 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             return .failure("Notifications are off. Turn them on in Settings, then try again.")
         }
 
-        await clearPendingRequests(prefix: NotificationConstants.testPrefix)
         let content = makeContent(
             title: "Sunclub test reminder",
             body: "If you can see this, reminders are working on this phone.",
@@ -739,6 +837,12 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             "Authorization: \(snapshot.authorizationState.rawValue)",
             "Pending Sunclub requests: \(snapshot.pendingSunclubOwnedCount)/\(NotificationSchedulingPolicy.maximumOwnedPendingRequests)"
         ]
+        lines.append("Live Activities preference: \(state.settings.smartReminderSettings.liveActivitiesEnabled ? "on" : "off")")
+        if let error = SunclubLiveActivitySessionStore.lastRequestError {
+            lines.append("Last Live Activity request failure: \(error)")
+        }
+        lines.append("Daily horizon: up to \(NotificationSchedulingPolicy.dailyRollingDayCount) days; refreshed when Sunclub runs.")
+        lines.append("Pending requests are accepted by iOS; delivery may be quiet or delayed by system settings.")
         for category in NotificationRequestCategory.allCases {
             let pending = snapshot.pendingCount(for: category)
             let expected = snapshot.expectedCategoryCounts[category] ?? 0
@@ -748,13 +852,13 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             lines.append("\(category.diagnosticLabel): \(pending) pending, \(expected) expected")
         }
         if let lastScheduledAt = snapshot.lastScheduledAt {
-            lines.append("Last successful rebuild: \(lastScheduledAt.ISO8601Format())")
+            lines.append("Last successful reconciliation: \(lastScheduledAt.ISO8601Format())")
         } else {
-            lines.append("Last successful rebuild: never")
+            lines.append("Last successful reconciliation: never")
         }
         if let lastSchedulingReport {
-            lines.append("Last rebuild result: \(lastSchedulingReport.isSuccessful ? "success" : "failed")")
-            lines.append("Last rebuild failures: \(lastSchedulingReport.failedCount)")
+            lines.append("Last reconciliation result: \(lastSchedulingReport.isSuccessful ? "success" : "failed")")
+            lines.append("Last reconciliation failures: \(lastSchedulingReport.failedCount)")
             for failure in lastSchedulingReport.failures.prefix(5) {
                 lines.append("- \(failure.category.diagnosticLabel): \(failure.message)")
             }
@@ -810,57 +914,88 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         _ request: UNNotificationRequest,
         category: NotificationRequestCategory
     ) async -> NotificationOperationResult {
+        await acquireReconciliation()
+        defer { releaseReconciliation() }
+        guard await center.authorizationState().allowsDelivery else {
+            return .failure("Notifications are off. Turn them on in Settings.")
+        }
         let pendingRequests = await center.pendingNotificationRequests()
         let replacesExistingRequest = pendingRequests.contains { $0.identifier == request.identifier }
         let ownedPendingCount = pendingRequests.filter(isSunclubOwned).count
         guard replacesExistingRequest || ownedPendingCount < NotificationSchedulingPolicy.maximumOwnedPendingRequests else {
-            let message = "Sunclub's reminder queue is full. Refresh Reminders in Settings, then try again."
+            let message = "Sunclub's reminder queue is full. It will be checked automatically when Sunclub runs."
             Self.logger.error("Skipped \(category.rawValue, privacy: .public) notification because the owned queue is full.")
             return .failure(message)
         }
 
         do {
-            try await center.add(request)
-            return .success("Reminder scheduled.")
+            if pendingRequests.first(where: { $0.identifier == request.identifier }).map({ requestsMatch($0, request) }) != true {
+                try await addWithRetry(request)
+            }
+            let superseded = pendingRequests.filter {
+                notificationCategory(for: $0) == category && $0.identifier != request.identifier
+            }.map(\.identifier)
+            center.removePendingNotificationRequests(withIdentifiers: superseded)
+            return .success("Reminder accepted by iOS.")
         } catch {
             Self.logger.error(
                 "Failed to add \(category.rawValue, privacy: .public) notification: \(error.localizedDescription, privacy: .public)"
             )
-            return .failure("Sunclub couldn't schedule that reminder. Refresh Reminders and try again.")
+            return .failure("Sunclub couldn't schedule that reminder. It will retry when Sunclub next checks reminders.")
         }
     }
 
     private func preservedImmediateRequests(
-        from pendingRequests: [UNNotificationRequest]
+        from pendingRequests: [UNNotificationRequest], using state: any SunclubReminderState
     ) -> [UNNotificationRequest] {
-        [.reapply, .test].compactMap { category in
-            pendingRequests
-                .filter { notificationCategory(for: $0) == category }
-                .max { $0.identifier < $1.identifier }
+        var preserved = pendingRequests.filter { notificationCategory(for: $0) == .test }
+            .max { $0.identifier < $1.identifier }.map { [$0] } ?? []
+        if let departure = state.pendingDepartureReminder,
+           departure.resolution == .unconfirmed,
+           calendar.isDate(departure.day, inSameDayAs: now()), state.record(for: now()) == nil,
+           let request = pendingRequests.first(where: {
+               $0.identifier == "\(NotificationConstants.leaveHomePrefix)\(departure.id.uuidString)"
+           }) {
+            // Initial delivery may still be pending during another foreground refresh.
+            // Preserve that request, but never recreate it once iOS has delivered it.
+            preserved.append(request)
         }
+        return preserved
     }
 
     private func expectedCategoryCounts(using state: any SunclubReminderState) -> [NotificationRequestCategory: Int] {
-        var counts: [NotificationRequestCategory: Int] = [
-            .daily: 7,
-            .weekly: 1
-        ]
-
-        let uvBriefingCount = makeUVBriefingRequests(using: state).count
-        if uvBriefingCount > 0 {
-            counts[.uvBriefing] = uvBriefingCount
+        makePlannedRequests(using: state).reduce(into: [:]) { counts, planned in
+            counts[planned.category, default: 0] += 1
         }
+    }
 
-        let extremeUVCount = makeExtremeUVRequests(using: state).count
-        if extremeUVCount > 0 {
-            counts[.extremeUV] = extremeUVCount
-        }
-
-        if makeStreakRiskRequest(using: state) != nil {
-            counts[.streakRisk] = 1
-        }
-
-        return counts
+    private func makeReapplyRequest(using state: any SunclubReminderState) -> UNNotificationRequest? {
+        let referenceNow = now()
+        guard state.settings.reapplyReminderEnabled, let record = state.record(for: referenceNow) else { return nil }
+        let applicationDate = record.lastReappliedAt ?? record.verifiedAt
+        guard applicationDate <= referenceNow, calendar.isDate(applicationDate, inSameDayAs: referenceNow) else { return nil }
+        let plan = ReapplyReminderPlan(
+            baseIntervalMinutes: state.settings.reapplyIntervalMinutes,
+            uvReading: state.uvReading, now: applicationDate, calendar: calendar
+        )
+        guard let baseline = plan.fireDate else { return nil }
+        let deadline = SunclubLiveActivitySessionStore.deadline(
+            applicationDate: applicationDate, baseline: baseline, now: referenceNow
+        )
+        guard deadline > referenceNow, calendar.isDate(deadline, inSameDayAs: referenceNow) else { return nil }
+        return UNNotificationRequest(
+            identifier: "\(NotificationConstants.reapplyPrefix)\(applicationDate.timeIntervalSince1970).\(deadline.timeIntervalSince1970)",
+            content: makeContent(
+                title: plan.notificationTitle, body: plan.notificationBody,
+                categoryIdentifier: NotificationConstants.reapplyCategoryID,
+                route: NotificationConstants.reapplyRoute, type: "reapply", includeDefaultSound: true,
+                applicationDate: applicationDate
+            ),
+            trigger: UNCalendarNotificationTrigger(
+                dateMatching: calendar.dateComponents([.calendar, .timeZone, .year, .month, .day, .hour, .minute, .second], from: deadline),
+                repeats: false
+            )
+        )
     }
 
     private func categoryCounts(
@@ -916,21 +1051,55 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         categoryIdentifier: String,
         route: String,
         type: String,
-        includeDefaultSound: Bool = false
+        includeDefaultSound: Bool = false,
+        applicationDate: Date? = nil
     ) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.categoryIdentifier = categoryIdentifier
         content.userInfo = [NotificationConstants.routeKey: route, "type": type]
+        if let applicationDate { content.userInfo["applicationDate"] = applicationDate.timeIntervalSince1970 }
         if includeDefaultSound {
             content.sound = .default
         }
         return content
     }
 
-    private func dailyReminderIdentifier(forWeekday weekday: Int) -> String {
-        "\(NotificationConstants.dailyPrefix)repeating.\(weekday)"
+    fileprivate enum NotificationReconciliationError: LocalizedError {
+        case notificationsUnavailable
+        case queueFull
+        case missingSettings
+        var errorDescription: String? {
+            switch self {
+            case .notificationsUnavailable: "Notification permission is not enabled."
+            case .queueFull: "The reminder queue is full; existing reminders were retained."
+            case .missingSettings: "Reminder settings have not finished restoring."
+            }
+        }
+    }
+
+    private func requestsMatch(_ lhs: UNNotificationRequest, _ rhs: UNNotificationRequest) -> Bool {
+        lhs.content.isEqual(rhs.content) && (
+            (lhs.trigger == nil && rhs.trigger == nil) || lhs.trigger?.isEqual(rhs.trigger) == true
+        )
+    }
+
+    private func addWithRetry(_ request: UNNotificationRequest) async throws {
+        let pending = await center.pendingNotificationRequests()
+        guard pending.contains(where: { $0.identifier == request.identifier })
+            || pending.filter(isSunclubOwned).count < NotificationSchedulingPolicy.maximumOwnedPendingRequests else {
+            throw NotificationReconciliationError.queueFull
+        }
+        for attempt in 0..<3 {
+            do {
+                try await center.add(request)
+                return
+            } catch {
+                if attempt == 2 || Task.isCancelled { throw error }
+                try await Task.sleep(for: .milliseconds(100 * (attempt + 1)))
+            }
+        }
     }
 
     private func leaveHomeReminderBody(for level: UVLevel) -> String {
@@ -948,6 +1117,8 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
 
     private func notificationRoute(for route: AppRoute) -> String {
         switch route {
+        case .departureCheckIn:
+            return NotificationConstants.departureRoute
         case .manualLog:
             return NotificationConstants.manualRoute
         case .reapplyCheckIn:
@@ -962,9 +1133,10 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     private func handleReappliedNotificationAction() async {
         do {
             _ = try SunclubAutomationRuntime.performStandalone(.logReapply, invocation: .widget, now: now())
-            await cancelReapplyReminders()
-            await SunclubLiveActivityCoordinator.shared.endAll()
-            await scheduleNextReapplyReminderFromStoredSettings()
+            let snapshot = SunclubWidgetSnapshotStore().load()
+            await SunclubLoggingReminderBridge.sync(snapshot: snapshot, now: now())
+            await SunclubLiveActivitySnapshotBridge.updateExisting(snapshot: snapshot, now: now())
+            await reconcileStoredReminders()
         } catch {
             Self.logger.error(
                 "Failed to log reapplication from notification action: \(error.localizedDescription, privacy: .public)"
@@ -973,57 +1145,56 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         }
     }
 
-    private func scheduleNextReapplyReminderFromStoredSettings() async {
-        guard let context = makeBackgroundContext() else {
-            return
-        }
-
+    @discardableResult
+    private func reconcileStoredReminders() async -> Bool {
+        guard let context = makeBackgroundContext() else { return false }
         do {
-            let settings = try fetchSettings(context: context)
-            guard settings.reapplyReminderEnabled else {
-                return
-            }
-            let plan = ReapplyReminderPlan(
-                baseIntervalMinutes: settings.reapplyIntervalMinutes,
-                uvReading: nil,
-                now: now(),
-                calendar: calendar
-            )
-            await scheduleReapplyReminder(plan: plan, route: .reapplyCheckIn)
+            let input = try BackgroundReminderState(context: context)
+            return await scheduleReminders(using: input).isSuccessful
         } catch {
-            Self.logger.error(
-                "Failed to read reapply settings after notification action: \(error.localizedDescription, privacy: .public)"
-            )
+            Self.logger.error("Couldn't refresh stored reminders: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
-    private func handleSnoozeNotificationAction() async {
+    static func shouldHandleSnooze(request: UNNotificationRequest, currentApplication: Date?) -> Bool {
+        guard let currentApplication else { return false }
+        let timestamp: TimeInterval?
+        if let recorded = request.content.userInfo["applicationDate"] as? TimeInterval {
+            timestamp = recorded
+        } else if request.identifier.hasPrefix(NotificationConstants.reapplyPrefix) {
+            // Shipped numeric identifiers used the original schedule timestamp.
+            // Legacy "current" and "snooze" identifiers have no trustworthy identity.
+            let suffix = String(request.identifier.dropFirst(NotificationConstants.reapplyPrefix.count))
+            let components = suffix.split(separator: ".")
+            timestamp = Double(suffix) ?? (components.count >= 3
+                ? Double("\(components[0]).\(components[1])") : nil)
+        } else {
+            timestamp = nil
+        }
+        guard let timestamp, timestamp.isFinite else { return false }
+        return abs(timestamp - currentApplication.timeIntervalSince1970) < 0.001
+    }
+
+    private func handleSnoozeNotificationAction(_ request: UNNotificationRequest) async {
         let referenceDate = now()
+        let applicationDate = SunclubWidgetSnapshotStore().load().lastApplicationDate(now: referenceDate)
+        guard Self.shouldHandleSnooze(request: request, currentApplication: applicationDate) else { return }
         let plan = ReapplyReminderPlan(snoozeMinutes: 30, now: referenceDate, calendar: calendar)
-        await clearPendingRequests(prefix: NotificationConstants.reapplyPrefix)
-        guard plan.shouldScheduleNotification else {
-            routeHandler(.reapplyCheckIn)
+        guard let deadline = plan.fireDate, calendar.isDate(deadline, inSameDayAs: referenceDate) else { return }
+        let result = await scheduleReapplyReminder(plan: plan, route: .reapplyCheckIn)
+        let latest = now()
+        let snapshot = SunclubWidgetSnapshotStore().load()
+        guard snapshot.reapplyReminderEnabled, calendar.isDate(referenceDate, inSameDayAs: latest),
+              snapshot.lastApplicationDate(now: latest) == applicationDate else {
+            await reconcileStoredReminders()
             return
         }
-
-        let request = UNNotificationRequest(
-            identifier: "\(NotificationConstants.reapplyPrefix)snooze",
-            content: makeContent(
-                title: plan.notificationTitle,
-                body: plan.notificationBody,
-                categoryIdentifier: NotificationConstants.reapplyCategoryID,
-                route: NotificationConstants.reapplyRoute,
-                type: "reapply_snooze",
-                includeDefaultSound: true
-            ),
-            trigger: UNTimeIntervalNotificationTrigger(
-                timeInterval: TimeInterval(plan.intervalMinutes * 60),
-                repeats: false
+        if result.isSuccessful {
+            await SunclubLiveActivityCoordinator.shared.snoozeAll(
+                until: deadline, now: referenceDate, applicationDate: applicationDate
             )
-        )
-        let result = await addImmediateRequest(request, category: .reapply)
-        if result.isSuccessful, let deadline = plan.fireDate {
-            await SunclubLiveActivityCoordinator.shared.snoozeAll(until: deadline, now: referenceDate)
+            await reconcileStoredReminders()
         } else {
             routeHandler(.reapplyCheckIn)
         }
@@ -1044,6 +1215,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
     ) {
         let targetRoute = response.notification.request.content.userInfo[NotificationConstants.routeKey] as? String
         let actionIdentifier = response.actionIdentifier
+        let checkInID = (response.notification.request.content.userInfo["checkInID"] as? String).flatMap(UUID.init(uuidString:))
 
         Task { @MainActor [weak self] in
             guard let self else {
@@ -1052,14 +1224,28 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             }
 
             switch actionIdentifier {
+            case NotificationConstants.actionDepartureAppliedID:
+                routeHandler(.departureCheckIn)
+            case NotificationConstants.actionDepartureSnoozeID, NotificationConstants.actionDepartureDismissID:
+                do {
+                    let action: SunclubAutomationAction = actionIdentifier == NotificationConstants.actionDepartureSnoozeID
+                        ? .snoozeDepartureCheckIn(id: checkInID) : .dismissDepartureCheckIn(id: checkInID)
+                    let result = try SunclubAutomationRuntime.performStandalone(action, invocation: .widget, now: now())
+                    await DepartureCheckInIntentEffects.sync(didChange: result.didChange == true)
+                    await reconcileStoredReminders()
+                } catch {
+                    routeHandler(.departureCheckIn)
+                }
             case NotificationConstants.actionManualID:
                 routeHandler(.manualLog)
             case NotificationConstants.actionReappliedID:
                 await handleReappliedNotificationAction()
             case NotificationConstants.actionSnoozeReapplyID:
-                await handleSnoozeNotificationAction()
+                await handleSnoozeNotificationAction(response.notification.request)
             default:
-                if targetRoute == NotificationConstants.weeklyRoute {
+                if targetRoute == NotificationConstants.departureRoute {
+                    routeHandler(.departureCheckIn)
+                } else if targetRoute == NotificationConstants.weeklyRoute {
                     routeHandler(.weeklySummary)
                 } else if targetRoute == NotificationConstants.reapplyRoute {
                     routeHandler(.reapplyCheckIn)
@@ -1072,4 +1258,34 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             completionHandler()
         }
     }
+}
+
+@MainActor
+private final class BackgroundReminderState: SunclubReminderState {
+    let settings: Settings
+    let growthSettings: SunclubGrowthSettings
+    let recordedDays: [Date]
+    let uvReading: UVReading? = nil
+    let pendingDepartureReminder: DepartureCheckInSnapshot?
+    private let context: ModelContext
+    private let records: [DailyRecord]
+
+    init(context: ModelContext) throws {
+        self.context = context
+        let history = SunclubHistoryService(context: context)
+        guard let savedSettings = try context.fetch(FetchDescriptor<Settings>()).first else {
+            throw NotificationManager.NotificationReconciliationError.missingSettings
+        }
+        settings = savedSettings
+        records = try context.fetch(FetchDescriptor<DailyRecord>())
+        recordedDays = records.map(\.startOfDay)
+        growthSettings = SunclubGrowthFeatureStore().load()
+        pendingDepartureReminder = try history.departureCheckIns().first {
+            $0.resolution == .unconfirmed && Calendar.current.isDateInToday($0.day)
+        }
+    }
+
+    func nextDailyPhrases(count: Int) -> [String] { Array(PhraseBank.dailyPhrases.prefix(count)) }
+    func record(for day: Date) -> DailyRecord? { records.first { Calendar.current.isDate($0.startOfDay, inSameDayAs: day) } }
+    func save() { try? context.save() }
 }
