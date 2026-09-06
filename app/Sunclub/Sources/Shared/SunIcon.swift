@@ -4,6 +4,8 @@ import SwiftUI
 enum SunIcon: String, CaseIterable {
     case sun, calendar, settings, check, clock, plus, chevronLeft, chevronRight, chart, shield
     case cloud, bell, sparkles, book, lifeBuoy, circleHelp, mail
+    // Upstream milk.svg supplies the capped bottle; heart-pulse.svg supplies Health.
+    case sunscreen, heartPulse
 
     var assetName: String {
         "Quiet" + rawValue.prefix(1).uppercased() + rawValue.dropFirst()

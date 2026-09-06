@@ -221,8 +221,8 @@ final class SunclubUVTests: SunclubTestCase {
         let cached = UVForecastDetailView.dataQualityPresentation(for: .cachedWeatherKit)
         let estimated = UVForecastDetailView.dataQualityPresentation(for: .localEstimate)
 
-        XCTAssertEqual(live.title, "Verified Apple Weather UV")
-        XCTAssertEqual(cached.title, "Cached Apple Weather")
+        XCTAssertEqual(live.title, "Apple Weather")
+        XCTAssertEqual(cached.title, "Apple Weather")
         XCTAssertEqual(estimated.title, "Local UV estimate")
         XCTAssertNotEqual(live.symbol, estimated.symbol)
         XCTAssertTrue(UVReadingSource.cachedWeatherKit.shouldDisplayAttribution)

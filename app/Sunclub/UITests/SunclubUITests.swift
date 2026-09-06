@@ -71,7 +71,7 @@ final class SunclubUITests: SunclubUITestCase {
         tapHittableElement(app.buttons["manualLog.spf.50"], in: app)
         tapHittableElement(app.buttons["manualLog.logToday"], in: app)
         assertHomeLoggedState(app)
-        XCTAssertTrue(waitForLabelPrefix("SPF 50", on: app.staticTexts["timeline.statusDetail"]))
+        XCTAssertTrue(waitForLabel("SPF 50", on: app.buttons["home.editSPF"]))
     }
 
     @MainActor
@@ -383,9 +383,9 @@ final class SunclubUITests: SunclubUITestCase {
     func testHomeKeepsLoggedStateSimpleWithHighUVOverride() throws {
         let app = launchHome(additionalArguments: ["UITEST_UV_INDEX=7", "UITEST_SEED_HISTORY=todayLogged"])
         assertHomeLoggedState(app)
-        let detail = app.staticTexts["timeline.statusDetail"]
-        XCTAssertTrue(detail.waitForExistence(timeout: 5))
-        XCTAssertTrue(detail.label.contains("SPF 50"))
+        let spf = app.buttons["home.editSPF"]
+        XCTAssertTrue(scrollToHittableElement(spf, in: app))
+        XCTAssertTrue(waitForLabel("SPF 50", on: spf))
         XCTAssertTrue(app.buttons["home.uvIndexCard"].exists)
         XCTAssertFalse(app.buttons["home.dailyPlan.action"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)

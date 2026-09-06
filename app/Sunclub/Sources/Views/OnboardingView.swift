@@ -11,18 +11,15 @@ struct WelcomeView: View {
     @State private var startFeedbackTrigger = 0
 
     var body: some View {
-        SunLightScreen(
-            contentAlignment: .center,
-            contentMaxWidth: SunLayout.ContentWidth.wideReadable,
-            contentFrameAlignment: .center,
-            footerMaxWidth: SunLayout.ContentWidth.wizard
-        ) {
+        OnboardingScreen(contentMaxWidth: SunLayout.ContentWidth.wideReadable) {
             welcomeContent
-                .padding(.vertical, 32)
+                .padding(.vertical, AppSpacing.lg)
         } footer: {
-            Button("Get Started") {
+            Button {
                 startFeedbackTrigger += 1
                 Self.beginOnboarding(router: router)
+            } label: {
+                OnboardingActionLabel(title: "Get Started", isPrimary: true)
             }
             .sunGlassPrimaryButton()
             .accessibilityIdentifier("welcome.getStarted")
@@ -38,7 +35,7 @@ struct WelcomeView: View {
     @ViewBuilder
     private var welcomeContent: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 56) {
+            HStack(alignment: .center, spacing: AppSpacing.xl) {
                 welcomeHero
                     .frame(minWidth: 400, maxWidth: 440)
 
@@ -50,27 +47,34 @@ struct WelcomeView: View {
             VStack(spacing: 0) {
                 welcomeHero
                 welcomeValueProps
-                    .padding(.top, 44)
+                    .padding(.top, AppSpacing.xl)
             }
             .frame(maxWidth: .infinity)
         }
     }
 
     private var welcomeHero: some View {
-        VStack(spacing: 0) {
-            SunBrandLockup(
-                layout: .stacked,
-                markSize: 96,
-                subtitle: "Your daily dose of sun sense."
-            )
-            .frame(maxWidth: .infinity)
+        VStack(spacing: AppSpacing.sm) {
+            SunLogoMark(size: 80)
+                .accessibilityHidden(true)
+            VStack(spacing: AppSpacing.xxs) {
+                AppText("sunclub", style: .largeTitle, alignment: .center)
+                    .accessibilityAddTraits(.isHeader)
+                AppText(
+                    "Your daily dose of sun sense.",
+                    style: .body,
+                    color: AppColor.Text.secondary,
+                    alignment: .center
+                )
+            }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var welcomeValueProps: some View {
-        VStack(alignment: .leading, spacing: 26) {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
             welcomeValuePropRow(
-                symbol: .check,
+                symbol: .sunscreen,
                 title: "Log sunscreen in seconds",
                 detail: "Record SPF, timing, covered areas, and notes."
             )
@@ -99,25 +103,18 @@ private struct WelcomeValuePropRow: View {
     let icon: SunIcon
 
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .top, spacing: AppSpacing.sm) {
             icon.image.resizable().scaledToFit()
-                .frame(width: 32, height: 32)
+                .frame(width: 24, height: 24)
                 .foregroundStyle(AppColor.accent)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(AppTextStyle.sectionHeader.font)
-                    .foregroundStyle(AppPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(detail)
-                    .font(AppTextStyle.caption.font)
-                    .foregroundStyle(AppPalette.softInk)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                AppText(title, style: .bodyMedium)
+                AppText(detail, style: .caption, color: AppColor.Text.secondary)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: AppSpacing.xxs)
         }
         .accessibilityElement(children: .combine)
     }
@@ -130,52 +127,46 @@ struct EnableLocationView: View {
     @State private var isChoosingCity = false
 
     var body: some View {
-        SunLightScreen(
-            contentAlignment: .center,
-            contentMaxWidth: SunLayout.ContentWidth.wizard,
-            contentFrameAlignment: .center,
-            footerMaxWidth: SunLayout.ContentWidth.wizard
-        ) {
-            VStack(spacing: 18) {
+        OnboardingScreen() {
+            VStack(spacing: AppSpacing.lg) {
                 SunIcon.sun.image.resizable().scaledToFit()
                     .frame(width: 60, height: 60)
                     .foregroundStyle(AppColor.sun)
                     .accessibilityHidden(true)
-                    .padding(.top, 24)
+                    .padding(.top, AppSpacing.sm)
 
-                VStack(spacing: 14) {
-                    Text("Use your location for local UV")
-                        .font(AppTextStyle.largeTitle.font)
-                        .foregroundStyle(AppPalette.ink)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: AppSpacing.sm) {
+                    AppText("Use your location for local UV", style: .title, alignment: .center)
+                        .accessibilityAddTraits(.isHeader)
 
-                    Text("See local UV and hourly forecasts. You can also choose a city or continue with a local estimate.")
-                        .font(AppTextStyle.body.font)
-                        .foregroundStyle(AppPalette.softInk)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+                    AppText("See local UV and hourly forecasts. You can also choose a city or continue with a local estimate.", color: AppColor.Text.secondary, alignment: .center)
                 }
             }
-            .padding(.vertical, 32)
+            .padding(.vertical, AppSpacing.lg)
             .frame(maxWidth: .infinity)
         } footer: {
-            VStack(spacing: 10) {
-                Button("Allow location") {
+            VStack(spacing: AppSpacing.xs) {
+                Button {
                     continueToReminders(usesLiveUV: true)
+                } label: {
+                    OnboardingActionLabel(title: "Allow location", isPrimary: true)
                 }
                 .sunGlassPrimaryButton()
                 .accessibilityIdentifier("onboarding.enableLocation")
 
-                Button("Choose a city instead") {
+                Button {
                     isChoosingCity = true
+                } label: {
+                    OnboardingActionLabel(title: "Choose a city instead")
                 }
                 .sunGlassSecondaryButton()
                 .accessibilityHint("Opens an Apple Maps city search without asking for location access.")
                 .accessibilityIdentifier("onboarding.skipLocation")
 
-                Button("Continue without location") {
+                Button {
                     continueToReminders(usesLiveUV: false)
+                } label: {
+                    OnboardingActionLabel(title: "Continue without location")
                 }
                 .buttonStyle(SunTextButtonStyle())
                 .accessibilityHint("Continues setup without location. Sunclub will show a clearly labeled season-and-time UV estimate.")
@@ -220,31 +211,19 @@ struct EnableNotificationsView: View {
     @State private var notificationManager = OnboardingNotificationManagerFactory.make()
 
     var body: some View {
-        SunLightScreen(
-            contentAlignment: .center,
-            contentMaxWidth: SunLayout.ContentWidth.wizard,
-            contentFrameAlignment: .center,
-            footerMaxWidth: SunLayout.ContentWidth.wizard
-        ) {
-            VStack(spacing: 18) {
+        OnboardingScreen() {
+            VStack(spacing: AppSpacing.lg) {
                 notificationIcon
-                    .padding(.top, 24)
+                    .padding(.top, AppSpacing.sm)
 
-                VStack(spacing: 14) {
-                    Text("Enable reminders")
-                        .font(AppTextStyle.largeTitle.font)
-                        .foregroundStyle(AppPalette.ink)
+                VStack(spacing: AppSpacing.sm) {
+                    AppText("Enable reminders", style: .title, alignment: .center)
+                        .accessibilityAddTraits(.isHeader)
 
-                    Text(reminderDescription)
-                        .font(AppTextStyle.body.font)
-                        .foregroundStyle(AppPalette.softInk)
-                        .multilineTextAlignment(.center)
+                    AppText(reminderDescription, color: AppColor.Text.secondary, alignment: .center)
 
-                    Text("Your logs stay private. No ads. No data sale.")
-                        .font(AppTextStyle.captionMedium.font)
-                        .foregroundStyle(AppPalette.ink)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 4)
+                    AppText("Your logs stay private. No ads. No data sale.", style: .captionMedium, alignment: .center)
+                        .padding(.top, AppSpacing.xxs)
 
                     if let completionError {
                         SunStatusCard(
@@ -260,31 +239,29 @@ struct EnableNotificationsView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .padding(.vertical, 32)
+            .padding(.vertical, AppSpacing.lg)
             .frame(maxWidth: .infinity)
         } footer: {
-            VStack(spacing: 10) {
+            VStack(spacing: AppSpacing.xs) {
                 if !appState.settings.hasCompletedOnboarding || completionError == nil {
-                Button {
-                    completeOnboarding(requestsNotifications: true)
-                } label: {
-                    HStack(spacing: 8) {
-                        if isCompleting {
-                            ProgressView()
-                                .tint(AppColor.primaryActionForeground)
-                                .accessibilityHidden(true)
-                        }
-
-                        Text(isCompleting ? "Setting up" : enableRemindersTitle)
+                    Button {
+                        completeOnboarding(requestsNotifications: true)
+                    } label: {
+                        OnboardingActionLabel(
+                            title: isCompleting ? "Setting up" : enableRemindersTitle,
+                            isPrimary: true,
+                            isLoading: isCompleting
+                        )
                     }
-                }
-                .sunGlassPrimaryButton()
-                .disabled(isCompleting)
-                .accessibilityIdentifier("onboarding.enableNotifications")
+                    .sunGlassPrimaryButton()
+                    .disabled(isCompleting)
+                    .accessibilityIdentifier("onboarding.enableNotifications")
                 }
 
-                Button(continueTitle) {
+                Button {
                     completeOnboarding(requestsNotifications: false)
+                } label: {
+                    OnboardingActionLabel(title: continueTitle)
                 }
                 .sunGlassSecondaryButton()
                 .disabled(isCompleting)
@@ -300,22 +277,10 @@ struct EnableNotificationsView: View {
     }
 
     private var notificationIcon: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [AppPalette.pearl, AppPalette.warmGlow.opacity(0.65)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 104, height: 104)
-
-            SunIcon.bell.image.resizable().scaledToFit()
-                .frame(width: 36, height: 36)
-                .foregroundStyle(AppColor.accent)
-        }
-        .accessibilityHidden(true)
+        SunIcon.bell.image.resizable().scaledToFit()
+            .frame(width: 60, height: 60)
+            .foregroundStyle(AppColor.accent)
+            .accessibilityHidden(true)
     }
 
     private var reminderDescription: String {
@@ -396,5 +361,61 @@ struct EnableNotificationsView: View {
 #Preview("Enable Notifications") {
     SunclubPreviewHost(scenario: .onboarding) {
         EnableNotificationsView()
+    }
+}
+
+/// Large text and short windows keep the actions in the same scroll flow as the copy.
+private struct OnboardingScreen<Content: View, Footer: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var contentMaxWidth: CGFloat = SunLayout.ContentWidth.wizard
+    @ViewBuilder let content: () -> Content
+    @ViewBuilder let footer: () -> Footer
+
+    var body: some View {
+        GeometryReader { geometry in
+            let scrollsActions = dynamicTypeSize.isAccessibilitySize || geometry.size.height < 600
+            SunLightScreen(
+                contentAlignment: .center,
+                contentMaxWidth: contentMaxWidth,
+                contentFrameAlignment: .center,
+                footerMaxWidth: SunLayout.ContentWidth.wizard,
+                showsFooter: !scrollsActions,
+                scrollAccessibilityIdentifier: "onboarding.scroll"
+            ) {
+                VStack(spacing: AppSpacing.lg) {
+                    content()
+                    if scrollsActions {
+                        footer()
+                            .frame(maxWidth: SunLayout.ContentWidth.wizard)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            } footer: {
+                footer()
+            }
+        }
+    }
+}
+
+private struct OnboardingActionLabel: View {
+    let title: String
+    var isPrimary = false
+    var isLoading = false
+
+    var body: some View {
+        HStack(spacing: AppSpacing.xxs) {
+            if isLoading {
+                ProgressView()
+                    .tint(AppColor.primaryActionForeground)
+                    .accessibilityHidden(true)
+            }
+            AppText(
+                title,
+                style: .bodyMedium,
+                color: isPrimary ? AppColor.primaryActionForeground : AppColor.accent,
+                alignment: .center
+            )
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
     }
 }

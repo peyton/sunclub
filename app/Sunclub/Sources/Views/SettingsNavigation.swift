@@ -7,7 +7,7 @@ extension SettingsView {
                 settingsHomeRow(
                     title: "Sunscreen",
                     detail: appState.settings.sunscreenProfile.map { "\($0.name) · SPF \($0.spf)" },
-                    icon: .sun,
+                    icon: .sunscreen,
                     accessibilityIdentifier: "settings.section.sunscreen"
                 ) {
                     router.push(.settingsSunscreen)
@@ -39,7 +39,7 @@ extension SettingsView {
                 settingsHomeRow(
                     title: "Apple Health",
                     detail: healthKitEnabled ? "Sync on" : "Sync off",
-                    icon: .shield,
+                    icon: .heartPulse,
                     accessibilityIdentifier: "settings.section.health"
                 ) {
                     router.push(.settingsHealth)

@@ -10,7 +10,8 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let presentation = logPresentation(record: record, now: now)
 
         XCTAssertEqual(presentation.title, "Logged at \(now.formatted(date: .omitted, time: .shortened))")
-        XCTAssertEqual(presentation.detail, "SPF 50 · Face & Neck")
+        XCTAssertEqual(presentation.detail, "Face & Neck")
+        XCTAssertEqual(presentation.spfLabel, "SPF 50")
         XCTAssertEqual(presentation.statusIdentifier, "home.todayStatus")
         XCTAssertFalse(presentation.title.lowercased().contains("protected"))
     }
@@ -113,9 +114,11 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let now = try date(hour: 10)
         for source: UVReadingSource in [.localEstimate, .cachedWeatherKit] {
             let presentation = uvPresentation(reading: UVReading(index: 3, timestamp: now, source: source), now: now)
-            XCTAssertTrue(presentation.sourceLabel?.hasPrefix(source.statusLabel) == true)
+            XCTAssertTrue(presentation.sourceLabel?.hasPrefix(source == .cachedWeatherKit ? "Apple Weather" : source.statusLabel) == true)
+            XCTAssertFalse(presentation.sourceLabel?.contains("Cached") == true)
             if source == .cachedWeatherKit {
                 XCTAssertTrue(presentation.sourceLabel?.contains("Near Test Place") == true)
+                XCTAssertTrue(presentation.sourceLabel?.contains("Last available forecast") == true)
             }
         }
     }

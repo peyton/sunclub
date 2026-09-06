@@ -63,6 +63,21 @@ final class SunclubMutationService {
         return RecordResult(batch: batch, day: day, verifiedAt: request.verifiedAt, kind: request.kind)
     }
 
+    /// Compare the captured record before touching its single edited field.
+    func updateSPF(recordID: UUID, expected: DailyRecordProjectionSnapshot, spf: Int) throws -> SunclubChangeBatch? {
+        guard let record = try history.record(for: expected.startOfDay),
+              record.id == recordID, record.projectionSnapshot == expected else {
+            throw HistoryServiceError.staleChange
+        }
+        return try history.applyDayChange(
+            for: expected.startOfDay, kind: .manualLog, summary: "Updated logged SPF.", changedFields: [.spfLevel]
+        ) { existing in
+            guard var snapshot = existing else { return nil }
+            snapshot.spfLevel = SunManualLogInput.normalizedSPF(spf)
+            return snapshot
+        }
+    }
+
     func recordDeparture(at timestamp: Date) throws -> SunclubChangeBatch? {
         try history.recordDeparture(at: timestamp)
     }

@@ -169,3 +169,13 @@ Optional Home monitoring records the first qualifying departure from 06:00–19:
 Confirmation commits application and check-in resolution together. Existing app, Watch, widget and automation logging also resolves an unconfirmed event in the same history batch. Undo restores both. Check-in snapshots and revisions survive backup, import/export, CloudKit and reinstall recovery; they never increase application totals.
 
 Live Activities have an independent Settings switch, enabled by default. Foreground logging and supported Live Activity intents may start a session. Background departure detection relies on local notifications and widgets; it does not guarantee an automatic Live Activity launch. A snooze changes the reminder deadline, never the application timestamp. Reminder schedules repair automatically; legacy repair entrypoints remain compatible.
+
+### Focused SPF editing
+
+Open Today through the existing foreground home route, then activate the SPF
+row (or Add SPF) on the displayed log. The sheet edits that record only unless
+Use for future logs is selected. The existing manual-log foreground route still
+opens the full editor, and Settings → Sunscreen manages the saved profile.
+This review-oriented shortcut adds no separate background write route or
+permission bypass. Stale edits require reopening the sheet; default-save retries
+never replay a successful log change.

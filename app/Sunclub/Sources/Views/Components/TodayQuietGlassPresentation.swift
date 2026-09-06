@@ -4,6 +4,7 @@ import Foundation
 struct TodayQuietGlassLogPresentation {
     let title: String
     let detail: String
+    let spfLabel: String?
     let statusIdentifier: String
     let reminderText: String?
 
@@ -21,12 +22,12 @@ struct TodayQuietGlassLogPresentation {
         statusIdentifier = record == nil ? "timeline.todayStatus" : "home.todayStatus"
 
         if let record {
-            let spf = record.spfLevel.map { "SPF \($0)" }
+            spfLabel = record.spfLevel.map { "SPF \($0)" } ?? "Add SPF"
             let savedAreas = SunManualLogInput.coveredAreas(in: record.notes)
             let areas = SunManualLogInput.coveredAreas.filter { savedAreas.contains($0) }
-            detail = [spf, areas.isEmpty ? nil : areas.joined(separator: " & ")]
-                .compactMap { $0 }.joined(separator: " · ")
+            detail = areas.joined(separator: " & ")
         } else {
+            spfLabel = nil
             detail = ""
         }
 
@@ -123,8 +124,9 @@ struct TodayQuietGlassUVPresentation {
 
     private static func sourceLabel(source: UVReadingSource, location: SunclubUVLocationSource?, updatedAt: Date?) -> String {
         let place = location.map { " · \($0.displayName(for: source))" } ?? ""
+        let availability = source == .cachedWeatherKit ? " · Last available forecast" : ""
         let update = updatedAt.map { " · Updated \($0.formatted(date: .omitted, time: .shortened))" } ?? ""
-        return "\(source.statusLabel)\(place)\(update)"
+        return "\(source == .localEstimate ? "Local estimate" : "Apple Weather")\(place)\(availability)\(update)"
     }
 
     private static func recommendation(level: UVLevel, window: SunclubUVProtectionWindow?) -> String {
@@ -140,7 +142,7 @@ struct TodayQuietGlassUVPresentation {
             let update = status.updatedAt.map {
                 " Last updated \($0.formatted(date: .abbreviated, time: .shortened))."
             } ?? ""
-            return "The cached UV reading\(source) is out of date.\(update) Refresh to try again."
+            return "The UV reading\(source) is out of date.\(update) Refresh to try again."
         }
         if let source = status.source?.displayName {
             return "No Apple Weather or local UV value is available for \(source). Refresh to try again."

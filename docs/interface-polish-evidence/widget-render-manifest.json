@@ -1,0 +1,69 @@
+{
+  "method": "Faithful SwiftUI ImageRenderer plus standalone SwiftUI screen host; not Springboard-hosted WidgetKit screenshots",
+  "baselineSHA": "e91eb3693a57029566f48dd41e3dae9a842f3337",
+  "candidateWidgetSourceSHA256": "06a555e742773cb6ba6df72fa55a94a526f2ab0f59d4914f8abe035ffbaaa465",
+  "simulator": "017565C7-FC26-4BEE-9228-384541448774",
+  "sizesPoints": {
+    "medium": [
+      338,
+      158
+    ],
+    "large": [
+      338,
+      354
+    ],
+    "small": [
+      158,
+      158
+    ]
+  },
+  "contentPaddingPoints": 16,
+  "scale": 3,
+  "fixtures": "2026 February/April/May 15, Sunday first weekday, 8 recorded days (4 in current May week)",
+  "adaptations": [
+    "Readonly widgetFamily replaced by initializer parameter",
+    "Deterministic in-memory snapshot fixtures implement same date/status semantics",
+    "Exact AppColor tokens and view bodies copied",
+    "No WidgetKit container or Springboard effects"
+  ],
+  "findingsFixed": [
+    "Medium calendar sidebar collapsed under grid layout priority: fixed width96 and removed elevated grid priority",
+    "Large month snapshot omitted sixth row under lazy layout: bounded eager Grid/GridRow",
+    "Explicit equal month column widths preserve date alignment"
+  ],
+  "evidenceFiles": [
+    "stats-medium-dark.png",
+    "stats-large-dark.png",
+    "baseline-calendar-medium-5weeks.png",
+    "baseline-calendar-medium-4weeks.png",
+    "baseline-calendar-large-6weeks-dark.png",
+    "calendar-medium-4weeks-dark.png",
+    "baseline-calendar-medium-4weeks-dark.png",
+    "calendar-medium-4weeks.png",
+    "calendar-medium-5weeks.png",
+    "week-medium-dark.png",
+    "baseline-week-small.png",
+    "calendar-large-6weeks-dark.png",
+    "calendar-large-6weeks.png",
+    "baseline-stats-medium-dark.png",
+    "baseline-week-medium-dark.png",
+    "baseline-week-medium.png",
+    "baseline-week-small-dark.png",
+    "baseline-stats-medium.png",
+    "baseline-calendar-medium-6weeks.png",
+    "stats-medium.png",
+    "stats-large.png",
+    "screen-hosted-calendars.png",
+    "week-small.png",
+    "baseline-stats-large-dark.png",
+    "calendar-medium-5weeks-dark.png",
+    "baseline-calendar-medium-5weeks-dark.png",
+    "week-medium.png",
+    "baseline-calendar-large-6weeks.png",
+    "baseline-calendar-medium-6weeks-dark.png",
+    "baseline-stats-large.png",
+    "calendar-medium-6weeks.png",
+    "week-small-dark.png",
+    "calendar-medium-6weeks-dark.png"
+  ]
+}

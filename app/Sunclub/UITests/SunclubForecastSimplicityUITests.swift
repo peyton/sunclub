@@ -2,6 +2,22 @@ import XCTest
 
 final class SunclubForecastSimplicityUITests: SunclubUITestCase {
     @MainActor
+    func testForecastAtAccessibilitySizeShowsPeakAndBottomAttribution() {
+        let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments + [
+            "UITEST_FORCE_ACCESSIBILITY_TEXT"
+        ])
+        XCTAssertTrue(waitForVerifiedUVForecast(in: app))
+        tapHittableElement(app.buttons["home.uvIndexCard"], in: app)
+        let hero = app.descendants(matching: .any)["uvForecast.hero"]
+        XCTAssertTrue(hero.waitForExistence(timeout: 5))
+        XCTAssertTrue(hero.label.contains("Current UV"))
+        XCTAssertTrue(scrollToElement(app.staticTexts["uvForecast.dailyPeak"], in: app))
+        XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.tips"], in: app, attempts: 30))
+        XCTAssertTrue(scrollToHittableElement(app.buttons["timeline.weatherKitAttribution"], in: app), app.debugDescription)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Cached'")).firstMatch.exists)
+    }
+
+    @MainActor
     func testGaugeVerticalDragScrollsWithoutOpeningForecast() {
         let app = launchTimelineHome(additionalArguments: liveTimelineForecastArguments + [
             "UITEST_FORCE_ACCESSIBILITY_TEXT"

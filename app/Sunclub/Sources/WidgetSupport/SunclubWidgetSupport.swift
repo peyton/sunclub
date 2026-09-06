@@ -229,6 +229,15 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         CalendarAnalytics.monthGridDays(for: now, calendar: calendar)
     }
 
+    func historyDay(for date: Date, now: Date = Date(), calendar: Calendar = .current) -> SunclubWidgetHistoryDay {
+        SunclubWidgetHistoryDay(
+            isToday: calendar.isDate(date, inSameDayAs: now),
+            isLogged: dayStatus(for: date, now: now, calendar: calendar) == .applied,
+            isFuture: calendar.startOfDay(for: date) > calendar.startOfDay(for: now),
+            isAdjacentMonth: !calendar.isDate(date, equalTo: now, toGranularity: .month)
+        )
+    }
+
     func dayStatus(for date: Date, now: Date = Date(), calendar: Calendar = Calendar.current) -> DayStatus {
         CalendarAnalytics.status(for: date, with: recordedDaySet(calendar: calendar), now: now, calendar: calendar)
     }
@@ -552,4 +561,11 @@ enum SunclubReapplySnoozeStore {
         defaults?.set(applicationDate, forKey: applicationKey)
         defaults?.set(deadline, forKey: deadlineKey)
     }
+}
+
+struct SunclubWidgetHistoryDay: Equatable, Sendable {
+    let isToday: Bool
+    let isLogged: Bool
+    let isFuture: Bool
+    let isAdjacentMonth: Bool
 }

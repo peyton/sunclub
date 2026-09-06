@@ -12,6 +12,7 @@ struct TimelineHomeView: View {
     @State private var isLogging = false
     @State private var feedbackTrigger = 0
     @State private var undoError: String?
+    @State private var spfEdit: LoggedSPFEditTarget?
 
     var body: some View {
         TimelineView(.periodic(from: Calendar.current.startOfDay(for: appState.referenceDate), by: 60)) { _ in
@@ -20,6 +21,9 @@ struct TimelineHomeView: View {
         .onAppear(perform: refresh)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refresh() }
+        }
+        .sheet(item: $spfEdit) { target in
+            LoggedSPFEditorView(target: target)
         }
         .sensoryFeedback(.success, trigger: feedbackTrigger)
         .sunNavigationBarCompatibility()
@@ -39,7 +43,7 @@ struct TimelineHomeView: View {
             selectedDay: now, now: now
         )
         return SunLightScreen(scrollAccessibilityIdentifier: "timeline.scroll") {
-            VStack(spacing: AppSpacing.lg) {
+            VStack(spacing: AppSpacing.md) {
                 todayHeader(now: now)
 
                 Button { router.push(.uvForecast) } label: {
@@ -57,7 +61,9 @@ struct TimelineHomeView: View {
                     departurePrompt(pending)
                 }
 
-                TodayQuietGlassLogSummary(presentation: log)
+                TodayQuietGlassLogSummary(presentation: log) {
+                    if let record { spfEdit = LoggedSPFEditTarget(record: record) }
+                }
 
                 if let reminder = log.reminderText {
                     Button { router.push(.reapplyCheckIn) } label: {
@@ -114,7 +120,7 @@ struct TimelineHomeView: View {
         if let receipt,
            Calendar.current.isDate(receipt.day, inSameDayAs: appState.referenceDate),
            let batchID = receipt.batchID, appState.canUndoChangeIfCurrent(batchID: batchID) {
-            Button("Undo") {
+            Button {
                 switch appState.undoChangeIfCurrent(batchID: batchID) {
                 case .success:
                     self.receipt = nil
@@ -122,40 +128,55 @@ struct TimelineHomeView: View {
                 case let .failure(error):
                     undoError = error.localizedDescription
                 }
+            } label: {
+                Text("Undo")
+                    .font(AppTextStyle.body.font)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            .frame(minWidth: AppSpacing.xl + AppSpacing.sm, minHeight: AppSpacing.xl + AppSpacing.sm)
             .accessibilityIdentifier("home.undoLog")
         }
-        Button("Edit log") {
+        Button {
             let now = appState.referenceDate
             router.push(.manualLog, targetDate: now, targetDayPart: appState.dayPart(for: now))
+        } label: {
+            Text("Edit log")
+                .font(AppTextStyle.body.font)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
-        .frame(minWidth: AppSpacing.xl + AppSpacing.sm, minHeight: AppSpacing.xl + AppSpacing.sm)
         .accessibilityIdentifier("home.sunscreenLogCard")
     }
 
     @ViewBuilder
     private func uvSource(_ presentation: TodayQuietGlassUVPresentation) -> some View {
-        VStack(spacing: AppSpacing.xxs) {
+        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
             if let source = presentation.sourceLabel {
-                AppText(source, style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                // Attribution below owns the provider name; this line owns place and freshness.
+                let detail = attributionSource(presentation) == nil
+                    ? source : source.replacingOccurrences(of: "Apple Weather · ", with: "")
+                AppText(detail, style: .caption, color: AppColor.Text.secondary)
                     .accessibilityIdentifier("home.uvSource")
-            } else if appState.settings.selectedUVPlace == nil && !appState.settings.usesLiveUV {
-                Button("Set location") { router.push(.settingsHealthWeather) }
-                    .frame(minHeight: AppSpacing.xl + AppSpacing.sm)
-                    .accessibilityIdentifier("home.setLocation")
             } else {
-                Button("Refresh UV", action: refresh)
-                    .frame(minHeight: AppSpacing.xl + AppSpacing.sm)
-                    .accessibilityIdentifier("home.refreshUV")
+                AppText(presentation.detail, style: .caption, color: AppColor.Text.secondary)
+                if appState.settings.selectedUVPlace == nil && !appState.settings.usesLiveUV {
+                    Button("Set location") { router.push(.settingsHealthWeather) }
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("home.setLocation")
+                } else {
+                    Button("Refresh UV", action: refresh)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("home.refreshUV")
+                }
             }
-
-            if let source = attributionSource(presentation) {
+            if attributionSource(presentation) != nil {
                 WeatherKitAttributionFooter(
-                    attribution: appState.weatherAttribution, sourceLabel: source, showAttributionLink: true
+                    attribution: appState.weatherAttribution, sourceLabel: "Apple Weather", showAttributionLink: true
                 )
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, AppSpacing.xxs)
     }
 
     private func attributionSource(_ presentation: TodayQuietGlassUVPresentation) -> String? {

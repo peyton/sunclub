@@ -11,28 +11,31 @@ struct WeatherKitAttributionFooter: View {
     let showAttributionLink: Bool
 
     var body: some View {
-        HStack(spacing: 4) {
-            sourceView
-
-            if showAttributionLink {
-                Text("·")
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppPalette.softInk)
-
-                Button("Data Sources") {
-                    openURL(attribution?.legalPageURL ?? weatherKitLegalURL)
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppPalette.pool)
-                .underline()
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open Apple Weather legal attribution and data sources")
-                .accessibilityIdentifier("timeline.weatherKitAttribution")
-            }
-
-            Spacer(minLength: 0)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: AppSpacing.xs) { attributionContent }
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) { attributionContent }
         }
-        .padding(.top, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var attributionContent: some View {
+        sourceView
+        if showAttributionLink {
+            Button {
+                openURL(attribution?.legalPageURL ?? weatherKitLegalURL)
+            } label: {
+                Text("Data Sources")
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppColor.accent)
+                    .underline()
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Apple Weather legal attribution and data sources")
+            .accessibilityIdentifier("timeline.weatherKitAttribution")
+        }
     }
 
     @ViewBuilder
@@ -59,12 +62,12 @@ struct WeatherKitAttributionFooter: View {
     private var fallbackSourceView: some View {
         HStack(spacing: 4) {
             Image(systemName: "sun.max.circle.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
                 .accessibilityHidden(true)
 
-            Text(sourceLabel)
-                .font(.system(size: 11, weight: .medium))
+            Text(sourceLabel == UVReadingSource.cachedWeatherKit.statusLabel ? "Apple Weather" : sourceLabel)
+                .font(AppTextStyle.captionMedium.font)
                 .foregroundStyle(AppPalette.softInk)
         }
     }

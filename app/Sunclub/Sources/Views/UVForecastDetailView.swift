@@ -34,33 +34,16 @@ struct UVForecastDetailView: View {
             contentMaxWidth: SunLayout.ContentWidth.form,
             contentFrameAlignment: .center
         ) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                 forecastHeader
 
                 if let currentUV {
                     UVForecastHeroCard(
                         index: currentUV.index,
                         level: currentUV.level,
-                        sourceLabel: currentUV.sourceLabel,
+                        context: currentUV.context,
                         recommendation: currentUV.recommendation
                     )
-
-                    let quality = Self.dataQualityPresentation(for: currentUV.source)
-                    SunStatusCard(
-                        title: quality.title,
-                        detail: dataQualityDetail,
-                        tint: currentUV.source == .localEstimate ? AppPalette.sun : AppColor.apricot,
-                        symbol: quality.symbol
-                    )
-                    .accessibilityIdentifier("uvForecast.dataQuality")
-
-                    if currentUV.source.shouldDisplayAttribution {
-                        WeatherKitAttributionFooter(
-                            attribution: appState.weatherAttribution,
-                            sourceLabel: currentUV.sourceLabel,
-                            showAttributionLink: true
-                        )
-                    }
                 } else {
                     SunStatusCard(
                         title: "UV data unavailable",
@@ -75,7 +58,20 @@ struct UVForecastDetailView: View {
                     hourlyForecastCard
                 }
 
+                if Self.canShowCurrentUV(status: appState.uvStatus),
+                   let window = appState.uvProtectionWindow,
+                   Calendar.current.isDate(window.start, inSameDayAs: forecastDay) {
+                    SunStatusCard(
+                        title: "Protection window",
+                        detail: "\(window.start.formatted(date: .omitted, time: .shortened))–\(window.end.formatted(date: .omitted, time: .shortened))",
+                        tint: AppColor.sun,
+                        symbol: "sun.max"
+                    )
+                    .accessibilityIdentifier("uvForecast.protectionWindow")
+                }
+
                 protectionTipsCard
+                sourceFooter
 
                 Spacer(minLength: 0)
             }
@@ -132,7 +128,7 @@ struct UVForecastDetailView: View {
     }
 
     private var currentUV: UVForecastPresentationReading? {
-        guard appState.uvStatus.availability == .available else {
+        guard Self.canShowCurrentUV(status: appState.uvStatus) else {
             return nil
         }
 
@@ -142,7 +138,7 @@ struct UVForecastDetailView: View {
                 index: reading.index,
                 level: reading.level,
                 source: reading.source,
-                sourceLabel: reading.source.statusLabel,
+                context: "Current UV",
                 recommendation: reading.level.shortAdvice
             )
         }
@@ -153,7 +149,7 @@ struct UVForecastDetailView: View {
                 index: peakHour.index,
                 level: peakHour.level,
                 source: forecastReadingSource,
-                sourceLabel: appState.uvForecast?.sourceLabel ?? peakHour.sourceLabel,
+                context: "Today’s peak UV",
                 recommendation: appState.uvForecast?.recommendation ?? peakHour.level.shortAdvice
             )
         }
@@ -176,20 +172,56 @@ struct UVForecastDetailView: View {
         appState.uvStatus.source?.displayName(for: activeReadingSource) ?? "Approximate UV"
     }
 
-    private var dataQualityDetail: String {
-        let dataSource = appState.uvReading?.source.statusLabel
-            ?? appState.uvForecast?.sourceLabel
-            ?? UVReadingSource.localEstimate.statusLabel
-        let source = appState.uvStatus.source?.displayName(for: activeReadingSource) ?? "season and time of day"
-        let updated = appState.uvStatus.updatedAt?.formatted(date: .omitted, time: .shortened) ?? "recently"
-        if let window = appState.uvProtectionWindow {
-            return "\(dataSource) · \(source) · Updated \(updated). Protection recommended \(window.start.formatted(date: .omitted, time: .shortened))–\(window.end.formatted(date: .omitted, time: .shortened))."
+    @ViewBuilder
+    private var sourceFooter: some View {
+        if let source = Self.displayedSource(
+            heroSource: currentUV?.source, forecastSource: forecastReadingSource, hours: forecastHours
+        ) {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                Text(Self.freshnessDetail(
+                    for: source, updatedAt: appState.uvStatus.updatedAt,
+                    isStale: appState.uvStatus.freshness == .stale
+                ))
+                    .accessibilityIdentifier("uvForecast.dataQuality")
+                    .font(AppTextStyle.caption.font)
+                    .foregroundStyle(AppColor.Text.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                WeatherKitAttributionFooter(
+                    attribution: appState.weatherAttribution,
+                    sourceLabel: Self.dataQualityPresentation(for: source).title,
+                    showAttributionLink: source.shouldDisplayAttribution
+                )
+            }
         }
-        return "\(dataSource) · \(source) · Updated \(updated)."
+    }
+
+    static func canShowCurrentUV(status: SunclubUVStatus) -> Bool {
+        status.availability == .available && status.freshness != .stale && status.freshness != .unavailable
+    }
+
+    static func displayedSource(
+        heroSource: UVReadingSource?, forecastSource: UVReadingSource, hours: [SunclubUVHourForecast]
+    ) -> UVReadingSource? {
+        heroSource ?? (hours.isEmpty ? nil : forecastSource)
+    }
+
+    static func freshnessDetail(for source: UVReadingSource, updatedAt: Date?, isStale: Bool = false) -> String {
+        let updated = updatedAt.map { "Updated \($0.formatted(date: .omitted, time: .shortened))." }
+        if isStale {
+            return ["Last available forecast is out of date.", updated].compactMap { $0 }.joined(separator: " ")
+        }
+        switch source {
+        case .weatherKit:
+            return updated ?? "Latest available forecast."
+        case .cachedWeatherKit:
+            return ["Last available forecast.", updated].compactMap { $0 }.joined(separator: " ")
+        case .localEstimate:
+            return "Based on season and time of day."
+        }
     }
 
     private var activeReadingSource: UVReadingSource {
-        appState.uvReading?.source ?? forecastReadingSource
+        currentUV?.source ?? forecastReadingSource
     }
 
     static func dataQualityPresentation(
@@ -198,12 +230,12 @@ struct UVForecastDetailView: View {
         switch source {
         case .weatherKit:
             return UVForecastDataQualityPresentation(
-                title: "Verified Apple Weather UV",
+                title: "Apple Weather",
                 symbol: "checkmark.seal.fill"
             )
         case .cachedWeatherKit:
             return UVForecastDataQualityPresentation(
-                title: "Cached Apple Weather",
+                title: "Apple Weather",
                 symbol: "clock.arrow.circlepath"
             )
         case .localEstimate:
@@ -215,11 +247,19 @@ struct UVForecastDetailView: View {
     }
 
     private var hourlyForecastCard: some View {
-        AppCard(padding: 16, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Hourly Forecast")
+        AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(appState.uvStatus.freshness == .stale ? "Last available hourly forecast" : "Hourly Forecast")
                     .font(AppTextStyle.sectionHeader.font)
                     .foregroundStyle(AppPalette.ink)
+
+                if let peak = forecastHours.max(by: { $0.index < $1.index }) {
+                    Text("Today’s peak: UV \(peak.index) at \(peak.date.formatted(.dateTime.hour())).")
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(AppColor.Text.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("uvForecast.dailyPeak")
+                }
 
                 VStack(spacing: 0) {
                     ForEach(forecastHours) { hour in
@@ -237,42 +277,57 @@ struct UVForecastDetailView: View {
     }
 
     private func hourlyForecastRow(_ hour: SunclubUVHourForecast) -> some View {
-        HStack(spacing: 14) {
-            Text(hour.date.formatted(.dateTime.hour()))
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.ink)
-                .frame(width: 48, alignment: .leading)
+        let isCurrent = Self.isCurrentHour(hour.date, now: appState.referenceDate)
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: AppSpacing.xs) {
+                hourLabel(hour, isCurrent: isCurrent)
+                Spacer(minLength: AppSpacing.xxs)
+                hourValue(hour)
+            }
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                hourLabel(hour, isCurrent: isCurrent)
+                hourValue(hour)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, AppSpacing.xs)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(hour.date.formatted(.dateTime.hour()))\(isCurrent ? ", current hour" : ""), UV \(hour.index), \(hour.level.displayName)")
+        .accessibilityIdentifier(isCurrent ? "uvForecast.hour.current" : "uvForecast.hour.\(hour.date.timeIntervalSince1970)")
+    }
 
-            Image(systemName: hour.level.symbolName)
-                .font(AppTextStyle.bodyMedium.font)
-                .foregroundStyle(hour.level.designTextTint)
-                .frame(width: 24)
-                .accessibilityHidden(true)
+    private func hourLabel(_ hour: SunclubUVHourForecast, isCurrent: Bool) -> some View {
+        Text("\(hour.date.formatted(.dateTime.hour()))\(isCurrent ? " · Now" : "")")
+            .font(AppTextStyle.captionMedium.font)
+            .foregroundStyle(AppColor.Text.primary)
+            .fixedSize(horizontal: true, vertical: false)
+    }
 
+    private func hourValue(_ hour: SunclubUVHourForecast) -> some View {
+        HStack(spacing: AppSpacing.xxs) {
             Text("\(hour.index)")
                 .font(AppTextStyle.metric.font)
-                .foregroundStyle(AppPalette.ink)
-                .frame(width: 28, alignment: .leading)
-
-            Spacer(minLength: 0)
-
+                .foregroundStyle(AppColor.Text.primary)
             Text(hour.level.displayName)
-                .font(AppTextStyle.captionMedium.font)
-                .foregroundStyle(AppPalette.softInk)
+                .font(AppTextStyle.caption.font)
+                .foregroundStyle(AppColor.Text.secondary)
         }
-        .padding(.vertical, 10)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(hour.date.formatted(.dateTime.hour())), UV \(hour.index), \(hour.level.displayName)")
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    static func isCurrentHour(_ date: Date, now: Date, calendar: Calendar = .current) -> Bool {
+        guard let hour = calendar.dateInterval(of: .hour, for: date) else { return false }
+        return now >= hour.start && now < hour.end
     }
 
     private var protectionTipsCard: some View {
-        AppCard(padding: 16, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 9) {
+        AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 Text("Sun Protection Tips")
                     .font(AppTextStyle.bodyMedium.font)
                     .foregroundStyle(AppPalette.ink)
 
-                Text("Seek shade during peak sun hours, wear a hat, and use UV-protective clothing.")
+                Text("Seek shade, wear a hat, and cover up.")
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppPalette.softInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -282,29 +337,22 @@ struct UVForecastDetailView: View {
     }
 
     private var forecastHours: [SunclubUVHourForecast] {
-        let calendar = Calendar.current
-        let day = forecastDay
-        let liveHours = appState.uvForecast?.hours.filter {
-            calendar.isDate($0.date, inSameDayAs: day)
-        } ?? []
-
-        if !liveHours.isEmpty {
-            let lateMorningHours = liveHours.filter {
-                let hour = calendar.component(.hour, from: $0.date)
-                return hour >= 10 && hour <= 15
-            }
-            return Array((lateMorningHours.isEmpty ? liveHours : lateMorningHours).prefix(6))
-        }
-
-        return []
+        Self.hoursForDay(appState.uvForecast?.hours ?? [], day: forecastDay)
     }
+
+    static func hoursForDay(
+        _ hours: [SunclubUVHourForecast], day: Date, calendar: Calendar = .current
+    ) -> [SunclubUVHourForecast] {
+        hours.filter { calendar.isDate($0.date, inSameDayAs: day) }.sorted { $0.date < $1.date }
+    }
+
 }
 
 private struct UVForecastPresentationReading {
     let index: Int
     let level: UVLevel
     let source: UVReadingSource
-    let sourceLabel: String
+    let context: String
     let recommendation: String
 }
 
@@ -316,41 +364,32 @@ struct UVForecastDataQualityPresentation: Equatable {
 private struct UVForecastHeroCard: View {
     let index: Int
     let level: UVLevel
-    let sourceLabel: String
+    let context: String
     let recommendation: String
 
+    @ScaledMetric(relativeTo: .largeTitle) private var metricSize: CGFloat = 72
+
     var body: some View {
-        AppCard(padding: 18, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 16) {
-                    Text("\(index)")
-                        .font(AppTypography.streakNumber)
-                        .foregroundStyle(level.designTextTint)
-                        .frame(minWidth: 88, alignment: .leading)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("UV Index")
-                            .font(AppTextStyle.captionMedium.font)
-                            .foregroundStyle(level.designTextTint)
-
-                        Text(level.displayName)
-                            .font(AppTypography.screenTitle)
-                            .foregroundStyle(level.designTextTint)
-
-                        Text(sourceLabel)
-                            .font(AppTextStyle.caption.font)
-                            .foregroundStyle(AppPalette.softInk)
-                    }
-                }
-
+        AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppColor.surfaceElevated) {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(context)
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppColor.Text.secondary)
+                Text("\(index)")
+                    .font(AppFont.heroMetric(size: metricSize))
+                    .foregroundStyle(level.designTextTint)
+                Text(level.displayName)
+                    .font(AppTextStyle.bodyMedium.font)
+                    .foregroundStyle(AppColor.Text.primary)
                 Text(recommendation)
                     .font(AppTextStyle.body.font)
-                    .foregroundStyle(AppPalette.ink)
+                    .foregroundStyle(AppColor.Text.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("UV Index \(index), \(level.displayName). \(sourceLabel). \(recommendation)")
+        .accessibilityLabel("UV Index \(index), \(level.displayName). \(context). \(recommendation)")
         .accessibilityIdentifier("uvForecast.hero")
     }
 }
