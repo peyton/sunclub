@@ -6,280 +6,81 @@ import XCTest
 
 @MainActor
 final class SunclubWidgetTests: XCTestCase {
-    func testLogTodayPresentationSupportsEveryWidgetFamily() {
-        XCTAssertEqual(
-            SunclubLogTodayWidgetFamily.allCases.map(\.rawValue),
-            [
-                "systemSmall",
-                "systemMedium",
-                "systemLarge",
-                "systemExtraLarge",
-                "accessoryCircular",
-                "accessoryRectangular"
-            ]
-        )
+    func testUnloggedWidgetOffersFirstApplicationAndTodayDestination() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(dayOffsets: [1], longestStreak: 1, now: now, calendar: calendar)
+        let status = snapshot.applicationStatus(now: now, calendar: calendar)
+        XCTAssertFalse(status.hasLoggedToday)
+        XCTAssertEqual(status.actionTitle, "Log sunscreen")
+        XCTAssertNil(status.lastAppliedAt)
+        XCTAssertNil(status.reapplyDeadline)
+        XCTAssertEqual(SunclubWidgetRoute.today.appRoute, .home)
+        XCTAssertEqual(SunclubWidgetRoute.updateToday.appRoute, .manualLog)
     }
 
-    func testAccountabilityPresentationSupportsEveryWidgetFamily() throws {
-        XCTAssertEqual(
-            SunclubAccountabilityWidgetFamily.allCases.map(\.rawValue),
-            [
-                "systemSmall",
-                "systemMedium",
-                "systemLarge",
-                "systemExtraLarge",
-                "accessoryInline",
-                "accessoryCircular",
-                "accessoryRectangular"
-            ]
-        )
-
-        for family in SunclubAccountabilityWidgetFamily.allCases {
-            let presentation = SunclubAccountabilityWidgetPresentation.make(
-                summary: makeAccountabilitySummary(),
-                family: family
-            )
-
-            XCTAssertEqual(presentation.family, family)
-            XCTAssertFalse(presentation.title.isEmpty)
-            XCTAssertFalse(presentation.actionText.isEmpty)
-            XCTAssertFalse(presentation.detail.isEmpty)
-            XCTAssertNotNil(presentation.primaryPokeFriendID)
-            XCTAssertEqual(presentation.actionURL, SunclubDeepLink.accountabilityPoke(try XCTUnwrap(presentation.primaryPokeFriendID)).url)
+    func testLoggedWidgetOffersEarlyReapplicationWithRemindersOnOrOff() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 10)
+        for enabled in [false, true] {
+            let snapshot = makeWidgetSnapshot(dayOffsets: [0], longestStreak: 1, now: now, calendar: calendar,
+                                              reapplyReminderEnabled: enabled)
+            let status = snapshot.applicationStatus(now: now, calendar: calendar)
+            XCTAssertEqual(status.actionTitle, "Log reapplication")
+            XCTAssertEqual(status.lastAppliedAt, try fixedDate(calendar: calendar, hour: 9))
+            XCTAssertFalse(status.isReapplyDue)
+            XCTAssertEqual(status.reapplyDeadline != nil, enabled)
         }
     }
 
-    func testAccountabilityPresentationDoesNotClaimDirectPokeWhenUnavailable() {
-        let summary = makeAccountabilitySummary(includePrimaryPokeFriend: false)
-
-        let presentation = SunclubAccountabilityWidgetPresentation.make(
-            summary: summary,
-            family: .systemMedium
-        )
-
-        XCTAssertEqual(presentation.actionText, "Open")
-        XCTAssertTrue(presentation.title.hasPrefix("Message"))
-        XCTAssertEqual(presentation.actionURL, SunclubWidgetRoute.accountability.url)
-        XCTAssertNil(presentation.primaryPokeFriendID)
-    }
-
-    func testAccountabilityInactivePresentationUsesSharingEmptyState() {
-        let presentation = SunclubAccountabilityWidgetPresentation.make(
-            summary: .empty,
-            family: .systemSmall
-        )
-
-        XCTAssertEqual(presentation.title, "Set up sharing")
-        XCTAssertEqual(presentation.detail, "Share whether today is logged.")
-        XCTAssertEqual(presentation.actionText, "Set up in app")
-        XCTAssertEqual(presentation.iconName, "person.badge.plus.fill")
-        XCTAssertFalse(presentation.showsFriendStats)
-        XCTAssertEqual(presentation.circularText, "+")
-    }
-
-    func testAccountabilityActiveEmptyPresentationDoesNotShowZeroMetricGrid() {
-        let summary = SunclubAccountabilitySummary(
-            isActive: true,
-            friendCount: 0,
-            loggedCount: 0,
-            openCount: 0,
-            topFriends: [],
-            latestPoke: nil,
-            primaryPokeFriendID: nil,
-            latestPokeText: ""
-        )
-
-        let presentation = SunclubAccountabilityWidgetPresentation.make(
-            summary: summary,
-            family: .systemMedium
-        )
-
-        XCTAssertEqual(presentation.title, "Set up sharing")
-        XCTAssertEqual(presentation.detail, "Share whether today is logged.")
-        XCTAssertEqual(presentation.actionText, "Set up in app")
-        XCTAssertFalse(presentation.showsFriendStats)
-    }
-
-    func testAccountabilityActiveFriendPresentationShowsPrivateStatus() {
-        let presentation = SunclubAccountabilityWidgetPresentation.make(
-            summary: makeAccountabilitySummary(),
-            family: .systemMedium
-        )
-
-        XCTAssertEqual(presentation.title, "Remind Maya")
-        XCTAssertEqual(presentation.subtitle, "1 friend not logged")
-        XCTAssertEqual(presentation.iconName, "person.2.fill")
-        XCTAssertTrue(presentation.showsFriendStats)
-        XCTAssertEqual(presentation.friends.first?.status, "Not logged")
-    }
-
-    func testLogTodayOpenPresentationIsSingleLogSunscreenButton() throws {
-        let calendar = fixedCalendar()
-        let now = try fixedDate(calendar: calendar)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [1, 2, 3],
-            longestStreak: 9,
-            now: now,
-            calendar: calendar,
-            currentUVIndex: 7,
-            peakUVIndex: 9
-        )
-
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemSmall,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.state, .open)
-        XCTAssertEqual(presentation.iconName, "sun.max.fill")
-        XCTAssertEqual(presentation.title, "Log Sunscreen")
-        XCTAssertEqual(presentation.subtitle, "")
-        XCTAssertEqual(presentation.detail, "")
-        XCTAssertEqual(presentation.actionText, "Log Sunscreen")
-        XCTAssertEqual(presentation.inlineText, "Log Sunscreen")
-        XCTAssertEqual(presentation.circularText, "Log")
-        XCTAssertEqual(presentation.metrics, [])
-        XCTAssertEqual(presentation.accessibilityLabel, "Log Sunscreen")
-        XCTAssertEqual(presentation.tapAction, .logTodayInPlace)
-        XCTAssertEqual(presentation.homeAction, .logToday)
-    }
-
-    func testLogTodayPresentationDoesNotExposeHabitMetadata() throws {
-        let calendar = fixedCalendar()
-        let now = try fixedDate(calendar: calendar)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [1, 2, 3],
-            longestStreak: 9,
-            now: now,
-            calendar: calendar,
-            currentUVIndex: 7,
-            peakUVIndex: 9,
-            mostUsedSPF: 50
-        )
-
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemMedium,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.title, "Log Sunscreen")
-        XCTAssertEqual(presentation.actionText, "Log Sunscreen")
-        XCTAssertEqual(presentation.metrics, [])
-        XCTAssertEqual(presentation.accessibilityLabel, "Log Sunscreen")
-    }
-
-    func testLogTodayLoggedPresentationOpensProgress() throws {
-        let calendar = fixedCalendar()
-        let now = try fixedDate(calendar: calendar, hour: 11)
-        let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [0, 1, 2, 3],
-            longestStreak: 9,
-            now: now,
-            calendar: calendar,
-            lastReappliedAt: lastReappliedAt,
-            reapplyReminderEnabled: true,
-            reapplyIntervalMinutes: 90
-        )
-
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemLarge,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.state, .logged)
-        XCTAssertEqual(presentation.iconName, "checkmark")
-        XCTAssertEqual(presentation.title, "")
-        XCTAssertEqual(presentation.actionText, "")
-        XCTAssertEqual(presentation.detail, "")
-        XCTAssertEqual(presentation.metrics, [])
-        XCTAssertEqual(presentation.accessibilityLabel, "Sunscreen logged")
-        XCTAssertEqual(presentation.tapAction, .open(.summary))
-        XCTAssertEqual(presentation.homeAction, .viewProgress)
-    }
-
-    func testLogTodayLoggedPresentationIgnoresSPFMetadata() throws {
-        let calendar = fixedCalendar()
-        let now = try fixedDate(calendar: calendar, hour: 11)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [0, 1, 2, 3],
-            longestStreak: 9,
-            now: now,
-            calendar: calendar,
-            todaySPFLevel: 50,
-            mostUsedSPF: 30
-        )
-
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemSmall,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.state, .logged)
-        XCTAssertEqual(presentation.title, "")
-        XCTAssertEqual(presentation.subtitle, "")
-        XCTAssertEqual(presentation.metrics, [])
-    }
-
-    func testLogTodayPresentationExposesReapplyActionAfterDeadline() throws {
+    func testWidgetUsesLatestCurrentDayApplicationAndDueState() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar, hour: 12)
-        let lastReappliedAt = try fixedDate(calendar: calendar, hour: 10)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [0, 1, 2, 3],
-            longestStreak: 9,
-            now: now,
-            calendar: calendar,
-            lastReappliedAt: lastReappliedAt,
-            reapplyReminderEnabled: true,
-            reapplyIntervalMinutes: 90
-        )
-
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemMedium,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.state, .open)
-        XCTAssertEqual(presentation.iconName, "timer")
-        XCTAssertEqual(presentation.actionText, "Reapply now")
-        XCTAssertEqual(presentation.accessibilityLabel, "Reapply sunscreen now")
-        XCTAssertEqual(presentation.tapAction, .logReapplyInPlace)
-        XCTAssertEqual(presentation.homeAction, .logReapply)
+        let reapplied = try fixedDate(calendar: calendar, hour: 10)
+        let snapshot = makeWidgetSnapshot(dayOffsets: [0], longestStreak: 1, now: now, calendar: calendar,
+                                          lastReappliedAt: reapplied, reapplyReminderEnabled: true,
+                                          reapplyIntervalMinutes: 90)
+        let status = snapshot.applicationStatus(now: now, calendar: calendar)
+        XCTAssertEqual(status.lastAppliedAt, reapplied)
+        XCTAssertTrue(status.isReapplyDue)
+        XCTAssertEqual(status.title, "Reapply due")
+        XCTAssertEqual(status.actionTitle, "Log reapplication")
     }
 
-    func testLogTodaySetupPresentationStaysNonOpeningLogButton() throws {
+    func testStaleReapplyDoesNotHideTodaysFirstApplication() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 10)
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: now))
+        let snapshot = makeWidgetSnapshot(dayOffsets: [0], longestStreak: 1, now: now, calendar: calendar,
+                                          lastReappliedAt: yesterday, reapplyReminderEnabled: true)
+        XCTAssertEqual(snapshot.applicationStatus(now: now, calendar: calendar).lastAppliedAt,
+                       try fixedDate(calendar: calendar, hour: 9))
+        XCTAssertEqual(snapshot.reapplyDeadline(now: now, calendar: calendar),
+                       try fixedDate(calendar: calendar, hour: 11))
+    }
+
+    func testMidnightDropsPreviousDayApplicationAndTimer() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar, hour: 23)
+        let midnight = try XCTUnwrap(calendar.dateInterval(of: .day, for: now)?.end)
+        let snapshot = makeWidgetSnapshot(dayOffsets: [0], longestStreak: 1, now: now, calendar: calendar,
+                                          lastReappliedAt: now, reapplyReminderEnabled: true)
+        XCTAssertEqual(snapshot.nextTimelineRefreshDate(after: now, calendar: calendar), midnight)
+        let status = snapshot.applicationStatus(now: midnight, calendar: calendar)
+        XCTAssertFalse(status.hasLoggedToday)
+        XCTAssertNil(status.lastAppliedAt)
+        XCTAssertNil(status.reapplyDeadline)
+        XCTAssertEqual(status.actionTitle, "Log sunscreen")
+    }
+
+    func testIncompleteSetupOffersForegroundEntryWithoutLoggingClaim() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [],
-            longestStreak: 0,
-            now: now,
-            calendar: calendar,
-            isOnboardingComplete: false
-        )
-
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemSmall,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.state, .open)
-        XCTAssertEqual(presentation.actionText, "Open Sunclub")
-        XCTAssertEqual(presentation.tapAction, .open(.updateToday))
-        XCTAssertEqual(presentation.homeAction, .openSettings)
+        let snapshot = makeWidgetSnapshot(dayOffsets: [], longestStreak: 0, now: now, calendar: calendar,
+                                          isOnboardingComplete: false)
+        let status = snapshot.applicationStatus(now: now, calendar: calendar)
+        XCTAssertFalse(status.isSetupComplete)
+        XCTAssertEqual(status.actionTitle, "Open Sunclub")
     }
 
     func testReapplyDeadlineIgnoresExpiredTimerFromYesterday() throws {
@@ -298,13 +99,7 @@ final class SunclubWidgetTests: XCTestCase {
 
         XCTAssertNil(snapshot.reapplyDeadline(now: now, calendar: calendar))
 
-        let presentation = SunclubLogTodayWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            family: .systemMedium,
-            calendar: calendar
-        )
-        XCTAssertEqual(presentation.state, .open)
+        XCTAssertFalse(snapshot.applicationStatus(now: now, calendar: calendar).hasLoggedToday)
     }
 
     func testSnapshotShowsTodayOpenWhenLatestRecordIsYesterday() {
@@ -518,29 +313,6 @@ final class SunclubWidgetTests: XCTestCase {
         )
 
         XCTAssertEqual(snapshot.currentWeekAppliedValue(now: now, calendar: calendar), 4)
-    }
-
-    func testHistoryPresentationSummarizesMonthAndCurrentWeek() throws {
-        let calendar = fixedCalendar()
-        let now = try fixedDate(calendar: calendar)
-        let snapshot = makeWidgetSnapshot(
-            dayOffsets: [0, 1, 2, 3, 7],
-            longestStreak: 6,
-            now: now,
-            calendar: calendar
-        )
-
-        let presentation = SunclubHistoryWidgetPresentation.make(
-            snapshot: snapshot,
-            now: now,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(presentation.title, "July")
-        XCTAssertEqual(presentation.compactTitle, "July")
-        XCTAssertEqual(presentation.weekSummary, "4/7")
-        XCTAssertEqual(presentation.streakSummary, "4d")
-        XCTAssertEqual(presentation.monthSummary, "33%")
     }
 
     func testSunclubDeepLinkParsesWidgetRoutes() throws {
@@ -815,7 +587,7 @@ final class SunclubWidgetTests: XCTestCase {
         XCTAssertEqual(store.takePendingRoute(), .manualLog)
     }
 
-    func testHomeScreenQuickActionStoresManualLogRoute() throws {
+    func testHomeScreenQuickActionOpensTodayWithoutWriting() throws {
         let suiteName = UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
@@ -824,11 +596,11 @@ final class SunclubWidgetTests: XCTestCase {
         let store = SunclubWidgetSnapshotStore(userDefaults: defaults)
         let shortcutItem = UIApplicationShortcutItem(
             type: SunclubHomeScreenQuickAction.logToday.rawValue,
-            localizedTitle: "Log Today"
+            localizedTitle: "Log sunscreen"
         )
 
         XCTAssertTrue(SunclubHomeScreenQuickAction.handleShortcutItem(shortcutItem, routeStore: store))
-        XCTAssertEqual(store.takePendingRoute(), .manualLog)
+        XCTAssertEqual(store.takePendingRoute(), .home)
     }
 
     private func makeSnapshot(dayOffsets: [Int], longestStreak: Int) -> SunclubWidgetSnapshot {

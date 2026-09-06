@@ -24,50 +24,20 @@ struct SunclubWatchHomeView: View {
         }
     }
 
-    private var loggedStatusText: String {
-        guard let lastVerifiedAt = snapshot.lastVerifiedAt else {
-            return "Logged"
-        }
-
-        return "Logged \(lastVerifiedAt.formatted(date: .omitted, time: .shortened))"
-    }
-
-    private var loggedDetailText: String {
-        snapshot.todaySPFLevel.map { "SPF \($0)" } ?? "Logged today"
+    private var applicationStatus: SunclubApplicationStatus {
+        snapshot.applicationStatus()
     }
 
     private var isDarkMode: Bool {
         colorScheme == .dark
     }
 
-    private var primaryAction: HomeDailyPlanAction {
-        snapshot.homeDailyPlanAction()
-    }
-
     private var primaryActionTitle: String {
-        switch primaryAction {
-        case .logToday:
-            return "Log sunscreen"
-        case .logReapply:
-            return "Reapply now"
-        case .viewProgress:
-            return "Refresh progress"
-        default:
-            return "Open iPhone"
-        }
+        applicationStatus.isSetupComplete ? applicationStatus.actionTitle : "Open iPhone"
     }
 
     private var primaryActionSymbol: String {
-        switch primaryAction {
-        case .logReapply:
-            return "timer"
-        case .viewProgress:
-            return "arrow.clockwise"
-        case .logToday:
-            return "sun.max.fill"
-        default:
-            return "iphone"
-        }
+        applicationStatus.isSetupComplete ? applicationStatus.symbol : "iphone"
     }
 
     private var watchBackground: Color {
@@ -87,22 +57,20 @@ struct SunclubWatchHomeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-            header
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                    uvCard
-                    statusCard
-                    reapplyCard
+        TimelineView(.periodic(from: .now, by: 60)) { _ in
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        statusCard
+                        uvCard
+                    }
                 }
-            }
 
-            logButton
+                logButton
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
         .background {
             watchBackground.ignoresSafeArea()
         }
@@ -126,18 +94,6 @@ struct SunclubWatchHomeView: View {
         }
     }
 
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            AppText("Sunclub", style: .captionMedium, color: AppColor.sun)
-            Spacer(minLength: 0)
-            AppText(
-                Date().formatted(date: .omitted, time: .shortened),
-                style: .caption,
-                color: watchTextSecondary
-            )
-        }
-    }
-
     private var logButton: some View {
         Button {
             performPrimaryAction()
@@ -154,8 +110,10 @@ struct SunclubWatchHomeView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .buttonStyle(AppPrimaryButtonStyle())
-        .controlSize(.large)
+        .buttonStyle(.borderedProminent)
+        .tint(AppColor.primaryAction)
+        .controlSize(.regular)
+        .frame(minHeight: 44)
         .disabled(isLogging)
         .accessibilityLabel(primaryActionTitle)
         .accessibilityHint("Uses the current Sunclub next action on your paired iPhone.")
@@ -163,45 +121,64 @@ struct SunclubWatchHomeView: View {
     }
 
     private var statusCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
-            VStack(alignment: .leading, spacing: 6) {
-                Label(
-                    snapshot.hasLoggedToday() ? "Logged" : "Log sunscreen",
-                    systemImage: snapshot.hasLoggedToday() ? "checkmark.circle.fill" : "sun.max"
-                )
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(snapshot.hasLoggedToday() ? AppColor.success : AppColor.sun)
+        let now = Date()
+        let status = snapshot.applicationStatus(now: now)
+        return AppCard(padding: AppSpacing.xxs, fill: watchCardFill, showsShadow: false) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(status.title)
+                    .font(.caption)
+                    .foregroundStyle(watchTextSecondary)
 
-                AppText(
-                    snapshot.hasLoggedToday() ? "\(loggedStatusText) · \(loggedDetailText)" : "Not logged",
-                    style: .caption,
-                    color: watchTextSecondary
-                )
+                Group {
+                    if !status.isSetupComplete {
+                        Text("Finish setup on iPhone")
+                            .font(.headline)
+                    } else if status.isReapplyDue {
+                        Text("Now")
+                            .font(.title2.weight(.semibold))
+                    } else if let deadline = status.reapplyDeadline {
+                        Text(timerInterval: now...max(now, deadline), countsDown: true)
+                            .font(.title2.weight(.semibold))
+                            .monospacedDigit()
+                    } else if let applied = status.lastAppliedAt {
+                        Text(applied, style: .time)
+                            .font(.title2.weight(.semibold))
+                    }
+                }
+                .foregroundStyle(watchTextPrimary)
+
+                if status.reapplyDeadline != nil, let applied = status.lastAppliedAt {
+                    Text("Applied \(applied, style: .time)")
+                        .font(.caption2)
+                        .foregroundStyle(watchTextSecondary)
+                }
 
                 if let visibleSyncStatus {
-                    AppText(visibleSyncStatus, style: .captionMedium, color: AppColor.accent)
+                    Text(visibleSyncStatus)
+                        .font(.caption)
+                        .foregroundStyle(watchTextPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .fontDesign(.rounded)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private var uvCard: some View {
         AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
             VStack(alignment: .leading, spacing: 7) {
+                if applicationStatus.hasLoggedToday, let spf = snapshot.todaySPFLevel {
+                    Text("SPF \(spf)")
+                        .font(.caption)
+                        .foregroundStyle(watchTextSecondary)
+                }
                 let now = Date()
                 if let currentUVIndex = snapshot.currentUVIndex(at: now) {
                     let level = UVLevel.from(index: currentUVIndex)
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        AppText("\(currentUVIndex)", style: .largeTitle, color: watchTint(for: level))
-                        VStack(alignment: .leading, spacing: 2) {
-                            AppText("UV", style: .captionMedium, color: watchTextPrimary)
-                            AppText(
-                                level.displayName,
-                                style: .caption,
-                                color: watchTextSecondary
-                            )
-                        }
-                    }
+                    Text("UV \(currentUVIndex) · \(level.displayName)")
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(watchTextSecondary)
                     if let peakUVIndex = snapshot.peakUVIndex(at: now),
                        let peakUVHour = snapshot.peakUVHour {
                         AppText(
@@ -217,85 +194,22 @@ struct SunclubWatchHomeView: View {
         }
     }
 
-    private var reapplyCard: some View {
-        AppCard(padding: AppSpacing.xs, fill: watchCardFill, showsShadow: false) {
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Reapply", systemImage: "timer")
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(AppColor.sun)
-
-                if let deadline = snapshot.reapplyDeadline() {
-                    let isDue = deadline <= Date()
-                    AppText(
-                        isDue
-                            ? "Reapply due"
-                            : "Reapply in \(durationLabel(until: deadline, now: Date()))",
-                        style: .captionMedium,
-                        color: isDue ? AppColor.warning : watchTextSecondary
-                    )
-                } else {
-                    AppText(
-                        snapshot.hasLoggedToday() ? "No timer" : "Log to time reapply",
-                        style: .caption,
-                        color: watchTextSecondary
-                    )
-                }
-            }
-        }
-    }
-
-    private func watchTint(for level: UVLevel) -> Color {
-        switch level {
-        case .low:
-            return AppColor.success
-        case .moderate, .high:
-            return AppColor.sun
-        case .veryHigh:
-            return AppColor.warning
-        case .extreme:
-            return AppColor.Watch.extreme
-        case .unknown:
-            return watchTextSecondary
-        }
-    }
-
     private func performPrimaryAction() {
-        guard !isLogging else {
-            return
-        }
-
-        switch primaryAction {
-        case .viewProgress, .openSettings, .backfillYesterday, .addDetails, .reviewRecovery, .repairReminders:
+        guard !isLogging else { return }
+        let status = applicationStatus
+        guard status.isSetupComplete else {
             syncCoordinator.refreshSnapshot()
             return
-        case .logToday, .logReapply:
-            break
         }
 
         isLogging = true
         Task {
-            switch primaryAction {
-            case .logReapply:
+            if status.hasLoggedToday {
                 _ = await syncCoordinator.logReapply()
-            default:
+            } else {
                 _ = await syncCoordinator.logToday()
             }
             isLogging = false
-        }
-    }
-
-    private func durationLabel(until deadline: Date, now: Date) -> String {
-        let minutesUntilDeadline = max(1, Int(ceil(deadline.timeIntervalSince(now) / 60)))
-        let hours = minutesUntilDeadline / 60
-        let minutes = minutesUntilDeadline % 60
-
-        switch (hours, minutes) {
-        case (0, let minutes):
-            return "\(minutes)m"
-        case (let hours, 0):
-            return "\(hours)h"
-        default:
-            return "\(hours)h \(minutes)m"
         }
     }
 }

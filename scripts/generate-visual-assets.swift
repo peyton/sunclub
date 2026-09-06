@@ -582,16 +582,6 @@ private func specs() -> [AssetSpec] {
         AssetSpec(name: "MotifScanSheen", width: 500, height: 260, isOpaque: false) { context, size in
             gradient(context, colors: [RGBA(1, 1, 1, 0), RGBA(1, 1, 1, 0.62), RGBA(1, 1, 1, 0)], start: CGPoint(x: 0, y: size.height), end: CGPoint(x: size.width, y: 0))
         },
-        AssetSpec(name: "WidgetTextureWarm", width: 800, height: 800, isOpaque: true) { context, size in
-            drawLightLeakBackground(context, size: size, dark: false)
-        },
-        AssetSpec(name: "WidgetTextureCool", width: 800, height: 800, isOpaque: true) { context, size in
-            gradient(context, colors: [RGBA(0.94, 0.98, 1), RGBA(1, 0.96, 0.86), RGBA(0.86, 0.96, 0.90)], start: .zero, end: CGPoint(x: size.width, y: size.height))
-            drawGrain(context, size: size, seed: 88, alpha: 0.05)
-        },
-        AssetSpec(name: "WidgetTextureNight", width: 800, height: 800, isOpaque: true) { context, size in
-            drawLightLeakBackground(context, size: size, dark: true)
-        },
         AssetSpec(name: "ShareCardBackdropWarm", width: 1080, height: 1350, isOpaque: true) { context, size in
             drawLightLeakBackground(context, size: size, dark: false)
         },

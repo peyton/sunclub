@@ -184,6 +184,10 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
 
     init(widgetRoute: SunclubWidgetRoute) {
         switch widgetRoute {
+        case .today:
+            self = .home
+        case .settings:
+            self = .settings
         case .summary:
             self = .summary
         case .history:
@@ -329,6 +333,63 @@ struct LogSunscreenIntent: AppIntent {
         } catch {
             return .result(dialog: SunclubIntentSupport.dialog(for: error))
         }
+    }
+}
+
+/// App-owned widget/control action. Public Shortcut intents retain their fixed meaning.
+/// LiveActivityIntent runs in the app process so a widget tap can update its active timer.
+struct LogSunscreenWidgetIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Log sunscreen"
+    static let description = IntentDescription("Logs sunscreen or a reapplication using today's current history.")
+    static let openAppWhenRun = false
+    static let isDiscoverable = false
+
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        do {
+            let result = try SunclubAutomationRuntime.performAdaptiveLogStandalone()
+            if result.didChange == true {
+                let snapshot = SunclubWidgetSnapshotStore().load()
+                let now = Date()
+                await SunclubLoggingReminderBridge.sync(snapshot: snapshot, now: now)
+                await SunclubLiveActivitySnapshotBridge.updateExisting(
+                    snapshot: SunclubWidgetSnapshotStore().load(), now: Date()
+                )
+            }
+        } catch SunclubAutomationError.onboardingRequired {
+            SunclubWidgetSnapshotStore().setPendingRoute(.home)
+            return .result(opensIntent: OpenSunclubRouteIntent(route: SunclubAutomationRoute.home))
+        }
+        return .result()
+    }
+}
+
+struct LogReapplicationLiveActivityIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Log reapplication"
+    static let description = IntentDescription("Logs a reapplication for today's sunscreen record.")
+    static let openAppWhenRun = false
+    static let isDiscoverable = false
+
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        do {
+            let result = try SunclubAutomationRuntime.performAdaptiveLogStandalone(requiresExistingRecord: true)
+            if result.didChange == true {
+                let snapshot = SunclubWidgetSnapshotStore().load()
+                let now = Date()
+                await SunclubLoggingReminderBridge.sync(snapshot: snapshot, now: now)
+                await SunclubLiveActivitySnapshotBridge.updateExisting(
+                    snapshot: SunclubWidgetSnapshotStore().load(), now: Date()
+                )
+            }
+        } catch SunclubAutomationError.onboardingRequired {
+            SunclubWidgetSnapshotStore().setPendingRoute(.home)
+            return .result(opensIntent: OpenSunclubRouteIntent(route: SunclubAutomationRoute.home))
+        } catch SunclubAutomationError.recordRequired {
+            SunclubWidgetSnapshotStore().setPendingRoute(.home)
+            return .result(opensIntent: OpenSunclubRouteIntent(route: SunclubAutomationRoute.home))
+        }
+        return .result()
     }
 }
 

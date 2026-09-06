@@ -18,6 +18,8 @@ enum SunclubWidgetDefaults {
 }
 
 enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
+    case today
+    case settings
     case summary
     case history
     case updateToday
@@ -25,6 +27,10 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
 
     var appRoute: AppRoute {
         switch self {
+        case .today:
+            return .home
+        case .settings:
+            return .settings
         case .summary:
             return .weeklySummary
         case .history:
@@ -223,18 +229,27 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         }
     }
 
-    func reapplyDeadline(now: Date = Date(), calendar: Calendar = Calendar.current) -> Date? {
+    func lastApplicationDate(now: Date = Date(), calendar: Calendar = .current) -> Date? {
+        guard hasLoggedToday(now: now, calendar: calendar) else { return nil }
+        return [lastVerifiedAt, lastReappliedAt].compactMap { $0 }
+            .filter { calendar.isDate($0, inSameDayAs: now) && $0 <= now }.max()
+    }
+
+    func reapplyDeadline(now: Date = Date(), calendar: Calendar = .current) -> Date? {
         guard reapplyReminderEnabled,
-              hasLoggedToday(now: now, calendar: calendar),
-              let baseDate = lastReappliedAt ?? lastVerifiedAt else {
-            return nil
-        }
+              let lastApplied = lastApplicationDate(now: now, calendar: calendar) else { return nil }
+        return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: lastApplied)
+    }
 
-        guard calendar.isDate(baseDate, inSameDayAs: now) else {
-            return nil
-        }
-
-        return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: baseDate)
+    func applicationStatus(now: Date = Date(), calendar: Calendar = .current) -> SunclubApplicationStatus {
+        let deadline = reapplyDeadline(now: now, calendar: calendar)
+        return SunclubApplicationStatus(
+            isSetupComplete: isOnboardingComplete,
+            hasLoggedToday: hasLoggedToday(now: now, calendar: calendar),
+            lastAppliedAt: lastApplicationDate(now: now, calendar: calendar),
+            reapplyDeadline: deadline,
+            isReapplyDue: deadline.map { $0 <= now } ?? false
+        )
     }
 
     func currentUVIndex(at now: Date = Date()) -> Int? {
@@ -270,7 +285,7 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     func nextTimelineRefreshDate(after now: Date = Date(), calendar: Calendar = Calendar.current) -> Date {
         let nextMidnightRefresh = calendar.nextDate(
             after: now,
-            matching: DateComponents(hour: 0, minute: 1),
+            matching: DateComponents(hour: 0, minute: 0),
             matchingPolicy: .nextTime
         ) ?? now.addingTimeInterval(3_600)
 
@@ -486,5 +501,32 @@ struct SunclubWidgetSnapshotStore {
         }
 
         return SunclubWidgetRoute(rawValue: rawValue)?.appRoute
+    }
+}
+
+/// Recorded application facts shared by compact surfaces; not a protection estimate.
+struct SunclubApplicationStatus: Equatable, Sendable {
+    let isSetupComplete: Bool
+    let hasLoggedToday: Bool
+    let lastAppliedAt: Date?
+    let reapplyDeadline: Date?
+    let isReapplyDue: Bool
+
+    var title: String {
+        if !isSetupComplete { return "Open Sunclub" }
+        if !hasLoggedToday { return "Not logged today" }
+        if isReapplyDue { return "Reapply due" }
+        if reapplyDeadline != nil { return "Reapply in" }
+        return lastAppliedAt == nil ? "Logged today" : "Last applied"
+    }
+
+    var actionTitle: String {
+        if !isSetupComplete { return "Open Sunclub" }
+        return hasLoggedToday ? "Log reapplication" : "Log sunscreen"
+    }
+
+    var symbol: String {
+        if !isSetupComplete { return "arrow.up.forward.app" }
+        return hasLoggedToday ? "arrow.clockwise" : "sun.max"
     }
 }

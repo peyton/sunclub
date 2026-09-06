@@ -109,10 +109,13 @@ The public contract is [App Automation](../docs/app-automation.md).
 ## Widgets, Watch and controls
 
 - Preserve all shipped targets, families, routes and signing identifiers.
-- Keep Home Screen and Lock Screen widgets glanceable. Log Today completes in place when the day is open; logged state routes into the existing review/update flow.
+- Keep Home Screen and Lock Screen widgets glanceable and sunscreen-first. The primary action logs sunscreen for the day's first application, then logs reapplications in place, including when reminders are off or no reminder is due.
+- Status opens Today. Preserve the legacy `updateToday` route to the existing editor for compatibility.
+- Logged Days remains a compact seven-day view. Stats counts recorded days, and History shows dates.
+- The former sharing widget remains available under its existing identity as a Settings compatibility entry. Preserve sharing identities and stored data.
 - Mirror lightweight snapshots instead of opening the live SwiftData store from a widget.
 - Refresh at local midnight; stale previous-day reapply timers must not appear on Today widgets or Watch.
-- Keep Control Center logging, Summary and History actions and Apple Watch behavior.
+- Keep Control Center logging, Summary and History actions. Live Activities put sunscreen timing first and retain the reapply action. Apple Watch and its complication put timing first, preserve offline logging, and use the same adaptive first-application/reapplication behavior.
 
 ## Data, backup and recovery
 

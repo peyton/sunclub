@@ -398,6 +398,8 @@ enum SunclubXCallbackResponse {
 @MainActor
 enum SunclubAutomationRuntime {
     private static let calendar = Calendar.current
+    // App-owned buttons may remain tappable while WidgetKit refreshes their state.
+    private static let appOwnedDuplicateWindow: TimeInterval = 60
 
     @MainActor
     private struct RuntimeContext {
@@ -412,9 +414,10 @@ enum SunclubAutomationRuntime {
             modelContext: ModelContext,
             growthStore: SunclubGrowthFeatureStoring,
             widgetStore: SunclubWidgetSnapshotStore,
-            now: Date
+            now: Date,
+            historyService: SunclubHistoryService? = nil
         ) {
-            let history = SunclubHistoryService(context: modelContext, calendar: SunclubAutomationRuntime.calendar)
+            let history = historyService ?? SunclubHistoryService(context: modelContext, calendar: SunclubAutomationRuntime.calendar)
             self.historyService = history
             self.mutations = SunclubMutationService(history: history)
             self.modelContext = modelContext
@@ -433,6 +436,63 @@ enum SunclubAutomationRuntime {
     }
 
     private typealias RecordMutation = SunclubMutationService.RecordRequest
+
+    /// App-owned entry points choose against durable history at execution time.
+    static func performAdaptiveLogStandalone(
+        now: Date = Date(), requiresExistingRecord: Bool = false
+    ) throws -> SunclubAutomationResult {
+        do {
+            let container = try SunclubModelContainerFactory.makeSharedContainer(isStoredInMemoryOnly: false)
+            return try performAdaptiveLog(
+                context: ModelContext(container), growthStore: SunclubGrowthFeatureStore.shared,
+                now: now, requiresExistingRecord: requiresExistingRecord
+            )
+        } catch let error as SunclubAutomationError {
+            throw error
+        } catch {
+            throw SunclubAutomationError.unavailable(error.localizedDescription)
+        }
+    }
+
+    static func performAdaptiveLog(
+        context: ModelContext,
+        growthStore: SunclubGrowthFeatureStoring,
+        widgetStore: SunclubWidgetSnapshotStore = SunclubWidgetSnapshotStore(),
+        now: Date = Date(),
+        historyService: SunclubHistoryService? = nil,
+        requiresExistingRecord: Bool = false
+    ) throws -> SunclubAutomationResult {
+        let history = historyService ?? SunclubHistoryService(context: context, calendar: calendar)
+        try history.bootstrapIfNeeded()
+        try history.refreshProjectedState()
+        let growthSettings = growthStore.load()
+        try validate(
+            action: .logToday(spfLevel: nil, notes: nil), invocation: .widget,
+            settings: history.settings(), preferences: growthSettings.automation
+        )
+        let record = try history.record(for: now)
+        if requiresExistingRecord, record == nil {
+            throw SunclubAutomationError.recordRequired
+        }
+        // Ignore repeated taps while a widget or control is still refreshing.
+        if let record {
+            let lastApplied = max(record.verifiedAt, record.lastReappliedAt ?? record.verifiedAt)
+            if now.timeIntervalSince(lastApplied) < appOwnedDuplicateWindow {
+                var result = try statusResult(action: "reapply", historyService: history, now: now)
+                result.message = "Sunscreen was already logged just now."
+                result.didChange = false
+                return result
+            }
+        }
+        let runtimeContext = RuntimeContext(
+            modelContext: context, growthStore: growthStore, widgetStore: widgetStore,
+            now: now, historyService: history
+        )
+        if record != nil {
+            return try logReapply(runtimeContext: runtimeContext, growthSettings: growthSettings)
+        }
+        return try logToday(spfLevel: nil, notes: nil, runtimeContext: runtimeContext, growthSettings: growthSettings)
+    }
 
     static func performStandalone(
         _ action: SunclubAutomationAction,
@@ -1224,6 +1284,7 @@ enum SunclubAutomationRuntime {
             return
         }
         WidgetCenter.shared.reloadAllTimelines()
+        ControlCenter.shared.reloadAllControls()
     }
 
     private static func verifiedAt(

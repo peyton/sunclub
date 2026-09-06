@@ -131,7 +131,9 @@ raster art. Use `AppFont.heroMetric(size:)` with `@ScaledMetric` for its display
 New interface icons use pinned Lucide 0.468.0 SVG imagesets through `SunIcon`;
 licenses are bundled in Resources/Lucide-LICENSE.txt. Do not rasterize these icons.
 
-Compact surfaces share the same semantics: widgets and Watch should show one
-primary state first, then one supporting detail such as UV, SPF, or reapply
-timing. Stale previous-day reapply timers must not surface on Today widgets or
-Watch.
+Compact surfaces put sunscreen timing first, followed by one supporting detail
+such as UV or SPF. Their primary logging action is adaptive: log sunscreen for
+the day's first application, then log reapplications in place even when reminders
+are off or no reminder is due. Stale previous-day reapply timers must not surface
+on Today widgets or Watch. Logged Days remains a compact seven-day view, Stats
+counts recorded days, and History remains date-based.

@@ -6,7 +6,7 @@ enum SunclubHomeScreenQuickAction: String {
     var route: AppRoute {
         switch self {
         case .logToday:
-            return .manualLog
+            return .home
         }
     }
 

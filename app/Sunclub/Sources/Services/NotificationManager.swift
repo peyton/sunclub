@@ -202,7 +202,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
         if !configured {
             configured = true
 
-            let actionManual = UNNotificationAction(identifier: NotificationConstants.actionManualID, title: "Log Today", options: [.foreground])
+            let actionManual = UNNotificationAction(identifier: NotificationConstants.actionManualID, title: "Log sunscreen", options: [.foreground])
             let dailyManualCategory = UNNotificationCategory(
                 identifier: NotificationConstants.dailyManualCategoryID,
                 actions: [actionManual],
@@ -210,7 +210,7 @@ final class NotificationManager: NSObject, NotificationScheduling, @MainActor UN
             )
             let actionReapplied = UNNotificationAction(
                 identifier: NotificationConstants.actionReappliedID,
-                title: "Reapplied now",
+                title: "Log reapplication",
                 options: []
             )
             let actionSnoozeReapply = UNNotificationAction(
