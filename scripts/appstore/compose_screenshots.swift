@@ -33,32 +33,15 @@ private enum ComposeError: LocalizedError {
 }
 
 private let canvasSize = CGSize(width: 1320, height: 2868)
-private let background = NSColor(calibratedRed: 0.965, green: 0.945, blue: 0.895, alpha: 1)
-private let navy = NSColor(calibratedRed: 0.055, green: 0.095, blue: 0.16, alpha: 1)
-private let muted = NSColor(calibratedRed: 0.27, green: 0.31, blue: 0.36, alpha: 1)
+// Apricot Morning: keep the store page aligned with the native app.
+private let cocoa = NSColor(calibratedRed: 0.192, green: 0.145, blue: 0.122, alpha: 1)
+private let muted = NSColor(calibratedRed: 0.459, green: 0.388, blue: 0.345, alpha: 1)
 
-private let accentPalette: [(primary: NSColor, secondary: NSColor)] = [
-    (
-        NSColor(calibratedRed: 0.95, green: 0.62, blue: 0.13, alpha: 1),
-        NSColor(calibratedRed: 1.00, green: 0.86, blue: 0.34, alpha: 1)
-    ),
-    (
-        NSColor(calibratedRed: 0.22, green: 0.47, blue: 0.95, alpha: 1),
-        NSColor(calibratedRed: 0.98, green: 0.72, blue: 0.18, alpha: 1)
-    ),
-    (
-        NSColor(calibratedRed: 0.25, green: 0.62, blue: 0.38, alpha: 1),
-        NSColor(calibratedRed: 0.20, green: 0.55, blue: 0.88, alpha: 1)
-    ),
-    (
-        NSColor(calibratedRed: 0.91, green: 0.56, blue: 0.15, alpha: 1),
-        NSColor(calibratedRed: 0.11, green: 0.20, blue: 0.34, alpha: 1)
-    ),
-    (
-        NSColor(calibratedRed: 0.14, green: 0.58, blue: 0.56, alpha: 1),
-        NSColor(calibratedRed: 0.09, green: 0.17, blue: 0.29, alpha: 1)
-    ),
-]
+private func roundedFont(size: CGFloat, weight: NSFont.Weight) -> NSFont {
+    let font = NSFont.systemFont(ofSize: size, weight: weight)
+    guard let descriptor = font.fontDescriptor.withDesign(.rounded) else { return font }
+    return NSFont(descriptor: descriptor, size: size) ?? font
+}
 
 private func parseScreens(from manifestURL: URL) throws -> [Screen] {
     let data = try Data(contentsOf: manifestURL)
@@ -83,41 +66,15 @@ private func parseScreens(from manifestURL: URL) throws -> [Screen] {
     }
 }
 
-private func drawBackground(index: Int) {
-    background.setFill()
-    NSRect(origin: .zero, size: canvasSize).fill()
-
-    let accents = accentPalette[index % accentPalette.count]
-    drawCircle(
-        in: CGRect(x: 830, y: 2280, width: 680, height: 680),
-        color: accents.primary.withAlphaComponent(0.16)
+private func drawBackground(_ artwork: NSImage) {
+    // Aspect-fill the photographic plate without distorting its materials.
+    let scale = max(canvasSize.width / artwork.size.width, canvasSize.height / artwork.size.height)
+    let size = CGSize(width: artwork.size.width * scale, height: artwork.size.height * scale)
+    artwork.draw(
+        in: CGRect(x: (canvasSize.width - size.width) / 2, y: (canvasSize.height - size.height) / 2,
+                   width: size.width, height: size.height),
+        from: .zero, operation: .copy, fraction: 1
     )
-    drawCircle(
-        in: CGRect(x: -240, y: -140, width: 640, height: 640),
-        color: accents.secondary.withAlphaComponent(0.12)
-    )
-    drawRings(center: CGPoint(x: 1110, y: 560), color: accents.primary.withAlphaComponent(0.16))
-    drawRings(center: CGPoint(x: 190, y: 2465), color: accents.secondary.withAlphaComponent(0.18))
-}
-
-private func drawCircle(in rect: CGRect, color: NSColor) {
-    color.setFill()
-    NSBezierPath(ovalIn: rect).fill()
-}
-
-private func drawRings(center: CGPoint, color: NSColor) {
-    color.setStroke()
-    for radius in stride(from: CGFloat(54), through: CGFloat(190), by: CGFloat(42)) {
-        let rect = CGRect(
-            x: center.x - radius,
-            y: center.y - radius,
-            width: radius * 2,
-            height: radius * 2
-        )
-        let path = NSBezierPath(ovalIn: rect)
-        path.lineWidth = 9
-        path.stroke()
-    }
 }
 
 private func drawText(
@@ -125,7 +82,7 @@ private func drawText(
     in rect: CGRect,
     font: NSFont,
     color: NSColor,
-    alignment: NSTextAlignment = .center,
+    alignment: NSTextAlignment = .left,
     lineHeightMultiple: CGFloat = 0.92
 ) {
     let paragraph = NSMutableParagraphStyle()
@@ -145,17 +102,17 @@ private func drawText(
 }
 
 private func drawPhoneFrame(with screenshot: NSImage) {
-    let phoneWidth: CGFloat = 930
-    let phoneHeight = phoneWidth * (canvasSize.height / canvasSize.width)
+    let phoneWidth: CGFloat = 1020
+    let phoneHeight = (phoneWidth - 32) * (screenshot.size.height / screenshot.size.width) + 32
     let phoneRect = CGRect(
         x: (canvasSize.width - phoneWidth) / 2,
-        y: 150,
+        y: 100,
         width: phoneWidth,
         height: phoneHeight
     )
 
     let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.20)
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.13)
     shadow.shadowBlurRadius = 42
     shadow.shadowOffset = CGSize(width: 0, height: -22)
 
@@ -165,7 +122,7 @@ private func drawPhoneFrame(with screenshot: NSImage) {
     NSBezierPath(roundedRect: phoneRect, xRadius: 96, yRadius: 96).fill()
     NSGraphicsContext.restoreGraphicsState()
 
-    let screenRect = phoneRect.insetBy(dx: 24, dy: 24)
+    let screenRect = phoneRect.insetBy(dx: 16, dy: 16)
     NSGraphicsContext.saveGraphicsState()
     NSBezierPath(roundedRect: screenRect, xRadius: 74, yRadius: 74).addClip()
     screenshot.draw(in: screenRect, from: .zero, operation: .sourceOver, fraction: 1)
@@ -177,7 +134,7 @@ private func drawPhoneFrame(with screenshot: NSImage) {
     borderPath.stroke()
 }
 
-private func compose(screen: Screen, index: Int, inputURL: URL, outputURL: URL) throws {
+private func compose(screen: Screen, artwork: NSImage, inputURL: URL, outputURL: URL) throws {
     guard FileManager.default.fileExists(atPath: inputURL.path) else {
         throw ComposeError.missingScreenshot(inputURL.path)
     }
@@ -185,44 +142,43 @@ private func compose(screen: Screen, index: Int, inputURL: URL, outputURL: URL) 
         throw ComposeError.unreadableScreenshot(inputURL.path)
     }
 
-    guard let bitmap = NSBitmapImageRep(
-        bitmapDataPlanes: nil,
-        pixelsWide: Int(canvasSize.width),
-        pixelsHigh: Int(canvasSize.height),
-        bitsPerSample: 8,
-        samplesPerPixel: 4,
-        hasAlpha: true,
-        isPlanar: false,
-        colorSpaceName: .deviceRGB,
-        bytesPerRow: 0,
-        bitsPerPixel: 0
+    // Core Graphics needs four-byte rows for an opaque RGB drawing context.
+    // A three-sample NSBitmapImageRep cannot back NSGraphicsContext reliably.
+    guard let context = CGContext(
+        data: nil, width: Int(canvasSize.width), height: Int(canvasSize.height),
+        bitsPerComponent: 8, bytesPerRow: Int(canvasSize.width) * 4,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
     ) else {
         throw ComposeError.pngEncodingFailed(outputURL.path)
     }
-    bitmap.size = canvasSize
-
     NSGraphicsContext.saveGraphicsState()
-    let context = NSGraphicsContext(bitmapImageRep: bitmap)
-    context?.shouldAntialias = true
-    NSGraphicsContext.current = context
-    drawBackground(index: index)
+    NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+    drawBackground(artwork)
+    drawText(
+        "SUNCLUB  /  YOUR DAILY SPF RITUAL",
+        in: CGRect(x: 100, y: 2720, width: 1120, height: 50),
+        font: roundedFont(size: 28, weight: .semibold),
+        color: muted
+    )
     drawText(
         screen.headline,
-        in: CGRect(x: 100, y: 2418, width: 1120, height: 230),
-        font: NSFont.systemFont(ofSize: 92, weight: .heavy),
-        color: navy
+        in: CGRect(x: 100, y: 2455, width: 1120, height: 250),
+        font: roundedFont(size: 104, weight: .bold),
+        color: cocoa
     )
     drawText(
         screen.caption,
-        in: CGRect(x: 155, y: 2310, width: 1010, height: 92),
-        font: NSFont.systemFont(ofSize: 38, weight: .semibold),
+        in: CGRect(x: 100, y: 2320, width: 1120, height: 110),
+        font: roundedFont(size: 38, weight: .medium),
         color: muted,
         lineHeightMultiple: 1.08
     )
     drawPhoneFrame(with: screenshot)
     NSGraphicsContext.restoreGraphicsState()
 
-    guard let data = bitmap.representation(using: .png, properties: [:]) else {
+    guard let result = context.makeImage(),
+          let data = NSBitmapImageRep(cgImage: result).representation(using: .png, properties: [:]) else {
         throw ComposeError.pngEncodingFailed(outputURL.path)
     }
     try data.write(to: outputURL, options: .atomic)
@@ -241,10 +197,15 @@ private func run() throws {
     let screens = try parseScreens(from: manifestURL)
     try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
-    for (index, screen) in screens.enumerated() {
+    let artworkURL = manifestURL.deletingLastPathComponent().appendingPathComponent("assets/skincare-morning.png")
+    guard let artwork = NSImage(contentsOf: artworkURL), artwork.isValid else {
+        throw ComposeError.unreadableScreenshot(artworkURL.path)
+    }
+
+    for screen in screens {
         let inputURL = inputDirectory.appendingPathComponent("\(screen.id).png")
         let outputURL = outputDirectory.appendingPathComponent("\(screen.id).png")
-        try compose(screen: screen, index: index, inputURL: inputURL, outputURL: outputURL)
+        try compose(screen: screen, artwork: artwork, inputURL: inputURL, outputURL: outputURL)
     }
 }
 

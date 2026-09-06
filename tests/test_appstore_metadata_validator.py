@@ -194,6 +194,17 @@ def test_validator_accepts_submission_ready_manifest() -> None:
     assert warnings == []
 
 
+def test_validator_requires_explicit_social_media_age_rating_answers() -> None:
+    for field in ("social_media", "social_media_age_restricted"):
+        for invalid_value in (None, True):
+            manifest = current_manifest()
+            manifest["age_rating_questionnaire"][field] = invalid_value
+
+            errors, _ = validator.validate_manifest(manifest, allow_draft=False)
+
+            assert any(f"age_rating_questionnaire.{field}" in error for error in errors)
+
+
 def test_validator_allows_existing_review_contact_reuse_for_submission() -> None:
     manifest = current_manifest(
         environment={
@@ -245,6 +256,26 @@ def test_review_checkpoint_honors_existing_review_contact_reuse(
         "review.contact will be reused from the existing App Store Connect version."
         in summary
     )
+
+
+def test_validator_accepts_current_forecast_route_and_today_review_navigation() -> None:
+    manifest = current_manifest()
+    manifest["assets"]["screenshots"]["screens"][0]["route"] = "uvForecast"
+    assert "Today" in manifest["review"]["notes"]
+
+    errors, warnings = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_validator_rejects_unknown_screenshot_route() -> None:
+    manifest = current_manifest()
+    manifest["assets"]["screenshots"]["screens"][0]["route"] = "unknownScreen"
+
+    errors, _ = validator.validate_manifest(manifest, allow_draft=False)
+
+    assert any("screens[0].route must be one of" in error for error in errors)
 
 
 def test_validator_requires_complete_weatherkit_positive_review_notes() -> None:

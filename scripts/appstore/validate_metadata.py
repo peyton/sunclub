@@ -27,6 +27,7 @@ VALID_ROUTES = {
     "settings",
     "history",
     "manualLog",
+    "uvForecast",
 }
 VALID_RELEASE_TYPES = {"MANUAL", "AFTER_APPROVAL", "SCHEDULED"}
 VALID_SCREENSHOT_DISPLAY_TYPES = {"APP_IPHONE_67"}
@@ -41,6 +42,8 @@ REQUIRED_AGE_RATING_FIELDS = {
     "unrestricted_web_access": False,
     "broad_user_generated_content": False,
     "in_app_chat": False,
+    "social_media": False,
+    "social_media_age_restricted": False,
     "gambling_or_contests": False,
     "mature_or_suggestive_content": "none",
     "sexual_content_or_nudity": "none",
@@ -114,7 +117,7 @@ WEATHERKIT_POSITIVE_REQUIREMENTS = {
     "automatic refresh": ("automatically",),
     "settings navigation": ("settings",),
     "live uv navigation": ("enable live uv", "live uv"),
-    "home or timeline navigation": ("home", "timeline"),
+    "today or legacy home navigation": ("today", "home", "timeline"),
     "cached": ("cached",),
     "rate-limited": ("rate-limit-gated", "rate-limited", "rate limited"),
     "fallback": ("fallback", "fall back"),
