@@ -22,13 +22,16 @@ struct WeatherKitAttributionFooter: View {
     private var attributionContent: some View {
         sourceView
         if showAttributionLink {
-            Button("Data Sources") {
+            Button {
                 openURL(attribution?.legalPageURL ?? weatherKitLegalURL)
+            } label: {
+                Text("Data Sources")
+                    .font(AppTextStyle.captionMedium.font)
+                    .foregroundStyle(AppColor.accent)
+                    .underline()
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            .font(AppTextStyle.captionMedium.font)
-            .foregroundStyle(AppColor.accent)
-            .underline()
-            .frame(minHeight: 44)
             .buttonStyle(.plain)
             .accessibilityLabel("Open Apple Weather legal attribution and data sources")
             .accessibilityIdentifier("timeline.weatherKitAttribution")
