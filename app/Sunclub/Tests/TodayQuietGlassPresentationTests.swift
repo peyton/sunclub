@@ -114,9 +114,11 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let now = try date(hour: 10)
         for source: UVReadingSource in [.localEstimate, .cachedWeatherKit] {
             let presentation = uvPresentation(reading: UVReading(index: 3, timestamp: now, source: source), now: now)
-            XCTAssertTrue(presentation.sourceLabel?.hasPrefix(source.statusLabel) == true)
+            XCTAssertTrue(presentation.sourceLabel?.hasPrefix(source == .cachedWeatherKit ? "Apple Weather" : source.statusLabel) == true)
+            XCTAssertFalse(presentation.sourceLabel?.contains("Cached") == true)
             if source == .cachedWeatherKit {
                 XCTAssertTrue(presentation.sourceLabel?.contains("Near Test Place") == true)
+                XCTAssertTrue(presentation.sourceLabel?.contains("Last available forecast") == true)
             }
         }
     }
