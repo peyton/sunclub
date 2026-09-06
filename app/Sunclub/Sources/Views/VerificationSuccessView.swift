@@ -148,7 +148,7 @@ struct VerificationSuccessView: View {
             HStack(spacing: 10) {
                 Image(systemName: appState.reapplyReminderPlan.confirmationSymbolName)
                     .font(AppFont.rounded(size: 16, weight: .medium))
-                    .foregroundStyle(AppPalette.sun)
+                    .foregroundStyle(AppColor.accent)
 
                 Text(appState.reapplyReminderPlan.confirmationText)
                     .font(AppFont.rounded(size: 14, weight: .medium))

@@ -319,20 +319,7 @@ struct SunDayStrip: View {
     }
 
     private func uvForecastColor(for level: UVLevel?) -> Color {
-        switch level {
-        case .low:
-            return AppColor.success
-        case .moderate:
-            return AppColor.accentSoft
-        case .high:
-            return AppColor.accent
-        case .veryHigh:
-            return AppColor.warning
-        case .extreme:
-            return AppPalette.pool
-        case .unknown, nil:
-            return AppPalette.muted
-        }
+        (level ?? .unknown).designTint
     }
 
     private func ghostChip(for state: ChipState) -> some View {
@@ -431,7 +418,7 @@ struct SunDayStrip: View {
             if state.isSelected {
                 Image(systemName: "chevron.right.circle.fill")
                     .font(AppFont.rounded(size: 16))
-                    .foregroundStyle(AppPalette.sun)
+                    .foregroundStyle(AppColor.accent)
             }
         }
         .padding(.horizontal, 14)

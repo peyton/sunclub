@@ -189,7 +189,7 @@ struct RecoveryView: View {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: batchSymbol(for: batch))
                                 .font(AppFont.rounded(size: 16, weight: .semibold))
-                                .foregroundStyle(AppPalette.sun)
+                                .foregroundStyle(AppColor.accent)
                                 .frame(width: 24, height: 24)
 
                             VStack(alignment: .leading, spacing: 4) {

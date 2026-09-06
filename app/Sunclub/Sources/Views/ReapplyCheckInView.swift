@@ -62,7 +62,7 @@ struct ReapplyCheckInView: View {
                 HStack(spacing: 8) {
                     SunIcon.check.image.resizable().scaledToFit()
                         .frame(width: 20, height: 20)
-                        .foregroundStyle(AppPalette.sun)
+                        .foregroundStyle(AppColor.accent)
                         .accessibilityHidden(true)
 
                     Text("\(record.reapplyCount) reapply \(record.reapplyCount == 1 ? "log" : "logs") today")

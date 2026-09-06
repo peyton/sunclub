@@ -17,7 +17,7 @@ extension SettingsView {
                         .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
-                .tint(AppPalette.sun)
+                .tint(AppPalette.nativeChromeTint)
                 .accessibilityIdentifier("settings.healthKitToggle")
 
                 let detail = appState.healthKitAvailable
@@ -50,7 +50,7 @@ extension SettingsView {
             VStack(alignment: .leading, spacing: 14) {
                 Toggle("Morning UV briefing", isOn: $dailyUVBriefingEnabled)
                     .font(AppTextStyle.bodyMedium.font)
-                    .tint(AppPalette.sun)
+                    .tint(AppPalette.nativeChromeTint)
                     .accessibilityIdentifier("settings.uvBriefingToggle")
                     .onChange(of: dailyUVBriefingEnabled) { _, newValue in
                         appState.updateUVBriefingPreferences(dailyBriefingEnabled: newValue)
@@ -58,7 +58,7 @@ extension SettingsView {
 
                 Toggle("Extreme UV alert", isOn: $extremeUVAlertsEnabled)
                     .font(AppTextStyle.bodyMedium.font)
-                    .tint(AppPalette.sun)
+                    .tint(AppPalette.nativeChromeTint)
                     .accessibilityIdentifier("settings.extremeUVToggle")
                     .onChange(of: extremeUVAlertsEnabled) { _, newValue in
                         appState.updateUVBriefingPreferences(extremeAlertEnabled: newValue)
@@ -88,7 +88,7 @@ extension SettingsView {
                         .font(AppTextStyle.bodyMedium.font)
                         .foregroundStyle(AppPalette.ink)
                 }
-                .tint(AppPalette.sun)
+                .tint(AppPalette.nativeChromeTint)
                 .onChange(of: liveUVEnabled) { _, newValue in
                     let didSave = appState.updateLiveUVPreference(
                         enabled: newValue,
