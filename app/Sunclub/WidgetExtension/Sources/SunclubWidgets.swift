@@ -309,10 +309,9 @@ private struct SunclubHistorySurface: View {
                             total(monthlyCount, label: "Days logged")
                             Text("Today is outlined").font(.caption2).foregroundStyle(.secondary)
                         }
-                        .frame(maxWidth: 96, alignment: .leading)
+                        .frame(width: 96, alignment: .leading)
                         SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: true, compact: true)
                             .frame(maxWidth: .infinity)
-                            .layoutPriority(1)
                     }
                 } else {
                     VStack(alignment: .leading, spacing: family == .systemLarge && style == .calendar ? 16 : 8) {
@@ -374,14 +373,23 @@ private struct SunclubRecordedDays: View {
         if month {
             GeometryReader { geometry in
                 let rows = max(days.count / 7, 1)
+                let columnWidth = max(0, (geometry.size.width - 12) / 7)
                 let rowHeight = max(12, (geometry.size.height - 16 - CGFloat(rows) * 2) / CGFloat(rows))
-                LazyVGrid(columns: columns, spacing: 2) {
-                    ForEach(Array(days.prefix(7)), id: \.self) { day in
-                        Text(day, format: .dateTime.weekday(.narrow))
-                            .font(.caption2).foregroundStyle(.secondary)
+                Grid(horizontalSpacing: 2, verticalSpacing: 2) {
+                    GridRow {
+                        ForEach(Array(days.prefix(7)), id: \.self) { day in
+                            Text(day, format: .dateTime.weekday(.narrow))
+                                .font(.caption2).foregroundStyle(.secondary)
+                                .frame(width: columnWidth)
+                        }
                     }
-                    ForEach(days, id: \.self) { day in
-                        dayCell(day, height: rowHeight)
+                    ForEach(0..<rows, id: \.self) { row in
+                        GridRow {
+                            ForEach(Array(days.dropFirst(row * 7).prefix(7)), id: \.self) { day in
+                                dayCell(day, height: rowHeight)
+                                    .frame(width: columnWidth)
+                            }
+                        }
                     }
                 }
             }
@@ -396,10 +404,6 @@ private struct SunclubRecordedDays: View {
                 }
             }
         }
-    }
-
-    private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
     }
 
     private func dayCell(_ day: Date, height: CGFloat) -> some View {

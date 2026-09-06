@@ -4,6 +4,39 @@ import XCTest
 
 @MainActor
 final class UVForecastSimplicityTests: SunclubTestCase {
+    func testStaleForecastHidesCurrentHeroButRetainsRequiredAttributionForHours() {
+        let status = SunclubUVStatus(
+            availability: .available, source: .liveLocation, freshness: .stale, updatedAt: Date()
+        )
+        XCTAssertFalse(UVForecastDetailView.canShowCurrentUV(status: status))
+        let hours = [SunclubUVHourForecast(date: Date(), index: 7, sourceLabel: UVReadingSource.cachedWeatherKit.hourlySourceLabel)]
+        let source = UVForecastDetailView.displayedSource(heroSource: nil, forecastSource: .cachedWeatherKit, hours: hours)
+        XCTAssertEqual(source, .cachedWeatherKit)
+        XCTAssertEqual(source?.shouldDisplayAttribution, true)
+        XCTAssertEqual(
+            UVForecastDetailView.freshnessDetail(for: .cachedWeatherKit, updatedAt: nil, isStale: true),
+            "Last available forecast is out of date."
+        )
+        XCTAssertNil(UVForecastDetailView.displayedSource(heroSource: nil, forecastSource: .cachedWeatherKit, hours: []))
+    }
+
+    func testHeroEligibilityDistinguishesFreshSavedAndEstimatedFromUnavailableData() {
+        for freshness in [SunclubUVFreshness.fresh, .estimated] {
+            XCTAssertTrue(UVForecastDetailView.canShowCurrentUV(status: SunclubUVStatus(
+                availability: .available, source: .liveLocation, freshness: freshness, updatedAt: Date()
+            )))
+        }
+        XCTAssertFalse(UVForecastDetailView.canShowCurrentUV(status: .unavailable))
+        XCTAssertFalse(UVForecastDetailView.canShowCurrentUV(status: SunclubUVStatus(
+            availability: .available, source: .liveLocation, freshness: .unavailable, updatedAt: nil
+        )))
+        let hours = [SunclubUVHourForecast(date: Date(), index: 7, sourceLabel: UVReadingSource.localEstimate.hourlySourceLabel)]
+        XCTAssertEqual(
+            UVForecastDetailView.displayedSource(heroSource: nil, forecastSource: .localEstimate, hours: hours)?.shouldDisplayAttribution,
+            false
+        )
+    }
+
     func testHourlyForecastIncludesEntireDayInChronologicalOrder() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))

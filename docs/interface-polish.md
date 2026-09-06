@@ -56,13 +56,32 @@ future default fails. The existing sunscreen profile stores the future SPF while
 preserving product metadata. When absent, the editor explains that it creates a
 profile named Sunscreen; there is no separate persisted default-SPF field.
 
-Unit coverage: SPFEditTests, TodayQuietGlassPresentationTests,
-UVForecastSimplicityTests, SunclubWidgetTests. UI coverage includes focused SPF,
-forecast accessibility/navigation, and onboarding recovery scenarios. Candidate
-screenshots and command logs are retained in `.build/polish-evidence/` locally;
-CI test bundles are the durable execution evidence linked from the PR.
+## Evidence and coverage
 
-The initial Simulator observation established Today/Forecast repetition and
-Settings icon duplication; its installed-build provenance was not established.
-Candidate captures must therefore be treated as candidate verification, not an
-exact-build visual regression comparison with that initial observation.
+Baseline app captures were rebuilt from `e91eb3693a57029566f48dd41e3dae9a842f3337`.
+Candidate captures use this branch's compiled app. Both use deterministic test
+fixtures; displayed system clock times can differ. The initial unknown-build
+Simulator observation is excluded from the comparisons below.
+
+| Fixes | Before and after evidence | Behavior verification |
+| --- | --- | --- |
+| 1–6 | [Today before](interface-polish-evidence/baseline-today-logged.png), [Today after](interface-polish-evidence/candidate-today-logged.png), [unlogged](interface-polish-evidence/candidate-today-unlogged.png) | TodayQuietGlassPresentationTests; forecast navigation UI tests |
+| 7–10 | Same Today pair; [focused SPF editor](interface-polish-evidence/candidate-spf-editor.png) | SPFEditTests; SunclubSPFEditUITests cancel/save and future-default flows |
+| 11–17 | [Forecast before](interface-polish-evidence/baseline-forecast.png), [after](interface-polish-evidence/candidate-forecast.png), [iPad accessibility](interface-polish-evidence/candidate-ipad-forecast-accessibility.png) | Forecast accessibility test reaches bottom attribution; adaptive row/type inspection |
+| 18–20 | Same forecast pair | UVForecastSimplicityTests covers entire-day hours, current marker, freshness and stale-data attribution; SunclubUVTests covers fallback sources |
+| 21 | [Medium before](interface-polish-evidence/baseline-calendar-medium-6weeks.png), [after](interface-polish-evidence/calendar-medium-6weeks.png); [large before](interface-polish-evidence/baseline-calendar-large-6weeks.png), [after](interface-polish-evidence/calendar-large-6weeks.png) | Both family layouts rendered; medium sidebar and all six rows verified |
+| 22–24 | Same calendar pairs; [four weeks](interface-polish-evidence/calendar-medium-4weeks.png), [five weeks](interface-polish-evidence/calendar-medium-5weeks.png) | SunclubWidgetTests checks locale week starts, month boundaries and day states; checkmarks, outlines, dashes and adjacent-month italics inspected |
+| 25 | [Large history dark](interface-polish-evidence/stats-large-dark.png), [seven-day view](interface-polish-evidence/week-medium.png) | Weekly/monthly totals and dated marks rendered; existing widget route/intent tests retained |
+| 26–27 | [Settings before](interface-polish-evidence/baseline-settings.png), [after](interface-polish-evidence/candidate-settings.png) | Bottle/heart-pulse inspected; sun/shield assets unchanged |
+| 28–29 | [Welcome before](interface-polish-evidence/baseline-welcome.png), [after](interface-polish-evidence/candidate-welcome.png); [reminders before](interface-polish-evidence/baseline-reminders.png), [after](interface-polish-evidence/candidate-reminders.png); [location before](interface-polish-evidence/baseline-location.png), [after](interface-polish-evidence/candidate-location.png) | Full-width action labels inspected across all three screens; onboarding flow tests retained |
+| 30 | [Small iPhone](interface-polish-evidence/candidate-compact-welcome.png), [dark accessibility](interface-polish-evidence/candidate-onboarding-accessibility.png), [iPad](interface-polish-evidence/candidate-ipad-welcome.png) | SunclubOnboardingFailureUITests verifies large-text errors and Continue remain actionable; Reduce Motion and semantic accessibility labels retained |
+
+Widget images use faithful SwiftUI rendering of the actual baseline/candidate
+view bodies at small/medium/large point sizes, plus a standalone screen host.
+They establish layout behavior, not Springboard tinting or WidgetKit-hosted
+interaction. [Render provenance](interface-polish-evidence/widget-render-manifest.json)
+records dimensions, fixtures and adaptations. Widget identities/routes are
+covered separately by existing integration tests.
+
+Full command results and exact-head hosted CI links are recorded in the PR.
+Local logs and additional state captures remain in `.build/polish-evidence/`.

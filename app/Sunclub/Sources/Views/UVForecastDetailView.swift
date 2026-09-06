@@ -58,7 +58,8 @@ struct UVForecastDetailView: View {
                     hourlyForecastCard
                 }
 
-                if let window = appState.uvProtectionWindow,
+                if Self.canShowCurrentUV(status: appState.uvStatus),
+                   let window = appState.uvProtectionWindow,
                    Calendar.current.isDate(window.start, inSameDayAs: forecastDay) {
                     SunStatusCard(
                         title: "Protection window",
@@ -127,7 +128,7 @@ struct UVForecastDetailView: View {
     }
 
     private var currentUV: UVForecastPresentationReading? {
-        guard appState.uvStatus.availability == .available else {
+        guard Self.canShowCurrentUV(status: appState.uvStatus) else {
             return nil
         }
 
@@ -173,24 +174,42 @@ struct UVForecastDetailView: View {
 
     @ViewBuilder
     private var sourceFooter: some View {
-        if let currentUV {
+        if let source = Self.displayedSource(
+            heroSource: currentUV?.source, forecastSource: forecastReadingSource, hours: forecastHours
+        ) {
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                Text(Self.freshnessDetail(for: currentUV.source, updatedAt: appState.uvStatus.updatedAt))
+                Text(Self.freshnessDetail(
+                    for: source, updatedAt: appState.uvStatus.updatedAt,
+                    isStale: appState.uvStatus.freshness == .stale
+                ))
                     .accessibilityIdentifier("uvForecast.dataQuality")
                     .font(AppTextStyle.caption.font)
                     .foregroundStyle(AppColor.Text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 WeatherKitAttributionFooter(
                     attribution: appState.weatherAttribution,
-                    sourceLabel: Self.dataQualityPresentation(for: currentUV.source).title,
-                    showAttributionLink: currentUV.source.shouldDisplayAttribution
+                    sourceLabel: Self.dataQualityPresentation(for: source).title,
+                    showAttributionLink: source.shouldDisplayAttribution
                 )
             }
         }
     }
 
-    static func freshnessDetail(for source: UVReadingSource, updatedAt: Date?) -> String {
+    static func canShowCurrentUV(status: SunclubUVStatus) -> Bool {
+        status.availability == .available && status.freshness != .stale && status.freshness != .unavailable
+    }
+
+    static func displayedSource(
+        heroSource: UVReadingSource?, forecastSource: UVReadingSource, hours: [SunclubUVHourForecast]
+    ) -> UVReadingSource? {
+        heroSource ?? (hours.isEmpty ? nil : forecastSource)
+    }
+
+    static func freshnessDetail(for source: UVReadingSource, updatedAt: Date?, isStale: Bool = false) -> String {
         let updated = updatedAt.map { "Updated \($0.formatted(date: .omitted, time: .shortened))." }
+        if isStale {
+            return ["Last available forecast is out of date.", updated].compactMap { $0 }.joined(separator: " ")
+        }
         switch source {
         case .weatherKit:
             return updated ?? "Latest available forecast."
@@ -202,7 +221,7 @@ struct UVForecastDetailView: View {
     }
 
     private var activeReadingSource: UVReadingSource {
-        appState.uvReading?.source ?? forecastReadingSource
+        currentUV?.source ?? forecastReadingSource
     }
 
     static func dataQualityPresentation(
@@ -230,7 +249,7 @@ struct UVForecastDetailView: View {
     private var hourlyForecastCard: some View {
         AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppPalette.elevatedCardFill) {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text("Hourly Forecast")
+                Text(appState.uvStatus.freshness == .stale ? "Last available hourly forecast" : "Hourly Forecast")
                     .font(AppTextStyle.sectionHeader.font)
                     .foregroundStyle(AppPalette.ink)
 
