@@ -61,7 +61,7 @@ struct TodayQuietGlassGauge: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("home.uvIndexValue")
 
-                AppText(presentation.level.displayName, style: .title, color: presentation.level.designTextTint, alignment: .center)
+                AppText(presentation.level.displayName, style: .sectionHeader, color: presentation.level.designTextTint, alignment: .center)
                     .accessibilityIdentifier("home.uvIndexLevel")
             } else {
                 AppText("UV unavailable", style: .sectionHeader, alignment: .center)
@@ -89,14 +89,31 @@ struct TodayQuietGlassGauge: View {
 
 struct TodayQuietGlassLogSummary: View {
     let presentation: TodayQuietGlassLogPresentation
+    var editSPF: () -> Void = {}
 
     var body: some View {
         VStack(spacing: AppSpacing.xxs) {
-            AppText(presentation.title, style: .title, alignment: .center)
+            AppText(presentation.title, style: .sectionHeader, alignment: .center)
                 .accessibilityIdentifier(presentation.statusIdentifier)
 
+            if let spf = presentation.spfLabel {
+                Button(action: editSPF) {
+                    HStack(spacing: AppSpacing.xxs) {
+                        AppText(spf, style: .bodyMedium)
+                        SunIcon.chevronRight.image.resizable().scaledToFit()
+                            .frame(width: 12, height: 12)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(spf)
+                .accessibilityHint("Edits SPF for this log.")
+                .accessibilityIdentifier("home.editSPF")
+            }
             if !presentation.detail.isEmpty {
-                AppText(presentation.detail, style: .body, color: AppColor.Text.secondary, alignment: .center)
+                AppText(presentation.detail, style: .caption, color: AppColor.Text.secondary, alignment: .center)
                     .accessibilityIdentifier("timeline.statusDetail")
             }
         }

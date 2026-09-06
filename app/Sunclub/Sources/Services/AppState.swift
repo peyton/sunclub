@@ -1222,6 +1222,29 @@ final class AppState: SunclubReminderState {
     }
 
     @discardableResult
+    func updateLoggedSPF(recordID: UUID, expected: DailyRecordProjectionSnapshot, spf: Int) -> SunclubHistoryMutationResult {
+        do {
+            let batch = try mutationService.updateSPF(recordID: recordID, expected: expected, spf: spf)
+            finishDurableChange(batch, reschedulesReminders: false, refreshesUVForecast: false)
+            logActionErrorMessage = nil
+            return .success(SunclubHistoryMutationReceipt(
+                batchID: batch?.id, day: expected.startOfDay, verifiedAt: expected.verifiedAt,
+                kind: .manualLog, didChange: batch != nil
+            ))
+        } catch HistoryServiceError.staleChange {
+            return historyMutationFailure(SunclubHistoryMutationError.staleChange)
+        } catch { return historyMutationFailure(error) }
+    }
+
+    @discardableResult
+    func updateFutureLogSPF(_ spf: Int) -> Bool {
+        let profile = settings.sunscreenProfile
+        return updateSunscreenProfile(SunclubSunscreenProfile(
+            name: profile?.name ?? "Sunscreen", spf: spf, waterResistance: profile?.waterResistance ?? .none
+        ))
+    }
+
+    @discardableResult
     func saveManualRecord(
         for day: Date,
         dayPart targetDayPart: DayPart? = nil,

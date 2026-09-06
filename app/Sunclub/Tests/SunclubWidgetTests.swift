@@ -6,6 +6,51 @@ import XCTest
 
 @MainActor
 final class SunclubWidgetTests: XCTestCase {
+    func testHistoryMonthGridUsesFourFiveOrSixCompleteWeeks() throws {
+        let calendar = fixedCalendar()
+        for (year, month, expectedRows) in [(2026, 2, 4), (2026, 4, 5), (2026, 5, 6)] {
+            let now = try XCTUnwrap(calendar.date(from: DateComponents(year: year, month: month, day: 15)))
+            let days = SunclubWidgetSnapshot.empty.monthGridDays(now: now, calendar: calendar)
+            XCTAssertEqual(days.count, expectedRows * 7)
+            XCTAssertEqual(calendar.component(.weekday, from: try XCTUnwrap(days.first)), calendar.firstWeekday)
+            XCTAssertEqual(Set(days).count, days.count)
+            XCTAssertEqual(days.filter { calendar.isDate($0, equalTo: now, toGranularity: .month) }.count,
+                           calendar.range(of: .day, in: .month, for: now)?.count)
+        }
+    }
+
+    func testHistoryWeekAndMonthHeadingsFollowFirstWeekday() throws {
+        for firstWeekday in [1, 2, 7] {
+            var calendar = fixedCalendar()
+            calendar.firstWeekday = firstWeekday
+            let now = try fixedDate(calendar: calendar)
+            let snapshot = SunclubWidgetSnapshot.empty
+            for days in [snapshot.currentWeekDays(now: now, calendar: calendar),
+                         snapshot.monthGridDays(now: now, calendar: calendar)] {
+                XCTAssertEqual(Array(days.prefix(7)).map { calendar.component(.weekday, from: $0) },
+                               (0..<7).map { (firstWeekday - 1 + $0) % 7 + 1 })
+            }
+            XCTAssertEqual(snapshot.currentWeekDays(now: now, calendar: calendar).count, 7)
+        }
+    }
+
+    func testHistoryMarksSeparateTodayRecordedFutureAndAdjacentMonth() throws {
+        let calendar = fixedCalendar()
+        let now = try fixedDate(calendar: calendar)
+        let snapshot = makeWidgetSnapshot(dayOffsets: [0, 1], longestStreak: 2, now: now, calendar: calendar)
+        XCTAssertEqual(snapshot.historyDay(for: now, now: now, calendar: calendar),
+                       SunclubWidgetHistoryDay(isToday: true, isLogged: true, isFuture: false, isAdjacentMonth: false))
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
+        XCTAssertEqual(snapshot.historyDay(for: tomorrow, now: now, calendar: calendar),
+                       SunclubWidgetHistoryDay(isToday: false, isLogged: false, isFuture: true, isAdjacentMonth: false))
+        let previousMonth = try XCTUnwrap(calendar.date(byAdding: .month, value: -1, to: now))
+        XCTAssertEqual(snapshot.historyDay(for: previousMonth, now: now, calendar: calendar),
+                       SunclubWidgetHistoryDay(isToday: false, isLogged: false, isFuture: false, isAdjacentMonth: true))
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: now))
+        XCTAssertTrue(snapshot.historyDay(for: yesterday, now: now, calendar: calendar).isLogged)
+        XCTAssertFalse(snapshot.historyDay(for: yesterday, now: now, calendar: calendar).isToday)
+    }
+
     func testUnloggedWidgetOffersFirstApplicationAndTodayDestination() throws {
         let calendar = fixedCalendar()
         let now = try fixedDate(calendar: calendar)

@@ -152,3 +152,10 @@ Release candidates require the repository's data, accessibility and automation g
 - History retains Unconfirmed, Dismissed and Application confirmed states independently of application counts. Unconfirmed does not mean sunscreen was forgotten. Active prompts expire at midnight; snoozes never create next-day alerts.
 - Reminder reconciliation is automatic and preserves valid requests when replacement fails. Dated daily reminders cover 28 days and replenish when the app can run; the weekly repeating reminder remains a longer-term fallback. OS acceptance does not certify delivery, and permissions/Focus can affect presentation.
 - Live Activities have an independent default-on switch. Application, due and pending states stay truthful, respect dismissal, and reconcile with committed edits, Undo and restore. A Live Activity is not proof of sunscreen protection.
+
+Today exposes the displayed log's SPF as a disclosure row. Its focused editor
+can also update the saved sunscreen profile with explicit opt-in, preserving
+other log and product details. UV screens show provider attribution once,
+readable freshness, and all available forecast hours. Calendar widgets adapt
+content density by family; onboarding actions remain reachable at larger text
+sizes and compact heights.

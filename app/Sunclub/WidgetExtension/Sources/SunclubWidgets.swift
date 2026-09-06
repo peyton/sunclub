@@ -299,71 +299,162 @@ private struct SunclubHistorySurface: View {
             case .accessoryRectangular:
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(weeklyCount) days this week").font(.headline)
-                    SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: false)
+                    SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: false, compact: true)
                 }
             default:
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(title).font(.headline)
-                    if style == .totals {
-                        HStack(alignment: .firstTextBaseline, spacing: 24) {
-                            total(weeklyCount, label: "This week")
-                            total(monthlyCount, label: "This month")
+                if style == .calendar, family == .systemMedium {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(title).font(.headline)
+                            total(monthlyCount, label: "Days logged")
+                            Text("Today is outlined").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: 96, alignment: .leading)
+                        SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: true, compact: true)
+                            .frame(maxWidth: .infinity)
+                            .layoutPriority(1)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: family == .systemLarge && style == .calendar ? 16 : 8) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(title).font(.headline)
+                            Spacer(minLength: 4)
+                            if style == .calendar {
+                                Text("\(monthlyCount) days logged").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        if style == .totals || (style == .week && family == .systemMedium) {
+                            HStack(alignment: .firstTextBaseline, spacing: 24) {
+                                total(weeklyCount, label: "This week")
+                                total(monthlyCount, label: "This month")
+                            }
+                        }
+                        recordedDays(compact: family == .systemSmall)
+                        if style == .week, family == .systemSmall {
+                            Text("\(weeklyCount) of 7 days").font(.caption).foregroundStyle(.secondary)
+                        }
+                        if family == .systemLarge {
+                            if style == .totals {
+                                Text(entry.date, format: .dateTime.month(.wide)).font(.subheadline.bold())
+                                SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: true, compact: true)
+                            }
+                            Text("✓ Logged · – Upcoming · Today is outlined")
+                                .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
-                    SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: style == .calendar)
-                    if style == .week {
-                        Text("\(weeklyCount) of 7 days").font(.caption).foregroundStyle(.secondary)
-                    }
                 }
-                .fontDesign(.rounded)
             }
         }
+        .fontDesign(.rounded)
         .widgetURL(style == .totals ? SunclubWidgetRoute.summary.url : SunclubWidgetRoute.history.url)
     }
 
+    private func recordedDays(compact: Bool) -> some View {
+        SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: style == .calendar, compact: compact)
+    }
+
     private func total(_ count: Int, label: String) -> some View {
-        VStack(alignment: .leading) {
-            Text("\(count)").font(.title.bold())
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(count)").font(.title2.bold())
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// The same dated, non-color-only log marks serve week and month layouts.
+/// Calendar and week marks retain meaning without color, including in tinted widgets.
 private struct SunclubRecordedDays: View {
     let snapshot: SunclubWidgetSnapshot
     let now: Date
     let month: Bool
+    var compact = false
 
     var body: some View {
-        let calendar = Calendar.current
         let days = month ? snapshot.monthGridDays(now: now) : snapshot.currentWeekDays(now: now)
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
-            ForEach(days, id: \.self) { day in
-                let applied = snapshot.dayStatus(for: day, now: now) == .applied
-                Group {
-                    if month {
-                        HStack(spacing: 1) {
-                            Text(day, format: .dateTime.day())
-                            if applied { Image(systemName: "checkmark").font(.caption2) }
-                        }
-                        .font(.caption2)
-                        .frame(minHeight: 14)
-                    } else {
-                        VStack(spacing: 2) {
-                            Text(day, format: .dateTime.weekday(.narrow)).font(.caption2)
-                            Image(systemName: applied ? "checkmark.circle.fill" : "circle")
-                                .font(.caption2)
-                                .foregroundStyle(applied ? .primary : .secondary)
-                        }
+        if month {
+            GeometryReader { geometry in
+                let rows = max(days.count / 7, 1)
+                let rowHeight = max(12, (geometry.size.height - 16 - CGFloat(rows) * 2) / CGFloat(rows))
+                LazyVGrid(columns: columns, spacing: 2) {
+                    ForEach(Array(days.prefix(7)), id: \.self) { day in
+                        Text(day, format: .dateTime.weekday(.narrow))
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    ForEach(days, id: \.self) { day in
+                        dayCell(day, height: rowHeight)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(day.formatted(date: .abbreviated, time: .omitted)), \(applied ? "logged" : (calendar.startOfDay(for: day) > calendar.startOfDay(for: now) ? "upcoming" : "not logged"))")
+            }
+        } else {
+            HStack(spacing: 4) {
+                ForEach(days, id: \.self) { day in
+                    VStack(spacing: 3) {
+                        Text(day, format: .dateTime.weekday(.narrow)).font(.caption2).foregroundStyle(.secondary)
+                        dayCell(day, height: compact ? 24 : 32)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
         }
     }
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
+    }
+
+    private func dayCell(_ day: Date, height: CGFloat) -> some View {
+        let state = snapshot.historyDay(for: day, now: now)
+        return Group {
+            if month {
+                HStack(spacing: 1) {
+                    dateLabel(day, state: state)
+                    dayMark(state)
+                }
+            } else {
+                VStack(spacing: 1) {
+                    dateLabel(day, state: state)
+                    dayMark(state)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .foregroundStyle(state.isAdjacentMonth && month ? AppColor.Text.secondary : AppColor.Text.primary)
+        .background {
+            if state.isLogged && !(state.isAdjacentMonth && month) {
+                RoundedRectangle(cornerRadius: 5).fill(AppColor.accent.opacity(0.12))
+            }
+        }
+        .overlay {
+            if state.isToday {
+                RoundedRectangle(cornerRadius: 5).strokeBorder(AppColor.Text.primary, lineWidth: 1)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(day.formatted(date: .abbreviated, time: .omitted)), \(state.isToday ? "today, " : "")\(state.isLogged ? "logged" : (state.isFuture ? "upcoming" : "not logged"))\(state.isAdjacentMonth && month ? ", outside this month" : "")")
+    }
+
+    private func dateLabel(_ day: Date, state: SunclubWidgetHistoryDay) -> some View {
+        Text(day, format: .dateTime.day())
+            .font(compact ? .caption2 : .caption)
+            .italic(state.isAdjacentMonth && month)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    @ViewBuilder
+    private func dayMark(_ state: SunclubWidgetHistoryDay) -> some View {
+        if state.isLogged {
+            Image(systemName: "checkmark")
+                .font(AppFont.rounded(size: 7, weight: .bold))
+        } else if state.isFuture {
+            Image(systemName: "minus")
+                .font(AppFont.rounded(size: 7, weight: .medium))
+        } else if !month {
+            Image(systemName: "circle")
+                .font(AppFont.rounded(size: 7, weight: .medium))
+        }
+    }
+
 }
 private extension SunclubWidgetSnapshot {
     static var previewLogged: SunclubWidgetSnapshot {

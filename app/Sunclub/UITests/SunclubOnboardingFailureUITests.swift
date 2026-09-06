@@ -37,12 +37,34 @@ final class SunclubOnboardingFailureUITests: SunclubUITestCase {
     }
 
     @MainActor
-    private func launchNotificationSetup(scheduling: String) -> XCUIApplication {
+    func testAccessibilityTextKeepsSetupErrorAndContinueReachable() {
+        let app = launchNotificationSetup(
+            scheduling: "fail-always",
+            additionalArguments: accessibilityScorecardArguments
+        )
+        tapHittableElement(app.buttons["onboarding.enableNotifications"], in: app)
+
+        let error = app.descendants(matching: .any)["onboarding.completionError"]
+        XCTAssertTrue(error.waitForExistence(timeout: 10))
+        XCTAssertTrue(scrollToHittableElement(error, in: app, scrollDownFirst: true))
+        XCTAssertTrue(error.label.contains("retry automatically"))
+
+        let continueButton = app.buttons["onboarding.skipNotifications"]
+        XCTAssertTrue(waitForLabel("Continue to Today", on: continueButton))
+        tapHittableElement(continueButton, in: app)
+        assertTodayRootVisible(in: app)
+    }
+
+    @MainActor
+    private func launchNotificationSetup(
+        scheduling: String,
+        additionalArguments: [String] = []
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
             "UITEST_MODE",
             "UITEST_ONBOARDING_NOTIFICATIONS=\(scheduling)"
-        ]
+        ] + additionalArguments
         app.launch()
         XCTAssertTrue(app.buttons["welcome.getStarted"].waitForExistence(timeout: 5))
         tapHittableElement(app.buttons["welcome.getStarted"], in: app)

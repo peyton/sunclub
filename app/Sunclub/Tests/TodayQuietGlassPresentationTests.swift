@@ -10,7 +10,8 @@ final class TodayQuietGlassPresentationTests: XCTestCase {
         let presentation = logPresentation(record: record, now: now)
 
         XCTAssertEqual(presentation.title, "Logged at \(now.formatted(date: .omitted, time: .shortened))")
-        XCTAssertEqual(presentation.detail, "SPF 50 · Face & Neck")
+        XCTAssertEqual(presentation.detail, "Face & Neck")
+        XCTAssertEqual(presentation.spfLabel, "SPF 50")
         XCTAssertEqual(presentation.statusIdentifier, "home.todayStatus")
         XCTAssertFalse(presentation.title.lowercased().contains("protected"))
     }
