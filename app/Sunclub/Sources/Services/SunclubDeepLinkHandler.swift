@@ -147,6 +147,8 @@ enum SunclubDeepLinkHandler {
         }
 
         switch action {
+        case .confirmDepartureCheckIn, .snoozeDepartureCheckIn, .dismissDepartureCheckIn:
+            router.goHome()
         case .logToday:
             appState.verificationSuccessPresentation = VerificationSuccessPresentation(
                 streak: result.currentStreak ?? appState.currentStreak,
@@ -179,6 +181,8 @@ enum SunclubDeepLinkHandler {
         }
 
         switch action {
+        case .confirmDepartureCheckIn, .snoozeDepartureCheckIn, .dismissDepartureCheckIn:
+            router.open(.departureCheckIn)
         case .reapply:
             let now = appState.referenceDate
             appState.prepareManualLogRouteContext(

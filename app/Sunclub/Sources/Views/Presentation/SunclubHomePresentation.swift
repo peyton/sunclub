@@ -121,8 +121,8 @@ struct SunclubHomePresentation {
             )
         }
 
-        if let notificationHealthPresentation {
-            let action: HomeDailyPlanAction = notificationHealthPresentation.state == .stale ? .repairReminders : .openSettings
+        if let notificationHealthPresentation, notificationHealthPresentation.state == .denied {
+            let action: HomeDailyPlanAction = .openSettings
             return HomeDailyPlanPresentation(
                 title: notificationHealthPresentation.title,
                 detail: "\(notificationHealthPresentation.detail) Manual logging still works.",

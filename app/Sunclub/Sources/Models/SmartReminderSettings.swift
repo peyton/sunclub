@@ -72,6 +72,7 @@ struct SmartReminderSettings: Codable, Equatable {
     var weekendTime: ReminderTime
     var followsTravelTimeZone: Bool
     var anchoredTimeZoneIdentifier: String
+    var liveActivitiesEnabled: Bool
     var streakRiskEnabled: Bool
     var leaveHomeReminder: LeaveHomeReminderSettings
 
@@ -81,12 +82,14 @@ struct SmartReminderSettings: Codable, Equatable {
         followsTravelTimeZone: Bool = true,
         anchoredTimeZoneIdentifier: String = TimeZone.autoupdatingCurrent.identifier,
         streakRiskEnabled: Bool = true,
+        liveActivitiesEnabled: Bool = true,
         leaveHomeReminder: LeaveHomeReminderSettings = LeaveHomeReminderSettings()
     ) {
         self.weekdayTime = weekdayTime
         self.weekendTime = weekendTime
         self.followsTravelTimeZone = followsTravelTimeZone
         self.anchoredTimeZoneIdentifier = anchoredTimeZoneIdentifier
+        self.liveActivitiesEnabled = liveActivitiesEnabled
         self.streakRiskEnabled = streakRiskEnabled
         self.leaveHomeReminder = leaveHomeReminder
     }
@@ -141,6 +144,7 @@ struct SmartReminderSettings: Codable, Equatable {
             followsTravelTimeZone: followsTravelTimeZone,
             anchoredTimeZoneIdentifier: resolvedTimeZoneIdentifier,
             streakRiskEnabled: streakRiskEnabled,
+            liveActivitiesEnabled: liveActivitiesEnabled,
             leaveHomeReminder: leaveHomeReminder
         )
     }
@@ -150,6 +154,7 @@ struct SmartReminderSettings: Codable, Equatable {
         case weekendTime
         case followsTravelTimeZone
         case anchoredTimeZoneIdentifier
+        case liveActivitiesEnabled
         case streakRiskEnabled
         case leaveHomeReminder
     }
@@ -162,6 +167,7 @@ struct SmartReminderSettings: Codable, Equatable {
         followsTravelTimeZone = try container.decodeIfPresent(Bool.self, forKey: .followsTravelTimeZone) ?? true
         anchoredTimeZoneIdentifier = try container.decodeIfPresent(String.self, forKey: .anchoredTimeZoneIdentifier)
             ?? TimeZone.autoupdatingCurrent.identifier
+        liveActivitiesEnabled = try container.decodeIfPresent(Bool.self, forKey: .liveActivitiesEnabled) ?? true
         streakRiskEnabled = try container.decodeIfPresent(Bool.self, forKey: .streakRiskEnabled) ?? true
         leaveHomeReminder = try container.decodeIfPresent(LeaveHomeReminderSettings.self, forKey: .leaveHomeReminder)
             ?? LeaveHomeReminderSettings()

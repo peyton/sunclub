@@ -41,8 +41,8 @@ final class SharedLocationManager: NSObject, SharedLocationManaging, @preconcurr
     static let shared = SharedLocationManager()
 
     private let manager = CLLocationManager()
-    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
-    private var locationContinuation: CheckedContinuation<CLLocation, Error>?
+    private var authorizationContinuations: [CheckedContinuation<CLAuthorizationStatus, Never>] = []
+    private var locationContinuations: [CheckedContinuation<CLLocation, Error>] = []
 
     var eventHandler: ((SharedLocationEvent) -> Void)?
 
@@ -67,8 +67,9 @@ final class SharedLocationManager: NSObject, SharedLocationManaging, @preconcurr
         }
 
         return await withCheckedContinuation { continuation in
-            authorizationContinuation = continuation
-            manager.requestWhenInUseAuthorization()
+            let startsRequest = authorizationContinuations.isEmpty
+            authorizationContinuations.append(continuation)
+            if startsRequest { manager.requestWhenInUseAuthorization() }
         }
     }
 
@@ -82,10 +83,10 @@ final class SharedLocationManager: NSObject, SharedLocationManaging, @preconcurr
         case .authorizedAlways, .denied, .restricted:
             return status
         case .authorizedWhenInUse, .notDetermined:
-            return await withCheckedContinuation { continuation in
-                authorizationContinuation = continuation
-                manager.requestAlwaysAuthorization()
-            }
+            // iOS may defer or decline to show the upgrade sheet without calling
+            // the delegate. Observe later changes instead of suspending setup forever.
+            manager.requestAlwaysAuthorization()
+            return manager.authorizationStatus
         @unknown default:
             return status
         }
@@ -109,8 +110,9 @@ final class SharedLocationManager: NSObject, SharedLocationManaging, @preconcurr
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            locationContinuation = continuation
-            manager.requestLocation()
+            let startsRequest = locationContinuations.isEmpty
+            locationContinuations.append(continuation)
+            if startsRequest { manager.requestLocation() }
         }
     }
 
@@ -142,8 +144,11 @@ final class SharedLocationManager: NSObject, SharedLocationManaging, @preconcurr
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationContinuation?.resume(returning: manager.authorizationStatus)
-        authorizationContinuation = nil
+        if manager.authorizationStatus != .notDetermined {
+            let waiting = authorizationContinuations
+            authorizationContinuations.removeAll()
+            for continuation in waiting { continuation.resume(returning: manager.authorizationStatus) }
+        }
         eventHandler?(.authorizationChanged(manager.authorizationStatus))
     }
 
@@ -160,20 +165,20 @@ final class SharedLocationManager: NSObject, SharedLocationManaging, @preconcurr
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else {
-            locationContinuation?.resume(throwing: SharedLocationError.locationUnavailable)
-            locationContinuation = nil
-            return
+        let waiting = locationContinuations
+        locationContinuations.removeAll()
+        for continuation in waiting {
+            if let location = locations.last { continuation.resume(returning: location) }
+            else { continuation.resume(throwing: SharedLocationError.locationUnavailable) }
         }
-
-        locationContinuation?.resume(returning: location)
-        locationContinuation = nil
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        locationContinuation?.resume(throwing: error)
-        locationContinuation = nil
+        let waiting = locationContinuations
+        locationContinuations.removeAll()
+        for continuation in waiting { continuation.resume(throwing: error) }
     }
+
 }
 
 extension HomeLocation {

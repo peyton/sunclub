@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import UIKit
 
 @MainActor
 protocol SunclubLiveActivityCoordinating: AnyObject {
@@ -12,11 +13,21 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
     static let shared = SunclubLiveActivityCoordinator()
 
     func sync(using state: AppState) async {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+        guard !RuntimeEnvironment.isRunningTests else { return }
+        let now = state.referenceDate
+        guard state.settings.smartReminderSettings.liveActivitiesEnabled,
+              ActivityAuthorizationInfo().areActivitiesEnabled else {
+            await endAll()
             return
         }
-
-        let now = state.currentDateValue
+        if let id = state.pendingDepartureCheckInID, let date = state.pendingDepartureDate,
+           date <= now, Calendar.current.isDate(date, inSameDayAs: now), state.record(for: now) == nil {
+            await SunclubLiveActivitySessionStore.publish(
+                SunclubLiveActivitySnapshotBridge.pendingContentState(id: id, departureDate: date),
+                now: now, mayStart: UIApplication.shared.applicationState == .active
+            )
+            return
+        }
         guard let record = state.record(for: now) else {
             await endAll()
             return
@@ -34,10 +45,9 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
 
         let reapplyPlan = state.reapplyReminderPlan
         let reapplyStartDate = record.lastReappliedAt ?? record.verifiedAt
-        guard state.settings.reapplyReminderEnabled,
-              reapplyStartDate <= now,
+        guard reapplyStartDate <= now,
               Calendar.current.isDate(reapplyStartDate, inSameDayAs: now),
-              let reapplyDeadline = ReminderPlanner.reapplyFireDate(
+              let baselineDeadline = ReminderPlanner.reapplyFireDate(
                 from: reapplyStartDate,
                 intervalMinutes: reapplyPlan.intervalMinutes
               ) else {
@@ -45,6 +55,9 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
             return
         }
 
+        let reapplyDeadline = SunclubLiveActivitySessionStore.deadline(
+            applicationDate: reapplyStartDate, baseline: baselineDeadline, now: now
+        )
         let contentState = Self.contentState(
             record: record,
             uvPayload: uvPayload,
@@ -57,43 +70,26 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
     }
 
     private func publish(_ contentState: SunclubLiveActivityAttributes.ContentState, now: Date) async {
-        guard let reapplyDeadline = contentState.reapplyDeadline else { return }
-        let attributes = SunclubLiveActivityAttributes(headline: "Reapply timer")
-        let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? reapplyDeadline
-        let content = ActivityContent(state: contentState, staleDate: min(reapplyDeadline, nextDay))
-
-        if let existing = Activity<SunclubLiveActivityAttributes>.activities.first {
-            await existing.update(content)
-        } else {
-            do {
-                _ = try Activity<SunclubLiveActivityAttributes>.request(
-                    attributes: attributes,
-                    content: content,
-                    pushType: nil
-                )
-            } catch {
-                return
-            }
-        }
+        await SunclubLiveActivitySessionStore.publish(contentState, now: now, mayStart: UIApplication.shared.applicationState == .active)
     }
 
     func endAll() async {
-        for activity in Activity<SunclubLiveActivityAttributes>.activities {
-            await activity.end(nil, dismissalPolicy: .default)
-        }
+        await SunclubLiveActivitySessionStore.publish(nil, now: Date(), mayStart: false)
     }
 
-    func snoozeAll(until deadline: Date, now: Date = Date()) async {
-        for activity in Activity<SunclubLiveActivityAttributes>.activities {
-            let state = Self.snoozedContentState(activity.content.state, until: deadline, now: now)
-            let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? deadline
-            let staleDate = min(deadline, nextDay)
-            let content = ActivityContent(
-                state: state,
-                staleDate: staleDate
-            )
-            await activity.update(content)
+    func snoozeAll(until deadline: Date, now: Date = Date(), applicationDate: Date? = nil) async {
+        if let applicationDate {
+            SunclubLiveActivitySessionStore.saveSnooze(applicationDate: applicationDate, deadline: deadline)
         }
+        guard !RuntimeEnvironment.isRunningTests else { return }
+        guard let activity = Activity<SunclubLiveActivityAttributes>.activities.first(where: {
+            $0.activityState == .active || $0.activityState == .stale
+        }), let start = activity.content.state.reapplyStartDate,
+            applicationDate == nil || applicationDate == start,
+            Calendar.current.isDate(start, inSameDayAs: now) else { return }
+        SunclubLiveActivitySessionStore.saveSnooze(applicationDate: start, deadline: deadline)
+        let state = Self.snoozedContentState(activity.content.state, until: deadline, now: now)
+        await SunclubLiveActivitySessionStore.publish(state, now: now, mayStart: false)
     }
 
     static func compactSurfaceUVPayload(
@@ -169,7 +165,6 @@ final class SunclubLiveActivityCoordinator: SunclubLiveActivityCoordinating {
     ) -> SunclubLiveActivityAttributes.ContentState {
         var updated = state
         updated.countdownLabel = reapplyCountdownLabel(deadline: deadline, now: now)
-        updated.reapplyStartDate = now
         updated.reapplyDeadline = deadline
         return updated
     }
@@ -219,11 +214,5 @@ struct SunclubLiveActivityUVPayload: Equatable {
         self.peakUVIndex = peakUVIndex
         self.level = level
         self.validUntil = validUntil
-    }
-}
-
-private extension AppState {
-    var currentDateValue: Date {
-        Date()
     }
 }

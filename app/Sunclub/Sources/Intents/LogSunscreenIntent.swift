@@ -4,8 +4,10 @@ import UniformTypeIdentifiers
 
 private enum SunclubIntentSupport {
     @MainActor
-    static func perform(_ action: SunclubAutomationAction) throws -> SunclubAutomationResult {
-        try SunclubAutomationRuntime.performStandalone(action, invocation: .shortcut)
+    static func perform(_ action: SunclubAutomationAction) async throws -> SunclubAutomationResult {
+        let result = try SunclubAutomationRuntime.performStandalone(action, invocation: .shortcut)
+        await SunclubLoggingReminderBridge.syncAfterMutation(didChange: result.didChange == true)
+        return result
     }
 
     static func dialog(for error: Error) -> IntentDialog {
@@ -63,6 +65,7 @@ enum SunclubWidgetRouteIntentValue: String, AppEnum {
 }
 
 enum SunclubAutomationRouteIntentValue: String, AppEnum {
+    case departureCheckIn
     case home
     case log
     case reapply
@@ -83,6 +86,7 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Sunclub Route")
     static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
+        .departureCheckIn: "Sunscreen Check-in",
         .home: "Home",
         .log: "Today's Log",
         .reapply: "Reapply",
@@ -103,6 +107,7 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
 
     var route: SunclubAutomationRoute {
         switch self {
+        case .departureCheckIn: return .departureCheckIn
         case .home:
             return .home
         case .log:
@@ -140,6 +145,7 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
 
     init(route: SunclubAutomationRoute) {
         switch route {
+        case .departureCheckIn: self = .departureCheckIn
         case .home:
             self = .home
         case .log:
@@ -185,6 +191,8 @@ enum SunclubAutomationRouteIntentValue: String, AppEnum {
             self = .summary
         case .history:
             self = .history
+        case .departureCheckIn:
+            self = .departureCheckIn
         case .updateToday:
             self = .log
         }
@@ -271,7 +279,7 @@ struct LogSunscreenIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.logToday(spfLevel: spfLevel, notes: notes))
+            let result = try await SunclubIntentSupport.perform(.logToday(spfLevel: spfLevel, notes: notes))
             return .result(dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             return .result(dialog: SunclubIntentSupport.dialog(for: error))
@@ -291,14 +299,9 @@ struct LogSunscreenWidgetIntent: LiveActivityIntent {
     func perform() async throws -> some IntentResult & OpensIntent {
         do {
             let result = try SunclubAutomationRuntime.performAdaptiveLogStandalone()
-            if result.didChange == true {
-                let snapshot = SunclubWidgetSnapshotStore().load()
-                let now = Date()
-                await SunclubLoggingReminderBridge.sync(snapshot: snapshot, now: now)
-                await SunclubLiveActivitySnapshotBridge.updateExisting(
-                    snapshot: SunclubWidgetSnapshotStore().load(), now: Date()
-                )
-            }
+            await SunclubLoggingReminderBridge.syncAfterMutation(
+                didChange: result.didChange == true, mayStartLiveActivity: true
+            )
         } catch SunclubAutomationError.onboardingRequired {
             SunclubWidgetSnapshotStore().setPendingRoute(.home)
             return .result(opensIntent: OpenSunclubRouteIntent(route: SunclubAutomationRoute.home))
@@ -317,14 +320,9 @@ struct LogReapplicationLiveActivityIntent: LiveActivityIntent {
     func perform() async throws -> some IntentResult & OpensIntent {
         do {
             let result = try SunclubAutomationRuntime.performAdaptiveLogStandalone(requiresExistingRecord: true)
-            if result.didChange == true {
-                let snapshot = SunclubWidgetSnapshotStore().load()
-                let now = Date()
-                await SunclubLoggingReminderBridge.sync(snapshot: snapshot, now: now)
-                await SunclubLiveActivitySnapshotBridge.updateExisting(
-                    snapshot: SunclubWidgetSnapshotStore().load(), now: Date()
-                )
-            }
+            await SunclubLoggingReminderBridge.syncAfterMutation(
+                didChange: result.didChange == true, mayStartLiveActivity: true
+            )
         } catch SunclubAutomationError.onboardingRequired {
             SunclubWidgetSnapshotStore().setPendingRoute(.home)
             return .result(opensIntent: OpenSunclubRouteIntent(route: SunclubAutomationRoute.home))
@@ -344,10 +342,11 @@ struct LogTodayWidgetIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        _ = try SunclubAutomationRuntime.performStandalone(
+        let result = try SunclubAutomationRuntime.performStandalone(
             .logToday(spfLevel: nil, notes: nil),
             invocation: .widget
         )
+        await SunclubLoggingReminderBridge.syncAfterMutation(didChange: result.didChange == true)
         return .result()
     }
 }
@@ -360,7 +359,8 @@ struct LogReapplyWidgetIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        _ = try SunclubAutomationRuntime.performStandalone(.reapply, invocation: .widget)
+        let result = try SunclubAutomationRuntime.performStandalone(.reapply, invocation: .widget)
+        await SunclubLoggingReminderBridge.syncAfterMutation(didChange: result.didChange == true)
         return .result()
     }
 }
@@ -397,7 +397,7 @@ struct SaveSunscreenLogIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(
+            let result = try await SunclubIntentSupport.perform(
                 .saveLog(
                     day: day,
                     time: SunclubIntentSupport.time(from: time),
@@ -426,7 +426,7 @@ struct LogReapplyIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.reapply)
+            let result = try await SunclubIntentSupport.perform(.reapply)
             return .result(dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             return .result(dialog: SunclubIntentSupport.dialog(for: error))
@@ -447,7 +447,7 @@ struct GetSunclubStatusIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.status)
+            let result = try await SunclubIntentSupport.perform(.status)
             var statusLines = [
                 result.message,
                 "This week: \(result.weeklyApplied ?? 0) days logged."
@@ -477,7 +477,7 @@ struct GetTimeSinceLastSunscreenIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.timeSinceLastApplication)
+            let result = try await SunclubIntentSupport.perform(.timeSinceLastApplication)
             return .result(value: result.message, dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             let dialog = SunclubIntentSupport.dialog(for: error)
@@ -544,7 +544,7 @@ struct SetSunclubReminderIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
             let reminderTime = SunclubIntentSupport.time(from: time) ?? ReminderTime(hour: 8, minute: 0)
-            let result = try SunclubIntentSupport.perform(.setReminder(kind: kind.kind, time: reminderTime))
+            let result = try await SunclubIntentSupport.perform(.setReminder(kind: kind.kind, time: reminderTime))
             return .result(dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             return .result(dialog: SunclubIntentSupport.dialog(for: error))
@@ -576,7 +576,7 @@ struct SetSunclubReapplyIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(
+            let result = try await SunclubIntentSupport.perform(
                 .setReapply(enabled: enabled, intervalMinutes: intervalMinutes)
             )
             return .result(dialog: IntentDialog(stringLiteral: result.message))
@@ -610,7 +610,7 @@ struct SetSunclubToggleIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.setToggle(toggle.toggle, enabled: enabled))
+            let result = try await SunclubIntentSupport.perform(.setToggle(toggle.toggle, enabled: enabled))
             return .result(dialog: IntentDialog(stringLiteral: result.message))
         } catch {
             return .result(dialog: SunclubIntentSupport.dialog(for: error))
@@ -631,7 +631,7 @@ struct ExportSunclubBackupIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<IntentFile> & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.exportBackup)
+            let result = try await SunclubIntentSupport.perform(.exportBackup)
             let file = try SunclubIntentSupport.file(from: result, fallbackType: .json)
             return .result(value: file, dialog: IntentDialog(stringLiteral: result.message))
         } catch {
@@ -665,7 +665,7 @@ struct CreateSkinHealthReportIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<IntentFile> & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(
+            let result = try await SunclubIntentSupport.perform(
                 .createSkinHealthReport(start: startDate, end: endDate)
             )
             let file = try SunclubIntentSupport.file(from: result, fallbackType: .pdf)
@@ -690,7 +690,7 @@ struct CreateStreakCardIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<IntentFile> & ProvidesDialog {
         do {
-            let result = try SunclubIntentSupport.perform(.createStreakCard)
+            let result = try await SunclubIntentSupport.perform(.createStreakCard)
             let file = try SunclubIntentSupport.file(from: result, fallbackType: .png)
             return .result(value: file, dialog: IntentDialog(stringLiteral: result.message))
         } catch {

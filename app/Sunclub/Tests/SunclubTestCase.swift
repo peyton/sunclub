@@ -20,6 +20,7 @@ final class MockNotificationManager: NotificationScheduling {
     private(set) var cancelReapplyRemindersCount = 0
     private(set) var notificationHealthSnapshotCount = 0
 
+    var reapplySchedulingHook: (() -> Void)?
     var requestAuthorizationResult = true
     var scheduleRemindersResult: NotificationSchedulingReport = .empty
     var notificationOperationResult = NotificationOperationResult.success("Scheduled.")
@@ -45,6 +46,7 @@ final class MockNotificationManager: NotificationScheduling {
     ) async -> NotificationOperationResult {
         scheduleReapplyReminderPlans.append(plan)
         scheduleReapplyReminderRoutes.append(route)
+        reapplySchedulingHook?()
         return notificationOperationResult
     }
 

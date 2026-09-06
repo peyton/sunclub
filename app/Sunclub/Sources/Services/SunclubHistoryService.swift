@@ -79,6 +79,131 @@ final class SunclubHistoryService {
         try rebuildProjections()
     }
 
+    func departureCheckIns() throws -> [DepartureCheckInSnapshot] {
+        try effectiveDepartureRevisions(orderedDepartureRevisions()).values
+            .compactMap { try $0.snapshot }.sorted { $0.departedAt > $1.departedAt }
+    }
+
+    /// Projection and inverse operations must agree on which revision is effective.
+    /// A late unanswered duplicate cannot erase a response to the original check-in.
+    private func effectiveDepartureRevisions(
+        _ revisions: [DepartureCheckInRevision]
+    ) throws -> [Date: DepartureCheckInRevision] {
+        let kindsByBatch = Dictionary(uniqueKeysWithValues:
+            try context.fetch(FetchDescriptor<SunclubChangeBatch>()).map { ($0.id, $0.kind) })
+        var byDay: [Date: DepartureCheckInRevision] = [:]
+        for revision in revisions {
+            let next = try revision.snapshot
+            if let existing = try byDay[revision.day]?.snapshot, let next,
+               existing.resolution != .unconfirmed, next.resolution == .unconfirmed,
+               existing.id != next.id || kindsByBatch[revision.batchID] == .departureCheckIn {
+                // An offline snooze is not a request to undo a confirmed application.
+                // Explicit undo/delete/restore revisions may still reopen this same event.
+                continue
+            }
+            byDay[revision.day] = revision
+        }
+        return byDay
+    }
+
+    func departureCheckInWires(for batchID: UUID) throws -> [DepartureCheckInRevisionWire] {
+        try context.fetch(FetchDescriptor<DepartureCheckInRevision>())
+            .filter { $0.batchID == batchID }.map { try DepartureCheckInRevisionWire(revision: $0) }
+    }
+
+    @discardableResult
+    func recordDeparture(at now: Date) throws -> SunclubChangeBatch? {
+        let day = calendar.startOfDay(for: now)
+        guard try record(for: day) == nil,
+              !(try departureCheckIns()).contains(where: { $0.isOnDay(now, calendar: calendar) }) else { return nil }
+        let snapshot = DepartureCheckInSnapshot(id: UUID(), day: day, departedAt: now)
+        return try commitRecoveryChange(validate: {}, {
+            let batch = try createBatch(kind: .departureCheckIn, scope: .day,
+                scopeIdentifier: Self.scopeIdentifier(for: day), summary: "Checked in after leaving home.")
+            context.insert(try DepartureCheckInRevision(batchID: batch.id, day: day, snapshot: snapshot))
+            return batch
+        })
+    }
+
+    @discardableResult
+    func resolveDeparture(id: UUID, action: DepartureCheckInAction, now: Date) throws -> SunclubChangeBatch? {
+        guard var snapshot = try departureCheckIns().first(where: { $0.id == id }),
+              snapshot.resolution == .unconfirmed,
+              snapshot.isOnDay(now, calendar: calendar) else { return nil }
+        var application: DailyRecordProjectionSnapshot?
+        switch action {
+        case .dismiss:
+            snapshot.resolution = .dismissed
+            snapshot.snoozedUntil = nil
+        case let .snooze(until):
+            guard until > now else { return nil }
+            guard snapshot.snoozedUntil != until else { return nil }
+            snapshot.snoozedUntil = until
+        case let .confirm(appliedAt, spfLevel, notes):
+            guard appliedAt <= now else { throw HistoryServiceError.futureApplicationTime }
+            guard snapshot.isOnDay(appliedAt, calendar: calendar) else {
+                throw HistoryServiceError.staleChange
+            }
+            snapshot.resolution = .confirmed
+            snapshot.snoozedUntil = nil
+            let applicationDay = calendar.startOfDay(for: appliedAt)
+            if let existing = try record(for: applicationDay) {
+                // A racing log from another surface wins. Confirmation never overwrites it.
+                snapshot.linkedApplicationAt = existing.verifiedAt
+            } else {
+                snapshot.linkedApplicationAt = appliedAt
+                application = DailyRecordProjectionSnapshot(startOfDay: applicationDay, verifiedAt: appliedAt,
+                    methodRawValue: VerificationMethod.manual.rawValue, verificationDuration: nil,
+                    spfLevel: SunManualLogInput.normalizedSPF(spfLevel), notes: SunManualLogInput.normalizedNotes(notes),
+                    reapplyCount: 0, lastReappliedAt: nil)
+            }
+        }
+        return try commitRecoveryChange(validate: {}, {
+            let batch = try createBatch(kind: .departureCheckIn, scope: .day,
+                scopeIdentifier: Self.scopeIdentifier(for: calendar.startOfDay(for: snapshot.departedAt)), summary: "Updated sunscreen check-in.")
+            context.insert(try DepartureCheckInRevision(batchID: batch.id, day: snapshot.day, snapshot: snapshot))
+            if let application {
+                context.insert(DailyRecordRevision(batch: batch, snapshot: application, changedFields: Self.allRecordFields))
+            }
+            return batch
+        })
+    }
+
+    private func orderedDepartureRevisions() throws -> [DepartureCheckInRevision] {
+        let batches = try context.fetch(FetchDescriptor<SunclubChangeBatch>()).sorted { lhs, rhs in
+            Self.isOrderedBefore(
+                HistoryOrderKey(logicalOrder: lhs.logicalOrder, serverReceivedAt: lhs.serverReceivedAt,
+                    createdAt: lhs.createdAt, id: lhs.id),
+                HistoryOrderKey(logicalOrder: rhs.logicalOrder, serverReceivedAt: rhs.serverReceivedAt,
+                    createdAt: rhs.createdAt, id: rhs.id))
+        }
+        let order = Dictionary(uniqueKeysWithValues: batches.enumerated().map { ($0.element.id, $0.offset) })
+        return try context.fetch(FetchDescriptor<DepartureCheckInRevision>()).sorted {
+            let lhs = order[$0.batchID] ?? -1
+            let rhs = order[$1.batchID] ?? -1
+            return lhs == rhs ? $0.id.uuidString < $1.id.uuidString : lhs < rhs
+        }
+    }
+
+    private func insertDepartureWires(_ wires: [DepartureCheckInRevisionWire]) throws {
+        var existing = Set(try context.fetch(FetchDescriptor<DepartureCheckInRevision>()).map(\.id))
+        for wire in wires where existing.insert(wire.id).inserted {
+            context.insert(try DepartureCheckInRevision(id: wire.id, batchID: wire.batchID,
+                day: wire.day, snapshot: wire.snapshot))
+        }
+    }
+
+    private func restoreDepartureImport(_ session: SunclubImportSession, into batch: SunclubChangeBatch) throws {
+        let revisions = try orderedDepartureRevisions()
+        let restore = revisions.filter { $0.batchID == session.restorePointBatchID }
+        let importedIDs = Set(session.importedBatchIDs)
+        let latest = try effectiveDepartureRevisions(revisions)
+        for (day, revision) in latest where importedIDs.contains(revision.batchID) {
+            let previous = try restore.last(where: { $0.day == day })?.snapshot
+            context.insert(try DepartureCheckInRevision(batchID: batch.id, day: day, snapshot: previous))
+        }
+    }
+
     func record(for day: Date) throws -> DailyRecord? {
         let targetDay = calendar.startOfDay(for: day)
         let predicate = #Predicate<DailyRecord> { $0.startOfDay == targetDay }
@@ -108,6 +233,7 @@ final class SunclubHistoryService {
     }
 
     func isEffectivelyEmptyForInitialICloudRestore() throws -> Bool {
+        if try !departureCheckIns().isEmpty { return false }
         if try !records().isEmpty {
             return false
         }
@@ -269,6 +395,12 @@ final class SunclubHistoryService {
                     )
                 }
 
+                if var checkIn = try departureCheckIns().first(where: { $0.isOnDay(targetDay, calendar: calendar) && $0.resolution != .dismissed }) {
+                    checkIn.resolution = nextSnapshot == nil ? .unconfirmed : .confirmed
+                    checkIn.snoozedUntil = nil
+                    checkIn.linkedApplicationAt = nextSnapshot?.verifiedAt
+                    context.insert(try DepartureCheckInRevision(batchID: batch.id, day: checkIn.day, snapshot: checkIn))
+                }
                 try rebuildProjections(savingChanges: false)
                 try mutationGuard()
                 createdBatch = batch
@@ -283,7 +415,8 @@ final class SunclubHistoryService {
     @discardableResult
     func deleteAllRecords() throws -> SunclubChangeBatch? {
         let currentRecords = try records()
-        guard !currentRecords.isEmpty else {
+        let checkIns = try departureCheckIns()
+        guard !currentRecords.isEmpty || !checkIns.isEmpty else {
             return nil
         }
 
@@ -296,6 +429,9 @@ final class SunclubHistoryService {
                     scopeIdentifier: "timeline",
                     summary: "Deleted all sunscreen history."
                 )
+                for checkIn in checkIns {
+                    context.insert(try DepartureCheckInRevision(batchID: batch.id, day: checkIn.day, snapshot: nil))
+                }
                 for record in currentRecords {
                     context.insert(
                         DailyRecordRevision(
@@ -319,6 +455,7 @@ final class SunclubHistoryService {
 
     @discardableResult
     func createRestorePoint(summary: String) throws -> SunclubChangeBatch {
+        let checkIns = try departureCheckIns()
         let batch = try createBatch(
             kind: .importRestorePoint,
             scope: .timeline,
@@ -327,6 +464,9 @@ final class SunclubHistoryService {
             isLocalOnly: true
         )
 
+        for snapshot in checkIns {
+            context.insert(try DepartureCheckInRevision(batchID: batch.id, day: snapshot.day, snapshot: snapshot))
+        }
         let settings = try loadOrCreateSettings()
         context.insert(
             SettingsRevision(
@@ -373,10 +513,12 @@ final class SunclubHistoryService {
         )
         context.insert(session)
 
+        let priorCheckIns = try departureCheckIns()
         let importedDomain = try ImportedDomainSnapshot(context: importedContext)
         var importedBatchIDs = try cloneImportedBatches(importedDomain.batches, sessionID: session.id)
         try cloneImportedRecordRevisions(importedDomain.recordRevisions)
         try cloneImportedSettingsRevisions(importedDomain.settingsRevisions)
+        try insertDepartureWires(importedDomain.departureRevisions.map { try DepartureCheckInRevisionWire(revision: $0) })
 
         let importBatch = try applyImportedProjectedState(
             projectedSettings: importedDomain.projectedSettings,
@@ -385,6 +527,19 @@ final class SunclubHistoryService {
             importedPreferences: importedPreferences,
             previousPreferences: previousPreferences
         )
+        var importedCheckIns = Dictionary(uniqueKeysWithValues:
+            try SunclubHistoryService(context: importedContext, calendar: calendar).departureCheckIns().map { ($0.day, $0) })
+        for local in priorCheckIns {
+            // Missing/deleted imported check-ins and older unanswered prompts cannot erase
+            // meaningful local history. The import's projected state owns this preservation.
+            if importedCheckIns[local.day] == nil
+                || (local.resolution != .unconfirmed && importedCheckIns[local.day]?.resolution == .unconfirmed) {
+                importedCheckIns[local.day] = local
+            }
+        }
+        for snapshot in importedCheckIns.values {
+            context.insert(try DepartureCheckInRevision(batchID: importBatch.id, day: snapshot.day, snapshot: snapshot))
+        }
         // Marks imports whose envelope and embedded preferences share this session's ownership.
         importBatch.inverseOfBatchID = restorePoint.id
         importedBatchIDs.append(importBatch.id)
@@ -414,7 +569,10 @@ final class SunclubHistoryService {
         let importedHistoryService = SunclubHistoryService(context: importedContext, calendar: calendar)
         try importedHistoryService.refreshProjectedState()
         let importedDomain = try ImportedDomainSnapshot(context: importedContext)
-        guard Self.isMeaningfulRecovery(
+        let recoveredCheckIns = try importedHistoryService.departureCheckIns().filter { imported in
+            !(try departureCheckIns()).contains { $0.day == imported.day }
+        }
+        guard !recoveredCheckIns.isEmpty || Self.isMeaningfulRecovery(
             settings: importedDomain.projectedSettings?.projectionSnapshot,
             records: importedDomain.projectedRecords
         ) else {
@@ -425,7 +583,7 @@ final class SunclubHistoryService {
             projectedSettings: importedDomain.projectedSettings,
             projectedRecords: importedDomain.projectedRecords
         )
-        guard recoveryPlan.hasChanges else {
+        guard recoveryPlan.hasChanges || !recoveredCheckIns.isEmpty else {
             return nil
         }
 
@@ -445,6 +603,9 @@ final class SunclubHistoryService {
             importSessionID: session.id
         )
 
+        for snapshot in recoveredCheckIns {
+            context.insert(try DepartureCheckInRevision(batchID: recoveryBatch.id, day: snapshot.day, snapshot: snapshot))
+        }
         if let recoveredSettings = recoveryPlan.settings {
             context.insert(
                 SettingsRevision(
@@ -680,6 +841,7 @@ final class SunclubHistoryService {
                 inverseOfBatchID: session.restorePointBatchID,
                 importSessionID: session.id
             )
+            try restoreDepartureImport(session, into: batch)
             removedDays = try insertImportUndoDeletions(
                 session, restorePointRevisions: restorePointRevisions,
                 batches: batches, revisionsByDay: revisionsByDay, into: batch
@@ -1162,6 +1324,10 @@ final class SunclubHistoryService {
               try settingsRevision(forBatchID: batchID) == nil else { return false }
         let targets = try revisions(forBatchID: batchID)
         guard !targets.isEmpty else { return false }
+        let departureRevisions = try orderedDepartureRevisions()
+        for target in departureRevisions where target.batchID == batchID {
+            guard departureRevisions.last(where: { $0.day == target.day })?.id == target.id else { return false }
+        }
         let allRevisions = Self.sortedRecordRevisions(try context.fetch(FetchDescriptor<DailyRecordRevision>()))
         let projectedRecords = try records()
         for target in targets {
@@ -1238,6 +1404,13 @@ final class SunclubHistoryService {
             } else {
                 context.insert(DailyRecordRevision(deletedDay: revision.startOfDay, batch: inverseBatch))
             }
+        }
+
+        let departureRevisions = try orderedDepartureRevisions()
+        for revision in departureRevisions where revision.batchID == batch.id {
+            let prefix = Array(departureRevisions.prefix { $0.id != revision.id })
+            let preceding = try effectiveDepartureRevisions(prefix)[revision.day]
+            context.insert(try DepartureCheckInRevision(batchID: inverseBatch.id, day: revision.day, snapshot: try preceding?.snapshot))
         }
 
         batch.undoneByBatchID = inverseBatch.id
@@ -1348,6 +1521,7 @@ final class SunclubHistoryService {
     }
 
     func upsertRemoteBatch(_ wire: BatchWire) throws {
+        try insertDepartureWires((wire.departureCheckInRevisions ?? []).filter { $0.batchID == wire.id })
         let logicalOrder = Self.validLogicalOrder(wire.logicalOrder)
         if let existing = try fetchBatchForSync(id: wire.id) {
             if existing.logicalOrder == nil {
@@ -2179,8 +2353,10 @@ final class SunclubHistoryService {
         let projectedRecords: [DailyRecord]
         let recordRevisions: [DailyRecordRevision]
         let settingsRevisions: [SettingsRevision]
+        let departureRevisions: [DepartureCheckInRevision]
 
         init(context: ModelContext) throws {
+            departureRevisions = try context.fetch(FetchDescriptor<DepartureCheckInRevision>())
             batches = try context.fetch(
                 FetchDescriptor<SunclubChangeBatch>(sortBy: [SortDescriptor(\.createdAt, order: .forward)])
             )
@@ -2208,6 +2384,7 @@ final class SunclubHistoryService {
 }
 
 enum HistoryServiceError: LocalizedError {
+    case futureApplicationTime
     case staleChange
     case batchNotFound
     case batchAlreadyUndone
@@ -2220,6 +2397,8 @@ enum HistoryServiceError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .futureApplicationTime:
+            return "Choose a time that is not in the future."
         case .staleChange:
             return "This day has changed since that action. Review its current history before undoing."
         case .batchNotFound:

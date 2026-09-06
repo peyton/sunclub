@@ -66,6 +66,7 @@ enum SunclubAutomationError: LocalizedError, Equatable {
 enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
     case home
     case log
+    case departureCheckIn = "departure-check-in"
     case reapply
     case summary
     case history
@@ -84,6 +85,8 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
 
     var appRoute: AppRoute {
         switch self {
+        case .departureCheckIn:
+            return .departureCheckIn
         case .home:
             return .home
         case .log:
@@ -121,6 +124,8 @@ enum SunclubAutomationRoute: String, CaseIterable, Codable, Sendable {
 
     var title: String {
         switch self {
+        case .departureCheckIn:
+            return "Sunscreen Check-in"
         case .home:
             return "Home"
         case .log:
@@ -198,6 +203,9 @@ enum SunclubAutomationToggle: String, CaseIterable, Codable, Sendable {
 }
 
 enum SunclubAutomationAction: Equatable {
+    case confirmDepartureCheckIn(id: UUID?, appliedAt: Date)
+    case snoozeDepartureCheckIn(id: UUID?)
+    case dismissDepartureCheckIn(id: UUID?)
     case logToday(spfLevel: Int?, notes: String?)
     case saveLog(day: Date?, time: ReminderTime?, dayPart: DayPart?, spfLevel: Int?, notes: String?)
     case reapply
@@ -213,6 +221,9 @@ enum SunclubAutomationAction: Equatable {
 
     var identifier: String {
         switch self {
+        case .confirmDepartureCheckIn: return "confirm-check-in"
+        case .snoozeDepartureCheckIn: return "snooze-check-in"
+        case .dismissDepartureCheckIn: return "dismiss-check-in"
         case .logToday:
             return "log-today"
         case .saveLog:
@@ -242,7 +253,8 @@ enum SunclubAutomationAction: Equatable {
 
     var isWriteAction: Bool {
         switch self {
-        case .logToday,
+        case .confirmDepartureCheckIn, .snoozeDepartureCheckIn, .dismissDepartureCheckIn,
+             .logToday,
              .saveLog,
              .reapply,
              .setReminder,
@@ -263,7 +275,7 @@ enum SunclubAutomationAction: Equatable {
 
     var logsCurrentDay: Bool {
         switch self {
-        case .logToday:
+        case .logToday, .confirmDepartureCheckIn:
             return true
         case let .saveLog(day, _, _, _, _):
             guard let day else { return true }
@@ -546,6 +558,8 @@ enum SunclubAutomationRuntime {
         growthSettings: inout SunclubGrowthSettings
     ) throws -> SunclubAutomationResult {
         switch action {
+        case .confirmDepartureCheckIn, .snoozeDepartureCheckIn, .dismissDepartureCheckIn:
+            return try resolveDeparture(action, runtimeContext: runtimeContext, growthSettings: growthSettings)
         case let .logToday(spfLevel, notes):
             return try logToday(
                 spfLevel: normalizedSPF(spfLevel),
@@ -657,6 +671,46 @@ enum SunclubAutomationRuntime {
                 throw SunclubAutomationError.urlWriteActionsDisabled
             }
         }
+    }
+
+    private static func resolveDeparture(
+        _ action: SunclubAutomationAction, runtimeContext: RuntimeContext,
+        growthSettings: SunclubGrowthSettings
+    ) throws -> SunclubAutomationResult {
+        let requestedID: UUID?
+        switch action {
+        case let .confirmDepartureCheckIn(id, _), let .snoozeDepartureCheckIn(id), let .dismissDepartureCheckIn(id):
+            requestedID = id
+        default: throw SunclubAutomationError.unsupportedAction(action.identifier)
+        }
+        let history = runtimeContext.historyService
+        let checkIns = try history.departureCheckIns()
+        guard let checkIn = checkIns.first(where: {
+            if let requestedID { return $0.id == requestedID }
+            return $0.resolution == .unconfirmed && $0.isOnDay(runtimeContext.now, calendar: calendar)
+        }) else { throw SunclubAutomationError.unavailable("No check-in is waiting.") }
+        let resolution: DepartureCheckInAction
+        switch action {
+        case let .confirmDepartureCheckIn(_, appliedAt):
+            let defaults = SunManualLogDefaultResolver.oneTapDefaults(
+                from: try history.records(), excluding: calendar.startOfDay(for: appliedAt),
+                profileSPF: try history.settings().sunscreenProfile?.spf, calendar: calendar
+            )
+            resolution = .confirm(appliedAt: appliedAt, spfLevel: defaults.spfLevel, notes: defaults.oneTapNotes)
+        case .snoozeDepartureCheckIn:
+            guard checkIn.isOnDay(runtimeContext.now, calendar: calendar) else {
+                throw SunclubAutomationError.invalidInput("Only today's check-in can be snoozed.")
+            }
+            resolution = .snooze(until: runtimeContext.now.addingTimeInterval(900))
+        case .dismissDepartureCheckIn: resolution = .dismiss
+        default: throw SunclubAutomationError.unsupportedAction(action.identifier)
+        }
+        let batch = try runtimeContext.mutations.resolveDeparture(id: checkIn.id, action: resolution, now: runtimeContext.now)
+        return try finishChangedTimeline(
+            batch: batch, action: action.identifier, message: "Check-in updated.",
+            historyService: history, growthSettings: growthSettings,
+            widgetStore: runtimeContext.widgetStore, now: runtimeContext.now
+        )
     }
 
     private static func logToday(
@@ -1114,9 +1168,15 @@ enum SunclubAutomationRuntime {
         widgetStore: SunclubWidgetSnapshotStore,
         now: Date
     ) throws {
+        let pending = try historyService.departureCheckIns().first {
+            $0.resolution == .unconfirmed && $0.isOnDay(now, calendar: calendar)
+        }
         let snapshot = SunclubWidgetSnapshotBuilder.make(
             settings: try historyService.settings(),
             records: try historyService.records(),
+            pendingDepartureCheckInID: pending?.id,
+            pendingDepartureDate: pending?.departedAt,
+            pendingDepartureSnoozedUntil: pending?.snoozedUntil,
             now: now,
             calendar: calendar
         )

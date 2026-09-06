@@ -92,6 +92,7 @@ enum NotificationSchedulingPolicy {
     static let immediateRequestReserve = 2
     static let maximumPlannedPendingRequests = maximumOwnedPendingRequests - immediateRequestReserve
     static let uvRollingDayCount = 7
+    static let dailyRollingDayCount = 28
 }
 
 struct NotificationOperationResult: Equatable, Sendable {
@@ -220,7 +221,7 @@ struct NotificationHealthPresentation: Equatable {
     let actionTitle: String
 
     var needsAttention: Bool {
-        true
+        state == .denied
     }
 }
 
@@ -258,9 +259,9 @@ enum NotificationHealthEvaluator {
             if needsScheduleRepair(snapshot) {
                 return NotificationHealthPresentation(
                     state: .stale,
-                    title: "Reminders need attention",
+                    title: "Reminders are updating",
                     detail: scheduleRepairDetail(snapshot),
-                    actionTitle: "Refresh Reminders"
+                    actionTitle: ""
                 )
             }
             return nil
@@ -268,9 +269,9 @@ enum NotificationHealthEvaluator {
             if needsScheduleRepair(snapshot) {
                 return NotificationHealthPresentation(
                     state: .stale,
-                    title: "Quiet reminders need attention",
+                    title: "Quiet reminders are updating",
                     detail: "Sunclub can deliver quiet reminders, but \(scheduleRepairDetail(snapshot).lowercased())",
-                    actionTitle: "Refresh Reminders"
+                    actionTitle: ""
                 )
             }
             return nil
@@ -340,7 +341,7 @@ enum NotificationHealthEvaluator {
             title: presentation.title,
             detail: presentation.detail,
             symbolName: presentation.state == .denied ? "bell.slash.fill" : "bell.badge.fill",
-            needsAttention: true,
+            needsAttention: presentation.needsAttention,
             actionTitle: nil,
             actionKind: nil
         )
@@ -354,19 +355,19 @@ enum NotificationHealthEvaluator {
 
     private static func scheduleRepairDetail(_ snapshot: NotificationHealthSnapshot) -> String {
         if snapshot.pendingSunclubOwnedCount > NotificationSchedulingPolicy.maximumOwnedPendingRequests {
-            return "Sunclub found too many pending reminders on this phone. Rebuild reminders to fix the queue."
+            return "Sunclub found too many pending reminders on this phone. Sunclub will reconcile the queue automatically."
         }
 
         let missingLabels = snapshot.missingExpectedCategories.map(\.diagnosticLabel)
         if !missingLabels.isEmpty {
-            return "Sunclub couldn't find an active \(formattedList(missingLabels)) reminder on this phone. Rebuild reminders to fix it."
+            return "Sunclub couldn't find an active \(formattedList(missingLabels)) reminder on this phone. Sunclub will retry automatically."
         }
 
-        return "Sunclub couldn't confirm when reminders were last rebuilt. Refresh reminders to fix it."
+        return "Sunclub is checking the reminder schedule automatically."
     }
 
     private static func readyDetail(_ snapshot: NotificationHealthSnapshot) -> String {
-        "Sunclub has \(snapshot.pendingSunclubOwnedCount) active reminder request\(snapshot.pendingSunclubOwnedCount == 1 ? "" : "s") on this phone."
+        "iOS has accepted \(snapshot.pendingSunclubOwnedCount) pending reminder request\(snapshot.pendingSunclubOwnedCount == 1 ? "" : "s") on this phone."
     }
 
     private static func formattedList(_ labels: [String]) -> String {

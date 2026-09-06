@@ -61,6 +61,8 @@ struct HistoryView: View {
 
                 dayDetailCard(for: selectedDay ?? presentation.today, presentation: presentation)
 
+                departureHistory(for: selectedDay ?? presentation.today)
+
                 weeklySummary(presentation: presentation)
 
                 if isCalendarExpanded {
@@ -106,6 +108,26 @@ struct HistoryView: View {
                 day: presentation.day,
                 existingRecord: appState.record(for: presentation.day)
             )
+        }
+    }
+
+    @ViewBuilder
+    private func departureHistory(for day: Date) -> some View {
+        ForEach(appState.departureCheckIns.filter { $0.isOnDay(day, calendar: calendar) }) { checkIn in
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                AppText("Left home at \(checkIn.departedAt.formatted(date: .omitted, time: .shortened))", style: .bodyMedium)
+                AppText(checkIn.resolution == .unconfirmed ? "Unconfirmed" :
+                        (checkIn.resolution == .dismissed ? "Dismissed" : "Application confirmed"),
+                        style: .caption, color: AppColor.Text.secondary)
+                if checkIn.resolution == .unconfirmed {
+                    AppText("This check-in doesn't count as a sunscreen application.", style: .caption, color: AppColor.Text.secondary)
+                }
+                if checkIn.isActive(at: appState.referenceDate) {
+                    Button("Already applied") { router.push(.departureCheckIn) }.frame(minHeight: 44)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("history.departureCheckIn")
         }
     }
 
@@ -343,8 +365,22 @@ struct HistoryView: View {
         }
     }
 
+    private func hasUnconfirmedDeparture(on day: Date) -> Bool {
+        appState.departureCheckIns.contains { $0.isOnDay(day, calendar: calendar) && $0.resolution == .unconfirmed }
+    }
+
     @ViewBuilder
     private func weekDayMarker(_ state: HistoryDayCellState) -> some View {
+        if hasUnconfirmedDeparture(on: state.dayStart) {
+            Image(systemName: "questionmark.circle").resizable().scaledToFit()
+                .foregroundStyle(AppColor.Text.secondary)
+        } else {
+            applicationDayMarker(state)
+        }
+    }
+
+    @ViewBuilder
+    private func applicationDayMarker(_ state: HistoryDayCellState) -> some View {
         switch state.status {
         case .applied:
             SunIcon.check.image.resizable().scaledToFit()
@@ -723,7 +759,7 @@ struct HistoryView: View {
                     )
                 )
 
-            Image(systemName: dayMarkerSymbol(for: state.status))
+            Image(systemName: hasUnconfirmedDeparture(on: day) ? "questionmark.circle" : dayMarkerSymbol(for: state.status))
                 .font(AppFont.rounded(size: 7, weight: .semibold))
                 .foregroundStyle(state.isCurrentMonth ? dayMarkerColor(for: state.status) : Color.clear)
                 .frame(height: 8)
@@ -1233,7 +1269,7 @@ struct HistoryView: View {
         state: HistoryDayCellState
     ) -> String {
         let dateLabel = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        let status = statusTitle(for: state.status)
+        let status = hasUnconfirmedDeparture(on: day) ? "Unconfirmed sunscreen check-in" : statusTitle(for: state.status)
         var parts = [dateLabel, status]
 
         if let spfLevel = state.spfLevel {

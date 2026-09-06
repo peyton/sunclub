@@ -8,9 +8,16 @@ protocol SunclubReminderState: AnyObject {
     var growthSettings: SunclubGrowthSettings { get }
     var recordedDays: [Date] { get }
     var uvReading: UVReading? { get }
+    var pendingDepartureReminder: DepartureCheckInSnapshot? { get }
     func nextDailyPhrases(count: Int) -> [String]
     func record(for day: Date) -> DailyRecord?
     func save()
+    func recordDepartureCheckIn(at date: Date) throws -> UUID?
+}
+
+extension SunclubReminderState {
+    var pendingDepartureReminder: DepartureCheckInSnapshot? { nil }
+    func recordDepartureCheckIn(at date: Date) throws -> UUID? { nil }
 }
 
 @MainActor
@@ -29,8 +36,12 @@ final class SunclubReminderCoordinator {
     }
 
     func schedule(using input: any SunclubReminderState, after refresh: Task<Void, Never>? = nil) async {
-        if let refresh { await refresh.value }
         await notifications.scheduleReminders(using: input)
+        if let refresh {
+            await refresh.value
+            await notifications.scheduleReminders(using: input)
+        }
+        await refreshHealth(using: input)
     }
 
     func refreshStreakRisk(using input: any SunclubReminderState) async {
@@ -42,7 +53,12 @@ final class SunclubReminderCoordinator {
             health = healthOverride
             return
         }
-        let snapshot = await notifications.notificationHealthSnapshot(using: input)
+        var snapshot = await notifications.notificationHealthSnapshot(using: input)
+        if snapshot.authorizationState.allowsDelivery,
+           snapshot.lastScheduledAt == nil || !snapshot.hasRequiredScheduledRequests {
+            await notifications.scheduleReminders(using: input)
+            snapshot = await notifications.notificationHealthSnapshot(using: input)
+        }
         guard healthOverride == nil else { return }
         health = snapshot
     }

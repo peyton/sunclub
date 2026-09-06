@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 
 enum SunclubChangeKind: String, Codable, CaseIterable, Sendable {
+    case departureCheckIn
     case migrationSeed
     case onboarding
     case manualLog
@@ -26,6 +27,8 @@ enum SunclubChangeKind: String, Codable, CaseIterable, Sendable {
 
     var displayTitle: String {
         switch self {
+        case .departureCheckIn:
+            return "Sunscreen Check-In"
         case .migrationSeed:
             return "Migration Seed"
         case .onboarding:

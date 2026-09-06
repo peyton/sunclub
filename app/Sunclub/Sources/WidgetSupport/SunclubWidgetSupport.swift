@@ -23,9 +23,12 @@ enum SunclubWidgetRoute: String, Codable, CaseIterable, Sendable {
     case summary
     case history
     case updateToday
+    case departureCheckIn = "departure-check-in"
 
     var appRoute: AppRoute {
         switch self {
+        case .departureCheckIn:
+            return .departureCheckIn
         case .today:
             return .home
         case .settings:
@@ -63,6 +66,10 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
     let uvValidUntil: Date?
     let reapplyReminderEnabled: Bool
     let reapplyIntervalMinutes: Int
+    let liveActivitiesEnabled: Bool
+    let pendingDepartureCheckInID: UUID?
+    let pendingDepartureDate: Date?
+    let pendingDepartureSnoozedUntil: Date?
 
     static let empty = SunclubWidgetSnapshot(
         isOnboardingComplete: false,
@@ -104,6 +111,10 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         case uvValidUntil
         case reapplyReminderEnabled
         case reapplyIntervalMinutes
+        case liveActivitiesEnabled
+        case pendingDepartureCheckInID
+        case pendingDepartureDate
+        case pendingDepartureSnoozedUntil
     }
 
     init(
@@ -124,7 +135,11 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         peakUVHour: Date?,
         uvValidUntil: Date? = nil,
         reapplyReminderEnabled: Bool,
-        reapplyIntervalMinutes: Int
+        reapplyIntervalMinutes: Int,
+        liveActivitiesEnabled: Bool = true,
+        pendingDepartureCheckInID: UUID? = nil,
+        pendingDepartureDate: Date? = nil,
+        pendingDepartureSnoozedUntil: Date? = nil
     ) {
         self.isOnboardingComplete = isOnboardingComplete
         self.lastLoggedDay = lastLoggedDay
@@ -144,6 +159,10 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         self.uvValidUntil = uvValidUntil
         self.reapplyReminderEnabled = reapplyReminderEnabled
         self.reapplyIntervalMinutes = reapplyIntervalMinutes
+        self.liveActivitiesEnabled = liveActivitiesEnabled
+        self.pendingDepartureCheckInID = pendingDepartureCheckInID
+        self.pendingDepartureDate = pendingDepartureDate
+        self.pendingDepartureSnoozedUntil = pendingDepartureSnoozedUntil
     }
 
     init(from decoder: Decoder) throws {
@@ -165,6 +184,10 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
         peakUVHour = try container.decodeIfPresent(Date.self, forKey: .peakUVHour)
         uvValidUntil = try container.decodeIfPresent(Date.self, forKey: .uvValidUntil)
         reapplyReminderEnabled = try container.decodeIfPresent(Bool.self, forKey: .reapplyReminderEnabled) ?? false
+        liveActivitiesEnabled = try container.decodeIfPresent(Bool.self, forKey: .liveActivitiesEnabled) ?? true
+        pendingDepartureCheckInID = try container.decodeIfPresent(UUID.self, forKey: .pendingDepartureCheckInID)
+        pendingDepartureDate = try container.decodeIfPresent(Date.self, forKey: .pendingDepartureDate)
+        pendingDepartureSnoozedUntil = try container.decodeIfPresent(Date.self, forKey: .pendingDepartureSnoozedUntil)
         reapplyIntervalMinutes = max(1, try container.decodeIfPresent(Int.self, forKey: .reapplyIntervalMinutes) ?? 120)
     }
 
@@ -226,14 +249,17 @@ struct SunclubWidgetSnapshot: Codable, Equatable, Sendable {
             .filter { calendar.isDate($0, inSameDayAs: now) && $0 <= now }.max()
     }
 
-    func reapplyDeadline(now: Date = Date(), calendar: Calendar = .current) -> Date? {
+    func reapplyDeadline(now: Date = Date(), calendar: Calendar = .current, snoozeDefaults: UserDefaults? = nil) -> Date? {
         guard reapplyReminderEnabled,
-              let lastApplied = lastApplicationDate(now: now, calendar: calendar) else { return nil }
-        return calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: lastApplied)
+              let lastApplied = lastApplicationDate(now: now, calendar: calendar),
+              let baseline = calendar.date(byAdding: .minute, value: reapplyIntervalMinutes, to: lastApplied) else { return nil }
+        return SunclubReapplySnoozeStore.deadline(
+            applicationDate: lastApplied, baseline: baseline, now: now, calendar: calendar, defaults: snoozeDefaults
+        )
     }
 
-    func applicationStatus(now: Date = Date(), calendar: Calendar = .current) -> SunclubApplicationStatus {
-        let deadline = reapplyDeadline(now: now, calendar: calendar)
+    func applicationStatus(now: Date = Date(), calendar: Calendar = .current, snoozeDefaults: UserDefaults? = nil) -> SunclubApplicationStatus {
+        let deadline = reapplyDeadline(now: now, calendar: calendar, snoozeDefaults: snoozeDefaults)
         return SunclubApplicationStatus(
             isSetupComplete: isOnboardingComplete,
             hasLoggedToday: hasLoggedToday(now: now, calendar: calendar),
@@ -312,6 +338,9 @@ enum SunclubWidgetSnapshotBuilder {
         records: [DailyRecord],
         uvReading: UVReading? = nil,
         uvForecast: SunclubUVForecast? = nil,
+        pendingDepartureCheckInID: UUID? = nil,
+        pendingDepartureDate: Date? = nil,
+        pendingDepartureSnoozedUntil: Date? = nil,
         now: Date = Date(),
         calendar: Calendar = Calendar.current
     ) -> SunclubWidgetSnapshot {
@@ -360,8 +389,19 @@ enum SunclubWidgetSnapshotBuilder {
             peakUVHour: compactUVPeakHour?.date,
             uvValidUntil: uvValidUntil,
             reapplyReminderEnabled: settings.reapplyReminderEnabled,
-            reapplyIntervalMinutes: settings.reapplyIntervalMinutes
+            reapplyIntervalMinutes: settings.reapplyIntervalMinutes,
+            liveActivitiesEnabled: liveActivitiesEnabled(settings: settings),
+            pendingDepartureCheckInID: pendingDepartureCheckInID,
+            pendingDepartureDate: pendingDepartureDate,
+            pendingDepartureSnoozedUntil: pendingDepartureSnoozedUntil
         )
+    }
+
+    // This builder also runs in the Watch widget target, which does not link reminder scheduling.
+    private static func liveActivitiesEnabled(settings: Settings) -> Bool {
+        guard let data = settings.smartReminderSettingsData,
+              let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return true }
+        return values["liveActivitiesEnabled"] as? Bool ?? true
     }
 
     private static func compactSurfaceReading(
@@ -471,5 +511,45 @@ struct SunclubApplicationStatus: Equatable, Sendable {
     var symbol: String {
         if !isSetupComplete { return "arrow.up.forward.app" }
         return hasLoggedToday ? "arrow.clockwise" : "sun.max"
+    }
+}
+
+
+/// Operational reminder timing shared by app, widgets and Watch without ActivityKit.
+/// The original application remains the identity and timestamp of the sunscreen log.
+enum SunclubReapplySnoozeStore {
+    private static let applicationKey = "liveActivity.snoozedApplication"
+    private static let deadlineKey = "liveActivity.snoozedDeadline"
+
+    private static let isolatedTestSuiteName: String = {
+        let name = "SunclubReapplySnoozeTests.\(UUID().uuidString)"
+        UserDefaults(suiteName: name)?.removePersistentDomain(forName: name)
+        return name
+    }()
+
+    // Watch widgets do not link RuntimeEnvironment; use its same Foundation-only test signals.
+    private static var processDefaults: UserDefaults? {
+        let process = ProcessInfo.processInfo
+        let isTesting = process.environment["XCTestConfigurationFilePath"] != nil
+            || process.arguments.contains("UITEST_MODE")
+        return UserDefaults(suiteName: isTesting ? isolatedTestSuiteName : SunclubWidgetDefaults.appGroupID)
+    }
+
+    static func deadline(
+        applicationDate: Date, baseline: Date, now: Date,
+        calendar: Calendar = .current, defaults: UserDefaults? = nil
+    ) -> Date {
+        let defaults = defaults ?? processDefaults
+        guard defaults?.object(forKey: applicationKey) as? Date == applicationDate,
+              let snoozed = defaults?.object(forKey: deadlineKey) as? Date,
+              calendar.isDate(applicationDate, inSameDayAs: now),
+              calendar.isDate(snoozed, inSameDayAs: now) else { return baseline }
+        return snoozed
+    }
+
+    static func save(applicationDate: Date, deadline: Date, defaults: UserDefaults? = nil) {
+        let defaults = defaults ?? processDefaults
+        defaults?.set(applicationDate, forKey: applicationKey)
+        defaults?.set(deadline, forKey: deadlineKey)
     }
 }

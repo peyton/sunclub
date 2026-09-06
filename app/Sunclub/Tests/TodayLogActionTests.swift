@@ -5,22 +5,26 @@ import XCTest
 
 @MainActor
 final class TodayLogActionTests: SunclubTestCase {
-    func testFirstLogSchedulesExactlyOneEnabledReapplyReminder() async throws {
+    func testFirstLogAndReapplicationReconcileEnabledReminders() async throws {
         var now = try timestamp(hour: 9)
         let notifications = MockNotificationManager()
         let state = try makeAppState(notificationManager: notifications, clock: { now })
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         await waitForMainActorTasks()
 
+        let beforeFirstLog = notifications.scheduleRemindersCount
         XCTAssertTrue(SunTodayLogAction.perform(in: state).succeeded)
         XCTAssertTrue(state.reapplyReminderPlan.shouldScheduleNotification)
         await waitForMainActorTasks()
-        XCTAssertEqual(notifications.scheduleReapplyReminderPlans.count, 1)
+        XCTAssertGreaterThan(notifications.scheduleRemindersCount, beforeFirstLog)
+        XCTAssertTrue(notifications.scheduleReapplyReminderPlans.isEmpty)
+        let afterFirstLog = notifications.scheduleRemindersCount
 
         now = now.addingTimeInterval(3600)
         XCTAssertTrue(SunTodayLogAction.perform(in: state).succeeded)
         await waitForMainActorTasks()
-        XCTAssertEqual(notifications.scheduleReapplyReminderPlans.count, 2)
+        XCTAssertGreaterThan(notifications.scheduleRemindersCount, afterFirstLog)
+        XCTAssertTrue(notifications.scheduleReapplyReminderPlans.isEmpty)
     }
 
     func testFailedFirstLogDoesNotScheduleReapplyReminder() async throws {
@@ -38,12 +42,14 @@ final class TodayLogActionTests: SunclubTestCase {
         )
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         await waitForMainActorTasks()
+        let beforeFailure = notifications.scheduleRemindersCount
         rejectsChanges = true
 
         XCTAssertFalse(SunTodayLogAction.perform(in: state).succeeded)
         await waitForMainActorTasks()
 
         XCTAssertNil(state.record(for: now))
+        XCTAssertEqual(notifications.scheduleRemindersCount, beforeFailure)
         XCTAssertTrue(notifications.scheduleReapplyReminderPlans.isEmpty)
     }
 

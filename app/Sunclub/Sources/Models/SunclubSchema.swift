@@ -549,13 +549,19 @@ enum SunclubSchemaV5: VersionedSchema {
     ]
 }
 
+enum SunclubSchemaV6: VersionedSchema {
+    static let versionIdentifier = Schema.Version(6, 0, 0)
+    static let models: [any PersistentModel.Type] = SunclubSchemaV5.models + [DepartureCheckInRevision.self]
+}
+
 enum SunclubMigrationPlan: SchemaMigrationPlan {
     static let schemas: [any VersionedSchema.Type] = [
         SunclubSchemaV1.self,
         SunclubSchemaV2.self,
         SunclubSchemaV3.self,
         SunclubSchemaV4.self,
-        SunclubSchemaV5.self
+        SunclubSchemaV5.self,
+        SunclubSchemaV6.self
     ]
 
     static let stages: [MigrationStage] = [
@@ -751,12 +757,13 @@ enum SunclubMigrationPlan: SchemaMigrationPlan {
                     try context.save()
                 }
             }
-        )
+        ),
+        .lightweight(fromVersion: SunclubSchemaV5.self, toVersion: SunclubSchemaV6.self)
     ]
 }
 
 enum SunclubModelContainerFactory {
-    static let currentSchema = Schema(versionedSchema: SunclubSchemaV5.self)
+    static let currentSchema = Schema(versionedSchema: SunclubSchemaV6.self)
     static let sharedStoreFilename = "default.store"
 
     static func makeSharedContainer(isStoredInMemoryOnly: Bool) throws -> ModelContainer {

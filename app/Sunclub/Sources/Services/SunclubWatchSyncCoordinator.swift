@@ -142,7 +142,7 @@ final class SunclubWatchSyncCoordinator: NSObject {
         case SunclubWatchSyncPayload.logTodayCommand:
             Task { @MainActor in
                 do {
-                    let snapshot = try logTodaySnapshot()
+                    let snapshot = try await logTodaySnapshot()
                     push(snapshot: snapshot)
                     replyHandler?(SunclubWatchSyncPayload.successReply(snapshot: snapshot, message: "Logged from your wrist."))
                 } catch let error as LocalizedError {
@@ -154,7 +154,7 @@ final class SunclubWatchSyncCoordinator: NSObject {
         case SunclubWatchSyncPayload.reapplyCommand:
             Task { @MainActor in
                 do {
-                    let snapshot = try reapplySnapshot()
+                    let snapshot = try await reapplySnapshot()
                     push(snapshot: snapshot)
                     replyHandler?(
                         SunclubWatchSyncPayload.successReply(
@@ -177,21 +177,23 @@ final class SunclubWatchSyncCoordinator: NSObject {
         }
     }
 
-    private func logTodaySnapshot() throws -> SunclubWidgetSnapshot {
+    private func logTodaySnapshot() async throws -> SunclubWidgetSnapshot {
         if let logTodayHandler {
             return try logTodayHandler()
         }
 
-        _ = try SunclubQuickLogAction.performStandalone()
+        let result = try SunclubAutomationRuntime.performStandalone(.logToday(spfLevel: nil, notes: nil), invocation: .widget)
+        await SunclubLoggingReminderBridge.syncAfterMutation(didChange: result.didChange == true)
         return SunclubWidgetSnapshotStore().load()
     }
 
-    private func reapplySnapshot() throws -> SunclubWidgetSnapshot {
+    private func reapplySnapshot() async throws -> SunclubWidgetSnapshot {
         if let reapplyHandler {
             return try reapplyHandler()
         }
 
-        _ = try SunclubAutomationRuntime.performStandalone(.logReapply, invocation: .widget)
+        let result = try SunclubAutomationRuntime.performStandalone(.logReapply, invocation: .widget)
+        await SunclubLoggingReminderBridge.syncAfterMutation(didChange: result.didChange == true)
         return SunclubWidgetSnapshotStore().load()
     }
 }

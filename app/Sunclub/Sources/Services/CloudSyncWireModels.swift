@@ -13,7 +13,10 @@ struct BatchWire: Codable {
     let undoneByBatchID: UUID?
     var serverReceivedAt: Date?
 
-    init(batch: SunclubChangeBatch) {
+    let departureCheckInRevisions: [DepartureCheckInRevisionWire]?
+
+    init(batch: SunclubChangeBatch, departureCheckInRevisions: [DepartureCheckInRevisionWire]? = nil) {
+        self.departureCheckInRevisions = departureCheckInRevisions
         id = batch.id
         createdAt = batch.createdAt
         logicalOrder = batch.logicalOrder

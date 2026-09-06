@@ -175,6 +175,14 @@ extension SettingsView {
 
     var reapplySection: some View {
         VStack(alignment: .leading, spacing: 14) {
+            Toggle("Live Activities", isOn: Binding(
+                get: { appState.settings.smartReminderSettings.liveActivitiesEnabled },
+                set: { appState.updateLiveActivities(enabled: $0) }
+            ))
+            .tint(AppPalette.sun)
+            .accessibilityIdentifier("settings.liveActivitiesToggle")
+            AppText("Show sunscreen check-ins and reapply timers on your Lock Screen when available.", style: .caption, color: AppColor.Text.secondary)
+
             Text("Reapply Reminder")
                 .font(AppFont.rounded(size: 14, weight: .semibold))
                 .foregroundStyle(AppPalette.softInk)
@@ -265,7 +273,7 @@ extension SettingsView {
                 .foregroundStyle(AppPalette.softInk)
 
             VStack(alignment: .leading, spacing: 14) {
-                if let presentation = appState.notificationHealthPresentation {
+                if let presentation = appState.notificationHealthPresentation, presentation.state == .denied {
                     SunStatusCard(
                         title: presentation.title,
                         detail: presentation.detail,
@@ -407,24 +415,9 @@ extension SettingsView {
                 openURL(settingsURL)
             }
         case .stale:
-            repairNotificationSchedule()
+            appState.refreshNotificationHealth()
         case .healthy:
             break
-        }
-    }
-
-    func repairNotificationSchedule() {
-        notificationToolFeedback = "Rebuilding reminders…"
-        Task {
-            let report = await NotificationManager.shared.scheduleReminders(using: appState)
-            if report.isSuccessful {
-                notificationToolFeedback = "Reminders refreshed."
-            } else {
-                let requestLabel = report.failedCount == 1 ? "request" : "requests"
-                notificationToolFeedback = "Sunclub couldn't schedule \(report.failedCount) reminder \(requestLabel). "
-                    + "Copy diagnostics for details."
-            }
-            appState.refreshNotificationHealth()
         }
     }
 

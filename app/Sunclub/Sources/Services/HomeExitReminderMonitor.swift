@@ -67,12 +67,13 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
     private let calendar: Calendar
     private let currentDate: () -> Date
     private var stateProvider: (() -> (any SunclubReminderState)?)?
+    private var isHandlingExit = false
 
     init(
         locationService: SharedLocationManaging? = nil,
         notificationManager: NotificationScheduling? = nil,
         stateStore: HomeExitReminderStateStoring? = nil,
-        calendar: Calendar = .current,
+        calendar: Calendar = .autoupdatingCurrent,
         clock: @escaping () -> Date = Date.init
     ) {
         self.locationService = locationService ?? SharedLocationManager.shared
@@ -118,6 +119,8 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
             return mappedState
         }
 
+        await retryPendingDeparture(using: state)
+
         let region = CLCircularRegion(
             center: homeLocation.coordinate,
             radius: leaveHomeSettings.radiusMeters,
@@ -130,7 +133,9 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
             return mappedState
         }
 
-        stateStore.clearObservedInsideDay()
+        if locationService.monitoredRegion(withIdentifier: Self.regionIdentifier) != nil {
+            stateStore.clearObservedInsideDay()
+        }
         locationService.stopMonitoring(regionIdentifier: Self.regionIdentifier)
         locationService.startMonitoring(region: region)
         locationService.requestState(for: region)
@@ -190,44 +195,47 @@ final class HomeExitReminderMonitor: HomeExitReminderMonitoring {
     }
 
     private func handlePotentialExit(using state: any SunclubReminderState, now: Date) async {
+        guard !isHandlingExit else { return }
+        isHandlingExit = true
+        defer { isHandlingExit = false }
+        guard stateStore.hasObservedInside(on: now, calendar: calendar) else { return }
+        stateStore.clearObservedInsideDay()
         let leaveHomeSettings = state.settings.smartReminderSettings.leaveHomeReminder
         guard leaveHomeSettings.isEnabled,
               leaveHomeSettings.homeLocation != nil,
               authorizationState == .always,
-              stateStore.hasObservedInside(on: now, calendar: calendar),
               !stateStore.hasFired(on: now, calendar: calendar),
               state.record(for: now) == nil else {
             return
         }
 
-        let reminderSettings = state.settings.smartReminderSettings
-        let reminderTime = reminderSettings.time(for: now, calendar: calendar)
-        let timeZone = reminderSettings.notificationTimeZone(currentTimeZone: .autoupdatingCurrent)
-        guard let cutoff = ReminderPlanner.scheduledDate(
-            for: now,
-            time: reminderTime,
-            timeZone: timeZone,
-            calendar: calendar
-        ), now < cutoff else {
+        guard (6..<20).contains(calendar.component(.hour, from: now)) else { return }
+        let checkInID: UUID
+        do {
+            guard let savedID = try state.recordDepartureCheckIn(at: now) else { return }
+            checkInID = savedID
+        } catch {
+            // A failed save must never publish a prompt for nonexistent history.
             return
         }
-
-        let level = effectiveUVLevel(for: state, now: now)
-        let result = await notificationManager.scheduleLeaveHomeReminder(level: level, route: .manualLog)
+        let result = await notificationManager.scheduleDepartureCheckIn(id: checkInID, at: now)
         guard result.isSuccessful else {
             return
         }
         stateStore.markFired(on: now, calendar: calendar)
+        stateStore.clearObservedInsideDay()
     }
 
-    private func effectiveUVLevel(for state: any SunclubReminderState, now: Date) -> UVLevel {
-        if let reading = state.uvReading,
-           reading.source == .weatherKit,
-           reading.isFresh(at: now) {
-            return reading.level
-        }
-
-        return .unknown
+    private func retryPendingDeparture(using state: any SunclubReminderState) async {
+        let now = currentDate()
+        guard !isHandlingExit, (6..<20).contains(calendar.component(.hour, from: now)),
+              !stateStore.hasFired(on: now, calendar: calendar),
+              let pending = state.pendingDepartureReminder,
+              pending.snoozedUntil == nil, pending.isActive(at: now, calendar: calendar) else { return }
+        isHandlingExit = true
+        defer { isHandlingExit = false }
+        let result = await notificationManager.scheduleDepartureCheckIn(id: pending.id, at: now)
+        if result.isSuccessful { stateStore.markFired(on: now, calendar: calendar) }
     }
 
     private func regionsMatch(_ lhs: CLCircularRegion, _ rhs: CLCircularRegion) -> Bool {

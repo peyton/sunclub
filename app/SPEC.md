@@ -21,7 +21,7 @@ The main loop is: open Today, log sunscreen or a reapplication, and return to th
 2. Optional reminders offer Enable reminders and Not now.
 3. Successful setup ends at Today.
 
-Persist onboarding completion before scheduling notifications. Save failures keep setup open with accurate retry actions. Notification scheduling failure must say setup was saved and offer Retry reminders or Continue to Today. Continuing must not claim partially scheduled reminders were disabled.
+Persist onboarding completion before scheduling notifications. Save failures keep setup open with accurate retry actions. Notification scheduling failure retries automatically, says setup was saved, and offers Continue to Today. No manual repair button is required. Continuing must not claim partially scheduled reminders were disabled.
 
 Location and city selection are deferred to Settings or contextual UV setup. Notification denial does not block logging.
 
@@ -144,3 +144,11 @@ Release candidates require the repository's data, accessibility and automation g
 - History supports date selection and corrections without stale-field overwrites; Insights explains the last seven days without extra editing controls.
 - Settings makes Sunscreen, reminders, UV, Health, backup, automation, privacy and help easy to find.
 - Existing automation callers, private data, backups and recovery remain usable.
+
+## Departure check-ins and reminder maintenance
+
+- Home monitoring is optional and requires explicit Home setup and background location permission. The first detected departure between 06:00 and 20:00 (exclusive) can create one unconfirmed check-in when no application is logged.
+- Today asks “Did you apply sunscreen?” with Already applied, Remind me in 15 minutes and Dismiss. Already applied offers Just now, 15 min ago, 30 min ago and Choose time. Only confirmation creates an application, using the chosen actual time and existing logging defaults.
+- History retains Unconfirmed, Dismissed and Application confirmed states independently of application counts. Unconfirmed does not mean sunscreen was forgotten. Active prompts expire at midnight; snoozes never create next-day alerts.
+- Reminder reconciliation is automatic and preserves valid requests when replacement fails. Dated daily reminders cover 28 days and replenish when the app can run; the weekly repeating reminder remains a longer-term fallback. OS acceptance does not certify delivery, and permissions/Focus can affect presentation.
+- Live Activities have an independent default-on switch. Application, due and pending states stay truthful, respect dismissal, and reconcile with committed edits, Undo and restore. A Live Activity is not proof of sunscreen protection.

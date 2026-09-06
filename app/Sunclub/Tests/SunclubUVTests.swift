@@ -68,11 +68,11 @@ final class SunclubUVTests: SunclubTestCase {
 
         state.updateReapplySettings(enabled: true, intervalMinutes: 120)
         state.setUVReadingForTesting(UVReading(index: 9))
-        state.scheduleReapplyReminder()
+        await state.scheduleReapplyReminder().value
 
-        await Task.yield()
-        XCTAssertEqual(notificationManager.scheduleReapplyReminderPlans.map(\.intervalMinutes), [120])
-        XCTAssertTrue(notificationManager.scheduleReapplyReminderPlans.first?.notificationBody.contains("UV is elevated") ?? false)
+        XCTAssertGreaterThan(notificationManager.scheduleRemindersCount, 0)
+        XCTAssertEqual(state.reapplyReminderPlan.intervalMinutes, 120)
+        XCTAssertTrue(state.reapplyReminderPlan.notificationBody.contains("UV is elevated"))
     }
 
     @MainActor
@@ -453,14 +453,14 @@ final class SunclubUVTests: SunclubTestCase {
         )
 
         state.updateLiveUVPreference(enabled: true, allowPermissionPrompt: false)
-        try await waitForReminderSchedules(1, on: notificationManager)
-
-        XCTAssertEqual(notificationManager.scheduledUVReadingSources, [.weatherKit])
-
-        state.updateLiveUVPreference(enabled: false, allowPermissionPrompt: false)
         try await waitForReminderSchedules(2, on: notificationManager)
 
-        XCTAssertEqual(notificationManager.scheduleRemindersCount, 2)
+        XCTAssertEqual(notificationManager.scheduledUVReadingSources.last, .weatherKit)
+
+        state.updateLiveUVPreference(enabled: false, allowPermissionPrompt: false)
+        try await waitForReminderSchedules(4, on: notificationManager)
+
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 4)
         XCTAssertEqual(notificationManager.scheduledUVReadingSources.last, .localEstimate)
     }
 
@@ -493,11 +493,11 @@ final class SunclubUVTests: SunclubTestCase {
         )
 
         state.updateSelectedUVPlace(place)
-        try await waitForReminderSchedules(1, on: notificationManager)
+        try await waitForReminderSchedules(2, on: notificationManager)
 
-        XCTAssertEqual(notificationManager.scheduleRemindersCount, 1)
-        XCTAssertEqual(notificationManager.scheduledUVReadingSources, [.weatherKit])
-        XCTAssertEqual(notificationManager.scheduledUVPlaces, [place])
+        XCTAssertEqual(notificationManager.scheduleRemindersCount, 2)
+        XCTAssertEqual(notificationManager.scheduledUVReadingSources.last, .weatherKit)
+        XCTAssertEqual(notificationManager.scheduledUVPlaces, [place, place])
     }
 
     @MainActor

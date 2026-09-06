@@ -508,7 +508,7 @@ class SunclubUITestCase: XCTestCase {
         XCTAssertTrue(scrollToHittableElement(troubleshoot, in: app, attempts: 10))
         XCTAssertGreaterThanOrEqual(troubleshoot.frame.height, 44)
         tapHittableElement(troubleshoot, in: app)
-        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.notificationHealth.action"], in: app))
+        XCTAssertFalse(app.buttons["settings.notificationHealth.action"].exists, "Stale reminders reconcile automatically without a repair button.")
         XCTAssertTrue(scrollToHittableElement(app.buttons["settings.notificationHealth.sendTest"], in: app))
         XCTAssertTrue(scrollToHittableElement(app.buttons["settings.notificationHealth.copyDiagnostics"], in: app))
         returnToSettingsHome(in: app)
