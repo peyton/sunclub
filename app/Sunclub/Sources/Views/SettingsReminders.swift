@@ -51,7 +51,7 @@ extension SettingsView {
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Toggle("Follow local time when traveling", isOn: $followsTravelTimeZone)
                         .font(AppTextStyle.bodyMedium.font)
-                        .tint(AppPalette.sun)
+                        .tint(AppPalette.nativeChromeTint)
                         .accessibilityIdentifier("settings.travelToggle")
                         .onChange(of: followsTravelTimeZone) { _, newValue in
                             appState.updateTravelTimeZoneHandling(followsTravelTimeZone: newValue)
@@ -65,7 +65,7 @@ extension SettingsView {
             AppCard(showsShadow: false) {
                 Toggle("Evening log reminder", isOn: $streakRiskEnabled)
                     .font(AppTextStyle.bodyMedium.font)
-                    .tint(AppPalette.sun)
+                    .tint(AppPalette.nativeChromeTint)
                     .accessibilityIdentifier("settings.eveningLogReminderToggle")
                     .onChange(of: streakRiskEnabled) { _, newValue in
                         appState.updateStreakRiskReminder(enabled: newValue)
@@ -120,7 +120,7 @@ extension SettingsView {
                     .font(AppFont.rounded(size: 17, weight: .medium))
                     .foregroundStyle(AppPalette.ink)
             }
-            .tint(AppPalette.sun)
+            .tint(AppPalette.nativeChromeTint)
             .onChange(of: leaveHomeReminderEnabled) { _, newValue in
                 appState.updateLeaveHomeReminderEnabled(enabled: newValue)
             }
@@ -179,7 +179,7 @@ extension SettingsView {
                 get: { appState.settings.smartReminderSettings.liveActivitiesEnabled },
                 set: { appState.updateLiveActivities(enabled: $0) }
             ))
-            .tint(AppPalette.sun)
+            .tint(AppPalette.nativeChromeTint)
             .accessibilityIdentifier("settings.liveActivitiesToggle")
             AppText("Show sunscreen check-ins and reapply timers on your Lock Screen when available.", style: .caption, color: AppColor.Text.secondary)
 
@@ -193,7 +193,7 @@ extension SettingsView {
                         .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
-                .tint(AppPalette.sun)
+                .tint(AppPalette.nativeChromeTint)
                 .onChange(of: reapplyEnabled) { _, newValue in
                     appState.updateReapplySettings(enabled: newValue, intervalMinutes: reapplyInterval)
                 }

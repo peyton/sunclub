@@ -4,6 +4,28 @@ import XCTest
 @testable import Sunclub
 
 final class DarkModeThemeTests: XCTestCase {
+    func testBodyAndInteractiveTextContrastOnEveryThemeSurface() {
+        let surfaces = [AppColor.background, AppColor.surface, AppColor.surfaceElevated, AppColor.control]
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            for contrast in [UIAccessibilityContrast.normal, .high] {
+                for surface in surfaces {
+                    for foreground in [AppColor.Text.primary, AppColor.Text.secondary, AppColor.accent] {
+                        assertContrast(foreground, against: surface, style: style,
+                                       accessibilityContrast: contrast, minimum: 4.5)
+                    }
+                }
+            }
+        }
+    }
+
+    func testWatchBodyTextContrastOnEveryWatchSurface() {
+        for surface in [AppColor.Watch.background, AppColor.Watch.surface] {
+            for foreground in [AppColor.Watch.textPrimary, AppColor.Watch.textSecondary] {
+                assertContrast(foreground, against: surface, style: .dark, minimum: 4.5)
+            }
+        }
+    }
+
     @MainActor
     func testTodayErrorTextMeetsNormalTextContrastInEveryAppearance() {
         for style in [UIUserInterfaceStyle.light, .dark] {
@@ -66,7 +88,9 @@ final class DarkModeThemeTests: XCTestCase {
         let levels: [UVLevel] = [.low, .moderate, .high, .veryHigh, .extreme, .unknown]
         for style in [UIUserInterfaceStyle.light, .dark] {
             for level in levels {
-                assertContrast(level.designTextTint, against: AppColor.background, style: style, minimum: 4.5)
+                for surface in [AppColor.background, AppColor.surfaceElevated] {
+                    assertContrast(level.designTextTint, against: surface, style: style, minimum: 4.5)
+                }
             }
             assertContrast(AppColor.Text.secondary, against: AppColor.background, style: style, minimum: 4.5)
         }
@@ -77,7 +101,7 @@ final class DarkModeThemeTests: XCTestCase {
             AppPalette.sun,
             AppPalette.coral,
             AppPalette.aloe,
-            AppPalette.pool,
+            AppColor.apricot,
             AppPalette.success
         ]
 

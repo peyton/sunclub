@@ -129,7 +129,7 @@ extension SettingsView {
                         .font(AppFont.rounded(size: 17, weight: .medium))
                         .foregroundStyle(AppPalette.ink)
                 }
-                .tint(AppPalette.sun)
+                .tint(AppPalette.nativeChromeTint)
                 .onChange(of: iCloudSyncEnabled) { _, newValue in
                     appState.updateCloudSyncEnabled(newValue)
                 }
@@ -290,7 +290,7 @@ extension SettingsView {
             HStack(spacing: 12) {
                 Image(systemName: symbolName)
                     .font(AppFont.rounded(size: 16, weight: .semibold))
-                    .foregroundStyle(AppPalette.sun)
+                    .foregroundStyle(AppColor.accent)
                     .frame(width: 24, height: 24)
 
                 Text(title)

@@ -271,7 +271,7 @@ struct EnableNotificationsView: View {
                     HStack(spacing: 8) {
                         if isCompleting {
                             ProgressView()
-                                .tint(AppPalette.onAccent)
+                                .tint(AppColor.primaryActionForeground)
                                 .accessibilityHidden(true)
                         }
 
@@ -313,7 +313,7 @@ struct EnableNotificationsView: View {
 
             SunIcon.bell.image.resizable().scaledToFit()
                 .frame(width: 36, height: 36)
-                .foregroundStyle(AppPalette.sun)
+                .foregroundStyle(AppColor.accent)
         }
         .accessibilityHidden(true)
     }

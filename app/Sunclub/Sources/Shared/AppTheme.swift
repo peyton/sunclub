@@ -32,12 +32,12 @@ enum AppPalette {
     }
 
     static let cream = AppColor.background
-    static let pearl = Color(red: 1.000, green: 0.990, blue: 0.965)
+    static let pearl = AppColor.surface
     static let warmGlow = AppColor.sunSoft
     static let sun = AppColor.sun
     static let nativeChromeTint = adaptive(
-        light: uiColor(red: 0.055, green: 0.365, blue: 0.780),
-        dark: uiColor(red: 0.385, green: 0.745, blue: 0.940),
+        light: UIColor(AppColor.primaryAction),
+        dark: UIColor(AppColor.apricot).resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark)),
         increasedContrastLight: .black,
         increasedContrastDark: .white
     )
@@ -52,8 +52,8 @@ enum AppPalette {
         dark: uiColor(red: 0.960, green: 0.430, blue: 0.720)
     )
     static let nightAmber = Color(red: 0.315, green: 0.164, blue: 0.068)
-    static let darkCanvas = Color(red: 0.055, green: 0.075, blue: 0.106)
-    static let darkSurface = Color(red: 0.090, green: 0.114, blue: 0.153)
+    static let darkCanvas = AppColor.Watch.background
+    static let darkSurface = AppColor.Watch.surface
     static let ink = AppColor.Text.primary
     static let softInk = AppColor.Text.secondary
     static let success = AppColor.success
@@ -70,23 +70,14 @@ enum AppPalette {
         light: uiColor(red: 1.000, green: 0.947, blue: 0.760),
         dark: uiColor(red: 0.244, green: 0.171, blue: 0.092)
     )
-    static let cardFill = adaptive(
-        light: uiColor(red: 1.000, green: 1.000, blue: 1.000),
-        dark: uiColor(red: 0.118, green: 0.145, blue: 0.188)
-    )
+    static let cardFill = AppColor.surfaceElevated
     static let elevatedCardFill = AppColor.surfaceElevated
     static let controlFill = AppColor.control
-    static let editorFill = adaptive(
-        light: uiColor(red: 1, green: 1, blue: 1),
-        dark: uiColor(red: 0.075, green: 0.098, blue: 0.133)
-    )
-    static let cardStroke = adaptive(
-        light: uiColor(red: 0.025, green: 0.108, blue: 0.205, alpha: 0.095),
-        dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.16)
-    )
+    static let editorFill = AppColor.surface
+    static let cardStroke = AppColor.stroke
     static let hairlineStroke = adaptive(
-        light: uiColor(red: 0.025, green: 0.108, blue: 0.205, alpha: 0.070),
-        dark: uiColor(red: 1, green: 0.900, blue: 0.760, alpha: 0.14)
+        light: UIColor(AppColor.Text.primary).withAlphaComponent(0.07),
+        dark: UIColor(AppColor.Watch.textPrimary).withAlphaComponent(0.14)
     )
     static let onAccent = AppColor.onAccent
     static let white = Color.white

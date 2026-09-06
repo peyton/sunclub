@@ -48,7 +48,7 @@ Semantic color tokens:
 | `AppColor.background`              | page background                   |
 | `AppColor.surface`                 | soft panels                       |
 | `AppColor.surfaceElevated`         | cards and sheets                  |
-| `AppColor.accent`                  | primary blue Sunclub action       |
+| `AppColor.accent`                  | readable orange links and controls |
 | `AppColor.sun`                     | sun and UV accents                |
 | `AppColor.success`                 | completed/applied states          |
 | `AppColor.warning`                 | destructive or attention states   |
@@ -60,10 +60,28 @@ Semantic color tokens:
 Avoid hardcoded `Color.red`, direct RGB values, and one-off foreground colors in
 screen files.
 
-Dark mode uses the same semantic token names. `AppColor` and `AppPalette` should
-resolve to slate night surfaces, warm sun accents, readable cool foregrounds,
-and visible low-contrast borders. New colors must be added as semantic tokens
-instead of screen-local RGB values.
+Apricot Morning uses peach-white surfaces, warm orange actions, and cocoa nights.
+Dark mode uses the same semantic token names. Add colors as semantic tokens,
+never screen-local RGB values. Watch uses explicit dark tokens because its
+shared color resolver does not use UIKit appearance traits.
+
+| Role | Light | Dark |
+| ---- | ----- | ---- |
+| Canvas | `#FFF8F0` | `#251C18` |
+| Surface | `#FFFCF8` | `#30241E` |
+| Elevated surface | `#FFFFFF` | `#3A2C24` |
+| Primary text | `#31251F` | `#FFF8F0` |
+| Secondary text | `#756358` | `#CBB4A4` |
+| Links and active controls | `#A7490C` | `#FFBC7B` |
+| Primary button / label | `#A7490C` / white | `#A7490C` / white |
+| Soft selection fill | `#FFE8CF` | `#493221` |
+| Decorative apricot | `#ED941F` | `#FFBC7B` |
+
+Bright apricot is decorative; use the deeper orange for small light-mode text.
+Native prominent glass uses white labels, so its fill stays deep orange in both
+appearances. Preserve the icon, semantic UV scale, success green, and error red.
+Use warm separators and quiet shadows, with glass reserved for native controls
+and navigation. Keep the existing screen order and open Today composition.
 
 UV severity colors:
 

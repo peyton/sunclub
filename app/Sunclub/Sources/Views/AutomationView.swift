@@ -288,7 +288,7 @@ struct AutomationSettingsPanel: View {
                     .font(AppFont.rounded(size: 16, weight: .semibold))
                     .foregroundStyle(AppPalette.ink)
             }
-            .tint(AppPalette.sun)
+            .tint(AppPalette.nativeChromeTint)
             .accessibilityIdentifier(accessibilityIdentifier)
 
             Text(detail)

@@ -286,7 +286,7 @@ private struct InitialICloudRestoreView: View {
                 if case .checking = appState.initialICloudRestoreState {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(AppPalette.sun)
+                        .tint(AppPalette.nativeChromeTint)
                         .accessibilityLabel("Checking iCloud")
                 }
                 Spacer(minLength: AppSpacing.xl)

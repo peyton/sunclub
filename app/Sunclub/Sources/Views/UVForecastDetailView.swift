@@ -49,7 +49,7 @@ struct UVForecastDetailView: View {
                     SunStatusCard(
                         title: quality.title,
                         detail: dataQualityDetail,
-                        tint: currentUV.source == .localEstimate ? AppPalette.sun : AppPalette.pool,
+                        tint: currentUV.source == .localEstimate ? AppPalette.sun : AppColor.apricot,
                         symbol: quality.symbol
                     )
                     .accessibilityIdentifier("uvForecast.dataQuality")
@@ -245,7 +245,7 @@ struct UVForecastDetailView: View {
 
             Image(systemName: hour.level.symbolName)
                 .font(AppTextStyle.bodyMedium.font)
-                .foregroundStyle(AppPalette.sun)
+                .foregroundStyle(hour.level.designTextTint)
                 .frame(width: 24)
                 .accessibilityHidden(true)
 
@@ -325,17 +325,17 @@ private struct UVForecastHeroCard: View {
                 HStack(alignment: .center, spacing: 16) {
                     Text("\(index)")
                         .font(AppTypography.streakNumber)
-                        .foregroundStyle(AppPalette.sun)
+                        .foregroundStyle(level.designTextTint)
                         .frame(minWidth: 88, alignment: .leading)
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("UV Index")
                             .font(AppTextStyle.captionMedium.font)
-                            .foregroundStyle(AppPalette.sun)
+                            .foregroundStyle(level.designTextTint)
 
                         Text(level.displayName)
                             .font(AppTypography.screenTitle)
-                            .foregroundStyle(AppPalette.sun)
+                            .foregroundStyle(level.designTextTint)
 
                         Text(sourceLabel)
                             .font(AppTextStyle.caption.font)
