@@ -6,6 +6,80 @@ import UIKit
 struct SunclubApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var startup: SunclubStartup<SunclubContent>
+    @State private var pendingURLs: [URL] = []
+
+    init() {
+        var shouldFailOnce = RuntimeEnvironment.isRunningTests
+            && ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_STORE_OPEN_FAILURE_ONCE")
+        let startup = SunclubStartup(
+            isProtectedDataAvailable: {
+                RuntimeEnvironment.isRunningTests || UIApplication.shared.isProtectedDataAvailable
+            },
+            load: {
+                if RuntimeEnvironment.isRunningTests,
+                   ProcessInfo.processInfo.arguments.contains("UITEST_FORCE_STORE_OPEN_FAILURE") {
+                    throw CocoaError(.fileReadNoPermission)
+                }
+                if shouldFailOnce {
+                    shouldFailOnce = false
+                    throw CocoaError(.fileReadNoPermission)
+                }
+                let container = try SunclubModelContainerFactory.makeSharedContainer(
+                    isStoredInMemoryOnly: RuntimeEnvironment.isRunningTests
+                )
+                return SunclubContent(container: container)
+            }
+        )
+        startup.retry()
+        _startup = State(initialValue: startup)
+        // Observe outside the scene so a background-only launch can recover on unlock.
+        startup.observeProtectedDataAvailability()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if let content = startup.value {
+                    content
+                } else {
+                    AppPalette.cream
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                }
+            }
+            .preferredColorScheme(RuntimeEnvironment.preferredColorSchemeOverride)
+            .sunclubDynamicTypeSizeOverride(RuntimeEnvironment.dynamicTypeSizeOverride)
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await startup.retryUntilReady()
+                deliverPendingURLs()
+            }
+            .onChange(of: startup.value != nil) { _, isReady in
+                if isReady { deliverPendingURLs() }
+            }
+            .onOpenURL { url in
+                pendingURLs.append(url)
+                retryStartup()
+            }
+        }
+    }
+
+    private func retryStartup() {
+        startup.retry()
+        deliverPendingURLs()
+    }
+
+    private func deliverPendingURLs() {
+        guard let content = startup.value else { return }
+        let urls = pendingURLs
+        pendingURLs.removeAll()
+        for url in urls { content.handleIncomingURL(url) }
+    }
+}
+
+private struct SunclubContent: View {
+    @Environment(\.scenePhase) private var scenePhase
     private let appState: AppState
     private let router: AppRouter
     @State private var hasRefreshedForegroundSinceVisibility = false
@@ -18,15 +92,8 @@ struct SunclubApp: App {
         case healthy
     }
 
-    init() {
-        do {
-            container = try SunclubModelContainerFactory.makeSharedContainer(
-                isStoredInMemoryOnly: RuntimeEnvironment.isRunningTests
-            )
-        } catch {
-            assertionFailure("Failed to create ModelContainer: \(error)")
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
+    init(container: ModelContainer) {
+        self.container = container
         NotificationManager.shared.configure(modelContainer: container)
 
         let modelContext = ModelContext(container)
@@ -81,36 +148,35 @@ struct SunclubApp: App {
         }
     }
 
-    var body: some Scene {
-        WindowGroup {
-            RootView()
-                .onAppear {
-                    NotificationManager.shared.setRouteHandler { route in
-                        router.open(route)
-                    }
-                    guard !isRunningTests,
-                          scenePhase == .active,
-                          !hasRefreshedForegroundSinceVisibility else {
-                        return
-                    }
-                    hasRefreshedForegroundSinceVisibility = true
-                    refreshAppStateForForeground()
+    var body: some View {
+        RootView()
+            .onAppear {
+                NotificationManager.shared.setRouteHandler { route in
+                    router.open(route)
                 }
-                .onChange(of: scenePhase) { _, newPhase in
-                    guard newPhase == .active else {
-                        hasRefreshedForegroundSinceVisibility = false
-                        return
-                    }
-                    guard !isRunningTests, !hasRefreshedForegroundSinceVisibility else { return }
-                    hasRefreshedForegroundSinceVisibility = true
-                    refreshAppStateForForeground()
+                guard !isRunningTests,
+                      scenePhase == .active,
+                      !hasRefreshedForegroundSinceVisibility else {
+                    return
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                    refreshAppStateForForeground()
+                hasRefreshedForegroundSinceVisibility = true
+                refreshAppStateForForeground()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else {
+                    hasRefreshedForegroundSinceVisibility = false
+                    return
                 }
-                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
-                    refreshAppStateForForeground()
-                }
+                guard !isRunningTests, !hasRefreshedForegroundSinceVisibility else { return }
+                hasRefreshedForegroundSinceVisibility = true
+                refreshAppStateForForeground()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                refreshAppStateForForeground()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                refreshAppStateForForeground()
+            }
             .environment(appState)
             .environment(router)
             .modelContainer(container)
@@ -119,10 +185,6 @@ struct SunclubApp: App {
             .sunclubAccessibilityReduceMotionOverride(RuntimeEnvironment.accessibilityReduceMotionOverride)
             .sunclubAccessibilityDifferentiateWithoutColorOverride(RuntimeEnvironment.differentiateWithoutColorOverride)
             .sunclubColorSchemeContrastOverride(RuntimeEnvironment.shouldUseIncreasedAccessibilityContrast ? .increased : nil)
-            .onOpenURL { url in
-                handleIncomingURL(url)
-            }
-        }
     }
 
     private func applyUITestLaunchConfigurationIfNeeded() {
@@ -656,7 +718,7 @@ struct SunclubApp: App {
         }
     }
 
-    private func handleIncomingURL(_ url: URL) {
+    func handleIncomingURL(_ url: URL) {
         _ = SunclubDeepLinkHandler.handle(url: url, appState: appState, router: router) { callbackURL in
             UIApplication.shared.open(callbackURL)
         }
