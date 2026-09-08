@@ -14,24 +14,40 @@ struct SunclubLiveActivityWidget: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.statusTitle())
+                        Text(context.state.hasCurrentApplication() ? "Last applied" : context.state.statusTitle())
                             .font(.footnote.weight(.medium))
-                            .fontDesign(.rounded)
-                        SunclubLiveActivityTimerValue(state: context.state, size: 24)
+                            .foregroundStyle(.secondary)
+                        if context.state.hasCurrentApplication() {
+                            Text(context.state.lastAppliedLabel)
+                                .font(.headline)
+                        }
                     }
+                    .fontDesign(.rounded)
                     .id(context.isStale)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Image(systemName: context.state.isReapplyDue() ? "arrow.clockwise" : "timer")
-                        .foregroundStyle(AppColor.sun)
-                        .accessibilityHidden(true)
+                    if context.state.hasCurrentApplication() {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(context.state.statusTitle())
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(.secondary)
+                            SunclubLiveActivityTimerValue(state: context.state, size: 24)
+                        }
+                        .fontDesign(.rounded)
+                    } else {
+                        Image(systemName: "sun.max")
+                            .foregroundStyle(AppColor.sun)
+                            .accessibilityHidden(true)
+                    }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(context.state.hasPendingCheckIn() ? "Unconfirmed" : (context.state.hasCurrentApplication() ? context.state.appliedLabel : "Open Sunclub to log today"))
-                            .font(.footnote)
-                            .fontDesign(.rounded)
-                            .foregroundStyle(.secondary)
+                        if !context.state.hasCurrentApplication() {
+                            Text(context.state.hasPendingCheckIn() ? "Unconfirmed" : "Open Sunclub to log today")
+                                .font(.footnote)
+                                .fontDesign(.rounded)
+                                .foregroundStyle(.secondary)
+                        }
                         SunclubLiveActivityLogButton(state: context.state)
                     }
                 }
@@ -59,22 +75,33 @@ private struct SunclubLiveActivityLockScreenView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
+            if state.hasCurrentApplication() {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("Last applied", systemImage: "circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(AppColor.Text.secondary)
+                        Text(state.lastAppliedLabel)
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(state.statusTitle(), systemImage: "circle")
+                            .font(.caption)
+                            .foregroundStyle(AppColor.Text.secondary)
+                        SunclubLiveActivityTimerValue(state: state, size: 28)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .labelStyle(SunclubLiveActivityTimelineLabelStyle())
+            } else {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(state.statusTitle())
                         .font(.headline)
                         .lineLimit(2)
-                    Text(state.hasPendingCheckIn() ? "Unconfirmed" :
-                            (state.hasCurrentApplication() ? state.appliedLabel : "Open Sunclub to log today"))
+                    Text(state.hasPendingCheckIn() ? "Unconfirmed" : "Open Sunclub to log today")
                         .font(.caption)
                         .foregroundStyle(AppColor.Text.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if state.hasCurrentApplication() {
-                    SunclubLiveActivityTimerValue(state: state, size: 28)
-                        .frame(maxWidth: 140, alignment: .trailing)
                 }
             }
             SunclubLiveActivityLogButton(state: state)
@@ -87,6 +114,18 @@ private struct SunclubLiveActivityLockScreenView: View {
     }
 }
 
+private struct SunclubLiveActivityTimelineLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 6) {
+            configuration.icon
+                .font(AppFont.rounded(size: 7, weight: .semibold))
+                .foregroundStyle(AppColor.accent)
+                .accessibilityHidden(true)
+            configuration.title
+        }
+    }
+}
+
 private struct SunclubLiveActivityLogButton: View {
     let state: SunclubLiveActivityAttributes.ContentState
 
@@ -95,18 +134,21 @@ private struct SunclubLiveActivityLogButton: View {
             HStack(spacing: 8) {
                 Link(destination: SunclubWidgetRoute.departureCheckIn.url) {
                     Text("Already applied").lineLimit(1).minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(SunclubLiveActivityButtonStyle(isPrimary: true))
+                .sunGlassPrimaryButton(legacyStyle: SunclubLiveActivityButtonStyle(isPrimary: true))
                 .accessibilityHint("Choose when you applied sunscreen.")
                 Button(intent: SnoozeDepartureCheckInIntent(checkInID: checkInID.uuidString)) {
                     Text("In 15 min").lineLimit(1).minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(SunclubLiveActivityButtonStyle())
+                .sunGlassSecondaryButton(legacyStyle: SunclubLiveActivityButtonStyle())
                 .accessibilityLabel("Remind me in 15 minutes")
                 Button(intent: DismissDepartureCheckInIntent(checkInID: checkInID.uuidString)) {
                     Image(systemName: "xmark")
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(SunclubLiveActivityButtonStyle())
+                .sunGlassSecondaryButton(legacyStyle: SunclubLiveActivityButtonStyle())
                 .frame(width: 44)
                 .accessibilityLabel("Dismiss check-in")
             }
@@ -119,26 +161,29 @@ private struct SunclubLiveActivityLogButton: View {
                     .fontDesign(.rounded)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(SunclubLiveActivityButtonStyle(isPrimary: true))
+            .sunGlassPrimaryButton(legacyStyle: SunclubLiveActivityButtonStyle(isPrimary: true))
             .accessibilityHint("Records another sunscreen application.")
         } else {
-            Link("Open Sunclub", destination: SunclubWidgetRoute.today.url)
-                .font(.callout.weight(.semibold))
-                .fontDesign(.rounded)
-                .buttonStyle(SunclubLiveActivityButtonStyle())
+            Link(destination: SunclubWidgetRoute.today.url) {
+                Text("Open Sunclub")
+                    .font(.callout.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .sunGlassSecondaryButton(legacyStyle: SunclubLiveActivityButtonStyle())
         }
     }
 }
 
-/// An explicit target height avoids the additional vertical padding of bordered button styles.
+/// Labels own their hit targets across native glass and this compatibility style.
 private struct SunclubLiveActivityButtonStyle: ButtonStyle {
     var isPrimary = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 44)
             .foregroundStyle(isPrimary ? AppColor.primaryActionForeground : AppColor.Text.primary)
             .background(isPrimary ? AppColor.primaryAction : AppColor.control,
                         in: RoundedRectangle(cornerRadius: AppRadius.button, style: .continuous))

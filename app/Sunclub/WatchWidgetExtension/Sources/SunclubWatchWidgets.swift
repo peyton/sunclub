@@ -63,18 +63,32 @@ private struct SunclubWatchStatusComplicationView: View {
                     Text(status.actionTitle)
                 }
             default:
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(status.title)
-                        .font(AppFont.rounded(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    statusValue
-                        .font(AppFont.rounded(size: 17, weight: .semibold))
-                    if status.reapplyDeadline != nil, let lastAppliedAt = status.lastAppliedAt {
-                        Text("Applied \(lastAppliedAt, style: .time)")
-                            .font(AppFont.rounded(size: 10))
-                            .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    if let lastAppliedAt = status.lastAppliedAt {
+                        HStack(spacing: 5) {
+                            Image(systemName: "circle.fill")
+                                .font(AppFont.rounded(size: 6))
+                                .accessibilityHidden(true)
+                            Text("Applied \(lastAppliedAt, style: .time)")
+                                .font(AppFont.rounded(size: 12, weight: .medium))
+                        }
+                    }
+                    if status.lastAppliedAt == nil || status.reapplyDeadline != nil {
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Image(systemName: "circle")
+                                .font(AppFont.rounded(size: 6, weight: .semibold))
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(status.title)
+                                    .font(AppFont.rounded(size: 10))
+                                    .foregroundStyle(.secondary)
+                                statusValue
+                                    .font(AppFont.rounded(size: 17, weight: .semibold))
+                            }
+                        }
                     }
                 }
+                .accessibilityElement(children: .combine)
             }
         }
         .widgetURL(statusURL)

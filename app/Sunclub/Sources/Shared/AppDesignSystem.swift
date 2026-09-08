@@ -100,6 +100,55 @@ enum AppColor {
     static let onColor = Color.white
 }
 
+/// A chronological event. Marker shape reinforces the text's recorded/planned distinction.
+/// The content owns its semantics and actions; the rail is entirely decorative.
+struct SunTimelineEvent<Content: View>: View {
+    let isRecorded: Bool
+    var connectsToNext = true
+    @ViewBuilder let content: () -> Content
+
+    private var markerColor: Color {
+        #if os(watchOS)
+        AppColor.sun
+        #else
+        AppColor.accent
+        #endif
+    }
+
+    private var markerBackground: Color {
+        #if os(watchOS)
+        AppColor.Watch.background
+        #else
+        AppColor.background
+        #endif
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AppSpacing.sm) {
+            VStack(spacing: AppSpacing.xxs) {
+                Circle()
+                    .fill(isRecorded ? markerColor : markerBackground)
+                    .overlay { Circle().strokeBorder(markerColor, lineWidth: 2) }
+                    .frame(width: AppSpacing.sm, height: AppSpacing.sm)
+                if connectsToNext {
+                    Rectangle()
+                        .fill(AppColor.stroke)
+                        .frame(width: 1)
+                        .frame(maxHeight: .infinity)
+                }
+            }
+            .padding(.top, AppSpacing.xxs)
+            .frame(width: AppSpacing.sm)
+            .accessibilityHidden(true)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, connectsToNext ? AppSpacing.lg : 0)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 enum AppRadius {
     static let card: CGFloat = 18
     static let button: CGFloat = 14
@@ -142,6 +191,36 @@ enum AppShadow {
         xOffset: 0,
         yOffset: 14
     )
+}
+
+enum SunMotion {
+    static func press(reduceMotion: Bool) -> Animation? {
+        easeOut(duration: 0.12, reduceMotion: reduceMotion)
+    }
+
+    static func selection(reduceMotion: Bool) -> Animation? {
+        easeInOut(duration: 0.22, reduceMotion: reduceMotion)
+    }
+
+    static func settle(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(duration: 0.32, bounce: 0.12)
+    }
+
+    static func easeInOut(duration: Double, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: duration)
+    }
+
+    static func easeOut(duration: Double, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: duration)
+    }
+
+    static func repeatingEaseInOut(
+        duration: Double,
+        reduceMotion: Bool,
+        autoreverses: Bool = true
+    ) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: duration).repeatForever(autoreverses: autoreverses)
+    }
 }
 
 enum AppMotion {
@@ -769,7 +848,7 @@ struct AppPrimaryButtonStyle: ButtonStyle {
             }
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.978 : 1))
-            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(SunMotion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -793,7 +872,7 @@ struct AppSecondaryPillButtonStyle: ButtonStyle {
             }
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.982 : 1))
-            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(SunMotion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 

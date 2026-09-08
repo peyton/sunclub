@@ -174,14 +174,6 @@ private struct SunclubLogTodayWidgetView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Link(destination: SunclubWidgetRoute.today.url) { statusContent }
                         .buttonStyle(.plain)
-                    if family != .systemSmall, status.reapplyDeadline != nil, let applied = status.lastAppliedAt {
-                        HStack(spacing: 4) {
-                            Text("Last applied")
-                            Text(applied, style: .time)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
                     Spacer(minLength: 0)
                     if family == .systemLarge || family == .systemExtraLarge {
                         SunclubRecordedDays(snapshot: entry.snapshot, now: entry.date, month: false)
@@ -247,27 +239,59 @@ private struct SunclubLogTodayWidgetView: View {
     }
 
     private var statusContent: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(status.title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if !status.isSetupComplete {
-                Text("Finish setup").font(.headline)
-            } else if status.isReapplyDue {
-                Text("Now").font(.title2.bold())
-            } else if let deadline = status.reapplyDeadline {
-                Text(timerInterval: entry.date...max(entry.date, deadline), countsDown: true)
-                    .monospacedDigit()
-                    .font(.title2.bold())
-            } else if let applied = status.lastAppliedAt {
-                Text(applied, style: .time).font(.title2.bold())
-            } else if !status.hasLoggedToday {
-                Text("Sunscreen").font(.headline)
+        VStack(alignment: .leading, spacing: family == .accessoryRectangular ? 2 : 6) {
+            if status.isSetupComplete, let applied = status.lastAppliedAt {
+                HStack(alignment: .top, spacing: 8) {
+                    timelineMarker(isRecorded: true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        if family == .accessoryRectangular || (family == .systemSmall && status.reapplyDeadline != nil) {
+                            Text("Applied \(applied, style: .time)")
+                                .font(.caption)
+                        } else {
+                            Text("Last applied")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(applied, style: .time)
+                                .font(status.reapplyDeadline == nil ? .title2.weight(.semibold) : .callout.weight(.semibold))
+                        }
+                    }
+                }
+            }
+            if !status.isSetupComplete || status.lastAppliedAt == nil || status.reapplyDeadline != nil {
+                HStack(alignment: .top, spacing: 8) {
+                    timelineMarker(isRecorded: false)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(status.title)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !status.isSetupComplete {
+                            Text("Finish setup").font(.headline)
+                        } else if status.isReapplyDue {
+                            Text("Now").font(family == .accessoryRectangular ? .headline : .title2.weight(.semibold))
+                        } else if let deadline = status.reapplyDeadline {
+                            Text(timerInterval: entry.date...max(entry.date, deadline), countsDown: true)
+                                .monospacedDigit()
+                                .font(family == .accessoryRectangular ? .headline : .title2.weight(.semibold))
+                        } else if !status.hasLoggedToday {
+                            Text("Sunscreen").font(.headline)
+                        }
+                    }
+                }
             }
         }
+        .fontDesign(.rounded)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
+
+    private func timelineMarker(isRecorded: Bool) -> some View {
+        Image(systemName: isRecorded ? "circle.fill" : "circle")
+            .font(AppFont.rounded(size: 8, weight: .semibold))
+            .foregroundStyle(renderingMode == .fullColor ? AppColor.accent : .primary)
+            .padding(.top, 5)
+            .accessibilityHidden(true)
+    }
+
 }
 
 private struct SunclubHistorySurface: View {

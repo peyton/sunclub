@@ -123,46 +123,52 @@ struct SunclubWatchHomeView: View {
     private var statusCard: some View {
         let now = Date()
         let status = snapshot.applicationStatus(now: now)
-        return AppCard(padding: AppSpacing.xxs, fill: watchCardFill, showsShadow: false) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(status.title)
-                    .font(.caption)
-                    .foregroundStyle(watchTextSecondary)
-
-                Group {
-                    if !status.isSetupComplete {
-                        Text("Finish setup on iPhone")
-                            .font(.headline)
-                    } else if status.isReapplyDue {
-                        Text("Now")
-                            .font(.title2.weight(.semibold))
-                    } else if let deadline = status.reapplyDeadline {
-                        Text(timerInterval: now...max(now, deadline), countsDown: true)
-                            .font(.title2.weight(.semibold))
-                            .monospacedDigit()
-                    } else if let applied = status.lastAppliedAt {
+        return VStack(alignment: .leading, spacing: 0) {
+            if status.isSetupComplete, let applied = status.lastAppliedAt {
+                SunTimelineEvent(isRecorded: true, connectsToNext: status.reapplyDeadline != nil) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Last applied")
+                            .font(AppTextStyle.caption.font)
+                            .foregroundStyle(watchTextSecondary)
                         Text(applied, style: .time)
-                            .font(.title2.weight(.semibold))
+                            .font(AppTextStyle.sectionHeader.font)
+                            .foregroundStyle(watchTextPrimary)
                     }
                 }
-                .foregroundStyle(watchTextPrimary)
-
-                if status.reapplyDeadline != nil, let applied = status.lastAppliedAt {
-                    Text("Applied \(applied, style: .time)")
-                        .font(.caption2)
-                        .foregroundStyle(watchTextSecondary)
-                }
-
-                if let visibleSyncStatus {
-                    Text(visibleSyncStatus)
-                        .font(.caption)
+            }
+            if !status.isSetupComplete || status.lastAppliedAt == nil || status.reapplyDeadline != nil {
+                SunTimelineEvent(isRecorded: false, connectsToNext: false) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(status.title)
+                            .font(AppTextStyle.caption.font)
+                            .foregroundStyle(watchTextSecondary)
+                        Group {
+                            if !status.isSetupComplete {
+                                Text("Finish setup on iPhone")
+                            } else if status.isReapplyDue {
+                                Text("Now")
+                            } else if let deadline = status.reapplyDeadline {
+                                Text(timerInterval: now...max(now, deadline), countsDown: true)
+                                    .monospacedDigit()
+                            } else {
+                                Text(status.hasLoggedToday ? "Logged today" : "Ready to log")
+                            }
+                        }
+                        .font(AppTextStyle.sectionHeader.font)
                         .foregroundStyle(watchTextPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
-            .fontDesign(.rounded)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            if let visibleSyncStatus {
+                Text(visibleSyncStatus)
+                    .font(AppTextStyle.caption.font)
+                    .foregroundStyle(watchTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, AppSpacing.xxs)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, AppSpacing.xxs)
     }
 
     private var uvCard: some View {

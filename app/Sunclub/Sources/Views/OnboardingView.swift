@@ -35,16 +35,16 @@ struct WelcomeView: View {
     @ViewBuilder
     private var welcomeContent: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: AppSpacing.xl) {
+            HStack(alignment: .top, spacing: AppSpacing.xl) {
                 welcomeHero
                     .frame(minWidth: 400, maxWidth: 440)
 
                 welcomeValueProps
                     .frame(minWidth: 360, maxWidth: 420, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 welcomeHero
                 welcomeValueProps
                     .padding(.top, AppSpacing.xl)
@@ -54,21 +54,21 @@ struct WelcomeView: View {
     }
 
     private var welcomeHero: some View {
-        VStack(spacing: AppSpacing.sm) {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
             SunLogoMark(size: 80)
                 .accessibilityHidden(true)
-            VStack(spacing: AppSpacing.xxs) {
-                AppText("sunclub", style: .largeTitle, alignment: .center)
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                AppText("sunclub", style: .largeTitle)
                     .accessibilityAddTraits(.isHeader)
                 AppText(
-                    "Your daily dose of sun sense.",
+                    "Make sunscreen part of your day.",
                     style: .body,
                     color: AppColor.Text.secondary,
-                    alignment: .center
+                    alignment: .leading
                 )
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var welcomeValueProps: some View {
@@ -76,17 +76,17 @@ struct WelcomeView: View {
             welcomeValuePropRow(
                 symbol: .sunscreen,
                 title: "Log sunscreen in seconds",
-                detail: "Record SPF, timing, covered areas, and notes."
+                detail: "Log now. Add SPF and details when you want."
             )
             welcomeValuePropRow(
                 symbol: .sun,
                 title: "See local UV context",
-                detail: "Check current risk, hourly forecast, and peak sun time."
+                detail: "See the forecast alongside your daily routine."
             )
             welcomeValuePropRow(
                 symbol: .bell,
                 title: "Get reapply reminders",
-                detail: "Use reminders, widgets, Apple Watch, and Shortcuts."
+                detail: "Choose optional reminders that fit your day."
             )
         }
         .frame(maxWidth: 360, alignment: .leading)
@@ -128,18 +128,18 @@ struct EnableLocationView: View {
 
     var body: some View {
         OnboardingScreen() {
-            VStack(spacing: AppSpacing.lg) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 SunIcon.sun.image.resizable().scaledToFit()
                     .frame(width: 60, height: 60)
                     .foregroundStyle(AppColor.sun)
                     .accessibilityHidden(true)
                     .padding(.top, AppSpacing.sm)
 
-                VStack(spacing: AppSpacing.sm) {
-                    AppText("Use your location for local UV", style: .title, alignment: .center)
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                    AppText("Use your location for local UV", style: .title, alignment: .leading)
                         .accessibilityAddTraits(.isHeader)
 
-                    AppText("See local UV and hourly forecasts. You can also choose a city or continue with a local estimate.", color: AppColor.Text.secondary, alignment: .center)
+                    AppText("See local UV and hourly forecasts. You can also choose a city or continue with a local estimate.", color: AppColor.Text.secondary, alignment: .leading)
                 }
             }
             .padding(.vertical, AppSpacing.lg)
@@ -212,17 +212,17 @@ struct EnableNotificationsView: View {
 
     var body: some View {
         OnboardingScreen() {
-            VStack(spacing: AppSpacing.lg) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 notificationIcon
                     .padding(.top, AppSpacing.sm)
 
-                VStack(spacing: AppSpacing.sm) {
-                    AppText("Enable reminders", style: .title, alignment: .center)
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                    AppText("Enable reminders", style: .title, alignment: .leading)
                         .accessibilityAddTraits(.isHeader)
 
-                    AppText(reminderDescription, color: AppColor.Text.secondary, alignment: .center)
+                    AppText(reminderDescription, color: AppColor.Text.secondary, alignment: .leading)
 
-                    AppText("Your logs stay private. No ads. No data sale.", style: .captionMedium, alignment: .center)
+                    AppText("Your logs stay private. No ads. No data sale.", style: .captionMedium, alignment: .leading)
                         .padding(.top, AppSpacing.xxs)
 
                     if let completionError {
@@ -382,7 +382,7 @@ private struct OnboardingScreen<Content: View, Footer: View>: View {
                 showsFooter: !scrollsActions,
                 scrollAccessibilityIdentifier: "onboarding.scroll"
             ) {
-                VStack(spacing: AppSpacing.lg) {
+                VStack(alignment: .leading, spacing: AppSpacing.lg) {
                     content()
                     if scrollsActions {
                         footer()

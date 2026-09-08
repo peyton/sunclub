@@ -94,7 +94,7 @@ extension SettingsView {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            AppText(title, style: .bodyMedium)
+            AppText(title, style: .captionMedium, color: AppColor.Text.secondary)
                 .accessibilityAddTraits(.isHeader)
 
             AppCard(padding: 0, showsShadow: false) {
@@ -124,6 +124,8 @@ extension SettingsView {
                 icon.image.resizable().scaledToFit()
                     .foregroundStyle(AppColor.Text.secondary)
                     .frame(width: 24, height: 24)
+                    .padding(AppSpacing.xxs)
+                    .background(AppColor.surface, in: RoundedRectangle(cornerRadius: AppRadius.button))
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xxs) {

@@ -7,6 +7,7 @@ struct TimelineHomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var receipt: SunclubHistoryMutationReceipt?
     @State private var isLogging = false
@@ -46,34 +47,36 @@ struct TimelineHomeView: View {
             VStack(spacing: AppSpacing.md) {
                 todayHeader(now: now)
 
-                Button { router.push(.uvForecast) } label: {
-                    TodayQuietGlassGauge(presentation: uvPresentation)
-                }
-                .buttonStyle(TodayQuietGlassTapButtonStyle())
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(uvPresentation.accessibilityLabel)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityAction { router.push(.uvForecast) }
-                .accessibilityHint("Opens the UV forecast.")
-                .accessibilityIdentifier("home.uvIndexCard")
-
                 if let pending = appState.pendingDepartureCheckIn {
                     departurePrompt(pending)
                 }
 
-                TodayQuietGlassLogSummary(presentation: log, editSPF: {
-                    if let record { spfEdit = LoggedSPFEditTarget(record: record) }
-                }, editTime: openEditor)
-
-                if let reminder = log.reminderText {
-                    Button { router.push(.reapplyCheckIn) } label: {
-                        TodayQuietGlassReminder(text: reminder, showsChevron: true)
+                VStack(alignment: .leading, spacing: 0) {
+                    SunTimelineEvent(isRecorded: record != nil) {
+                        TodayQuietGlassLogSummary(presentation: log, editSPF: {
+                            if let record { spfEdit = LoggedSPFEditTarget(record: record) }
+                        }, editTime: openEditor)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(reminder)
-                    .accessibilityHint("Opens reminder options.")
-                    .accessibilityIdentifier("home.reapplyReminder")
+                    SunTimelineEvent(isRecorded: false, connectsToNext: log.reminderText != nil) {
+                        AppText("Now · \(now.formatted(date: .omitted, time: .shortened))",
+                                style: .bodyMedium, color: AppColor.Text.secondary)
+                            .frame(minHeight: 32, alignment: .leading)
+                            .accessibilityIdentifier("home.timelineNow")
+                    }
+                    if let reminder = log.reminderText {
+                        SunTimelineEvent(isRecorded: false, connectsToNext: false) {
+                            Button { router.push(.reapplyCheckIn) } label: {
+                                TodayQuietGlassReminder(text: reminder, detail: "Reapplication plan", showsChevron: true)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(reminder)
+                            .accessibilityHint("Opens reminder options.")
+                            .accessibilityIdentifier("home.reapplyReminder")
+                        }
+                    }
                 }
+                .animation(SunMotion.settle(reduceMotion: reduceMotion), value: feedbackTrigger)
+                .padding(.vertical, AppSpacing.xs)
 
                 TodayQuietGlassLogButton(title: record == nil ? "Log sunscreen" : "Log reapplication", action: logNow)
                     .disabled(isLogging)
@@ -84,6 +87,18 @@ struct TimelineHomeView: View {
                     AppText(error, style: .body, color: Self.errorTextColor)
                         .accessibilityIdentifier("home.logError")
                 }
+
+                Divider().overlay(AppColor.stroke)
+                Button { router.push(.uvForecast) } label: {
+                    TodayDaylightUVSummary(presentation: uvPresentation)
+                }
+                .buttonStyle(TodayQuietGlassTapButtonStyle())
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(uvPresentation.accessibilityLabel)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { router.push(.uvForecast) }
+                .accessibilityHint("Opens the UV forecast.")
+                .accessibilityIdentifier("home.uvIndexCard")
 
                 uvSource(uvPresentation)
                 attentionActions

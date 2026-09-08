@@ -153,23 +153,6 @@ enum SunLayout {
     }
 }
 
-enum SunMotion {
-    static func easeInOut(duration: Double, reduceMotion: Bool) -> Animation? {
-        reduceMotion ? nil : .easeInOut(duration: duration)
-    }
-
-    static func easeOut(duration: Double, reduceMotion: Bool) -> Animation? {
-        reduceMotion ? nil : .easeOut(duration: duration)
-    }
-
-    static func repeatingEaseInOut(
-        duration: Double,
-        reduceMotion: Bool,
-        autoreverses: Bool = true
-    ) -> Animation? {
-        reduceMotion ? nil : .easeInOut(duration: duration).repeatForever(autoreverses: autoreverses)
-    }
-}
 
 enum SunclubVisualAsset: String, CaseIterable {
     case backgroundSunGrainLight = "BackgroundSunGrainLight"
@@ -554,7 +537,7 @@ struct SunPrimaryButtonStyle: ButtonStyle {
             )
             .opacity(configuration.isPressed ? 0.90 : (isEnabled ? 1 : 0.68))
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.976 : 1))
-            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(SunMotion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -578,7 +561,7 @@ struct SunSecondaryButtonStyle: ButtonStyle {
             }
             .opacity(configuration.isPressed ? 0.92 : 1)
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.982 : 1))
-            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(SunMotion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -596,7 +579,7 @@ struct SunTextButtonStyle: ButtonStyle {
                     .fill(configuration.isPressed ? AppPalette.warmGlow.opacity(0.54) : Color.clear)
             )
             .opacity(configuration.isPressed ? 0.82 : 1)
-            .animation(AppMotion.easeOut(duration: 0.14, reduceMotion: reduceMotion), value: configuration.isPressed)
+            .animation(SunMotion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
