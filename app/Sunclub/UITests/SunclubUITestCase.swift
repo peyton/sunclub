@@ -26,7 +26,7 @@ class SunclubUITestCase: XCTestCase {
         line: UInt = #line
     ) {
         XCTAssertTrue(
-            waitForLabelPrefix("Logged at ", on: app.staticTexts["home.todayStatus"], timeout: 10),
+            waitForLabelPrefix("Logged at ", on: app.buttons["home.todayStatus"], timeout: 10),
             "Expected the saved application's time on Today.",
             file: file, line: line
         )
@@ -195,8 +195,11 @@ class SunclubUITestCase: XCTestCase {
     }
 
     @MainActor
-    func manualLogSPFRow(in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts["manualLog.spfState"]
+    func expandLogDetails(in app: XCUIApplication, prefix: String) {
+        let field = app.buttons["\(prefix).spf.15"]
+        if !field.exists {
+            tapHittableElement(app.buttons["\(prefix).detailsToggle"], in: app)
+        }
     }
 
     @MainActor

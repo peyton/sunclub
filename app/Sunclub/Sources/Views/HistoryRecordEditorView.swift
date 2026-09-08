@@ -4,6 +4,7 @@ struct HistoryRecordEditorView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let day: Date
     let existingRecord: DailyRecord?
@@ -18,6 +19,19 @@ struct HistoryRecordEditorView: View {
     @State private var selectedTimestamp: Date
     @State private var hasLoadedInitialState = false
     @State private var hasSaved = false
+    @State private var originalSnapshot: DailyRecordProjectionSnapshot?
+    @State private var originalRecordID: UUID?
+    @State private var selectedReapplicationTime: Date?
+    @State private var initialDraft: EditorDraft?
+    @State private var confirmsDiscard = false
+
+    private struct EditorDraft: Equatable {
+        let time: Date
+        let reapplication: Date?
+        let spf: Int?
+        let areas: Set<String>
+        let notes: String
+    }
 
     init(
         day: Date,
@@ -33,6 +47,9 @@ struct HistoryRecordEditorView: View {
         self.targetContext = targetContext
         self.prefill = prefill
         self.accessibilityPrefix = accessibilityPrefix
+        _originalSnapshot = State(initialValue: existingRecord?.projectionSnapshot)
+        _originalRecordID = State(initialValue: existingRecord?.id)
+        _selectedReapplicationTime = State(initialValue: existingRecord?.lastReappliedAt)
         _selectedSPF = State(initialValue: existingRecord?.spfLevel)
         _selectedAreas = State(initialValue: SunManualLogInput.coveredAreas(in: existingRecord?.notes))
         _notes = State(initialValue: SunManualLogInput.notesRemovingCoveredAreas(existingRecord?.notes))
@@ -65,32 +82,38 @@ struct HistoryRecordEditorView: View {
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("\(accessibilityPrefix).title")
                     AppText(
-                        day.formatted(.dateTime.weekday(.wide).month(.wide).day()),
+                        day.formatted(.dateTime.weekday(.wide).month(.wide).day().year()),
                         style: .caption,
                         color: AppColor.Text.secondary
                     )
                     .accessibilityIdentifier("\(accessibilityPrefix).timestamp")
                 }
 
-                DatePicker(
-                    (existingRecord?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
+                timePicker(
+                    (originalSnapshot?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
                     selection: $selectedTimestamp,
-                    in: allowedTimestampRange,
-                    displayedComponents: .hourAndMinute
+                    identifier: "\(accessibilityPrefix).timePicker"
                 )
-                .datePickerStyle(.compact)
-                .font(AppTextStyle.body.font)
-                .tint(AppColor.accent)
-                .frame(minHeight: 44)
-                .accessibilityIdentifier("\(accessibilityPrefix).timePicker")
+
+                if selectedReapplicationTime != nil {
+                    timePicker(
+                        "Latest reapplication",
+                        selection: Binding(
+                            get: { selectedReapplicationTime ?? selectedTimestamp },
+                            set: { selectedReapplicationTime = $0 }
+                        ),
+                        identifier: "\(accessibilityPrefix).reapplicationTimePicker"
+                    )
+                }
 
                 SunManualLogFields(
                     selectedSPF: $selectedSPF,
                     notes: $notes,
                     selectedAreas: $selectedAreas,
                     accessibilityPrefix: accessibilityPrefix,
-                    suggestions: appState.manualLogSuggestionState(for: day),
-                    showsOptionalDisclosure: false
+                    suggestions: originalSnapshot == nil ? appState.manualLogSuggestionState(for: day) : .empty,
+                    showsOptionalDisclosure: true,
+                    detailsInitiallyExpanded: false
                 )
 
                 if let errorMessage = inputValidationMessage ?? appState.logActionErrorMessage {
@@ -102,7 +125,11 @@ struct HistoryRecordEditorView: View {
                 }
             }
         } footer: {
-            Button("Save", action: saveLog)
+            Button(action: saveLog) {
+                Text("Save")
+                    .font(AppTextStyle.bodyMedium.font)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
                 .sunGlassPrimaryButton()
                 .disabled(inputValidationMessage != nil || hasSaved)
                 .accessibilityIdentifier(
@@ -127,11 +154,41 @@ struct HistoryRecordEditorView: View {
                 }
             }
         }
-        .interactivePopGestureEnabled()
+        .interactiveDismissDisabled(hasUnsavedChanges)
+        .alert("Discard changes?", isPresented: $confirmsDiscard) {
+            Button("Discard changes", role: .destructive, action: closeEditor)
+            Button("Keep editing", role: .cancel) { }
+        }
+    }
+
+    @ViewBuilder
+    private func timePicker(_ title: String, selection: Binding<Date>, identifier: String) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                AppText(title, style: .body)
+                    .accessibilityHidden(true)
+                timePickerControl(title, selection: selection, identifier: identifier)
+                    .labelsHidden()
+            }
+        } else {
+            timePickerControl(title, selection: selection, identifier: identifier)
+        }
+    }
+
+    private func timePickerControl(_ title: String, selection: Binding<Date>, identifier: String) -> some View {
+        DatePicker(title, selection: selection, in: allowedTimestampRange, displayedComponents: .hourAndMinute)
+            .datePickerStyle(.compact)
+            .font(AppTextStyle.body.font)
+            .tint(AppColor.accent)
+            .frame(minHeight: 44)
+            .accessibilityLabel(title)
+            .accessibilityIdentifier(identifier)
     }
 
     private var cancelButton: some View {
-        Button("Cancel", action: closeEditor)
+        Button("Cancel") {
+            if hasUnsavedChanges { confirmsDiscard = true } else { closeEditor() }
+        }
             .frame(minHeight: 44)
             .accessibilityIdentifier("screen.back")
     }
@@ -142,6 +199,10 @@ struct HistoryRecordEditorView: View {
         }
         if !allowedTimestampRange.contains(selectedTimestamp) {
             return "Choose a time on this day that is not in the future."
+        }
+        if let selectedReapplicationTime,
+           (!allowedTimestampRange.contains(selectedReapplicationTime) || selectedReapplicationTime < selectedTimestamp) {
+            return "Reapplication must be after the first application and not in the future."
         }
         let serializedCount = SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas).count
         let overage = serializedCount - SunManualLogInput.noteCharacterLimit
@@ -156,26 +217,20 @@ struct HistoryRecordEditorView: View {
               let serializedNotes = SunManualLogInput.validatedNotesWithCoveredAreas(notes, areas: selectedAreas) else {
             return
         }
-        let result = appState.saveManualRecord(
-            for: day,
-            dayPart: targetContext?.dayPart,
-            verifiedAt: selectedTimestamp,
-            spfLevel: selectedSPF,
-            notes: serializedNotes
+        let result = appState.saveEditedRecord(
+            for: day, recordID: originalRecordID, expected: originalSnapshot,
+            verifiedAt: selectedTimestamp, lastReappliedAt: selectedReapplicationTime,
+            spfLevel: selectedSPF, notes: serializedNotes
         )
-        guard case let .success(receipt) = result else { return }
+        guard result.succeeded else { return }
         hasSaved = true
-        if receipt.didChange,
-           Calendar.current.isDate(day, inSameDayAs: appState.referenceDate),
-           appState.settings.reapplyReminderEnabled {
-            appState.scheduleReapplyReminder()
-        }
         closeEditor()
     }
 
     private func syncInitialStateIfNeeded() {
         guard !hasLoadedInitialState else { return }
         hasLoadedInitialState = true
+        defer { initialDraft = draft }
         guard existingRecord == nil else { return }
 
         if let prefill {
@@ -188,6 +243,15 @@ struct HistoryRecordEditorView: View {
             selectedAreas = defaults.coveredAreas
         }
         selectedTimestamp = defaultTimestamp
+    }
+
+    private var draft: EditorDraft {
+        EditorDraft(time: selectedTimestamp, reapplication: selectedReapplicationTime,
+                    spf: selectedSPF, areas: selectedAreas, notes: notes)
+    }
+
+    private var hasUnsavedChanges: Bool {
+        !hasSaved && initialDraft.map { $0 != draft } == true
     }
 
     private var allowedTimestampRange: ClosedRange<Date> {

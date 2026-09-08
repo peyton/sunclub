@@ -8,6 +8,7 @@ struct SunManualLogFields: View {
     @Binding var notes: String
     @Binding var selectedAreas: Set<String>
     @State private var isShowingDetails: Bool
+    @FocusState private var notesFocused: Bool
 
     let accessibilityPrefix: String
     let suggestions: ManualLogSuggestionState
@@ -38,13 +39,26 @@ struct SunManualLogFields: View {
 
     var body: some View {
         if showsOptionalDisclosure {
-            DisclosureGroup("Details", isExpanded: $isShowingDetails) {
-                detailsFields.padding(.top, AppSpacing.xs)
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Button {
+                    withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
+                        isShowingDetails.toggle()
+                    }
+                } label: {
+                    HStack {
+                        AppText("Details", style: .bodyMedium, color: AppColor.accent)
+                        Spacer()
+                        Image(systemName: isShowingDetails ? "chevron.up" : "chevron.down")
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(isShowingDetails ? "Expanded" : "Collapsed")
+                .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
+                if isShowingDetails { detailsFields }
             }
-            .font(AppTextStyle.bodyMedium.font)
-            .tint(AppColor.accent)
-            .frame(minHeight: 44)
-            .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
         } else {
             detailsFields
         }
@@ -73,7 +87,7 @@ struct SunManualLogFields: View {
     private var spfSelector: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
             HStack(spacing: AppSpacing.xs) {
-                AppText("SPF (optional)", style: .bodyMedium)
+                AppText("SPF", style: .bodyMedium)
                 Spacer(minLength: 0)
                 if selectedSPF != nil {
                     Button("Clear SPF") { selectedSPF = nil }
@@ -83,14 +97,7 @@ struct SunManualLogFields: View {
                 }
             }
 
-            AppText(
-                selectedSPF.map { "SPF \($0) selected" } ?? "No SPF selected",
-                style: .caption,
-                color: AppColor.Text.secondary
-            )
-            .accessibilityIdentifier("\(accessibilityPrefix).spfState")
-
-            spfOptions(commonSPFLevels, name: "spf")
+            spfOptions(displayedSPFLevels, name: "spf")
 
             if let defaultSPF = suggestions.defaultSPF,
                selectedSPF != defaultSPF,
@@ -107,6 +114,11 @@ struct SunManualLogFields: View {
             }
         }
         .tint(AppColor.accent)
+    }
+
+    private var displayedSPFLevels: [Int] {
+        guard let selectedSPF, !commonSPFLevels.contains(selectedSPF) else { return commonSPFLevels }
+        return (commonSPFLevels + [selectedSPF]).sorted()
     }
 
     private func spfOptions(_ levels: [Int], name: String) -> some View {
@@ -146,7 +158,7 @@ struct SunManualLogFields: View {
 
     private var coveredAreasSelector: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            AppText("Coverage (optional)", style: .bodyMedium)
+            AppText("Coverage", style: .bodyMedium)
                 .accessibilityAddTraits(.isHeader)
             LazyVGrid(
                 columns: Array(
@@ -205,7 +217,7 @@ struct SunManualLogFields: View {
     private var notesField: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
             HStack(spacing: AppSpacing.xs) {
-                AppText("Notes (optional)", style: .bodyMedium)
+                AppText("Notes", style: .bodyMedium)
                 Spacer(minLength: 0)
                 if !notes.isEmpty {
                     Button("Clear note") { notes = "" }
@@ -216,7 +228,7 @@ struct SunManualLogFields: View {
                 }
             }
 
-            if !suggestions.noteSnippets.isEmpty {
+            if notes.isEmpty && !suggestions.noteSnippets.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppSpacing.xxs) {
                         ForEach(Array(suggestions.noteSnippets.enumerated()), id: \.offset) { index, snippet in
@@ -238,6 +250,8 @@ struct SunManualLogFields: View {
                 .foregroundStyle(AppColor.Text.primary)
                 .textInputAutocapitalization(.sentences)
                 .submitLabel(.done)
+                .focused($notesFocused)
+                .onSubmit { notesFocused = false }
                 .padding(AppSpacing.sm)
                 .background(AppColor.surface, in: RoundedRectangle(cornerRadius: AppRadius.control))
                 .overlay {
@@ -246,15 +260,23 @@ struct SunManualLogFields: View {
                 }
                 .accessibilityLabel("Notes")
                 .accessibilityIdentifier("\(accessibilityPrefix).notesField")
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") { notesFocused = false }
+                    }
+                }
 
             let remaining = SunManualLogInput.noteCharacterLimit
                 - SunManualLogInput.notesWithCoveredAreas(notes, areas: selectedAreas).count
-            AppText(
+            if remaining < 40 {
+                AppText(
                 remaining >= 0 ? "\(remaining) characters left" : "\(-remaining) characters over the limit",
                 style: .caption,
                 color: remaining >= 0 ? AppColor.Text.secondary : AppPalette.warning
             )
             .accessibilityIdentifier("\(accessibilityPrefix).noteCount")
+            }
         }
     }
 }

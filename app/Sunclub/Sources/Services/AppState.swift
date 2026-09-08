@@ -1245,6 +1245,33 @@ final class AppState: SunclubReminderState {
     }
 
     @discardableResult
+    func saveEditedRecord(
+        for day: Date, recordID: UUID?, expected: DailyRecordProjectionSnapshot?,
+        verifiedAt: Date, lastReappliedAt: Date?, spfLevel: Int?, notes: String?
+    ) -> SunclubHistoryMutationResult {
+        do {
+            let now = currentDate()
+            if let lastReappliedAt, lastReappliedAt > now { throw SunclubHistoryMutationError.futureTime }
+            let request = try SunclubLogRequestResolver(calendar: calendar, now: now).manualRecord(
+                day: day, dayPart: nil, timestamp: verifiedAt, existingTimestamp: expected?.verifiedAt,
+                spfLevel: spfLevel, notes: notes, existingMethod: expected.flatMap { VerificationMethod(rawValue: $0.methodRawValue) }
+            )
+            let result = try mutationService.edit(request, recordID: recordID, expected: expected, lastReappliedAt: lastReappliedAt)
+            finishRecordChange(result.batch, for: request.day)
+            if result.batch != nil, calendar.isDate(day, inSameDayAs: now), settings.reapplyReminderEnabled {
+                scheduleReapplyReminder()
+            }
+            logActionErrorMessage = nil
+            return .success(SunclubHistoryMutationReceipt(
+                batchID: result.batch?.id, day: request.day, verifiedAt: verifiedAt,
+                kind: request.kind, didChange: result.batch != nil
+            ))
+        } catch HistoryServiceError.staleChange {
+            return historyMutationFailure(SunclubHistoryMutationError.staleChange)
+        } catch { return historyMutationFailure(error) }
+    }
+
+    @discardableResult
     func saveManualRecord(
         for day: Date,
         dayPart targetDayPart: DayPart? = nil,
@@ -1890,11 +1917,7 @@ final class AppState: SunclubReminderState {
         let result = try mutationService.upsert(request)
         let targetDay = result.day
         let batch = result.batch
-        finishDurableChange(batch, reschedulesReminders: true)
-        if batch != nil {
-            exportHealthKitLogIfNeeded(for: targetDay)
-            recordHistoricalUVIfApplicable(for: targetDay)
-        }
+        finishRecordChange(batch, for: targetDay)
         return SunclubHistoryMutationReceipt(
             batchID: batch?.id,
             day: targetDay,
@@ -1902,6 +1925,13 @@ final class AppState: SunclubReminderState {
             kind: request.kind,
             didChange: batch != nil
         )
+    }
+
+    private func finishRecordChange(_ batch: SunclubChangeBatch?, for day: Date) {
+        finishDurableChange(batch, reschedulesReminders: true)
+        guard batch != nil else { return }
+        exportHealthKitLogIfNeeded(for: day)
+        recordHistoricalUVIfApplicable(for: day)
     }
 
     private func recordHistoricalUVIfApplicable(for day: Date) {
@@ -1951,6 +1981,10 @@ final class AppState: SunclubReminderState {
     }
 
     private func historyMutationFailure(_ underlyingError: Error) -> SunclubHistoryMutationResult {
+        if underlyingError is SunclubApplicationTimeError {
+            logActionErrorMessage = SunclubHistoryMutationError.invalidApplicationTime.localizedDescription
+            return .failure(.invalidApplicationTime)
+        }
         if let validationError = underlyingError as? SunclubHistoryMutationError {
             logActionErrorMessage = validationError.localizedDescription
             return .failure(validationError)

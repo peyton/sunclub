@@ -179,3 +179,7 @@ opens the full editor, and Settings → Sunscreen manages the saved profile.
 This review-oriented shortcut adds no separate background write route or
 permission bypass. Stale edits require reopening the sheet; default-save retries
 never replay a successful log change.
+
+Application-time corrections use the existing manual-log and History foreground
+editors. They expose the first and latest saved reapplication times, validate
+the selected day and ordering, and reject drafts superseded by another change.

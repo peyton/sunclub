@@ -197,5 +197,5 @@ def test_coverage_art_remains_available_without_cluttering_the_log_editor() -> N
 
     assert 'case coverageFaceDiagram = "CoverageFaceDiagram"' in app_theme
     assert "SunclubVisualAsset.coverageFaceDiagram.image" not in manual_fields
-    assert 'AppText("Coverage (optional)"' in manual_fields
+    assert 'AppText("Coverage"' in manual_fields
     assert "Canvas" not in manual_fields

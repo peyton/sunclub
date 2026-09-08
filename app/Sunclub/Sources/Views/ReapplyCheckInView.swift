@@ -59,7 +59,7 @@ struct ReapplyCheckInView: View {
             AppText(reapplyDetail, style: .body, color: AppColor.Text.secondary)
 
             if let record = appState.record(for: appState.referenceDate), record.hasReapplied {
-                HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
                     SunIcon.check.image.resizable().scaledToFit()
                         .frame(width: 20, height: 20)
                         .foregroundStyle(AppColor.accent)
@@ -69,11 +69,6 @@ struct ReapplyCheckInView: View {
                         .font(AppFont.rounded(size: 14, weight: .medium))
                         .foregroundStyle(AppPalette.softInk)
 
-                    if let lastReapplied = record.lastReappliedAt {
-                        Text("· \(lastReapplied, style: .relative) ago")
-                            .font(AppFont.rounded(size: 13))
-                            .foregroundStyle(AppPalette.softInk)
-                    }
                 }
             }
         }

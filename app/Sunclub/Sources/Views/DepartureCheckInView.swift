@@ -27,13 +27,17 @@ struct DepartureCheckInView: View {
                     $0.resolution == .unconfirmed && $0.isOnDay(appState.referenceDate)
                 }) {
                     AppText("Did you apply sunscreen?", style: .title)
-                    AppText("You left home at \(checkIn.departedAt.formatted(date: .omitted, time: .shortened)). If you already applied, choose when.",
+                    AppText("Left home at \(checkIn.departedAt.formatted(date: .omitted, time: .shortened))",
                             style: .body, color: AppColor.Text.secondary)
                     ForEach([0, 15, 30], id: \.self) { minutes in
                         Button(minutes == 0 ? "Just now" : "\(minutes) min ago") {
                             confirm(checkIn, at: appState.referenceDate.addingTimeInterval(Double(-minutes * 60)))
                         }
                         .buttonStyle(SunSecondaryButtonStyle())
+                        .disabled(!Calendar.current.isDate(
+                            appState.referenceDate.addingTimeInterval(Double(-minutes * 60)),
+                            inSameDayAs: appState.referenceDate
+                        ))
                         .accessibilityIdentifier("checkIn.confirm.\(minutes)")
                     }
                     Button("Choose time") {

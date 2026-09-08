@@ -19,54 +19,54 @@ enum AppColor {
 
     enum Text {
         static let primary = AppColor.adaptive(
-            light: Color(red: 0.192157, green: 0.145098, blue: 0.121569),
-            dark: Color(red: 1.000000, green: 0.972549, blue: 0.941176)
+            light: Color(red: 0.180392, green: 0.156863, blue: 0.109804),
+            dark: Color(red: 0.992157, green: 0.968627, blue: 0.905882)
         )
         static let secondary = AppColor.adaptive(
-            light: Color(red: 0.458824, green: 0.388235, blue: 0.345098),
-            dark: Color(red: 0.796078, green: 0.705882, blue: 0.643137)
+            light: Color(red: 0.427451, green: 0.384314, blue: 0.290196),
+            dark: Color(red: 0.768627, green: 0.749020, blue: 0.705882)
         )
     }
 
     enum Watch {
-        static let background = Color(red: 0.145098, green: 0.109804, blue: 0.094118)
-        static let surface = Color(red: 0.188235, green: 0.141176, blue: 0.117647)
-        static let textPrimary = Color(red: 1.000000, green: 0.972549, blue: 0.941176)
-        static let textSecondary = Color(red: 0.796078, green: 0.705882, blue: 0.643137)
+        static let background = Color(red: 0.078431, green: 0.078431, blue: 0.070588)
+        static let surface = Color(red: 0.125490, green: 0.125490, blue: 0.109804)
+        static let textPrimary = Color(red: 0.992157, green: 0.968627, blue: 0.905882)
+        static let textSecondary = Color(red: 0.768627, green: 0.749020, blue: 0.705882)
         static let extreme = Color(red: 1.000, green: 0.430, blue: 0.720)
     }
 
     static let background = adaptive(
-        light: Color(red: 1.000000, green: 0.972549, blue: 0.941176),
-        dark: Color(red: 0.145098, green: 0.109804, blue: 0.094118)
+        light: Color(red: 0.992157, green: 0.968627, blue: 0.905882),
+        dark: Color(red: 0.078431, green: 0.078431, blue: 0.070588)
     )
     static let backgroundWarm = adaptive(
-        light: Color(red: 1.000000, green: 0.909804, blue: 0.811765),
-        dark: Color(red: 0.286275, green: 0.196078, blue: 0.129412)
+        light: Color(red: 1.000000, green: 0.933333, blue: 0.745098),
+        dark: Color(red: 0.239216, green: 0.211765, blue: 0.145098)
     )
     static let surface = adaptive(
-        light: Color(red: 1.000000, green: 0.988235, blue: 0.972549),
-        dark: Color(red: 0.188235, green: 0.141176, blue: 0.117647)
+        light: Color(red: 1.000000, green: 0.984314, blue: 0.941176),
+        dark: Color(red: 0.125490, green: 0.125490, blue: 0.109804)
     )
     static let surfaceElevated = adaptive(
         light: Color(red: 1.000000, green: 1.000000, blue: 1.000000),
-        dark: Color(red: 0.227451, green: 0.172549, blue: 0.141176)
+        dark: Color(red: 0.172549, green: 0.172549, blue: 0.149020)
     )
     static let control = adaptive(
-        light: Color(red: 1.000000, green: 0.909804, blue: 0.811765),
-        dark: Color(red: 0.286275, green: 0.196078, blue: 0.129412)
+        light: Color(red: 1.000000, green: 0.933333, blue: 0.745098),
+        dark: Color(red: 0.239216, green: 0.211765, blue: 0.145098)
     )
     static let accent = adaptive(
-        light: Color(red: 0.654902, green: 0.286275, blue: 0.047059),
-        dark: Color(red: 1.000000, green: 0.737255, blue: 0.482353)
+        light: Color(red: 0.501961, green: 0.337255, blue: 0.000000),
+        dark: Color(red: 1.000000, green: 0.752941, blue: 0.270588)
     )
     static let accentSoft = adaptive(
-        light: Color(red: 1.000000, green: 0.909804, blue: 0.811765),
-        dark: Color(red: 0.286275, green: 0.196078, blue: 0.129412)
+        light: Color(red: 1.000000, green: 0.933333, blue: 0.745098),
+        dark: Color(red: 0.239216, green: 0.211765, blue: 0.145098)
     )
     static let apricot = adaptive(
-        light: Color(red: 0.929412, green: 0.580392, blue: 0.121569),
-        dark: Color(red: 1.000000, green: 0.737255, blue: 0.482353)
+        light: Color(red: 0.980392, green: 0.647059, blue: 0.000000),
+        dark: Color(red: 1.000000, green: 0.752941, blue: 0.270588)
     )
     static let sun = adaptive(
         light: Color(red: 0.970, green: 0.670, blue: 0.000),
@@ -89,11 +89,11 @@ enum AppColor {
         dark: Color(red: 0.552941, green: 0.470588, blue: 0.415686)
     )
     static let stroke = adaptive(
-        light: Color(red: 0.192157, green: 0.145098, blue: 0.121569).opacity(0.095),
-        dark: Color(red: 1.000000, green: 0.972549, blue: 0.941176).opacity(0.160)
+        light: Color(red: 0.180392, green: 0.156863, blue: 0.109804).opacity(0.095),
+        dark: Color(red: 0.992157, green: 0.968627, blue: 0.905882).opacity(0.160)
     )
     // Native prominent glass uses white labels in both appearances.
-    static let primaryAction = Color(red: 0.654902, green: 0.286275, blue: 0.047059)
+    static let primaryAction = Color(red: 0.501961, green: 0.337255, blue: 0.000000)
     static let primaryActionForeground = Color.white
     // Foreground for bright sun, success, and severity fills, not deep action orange.
     static let onAccent = Color(red: 0.086275, green: 0.054902, blue: 0.035294)
