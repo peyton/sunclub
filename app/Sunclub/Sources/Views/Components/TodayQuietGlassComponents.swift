@@ -123,6 +123,7 @@ struct TodayQuietGlassGauge: View {
 }
 
 struct TodayQuietGlassLogSummary: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let presentation: TodayQuietGlassLogPresentation
     var editSPF: () -> Void = {}
     var editTime: () -> Void = {}
@@ -133,6 +134,7 @@ struct TodayQuietGlassLogSummary: View {
                 Button(action: editTime) {
                     HStack(spacing: AppSpacing.xxs) {
                         AppText(presentation.title, style: .sectionHeader, alignment: .leading)
+                            .contentTransition(reduceMotion ? .identity : .numericText())
                         SunIcon.chevronRight.image.resizable().scaledToFit()
                             .frame(width: 12, height: 12)
                             .accessibilityHidden(true)
