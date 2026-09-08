@@ -3,234 +3,168 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sunclub Privacy Policy</title>
+    <title>Privacy - Sunclub</title>
     <meta
       name="description"
-      content="Sunclub privacy details for local storage, optional private iCloud sync, backups, Apple Shortcuts, notifications, location, HealthKit, and support contact."
+      content="How Sunclub handles your history, iCloud, permissions, and backups."
     />
     <meta
       name="theme-color"
-      content="#0f766e"
+      content="#FDF7E7"
       media="(prefers-color-scheme: light)"
     />
     <meta
       name="theme-color"
-      content="#12100e"
+      content="#141412"
       media="(prefers-color-scheme: dark)"
     />
     <link rel="canonical" href="https://sunclub.peyton.app/privacy/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta property="og:title" content="Privacy - Sunclub" />
+    <meta
+      property="og:description"
+      content="How Sunclub handles your history, iCloud, permissions, and backups."
+    />
+    <meta
+      property="og:image"
+      content="https://sunclub.peyton.app/assets/marketing/daylight-outside.webp"
+    />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body class="doc-page">
+  <body>
     <a class="skip-link" href="#main">Skip to main content</a>
-    <header class="site-header">
+    <header class="site-header wrap">
       <nav class="nav" aria-label="Primary">
-        <a class="brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
+        <a class="brand" href="/" aria-label="Sunclub home"
+          ><img
+            src="/assets/logo-sun.svg"
+            width="32"
+            height="32"
+            alt=""
+          />sunclub</a
+        >
         <div class="nav-links">
-          <a href="/#features">Features</a>
-          <a href="/privacy/" aria-current="page">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/">Docs</a>
+          <a href="/#features">Features</a><a href="/docs/">Guides</a
+          ><a href="/support/">Support</a>
         </div>
         <a
-          class="nav-store-badge"
+          class="store-link"
           href="https://apps.apple.com/us/app/sunclub/id6760630774"
           aria-label="Download Sunclub on the App Store"
-        >
-          <img
+          ><img
             src="/assets/app-store-badge.svg"
-            width="120"
-            height="40"
+            width="150"
+            height="50"
             alt="Download on the App Store"
-          />
-        </a>
+        /></a>
       </nav>
     </header>
-
-    <main id="main" class="doc-shell">
-      <aside class="doc-sidebar" aria-label="Resources">
-        <a class="brand doc-sidebar-brand" href="/">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav>
-          <a href="/docs/getting-started/">Getting Started</a>
-          <a href="/docs/uv-index/">How UV Index Works</a>
-          <a href="/docs/automation/">Shortcuts Guide</a>
-          <a href="/privacy/" aria-current="page">Privacy Details</a>
-        </nav>
-        <div class="doc-help-card">
-          <span
-            class="doc-side-icon privacy-side-icon"
-            aria-hidden="true"
-          ></span>
-          <strong>Privacy question?</strong>
-          <span>Contact us directly.</span>
-          <a href="mailto:privacy@mail.sunclub.peyton.app">Email Privacy</a>
-        </div>
-      </aside>
-
-      <article class="doc-main">
-        <p class="doc-breadcrumb">Resources / Privacy Details</p>
-        <section class="doc-hero-card">
-          <div>
-            <h1>Privacy Details</h1>
-            <p class="lead">
-              Sunclub is built as a local-first sunscreen habit tracker. You do
-              not need an account, we do not show ads, and your history is not
-              sold.
-            </p>
-          </div>
-          <div class="privacy-mini-panel" aria-hidden="true">
-            <span class="panel-icon lock-icon"></span>
-            <strong>Your data stays yours.</strong>
-            <small>No ads. No app account. You stay in control.</small>
-          </div>
-        </section>
-
-        <section class="doc-card-grid" aria-label="Privacy summary">
-          <article>
-            <h2>Your data stays yours</h2>
+    <main id="main">
+      <div class="doc-shell wrap">
+        <aside class="doc-sidebar">
+          <nav aria-label="Guides">
+            <a href="/docs/getting-started/">Getting started</a
+            ><a href="/docs/uv-index/">UV index</a
+            ><a href="/docs/automation/">Shortcuts</a
+            ><a href="/privacy/" aria-current="page">Privacy</a>
+          </nav>
+        </aside>
+        <article class="doc-main">
+          <header class="page-intro">
+            <h1>Your data stays yours.</h1>
+            <p class="lead">No account. No ads. No tracking SDKs.</p>
+          </header>
+          <section class="text-section">
+            <h2>What stays on your device</h2>
             <p>
-              Sunclub stores sunscreen logs, optional SPF details, notes,
-              reminders, widgets, backup state, and history needed to run the
-              features you choose.
+              Sunclub stores your applications, SPF, coverage, notes, sunscreen
+              profile, reminders, check-ins, preferences, and recovery history
+              to run the features you use. We do not sell your history or track
+              you across apps.
             </p>
-          </article>
-          <article>
-            <h2>No accounts or ads</h2>
-            <p>
-              Sunclub does not run app-owned accounts, advertising SDKs,
-              third-party analytics SDKs, or cross-app tracking.
-            </p>
-          </article>
-          <article>
+          </section>
+          <section class="text-section">
             <h2>iCloud is optional</h2>
             <p>
-              Optional iCloud sync can keep your history available across your
-              Apple devices through your iCloud.
+              Where supported, private iCloud sync is on by default and can be
+              paused in Settings. Synced history uses your private iCloud
+              database; the developer cannot read it. You can use Sunclub
+              offline.
             </p>
-          </article>
-          <article>
-            <h2>Sync stays private</h2>
+          </section>
+          <section class="text-section">
+            <h2>Permissions you choose</h2>
             <p>
-              When you enable iCloud sync, Sunclub uses your private iCloud
-              database. The developer cannot read that history.
+              <strong>Location</strong> supports Apple Weather forecasts and
+              optional leave-home check-ins. You can choose a city for weather
+              instead. Background location is needed only for Home monitoring.
             </p>
-          </article>
-          <article>
-            <h2>You stay in control</h2>
             <p>
-              Export your history, import a backup, delete local app data by
-              removing Sunclub, and manage synced data in Apple settings.
+              <strong>Notifications</strong> support local reminders.
+              <strong>Apple Health</strong> is optional and uses the access you
+              grant. Change permissions in Apple settings.
             </p>
-          </article>
-        </section>
-
-        <section class="doc-steps privacy-details" aria-label="Privacy details">
-          <article class="doc-step">
-            <span class="doc-step-icon sun-doc-icon" aria-hidden="true"></span>
-            <div>
-              <h2>Location and UV</h2>
-              <p>
-                Location is optional. You can use current location or save a
-                city coordinate to request UV guidance from Apple Weather. Apple
-                Weather forecasts are cached for up to eight hours, with
-                last-known Apple Weather values available for up to 24 hours.
-                When no Apple Weather value is available, Sunclub calculates a
-                clearly labeled on-device estimate from available latitude,
-                season, and time, or from generic season and time without
-                location. Manual logging works without location.
-              </p>
-            </div>
-          </article>
-          <article class="doc-step">
-            <span class="doc-step-icon bell-doc-icon" aria-hidden="true"></span>
-            <div>
-              <h2>Notifications</h2>
-              <p>
-                Sunclub uses local notifications only after you allow them.
-                Reminders can help you apply, reapply, or review your week.
-              </p>
-            </div>
-          </article>
-          <article class="doc-step">
-            <span
-              class="doc-step-icon shortcuts-doc-icon"
-              aria-hidden="true"
-            ></span>
-            <div>
-              <h2>Apple Shortcuts</h2>
-              <p>
-                Shortcuts can log sunscreen or check status using your Sunclub
-                settings. You can turn automation writes off in the app.
-              </p>
-            </div>
-          </article>
-          <article class="doc-step">
-            <span
-              class="doc-step-icon bottle-doc-icon"
-              aria-hidden="true"
-            ></span>
-            <div>
-              <h2>Camera, HealthKit, and backups</h2>
-              <p>
-                Camera, HealthKit, backup export, and backup import are used
-                only when you choose those features. Apple system permissions
-                can be changed later. Backups include private history, settings,
-                and automation choices needed to restore your chosen automation
-                and privacy behavior.
-              </p>
-            </div>
-          </article>
-        </section>
-
-        <aside class="doc-tip">
-          <strong>Contact</strong>
-          <div class="contact-chip-grid" aria-label="Privacy contacts">
-            <a href="mailto:privacy@mail.sunclub.peyton.app">Privacy</a>
-            <a href="mailto:support@mail.sunclub.peyton.app">Support</a>
-            <a href="mailto:security@mail.sunclub.peyton.app">Security</a>
-            <a href="mailto:contact@mail.sunclub.peyton.app">General</a>
-          </div>
-        </aside>
-
-        <section class="doc-legal">
-          <h2>Medical note</h2>
+            <p>
+              <strong>Shortcuts and links</strong> use separate controls for
+              writing, opening screens, and returning result details.
+              <a href="/docs/automation/">Automation permissions</a>.
+            </p>
+          </section>
+          <section class="text-section">
+            <h2>Weather data</h2>
+            <p>
+              Apple Weather uses your chosen location or city coordinates for
+              forecasts. Sunclub caches forecasts and labels local estimates
+              when a forecast is unavailable.
+              <a href="/docs/uv-index/">UV sources and freshness</a>.
+            </p>
+          </section>
+          <section class="text-section">
+            <h2>Backups and deletion</h2>
+            <p>
+              Export and import backups in Settings. Backups contain private
+              history and preferences, including automation choices. Imports
+              restore locally; publishing them to iCloud is a separate action.
+            </p>
+            <p>
+              Removing Sunclub deletes local app data. Synced history may remain
+              in iCloud and restore on reinstall; manage that data in Apple’s
+              iCloud settings.
+            </p>
+          </section>
+          <section class="text-section">
+            <h2>Contact</h2>
+            <nav class="contact-links" aria-label="Contact">
+              <a href="mailto:support@mail.sunclub.peyton.app">Support</a
+              ><a href="mailto:contact@mail.sunclub.peyton.app">Feedback</a
+              ><a href="mailto:privacy@mail.sunclub.peyton.app">Privacy</a
+              ><a href="mailto:security@mail.sunclub.peyton.app">Security</a>
+            </nav>
+          </section>
           <p>
-            Sunclub is a habit tracker, not a medical device or medical advice.
-            Sunscreen needs vary by skin, product, activity, weather, location,
-            and medical history. Follow product directions and consult a
-            qualified professional for medical questions.
+            <small
+              >This policy changes as Sunclub evolves. The current version is
+              always available here.</small
+            >
           </p>
-          <h2>Changes</h2>
-          <p>
-            This policy may be updated as Sunclub changes. The current policy
-            will remain available at this page.
-          </p>
-        </section>
-      </article>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer home-footer">
-        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav aria-label="Footer">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/">Docs</a>
-        </nav>
-        <p>© 2026 Peyton Randolph. All rights reserved.</p>
+        </article>
       </div>
+    </main>
+    <footer class="site-footer wrap">
+      <a class="brand" href="/" aria-label="Sunclub home"
+        ><img
+          src="/assets/logo-sun.svg"
+          width="28"
+          height="28"
+          alt=""
+        />sunclub</a
+      >
+      <nav aria-label="Footer">
+        <a href="/docs/">Guides</a><a href="/support/">Support</a
+        ><a href="/privacy/">Privacy</a>
+      </nav>
+      <p>© 2026 Peyton Randolph</p>
     </footer>
   </body>
 </html>

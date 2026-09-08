@@ -3,200 +3,142 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>How UV Index Works - Sunclub</title>
+    <title>UV index - Sunclub</title>
     <meta
       name="description"
-      content="Learn how Sunclub explains UV Index values, severity labels, forecasts, reapplication reminders, and practical sun protection guidance."
+      content="Understand Sunclub’s UV forecast, data sources, and local estimates."
     />
     <meta
       name="theme-color"
-      content="#fbf9f5"
+      content="#FDF7E7"
       media="(prefers-color-scheme: light)"
     />
     <meta
       name="theme-color"
-      content="#12100e"
+      content="#141412"
       media="(prefers-color-scheme: dark)"
     />
     <link rel="canonical" href="https://sunclub.peyton.app/docs/uv-index/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta property="og:title" content="UV index - Sunclub" />
+    <meta
+      property="og:description"
+      content="Understand Sunclub’s UV forecast, data sources, and local estimates."
+    />
+    <meta
+      property="og:image"
+      content="https://sunclub.peyton.app/assets/marketing/daylight-outside.webp"
+    />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body class="doc-page">
+  <body>
     <a class="skip-link" href="#main">Skip to main content</a>
-    <header class="site-header">
+    <header class="site-header wrap">
       <nav class="nav" aria-label="Primary">
-        <a class="brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
+        <a class="brand" href="/" aria-label="Sunclub home"
+          ><img
+            src="/assets/logo-sun.svg"
+            width="32"
+            height="32"
+            alt=""
+          />sunclub</a
+        >
         <div class="nav-links">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/" aria-current="page">Docs</a>
+          <a href="/#features">Features</a><a href="/docs/">Guides</a
+          ><a href="/support/">Support</a>
         </div>
         <a
-          class="nav-store-badge"
+          class="store-link"
           href="https://apps.apple.com/us/app/sunclub/id6760630774"
           aria-label="Download Sunclub on the App Store"
-        >
-          <img
+          ><img
             src="/assets/app-store-badge.svg"
-            width="120"
-            height="40"
+            width="150"
+            height="50"
             alt="Download on the App Store"
-          />
-        </a>
+        /></a>
       </nav>
     </header>
-
-    <main id="main" class="doc-shell">
-      <aside class="doc-sidebar" aria-label="Resources">
-        <a class="brand doc-sidebar-brand" href="/">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav>
-          <a href="/docs/getting-started/">Getting Started</a>
-          <a href="/docs/uv-index/" aria-current="page">How UV Index Works</a>
-          <a href="/docs/automation/">Shortcuts Guide</a>
-          <a href="/privacy/">Privacy Details</a>
-        </nav>
-        <div class="doc-help-card">
-          <span class="doc-side-icon uv-side-icon" aria-hidden="true"></span>
-          <strong>Need help with UV?</strong>
-          <span>We can help you sort it out.</span>
-          <a href="/support/">Contact Support</a>
-        </div>
-      </aside>
-
-      <article class="doc-main">
-        <p class="doc-breadcrumb">Resources / How UV Index Works</p>
-        <section class="doc-hero-card">
-          <div>
-            <h1>How UV Index Works</h1>
-            <p class="lead">
-              UV Index is a simple scale for how strong the sun's ultraviolet
-              radiation is at a place and time. Higher numbers mean you should
-              be more deliberate about protection.
-            </p>
-          </div>
-          <figure class="doc-phone-preview">
-            <img
-              src="/assets/features/uv-context.webp"
-              width="560"
-              height="840"
-              alt="Sunclub UV Forecast Detail screen showing UV Index 7 High and hourly forecast rows."
-              decoding="async"
-              loading="eager"
-            />
-          </figure>
-        </section>
-
-        <section class="uv-scale" aria-labelledby="uv-scale-title">
-          <h2 id="uv-scale-title">Reading the scale</h2>
-          <div class="uv-ramp" aria-hidden="true">
-            <span>Low</span>
-            <span>Moderate</span>
-            <span>High</span>
-            <span>Very High</span>
-            <span>Extreme</span>
-          </div>
-          <div class="uv-scale-grid">
-            <article>
-              <span class="uv-dot low"></span>
-              <strong>0-2 Low</strong>
-              <p>Use normal outdoor awareness.</p>
-            </article>
-            <article>
-              <span class="uv-dot moderate"></span>
-              <strong>3-5 Moderate</strong>
-              <p>Consider protection if you will be outside longer.</p>
-            </article>
-            <article>
-              <span class="uv-dot high"></span>
-              <strong>6-7 High</strong>
-              <p>Apply sunscreen and plan to reapply.</p>
-            </article>
-            <article>
-              <span class="uv-dot very-high"></span>
-              <strong>8-10 Very High</strong>
-              <p>Use extra caution and seek shade when practical.</p>
-            </article>
-            <article>
-              <span class="uv-dot extreme"></span>
-              <strong>11+ Extreme</strong>
-              <p>Limit exposure and use strong protection.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="doc-card-grid" aria-label="UV guidance">
-          <article>
-            <h2>What Sunclub shows</h2>
+    <main id="main">
+      <div class="doc-shell wrap">
+        <aside class="doc-sidebar">
+          <nav aria-label="Guides">
+            <a href="/docs/getting-started/">Getting started</a
+            ><a href="/docs/uv-index/" aria-current="page">UV index</a
+            ><a href="/docs/automation/">Shortcuts</a
+            ><a href="/privacy/">Privacy</a>
+          </nav>
+        </aside>
+        <article class="doc-main">
+          <header class="page-intro">
+            <h1>A little sun sense.</h1>
+            <p class="lead">UV context, alongside your sunscreen routine.</p>
+          </header>
+          <section class="text-section">
+            <h2>Reading the scale</h2>
+            <ol class="uv-scale">
+              <li><strong>0-2 Low</strong></li>
+              <li><strong>3-5 Moderate</strong></li>
+              <li><strong>6-7 High</strong></li>
+              <li><strong>8-10 Very High</strong></li>
+              <li><strong>11+ Extreme</strong></li>
+            </ol>
             <p>
-              Sunclub pairs the number with a severity label, location context,
-              forecast rows, and a protection-recommended window when verified
-              hourly UV is 3 or higher. Live UV availability can vary by
-              location, permissions, network access, and Apple Weather.
+              Higher numbers mean stronger ultraviolet radiation. Sunclub shows
+              the value, severity, source, and update time.
             </p>
-          </article>
-          <article>
+          </section>
+          <section class="text-section">
+            <h2>Your forecast</h2>
+            <p>
+              Choose current location or a saved city in
+              <strong>Settings → UV &amp; Weather</strong>. Open Forecast from
+              Today for hourly UV.
+            </p>
+          </section>
+          <section class="text-section">
             <h2>Why values change</h2>
             <p>
-              UV can shift with time of day, clouds, season, elevation, shade,
-              and location. Forecasts are useful planning signals, not a
-              guarantee of exact exposure.
+              UV varies with time, season, weather, and location. A forecast
+              helps with planning; it does not measure your personal exposure.
             </p>
-          </article>
-          <article>
-            <h2>How to use it</h2>
+          </section>
+          <section class="text-section">
+            <h2>Apple Weather and estimates</h2>
             <p>
-              Check UV before longer outdoor time, log sunscreen when you apply,
-              and follow your sunscreen's directions for reapplication,
-              sweating, swimming, and coverage.
+              Apple Weather forecasts are cached for up to eight hours.
+              Last-known values may appear for up to 24 hours, with their age
+              shown. Without a usable forecast, Sunclub labels its on-device
+              estimate. Logging always remains available.
             </p>
-          </article>
-          <article>
-            <h2>When data is unavailable</h2>
+          </section>
+          <section class="text-section">
+            <h2>Reapplication timing</h2>
             <p>
-              Manual logging still works. Apple Weather forecasts are cached for
-              up to eight hours, then the last known Apple Weather value can
-              appear for up to 24 hours with its age clearly shown. When no
-              Apple Weather value is available, Sunclub shows a clearly labeled
-              on-device local estimate based on available latitude, season, and
-              time, or a generic season-and-time estimate without location.
-              Estimates are planning guidance, not Apple Weather.
+              Your timer follows your saved reapplication plan. A logged
+              application or running timer does not confirm protection. Follow
+              your sunscreen’s directions, including after swimming or sweating.
             </p>
-          </article>
-        </section>
-
-        <aside class="doc-tip">
-          <strong>General guidance only</strong>
-          <p>
-            Sunclub provides general, non-medical guidance. Follow sunscreen
-            product directions and advice from qualified professionals.
-          </p>
-        </aside>
-      </article>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer home-footer">
-        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav aria-label="Footer">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/">Docs</a>
-        </nav>
-        <p>© 2026 Peyton Randolph. All rights reserved.</p>
+          </section>
+          <p><small>Sunclub is a habit tracker, not medical advice.</small></p>
+        </article>
       </div>
+    </main>
+    <footer class="site-footer wrap">
+      <a class="brand" href="/" aria-label="Sunclub home"
+        ><img
+          src="/assets/logo-sun.svg"
+          width="28"
+          height="28"
+          alt=""
+        />sunclub</a
+      >
+      <nav aria-label="Footer">
+        <a href="/docs/">Guides</a><a href="/support/">Support</a
+        ><a href="/privacy/">Privacy</a>
+      </nav>
+      <p>© 2026 Peyton Randolph</p>
     </footer>
   </body>
 </html>

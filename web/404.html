@@ -3,85 +3,82 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Page Not Found - Sunclub</title>
-    <meta
-      name="description"
-      content="The requested Sunclub page could not be found. Use the homepage, docs, support page, or privacy policy."
-    />
+    <title>Page not found - Sunclub</title>
+    <meta name="description" content="Find your way back to Sunclub." />
     <meta
       name="theme-color"
-      content="#0f766e"
+      content="#FDF7E7"
       media="(prefers-color-scheme: light)"
     />
     <meta
       name="theme-color"
-      content="#12100e"
+      content="#141412"
       media="(prefers-color-scheme: dark)"
     />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta property="og:title" content="Page not found - Sunclub" />
+    <meta property="og:description" content="Find your way back to Sunclub." />
+    <meta
+      property="og:image"
+      content="https://sunclub.peyton.app/assets/marketing/daylight-outside.webp"
+    />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body class="doc-page">
+  <body>
     <a class="skip-link" href="#main">Skip to main content</a>
-    <header class="site-header">
+    <header class="site-header wrap">
       <nav class="nav" aria-label="Primary">
-        <a class="brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
+        <a class="brand" href="/" aria-label="Sunclub home"
+          ><img
+            src="/assets/logo-sun.svg"
+            width="32"
+            height="32"
+            alt=""
+          />sunclub</a
+        >
         <div class="nav-links">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/">Docs</a>
+          <a href="/#features">Features</a><a href="/docs/">Guides</a
+          ><a href="/support/">Support</a>
         </div>
         <a
-          class="nav-store-badge"
+          class="store-link"
           href="https://apps.apple.com/us/app/sunclub/id6760630774"
           aria-label="Download Sunclub on the App Store"
-        >
-          <img
+          ><img
             src="/assets/app-store-badge.svg"
-            width="120"
-            height="40"
+            width="150"
+            height="50"
             alt="Download on the App Store"
-          />
-        </a>
+        /></a>
       </nav>
     </header>
-
-    <main id="main" class="content">
-      <p class="eyebrow on-surface">404</p>
-      <h1>That page is not here.</h1>
-      <p class="lead">
-        Go back home, read the docs, or contact support. You can also email
-        <a href="mailto:support@mail.sunclub.peyton.app"
-          >support@mail.sunclub.peyton.app</a
-        >
-        for support.
-      </p>
-      <div class="actions compact" aria-label="Recovery links">
-        <a class="button primary" href="/">Home</a>
-        <a class="button secondary" href="/docs/">Docs</a>
-        <a class="button tertiary" href="/support/">Support</a>
+    <main id="main">
+      <div class="reading-wrap not-found">
+        <header class="page-intro">
+          <h1>A little off track.</h1>
+          <p class="lead">This page could not be found.</p>
+        </header>
+        <a class="button" href="/">Back to Sunclub</a>
+        <p>
+          <a href="mailto:support@mail.sunclub.peyton.app">Contact support</a>
+        </p>
       </div>
     </main>
-
-    <footer class="site-footer">
-      <div class="footer home-footer">
-        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav aria-label="Footer">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/">Docs</a>
-        </nav>
-        <p>© 2026 Peyton Randolph. All rights reserved.</p>
-      </div>
+    <footer class="site-footer wrap">
+      <a class="brand" href="/" aria-label="Sunclub home"
+        ><img
+          src="/assets/logo-sun.svg"
+          width="28"
+          height="28"
+          alt=""
+        />sunclub</a
+      >
+      <nav aria-label="Footer">
+        <a href="/docs/">Guides</a><a href="/support/">Support</a
+        ><a href="/privacy/">Privacy</a>
+      </nav>
+      <p>© 2026 Peyton Randolph</p>
     </footer>
   </body>
 </html>
