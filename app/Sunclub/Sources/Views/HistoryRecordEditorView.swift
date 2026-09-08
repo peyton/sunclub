@@ -4,6 +4,7 @@ struct HistoryRecordEditorView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let day: Date
     let existingRecord: DailyRecord?
@@ -88,32 +89,21 @@ struct HistoryRecordEditorView: View {
                     .accessibilityIdentifier("\(accessibilityPrefix).timestamp")
                 }
 
-                DatePicker(
-                    (existingRecord?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
+                timePicker(
+                    (originalSnapshot?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
                     selection: $selectedTimestamp,
-                    in: allowedTimestampRange,
-                    displayedComponents: .hourAndMinute
+                    identifier: "\(accessibilityPrefix).timePicker"
                 )
-                .datePickerStyle(.compact)
-                .font(AppTextStyle.body.font)
-                .tint(AppColor.accent)
-                .frame(minHeight: 44)
-                .accessibilityIdentifier("\(accessibilityPrefix).timePicker")
 
                 if selectedReapplicationTime != nil {
-                    DatePicker(
+                    timePicker(
                         "Latest reapplication",
                         selection: Binding(
                             get: { selectedReapplicationTime ?? selectedTimestamp },
                             set: { selectedReapplicationTime = $0 }
                         ),
-                        in: allowedTimestampRange,
-                        displayedComponents: .hourAndMinute
+                        identifier: "\(accessibilityPrefix).reapplicationTimePicker"
                     )
-                    .font(AppTextStyle.body.font)
-                    .tint(AppColor.accent)
-                    .frame(minHeight: 44)
-                    .accessibilityIdentifier("\(accessibilityPrefix).reapplicationTimePicker")
                 }
 
                 SunManualLogFields(
@@ -165,10 +155,34 @@ struct HistoryRecordEditorView: View {
             }
         }
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .confirmationDialog("Discard changes?", isPresented: $confirmsDiscard, titleVisibility: .visible) {
+        .alert("Discard changes?", isPresented: $confirmsDiscard) {
             Button("Discard changes", role: .destructive, action: closeEditor)
             Button("Keep editing", role: .cancel) { }
         }
+    }
+
+    @ViewBuilder
+    private func timePicker(_ title: String, selection: Binding<Date>, identifier: String) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                AppText(title, style: .body)
+                    .accessibilityHidden(true)
+                timePickerControl(title, selection: selection, identifier: identifier)
+                    .labelsHidden()
+            }
+        } else {
+            timePickerControl(title, selection: selection, identifier: identifier)
+        }
+    }
+
+    private func timePickerControl(_ title: String, selection: Binding<Date>, identifier: String) -> some View {
+        DatePicker(title, selection: selection, in: allowedTimestampRange, displayedComponents: .hourAndMinute)
+            .datePickerStyle(.compact)
+            .font(AppTextStyle.body.font)
+            .tint(AppColor.accent)
+            .frame(minHeight: 44)
+            .accessibilityLabel(title)
+            .accessibilityIdentifier(identifier)
     }
 
     private var cancelButton: some View {

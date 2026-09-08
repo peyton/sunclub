@@ -13,6 +13,10 @@ final class ApplicationTimePolishUITests: SunclubUITestCase {
         expandLogDetails(in: app, prefix: "manualLog")
         tapHittableElement(app.buttons["manualLog.spf.30"], in: app)
         tapHittableElement(navigationBackButton(in: app), in: app)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Discard confirmation"
+        attachment.lifetime = .keepAlways
+        add(attachment)
         let keep = app.buttons["Keep editing"]
         XCTAssertTrue(keep.waitForExistence(timeout: 5))
         keep.tap()

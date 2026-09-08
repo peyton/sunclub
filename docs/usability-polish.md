@@ -40,6 +40,7 @@ under `.build/polish-audit/`.
 | 25 | Check-in | Quick relative times could cross midnight and fail after tapping; disable choices outside the current day. |
 | 26 | Reapply | A duplicate relative timestamp crowded the count and drifted from the injected clock; retain the absolute latest-time summary. |
 | 27 | Editor | Dates omitted the year when editing older history; include it. |
+| 28 | Large text | Side-by-side timestamp labels broke into narrow fragments; stack labels above pickers at accessibility sizes. |
 
 Custom SPF values remain visible as selected chips. Earlier reapplication times
 that were never persisted are still reported as unavailable; this pass does not

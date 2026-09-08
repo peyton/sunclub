@@ -39,13 +39,26 @@ struct SunManualLogFields: View {
 
     var body: some View {
         if showsOptionalDisclosure {
-            DisclosureGroup("Details", isExpanded: $isShowingDetails) {
-                detailsFields.padding(.top, AppSpacing.xs)
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Button {
+                    withAnimation(SunMotion.easeInOut(duration: 0.15, reduceMotion: reduceMotion)) {
+                        isShowingDetails.toggle()
+                    }
+                } label: {
+                    HStack {
+                        AppText("Details", style: .bodyMedium, color: AppColor.accent)
+                        Spacer()
+                        Image(systemName: isShowingDetails ? "chevron.up" : "chevron.down")
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(isShowingDetails ? "Expanded" : "Collapsed")
+                .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
+                if isShowingDetails { detailsFields }
             }
-            .font(AppTextStyle.bodyMedium.font)
-            .tint(AppColor.accent)
-            .frame(minHeight: 44)
-            .accessibilityIdentifier("\(accessibilityPrefix).detailsToggle")
         } else {
             detailsFields
         }

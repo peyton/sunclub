@@ -443,7 +443,7 @@ private struct SunclubContent: View {
     private func seedReapplyTodayScenario() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let lastReappliedAt = seedTimestamp(for: today, hour: 2)
+        let lastReappliedAt = seedTimestamp(for: today, hour: 11)
         insertSeedRecord(
             day: today,
             hour: 9,
