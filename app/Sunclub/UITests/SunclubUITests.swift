@@ -901,7 +901,11 @@ final class SunclubUITests: SunclubUITestCase {
         let save = app.buttons["historyEditor.save"]
         XCTAssertTrue(save.waitForExistence(timeout: 5))
         XCTAssertTrue(save.isEnabled)
-        XCTAssertEqual(app.staticTexts["historyEditor.timestamp"].label, selectedDate)
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+        XCTAssertEqual(
+            app.staticTexts["historyEditor.timestamp"].label,
+            yesterday.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+        )
         XCTAssertFalse(app.datePickers["historyEditor.datePicker"].exists)
         expandLogDetails(in: app, prefix: "historyEditor")
         XCTAssertFalse(app.buttons["historyEditor.area.Face"].isSelected)
