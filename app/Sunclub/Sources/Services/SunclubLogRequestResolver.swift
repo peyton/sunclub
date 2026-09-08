@@ -42,6 +42,9 @@ struct SunclubLogRequestResolver {
         let resolvedTimestamp = timestamp ?? existingTimestamp
             ?? dayPart.map { verifiedAt(for: target, in: $0) } ?? defaultVerifiedAt(for: target)
         guard resolvedTimestamp <= now else { throw SunclubHistoryMutationError.futureTime }
+        guard calendar.isDate(resolvedTimestamp, inSameDayAs: target) else {
+            throw SunclubHistoryMutationError.invalidApplicationTime
+        }
         let kind: SunclubChangeKind = existingTimestamp == nil ? .historyBackfill : .historyEdit
         let summary = kind == .historyBackfill
             ? "Backfilled \(target.formatted(.dateTime.month().day()))."

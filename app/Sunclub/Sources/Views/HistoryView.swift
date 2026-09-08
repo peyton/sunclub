@@ -371,7 +371,7 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func weekDayMarker(_ state: HistoryDayCellState) -> some View {
-        if hasUnconfirmedDeparture(on: state.dayStart) {
+        if !state.hasRecord && hasUnconfirmedDeparture(on: state.dayStart) {
             Image(systemName: "questionmark.circle").resizable().scaledToFit()
                 .foregroundStyle(AppColor.Text.secondary)
         } else {
@@ -917,6 +917,9 @@ struct HistoryView: View {
     }
 
     private func applicationRow(_ timestamp: HistoryApplicationPresentation.Timestamp, record: DailyRecord) -> some View {
+        Button {
+            editorPresentation = HistoryEditorPresentation(day: record.startOfDay)
+        } label: {
         HStack(spacing: AppSpacing.sm) {
             SunIcon.check.image.resizable().scaledToFit()
                 .frame(width: iconSize, height: iconSize)
@@ -931,10 +934,18 @@ struct HistoryView: View {
                 )
             }
             Spacer(minLength: 0)
+            SunIcon.chevronRight.image.resizable().scaledToFit()
+                .frame(width: 12, height: 12)
+                .foregroundStyle(AppColor.Text.secondary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, AppSpacing.sm)
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityHint("Edits application times and details.")
         .accessibilityIdentifier("history.application.\(timestamp.id)")
     }
 

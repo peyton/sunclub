@@ -90,11 +90,28 @@ struct TodayQuietGlassGauge: View {
 struct TodayQuietGlassLogSummary: View {
     let presentation: TodayQuietGlassLogPresentation
     var editSPF: () -> Void = {}
+    var editTime: () -> Void = {}
 
     var body: some View {
         VStack(spacing: AppSpacing.xxs) {
-            AppText(presentation.title, style: .sectionHeader, alignment: .center)
+            if presentation.spfLabel != nil {
+                Button(action: editTime) {
+                    HStack(spacing: AppSpacing.xxs) {
+                        AppText(presentation.title, style: .sectionHeader, alignment: .center)
+                        SunIcon.chevronRight.image.resizable().scaledToFit()
+                            .frame(width: 12, height: 12)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Edits application times.")
                 .accessibilityIdentifier(presentation.statusIdentifier)
+            } else {
+                AppText(presentation.title, style: .sectionHeader, alignment: .center)
+                    .accessibilityIdentifier(presentation.statusIdentifier)
+            }
 
             if let spf = presentation.spfLabel {
                 Button(action: editSPF) {

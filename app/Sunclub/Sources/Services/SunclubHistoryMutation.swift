@@ -29,6 +29,7 @@ struct SunclubHistoryMutationReceipt: Equatable, Sendable {
 enum SunclubHistoryMutationError: Error, Equatable, Sendable, LocalizedError {
     case futureDate
     case futureTime
+    case invalidApplicationTime
     case missingRecord
     case staleChange
     case recoveryFailure(String)
@@ -40,6 +41,8 @@ enum SunclubHistoryMutationError: Error, Equatable, Sendable, LocalizedError {
             return "Cannot log future date."
         case .futureTime:
             return "Choose a time that is not in the future."
+        case .invalidApplicationTime:
+            return "Choose a time on this day, with reapplication after the first application."
         case .missingRecord:
             return "Log sunscreen for this day before recording a reapplication."
         case .staleChange:

@@ -31,6 +31,11 @@ struct LoggedSPFEditorView: View {
                 VStack(alignment: .leading, spacing: AppSpacing.sm) {
                     AppText("SPF for this log", style: .title)
                     AppText(target.snapshot.verifiedAt.formatted(date: .abbreviated, time: .shortened), style: .caption, color: AppColor.Text.secondary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack { commonSPFButtons }
+                        VStack(alignment: .leading) { commonSPFButtons }
+                    }
+                    .disabled(logSaved)
                     Stepper("SPF \(spf)", value: $spf, in: 1...100)
                         .font(AppTextStyle.bodyMedium.font)
                         .frame(minHeight: 44)
@@ -40,12 +45,6 @@ struct LoggedSPFEditorView: View {
                         .font(AppTextStyle.body.font)
                         .disabled(logSaved)
                         .accessibilityIdentifier("spfEditor.useForFutureLogs")
-                    if useForFutureLogs {
-                        AppText(appState.settings.sunscreenProfile == nil
-                            ? "Saves a sunscreen profile named Sunscreen. You can add its product name in Settings."
-                            : "Updates your saved sunscreen’s SPF. Its name and water-resistance label stay the same.",
-                            style: .caption, color: AppColor.Text.secondary)
-                    }
                     if let error {
                         AppText(error, style: .body, color: AppColor.warning)
                             .accessibilityIdentifier("spfEditor.error")
@@ -68,6 +67,16 @@ struct LoggedSPFEditorView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder
+    private var commonSPFButtons: some View {
+        ForEach([15, 30, 50], id: \.self) { value in
+            Button("SPF \(value)") { spf = value }
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityAddTraits(spf == value ? .isSelected : [])
+                .accessibilityIdentifier("spfEditor.quick.\(value)")
+        }
     }
 
     private func save() {

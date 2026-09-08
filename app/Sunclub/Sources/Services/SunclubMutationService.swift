@@ -1,5 +1,13 @@
 import Foundation
 
+enum SunclubApplicationTimeError: LocalizedError {
+    case invalidTime
+
+    var errorDescription: String? {
+        "Choose a time on this day, with reapplication after the first application."
+    }
+}
+
 /// Durable writes shared by foreground, Shortcut, URL and widget entry points.
 /// Authorization and platform effects remain at those entry points.
 @MainActor
@@ -63,6 +71,36 @@ final class SunclubMutationService {
         return RecordResult(batch: batch, day: day, verifiedAt: request.verifiedAt, kind: request.kind)
     }
 
+    /// Save the captured editor as one revision; never overwrite a newer or replacement log.
+    func edit(
+        _ request: RecordRequest, recordID: UUID?, expected: DailyRecordProjectionSnapshot?,
+        lastReappliedAt: Date?
+    ) throws -> RecordResult {
+        let current = try history.record(for: request.day)
+        guard current?.id == recordID, current?.projectionSnapshot == expected else {
+            throw HistoryServiceError.staleChange
+        }
+        guard let expected else { return try upsert(request) }
+        if let lastReappliedAt {
+            guard calendar.isDate(lastReappliedAt, inSameDayAs: request.day),
+                  lastReappliedAt >= request.verifiedAt else {
+                throw SunclubApplicationTimeError.invalidTime
+            }
+        }
+        let batch = try history.applyDayChange(
+            for: request.day, kind: request.kind, summary: request.summary,
+            changedFields: [.verifiedAt, .spfLevel, .notes, .lastReappliedAt]
+        ) { _ in
+            var snapshot = expected
+            snapshot.verifiedAt = request.verifiedAt
+            snapshot.spfLevel = SunManualLogInput.normalizedSPF(request.spfLevel)
+            snapshot.notes = SunManualLogInput.normalizedNotes(request.notes)
+            snapshot.lastReappliedAt = lastReappliedAt
+            return snapshot
+        }
+        return RecordResult(batch: batch, day: request.day, verifiedAt: request.verifiedAt, kind: request.kind)
+    }
+
     /// Compare the captured record before touching its single edited field.
     func updateSPF(recordID: UUID, expected: DailyRecordProjectionSnapshot, spf: Int) throws -> SunclubChangeBatch? {
         guard let record = try history.record(for: expected.startOfDay),
@@ -87,13 +125,18 @@ final class SunclubMutationService {
     }
 
     func reapply(on day: Date, at timestamp: Date, summary: String) throws -> SunclubChangeBatch? {
-        try history.applyDayChange(
+        if let record = try history.record(for: day) {
+            guard calendar.isDate(timestamp, inSameDayAs: day), timestamp >= record.verifiedAt else {
+                throw SunclubApplicationTimeError.invalidTime
+            }
+        }
+        return try history.applyDayChange(
             for: day, kind: .reapply, summary: summary,
             changedFields: [.reapplyCount, .lastReappliedAt]
         ) { existing in
             guard var snapshot = existing else { return nil }
             snapshot.reapplyCount += 1
-            snapshot.lastReappliedAt = timestamp
+            snapshot.lastReappliedAt = max(timestamp, snapshot.lastReappliedAt ?? timestamp)
             return snapshot
         }
     }

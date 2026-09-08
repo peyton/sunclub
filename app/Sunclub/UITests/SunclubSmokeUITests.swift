@@ -192,6 +192,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         let app = launchHistoryWithSeededRecords(route: "historyEditToday")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
 
+        expandLogDetails(in: app, prefix: "historyEditor")
         app.buttons["historyEditor.spf.70"].tap()
         app.buttons["historyEditor.save"].tap()
 
@@ -202,7 +203,8 @@ final class SunclubSmokeUITests: SunclubUITestCase {
     func testHistoryCanBackfillMissedDay() throws {
         let app = launchHistoryWithSeededRecords(route: "historyBackfillTwoDaysAgo")
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel("SPF 30 selected", on: app.staticTexts["historyEditor.spfState"], timeout: 10))
+        expandLogDetails(in: app, prefix: "historyEditor")
+        XCTAssertTrue(app.buttons["historyEditor.spf.30"].isSelected)
 
         app.buttons["historyEditor.spf.50"].tap()
         app.buttons["historyEditor.save"].tap()
@@ -295,7 +297,7 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         navigationBackButton(in: app).tap()
 
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        let todayStatus = app.staticTexts["home.todayStatus"]
+        let todayStatus = app.buttons["home.todayStatus"]
         XCTAssertFalse(todayStatus.exists)
         XCTAssertFalse(app.buttons["home.loggedPrimaryAction"].exists)
         assertHomeReadyForLogState(app)

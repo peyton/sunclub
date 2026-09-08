@@ -68,6 +68,7 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertTrue(app.buttons["home.undoLog"].exists)
         XCTAssertFalse(app.buttons["manualLog.logToday"].exists)
         openTodayEditor(in: app)
+        expandLogDetails(in: app, prefix: "manualLog")
         tapHittableElement(app.buttons["manualLog.spf.50"], in: app)
         tapHittableElement(app.buttons["manualLog.logToday"], in: app)
         assertHomeLoggedState(app)
@@ -358,9 +359,7 @@ final class SunclubUITests: SunclubUITestCase {
         ])
 
         XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
-        let spfRow = manualLogSPFRow(in: app)
-        XCTAssertTrue(spfRow.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel("SPF 70 selected", on: spfRow))
+        expandLogDetails(in: app, prefix: "manualLog")
         XCTAssertTrue(app.buttons["manualLog.spf.70"].isSelected)
     }
 
@@ -390,7 +389,8 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertFalse(app.buttons["home.dailyPlan.action"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
         openTodayEditor(in: app)
-        XCTAssertTrue(waitForLabel("SPF 50 selected", on: manualLogSPFRow(in: app)))
+        expandLogDetails(in: app, prefix: "manualLog")
+        XCTAssertTrue(app.buttons["manualLog.spf.50"].isSelected)
         XCTAssertFalse(app.buttons["reapply.log"].exists)
         tapHittableElement(navigationBackButton(in: app), in: app)
         assertHomeLoggedState(app)
@@ -408,7 +408,7 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertFalse(app.buttons["home.reapplyReminder"].exists)
         tapHittableElement(app.buttons["home.logManually"], in: app)
         XCTAssertFalse(app.buttons["reapply.log"].exists)
-        XCTAssertTrue(waitForLabel("Logged at \(reapplicationTime)", on: app.staticTexts["home.todayStatus"]))
+        XCTAssertTrue(waitForLabel("Logged at \(reapplicationTime)", on: app.buttons["home.todayStatus"]))
         XCTAssertTrue(app.buttons["home.undoLog"].exists)
         XCTAssertTrue(selectNativeTab(app.buttons["home.historyCard"]))
         XCTAssertTrue(waitForLabel("Logged, 2 applications", on: app.staticTexts["history.statusTitle"]))
@@ -421,7 +421,7 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertTrue(scrollToElement(originalApplication, in: app))
         XCTAssertTrue(originalApplication.label.contains(originalTime))
         XCTAssertTrue(originalApplication.label.contains("SPF 50"))
-        XCTAssertFalse(app.buttons["history.application.reapplication"].exists)
+        XCTAssertTrue(app.buttons["history.application.reapplication"].exists)
 
         assertSettingsTabOpens(in: app)
         expandSettingsSection("reminders", in: app)
@@ -433,10 +433,10 @@ final class SunclubUITests: SunclubUITestCase {
     @MainActor
     func testManualLogShowsSmartReuseSuggestions() throws {
         let app = launchHome(additionalArguments: ["UITEST_SEED_HISTORY=manualSuggestions"])
-        tapHittableElement(app.buttons["home.logManually"], in: app)
-        assertHomeLoggedState(app)
-        openTodayEditor(in: app)
-        XCTAssertTrue(waitForLabel("SPF 50 selected", on: manualLogSPFRow(in: app)))
+        tapHittableElement(app.buttons["home.sunscreenLogCard"], in: app)
+        XCTAssertTrue(app.buttons["manualLog.logToday"].waitForExistence(timeout: 5))
+        expandLogDetails(in: app, prefix: "manualLog")
+        XCTAssertTrue(app.buttons["manualLog.spf.50"].isSelected)
         tapHittableElement(app.buttons["manualLog.noteSnippet.0"], in: app)
         let notesField = app.textFields["manualLog.notesField"]
         XCTAssertEqual(notesField.value as? String, "Before lunch")
@@ -609,9 +609,10 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertTrue(reapplication.label.contains("Reapplied"))
         XCTAssertTrue(waitForLabel("Logged, 2 applications", on: app.staticTexts["history.statusTitle"]))
 
-        XCTAssertFalse(app.buttons["history.application.reapplication"].exists)
+        XCTAssertTrue(app.buttons["history.application.reapplication"].exists)
         tapHittableElement(app.buttons["history.editRecord"], in: app)
         XCTAssertTrue(app.buttons["historyEditor.save"].waitForExistence(timeout: 5))
+        expandLogDetails(in: app, prefix: "historyEditor")
         tapHittableElement(app.buttons["historyEditor.spf.70"], in: app)
         tapHittableElement(app.buttons["historyEditor.save"], in: app)
 
@@ -807,7 +808,7 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.uvForecastExposureCard"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["home.sunExposureCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["timeline.todayStatus"].exists
-            || app.staticTexts["home.todayStatus"].exists)
+            || app.buttons["home.todayStatus"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.morning"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.afternoon"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.forecast.part.evening"].exists)
@@ -902,6 +903,7 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertTrue(save.isEnabled)
         XCTAssertEqual(app.staticTexts["historyEditor.timestamp"].label, selectedDate)
         XCTAssertFalse(app.datePickers["historyEditor.datePicker"].exists)
+        expandLogDetails(in: app, prefix: "historyEditor")
         XCTAssertFalse(app.buttons["historyEditor.area.Face"].isSelected)
         XCTAssertFalse(app.buttons["historyEditor.area.Neck"].isSelected)
         tapHittableElement(save, in: app)

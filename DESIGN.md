@@ -48,7 +48,7 @@ Semantic color tokens:
 | `AppColor.background`              | page background                   |
 | `AppColor.surface`                 | soft panels                       |
 | `AppColor.surfaceElevated`         | cards and sheets                  |
-| `AppColor.accent`                  | readable orange links and controls |
+| `AppColor.accent`                  | readable amber links and controls |
 | `AppColor.sun`                     | sun and UV accents                |
 | `AppColor.success`                 | completed/applied states          |
 | `AppColor.warning`                 | destructive or attention states   |
@@ -60,25 +60,25 @@ Semantic color tokens:
 Avoid hardcoded `Color.red`, direct RGB values, and one-off foreground colors in
 screen files.
 
-Apricot Morning uses peach-white surfaces, warm orange actions, and cocoa nights.
+The shipped icon anchors cream surfaces, golden amber accents, and charcoal nights.
 Dark mode uses the same semantic token names. Add colors as semantic tokens,
 never screen-local RGB values. Watch uses explicit dark tokens because its
 shared color resolver does not use UIKit appearance traits.
 
 | Role | Light | Dark |
 | ---- | ----- | ---- |
-| Canvas | `#FFF8F0` | `#251C18` |
-| Surface | `#FFFCF8` | `#30241E` |
-| Elevated surface | `#FFFFFF` | `#3A2C24` |
-| Primary text | `#31251F` | `#FFF8F0` |
-| Secondary text | `#756358` | `#CBB4A4` |
-| Links and active controls | `#A7490C` | `#FFBC7B` |
-| Primary button / label | `#A7490C` / white | `#A7490C` / white |
-| Soft selection fill | `#FFE8CF` | `#493221` |
-| Decorative apricot | `#ED941F` | `#FFBC7B` |
+| Canvas | `#FDF7E7` | `#141412` |
+| Surface | `#FFFBF0` | `#20201C` |
+| Elevated surface | `#FFFFFF` | `#2C2C26` |
+| Primary text | `#2E281C` | `#FDF7E7` |
+| Secondary text | `#6D624A` | `#C4BFB4` |
+| Links and active controls | `#805600` | `#FFC045` |
+| Primary button / label | `#805600` / white | `#805600` / white |
+| Soft selection fill | `#FFEEBE` | `#3D3625` |
+| Decorative amber | `#FAA500` | `#FFC045` |
 
-Bright apricot is decorative; use the deeper orange for small light-mode text.
-Native prominent glass uses white labels, so its fill stays deep orange in both
+Bright amber is decorative; use the deeper amber for small light-mode text.
+Native prominent glass uses white labels, so its fill stays deep amber in both
 appearances. Preserve the icon, semantic UV scale, success green, and error red.
 Use warm separators and quiet shadows, with glass reserved for native controls
 and navigation. Keep the existing screen order and open Today composition.

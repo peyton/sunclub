@@ -61,9 +61,9 @@ struct TimelineHomeView: View {
                     departurePrompt(pending)
                 }
 
-                TodayQuietGlassLogSummary(presentation: log) {
+                TodayQuietGlassLogSummary(presentation: log, editSPF: {
                     if let record { spfEdit = LoggedSPFEditTarget(record: record) }
-                }
+                }, editTime: openEditor)
 
                 if let reminder = log.reminderText {
                     Button { router.push(.reapplyCheckIn) } label: {
@@ -78,7 +78,7 @@ struct TimelineHomeView: View {
                 TodayQuietGlassLogButton(title: record == nil ? "Log sunscreen" : "Log reapplication", action: logNow)
                     .disabled(isLogging)
 
-                if record != nil { logActions }
+                logActions
 
                 if let error = undoError ?? appState.logActionErrorMessage ?? appState.lastRefreshError {
                     AppText(error, style: .body, color: Self.errorTextColor)
@@ -136,11 +136,8 @@ struct TimelineHomeView: View {
             }
             .accessibilityIdentifier("home.undoLog")
         }
-        Button {
-            let now = appState.referenceDate
-            router.push(.manualLog, targetDate: now, targetDayPart: appState.dayPart(for: now))
-        } label: {
-            Text("Edit log")
+        Button(action: openEditor) {
+            Text(appState.record(for: appState.referenceDate) == nil ? "Log earlier" : "Edit log")
                 .font(AppTextStyle.body.font)
                 .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
@@ -222,6 +219,11 @@ struct TimelineHomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.departureCheckIn")
+    }
+
+    private func openEditor() {
+        let now = appState.referenceDate
+        router.push(.manualLog, targetDate: now, targetDayPart: appState.dayPart(for: now))
     }
 
     private func logNow() {
