@@ -3,277 +3,170 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Shortcuts Docs - Sunclub</title>
+    <title>Shortcuts - Sunclub</title>
     <meta
       name="description"
-      content="Use Apple Shortcuts with Sunclub to log sunscreen, check status, open the app, and connect reminders to your daily routine."
+      content="Use Apple Shortcuts to log sunscreen, check status, and open Sunclub."
     />
     <meta
       name="theme-color"
-      content="#0f766e"
+      content="#FDF7E7"
       media="(prefers-color-scheme: light)"
     />
     <meta
       name="theme-color"
-      content="#12100e"
+      content="#141412"
       media="(prefers-color-scheme: dark)"
     />
     <link rel="canonical" href="https://sunclub.peyton.app/docs/automation/" />
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta property="og:title" content="Shortcuts - Sunclub" />
+    <meta
+      property="og:description"
+      content="Use Apple Shortcuts to log sunscreen, check status, and open Sunclub."
+    />
+    <meta
+      property="og:image"
+      content="https://sunclub.peyton.app/assets/marketing/daylight-outside.webp"
+    />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
-  <body class="doc-page">
+  <body>
     <a class="skip-link" href="#main">Skip to main content</a>
-    <header class="site-header">
+    <header class="site-header wrap">
       <nav class="nav" aria-label="Primary">
-        <a class="brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
+        <a class="brand" href="/" aria-label="Sunclub home"
+          ><img
+            src="/assets/logo-sun.svg"
+            width="32"
+            height="32"
+            alt=""
+          />sunclub</a
+        >
         <div class="nav-links">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/" aria-current="page">Docs</a>
+          <a href="/#features">Features</a><a href="/docs/">Guides</a
+          ><a href="/support/">Support</a>
         </div>
         <a
-          class="nav-store-badge"
+          class="store-link"
           href="https://apps.apple.com/us/app/sunclub/id6760630774"
           aria-label="Download Sunclub on the App Store"
-        >
-          <img
+          ><img
             src="/assets/app-store-badge.svg"
-            width="120"
-            height="40"
+            width="150"
+            height="50"
             alt="Download on the App Store"
-          />
-        </a>
+        /></a>
       </nav>
     </header>
-
-    <main id="main" class="doc-shell">
-      <aside class="doc-sidebar" aria-label="Resources">
-        <a class="brand doc-sidebar-brand" href="/">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav>
-          <a href="/docs/getting-started/">Getting Started</a>
-          <a href="/docs/uv-index/">How UV Index Works</a>
-          <a href="/docs/automation/" aria-current="page">Shortcuts Guide</a>
-          <a href="/privacy/">Privacy Details</a>
-        </nav>
-        <div class="doc-help-card shortcuts-help-card">
-          <span
-            class="resource-icon shortcuts-line-icon shortcuts-help-icon"
-            aria-hidden="true"
-          ></span>
-          <strong>Automation question?</strong>
-          <span>Send us what you are trying to build.</span>
-          <a href="mailto:support@mail.sunclub.peyton.app">Email Support</a>
-        </div>
-      </aside>
-
-      <article class="doc-main">
-        <p class="doc-breadcrumb">Resources / Shortcuts Guide</p>
-        <section class="doc-hero-card">
-          <div>
-            <h1>Shortcuts Guide</h1>
-            <p class="lead">
-              Sunclub works with Apple Shortcuts so your sunscreen habit can fit
-              into the routines you already use, like a morning reminder or a
-              quick status check before leaving home.
-            </p>
-          </div>
-          <figure class="doc-phone-preview">
-            <img
-              src="/assets/features/shortcuts.webp"
-              width="560"
-              height="1218"
-              alt="Sunclub Shortcuts catalog preview."
-              decoding="async"
-              loading="eager"
-            />
-          </figure>
-        </section>
-
-        <h2 class="doc-section-title">What you can automate</h2>
-        <section class="doc-card-grid" aria-label="Shortcut ideas">
-          <article>
-            <h2>Log Sunscreen</h2>
-            <p>
-              Log sunscreen with optional SPF and notes. New quick logs use your
-              recent SPF and covered areas, or saved sunscreen SPF when needed.
-              Free-form notes are never copied automatically.
-            </p>
-          </article>
-          <article>
-            <h2>Log Reapply</h2>
-            <p>
-              Record another application after today's first log, even when
-              reminder notifications are off.
-            </p>
-          </article>
-          <article>
-            <h2>Get Sunclub Status</h2>
-            <p>
-              Read today's logged state, UV context, weekly logged count and
-              reapplication status.
-            </p>
-          </article>
-          <article>
-            <h2>Time Since Last Sunscreen</h2>
-            <p>Check the elapsed time since the latest log or reapplication.</p>
-          </article>
-          <article>
-            <h2>Set Sunclub Reminder</h2>
-            <p>Change weekday or weekend reminder times.</p>
-          </article>
-          <article>
-            <h2>Open Sunclub</h2>
-            <p>
-              Open Today, History, Insights or Settings, including the Sunscreen
-              and Apple Health detail pages.
-            </p>
-          </article>
-        </section>
-        <p>
-          The catalog also includes Save Sunscreen Log, Set Sunclub Reapply
-          Reminder and Set Sunclub Toggle. File actions are Export Sunclub
-          Backup, Export Sunclub History and Create Logged Days Card.
-        </p>
-
-        <section class="doc-steps" aria-label="Create a basic shortcut">
-          <article class="doc-step">
-            <span
-              class="doc-step-icon shortcuts-doc-icon"
-              aria-hidden="true"
-            ></span>
-            <div>
-              <span class="doc-step-number">1</span>
-              <h2>Open the Shortcuts app</h2>
-              <p>
-                Create a new shortcut or personal automation, then search for
-                Sunclub in the action picker.
-              </p>
-            </div>
-          </article>
-          <article class="doc-step">
-            <span class="doc-step-icon sun-doc-icon" aria-hidden="true"></span>
-            <div>
-              <span class="doc-step-number">2</span>
-              <h2>Choose the action</h2>
-              <p>
-                Start with Log Sunscreen for logging, or Get Sunclub Status when
-                you only want to read your current state.
-              </p>
-            </div>
-          </article>
-          <article class="doc-step">
-            <span class="doc-step-icon bell-doc-icon" aria-hidden="true"></span>
-            <div>
-              <span class="doc-step-number">3</span>
-              <h2>Decide how it runs</h2>
-              <p>
-                Choose how the automation runs in Apple Shortcuts. Sunclub's
-                catalog describes actions; it does not install a shortcut or
-                provide an execution-confirmation setting.
-              </p>
-            </div>
-          </article>
-        </section>
-
-        <h2 class="doc-section-title">Permissions and examples</h2>
-        <p>
-          In Sunclub, open Settings, then Shortcuts. Four controls let you
-          choose what outside actions may do:
-        </p>
-        <ul>
-          <li>
-            <strong>Allow Shortcut writes</strong>: save changes from user-run
-            Shortcuts.
-          </li>
-          <li>
-            <strong>Open Sunclub from links</strong>: open app screens from
-            URLs.
-          </li>
-          <li>
-            <strong>Save changes from links</strong>: allow URL and callback
-            writes.
-          </li>
-          <li>
-            <strong>Share result details</strong>: return action details to the
-            caller.
-          </li>
-        </ul>
-        <p>
-          Open Shortcuts Catalog from that page to browse actions. Advanced
-          examples start collapsed. Write examples offer Copy only; Test is
-          available for read and open examples. Authorized Shortcuts and public
-          URL actions can still save changes.
-        </p>
-        <details>
-          <summary>Open a Settings detail from a Shortcut</summary>
-          <p>
-            Choose Open Sunclub, then Sunscreen or Apple Health. Link callers
-            use the route values <code>settings-sunscreen</code> and
-            <code>settings-health</code> with the open-screen examples in the
-            in-app catalog.
-          </p>
-          <p>
-            Opening these screens does not save a profile or request Health
-            access. Links need opening permission, even when write permissions
-            are off.
-          </p>
-          <p>
-            Existing summary and achievements routes open Insights. Legacy
-            health-report and product-scanner routes continue to open History
-            and logging respectively.
-          </p>
-        </details>
-
-        <aside class="doc-tip">
-          <strong>Privacy note</strong>
-          <p>
-            Shortcut actions run on your device using the settings you choose in
-            Sunclub. A log is reported as successful only after it is saved. You
-            can manage the four permissions in Settings, then Shortcuts.
-          </p>
+    <main id="main">
+      <div class="doc-shell wrap">
+        <aside class="doc-sidebar">
+          <nav aria-label="Guides">
+            <a href="/docs/getting-started/">Getting started</a
+            ><a href="/docs/uv-index/">UV index</a
+            ><a href="/docs/automation/" aria-current="page">Shortcuts</a
+            ><a href="/privacy/">Privacy</a>
+          </nav>
         </aside>
-
-        <section class="doc-legal">
-          <h2>Help</h2>
-          <div class="contact-chip-grid" aria-label="Automation contacts">
-            <a href="mailto:support@mail.sunclub.peyton.app">Shortcuts help</a>
-            <a href="mailto:privacy@mail.sunclub.peyton.app"
-              >Privacy questions</a
-            >
-            <a href="mailto:security@mail.sunclub.peyton.app"
-              >Security reports</a
-            >
-            <a href="mailto:contact@mail.sunclub.peyton.app"
-              >General questions</a
-            >
-          </div>
-        </section>
-      </article>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer home-footer">
-        <a class="brand footer-brand" href="/" aria-label="Sunclub home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>sunclub</span>
-        </a>
-        <nav aria-label="Footer">
-          <a href="/#features">Features</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/support/">Support</a>
-          <a href="/docs/">Docs</a>
-        </nav>
-        <p>© 2026 Peyton Randolph. All rights reserved.</p>
+        <article class="doc-main">
+          <header class="page-intro">
+            <h1>Your routine.<br />Your Shortcuts.</h1>
+            <p class="lead">Log sunscreen without breaking your stride.</p>
+          </header>
+          <section class="text-section">
+            <h2>Start in Apple Shortcuts</h2>
+            <p>
+              Create a shortcut or personal automation, then search for Sunclub.
+              Add an action and choose when it runs.
+            </p>
+          </section>
+          <dl class="action-list">
+            <div>
+              <dt>Log Sunscreen</dt>
+              <dd>Save an application with optional SPF and notes.</dd>
+            </div>
+            <div>
+              <dt>Log Reapply</dt>
+              <dd>Record the next application after today’s first log.</dd>
+            </div>
+            <div>
+              <dt>Get Sunclub Status</dt>
+              <dd>Read today’s logging, UV, and reapplication status.</dd>
+            </div>
+            <div>
+              <dt>Time Since Last Sunscreen</dt>
+              <dd>Check how long it has been since your last application.</dd>
+            </div>
+            <div>
+              <dt>Set Sunclub Reminder</dt>
+              <dd>Change weekday or weekend reminder times.</dd>
+            </div>
+            <div>
+              <dt>Open Sunclub</dt>
+              <dd>Go to Today, History, Insights, or a Settings page.</dd>
+            </div>
+          </dl>
+          <section class="text-section">
+            <h2>More actions</h2>
+            <p>
+              The in-app <strong>Shortcuts Catalog</strong> also includes Save
+              Sunscreen Log, Set Sunclub Reapply Reminder, Set Sunclub Toggle,
+              Export Sunclub Backup, Export Sunclub History, and Create Logged
+              Days Card.
+            </p>
+          </section>
+          <section class="text-section">
+            <h2>You choose what’s allowed</h2>
+            <p>
+              In <strong>Settings → Shortcuts</strong>, control Shortcut writes,
+              opening Sunclub from links, saving changes from links, and sharing
+              result details independently. Apple Shortcuts controls execution
+              confirmation.
+            </p>
+          </section>
+          <details>
+            <summary>Advanced links and compatibility</summary>
+            <p>
+              Find URL examples in the in-app catalog. Write examples are
+              copy-only; read and open examples can be tested. Open Sunclub
+              supports Sunscreen and Apple Health settings. Existing summary and
+              achievements routes open Insights; health-report opens History,
+              and product-scanner opens logging.
+            </p>
+          </details>
+          <section class="text-section">
+            <h2>Privacy note</h2>
+            <p>
+              Actions use your Sunclub permissions. A log succeeds only after it
+              is saved. Quick logs reuse recent SPF and coverage, but never copy
+              notes automatically.
+            </p>
+          </section>
+          <nav class="contact-links" aria-label="Contact">
+            <a href="mailto:support@mail.sunclub.peyton.app">Support</a
+            ><a href="mailto:contact@mail.sunclub.peyton.app">Feedback</a
+            ><a href="mailto:privacy@mail.sunclub.peyton.app">Privacy</a
+            ><a href="mailto:security@mail.sunclub.peyton.app">Security</a>
+          </nav>
+        </article>
       </div>
+    </main>
+    <footer class="site-footer wrap">
+      <a class="brand" href="/" aria-label="Sunclub home"
+        ><img
+          src="/assets/logo-sun.svg"
+          width="28"
+          height="28"
+          alt=""
+        />sunclub</a
+      >
+      <nav aria-label="Footer">
+        <a href="/docs/">Guides</a><a href="/support/">Support</a
+        ><a href="/privacy/">Privacy</a>
+      </nav>
+      <p>© 2026 Peyton Randolph</p>
     </footer>
   </body>
 </html>
