@@ -28,9 +28,12 @@ struct LoggedSPFEditorView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    AppText("SPF for this log", style: .title)
-                    AppText(target.snapshot.verifiedAt.formatted(date: .abbreviated, time: .shortened), style: .caption, color: AppColor.Text.secondary)
+                VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        AppText("SPF for this log", style: .title)
+                            .accessibilityAddTraits(.isHeader)
+                        AppText(target.snapshot.verifiedAt.formatted(date: .abbreviated, time: .shortened), style: .caption, color: AppColor.Text.secondary)
+                    }
                     ViewThatFits(in: .horizontal) {
                         HStack { commonSPFButtons }
                         VStack(alignment: .leading) { commonSPFButtons }
@@ -41,6 +44,7 @@ struct LoggedSPFEditorView: View {
                         .frame(minHeight: 44)
                         .disabled(logSaved)
                         .accessibilityIdentifier("spfEditor.value")
+                    Divider().overlay(AppColor.stroke).accessibilityHidden(true)
                     Toggle("Use for future logs", isOn: $useForFutureLogs)
                         .font(AppTextStyle.body.font)
                         .disabled(logSaved)
@@ -73,7 +77,12 @@ struct LoggedSPFEditorView: View {
     private var commonSPFButtons: some View {
         ForEach([15, 30, 50], id: \.self) { value in
             Button("SPF \(value)") { spf = value }
+                .font(AppTextStyle.bodyMedium.font)
+                .padding(.horizontal, AppSpacing.sm)
                 .frame(minWidth: 44, minHeight: 44)
+                .foregroundStyle(spf == value ? AppColor.primaryActionForeground : AppColor.Text.primary)
+                .background(spf == value ? AppColor.primaryAction : AppColor.surfaceElevated, in: Capsule())
+                .buttonStyle(.plain)
                 .accessibilityAddTraits(spf == value ? .isSelected : [])
                 .accessibilityIdentifier("spfEditor.quick.\(value)")
         }

@@ -174,7 +174,7 @@ struct HistoryView: View {
 
     private var calendarDisclosure: some View {
         Button {
-            withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+            withAnimation(SunMotion.settle(reduceMotion: reduceMotion)) {
                 isCalendarExpanded.toggle()
             }
         } label: {
@@ -841,21 +841,19 @@ struct HistoryView: View {
                 }
             }
 
-            AppCard(padding: AppSpacing.sm, showsShadow: false) {
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    if let record {
-                        dayApplicationRows(record)
-                    } else {
-                        AppText(statusTitle(for: status), style: .bodyMedium)
-                            .accessibilityIdentifier("history.statusTitle")
-                    }
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                if let record {
+                    dayApplicationRows(record)
+                } else {
+                    AppText(statusTitle(for: status), style: .bodyMedium)
+                        .accessibilityIdentifier("history.statusTitle")
+                }
 
-                    dayRecordDetails(record)
-                    conflictBanner(conflict)
+                dayRecordDetails(record)
+                conflictBanner(conflict)
 
-                    if record == nil, status != .future {
-                        logButton(for: dayStart)
-                    }
+                if record == nil, status != .future {
+                    logButton(for: dayStart)
                 }
             }
 
@@ -897,12 +895,15 @@ struct HistoryView: View {
             )
             .accessibilityLabel("Logged, \(applications.applicationCount) \(applications.applicationCount == 1 ? "application" : "applications")")
             .accessibilityIdentifier("history.statusTitle")
+            .padding(.bottom, AppSpacing.sm)
 
             ForEach(applications.timestamps) { timestamp in
-                if timestamp.id != applications.timestamps.first?.id {
-                    Divider().overlay(AppColor.stroke)
+                SunTimelineEvent(
+                    isRecorded: true,
+                    connectsToNext: timestamp.id != applications.timestamps.last?.id || applications.untimedReapplicationCount > 0
+                ) {
+                    applicationRow(timestamp, record: record)
                 }
-                applicationRow(timestamp, record: record)
             }
 
             if applications.untimedReapplicationCount > 0 {
@@ -921,10 +922,6 @@ struct HistoryView: View {
             editorPresentation = HistoryEditorPresentation(day: record.startOfDay)
         } label: {
         HStack(spacing: AppSpacing.sm) {
-            SunIcon.check.image.resizable().scaledToFit()
-                .frame(width: iconSize, height: iconSize)
-                .foregroundStyle(AppPalette.aloe)
-                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 AppText(timestamp.date.formatted(date: .omitted, time: .shortened), style: .bodyMedium)
                 AppText(
@@ -1112,7 +1109,7 @@ struct HistoryView: View {
     private func monthlyInsightDisclosure(_ insights: MonthlyReviewInsights) -> some View {
         if insights.hasContent {
             Button(isShowingMonthlyInsights ? "Hide Patterns" : "Show Patterns") {
-                withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+                withAnimation(SunMotion.selection(reduceMotion: reduceMotion)) {
                     isShowingMonthlyInsights.toggle()
                 }
             }
@@ -1235,7 +1232,7 @@ struct HistoryView: View {
             calendar: calendar
         ) else { return }
 
-        withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+        withAnimation(SunMotion.selection(reduceMotion: reduceMotion)) {
             displayedMonth = day
             selectedDay = day
             isShowingMonthlyInsights = false
@@ -1254,7 +1251,7 @@ struct HistoryView: View {
 
     private func jumpToToday() {
         let today = calendar.startOfDay(for: appState.referenceDate)
-        withAnimation(SunMotion.easeInOut(duration: 0.2, reduceMotion: reduceMotion)) {
+        withAnimation(SunMotion.selection(reduceMotion: reduceMotion)) {
             displayedMonth = today
             selectedDay = today
         }

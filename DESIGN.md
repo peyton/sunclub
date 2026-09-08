@@ -136,16 +136,16 @@ Product-page iOS wrappers in `AppTheme.swift` include:
 - Native `TabView` for Today, History, and Settings
 - `SunIcon` for bundled template SVG icons
 
-Today uses an open ivory canvas, a central UV gauge, truthful logged status, and
+Today uses an open ivory canvas and a chronological application timeline, with
 one primary action: Log sunscreen, then Log reapplication after the first log.
-Keep source/freshness details and forecast access.
-The day scrubber remains below today's primary content and above past/future detail.
-History starts with compact week selection and grouped records; full calendar and
+Recorded events use filled markers; current and planned events use outlined
+markers and explicit text. Compact UV context follows the logging action, keeping
+source/freshness details and forecast access. Date browsing belongs to History.
+History starts with compact week selection and chronological event rows; full calendar and
 weekly insights remain available there. Settings uses simple grouped rows.
 
 Reserve native Liquid Glass for controls and navigation; avoid textured backdrops
-and nested material layers. The gauge is a live data visualization, not decorative
-raster art. Use `AppFont.heroMetric(size:)` with `@ScaledMetric` for its display value.
+and nested material layers. Charts and timeline rails are live native visuals, not decorative raster art. Use `AppFont.heroMetric(size:)` with `@ScaledMetric` for its display value.
 New interface icons use pinned Lucide 0.468.0 SVG imagesets through `SunIcon`;
 licenses are bundled in Resources/Lucide-LICENSE.txt. Do not rasterize these icons.
 
@@ -155,3 +155,6 @@ the day's first application, then log reapplications in place even when reminder
 are off or no reminder is due. Stale previous-day reapply timers must not surface
 on Today widgets or Watch. Logged Days remains a compact seven-day view, Stats
 counts recorded days, and History remains date-based.
+
+The Daylight Timeline presentation and motion contract is in
+[Daylight Timeline](docs/daylight-timeline.md).

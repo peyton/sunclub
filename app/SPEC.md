@@ -29,7 +29,7 @@ The initial iCloud restore gate remains before onboarding for an effectively emp
 
 ## Today
 
-- Show the current local date, compact UV context, truthful log status and one primary action: Log sunscreen, then Log reapplication after the first log.
+- Show the current local date and a chronological application timeline with truthful log status. Put one primary action before compact UV context: Log sunscreen, then Log reapplication after the first log. Filled and outlined markers reinforce recorded and current/planned events; text owns their meaning.
 - Anchor reads and writes to the current local day across midnight and foreground transitions.
 - Show actual UV source and freshness, cached/local estimates and unavailable states. Keep the hourly forecast accessible.
 - A successful changed receipt provides concise confirmation with Undo and optional Edit; duplicate submissions are guarded.

@@ -16,7 +16,7 @@ class SunclubUITestCase: XCTestCase {
         let logAction = app.buttons["home.logManually"]
         XCTAssertTrue(scrollToHittableElement(logAction, in: app, attempts: 10), file: file, line: line)
         XCTAssertEqual(logAction.label, "Log sunscreen", file: file, line: line)
-        XCTAssertTrue(waitForLabel("Not logged", on: app.staticTexts["timeline.todayStatus"]), file: file, line: line)
+        XCTAssertTrue(waitForLabel("No sunscreen logged", on: app.staticTexts["timeline.todayStatus"]), file: file, line: line)
     }
 
     @MainActor

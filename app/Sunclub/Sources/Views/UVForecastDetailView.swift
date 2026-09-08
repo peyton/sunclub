@@ -34,7 +34,7 @@ struct UVForecastDetailView: View {
             contentMaxWidth: SunLayout.ContentWidth.form,
             contentFrameAlignment: .center
         ) {
-            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 forecastHeader
 
                 if let currentUV {
@@ -261,6 +261,8 @@ struct UVForecastDetailView: View {
                         .accessibilityIdentifier("uvForecast.dailyPeak")
                 }
 
+                hourlyChart
+
                 VStack(spacing: 0) {
                     ForEach(forecastHours) { hour in
                         hourlyForecastRow(hour)
@@ -274,6 +276,31 @@ struct UVForecastDetailView: View {
                 .accessibilityIdentifier("uvForecast.hourly")
             }
         }
+    }
+
+    private var hourlyChart: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .bottom, spacing: AppSpacing.sm) {
+                ForEach(forecastHours) { hour in
+                    VStack(spacing: AppSpacing.xxs) {
+                        AppText("\(hour.index)", style: .captionMedium, alignment: .center)
+                        Capsule()
+                            .fill(Self.isCurrentHour(hour.date, now: appState.referenceDate) ? AppColor.accent : AppColor.sun.opacity(0.55))
+                            .frame(width: AppSpacing.xs, height: max(4, CGFloat(hour.index) / CGFloat(maximumForecastIndex) * 80))
+                            .frame(height: 80, alignment: .bottom)
+                        AppText(hour.date.formatted(.dateTime.hour()), style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                    }
+                    .frame(minWidth: 44)
+                }
+            }
+            .padding(.vertical, AppSpacing.xs)
+        }
+        // The labeled rows below expose the complete forecast without chart navigation.
+        .accessibilityHidden(true)
+    }
+
+    private var maximumForecastIndex: Int {
+        max(1, forecastHours.map(\.index).max() ?? 1)
     }
 
     private func hourlyForecastRow(_ hour: SunclubUVHourForecast) -> some View {
@@ -370,24 +397,22 @@ private struct UVForecastHeroCard: View {
     @ScaledMetric(relativeTo: .largeTitle) private var metricSize: CGFloat = 72
 
     var body: some View {
-        AppCard(padding: AppSpacing.sm, cornerRadius: AppRadius.card, fill: AppColor.surfaceElevated) {
-            VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text(context)
-                    .font(AppTextStyle.captionMedium.font)
-                    .foregroundStyle(AppColor.Text.secondary)
-                Text("\(index)")
-                    .font(AppFont.heroMetric(size: metricSize))
-                    .foregroundStyle(level.designTextTint)
-                Text(level.displayName)
-                    .font(AppTextStyle.bodyMedium.font)
-                    .foregroundStyle(AppColor.Text.primary)
-                Text(recommendation)
-                    .font(AppTextStyle.body.font)
-                    .foregroundStyle(AppColor.Text.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text(context)
+                .font(AppTextStyle.captionMedium.font)
+                .foregroundStyle(AppColor.Text.secondary)
+            Text("\(index)")
+                .font(AppFont.heroMetric(size: metricSize))
+                .foregroundStyle(level.designTextTint)
+            Text(level.displayName)
+                .font(AppTextStyle.bodyMedium.font)
+                .foregroundStyle(AppColor.Text.primary)
+            Text(recommendation)
+                .font(AppTextStyle.body.font)
+                .foregroundStyle(AppColor.Text.primary)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("UV Index \(index), \(level.displayName). \(context). \(recommendation)")
         .accessibilityIdentifier("uvForecast.hero")

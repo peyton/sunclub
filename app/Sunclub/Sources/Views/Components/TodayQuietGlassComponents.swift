@@ -13,6 +13,41 @@ struct TodayQuietGlassTapButtonStyle: PrimitiveButtonStyle {
     }
 }
 
+struct TodayDaylightUVSummary: View {
+    let presentation: TodayQuietGlassUVPresentation
+
+    var body: some View {
+        HStack(alignment: .center, spacing: AppSpacing.sm) {
+            SunIcon.sun.image
+                .resizable().scaledToFit()
+                .foregroundStyle(AppColor.accent)
+                .frame(width: AppSpacing.lg, height: AppSpacing.lg)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                if let index = presentation.index {
+                    AppText("\(presentation.title) \(index)", style: .bodyMedium)
+                        .accessibilityIdentifier("home.uvIndexValue")
+                    AppText(presentation.level.displayName, style: .caption,
+                            color: presentation.level.designTextTint)
+                        .accessibilityIdentifier("home.uvIndexLevel")
+                } else {
+                    AppText("UV unavailable", style: .bodyMedium)
+                        .accessibilityIdentifier("home.uvUnavailable")
+                }
+            }
+            Spacer(minLength: AppSpacing.xxs)
+            AppText("Forecast", style: .captionMedium, color: AppColor.accent)
+            SunIcon.chevronRight.image
+                .resizable().scaledToFit()
+                .foregroundStyle(AppColor.Text.secondary)
+                .frame(width: AppSpacing.xs, height: AppSpacing.xs)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(.vertical, AppSpacing.xxs)
+    }
+}
+
 struct TodayQuietGlassGauge: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .largeTitle) private var metricSize: CGFloat = 72
@@ -88,16 +123,18 @@ struct TodayQuietGlassGauge: View {
 }
 
 struct TodayQuietGlassLogSummary: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let presentation: TodayQuietGlassLogPresentation
     var editSPF: () -> Void = {}
     var editTime: () -> Void = {}
 
     var body: some View {
-        VStack(spacing: AppSpacing.xxs) {
+        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
             if presentation.spfLabel != nil {
                 Button(action: editTime) {
                     HStack(spacing: AppSpacing.xxs) {
-                        AppText(presentation.title, style: .sectionHeader, alignment: .center)
+                        AppText(presentation.title, style: .sectionHeader, alignment: .leading)
+                            .contentTransition(reduceMotion ? .identity : .numericText())
                         SunIcon.chevronRight.image.resizable().scaledToFit()
                             .frame(width: 12, height: 12)
                             .accessibilityHidden(true)
@@ -109,7 +146,7 @@ struct TodayQuietGlassLogSummary: View {
                 .accessibilityHint("Edits application times.")
                 .accessibilityIdentifier(presentation.statusIdentifier)
             } else {
-                AppText(presentation.title, style: .sectionHeader, alignment: .center)
+                AppText("No sunscreen logged", style: .sectionHeader, alignment: .leading)
                     .accessibilityIdentifier(presentation.statusIdentifier)
             }
 
@@ -130,11 +167,11 @@ struct TodayQuietGlassLogSummary: View {
                 .accessibilityIdentifier("home.editSPF")
             }
             if !presentation.detail.isEmpty {
-                AppText(presentation.detail, style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                AppText(presentation.detail, style: .caption, color: AppColor.Text.secondary, alignment: .leading)
                     .accessibilityIdentifier("timeline.statusDetail")
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, AppSpacing.xxs)
         .contentShape(Rectangle())
     }
@@ -147,17 +184,10 @@ struct TodayQuietGlassReminder: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.xs) {
-            SunIcon.clock.image
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(AppColor.sun)
-                .frame(width: AppSpacing.lg, height: AppSpacing.lg)
-                .accessibilityHidden(true)
-
-            VStack(spacing: AppSpacing.xxs) {
-                AppText(text, style: .body, alignment: .center)
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                AppText(text, style: .body, alignment: .leading)
                 if let detail {
-                    AppText(detail, style: .caption, color: AppColor.Text.secondary, alignment: .center)
+                    AppText(detail, style: .caption, color: AppColor.Text.secondary, alignment: .leading)
                 }
             }
 
@@ -170,7 +200,7 @@ struct TodayQuietGlassReminder: View {
                     .accessibilityHidden(true)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: AppSpacing.xl + AppSpacing.sm)
+        .frame(maxWidth: .infinity, minHeight: AppSpacing.xl + AppSpacing.sm, alignment: .leading)
         .padding(.vertical, AppSpacing.xxs)
         .contentShape(Rectangle())
     }

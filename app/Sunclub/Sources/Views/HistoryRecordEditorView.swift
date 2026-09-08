@@ -89,22 +89,29 @@ struct HistoryRecordEditorView: View {
                     .accessibilityIdentifier("\(accessibilityPrefix).timestamp")
                 }
 
-                timePicker(
-                    (originalSnapshot?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
-                    selection: $selectedTimestamp,
-                    identifier: "\(accessibilityPrefix).timePicker"
-                )
-
-                if selectedReapplicationTime != nil {
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                    AppText("Timing", style: .captionMedium, color: AppColor.Text.secondary)
+                        .accessibilityAddTraits(.isHeader)
                     timePicker(
-                        "Latest reapplication",
-                        selection: Binding(
-                            get: { selectedReapplicationTime ?? selectedTimestamp },
-                            set: { selectedReapplicationTime = $0 }
-                        ),
-                        identifier: "\(accessibilityPrefix).reapplicationTimePicker"
+                        (originalSnapshot?.reapplyCount ?? 0) > 0 ? "First application" : "Application time",
+                        selection: $selectedTimestamp,
+                        identifier: "\(accessibilityPrefix).timePicker"
                     )
+
+                    if selectedReapplicationTime != nil {
+                        timePicker(
+                            "Latest reapplication",
+                            selection: Binding(
+                                get: { selectedReapplicationTime ?? selectedTimestamp },
+                                set: { selectedReapplicationTime = $0 }
+                            ),
+                            identifier: "\(accessibilityPrefix).reapplicationTimePicker"
+                        )
+                    }
+
                 }
+
+                Divider().overlay(AppColor.stroke).accessibilityHidden(true)
 
                 SunManualLogFields(
                     selectedSPF: $selectedSPF,
