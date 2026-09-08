@@ -182,13 +182,6 @@ struct TodayQuietGlassReminder: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.xs) {
-            SunIcon.clock.image
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(AppColor.sun)
-                .frame(width: AppSpacing.lg, height: AppSpacing.lg)
-                .accessibilityHidden(true)
-
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 AppText(text, style: .body, alignment: .leading)
                 if let detail {
@@ -205,7 +198,7 @@ struct TodayQuietGlassReminder: View {
                     .accessibilityHidden(true)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: AppSpacing.xl + AppSpacing.sm)
+        .frame(maxWidth: .infinity, minHeight: AppSpacing.xl + AppSpacing.sm, alignment: .leading)
         .padding(.vertical, AppSpacing.xxs)
         .contentShape(Rectangle())
     }

@@ -174,7 +174,7 @@ struct HistoryView: View {
 
     private var calendarDisclosure: some View {
         Button {
-            withAnimation(SunMotion.selection(reduceMotion: reduceMotion)) {
+            withAnimation(SunMotion.settle(reduceMotion: reduceMotion)) {
                 isCalendarExpanded.toggle()
             }
         } label: {
