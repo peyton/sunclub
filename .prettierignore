@@ -1,0 +1,2 @@
+# Asset catalog metadata is maintained by Xcode and the artwork generators.
+**/*.xcassets/**/Contents.json
