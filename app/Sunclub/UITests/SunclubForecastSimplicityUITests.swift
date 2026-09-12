@@ -26,8 +26,22 @@ final class SunclubForecastSimplicityUITests: SunclubUITestCase {
         let gauge = app.buttons["home.uvIndexCard"]
         let initialPosition = gauge.frame.minY
 
-        gauge.swipeUp()
+        // At accessibility sizes the card can extend behind the native tab bar.
+        // Start inside its visible portion so the drag cannot select another tab.
+        let todayTab = app.buttons["timeline.footer.today"]
+        let viewport = app.scrollViews["timeline.scroll"].frame.intersection(CGRect(
+            x: app.frame.minX, y: app.frame.minY,
+            width: app.frame.width, height: todayTab.frame.minY - app.frame.minY
+        ))
+        let visibleGauge = gauge.frame.intersection(viewport).insetBy(dx: 8, dy: 8)
+        XCTAssertFalse(visibleGauge.isEmpty, "The gauge must be visible above the tab bar.")
+        let start = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(
+            dx: visibleGauge.midX - app.frame.minX, dy: visibleGauge.midY - app.frame.minY
+        ))
+        let end = start.withOffset(CGVector(dx: 0, dy: -80))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
 
+        XCTAssertTrue(todayTab.isSelected, "Dragging the gauge must keep Today selected.")
         XCTAssertFalse(app.descendants(matching: .any)["uvForecast.hero"].exists)
         XCTAssertLessThan(gauge.frame.minY, initialPosition - 10, "Dragging the gauge must scroll Today.")
         XCTAssertTrue(scrollToHittableElement(app.buttons["home.logManually"], in: app))

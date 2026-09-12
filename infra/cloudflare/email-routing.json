@@ -4,12 +4,7 @@
   "zone_name": "peyton.app",
   "destination_env": "SUNCLUB_FORWARD_TO",
   "mail_domain": "mail.sunclub.peyton.app",
-  "routes": [
-    "support",
-    "privacy",
-    "security",
-    "contact"
-  ],
+  "routes": ["support", "privacy", "security", "contact"],
   "catch_all": {
     "name": "Catch-all disabled",
     "enabled": false,
