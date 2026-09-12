@@ -41,8 +41,16 @@ just release-tag 1.2.3
 See [docs/testflight-release.md](testflight-release.md) for the full flavor and versioning flow.
 Use the default strict archive path when you are preparing the actual App Store submission package.
 Production signing/export also requires a clean source tree and successful full
-CI for the exact SHA. Run `gh workflow run ci.yml --ref BRANCH` before preparing
-a candidate; ordinary PR smoke checks do not qualify.
+CI for the exact SHA. Reuse a successful full run for that SHA; otherwise run
+`gh workflow run ci.yml --ref BRANCH` before signing/export. Ordinary PR smoke
+checks do not qualify.
+
+Complete authorized package preparation and the dry run before requesting the
+final review checkpoint. Review the concrete summary, target version/build,
+screenshots and metadata. Request approval only if this exact package and action
+have not already been approved; material package changes require a new checkpoint.
+Set non-interactive confirmation flags only when that approval exists. Keep the
+submission wrapper's checkpoint enforcement intact.
 
 ## Required Manual Work
 

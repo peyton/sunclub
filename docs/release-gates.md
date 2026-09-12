@@ -1,6 +1,9 @@
 # Release gates
 
-These rules apply to every app change. Read the relevant gate before editing.
+Preserve these invariants for app changes. Read the affected gate: data for
+signing/persistence/import/sync, accessibility for UI or interaction changes, and
+automation for public features/routes. Unrelated prose/tooling edits do not require
+reading every gate.
 
 ## Data Preservation Release Gate
 
@@ -10,7 +13,7 @@ Every app update must preserve user data stored locally and in CloudKit. Treat d
 - Never assume a provisioning profile proves runtime capabilities. For TestFlight or CloudKit-affecting releases, inspect the final exported IPA entitlements from the release artifact with `codesign -d --entitlements :- Payload/Sunclub.app` or the checked release diagnostics before trusting CloudKit, push, or app-group behavior.
 - Route every SwiftData `ModelContainer` creation path through `SunclubModelContainerFactory` so migrations, store-location recovery, and CloudKit `.none` configuration stay consistent. This app uses manual `CKSyncEngine`; do not enable SwiftData CloudKit mirroring accidentally.
 - Empty/default local bootstrap state must never overwrite meaningful local or CloudKit history. Mark synthetic empty migration seeds local-only, do not queue them for CloudKit, and ignore synthetic default `migrationSeed` or default `conflictAutoMerge` settings revisions whenever meaningful settings history exists.
-- Fresh reinstall restore is a launch gate, not a normal sync. For effectively empty production stores, fetch CloudKit before saving the custom zone or sending local batches; restore success should rebuild projections before routing, no remote history should fall through to onboarding, and startup failure should expose retry/continue instead of silently accepting an empty store.
+- Fresh reinstall restore is a launch gate, not a normal sync. For effectively empty production stores, fetch CloudKit before saving the custom zone or sending local batches; restore success should rebuild projections before routing, no remote history should fall through to onboarding, and initial iCloud restore failure should expose retry/continue instead of silently accepting an empty store. Local store-open failures separately retry the existing store silently through `SunclubStartup`, without recovery UI or a replacement store.
 - Persisted model or history changes must include migration or projection tests that open prior shipped stores and prove non-empty users keep publishable history while empty stores remain local-only.
 - Recovery and import paths must be idempotent and non-destructive: never delete current days during recovery, never overwrite current settings with less complete defaults, and always prefer `hasCompletedOnboarding: true` over `false`.
 
