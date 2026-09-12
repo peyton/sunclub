@@ -211,6 +211,9 @@ GitHub run cross-check:
 - Release diagnostics must include code-signing and entitlement dumps for the
   main app and every nested `.app` or `.appex` bundle inside the exported IPA,
   including the single-target watch app, iOS widget, and watch widget bundles.
-- Run `just release-preflight` before cutting a TestFlight tag when a local
-  macOS/Xcode environment is available. It combines strict metadata validation,
-  Python release guard tests, full unit/UI tests, and both release device builds.
+- `just release-preflight` is an optional local rehearsal for App Review preparation:
+  it combines strict metadata validation, Python tests, full unit/UI tests, and
+  both release device builds. Reuse existing evidence for unchanged inputs rather
+  than repeating these checks. TestFlight-only preparation may use
+  `just appstore-validate` for draft metadata. Full exact-SHA GitHub CI and final
+  IPA validation remain required for signing/export and releases.

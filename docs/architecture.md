@@ -55,8 +55,9 @@ CloudKit uses manual CKSyncEngine; do not enable SwiftData mirroring.
 
 ## Add or change a feature
 
-1. Read the relevant [release gate](release-gates.md), public
-   [automation contract](app-automation.md) and product spec.
+1. Read the [release gate](release-gates.md) for the affected behavior. Consult the
+   [automation contract](app-automation.md) when changing public automation, and
+   the product spec when changing product behavior.
 2. Put durable behavior in a focused service. Reuse mutation/history services;
    use explicit inputs, existing protocols and the injected clock.
 3. Wire AppState coordination and any applicable automation entrypoint to the
