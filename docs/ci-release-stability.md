@@ -6,14 +6,16 @@
   caches and optionally selects the single pinned Xcode and authenticates Tuist.
   It configures the Xcode cache once per macOS job.
 - Lint and Python run independently of iOS work. iOS PR changes require unit
-  tests, the UI smoke scenarios, and both Release device flavors.
+  tests and both Release device flavors. UI smoke tests still run on PRs but
+  do not block merging.
 - Only recognized web/documentation-only PR changes may skip iOS. Unknown paths,
   empty comparisons and failed detection default to iOS validation.
 - In `ci.yml`, every master push and manual dispatch runs full UI coverage. Run
   `gh workflow run ci.yml --ref BRANCH` for a release/refactor candidate.
-- The final `CI` gate uses `always()` and checks every expected result; failed,
-  cancelled and unexpected skipped jobs cannot pass it. Branch rules migrate
-  from five direct job contexts to `CI` only after verifying the new gate.
+- The required `CI` merge gate uses `always()` and waits only for change
+  detection, lint, Python tests, unit tests and device builds. Failed, cancelled
+  and unexpected skipped required jobs cannot pass it. UI tests run independently
+  and retain visible failures; they are not dependencies of the merge gate.
 - Production signing/upload requires successful full CI on the exact source SHA;
   PR smoke results are insufficient. Preserve final entitlement/watch validation.
 - For signed validation after that full CI passes, run

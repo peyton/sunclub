@@ -74,7 +74,6 @@ def needs(run_ios=True):
                 "lint",
                 "test-python",
                 "test-ios-unit",
-                "test-ios-ui",
                 "build-ios",
             ]
         },
@@ -94,7 +93,7 @@ def test_ci_gate_requires_every_expected_result():
 
 def test_ci_gate_accepts_only_classified_ios_skips():
     payload = needs(False)
-    for job in ["test-ios-unit", "test-ios-ui", "build-ios"]:
+    for job in ["test-ios-unit", "build-ios"]:
         payload[job]["result"] = "skipped"
     assert gate_errors(payload) == []
     payload["test-python"]["result"] = "skipped"
@@ -117,4 +116,25 @@ def test_release_evidence_requires_exact_sha_full_tests_and_gate():
     assert not is_full_ci_run(run, jobs[:1], "abc")
     assert not is_full_ci_run(run, jobs[1:], "abc")
     jobs[1]["steps"][0]["name"] = "Run UI smoke tests"
+    assert not is_full_ci_run(run, jobs, "abc")
+
+
+@pytest.mark.parametrize("result", ["success", "failure", "cancelled", "skipped", None])
+def test_ui_results_do_not_block_merge_gate(result):
+    payload = needs()
+    payload["test-ios-ui"] = {"result": result}
+    assert gate_errors(payload) == []
+
+
+@pytest.mark.parametrize("result", ["failure", "cancelled", "skipped", None])
+def test_release_still_requires_successful_full_ui(result):
+    run = {"head_sha": "abc", "conclusion": "success", "event": "push"}
+    jobs = [
+        {"name": "CI", "conclusion": "success"},
+        {
+            "name": "iOS UI Tests",
+            "conclusion": result,
+            "steps": [{"name": "Run full UI tests", "conclusion": result}],
+        },
+    ]
     assert not is_full_ci_run(run, jobs, "abc")
