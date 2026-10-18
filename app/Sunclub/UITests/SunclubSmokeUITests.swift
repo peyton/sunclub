@@ -3,6 +3,23 @@ import UIKit
 
 final class SunclubSmokeUITests: SunclubUITestCase {
     @MainActor
+    func testHistoryWeekDaysFitWithAccessibilityText() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .portrait
+        let app = launchHome(additionalArguments: accessibilityScorecardArguments + ["UITEST_ROUTE=history"])
+        let week = app.descendants(matching: .any)["history.weekStrip"].firstMatch
+        XCTAssertTrue(week.waitForExistence(timeout: 5))
+        let days = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "history.day."))
+        XCTAssertEqual(days.count, 7)
+        for day in days.allElementsBoundByIndex {
+            XCTAssertGreaterThanOrEqual(day.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(day.frame.minX, week.frame.minX - 1)
+            XCTAssertLessThanOrEqual(day.frame.maxX, week.frame.maxX + 1)
+            XCTAssertLessThanOrEqual(day.frame.maxX, app.frame.maxX)
+        }
+    }
+
+    @MainActor
     func testTodayKeepsLoggedStateAndReachableControlsAfterResizing() throws {
         defer { XCUIDevice.shared.orientation = .portrait }
         XCUIDevice.shared.orientation = .portrait

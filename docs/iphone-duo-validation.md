@@ -46,7 +46,7 @@ DEFAULT_SIMULATOR_DEVICE='iPhone Duo' \
   TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-ui
 ```
 
-The local Duo simulator uses the installed iOS 27.2 Duo runtime (24B91011).
+The original automated Duo pass used iOS 27.2 (24B91011).
 That runtime version is distinct from the selected Xcode 27.1 compiler and SDK.
 The review verified 659 passing unit tests with this combination. Repository
 lint and 279 Python tests also passed. Full UI coverage includes all 14 smoke
@@ -82,13 +82,30 @@ builds, and unit tests. Full UI results remain part of the required `CI` gate.
 The image manifest lists iOS 27.0 simulators, not a Duo runtime, so hosted CI is
 not claimed to execute Duo-specific tests.
 
-## Remaining visual checks
+## Interactive validation (October 18, 2026)
 
-Interactive fold and Split View checks remain required. Device Hub expansion
-was unreliable during review, and Xcode 27.1's GUI showed component setup.
-Command-line rotation tests do not prove fold-transition or Split View behavior.
+Xcode 27.1 Device Hub and the matching iOS 27.1 runtime (24A94425) were
+used for the interactive pass. The earlier unavailable device view was resolved
+by restarting the stale CoreDeviceService; simulator boot state alone did not
+prove Device Hub connectivity.
 
-Use Device Hub to verify closed, open, partially folded, rotated, and both Split
-View positions. Check Today, History, Settings, onboarding, manual logging, and
-sheets at default and accessibility text sizes. Do not claim complete Duo
-certification from rotation checks alone.
+- Completed onboarding from the cover display through unfolding.
+- Verified Today logging and History editing in left Split View; saved SPF 50
+  remained visible after closing and reopening the device.
+- Verified right Split View beside the system Settings app, including Sunclub
+  Settings, nested Reminders, and the weekday time-picker sheet.
+- Repeated Today and manual logging with accessibility text, dark mode, Reduce
+  Motion, increased contrast, and non-color cues. Expanded details scrolled to
+  coverage and Notes; Save returned to the logged Today state.
+- Checked closed, partially open, and open poses with the large-text logged state,
+  then moved Sunclub to left Split View and navigated to History.
+- Found that the large-text History week row clipped later days in Split View.
+  It now wraps into an adaptive grid at accessibility sizes. The rebuilt app
+  displayed all seven days beside the original clipped layout. A UI smoke
+  regression checks that all seven day controls fit horizontally.
+
+The earlier iOS 27.2 interactive pass also exercised an unsaved SPF selection
+across fold transitions, History calendar expansion, Settings, and a reminder
+sheet across rotation and unfolding. These are simulator checks, not physical
+hardware certification. Recheck these flows when changing native navigation,
+safe-area handling, or the shared screen containers.
