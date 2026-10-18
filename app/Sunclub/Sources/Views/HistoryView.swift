@@ -301,11 +301,26 @@ struct HistoryView: View {
 
     private func weekStrip(presentation: HistoryPresentation) -> some View {
         let week = weekPresentation(presentation)
-        return ScrollViewReader { proxy in
+        return Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 0)], spacing: AppSpacing.sm) {
+                    weekDayButtons(week.days, presentation: presentation)
+                }
+            } else {
+                scrollableWeekStrip(week.days, presentation: presentation)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Week containing \((selectedDay ?? presentation.today).formatted(.dateTime.month(.wide).day()))")
+        .accessibilityIdentifier("history.weekStrip")
+    }
+
+    private func scrollableWeekStrip(_ days: [Date], presentation: HistoryPresentation) -> some View {
+        ScrollViewReader { proxy in
             ViewThatFits(in: .horizontal) {
-                weekDays(week.days, presentation: presentation)
+                weekDays(days, presentation: presentation)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    weekDays(week.days, presentation: presentation)
+                    weekDays(days, presentation: presentation)
                 }
                 .onAppear {
                     proxy.scrollTo(selectedDay ?? presentation.today, anchor: .center)
@@ -315,53 +330,54 @@ struct HistoryView: View {
                 }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Week containing \((selectedDay ?? presentation.today).formatted(.dateTime.month(.wide).day()))")
-        .accessibilityIdentifier("history.weekStrip")
     }
 
     private func weekDays(_ days: [Date], presentation: HistoryPresentation) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            ForEach(days, id: \.self) { day in
-                let state = dayCellState(for: day, presentation: presentation)
-                Button {
-                    selectDay(day, state: state, allowsAdjacentMonth: true)
-                } label: {
-                    VStack(spacing: AppSpacing.xs) {
-                        Text(calendar.veryShortStandaloneWeekdaySymbols[calendar.component(.weekday, from: day) - 1])
-                            .font(AppTextStyle.caption.font)
-                            .foregroundStyle(AppColor.Text.secondary)
-                        VStack(spacing: AppSpacing.xxs) {
-                            Text("\(calendar.component(.day, from: day))")
-                                .font(AppFont.rounded(size: 20, weight: state.isSelected ? .semibold : .medium))
-                                .foregroundStyle(state.isFuture ? AppColor.Text.secondary : AppColor.Text.primary)
-                            weekDayMarker(state)
-                                .frame(width: smallIconSize, height: smallIconSize)
-                                .accessibilityHidden(true)
-                        }
-                        .padding(.vertical, AppSpacing.xs)
-                        .frame(maxWidth: .infinity)
-                        .background {
-                            if state.isSelected {
-                                Capsule()
-                                    .fill(AppColor.surfaceElevated)
-                                    .overlay { Capsule().stroke(AppColor.stroke, lineWidth: 1) }
-                                    .appShadow(AppShadow.soft)
-                            }
+            weekDayButtons(days, presentation: presentation)
+        }
+    }
+
+    private func weekDayButtons(_ days: [Date], presentation: HistoryPresentation) -> some View {
+        ForEach(days, id: \.self) { day in
+            let state = dayCellState(for: day, presentation: presentation)
+            Button {
+                selectDay(day, state: state, allowsAdjacentMonth: true)
+            } label: {
+                VStack(spacing: AppSpacing.xs) {
+                    Text(calendar.veryShortStandaloneWeekdaySymbols[calendar.component(.weekday, from: day) - 1])
+                        .font(AppTextStyle.caption.font)
+                        .foregroundStyle(AppColor.Text.secondary)
+                    VStack(spacing: AppSpacing.xxs) {
+                        Text("\(calendar.component(.day, from: day))")
+                            .font(AppFont.rounded(size: 20, weight: state.isSelected ? .semibold : .medium))
+                            .foregroundStyle(state.isFuture ? AppColor.Text.secondary : AppColor.Text.primary)
+                        weekDayMarker(state)
+                            .frame(width: smallIconSize, height: smallIconSize)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.vertical, AppSpacing.xs)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if state.isSelected {
+                            Capsule()
+                                .fill(AppColor.surfaceElevated)
+                                .overlay { Capsule().stroke(AppColor.stroke, lineWidth: 1) }
+                                .appShadow(AppShadow.soft)
                         }
                     }
-                    .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 76 : 44, maxWidth: .infinity)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .disabled(state.isFuture)
-                .accessibilityLabel(dayAccessibilityLabel(for: day, state: state))
-                .accessibilityHint(dayAccessibilityHint(hasRecord: state.hasRecord, isToday: state.isToday, isFuture: state.isFuture))
-                .accessibilityAddTraits(state.isSelected ? .isSelected : [])
-                .accessibilityIdentifier(dayAccessibilityIdentifier(for: day))
-                .contextMenu { calendarDayContextMenu(for: state, allowsAdjacentMonth: true) }
-                .id(day)
+                .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 76 : 44, maxWidth: .infinity)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .disabled(state.isFuture)
+            .accessibilityLabel(dayAccessibilityLabel(for: day, state: state))
+            .accessibilityHint(dayAccessibilityHint(hasRecord: state.hasRecord, isToday: state.isToday, isFuture: state.isFuture))
+            .accessibilityAddTraits(state.isSelected ? .isSelected : [])
+            .accessibilityIdentifier(dayAccessibilityIdentifier(for: day))
+            .contextMenu { calendarDayContextMenu(for: state, allowsAdjacentMonth: true) }
+            .id(day)
         }
     }
 

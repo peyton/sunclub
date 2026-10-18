@@ -294,28 +294,32 @@ final class SunclubUITests: SunclubUITestCase {
     @MainActor
     func testQuietGlassKeepsThreeNativeTabsAndLogActionInTodayContent() throws {
         let app = launchHome()
-        let todayTab = app.buttons["timeline.footer.today"]
-        let historyTab = app.buttons["home.historyCard"]
-        let settingsTab = app.buttons["timeline.footer.settings"]
+        let todayTab = nativeTabButton("timeline.footer.today", title: "Today", in: app)
+        let historyTab = nativeTabButton("home.historyCard", title: "History", in: app)
+        let settingsTab = nativeTabButton("timeline.footer.settings", title: "Settings", in: app)
         let logToday = app.buttons["home.logManually"]
+        let tabs = [todayTab, historyTab, settingsTab]
 
-        XCTAssertTrue(todayTab.waitForExistence(timeout: 5))
-        XCTAssertTrue(historyTab.waitForExistence(timeout: 5))
-        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.tabBars.buttons.count, 3)
+        for tab in tabs {
+            XCTAssertTrue(tab.waitForExistence(timeout: 5))
+            XCTAssertTrue(tab.isHittable)
+            XCTAssertTrue(app.frame.contains(tab.frame))
+        }
         XCTAssertEqual(todayTab.label, "Today")
         XCTAssertEqual(historyTab.label, "History")
         XCTAssertEqual(settingsTab.label, "Settings")
-        XCTAssertEqual(todayTab.frame.midY, historyTab.frame.midY, accuracy: 8)
-        XCTAssertEqual(todayTab.frame.midY, settingsTab.frame.midY, accuracy: 8)
-        XCTAssertLessThan(todayTab.frame.midX, historyTab.frame.midX)
-        XCTAssertLessThan(historyTab.frame.midX, settingsTab.frame.midX)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(
+            format: "identifier IN %@ OR label IN %@",
+            ["timeline.footer.today", "home.historyCard", "timeline.footer.settings"],
+            ["Today", "History", "Settings"]
+        )).count, 3)
         XCTAssertTrue(todayTab.isSelected)
-        XCTAssertFalse(app.tabBars.buttons["home.logManually"].exists)
-        XCTAssertFalse(app.tabBars.buttons["home.streakCard"].exists)
+        XCTAssertTrue(app.scrollViews["timeline.scroll"].buttons["home.logManually"].exists)
         XCTAssertTrue(scrollToHittableElement(logToday, in: app))
         XCTAssertEqual(app.buttons.matching(identifier: "home.logManually").count, 1)
-        XCTAssertLessThanOrEqual(logToday.frame.maxY, todayTab.frame.minY)
+        for tab in tabs {
+            XCTAssertFalse(logToday.frame.intersects(tab.frame))
+        }
         XCTAssertGreaterThanOrEqual(logToday.frame.width, 44)
         XCTAssertGreaterThanOrEqual(logToday.frame.height, 44)
         XCTAssertTrue(logToday.isHittable)
@@ -788,9 +792,15 @@ final class SunclubUITests: SunclubUITestCase {
     func testTimelineHomeIsDefaultAfterOnboarding() throws {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
-        XCTAssertEqual(app.buttons["timeline.footer.today"].label, "Today")
-        XCTAssertEqual(app.buttons["home.historyCard"].label, "History")
+        for (identifier, title) in [
+            ("timeline.footer.settings", "Settings"),
+            ("timeline.footer.today", "Today"),
+            ("home.historyCard", "History")
+        ] {
+            let tab = nativeTabButton(identifier, title: title, in: app)
+            XCTAssertTrue(tab.waitForExistence(timeout: 5))
+            XCTAssertEqual(tab.label, title)
+        }
         XCTAssertFalse(app.descendants(matching: .any)["timeline.dayStrip"].exists)
     }
 
@@ -856,8 +866,10 @@ final class SunclubUITests: SunclubUITestCase {
         tapHittableElement(app.buttons["home.uvIndexCard"], in: app)
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.hero"], in: app, attempts: 10))
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.hourly"], in: app, attempts: 10))
-        XCTAssertFalse(navigationBackButton(in: app).label.isEmpty)
-        tapHittableElement(navigationBackButton(in: app), in: app)
+        let backButton = navigationBackButton(in: app)
+        XCTAssertTrue(backButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(backButton.label.isEmpty, "The native Back control must have an accessible name.")
+        tapHittableElement(backButton, in: app)
         assertHomeReadyForLogState(app)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.dayStrip"].exists)
     }

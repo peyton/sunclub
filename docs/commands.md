@@ -10,7 +10,7 @@ Supported environments: local macOS with stable Xcode, and GitHub Actions.
 | `just run`                                 | Build, install and launch using the development build directory                |
 | `just test-unit`                           | All Swift unit tests                                                           |
 | `just test-unit ClassName/testMethod`      | Filter unit tests                                                              |
-| `just test-ui-smoke`                       | The 13 PR smoke scenarios                                                      |
+| `just test-ui-smoke`                       | The PR smoke scenarios                                                      |
 | `just test-ui`                             | Every UI test, including smoke                                                 |
 | `just test-python`                         | Tooling, release, metadata and website contracts                               |
 | `just ci-build dev` / `just ci-build prod` | Selected Release device build                                                  |

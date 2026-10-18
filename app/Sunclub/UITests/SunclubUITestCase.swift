@@ -236,7 +236,13 @@ class SunclubUITestCase: XCTestCase {
         if compatibility.exists { return compatibility }
         let namedBack = app.navigationBars.buttons["Back"]
         if namedBack.exists { return namedBack }
-        return app.navigationBars.buttons["BackButton"]
+        let legacyBack = app.navigationBars.buttons["BackButton"]
+        if legacyBack.exists { return legacyBack }
+        // Duo can place native navigation controls in a vertical bar outside
+        // the navigationBars accessibility container.
+        let adaptiveBack = app.buttons["Back"]
+        if adaptiveBack.exists { return adaptiveBack }
+        return app.buttons["BackButton"]
     }
 
     func insightsSummary(in app: XCUIApplication) -> XCUIElement {
@@ -449,6 +455,12 @@ class SunclubUITestCase: XCTestCase {
         let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: verticalPosition))
         let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: verticalPosition))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    func nativeTabButton(_ identifier: String, title: String, in app: XCUIApplication) -> XCUIElement {
+        // Adaptive native tabs can appear before the UIKit identifier installer.
+        app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", identifier, title)).firstMatch
     }
 
     @MainActor
@@ -789,6 +801,19 @@ class SunclubUITestCase: XCTestCase {
         }
 
         return false
+    }
+
+    @MainActor
+    func scrollToFullyVisibleElement(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        guard scrollToHittableElement(element, in: app, attempts: 10) else { return false }
+        let surface = app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? app
+        for _ in 0..<10 {
+            let bounds = app.frame.insetBy(dx: 0, dy: 8)
+            if element.isHittable, bounds.contains(element.frame) { return true }
+            let direction: ScrollDirection = element.frame.minY < bounds.minY ? .scrollDown : .scrollUp
+            nudgeScrollSurface(surface, direction: direction, distance: 0.15)
+        }
+        return element.isHittable && app.frame.contains(element.frame)
     }
 
     @MainActor

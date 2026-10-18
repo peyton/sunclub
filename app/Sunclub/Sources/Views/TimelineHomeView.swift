@@ -43,7 +43,11 @@ struct TimelineHomeView: View {
             status: appState.uvStatus, protectionWindow: appState.uvProtectionWindow,
             selectedDay: now, now: now
         )
-        return SunLightScreen(scrollAccessibilityIdentifier: "timeline.scroll") {
+        return SunLightScreen(
+            contentMaxWidth: SunLayout.ContentWidth.form,
+            contentFrameAlignment: .center,
+            scrollAccessibilityIdentifier: "timeline.scroll"
+        ) {
             VStack(spacing: AppSpacing.md) {
                 todayHeader(now: now)
 
