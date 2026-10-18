@@ -6,7 +6,7 @@
   caches and optionally selects the single pinned Xcode and authenticates Tuist.
   It configures the Xcode cache once per macOS job.
 - Lint and Python run independently of iOS work. iOS PR changes require unit
-  tests, the 14 UI smoke scenarios, and both Release device flavors.
+  tests, the UI smoke scenarios, and both Release device flavors.
 - Only recognized web/documentation-only PR changes may skip iOS. Unknown paths,
   empty comparisons and failed detection default to iOS validation.
 - In `ci.yml`, every master push and manual dispatch runs full UI coverage. Run
