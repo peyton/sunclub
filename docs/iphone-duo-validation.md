@@ -20,6 +20,10 @@ inner display can resize independently of supported orientations.
   detection, persistence changes, or public automation routes are necessary.
 - Add metadata coverage and a UI smoke scenario for logged-state retention,
   reachable actions, and tab overlap after rotation with accessibility settings.
+- Supply an explicit native back-item title on iOS 27.1 and later. An empty
+  navigation title otherwise leaves Duo's vertical Back control unnamed. Keep
+  UIKit's native action and transition delegate; verify the accessible name and
+  return navigation in the large-text forecast test.
 - Find native Back controls outside horizontal navigation-bar containers in UI
   tests. Fully reveal the large-text reminder switch before tapping it and
   verify that it turned on before looking for interval controls. The accessibility

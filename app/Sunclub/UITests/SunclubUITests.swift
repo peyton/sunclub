@@ -856,8 +856,10 @@ final class SunclubUITests: SunclubUITestCase {
         tapHittableElement(app.buttons["home.uvIndexCard"], in: app)
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.hero"], in: app, attempts: 10))
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.hourly"], in: app, attempts: 10))
-        XCTAssertFalse(navigationBackButton(in: app).label.isEmpty)
-        tapHittableElement(navigationBackButton(in: app), in: app)
+        let backButton = navigationBackButton(in: app)
+        XCTAssertTrue(backButton.waitForExistence(timeout: 5))
+        XCTAssertEqual(backButton.label, "Back", "The native Back control must have an accessible name.")
+        tapHittableElement(backButton, in: app)
         assertHomeReadyForLogState(app)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.dayStrip"].exists)
     }
