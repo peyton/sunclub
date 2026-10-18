@@ -4,18 +4,9 @@
   "candidateWidgetSourceSHA256": "06a555e742773cb6ba6df72fa55a94a526f2ab0f59d4914f8abe035ffbaaa465",
   "simulator": "017565C7-FC26-4BEE-9228-384541448774",
   "sizesPoints": {
-    "medium": [
-      338,
-      158
-    ],
-    "large": [
-      338,
-      354
-    ],
-    "small": [
-      158,
-      158
-    ]
+    "medium": [338, 158],
+    "large": [338, 354],
+    "small": [158, 158]
   },
   "contentPaddingPoints": 16,
   "scale": 3,

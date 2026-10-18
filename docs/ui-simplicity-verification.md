@@ -6,19 +6,19 @@ Status: implementation is in final verification. Native swipe input follow-ups a
 
 Xcode 26.6.0, iPhone 17 Pro simulator on iOS 26.5; compile cache disabled. UI tests run serially. Expected-failure reruns disable verbose sysdiagnose collection, not test assertions or result bundles. Compatibility tests use an iPhone SE (3rd generation), iOS 18.6, and a separate test build with `IPHONEOS_DEPLOYMENT_TARGET=18.0`; the ordinary test bundle targets the current SDK. The app's shipped deployment settings are unchanged.
 
-| Check                             | Result                                              |
-| --------------------------------- | --------------------------------------------------- |
-| Full unit suite                   | 581 passed, 0 failures after pre-import settings recovery follow-up (September 5) |
-| Python suite                      | 279 passed, 0 failures (September 5)                |
-| Website build and validation      | Passed                                              |
-| CI lint                           | Passed; 0 errors, 54 SwiftLint warnings             |
+| Check                                    | Result                                                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Full unit suite                          | 581 passed, 0 failures after pre-import settings recovery follow-up (September 5)                     |
+| Python suite                             | 279 passed, 0 failures (September 5)                                                                  |
+| Website build and validation             | Passed                                                                                                |
+| CI lint                                  | Passed; 0 errors, 54 SwiftLint warnings                                                               |
 | Full UI suite with final input follow-up | 79 passed, 0 failures on `8db62d5` (September 5); final recovery changes require fresh full UI and CI |
-| Affected navigation follow-up      | 3/3 passed: cancelled/completed swipe with selected date, Forecast and Recovery |
-| Full-travel back-swipe repetitions | Insights 20/20 passed; unchanged shorter-input control also passed 20/20 locally |
-| iOS 18.6 compatibility UI suite   | Original 14/14; final Back/swipe/cancelled-gesture follow-up 2/2 |
-| Development and Production builds | Both passed                                         |
-| Source review                     | Review findings reproduced; follow-up validation below |
-| Exact-head full CI                | Required before merge; evidence in the pull request |
+| Affected navigation follow-up            | 3/3 passed: cancelled/completed swipe with selected date, Forecast and Recovery                       |
+| Full-travel back-swipe repetitions       | Insights 20/20 passed; unchanged shorter-input control also passed 20/20 locally                      |
+| iOS 18.6 compatibility UI suite          | Original 14/14; final Back/swipe/cancelled-gesture follow-up 2/2                                      |
+| Development and Production builds        | Both passed                                                                                           |
+| Source review                            | Review findings reproduced; follow-up validation below                                                |
+| Exact-head full CI                       | Required before merge; evidence in the pull request                                                   |
 
 ## Screenshots
 
@@ -39,35 +39,35 @@ Real simulator captures; test fixtures and capture dates differ. Compare layout,
 
 Today logs the current local day with a single action and guarded Undo/Edit. History alone selects dates. Insights contains a read-only seven-day summary and current streak. Three native tabs retain independent stacks; iOS 26 uses native back navigation and older systems retain a stack-scoped edge fallback.
 
-| #   | Additional acceptance item                                    | Regression evidence                                                 |
-| --- | ------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 1   | Clearing SPF persists                                         | ManualLogSimplicityTests                                            |
-| 2   | Editor date is fixed                                          | ManualLogSimplicityTests; History UI flows                          |
-| 3   | Long notes preserve coverage without truncation               | ManualLogSimplicityTests                                            |
-| 4   | Ordinary `Areas:` prose survives                              | ManualLogSimplicityTests                                            |
-| 5   | Older records do not acquire invented coverage                | ManualLogSimplicityTests                                            |
-| 6   | Coverage is optional                                          | ManualLogSimplicityTests; shared editor                             |
-| 7   | Suggestions hide metadata; explicit reuse updates fields      | ManualLogSimplicityTests; smart-reuse UI flow                       |
-| 8   | Unchanged Save has no success/reminder effects                | ManualLogSimplicityTests; RecoverySimplicityTests                   |
-| 9   | Reapplication rows are informational; one Edit log action     | History grouped-application UI flow                                 |
-| 10  | Stale Delete Undo cannot replace newer logs                   | ManualLogSimplicityTests; RecoverySimplicityTests                   |
-| 11  | One shared editor                                             | Manual Log, History, notification and URL UI flows                  |
-| 12  | Resolve route context before presenting the editor            | QuietGlassNavigationTests; route UI flows                           |
-| 13  | Health reflects actual write authorization and late responses | HealthKitAuthorizationTests; RecoverySimplicityTests                |
-| 14  | Location switch says Use current location                     | SettingsSimplicityTests; Settings UI                                |
-| 15  | One Reminders destination; diagnostics under Troubleshoot     | AutomationSettingsRouteTests; Settings UI                           |
-| 16  | Location is optional during onboarding                        | Onboarding and city-selection UI flows                              |
-| 17  | Save and notification onboarding failures remain distinct     | OnboardingPresentationTests; hosted failure Retry/Continue UI tests |
-| 18  | Last logged uses the latest application                       | SettingsSimplicityTests                                             |
-| 19  | Failed conflict Undo leaves conflict unresolved               | RecoverySimplicityTests                                             |
+| #   | Additional acceptance item                                    | Regression evidence                                                                                |
+| --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | Clearing SPF persists                                         | ManualLogSimplicityTests                                                                           |
+| 2   | Editor date is fixed                                          | ManualLogSimplicityTests; History UI flows                                                         |
+| 3   | Long notes preserve coverage without truncation               | ManualLogSimplicityTests                                                                           |
+| 4   | Ordinary `Areas:` prose survives                              | ManualLogSimplicityTests                                                                           |
+| 5   | Older records do not acquire invented coverage                | ManualLogSimplicityTests                                                                           |
+| 6   | Coverage is optional                                          | ManualLogSimplicityTests; shared editor                                                            |
+| 7   | Suggestions hide metadata; explicit reuse updates fields      | ManualLogSimplicityTests; smart-reuse UI flow                                                      |
+| 8   | Unchanged Save has no success/reminder effects                | ManualLogSimplicityTests; RecoverySimplicityTests                                                  |
+| 9   | Reapplication rows are informational; one Edit log action     | History grouped-application UI flow                                                                |
+| 10  | Stale Delete Undo cannot replace newer logs                   | ManualLogSimplicityTests; RecoverySimplicityTests                                                  |
+| 11  | One shared editor                                             | Manual Log, History, notification and URL UI flows                                                 |
+| 12  | Resolve route context before presenting the editor            | QuietGlassNavigationTests; route UI flows                                                          |
+| 13  | Health reflects actual write authorization and late responses | HealthKitAuthorizationTests; RecoverySimplicityTests                                               |
+| 14  | Location switch says Use current location                     | SettingsSimplicityTests; Settings UI                                                               |
+| 15  | One Reminders destination; diagnostics under Troubleshoot     | AutomationSettingsRouteTests; Settings UI                                                          |
+| 16  | Location is optional during onboarding                        | Onboarding and city-selection UI flows                                                             |
+| 17  | Save and notification onboarding failures remain distinct     | OnboardingPresentationTests; hosted failure Retry/Continue UI tests                                |
+| 18  | Last logged uses the latest application                       | SettingsSimplicityTests                                                                            |
+| 19  | Failed conflict Undo leaves conflict unresolved               | RecoverySimplicityTests                                                                            |
 | 20  | Recovery errors are observable and retryable                  | RecoverySimplicityTests; SettingsRecoverySimplicityTests; ImportUndoTests; ImportUndoSettingsTests |
-| 21  | Catalog matches shipped Intent names                          | SettingsSimplicityTests                                             |
-| 22  | No fake shortcut setup or Ask Before Running setting          | SettingsSimplicityTests; catalog inspection                         |
-| 23  | Sample write URLs are copy-only                               | SettingsSimplicityTests; catalog inspection                         |
-| 24  | Settings has permissions and one catalog destination          | Route tests; Settings/catalog UI                                    |
-| 25  | Support consolidates help and contact destinations            | Route tests; Support inspection                                     |
-| 26  | Export backup matches exported data                           | Backup round-trip UI flow                                           |
-| 27  | Onboarding ends at Today       | Onboarding UI flows                                      |
+| 21  | Catalog matches shipped Intent names                          | SettingsSimplicityTests                                                                            |
+| 22  | No fake shortcut setup or Ask Before Running setting          | SettingsSimplicityTests; catalog inspection                                                        |
+| 23  | Sample write URLs are copy-only                               | SettingsSimplicityTests; catalog inspection                                                        |
+| 24  | Settings has permissions and one catalog destination          | Route tests; Settings/catalog UI                                                                   |
+| 25  | Support consolidates help and contact destinations            | Route tests; Support inspection                                                                    |
+| 26  | Export backup matches exported data                           | Backup round-trip UI flow                                                                          |
+| 27  | Onboarding ends at Today                                      | Onboarding UI flows                                                                                |
 
 ## Data and compatibility
 

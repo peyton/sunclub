@@ -65,17 +65,17 @@ Dark mode uses the same semantic token names. Add colors as semantic tokens,
 never screen-local RGB values. Watch uses explicit dark tokens because its
 shared color resolver does not use UIKit appearance traits.
 
-| Role | Light | Dark |
-| ---- | ----- | ---- |
-| Canvas | `#FDF7E7` | `#141412` |
-| Surface | `#FFFBF0` | `#20201C` |
-| Elevated surface | `#FFFFFF` | `#2C2C26` |
-| Primary text | `#2E281C` | `#FDF7E7` |
-| Secondary text | `#6D624A` | `#C4BFB4` |
-| Links and active controls | `#805600` | `#FFC045` |
-| Primary button / label | `#805600` / white | `#805600` / white |
-| Soft selection fill | `#FFEEBE` | `#3D3625` |
-| Decorative amber | `#FAA500` | `#FFC045` |
+| Role                      | Light             | Dark              |
+| ------------------------- | ----------------- | ----------------- |
+| Canvas                    | `#FDF7E7`         | `#141412`         |
+| Surface                   | `#FFFBF0`         | `#20201C`         |
+| Elevated surface          | `#FFFFFF`         | `#2C2C26`         |
+| Primary text              | `#2E281C`         | `#FDF7E7`         |
+| Secondary text            | `#6D624A`         | `#C4BFB4`         |
+| Links and active controls | `#805600`         | `#FFC045`         |
+| Primary button / label    | `#805600` / white | `#805600` / white |
+| Soft selection fill       | `#FFEEBE`         | `#3D3625`         |
+| Decorative amber          | `#FAA500`         | `#FFC045`         |
 
 Bright amber is decorative; use the deeper amber for small light-mode text.
 Native prominent glass uses white labels, so its fill stays deep amber in both

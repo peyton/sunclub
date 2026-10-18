@@ -8,16 +8,16 @@
 
 ## Platform Matrix
 
-| Surface | iOS 26+ | iOS 18.6-25 |
-| --- | --- | --- |
-| Main-app cards and status surfaces | Neutral regular native glass | Existing fill, stroke, and shadow |
-| Tappable cards | Interactive native glass | Existing button/card treatment |
-| Primary actions | Native prominent glass | Existing `SunPrimaryButtonStyle` visuals |
-| Secondary and icon actions | Native regular glass | Existing secondary/icon visuals |
-| Related floating controls | Grouped native glass container | Existing independent controls |
-| Fixed footers | Safe-area inset; content scrolls beneath glass | Existing opaque gradient footer |
-| Onboarding and safe camera overlays | Glass where live content stays legible | Existing treatment |
-| Widget and Watch targets | Unchanged | Unchanged |
+| Surface                             | iOS 26+                                        | iOS 18.6-25                              |
+| ----------------------------------- | ---------------------------------------------- | ---------------------------------------- |
+| Main-app cards and status surfaces  | Neutral regular native glass                   | Existing fill, stroke, and shadow        |
+| Tappable cards                      | Interactive native glass                       | Existing button/card treatment           |
+| Primary actions                     | Native prominent glass                         | Existing `SunPrimaryButtonStyle` visuals |
+| Secondary and icon actions          | Native regular glass                           | Existing secondary/icon visuals          |
+| Related floating controls           | Grouped native glass container                 | Existing independent controls            |
+| Fixed footers                       | Safe-area inset; content scrolls beneath glass | Existing opaque gradient footer          |
+| Onboarding and safe camera overlays | Glass where live content stays legible         | Existing treatment                       |
+| Widget and Watch targets            | Unchanged                                      | Unchanged                                |
 
 ## Rules
 

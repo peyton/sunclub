@@ -22,11 +22,11 @@ jobs:
     runs-on: xcode-27
     environment: testflight
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] actionlint 1.7.12 does not support $/ syntax
         timeout-minutes: 10
         with:
           xcode: "true"
@@ -95,7 +95,7 @@ jobs:
 
       - name: Upload release artifacts
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ github.event_name == 'push' && format('sunclub-testflight-{0}', github.ref_name) || format('sunclub-export-{0}', github.run_id) }}
           retention-days: 90

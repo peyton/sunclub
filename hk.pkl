@@ -1,8 +1,8 @@
-amends "package://github.com/jdx/hk/releases/download/v1.44.1/hk@1.44.1#/Config.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.7.0/hk@2.7.0#/Config.pkl"
 
-import "package://github.com/jdx/hk/releases/download/v1.44.1/hk@1.44.1#/Builtins.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.7.0/hk@2.7.0#/Builtins.pkl"
 
-local toolSteps = new Mapping<String, Step> {
+steps {
   ["markdown"] = (Builtins.rumdl) {}
   ["pkl"] = Builtins.pkl
   ["pkl-format"] = (Builtins.pkl_format) {
@@ -12,7 +12,7 @@ local toolSteps = new Mapping<String, Step> {
   ["shfmt"] = Builtins.shfmt
   ["actionlint"] = Builtins.actionlint
   ["zizmor"] = (Builtins.zizmor) {
-    check_diff =
+    check =
       "tool_path=\"$(mise which zizmor)\" && env -u GITHUB_TOKEN -u GH_TOKEN -u ZIZMOR_GITHUB_TOKEN \"$tool_path\" --no-progress {{ files }}"
     fix =
       "tool_path=\"$(mise which zizmor)\" && env -u GITHUB_TOKEN -u GH_TOKEN -u ZIZMOR_GITHUB_TOKEN \"$tool_path\" --no-progress --fix {{ files }}"
@@ -26,26 +26,5 @@ local toolSteps = new Mapping<String, Step> {
   }
   ["ruff_format"] = (Builtins.ruff_format) {
     depends = "ruff"
-  }
-}
-
-hooks {
-  ["pre-commit"] {
-    fix = true
-    stash = "git"
-    steps {
-      ...toolSteps
-    }
-  }
-  ["check"] {
-    steps {
-      ...toolSteps
-    }
-  }
-  ["fix"] {
-    fix = true
-    steps {
-      ...toolSteps
-    }
   }
 }
