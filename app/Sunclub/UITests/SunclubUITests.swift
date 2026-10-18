@@ -792,9 +792,15 @@ final class SunclubUITests: SunclubUITestCase {
     func testTimelineHomeIsDefaultAfterOnboarding() throws {
         let app = launchTimelineHome()
         XCTAssertTrue(app.buttons["home.logManually"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
-        XCTAssertEqual(app.buttons["timeline.footer.today"].label, "Today")
-        XCTAssertEqual(app.buttons["home.historyCard"].label, "History")
+        for (identifier, title) in [
+            ("timeline.footer.settings", "Settings"),
+            ("timeline.footer.today", "Today"),
+            ("home.historyCard", "History")
+        ] {
+            let tab = nativeTabButton(identifier, title: title, in: app)
+            XCTAssertTrue(tab.waitForExistence(timeout: 5))
+            XCTAssertEqual(tab.label, title)
+        }
         XCTAssertFalse(app.descendants(matching: .any)["timeline.dayStrip"].exists)
     }
 
