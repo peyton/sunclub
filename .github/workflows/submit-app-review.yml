@@ -36,7 +36,7 @@ jobs:
   submit:
     name: Submit App Review
     if: ${{ inputs.create_draft == true || inputs.confirm_submit == true }}
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: app-store-review
     env:
       SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME: ${{ secrets.SUNCLUB_APP_REVIEW_CONTACT_FIRST_NAME }}

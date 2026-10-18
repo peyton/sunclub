@@ -79,6 +79,16 @@ def load_entitlements(path: Path) -> dict:
         return plistlib.load(plist_file)
 
 
+def test_iphone_supports_adaptive_landscape_without_requiring_full_screen() -> None:
+    info = load_info_plist()
+    assert set(info["UISupportedInterfaceOrientations"]) == {
+        "UIInterfaceOrientationPortrait",
+        "UIInterfaceOrientationLandscapeLeft",
+        "UIInterfaceOrientationLandscapeRight",
+    }
+    assert not info.get("UIRequiresFullScreen", False)
+
+
 def test_main_target_uses_checked_in_info_plist() -> None:
     source = PROJECT_SWIFT.read_text()
 
@@ -524,7 +534,7 @@ def test_tests_plist_uses_resolved_version_placeholders() -> None:
 
 def test_ci_workflow_pins_supported_stable_xcode_for_ios_jobs() -> None:
     workflow = CI_WORKFLOW.read_text()
-    assert workflow.count("runs-on: macos-26") == 3
+    assert workflow.count("runs-on: xcode-27") == 3
     assert workflow.count('xcode: "true"') == 3
     assert "name: iOS Unit Tests" in workflow
     assert "name: iOS UI Tests" in workflow
@@ -568,7 +578,7 @@ def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> Non
 
 def test_ios_workflows_share_single_xcode_version_pin() -> None:
     setup = (REPO_ROOT / ".github/actions/setup/action.yml").read_text()
-    assert 'SUNCLUB_XCODE_VERSION: "26.4"' in setup
+    assert 'SUNCLUB_XCODE_VERSION: "27.1"' in setup
     assert "sudo xcode-select -s" in setup
     assert "scripts/tooling/prepare_ci_workspace.sh" in setup
     for workflow_path in IOS_XCODE_WORKFLOWS:
@@ -576,7 +586,7 @@ def test_ios_workflows_share_single_xcode_version_pin() -> None:
         assert "uses: ./.github/actions/setup" in workflow
         assert 'xcode: "true"' in workflow
         assert "SUNCLUB_XCODE_VERSION:" not in workflow
-        assert "runs-on: macos-26" in workflow
+        assert "runs-on: xcode-27" in workflow
 
 
 def test_release_workflow_pins_supported_stable_xcode_and_tag_trigger() -> None:

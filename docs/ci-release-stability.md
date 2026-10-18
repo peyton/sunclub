@@ -6,7 +6,7 @@
   caches and optionally selects the single pinned Xcode and authenticates Tuist.
   It configures the Xcode cache once per macOS job.
 - Lint and Python run independently of iOS work. iOS PR changes require unit
-  tests, the 13 UI smoke scenarios, and both Release device flavors.
+  tests, the 14 UI smoke scenarios, and both Release device flavors.
 - Only recognized web/documentation-only PR changes may skip iOS. Unknown paths,
   empty comparisons and failed detection default to iOS validation.
 - In `ci.yml`, every master push and manual dispatch runs full UI coverage. Run
@@ -114,8 +114,10 @@ GitHub run cross-check:
   `latest`, which can move before Tuist, simulators, or App Store validation
   behavior is verified for Sunclub.
 - When a workflow pins an Xcode version that `macos-latest` does not carry,
-  pin the macOS runner label too. Xcode `26.4` currently requires
-  `runs-on: macos-26` on GitHub-hosted runners.
+  pin the macOS runner label too. Xcode `27.1` currently requires
+  `runs-on: xcode-27` on GitHub-hosted runners. This runner is a public preview;
+  see [Duo validation](iphone-duo-validation.md) for the verified image manifest
+  and outstanding hosted-run validation before release.
 - If an in-progress GitHub iOS job has no downloadable logs, inspect job step
   metadata with `gh run view <run-id> --json jobs` or
   `gh api /repos/peyton/sunclub/actions/jobs/<job-id>`.

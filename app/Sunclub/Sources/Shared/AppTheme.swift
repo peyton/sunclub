@@ -328,7 +328,7 @@ struct SunLightScreen<Content: View, Footer: View>: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, showsFooter ? 24 : SunLayout.tabBarScrollUnderlapPadding)
-            .frame(minHeight: proxy.size.height - 120, alignment: contentAlignment)
+            .frame(minHeight: max(0, proxy.size.height - 120), alignment: contentAlignment)
         }
         .scrollDismissesKeyboard(.interactively)
         .onScrollGeometryChange(
@@ -462,7 +462,7 @@ struct SunDarkScreen<Content: View, Footer: View>: View {
             .padding(.horizontal, 24)
             .padding(.top, 28)
             .padding(.bottom, 18)
-            .frame(minHeight: proxy.size.height - 120, alignment: .top)
+            .frame(minHeight: max(0, proxy.size.height - 120), alignment: .top)
         }
         .onScrollGeometryChange(
             for: Double.self,

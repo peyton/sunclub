@@ -37,7 +37,7 @@ runs:
       if: inputs.xcode == 'true'
       shell: bash
       env:
-        SUNCLUB_XCODE_VERSION: "26.4"
+        SUNCLUB_XCODE_VERSION: "27.1"
       run: |
         sudo xcode-select -s "/Applications/Xcode_${SUNCLUB_XCODE_VERSION}.app/Contents/Developer"
         xcodebuild -version

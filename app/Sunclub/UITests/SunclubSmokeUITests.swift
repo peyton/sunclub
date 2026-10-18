@@ -1,6 +1,37 @@
 import XCTest
+import UIKit
 
 final class SunclubSmokeUITests: SunclubUITestCase {
+    @MainActor
+    func testTodayKeepsLoggedStateAndReachableControlsAfterResizing() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .portrait
+        let app = launchHome(additionalArguments: accessibilityScorecardArguments)
+        let logAction = app.buttons["home.logManually"]
+        XCTAssertTrue(scrollToHittableElement(logAction, in: app, attempts: 10))
+        logAction.tap()
+        assertHomeLoggedState(app)
+
+        for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            assertHomeLoggedState(app)
+            XCTAssertTrue(scrollToHittableElement(logAction, in: app, attempts: 10))
+            XCTAssertGreaterThanOrEqual(logAction.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(logAction.frame.height, 44)
+            XCTAssertTrue(app.frame.contains(logAction.frame), "Log action must fit the resized window.")
+            for (identifier, title) in [
+                ("timeline.footer.today", "Today"),
+                ("home.historyCard", "History"),
+                ("timeline.footer.settings", "Settings")
+            ] {
+                let tabButton = nativeTabButton(identifier, title: title, in: app)
+                XCTAssertTrue(tabButton.waitForExistence(timeout: 5), "Missing native \(title) tab after rotation.")
+                XCTAssertTrue(tabButton.isHittable, "Native \(title) tab must remain reachable.")
+                XCTAssertFalse(logAction.frame.intersects(tabButton.frame))
+            }
+        }
+    }
+
     @MainActor
     func testOnboardingCanSkipNotifications() throws {
         let app = XCUIApplication()
@@ -123,36 +154,44 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         XCTAssertGreaterThanOrEqual(logAction.frame.width, 44)
         XCTAssertGreaterThanOrEqual(logAction.frame.height, 44)
         XCTAssertFalse(logAction.label.isEmpty)
-        let todayTab = app.buttons["timeline.footer.today"]
+        let todayTab = nativeTabButton("timeline.footer.today", title: "Today", in: app)
         XCTAssertFalse(
             logAction.frame.intersects(todayTab.frame),
             "Expected the in-content log action to remain clear of the native tabs."
         )
-        XCTAssertTrue(app.buttons["timeline.footer.settings"].exists)
+        XCTAssertTrue(nativeTabButton("timeline.footer.settings", title: "Settings", in: app).exists)
         XCTAssertFalse(app.buttons["home.streakCard"].exists)
-        XCTAssertTrue(app.buttons["home.historyCard"].exists)
+        XCTAssertTrue(nativeTabButton("home.historyCard", title: "History", in: app).exists)
         XCTAssertTrue(timelineHeadline(in: app).waitForExistence(timeout: 5))
 
         openWeeklyInsights(in: app)
         XCTAssertTrue(scrollToElement(insightsStreak(in: app), in: app, attempts: 10))
         XCTAssertFalse(app.buttons["weekly.viewFullHistory"].exists)
         navigationBackButton(in: app).tap()
-        XCTAssertTrue(app.buttons["home.historyCard"].isSelected)
+        XCTAssertTrue(nativeTabButton("home.historyCard", title: "History", in: app).isSelected)
 
         assertSettingsTabOpens(in: app)
         XCTAssertFalse(app.buttons["settings.sharing"].exists)
         expandSettingsSection("reminders", in: app)
         let reapplyToggle = app.switches["settings.reapplyToggle"]
         XCTAssertTrue(scrollToHittableElement(reapplyToggle, in: app, attempts: 10), "Expected the reapply toggle to be reachable in accessibility mode.")
+        // A large-text switch can be reported hittable with only the edge of
+        // its label visible. Bring the entire control into the window first.
+        let settingsScroll = app.scrollViews.firstMatch
+        for _ in 0..<6 where !app.frame.insetBy(dx: 0, dy: 24).contains(reapplyToggle.frame) {
+            nudgeScrollSurface(settingsScroll, direction: .scrollUp, distance: 0.2)
+        }
+        XCTAssertTrue(app.frame.contains(reapplyToggle.frame))
         if stringValue(of: reapplyToggle) != "1" {
             reapplyToggle.tap()
         }
+        XCTAssertTrue(waitForValueContaining("1", on: reapplyToggle), "Reapply switch must turn on before choosing an interval.")
         XCTAssertTrue(scrollToHittableElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10), "Expected enabled reapply settings to show reachable interval controls.")
 
         XCTAssertTrue(navigationBackButton(in: app).waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
         navigationBackButton(in: app).tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5), "Expected to return to the Settings tab root.")
-        XCTAssertTrue(selectNativeTab(app.buttons["timeline.footer.today"]),
+        XCTAssertTrue(selectNativeTab(nativeTabButton("timeline.footer.today", title: "Today", in: app)),
             "Expected Today tab home action after leaving Settings."
         )
         tapHittableElement(logAction, in: app)

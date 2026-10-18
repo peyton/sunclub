@@ -236,7 +236,13 @@ class SunclubUITestCase: XCTestCase {
         if compatibility.exists { return compatibility }
         let namedBack = app.navigationBars.buttons["Back"]
         if namedBack.exists { return namedBack }
-        return app.navigationBars.buttons["BackButton"]
+        let legacyBack = app.navigationBars.buttons["BackButton"]
+        if legacyBack.exists { return legacyBack }
+        // Duo can place native navigation controls in a vertical bar outside
+        // the navigationBars accessibility container.
+        let adaptiveBack = app.buttons["Back"]
+        if adaptiveBack.exists { return adaptiveBack }
+        return app.buttons["BackButton"]
     }
 
     func insightsSummary(in app: XCUIApplication) -> XCUIElement {
@@ -449,6 +455,12 @@ class SunclubUITestCase: XCTestCase {
         let start = body.coordinate(withNormalizedOffset: CGVector(dx: startX, dy: verticalPosition))
         let end = body.coordinate(withNormalizedOffset: CGVector(dx: endX, dy: verticalPosition))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    @MainActor
+    func nativeTabButton(_ identifier: String, title: String, in app: XCUIApplication) -> XCUIElement {
+        // Adaptive native tabs can appear before the UIKit identifier installer.
+        app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", identifier, title)).firstMatch
     }
 
     @MainActor
