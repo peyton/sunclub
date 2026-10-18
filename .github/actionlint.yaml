@@ -3,3 +3,5 @@
 self-hosted-runner:
   labels:
     - xcode-27
+    # https://github.com/actions/runner-images#available-images
+    - ubuntu-26.04

@@ -11,12 +11,12 @@ Captured on a signed SunclubDev build, iPhone 17 Pro simulator, iOS 26.5.
 The unsigned baseline could display gallery previews but could not share the
 app's snapshot; signed-build interaction checks use the shared app group.
 
-| Step | Before | After |
-| --- | --- | --- |
-| Glance | Tiny action on textured empty space; logged state only a checkmark | Last application time or configured reapply timing |
-| Log | Reapply presentation had no wired action | First application and reapplication both complete in place |
-| Continue | Logged-state route did not reach Today | Status opens Today with the same recorded application time |
-| Small button | Clipped setup label | Compact “Log again”; full accessible action name |
+| Step         | Before                                                             | After                                                      |
+| ------------ | ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Glance       | Tiny action on textured empty space; logged state only a checkmark | Last application time or configured reapply timing         |
+| Log          | Reapply presentation had no wired action                           | First application and reapplication both complete in place |
+| Continue     | Logged-state route did not reach Today                             | Status opens Today with the same recorded application time |
+| Small button | Clipped setup label                                                | Compact “Log again”; full accessible action name           |
 
 ![Before: widget gallery](images/widget-surfaces/before.png)
 ![After: reapplication logged in place](images/widget-surfaces/after.png)

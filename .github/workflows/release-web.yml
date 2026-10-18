@@ -16,13 +16,13 @@ permissions:
 jobs:
   release:
     name: Publish Web Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] actionlint 1.7.12 does not support $/ syntax
         timeout-minutes: 10
 
       - name: Resolve web release version
@@ -38,7 +38,7 @@ jobs:
         run: mise --locked exec -- just web-package VERSION="$WEB_VERSION"
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           name: Sunclub Web ${{ env.WEB_VERSION }}
           files: |

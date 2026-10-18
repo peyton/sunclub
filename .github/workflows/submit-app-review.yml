@@ -48,12 +48,12 @@ jobs:
       SUNCLUB_REGULATED_MEDICAL_DEVICE_STATUS: "NOT_MEDICAL_DEVICE"
       SUNCLUB_APP_REVIEW_CHECKPOINT_CONFIRMED: "1"
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.source_ref || inputs.release_tag }}
-      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] actionlint 1.7.12 does not support $/ syntax
         timeout-minutes: 10
         with:
           xcode: "true"

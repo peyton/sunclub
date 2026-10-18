@@ -569,7 +569,7 @@ def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> Non
     setup = (REPO_ROOT / ".github/actions/setup/action.yml").read_text()
     assert "install_args: --locked" in setup
     assert "setup_local_tooling_env" in setup
-    assert "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae" in setup
+    assert re.search(r"uses: actions/cache@[0-9a-f]{40}\b", setup)
     for directory in [".cache/uv", ".cache/npm", ".cache/hk", ".cache/swiftlint"]:
         assert directory in setup
     assert ".DerivedData" not in setup and ".venv" not in setup
