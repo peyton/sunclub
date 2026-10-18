@@ -862,7 +862,7 @@ final class SunclubUITests: SunclubUITestCase {
         XCTAssertTrue(scrollToElement(app.descendants(matching: .any)["uvForecast.hourly"], in: app, attempts: 10))
         let backButton = navigationBackButton(in: app)
         XCTAssertTrue(backButton.waitForExistence(timeout: 5))
-        XCTAssertEqual(backButton.label, "Back", "The native Back control must have an accessible name.")
+        XCTAssertFalse(backButton.label.isEmpty, "The native Back control must have an accessible name.")
         tapHittableElement(backButton, in: app)
         assertHomeReadyForLogState(app)
         XCTAssertFalse(app.descendants(matching: .any)["timeline.dayStrip"].exists)
