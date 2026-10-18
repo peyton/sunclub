@@ -25,13 +25,12 @@ inner display can resize independently of supported orientations.
   verify that it turned on before looking for interval controls. The accessibility
   scenario accepts native tab labels when custom identifiers have not yet installed.
 
-## Local verification
+## Validation with Xcode 27.1
 
-BigBook has Xcode 27.2 (27B5038j), iOS Simulator SDK 27.2, and the Duo-specific
-27.2 runtime (24B91011). Tests use a dedicated `Sunclub Duo Adaptive Tests`
-simulator; existing simulators are preserved.
+Use Xcode 27.1 (27A9275) explicitly without changing the system toolchain:
 
 ```sh
+export DEVELOPER_DIR=/Applications/Xcode-27.1.0.app/Contents/Developer
 just build
 just ci-lint
 just test-python
@@ -40,25 +39,22 @@ DEFAULT_SIMULATOR_DEVICE='iPhone Duo' \
   TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-unit
 DEFAULT_SIMULATOR_DEVICE='iPhone Duo' \
   TEST_SIMULATOR_NAME='Sunclub Duo Adaptive Tests' \
-  TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-ui-smoke
+  TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-ui
 ```
 
-Builds with Xcode 27.2 and Xcode 27.1 (27A9275) passed. The latter uses
-`DEVELOPER_DIR=/Applications/Xcode-27.1.0.app/Contents/Developer just build`,
-without changing the system toolchain. Lint, 279 Python tests, and 659 Duo unit
-tests passed. The final clean Duo smoke run passed all 14 tests together with
-zero failures or skipped tests (269.5 seconds). It includes the large-text
-accessibility scenario and the new rotation/state-retention scenario.
+The local Duo simulator uses the installed iOS 27.2 Duo runtime (24B91011).
+That runtime version is distinct from the selected Xcode 27.1 compiler and SDK.
+The review verified 659 passing unit tests with this combination. Repository
+lint and 279 Python tests also passed. Full UI coverage includes all 14 smoke
+scenarios, including rotation, logged-state retention, and large-text controls.
+The rotation test requires all three native tabs to exist and remain reachable;
+missing custom identifiers must not silently skip overlap assertions.
 
-Results: `.build/build.xcresult` (Xcode 27.1), `.build/test-unit.xcresult`
-(659 unit tests), and `.build/test-ui-smoke.xcresult` (14 smoke tests).
-Earlier diagnostic runs are preserved as
-`.build/test-ui-smoke-duo-initial.xcresult`,
-`.build/test-ui-smoke-duo-second.xcresult`,
-`.build/test-ui-smoke-duo-third.xcresult`, and
-`.build/test-ui-smoke-duo-accessibility-pass.xcresult`.
-The test harness's normal Tuist result processing also produced a
-[final smoke run](https://tuist.dev/peyton/sunclub/tests/test-runs/d5d7c552-10ce-4de0-b311-3d374453df3f).
+Results are written to `.build/test-unit.xcresult` and
+`.build/test-ui.xcresult`. See the candidate PR checks for current hosted results.
+When cancelling a local test, wait for its underlying `xcodebuild` process to
+exit before starting another test on the same simulator: delayed cleanup can
+otherwise shut down the next test's device.
 
 ## Hosted toolchain
 
@@ -71,27 +67,21 @@ documents the `xcode-27` public-preview label. The ordinary `macos-26` manifest
 does not list Xcode 27.1.
 
 The shared setup now selects Xcode 27.1; all dependent CI, TestFlight, and
-App Review workflow jobs use `xcode-27`. This updates configuration only: no
-workflow was dispatched and no release was uploaded. The pinned actionlint
+App Review workflow jobs use `xcode-27`. The pinned actionlint
 needs an explicit allowlist entry for this hosted preview label; its config
 calls that setting `self-hosted-runner`, but the workflow uses GitHub hosting.
-Python workflow contracts and the full repository lint checks pass. A real
-hosted run remains necessary to validate runner access and simulator provisioning.
+Hosted validation confirmed runner access, Xcode setup, both Release device
+builds, and unit tests. Full UI results remain part of the required `CI` gate.
 The image manifest lists iOS 27.0 simulators, not a Duo runtime, so hosted CI is
 not claimed to execute Duo-specific tests.
 
 ## Remaining visual checks
 
-BigBook remains locked. `simctl help`, `simctl io`, and `simctl ui` expose display
-capture/geometry and ordinary UI settings, but no supported hinge-pose or Split
-View command. `devicectl device appResize` supports resizable app sessions for
-CoreDevice targets, but `device info displays --device
-DDD5C376-2134-4B8D-8F19-91F71F261CC5 --timeout 15` returns CoreDeviceError 1000,
-"The specified device was not found" for the dedicated simulator. This is a
-technical targeting limitation, not a permission denial. No unlock was attempted.
+Interactive fold and Split View checks remain required. Device Hub expansion
+was unreliable during review, and Xcode 27.1's GUI showed component setup.
+Command-line rotation tests do not prove fold-transition or Split View behavior.
 
-Use Device Hub when an interactive session is available to verify closed, open,
-partially folded, rotated, and both Split View positions. Check Today, History,
-Settings, onboarding, manual logging, and sheets at default and accessibility
-text sizes. Rotation tests do not prove fold-transition or Split View behavior.
-Do not claim complete Duo certification from these checks.
+Use Device Hub to verify closed, open, partially folded, rotated, and both Split
+View positions. Check Today, History, Settings, onboarding, manual logging, and
+sheets at default and accessibility text sizes. Do not claim complete Duo
+certification from rotation checks alone.
