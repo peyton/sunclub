@@ -11,7 +11,7 @@
   "packageRules": [
     {
       "matchManagers": ["github-actions", "mise", "pip_requirements"],
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
       "automerge": true,
       "minimumReleaseAge": "3 days"
     },
@@ -22,6 +22,8 @@
     }
   ],
   "lockFileMaintenance": {
-    "enabled": true
-  }
+    "enabled": true,
+    "automerge": true
+  },
+  "automergeStrategy": "squash"
 }

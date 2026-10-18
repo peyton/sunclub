@@ -26,6 +26,17 @@
 - Superseded PR runs cancel. Xcode steps remain bounded, with failure artifacts
   and release diagnostics retained.
 
+## Renovate auto-merge
+
+- Routine patch/minor, pin/digest updates and lockfile maintenance use GitHub
+  squash auto-merge. Major upgrades remain manual; version updates retain the
+  three-day release-age delay.
+- `master-update-access` permits administrators and the Renovate GitHub App
+  (PR merges only) to update master. It contains only the update restriction.
+- `master-branch-rules-v1` independently enforces required `CI`, an up-to-date
+  branch, signed commits, pull requests and linear history. Renovate has no
+  bypass on this ruleset; never add it there to fix an auto-merge problem.
+
 ## History Check
 
 Checked on 2026-04-14 with `gh run list` and `git log` across:
