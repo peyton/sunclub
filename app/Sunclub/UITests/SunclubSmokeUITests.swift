@@ -15,10 +15,10 @@ final class SunclubSmokeUITests: SunclubUITestCase {
         for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight, .portrait] {
             XCUIDevice.shared.orientation = orientation
             assertHomeLoggedState(app)
-            XCTAssertTrue(scrollToHittableElement(logAction, in: app, attempts: 10))
+            XCTAssertTrue(scrollToFullyVisibleElement(logAction, in: app))
             XCTAssertGreaterThanOrEqual(logAction.frame.width, 44)
             XCTAssertGreaterThanOrEqual(logAction.frame.height, 44)
-            XCTAssertTrue(app.frame.contains(logAction.frame), "Log action must fit the resized window.")
+            XCTAssertTrue(app.frame.contains(logAction.frame), "Log action \(logAction.frame) must fit the resized window \(app.frame).")
             for (identifier, title) in [
                 ("timeline.footer.today", "Today"),
                 ("home.historyCard", "History"),

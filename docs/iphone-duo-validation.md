@@ -52,7 +52,10 @@ The review verified 659 passing unit tests with this combination. Repository
 lint and 279 Python tests also passed. Full UI coverage includes all 14 smoke
 scenarios, including rotation, logged-state retention, and large-text controls.
 The rotation test requires all three native tabs to exist and remain reachable;
-missing custom identifiers must not silently skip overlap assertions.
+missing custom identifiers must not silently skip overlap assertions. Native-tab
+checks accept horizontal or vertical placement. Rotation checks scroll the whole
+log button into view; XCTest hittability alone can include a partially clipped
+button in a short landscape window.
 
 Results are written to `.build/test-unit.xcresult` and
 `.build/test-ui.xcresult`. See the candidate PR checks for current hosted results.
