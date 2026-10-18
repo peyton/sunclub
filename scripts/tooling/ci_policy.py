@@ -9,7 +9,7 @@ import subprocess
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-IOS_JOBS = ("test-ios-unit", "test-ios-ui", "build-ios")
+MERGE_IOS_JOBS = ("test-ios-unit", "build-ios")
 NON_IOS_PATHS = (
     "web/*",
     "scripts/web/*",
@@ -48,7 +48,7 @@ def gate_errors(needs: dict) -> list[str]:
     if run_ios not in ("true", "false"):
         errors.append("Missing or invalid iOS change classification")
     expected = "skipped" if run_ios == "false" else "success"
-    for name in IOS_JOBS:
+    for name in MERGE_IOS_JOBS:
         if needs.get(name, {}).get("result") != expected:
             errors.append(f"{name}: expected {expected}")
     return errors

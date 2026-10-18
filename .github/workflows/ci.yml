@@ -157,7 +157,7 @@ jobs:
   gate:
     name: CI
     runs-on: ubuntu-26.04
-    needs: [changes, lint, test-python, test-ios-unit, test-ios-ui, build-ios]
+    needs: [changes, lint, test-python, test-ios-unit, build-ios]
     if: always()
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

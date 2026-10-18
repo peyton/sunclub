@@ -553,10 +553,7 @@ def test_ci_workflow_skips_ios_jobs_only_for_known_web_surface_changes() -> None
     assert "github.event.pull_request.head.sha" in workflow
     assert "workflow_dispatch:" in workflow
     assert "if: always()" in workflow
-    assert (
-        "needs: [changes, lint, test-python, test-ios-unit, test-ios-ui, build-ios]"
-        in workflow
-    )
+    assert "needs: [changes, lint, test-python, test-ios-unit, build-ios]" in workflow
     assert "NEEDS_JSON: ${{ toJSON(needs) }}" in workflow
     assert "python3 -m scripts.tooling.ci_policy gate" in workflow
     assert "just test-ui-smoke" in workflow and "just test-ui" in workflow
