@@ -5,7 +5,7 @@ min_version = { soft = '2026.10.13' }
 [tools]
 just = "1.59.0"
 tuist = { version = "4.212.0", os = ["macos"] }
-hk = "2.7.0"
+hk = "2.7.1"
 actionlint = "1.7.12"
 python = "3.15.0"
 uv = "0.13.1"
