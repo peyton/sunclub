@@ -162,7 +162,7 @@ version = "3.9.10"
 backend = "npm:prettier"
 
 [[tools."npm:wrangler"]]
-version = "4.151.3"
+version = "4.152.0"
 backend = "npm:wrangler"
 
 [[tools.pkl]]
