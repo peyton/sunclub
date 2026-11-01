@@ -458,30 +458,6 @@ url_api = "https://api.github.com/repos/realm/SwiftLint/releases/assets/52418756
 version = "4.213.0"
 backend = "aqua:tuist/tuist"
 
-[tools.tuist."platforms.linux-arm64"]
-checksum = "sha256:1f31b25d4ec541242401a31aa7e4ece5957a28ce1d4dc1e1bb86054d5039566a"
-checksum_source = "mise-versions"
-url = "https://github.com/tuist/tuist/releases/download/4.213.0/tuist-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/662166094"
-
-[tools.tuist."platforms.linux-arm64-musl"]
-checksum = "sha256:1f31b25d4ec541242401a31aa7e4ece5957a28ce1d4dc1e1bb86054d5039566a"
-checksum_source = "mise-versions"
-url = "https://github.com/tuist/tuist/releases/download/4.213.0/tuist-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/662166094"
-
-[tools.tuist."platforms.linux-x64"]
-checksum = "sha256:661ab2d94133aa134e4358966d8c9165b9f4545a57db80fb96569e624f647887"
-checksum_source = "mise-versions"
-url = "https://github.com/tuist/tuist/releases/download/4.213.0/tuist-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/662166011"
-
-[tools.tuist."platforms.linux-x64-musl"]
-checksum = "sha256:661ab2d94133aa134e4358966d8c9165b9f4545a57db80fb96569e624f647887"
-checksum_source = "mise-versions"
-url = "https://github.com/tuist/tuist/releases/download/4.213.0/tuist-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/662166011"
-
 [tools.tuist."platforms.macos-arm64"]
 checksum = "sha256:721ccd03518f4133f527668706572bd443937d7fe432aba3e70683f0d7a09b3a"
 checksum_source = "mise-versions"
