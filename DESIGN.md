@@ -138,8 +138,9 @@ Product-page iOS wrappers in `AppTheme.swift` include:
 
 Today uses an open ivory canvas and a chronological application timeline, with
 one primary action: Log sunscreen, then Log reapplication after the first log.
-Recorded events use filled markers; current and planned events use outlined
-markers and explicit text. Compact UV context follows the logging action, keeping
+Recorded events use filled markers; empty and planned events use outlined
+markers and explicit text. Omit a separate current-time row: the last log and next
+reapplication plan carry the useful timing. Compact UV context follows the logging action, keeping
 source/freshness details and forecast access. Date browsing belongs to History.
 History starts with compact week selection and chronological event rows; full calendar and
 weekly insights remain available there. Settings uses simple grouped rows.

@@ -29,12 +29,16 @@ inner display can resize independently of supported orientations.
   verify that it turned on before looking for interval controls. The accessibility
   scenario accepts native tab labels when custom identifiers have not yet installed.
 
-## Validation with Xcode 27.1
+## Validation with Xcode 27.2
 
-Use Xcode 27.1 (27A9275) explicitly without changing the system toolchain:
+The [November 12 usability audit](duo-usability-audit.md) records current
+screenshots, simplifications, fold checks, and local verification on Xcode 27.2
+with Duo runtime 24B91016s.
+
+Use Xcode 27.2 (27B52) explicitly without changing the system toolchain:
 
 ```sh
-export DEVELOPER_DIR=/Applications/Xcode-27.1.0.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode-27.2.0.app/Contents/Developer
 just build
 just ci-lint
 just test-python
@@ -46,8 +50,8 @@ DEFAULT_SIMULATOR_DEVICE='iPhone Duo' \
   TEST_XCODEBUILD_MAX_ATTEMPTS=1 just test-ui
 ```
 
-The original automated Duo pass used iOS 27.2 (24B91011).
-That runtime version is distinct from the selected Xcode 27.1 compiler and SDK.
+The original automated Duo pass used iOS 27.2 (24B91011) with Xcode 27.1.
+That historical result does not validate the current Xcode 27.2 candidate.
 The review verified 659 passing unit tests with this combination. Repository
 lint and 279 Python tests also passed. Full UI coverage includes all 14 smoke
 scenarios, including rotation, logged-state retention, and large-text controls.
@@ -66,21 +70,27 @@ otherwise shut down the next test's device.
 ## Hosted toolchain
 
 The official [Xcode 27 runner manifest](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)
-(image 20261012.0260.1) lists Xcode 27.1 build 27A9275 at
-`/Applications/Xcode_27.1_Release_Candidate.app`, with the
-`/Applications/Xcode_27.1.app` alias and iOS 27.1 SDK. GitHub's
+(image 20261104.0337.1, checked November 12, 2026) lists stable Xcode 27.2 build
+27B52 at `/Applications/Xcode_27.2.app`, with iOS 27.2 SDK and iPhone Duo
+simulators for iOS 27.1 and 27.2. GitHub's
 [runner announcement](https://github.com/actions/runner-images/issues/14404)
-documents the `xcode-27` public-preview label. The ordinary `macos-26` manifest
-does not list Xcode 27.1.
+documents the `xcode-27` public-preview label.
 
-The shared setup now selects Xcode 27.1; all dependent CI, TestFlight, and
+The shared setup selects Xcode 27.2; all dependent CI, TestFlight, and
 App Review workflow jobs use `xcode-27`. The pinned actionlint
 needs an explicit allowlist entry for this hosted preview label; its config
 calls that setting `self-hosted-runner`, but the workflow uses GitHub hosting.
-Hosted validation confirmed runner access, Xcode setup, both Release device
-builds, and unit tests. Full UI results remain part of the required `CI` gate.
-The image manifest lists iOS 27.0 simulators, not a Duo runtime, so hosted CI is
-not claimed to execute Duo-specific tests.
+Full UI coverage runs on master pushes and manual CI dispatches. The required
+`CI` merge gate does not wait for UI tests; release validation separately requires
+successful full CI, including the full UI step, on the exact source SHA.
+The default hosted simulator remains a conventional iPhone. Duo validation
+requires the explicit simulator selection shown above.
+
+Apple's [Xcode 27.2 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes)
+document that Duo captures can be black for a few minutes after boot. Wait for
+a visible, stable screen before accepting screenshots. Device Hub also cannot
+convey Duo screen content to VoiceOver or Accessibility Inspector; screenshots
+and automated checks do not establish physical-device accessibility coverage.
 
 ## Interactive validation (October 18, 2026)
 

@@ -394,7 +394,7 @@ extension SettingsView {
                     .font(AppFont.rounded(size: 13, weight: .medium))
             }
             .foregroundStyle(isSelected ? AppPalette.onAccent : AppPalette.ink)
-            .frame(maxWidth: .infinity, minHeight: 34)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, 10)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)

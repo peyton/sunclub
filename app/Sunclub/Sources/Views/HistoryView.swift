@@ -438,7 +438,7 @@ struct HistoryView: View {
                             .accessibilityHidden(true)
                         AppText(
                             week.eligibleDayCount > 0
-                                ? "\(week.loggedDayCount) of \(week.eligibleDayCount) days logged"
+                                ? "\(week.loggedDayCount) of \(week.eligibleDayCount) \(week.eligibleDayCount == 1 ? "day" : "days") logged"
                                 : "No tracked days this week",
                             style: .bodyMedium
                         )

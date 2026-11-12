@@ -12,6 +12,9 @@
   empty comparisons and failed detection default to iOS validation.
 - In `ci.yml`, every master push and manual dispatch runs full UI coverage. Run
   `gh workflow run ci.yml --ref BRANCH` for a release/refactor candidate.
+  Full UI coverage has a 90-minute bound: the 91-test suite outgrew the previous
+  45-minute limit while still making progress. PR smoke coverage keeps its
+  45-minute bound. Assertion failures remain failures; no scenarios are skipped.
 - The required `CI` merge gate uses `always()` and waits only for change
   detection, lint, Python tests, unit tests and device builds. Failed, cancelled
   and unexpected skipped required jobs cannot pass it. UI tests run independently
@@ -127,10 +130,10 @@ GitHub run cross-check:
   `latest`, which can move before Tuist, simulators, or App Store validation
   behavior is verified for Sunclub.
 - When a workflow pins an Xcode version that `macos-latest` does not carry,
-  pin the macOS runner label too. Xcode `27.1` currently requires
+  pin the macOS runner label too. Xcode `27.2` currently requires
   `runs-on: xcode-27` on GitHub-hosted runners. This runner is a public preview;
-  see [Duo validation](iphone-duo-validation.md) for the verified image manifest
-  and outstanding hosted-run validation before release.
+  see [Duo validation](iphone-duo-validation.md) for the verified image manifest.
+  Hosted checks must pass on the candidate SHA before release.
 - If an in-progress GitHub iOS job has no downloadable logs, inspect job step
   metadata with `gh run view <run-id> --json jobs` or
   `gh api /repos/peyton/sunclub/actions/jobs/<job-id>`.

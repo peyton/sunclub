@@ -5,6 +5,29 @@ import XCTest
 
 @MainActor
 final class SPFEditTests: SunclubTestCase {
+    func testSPFDraftAndRetryStateSurviveSheetRecreation() throws {
+        let now = Date().addingTimeInterval(-60)
+        let state = try makeAppState(clock: { now })
+        XCTAssertTrue(state.saveManualRecord(for: now, verifiedAt: now, spfLevel: 30, notes: "Keep").succeeded)
+        let record = try XCTUnwrap(state.record(for: now))
+        let target = LoggedSPFEditTarget(record: record)
+        let original = record.projectionSnapshot
+        let sheet = LoggedSPFEditorView(target: target)
+        sheet.target.spf = 50
+        sheet.target.useForFutureLogs = true
+
+        let recreatedSheet = LoggedSPFEditorView(target: target)
+        XCTAssertEqual(recreatedSheet.target.spf, 50)
+        XCTAssertTrue(recreatedSheet.target.useForFutureLogs)
+        XCTAssertEqual(record.projectionSnapshot, original, "Recreating the sheet must not save its draft.")
+
+        target.logSaved = true
+        target.error = "Retry saving the default."
+        let retrySheet = LoggedSPFEditorView(target: target)
+        XCTAssertTrue(retrySheet.target.logSaved, "A recreated sheet must not replay a completed log write.")
+        XCTAssertEqual(retrySheet.target.error, "Retry saving the default.")
+    }
+
     func testSPFEditPreservesReapplicationsDurationAndOtherDays() throws {
         let now = Date().addingTimeInterval(-60)
         let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: now))

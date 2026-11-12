@@ -24,9 +24,14 @@ final class SunclubForecastSimplicityUITests: SunclubUITestCase {
         ])
         XCTAssertTrue(waitForVerifiedUVForecast(in: app))
         let gauge = app.buttons["home.uvIndexCard"]
+        XCTAssertTrue(scrollToFullyVisibleElement(gauge, in: app))
         let initialPosition = gauge.frame.minY
 
-        gauge.swipeUp()
+        // Keep the compact UV row on screen so its displacement can be measured.
+        // A full swipe can remove it from the accessibility snapshot entirely.
+        let dragStart = gauge.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let dragEnd = dragStart.withOffset(CGVector(dx: 0, dy: -80))
+        dragStart.press(forDuration: 0.05, thenDragTo: dragEnd, withVelocity: .slow, thenHoldForDuration: 0.15)
 
         XCTAssertFalse(app.descendants(matching: .any)["uvForecast.hero"].exists)
         XCTAssertLessThan(gauge.frame.minY, initialPosition - 10, "Dragging the gauge must scroll Today.")
