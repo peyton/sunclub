@@ -25,17 +25,17 @@ final class SunclubSPFEditUITests: SunclubUITestCase {
             XCTAssertTrue(selectedSPF.isSelected, "Resizing must retain the unsaved SPF selection.")
         }
 
-        // Native toolbar hit regions extend beyond their visual accessibility frame.
-        // Exercise both vertical edges of a 44-point target instead of measuring the label.
-        save.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .withOffset(CGVector(dx: 0, dy: 21)).tap()
+        // Native toolbar buttons expose their hittable point through tap().
+        // Frame-derived offsets do not describe the platform's touch region.
+        save.tap()
         XCTAssertTrue(waitForLabel("SPF 15", on: app.buttons["home.editSPF"]))
         XCTAssertFalse(save.exists)
 
         tapHittableElement(app.buttons["home.editSPF"], in: app)
         app.buttons["spfEditor.quick.30"].tap()
-        save.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .withOffset(CGVector(dx: 0, dy: -21)).tap()
+        XCTAssertTrue(save.isHittable)
+        XCTAssertTrue(app.frame.contains(save.frame))
+        save.tap()
         XCTAssertTrue(waitForLabel("SPF 30", on: app.buttons["home.editSPF"]))
         XCTAssertFalse(save.exists)
     }

@@ -183,15 +183,23 @@ class SunclubUITestCase: XCTestCase {
     @MainActor
     func waitForVerifiedUVForecast(
         in app: XCUIApplication,
-        timeout: TimeInterval = 10
+        timeout: TimeInterval = 20
     ) -> Bool {
         let card = app.buttons["home.uvIndexCard"]
         guard scrollToHittableElement(card, in: app, attempts: 10) else {
             return false
         }
+        // Hosted simulators can spend several seconds resolving each AX snapshot.
         let predicate = NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "UV index ", "Apple Weather")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: card)
-        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+        let verified = XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+        if !verified {
+            let snapshot = XCTAttachment(string: "UV card label: \(card.label)\n\(app.debugDescription)")
+            snapshot.name = "UV forecast readiness"
+            snapshot.lifetime = .keepAlways
+            add(snapshot)
+        }
+        return verified
     }
 
     @MainActor

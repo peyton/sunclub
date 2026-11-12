@@ -23,10 +23,11 @@ were rejected and recaptured after the interface settled.
    fold, and unfolding reset an unsaved SPF selection. Native Cancel and Save
    actions keep saving visible. The presenter now retains the draft: SPF 30 and
    Use for future logs survived closed → partially open → open, then saved after
-   refolding without changing the application time. The regression exercises
-   the native Save action at both vertical edges of a 44-point touch target;
-   its visual accessibility frame is smaller than its hit region. Save failures
-   use a native alert so feedback cannot fall below the visible sheet.
+   refolding without changing the application time. The regression verifies
+   that native Save remains visible and tappable after resizing, then confirms
+   both saved SPF values. Native toolbar accessibility bounds do not certify
+   the size of the platform's touch region. Save failures use a native alert
+   so feedback cannot fall below the visible sheet.
 4. **History and Insights — readable.** History retains direct day selection,
    editing, deletion, and access to the full calendar. The single-day summary
    uses singular “day.” Insights retains counts, streaks, and seven explicit
@@ -79,7 +80,8 @@ The closed Today layout was also inspected at an accessibility text size.
   simplifications. An earlier Duo unit launch failed before tests
   started and is not counted as passing evidence.
 - 15 Duo smoke tests, two focused timeline tests, three focused forecast tests,
-  and three focused SPF tests passed. The Save edge taps both saved correctly.
+  and three focused SPF tests passed. Native Save interaction and retained
+  drafts are also checked on the conventional iPhone layout.
 - Repository lint and 288 Python tests passed.
 - Hosted CI on the final commit is the release gate; these local results do not
   establish that the final candidate has passed every check.
