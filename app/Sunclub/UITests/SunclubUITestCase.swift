@@ -31,7 +31,7 @@ class SunclubUITestCase: XCTestCase {
             file: file, line: line
         )
         XCTAssertTrue(
-            scrollToHittableElement(app.buttons["home.sunscreenLogCard"], in: app, attempts: 10),
+            scrollToFullyVisibleElement(app.buttons["home.sunscreenLogCard"], in: app),
             "Expected Edit log to remain reachable.", file: file, line: line
         )
         XCTAssertEqual(app.buttons["home.logManually"].label, "Log reapplication", file: file, line: line)
@@ -805,15 +805,22 @@ class SunclubUITestCase: XCTestCase {
 
     @MainActor
     func scrollToFullyVisibleElement(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
-        guard scrollToHittableElement(element, in: app, attempts: 10) else { return false }
         let surface = app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? app
-        for _ in 0..<10 {
-            let bounds = app.frame.insetBy(dx: 0, dy: 8)
-            if element.isHittable, bounds.contains(element.frame) { return true }
-            let direction: ScrollDirection = element.frame.minY < bounds.minY ? .scrollDown : .scrollUp
+        for _ in 0..<20 {
+            let bounds = surface.frame.intersection(app.frame).insetBy(dx: 0, dy: 8)
+            guard element.waitForExistence(timeout: 1) else {
+                nudgeScrollSurface(surface, direction: .scrollUp, distance: 0.15)
+                continue
+            }
+            let frame = element.frame
+            // XCTest can throw when asked for the hit point of a clipped control.
+            // Reveal it with short, directed drags before querying hittability.
+            if !frame.isEmpty, !frame.isInfinite, bounds.contains(frame), element.isHittable { return true }
+            let direction: ScrollDirection = frame.minY < bounds.minY ? .scrollDown : .scrollUp
             nudgeScrollSurface(surface, direction: direction, distance: 0.15)
         }
-        return element.isHittable && app.frame.contains(element.frame)
+        let frame = element.frame
+        return !frame.isEmpty && !frame.isInfinite && app.frame.contains(frame) && element.isHittable
     }
 
     @MainActor
