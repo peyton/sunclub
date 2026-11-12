@@ -9,7 +9,10 @@ struct WeeklyReportView: View {
     var body: some View {
         TimelineView(.periodic(from: Calendar.current.startOfDay(for: appState.referenceDate), by: 60)) { _ in
             let report = appState.last7DaysReport()
-            SunLightScreen {
+            SunLightScreen(
+                contentMaxWidth: SunLayout.ContentWidth.form,
+                contentFrameAlignment: .center
+            ) {
                 VStack(alignment: .leading, spacing: AppSpacing.xl) {
                     SunLightHeader(title: "Insights", showsBack: true, onBack: { router.goBack() })
 
@@ -28,7 +31,6 @@ struct WeeklyReportView: View {
                         AppText("Daily activity", style: .bodyMedium)
                             .accessibilityAddTraits(.isHeader)
                         weekStrip
-                        AppText("A filled mark means sunscreen was logged.", style: .caption, color: AppColor.Text.secondary)
                     }
 
                     Divider().accessibilityHidden(true)
@@ -70,13 +72,6 @@ struct WeeklyReportView: View {
                         AppText(day.formatted(.dateTime.weekday(.narrow)), style: .caption,
                                 color: AppColor.Text.secondary, alignment: .center)
                         AppText(day.formatted(.dateTime.day()), style: .bodyMedium, alignment: .center)
-                        ZStack(alignment: .bottom) {
-                            Capsule().fill(AppColor.stroke.opacity(0.5))
-                                .frame(width: AppSpacing.xxs, height: 64)
-                            Capsule().fill(isLogged(day) ? AppColor.accent : AppColor.muted)
-                                .frame(width: AppSpacing.xxs, height: isLogged(day) ? 64 : 8)
-                        }
-                        .accessibilityHidden(true)
                         if isLogged(day) {
                             SunIcon.check.image
                                 .resizable().scaledToFit()

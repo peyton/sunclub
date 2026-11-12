@@ -1,6 +1,45 @@
 import XCTest
+import UIKit
 
 final class SunclubSPFEditUITests: SunclubUITestCase {
+    @MainActor
+    func testSPFSaveStaysVisibleAndRetainsDraftAfterResizing() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .portrait
+        let app = launchTimelineHome(additionalArguments: ["UITEST_SEED_HISTORY=todayLogged"])
+        tapHittableElement(app.buttons["home.editSPF"], in: app)
+        let save = app.buttons["spfEditor.save"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(save.isHittable, "Save must be reachable without scrolling the default sheet.")
+        XCTAssertTrue(app.frame.contains(save.frame), "The entire Save button must fit in the default sheet.")
+
+        let selectedSPF = app.buttons["spfEditor.quick.15"]
+        selectedSPF.tap()
+        XCTAssertTrue(selectedSPF.isSelected)
+
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            XCTAssertTrue(save.waitForExistence(timeout: 5))
+            XCTAssertTrue(save.isHittable, "Save must remain reachable after resizing without scrolling.")
+            XCTAssertTrue(app.frame.contains(save.frame), "The entire Save button must fit after resizing.")
+            XCTAssertTrue(selectedSPF.isSelected, "Resizing must retain the unsaved SPF selection.")
+        }
+
+        // Native toolbar buttons expose their hittable point through tap().
+        // Frame-derived offsets do not describe the platform's touch region.
+        save.tap()
+        XCTAssertTrue(waitForLabel("SPF 15", on: app.buttons["home.editSPF"]))
+        XCTAssertFalse(save.exists)
+
+        tapHittableElement(app.buttons["home.editSPF"], in: app)
+        app.buttons["spfEditor.quick.30"].tap()
+        XCTAssertTrue(save.isHittable)
+        XCTAssertTrue(app.frame.contains(save.frame))
+        save.tap()
+        XCTAssertTrue(waitForLabel("SPF 30", on: app.buttons["home.editSPF"]))
+        XCTAssertFalse(save.exists)
+    }
+
     @MainActor
     func testDirectSPFEditCancelsThenSavesWithoutLeavingToday() throws {
         let app = launchTimelineHome(additionalArguments: ["UITEST_SEED_HISTORY=todayLogged"])

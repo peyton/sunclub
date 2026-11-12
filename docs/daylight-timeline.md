@@ -1,11 +1,14 @@
 # Daylight Timeline
 
 Sunclub's daily loop uses chronological application events on an open cream or
-charcoal canvas. Recorded events have filled markers; current and planned events
+charcoal canvas. Recorded events have filled markers; empty and planned states
 use outlined markers with explicit text. Today stays anchored to the current day,
 with one logging action above compact, source-labeled UV context. History owns
 date selection and editing. All existing automation and companion identities stay
 unchanged.
+
+Today shows the last log and any reapplication plan without a separate “Now” row.
+The primary logging action stays immediately below that useful status.
 
 ## Shared presentation
 

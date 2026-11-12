@@ -56,16 +56,10 @@ struct TimelineHomeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 0) {
-                    SunTimelineEvent(isRecorded: record != nil) {
+                    SunTimelineEvent(isRecorded: record != nil, connectsToNext: log.reminderText != nil) {
                         TodayQuietGlassLogSummary(presentation: log, editSPF: {
                             if let record { spfEdit = LoggedSPFEditTarget(record: record) }
                         }, editTime: openEditor)
-                    }
-                    SunTimelineEvent(isRecorded: false, connectsToNext: log.reminderText != nil) {
-                        AppText("Now · \(now.formatted(date: .omitted, time: .shortened))",
-                                style: .bodyMedium, color: AppColor.Text.secondary)
-                            .frame(minHeight: 32, alignment: .leading)
-                            .accessibilityIdentifier("home.timelineNow")
                     }
                     if let reminder = log.reminderText {
                         SunTimelineEvent(isRecorded: false, connectsToNext: false) {

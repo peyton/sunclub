@@ -203,7 +203,10 @@ final class SunclubSmokeUITests: SunclubUITestCase {
             reapplyToggle.tap()
         }
         XCTAssertTrue(waitForValueContaining("1", on: reapplyToggle), "Reapply switch must turn on before choosing an interval.")
-        XCTAssertTrue(scrollToHittableElement(app.buttons["settings.reapplyInterval.120"], in: app, attempts: 10), "Expected enabled reapply settings to show reachable interval controls.")
+        let reapplyInterval = app.buttons["settings.reapplyInterval.120"]
+        XCTAssertTrue(scrollToHittableElement(reapplyInterval, in: app, attempts: 10), "Expected enabled reapply settings to show reachable interval controls.")
+        XCTAssertGreaterThanOrEqual(reapplyInterval.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(reapplyInterval.frame.height, 44)
 
         XCTAssertTrue(navigationBackButton(in: app).waitForExistence(timeout: 5), "Expected Settings detail back button after editing reapply settings.")
         navigationBackButton(in: app).tap()

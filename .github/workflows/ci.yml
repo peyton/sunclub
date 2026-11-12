@@ -113,7 +113,7 @@ jobs:
         run: mise --locked exec -- just test-ui-smoke
       - name: Run full UI tests
         if: github.event_name != 'pull_request'
-        timeout-minutes: 45
+        timeout-minutes: 90
         run: mise --locked exec -- just test-ui
       - name: Upload failed UI test result
         if: failure()

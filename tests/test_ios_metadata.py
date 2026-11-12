@@ -575,7 +575,7 @@ def test_ci_workflow_restores_repo_local_caches_without_build_artifacts() -> Non
 
 def test_ios_workflows_share_single_xcode_version_pin() -> None:
     setup = (REPO_ROOT / ".github/actions/setup/action.yml").read_text()
-    assert 'SUNCLUB_XCODE_VERSION: "27.1"' in setup
+    assert 'SUNCLUB_XCODE_VERSION: "27.2"' in setup
     assert "sudo xcode-select -s" in setup
     assert "scripts/tooling/prepare_ci_workspace.sh" in setup
     for workflow_path in IOS_XCODE_WORKFLOWS:

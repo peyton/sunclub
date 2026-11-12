@@ -106,7 +106,7 @@ exact source SHA before materializing signing credentials. It then:
 2. validates App Store metadata
    - uses draft mode for TestFlight-only fields
 3. runs the Swift unit suite as a launch-safety gate with a timeout
-4. archives the production app on the pinned `macos-26` runner with stable Xcode `26.4`
+4. archives the production app on the pinned `xcode-27` runner with stable Xcode `27.2`
 5. ad-hoc signs the unsigned archive with resolved release entitlements before export
 6. exports the production IPA
 7. writes and validates signed-app entitlement diagnostics before upload
