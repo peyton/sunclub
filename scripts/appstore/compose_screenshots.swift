@@ -156,7 +156,7 @@ private func compose(screen: Screen, artwork: NSImage, inputURL: URL, outputURL:
     NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
     drawBackground(artwork)
     drawText(
-        "SUNCLUB  /  YOUR DAILY SPF RITUAL",
+        "SUNCLUB",
         in: CGRect(x: 100, y: 2720, width: 1120, height: 50),
         font: roundedFont(size: 28, weight: .semibold),
         color: muted

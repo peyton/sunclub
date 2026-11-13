@@ -33,7 +33,7 @@ VALID_RELEASE_TYPES = {"MANUAL", "AFTER_APPROVAL", "SCHEDULED"}
 VALID_SCREENSHOT_DISPLAY_TYPES = {"APP_IPHONE_67"}
 VALID_PRIMARY_CATEGORIES = {"HEALTH_AND_FITNESS"}
 VALID_SECONDARY_CATEGORIES = {"LIFESTYLE"}
-VALID_AGE_RATINGS = {"4+"}
+VALID_AGE_RATINGS = {"9+"}
 VALID_DATA_COLLECTION_VALUES = {"none", "app_functionality"}
 VALID_MEDICAL_DEVICE_STATUSES = {"not_regulated"}
 REQUIRED_MEDICAL_DEVICE_ASC_VALUE = "NOT_MEDICAL_DEVICE"
@@ -62,7 +62,8 @@ REQUIRED_ATTESTATIONS = {
     "non_exempt_encryption": False,
     "third_party_content": False,
     "kids_category": False,
-    "iphone_only_v1": True,
+    "iphone_and_ipad": True,
+    "apple_watch": True,
     "accessibility_criteria_reviewed": True,
 }
 ACCESSIBILITY_FIELDS = {
@@ -201,10 +202,12 @@ def validate_manifest(
         )
 
     if app.get("age_rating") not in VALID_AGE_RATINGS:
-        errors.append("app.age_rating must remain 4+ for the first submission.")
+        errors.append("app.age_rating must be 9+ to match the App Store listing.")
 
-    if app.get("device_family") != "iphone":
-        errors.append("app.device_family must be 'iphone' for the iPhone-only release.")
+    if app.get("device_family") != "universal":
+        errors.append(
+            "app.device_family must be 'universal' for the iPhone and iPad app."
+        )
 
     locale_payload = (
         localizations.get(primary_locale, {}) if isinstance(primary_locale, str) else {}
@@ -441,6 +444,10 @@ def validate_manifest(
     if not isinstance(attestations, dict):
         errors.append("Missing required object: attestations.")
     else:
+        if "iphone_only_v1" in attestations:
+            errors.append(
+                "attestations.iphone_only_v1 is obsolete; declare iphone_and_ipad and apple_watch."
+            )
         for field, expected in REQUIRED_ATTESTATIONS.items():
             if attestations.get(field) != expected:
                 errors.append(
