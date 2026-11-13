@@ -194,6 +194,53 @@ def test_validator_accepts_submission_ready_manifest() -> None:
     assert warnings == []
 
 
+def test_review_package_describes_current_age_rating_and_platforms() -> None:
+    manifest = current_manifest()
+
+    assert manifest["app"]["age_rating"] == "9+"
+    assert manifest["app"]["device_family"] == "universal"
+    assert manifest["attestations"]["iphone_and_ipad"] is True
+    assert manifest["attestations"]["apple_watch"] is True
+    assert "iphone_only_v1" not in manifest["attestations"]
+
+    package = review_package.generate_review_package(manifest)
+
+    assert "- Age rating target: 9+" in package
+    assert "- Device family: universal" in package
+    assert "- iphone_and_ipad: yes" in package
+    assert "- apple_watch: yes" in package
+    assert "iphone_only_v1" not in package
+
+
+def test_validator_rejects_stale_age_rating_and_phone_only_declarations() -> None:
+    manifest = current_manifest()
+    manifest["app"]["age_rating"] = "4+"
+    manifest["app"]["device_family"] = "iphone"
+    manifest["attestations"]["iphone_only_v1"] = True
+
+    errors, _ = validator.validate_manifest(manifest, allow_draft=True)
+
+    assert "app.age_rating must be 9+ to match the App Store listing." in errors
+    assert (
+        "app.device_family must be 'universal' for the iPhone and iPad app." in errors
+    )
+    assert (
+        "attestations.iphone_only_v1 is obsolete; declare iphone_and_ipad and apple_watch."
+        in errors
+    )
+
+
+def test_validator_requires_existing_platform_attestations() -> None:
+    for field in ("iphone_and_ipad", "apple_watch"):
+        for invalid_value in (None, False):
+            manifest = current_manifest()
+            manifest["attestations"][field] = invalid_value
+
+            errors, _ = validator.validate_manifest(manifest, allow_draft=False)
+
+            assert f"attestations.{field} must be True for this release." in errors
+
+
 def test_validator_requires_explicit_social_media_age_rating_answers() -> None:
     for field in ("social_media", "social_media_age_restricted"):
         for invalid_value in (None, True):

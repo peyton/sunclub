@@ -125,9 +125,6 @@ def main() -> int:
     run(["xcrun", "simctl", "erase", simulator_udid], check=False)
     run(["xcrun", "simctl", "boot", simulator_udid], check=False)
     run_logged(["xcrun", "simctl", "bootstatus", simulator_udid, "-b"])
-    run(["xcrun", "simctl", "terminate", simulator_udid, bundle_id], check=False)
-    run(["xcrun", "simctl", "uninstall", simulator_udid, bundle_id], check=False)
-    run_logged(["xcrun", "simctl", "install", simulator_udid, str(APP_PATH)])
     run_logged(
         [
             "xcrun",
@@ -167,6 +164,11 @@ def main() -> int:
             run(
                 ["xcrun", "simctl", "terminate", simulator_udid, bundle_id], check=False
             )
+            # Keep persisted weather and preferences from leaking between scenes.
+            run(
+                ["xcrun", "simctl", "uninstall", simulator_udid, bundle_id], check=False
+            )
+            run_logged(["xcrun", "simctl", "install", simulator_udid, str(APP_PATH)])
             run_logged(
                 ["xcrun", "simctl", "launch", simulator_udid, bundle_id, *arguments]
             )

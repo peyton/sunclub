@@ -52,6 +52,14 @@ have not already been approved; material package changes require a new checkpoin
 Set non-interactive confirmation flags only when that approval exists. Keep the
 submission wrapper's checkpoint enforcement intact.
 
+Inspect every raw and composed screenshot before upload, including the displayed
+time, UV state, spacing and visible editor fields. Route-based capture opens the
+log editor with Details collapsed; expand it, recapture and recompose that scene
+when the screenshot copy promises SPF, coverage and notes. Regeneration replaces
+the reviewed PNGs. To preserve reviewed screenshots and reuse an uploaded build,
+set its exact `SUNCLUB_MARKETING_VERSION` and `SUNCLUB_BUILD_NUMBER`, then use
+`--skip-screenshots --skip-archive-upload` with the submission wrapper.
+
 ## Required Manual Work
 
 These steps still require real App Store Connect data and cannot be faked safely inside the repo:
@@ -66,7 +74,7 @@ These steps still require real App Store Connect data and cannot be faked safely
 ## Review Notes
 
 - Sunclub is free.
-- The app is iPhone-only.
+- The app supports iPhone and iPad, with an embedded Apple Watch app and widgets.
 - Sunclub is not a regulated medical device; it is sunscreen habit guidance, not diagnosis, monitoring, prevention, or treatment.
 - This submitted version includes WeatherKit, but only as an optional Live UV enhancement powered by Apple Weather.
 - Live UV is off by default. Manual sunscreen logging, Weekly Summary, reminders, widgets, and watch surfaces work without WeatherKit or location.
