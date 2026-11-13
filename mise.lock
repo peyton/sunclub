@@ -449,20 +449,20 @@ url = "https://github.com/realm/SwiftLint/releases/download/0.65.1/portable_swif
 url_api = "https://api.github.com/repos/realm/SwiftLint/releases/assets/524187565"
 
 [[tools.tuist]]
-version = "4.215.1"
+version = "4.216.0"
 backend = "aqua:tuist/tuist"
 
 [tools.tuist."platforms.macos-arm64"]
-checksum = "sha256:4742a647ba53f68b0c932f249b34492406f6f0caa4144359f216e14abf626696"
+checksum = "sha256:eef9b9b0c5722052cc54ec6e114bd557cfcf8f695e483fb39cb80d53959354fc"
 checksum_source = "mise-versions"
-url = "https://github.com/tuist/tuist/releases/download/4.215.1/tuist.zip"
-url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/723326895"
+url = "https://github.com/tuist/tuist/releases/download/4.216.0/tuist.zip"
+url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/726532577"
 
 [tools.tuist."platforms.macos-x64"]
-checksum = "sha256:4742a647ba53f68b0c932f249b34492406f6f0caa4144359f216e14abf626696"
+checksum = "sha256:eef9b9b0c5722052cc54ec6e114bd557cfcf8f695e483fb39cb80d53959354fc"
 checksum_source = "mise-versions"
-url = "https://github.com/tuist/tuist/releases/download/4.215.1/tuist.zip"
-url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/723326895"
+url = "https://github.com/tuist/tuist/releases/download/4.216.0/tuist.zip"
+url_api = "https://api.github.com/repos/tuist/tuist/releases/assets/726532577"
 
 [[tools.uv]]
 version = "0.13.7"
